@@ -531,8 +531,32 @@ async fn create_admin_with(
     Ok(true)
 }
 
+/// `PLAYARR_STATIC=1` runs the frozen parity reference server (`scripts/parity/static-server.sh`): it
+/// serves the seeded database as it is and makes no upstream or peer calls and no background writes.
+fn static_mode() -> bool {
+    flag_on(std::env::var("PLAYARR_STATIC").ok().as_deref())
+}
+
+fn flag_on(value: Option<&str>) -> bool {
+    matches!(value, Some("1") | Some("true"))
+}
+
+/// Drops the settings that start network work of their own (ACME, relay registration, OTLP export)
+/// and the worker role (arr sync, peer sync, metadata refresh, Tdarr).
+fn freeze_config(config: &mut Config) {
+    config.acme = None;
+    config.relay = None;
+    config.otlp_endpoint = None;
+    if config.role.runs_worker() {
+        config.role = playarr_config::Role::Api;
+    }
+}
+
 async fn serve() -> anyhow::Result<()> {
-    let config = Config::from_env()?;
+    let mut config = Config::from_env()?;
+    if static_mode() {
+        freeze_config(&mut config);
+    }
     let _telemetry_guard = playarr_telemetry::init(&config);
 
     tracing::info!(
@@ -566,7 +590,8 @@ async fn serve() -> anyhow::Result<()> {
     // Encrypted server backups (docs/architecture/server-backups.md). Off
     // unless `PLAYARR_BACKUP_DIR` is set; a half-configured setup (no valid
     // recovery public key) stops startup rather than silently not backing up.
-    let backup_service = match playarr_backup::BackupConfig::from_env()? {
+    let backup_service = match playarr_backup::BackupConfig::from_env()?.filter(|_| !static_mode())
+    {
         Some(mut backup_config) => {
             backup_config.artwork_dir = Some(playarr_artwork::artwork_cache_root());
             tracing::info!(
@@ -1936,31 +1961,13 @@ async fn boot_api(
     // the *arr app could not describe, plus periodic sidecar subtitle scans.
     // Runs where the media is readable (the API role); idempotent, so
     // replicas may overlap. `PLAYARR_LANGUAGE_INDEXER=off` disables it.
-    if !std::env::var("PLAYARR_LANGUAGE_INDEXER").is_ok_and(|v| v.eq_ignore_ascii_case("off")) {
+    if !static_mode()
+        && !std::env::var("PLAYARR_LANGUAGE_INDEXER").is_ok_and(|v| v.eq_ignore_ascii_case("off"))
+    {
         tokio::spawn(playarr_api::language_index::run_language_indexer(
             media_language_repo.clone(),
         ));
     }
-
-    // Push complements the worker's normal pull pollers. Running it in the
-    // API role gives a node with outbound-only connectivity a signed path to
-    // publish its local changes to a reachable peer; that same node's worker
-    // still pulls the peer's changes in the opposite direction.
-    let push_identity = playarr_peer_sync::PeerIdentity::from_seed_b64(
-        node_identity.peer_id,
-        node_identity.private_key.expose_secret(),
-    )
-    .map_err(|err| anyhow::anyhow!("failed to load peer identity for push sync: {err}"))?;
-    let push_client = playarr_peer_sync::PeerClient::new_with_routes(
-        state.peer_http.clone(),
-        push_identity,
-        state.peer_transport_routes.clone(),
-    );
-    tokio::spawn(playarr_api::peer::run_push_sync_loop(
-        state.clone(),
-        push_client,
-        peer_sync_interval_secs_from_env(),
-    ));
 
     // Stop ffmpeg processes whose session went idle (closed tab, replaced
     // player session): the cache row expires on its own, the process does not.
@@ -1971,22 +1978,48 @@ async fn boot_api(
             .run_idle_reaper(std::time::Duration::from_secs(15)),
     );
 
-    // Keep Dubarr dub-track lookups fresh by watching each instance's change feed.
-    tokio::spawn(playarr_api::request_sync::run_scheduler(
-        request_sync.clone(),
-    ));
-    tokio::spawn(playarr_api::dubarr_audio::run_change_poller(
-        state.source_instances.clone(),
-    ));
+    // Background upstream and peer jobs: off in static mode.
+    if !static_mode() {
+        // Push complements the worker's normal pull pollers. Running it in the
+        // API role gives a node with outbound-only connectivity a signed path to
+        // publish its local changes to a reachable peer; that same node's worker
+        // still pulls the peer's changes in the opposite direction.
+        let push_identity = playarr_peer_sync::PeerIdentity::from_seed_b64(
+            node_identity.peer_id,
+            node_identity.private_key.expose_secret(),
+        )
+        .map_err(|err| anyhow::anyhow!("failed to load peer identity for push sync: {err}"))?;
+        let push_client = playarr_peer_sync::PeerClient::new_with_routes(
+            state.peer_http.clone(),
+            push_identity,
+            state.peer_transport_routes.clone(),
+        );
+        tokio::spawn(playarr_api::peer::run_push_sync_loop(
+            state.clone(),
+            push_client,
+            peer_sync_interval_secs_from_env(),
+        ));
 
-    // Unsorted folders: discover root folders from the sources and keep each
-    // enabled root's scan cache current. Runs where the media is readable
-    // (the API role); a per-root in-flight guard keeps overlapping scans out.
-    tokio::spawn(playarr_api::folder_scan::run_folder_scanner(state.clone()));
+        // Keep Dubarr dub-track lookups fresh by watching each instance's change feed.
+        tokio::spawn(playarr_api::request_sync::run_scheduler(
+            request_sync.clone(),
+        ));
+        tokio::spawn(playarr_api::dubarr_audio::run_change_poller(
+            state.source_instances.clone(),
+        ));
 
-    // Calendar: refresh every source's data in the background so the calendar
-    // API answers from the cache and never waits on an *arr instance.
-    tokio::spawn(playarr_api::calendar_cache::run_refresher(state.clone()));
+        // Unsorted folders: discover root folders from the sources and keep each
+        // enabled root's scan cache current. Runs where the media is readable
+        // (the API role); a per-root in-flight guard keeps overlapping scans out.
+        tokio::spawn(playarr_api::folder_scan::run_folder_scanner(state.clone()));
+
+        // Calendar: refresh every source's data in the background so the calendar
+        // API answers from the cache and never waits on an *arr instance.
+        tokio::spawn(playarr_api::calendar_cache::run_refresher(state.clone()));
+    } else {
+        // Static mode never refreshes, but the seeded chunks are the whole calendar: load them once.
+        state.calendar_cache.load().await;
+    }
 
     // Read the catalogue into memory now, so the first Home or Library request
     // after a start does not pay for the scan.
@@ -3521,6 +3554,25 @@ mod bootstrap_tests {
     use playarr_db::repo::{SqlxPolicyRepo, SqlxUserRepo};
     use playarr_db::{DbPool, PolicyRepo, UserRepo};
     use std::sync::atomic::{AtomicU64, Ordering};
+
+    #[test]
+    fn static_mode_flag_and_frozen_config_drop_every_upstream_job() {
+        assert!(flag_on(Some("1")) && flag_on(Some("true")));
+        assert!(!flag_on(None) && !flag_on(Some("0")) && !flag_on(Some("")));
+        let mut config = Config::from_env_source(&|key| match key {
+            "DATABASE_URL" => Ok("sqlite::memory:".into()),
+            "PLAYARR_RELAY_REGISTER" => Ok("true".into()),
+            "PLAYARR_OTLP_ENDPOINT" => Ok("http://otel.invalid".into()),
+            _ => Err(std::env::VarError::NotPresent),
+        })
+        .unwrap();
+        assert!(
+            config.role.runs_worker() && config.relay.is_some() && config.otlp_endpoint.is_some()
+        );
+        freeze_config(&mut config);
+        assert!(!config.role.runs_worker() && config.role.runs_api());
+        assert!(config.relay.is_none() && config.acme.is_none() && config.otlp_endpoint.is_none());
+    }
 
     #[test]
     fn device_verification_uri_points_at_the_servers_own_link_page_when_it_serves_the_client() {

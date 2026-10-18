@@ -523,14 +523,9 @@ private struct TVProductionShell<Stage: View>: View {
                 onLinkTV: { showProfiles = false },
                 onManual: {},
                 onSettings: {
-                    #if os(macOS)
                     // Set the tab first: closing the page reports the route of the tab current at that moment (it said Home).
                     nav = .settings
-                    #endif
                     showProfiles = false
-                    #if !os(macOS)
-                    nav = .settings
-                    #endif
                 }
             )
         }
@@ -839,6 +834,7 @@ struct TVPairingGateView: View {
 private enum TVProfilesFocus: Hashable {
     case profile(UUID)
     case add
+    case settings
 }
 
 /// Household profile picker matching live web `/profiles` 1:1 @ 1920×1080.
@@ -1134,6 +1130,8 @@ struct TVProfilesView: View {
                 if direction == .up {
                     moveFocusToChrome()
                 }
+                // Web `data-tv-edge-target-down="#profile-settings"`: Down from the avatar lands on the gear, not the nearest action.
+                if direction == .down, selected { focusedTarget = .settings }
             }
             .disabled(switchingID != nil)
             .accessibilityLabel(profile.displayName.isEmpty ? profile.username : profile.displayName)
@@ -1167,6 +1165,7 @@ struct TVProfilesView: View {
             }
             .buttonStyle(TVProfileActionButtonStyle())
             .focusEffectDisabled(true)
+            .focused($focusedTarget, equals: .settings)
             .accessibilityLabel("Settings for \(profile.displayName)")
 
             // Web `.profile-sign-out-button` — glass pill, danger on focus.

@@ -1,1 +1,0 @@
-- Web: the nav-overlap e2e also covers tall and near-square desktop windows (1600x1164 at 1x and 2x and with a classic scrollbar, 1440x1080, 1280x1024, 1024x1024, 1366x1366, 1080x1920) and checks the hero title's leftmost glyph against the nav rail on Home, the library pages and film, series and artist detail.

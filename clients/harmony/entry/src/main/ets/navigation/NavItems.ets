@@ -7,6 +7,7 @@
 import type { NavRailItem } from '../design/components/NavRail';
 import type { WorkKind } from '../core/Types/Catalog';
 import { ROUTES } from './Routes';
+import { t } from '../core/Language';
 import type { LibraryRouteParams } from './Routes';
 import { getNavStack, popRoute, pushRoute, replaceRoute } from './NavStack';
 
@@ -51,9 +52,12 @@ export function navIconFor(id: string): ResourceStr {
   if (id === PLAYLISTS_NAV_ID) {
     return $r('app.media.nav_playlists');
   }
-  if (id === WATCHLIST_NAV_ID || id === REQUESTS_NAV_ID) {
-    // Web gives Requests the Watchlist icon.
+  if (id === WATCHLIST_NAV_ID) {
     return $r('app.media.nav_watchlist');
+  }
+  if (id === REQUESTS_NAV_ID) {
+    // Web RequestsIcon: a plus in a circle.
+    return $r('app.media.nav_requests');
   }
   if (id === SEARCH_NAV_ID) {
     return $r('app.media.nav_search');
@@ -64,23 +68,23 @@ export function navIconFor(id: string): ResourceStr {
 /** Nav label for a catalogue kind (a whole library section). */
 export function catalogKindNavLabel(kind: WorkKind): string {
   if (kind === 'movie') {
-    return 'Movies';
+    return t('shell.nav.movies', 'Movies');
   }
   if (kind === 'series') {
-    return 'Series';
+    return t('shell.nav.series', 'Series');
   }
   if (kind === 'site') {
-    return 'Sites';
+    return t('shell.nav.sites', 'Sites');
   }
   if (kind === 'artist') {
-    return 'Music';
+    return t('shell.nav.music', 'Music');
   }
   return 'Books';
 }
 
 /** Home first, then the server's kinds in web order. */
 export function buildNavRailItems(kinds: WorkKind[]): NavRailItem[] {
-  const items: NavRailItem[] = [{ id: HOME_NAV_ID, icon: navIconFor(HOME_NAV_ID), label: 'Home' }];
+  const items: NavRailItem[] = [{ id: HOME_NAV_ID, icon: navIconFor(HOME_NAV_ID), label: t('shell.nav.home', 'Home') }];
   const sorted: WorkKind[] = kinds.slice();
   sorted.sort((a: WorkKind, b: WorkKind): number => navKindRank(a) - navKindRank(b));
   for (const kind of sorted) {
@@ -92,18 +96,18 @@ export function buildNavRailItems(kinds: WorkKind[]): NavRailItem[] {
 /** Web's Playlists/Watchlist/Requests/Calendar group: only the screens this client has so far. */
 export function buildSecondaryNavItems(): NavRailItem[] {
   return [
-    { id: PLAYLISTS_NAV_ID, icon: navIconFor(PLAYLISTS_NAV_ID), label: 'Playlists' },
-    { id: WATCHLIST_NAV_ID, icon: navIconFor(WATCHLIST_NAV_ID), label: 'Watchlist' },
-    { id: REQUESTS_NAV_ID, icon: navIconFor(REQUESTS_NAV_ID), label: 'Requests' },
-    { id: CALENDAR_NAV_ID, icon: navIconFor(CALENDAR_NAV_ID), label: 'Calendar' },
+    { id: PLAYLISTS_NAV_ID, icon: navIconFor(PLAYLISTS_NAV_ID), label: t('shell.nav.playlists', 'Playlists') },
+    { id: WATCHLIST_NAV_ID, icon: navIconFor(WATCHLIST_NAV_ID), label: t('shell.nav.watchlist', 'Watchlist') },
+    { id: REQUESTS_NAV_ID, icon: navIconFor(REQUESTS_NAV_ID), label: t('shell.nav.requests', 'Requests') },
+    { id: CALENDAR_NAV_ID, icon: navIconFor(CALENDAR_NAV_ID), label: t('shell.nav.calendar', 'Calendar') },
   ];
 }
 
 /** Web's Downloads/Search group, above the library group: only the screens this client has so far. */
 export function buildPrimaryNavItems(): NavRailItem[] {
   return [
-    { id: DOWNLOADS_NAV_ID, icon: navIconFor(DOWNLOADS_NAV_ID), label: 'Downloads' },
-    { id: SEARCH_NAV_ID, icon: navIconFor(SEARCH_NAV_ID), label: 'Search' },
+    { id: DOWNLOADS_NAV_ID, icon: navIconFor(DOWNLOADS_NAV_ID), label: t('shell.nav.downloads', 'Downloads') },
+    { id: SEARCH_NAV_ID, icon: navIconFor(SEARCH_NAV_ID), label: t('shell.nav.search', 'Search') },
   ];
 }
 

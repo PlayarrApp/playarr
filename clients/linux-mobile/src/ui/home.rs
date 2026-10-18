@@ -1,5 +1,5 @@
 //! Home: a faded key-art backdrop and horizontal rails of 328 px cards, "On deck" first, then the server's rails.
-use super::cards::{card, home_art_h, home_cover, rail_w, CardOpts};
+use super::cards::{card, home_art_h, home_cover, home_w, CardOpts};
 use super::images::Images;
 use super::{bg, App};
 use crate::api::Client;
@@ -102,7 +102,7 @@ fn section(title: &str, row: RailRow) -> FocusSection {
     halo.add_css_class("pa-art");
     halo.add_css_class("selected");
     halo.add_css_class("pa-home-focus-halo");
-    halo.set_size_request(rail_w(), home_art_h());
+    halo.set_size_request(home_w(), home_art_h());
     halo.set_can_target(false);
     halo.set_visible(false);
     halo_layer.put(&halo, 0.0, 0.0);
@@ -372,7 +372,7 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                     .map(|d| {
                         set_art(&d.work);
                         let opts = CardOpts {
-                            width: Some(rail_w()),
+                            width: Some(home_w()),
                             art_h: Some(home_art_h()),
                             kinds: if home_cover() {
                                 &["poster", "backdrop", "thumb"]
@@ -409,7 +409,7 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                             .map(|w| {
                                 set_art(w);
                                 let opts = CardOpts {
-                                    width: Some(rail_w()),
+                                    width: Some(home_w()),
                                     art_h: Some(home_art_h()),
                                     kinds: if home_cover() {
                                         &["poster", "backdrop", "thumb"]

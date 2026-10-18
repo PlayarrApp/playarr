@@ -6,6 +6,7 @@ import {
   addDays, agendaRangeLabel, compareEntries, dayHeading, entryAvailable, entryPillTone, entrySubtitle,
   entryTimeLabel, groupByLocalDay, pillLabel, releaseInstant, entryWhenLabel,
 } from "../main/ets/core/CalendarAgenda";
+import { setCurrentLanguage } from "../main/ets/core/Language";
 import type { CalendarEntry } from "../main/ets/core/Types/Calendar";
 
 function entry(over: Partial<CalendarEntry>): CalendarEntry {
@@ -105,4 +106,13 @@ test("same series, day and time group; others stay single", () => {
   assert.equal(itemLineText(items[0]), "Sample Series 1 · 2×");
   assert.equal(items[1].grouped, false);
   assert.equal(itemPillTone(items[0], "2026-10-11"), "missing");
+});
+
+test("Japanese headings use the locale names", () => {
+  setCurrentLanguage("ja");
+  try {
+    assert.match(dayHeading("2026-10-11"), /10月11日/);
+  } finally {
+    setCurrentLanguage("en");
+  }
 });

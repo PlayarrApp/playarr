@@ -40,6 +40,7 @@ namespace Playarr.Xbox.Views
     {
         private WorkDetailViewModel _viewModel = null!;
         private Work? _backdropWork;
+        private readonly Ui.PageHeaderParts _header;
 
         /// <summary>The title's kind once loaded; read by the parity trace.</summary>
         internal WorkKind? Kind => _viewModel?.Work?.Kind;
@@ -47,14 +48,27 @@ namespace Playarr.Xbox.Views
         public WorkDetailPage()
         {
             InitializeComponent();
+            _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
             BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
             BackdropStageWashRight.Fill = Theme.KeyArtStageWashRight();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
-            PlaybackButton = Ui.Filled(Ui.Pill("\u2637  Playback", OpenPlaybackDrawer, 142));
+            PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
             PlaybackButton.Height = 64;
+            // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
+            PlayButton.GotFocus += (s, e) => PaintPlay(true);
+            PlayButton.LostFocus += (s, e) => PaintPlay(false);
+        }
+
+        private void PaintPlay(bool focused)
+        {
+            var resources = Application.Current.Resources;
+            PlayButton.Background = (Windows.UI.Xaml.Media.Brush)resources[focused ? "PlayarrBrand" : "PlayarrInk"];
+            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrSurfaceStrong"];
+            PlayLabel.Foreground = ink;
+            PlayIcon.Foreground = ink;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -92,16 +106,16 @@ namespace Playarr.Xbox.Views
             var work = _viewModel.Work;
             // A short number stays with the next word, so "2 Fast 2 Furious" wraps as the web draws it: "2 Fast" / "2 Furious".
             TitleText.Text = System.Text.RegularExpressions.Regex.Replace(_viewModel.Title, @"(?<=^|\s)(\d{1,2}) (?=\S)", "$1\u00a0");
-            LibraryText.Text = work?.Kind switch
+            _header.Title.Text = work?.Kind switch
             {
                 WorkKind.Movie => "Movies",
                 WorkKind.Series => "Series",
                 WorkKind.Artist => "Music",
                 _ => string.Empty,
             };
-            SubtitleText.Text = _viewModel.Title;
+            _header.Subtitle.Text = _viewModel.Title;
             // The web header: the title beside the subtitle after a divider (not pink), as every other page.
-            Ui.LayoutHeader(HeaderTitles, LibraryText, SubtitleText);
+            Ui.LayoutHeader(_header.Titles, _header.Title, _header.Subtitle);
             EyebrowText.Text = work != null && work.Genres.Count > 0 ? work.Genres[0].ToUpperInvariant() : string.Empty;
             // Web meta row: kind, year, then genres, spaced (runtime and release date need fields this client lacks).
             var meta = new System.Collections.Generic.List<string>();
@@ -121,7 +135,7 @@ namespace Playarr.Xbox.Views
 
                 if (work.Kind != WorkKind.Series && DateTimeOffset.TryParse(work.ReleaseDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var released))
                 {
-                    meta.Add("Released " + released.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+                    meta.Add("Released " + Ui.GbDate(released));
                 }
 
                 meta.AddRange(work.Genres);
@@ -133,6 +147,7 @@ namespace Playarr.Xbox.Views
             if (work != null && !ReferenceEquals(_backdropWork, work))
             {
                 _backdropWork = work;
+                ShellChrome.Instance?.MarkDetailKind(work.Kind);
                 BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
                 Artwork.Load(BackdropImage, work, 999, new[] { ImageKind.Backdrop }, requestWidth: 780, applyKeyArtFilter: true);
             }
@@ -145,7 +160,8 @@ namespace Playarr.Xbox.Views
             {
                 if (showPlayback)
                 {
-                    PrimaryRow.Children.Insert(0, PlaybackButton);
+                    // After Download, which the web keeps first.
+                    PrimaryRow.Children.Insert(_downloadPill != null && PrimaryRow.Children.Contains(_downloadPill) ? 1 : 0, PlaybackButton);
                 }
                 else
                 {
@@ -274,7 +290,7 @@ namespace Playarr.Xbox.Views
                 text.Children.Add(Ui.Text(string.IsNullOrEmpty(picked.Title) ? picked.Label : picked.Label + " \u00b7 " + picked.Title, 14, FontWeights.SemiBold, "PlayarrInk"));
                 if (DateTimeOffset.TryParse(picked.LastWatchedAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var watched))
                 {
-                    text.Children.Add(Ui.Text("Last watched " + watched.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")), 10, FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 4, 0, 0)));
+                    text.Children.Add(Ui.Text("Last watched " + Ui.GbDate(watched), 10, FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 4, 0, 0)));
                 }
 
                 if (picked.Kind == "unfinished")
@@ -371,7 +387,7 @@ namespace Playarr.Xbox.Views
 
                 CardFocus.Attach(list);
                 var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 44 : 60, 0, 0) };
-                section.Children.Add(new TextBlock { Text = "Cast", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+                section.Children.Add(DetailRailTitle("Cast"));
                 section.Children.Add(new TextBlock
                 {
                     Text = credits.Cast.Count == 1 ? "1 person" : $"{credits.Cast.Count} people",
@@ -510,7 +526,7 @@ namespace Playarr.Xbox.Views
             };
             CardFocus.Attach(list);
             var section = new StackPanel { Margin = new Thickness(0, 195, 0, 0) };
-            section.Children.Add(new TextBlock { Text = "Chapters", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+            section.Children.Add(DetailRailTitle("Chapters"));
             section.Children.Add(new TextBlock
             {
                 Text = real ? $"{chapters.Count} chapters" : $"{chapters.Count} scene markers",
@@ -656,7 +672,7 @@ namespace Playarr.Xbox.Views
                 ActionRow.Children.Add(ask);
             }
 
-            var download = Ui.Filled(Ui.Pill("Download", null));
+            var download = Ui.WithIcon(Ui.Filled(Ui.Pill("Download", null)), "\u21e9");
             download.Click += async (s, e) =>
             {
                 var template = _viewModel.DownloadTemplate();
@@ -808,7 +824,8 @@ namespace Playarr.Xbox.Views
                         PlayButton_Click(this, new RoutedEventArgs());
                     }
                 };
-                CardFocus.Attach(list);
+                // The web's episode ring sits 2.5 px outside the art (measured 280 x 160 on a 268 x 151 card).
+                CardFocus.Attach(list, true, 2.5);
                 list.GotFocus += (s, e) =>
                 {
                     if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: EpisodeDetail episode } })
@@ -817,15 +834,15 @@ namespace Playarr.Xbox.Views
                     }
                 };
 
-                var section = new StackPanel { Margin = new Thickness(0, 14, 0, 11) };
-                section.Children.Add(new TextBlock { Text = SeasonLabel(season), Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+                var section = new StackPanel { Margin = new Thickness(0, 13, 0, 11) };
+                section.Children.Add(DetailRailTitle(SeasonLabel(season)));
                 section.Children.Add(new TextBlock
                 {
                     Text = $"{season.Episodes.Count} episodes",
                     FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 6, 0, 33),
+                    Margin = new Thickness(0, 3.5, 0, 37.5),
                 });
                 section.Children.Add(list);
                 SeriesPanel.Children.Add(section);
@@ -833,6 +850,16 @@ namespace Playarr.Xbox.Views
 
             AppendCast();
         }
+
+        /// <summary>The detail page's rail title: the web draws it at 16.5 px (Home's rail titles are 19), in the same 26 px line.</summary>
+        private static TextBlock DetailRailTitle(string text) => new TextBlock
+        {
+            Text = text,
+            Style = (Style)Application.Current.Resources["PlayarrRailTitle"],
+            FontSize = 16.5,
+            LineHeight = 26,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+        };
 
         private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail, (double? Percent, bool Unwatched) watch)
         {
@@ -991,7 +1018,7 @@ namespace Playarr.Xbox.Views
 
             if (DateTimeOffset.TryParse(episode.AirDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var aired))
             {
-                meta.Add("Aired " + aired.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+                meta.Add("Aired " + Ui.GbDate(aired));
             }
 
             meta.AddRange(work.Genres);
@@ -1010,7 +1037,6 @@ namespace Playarr.Xbox.Views
                 ? $"Season {season.Season.SeasonNumber}"
                 : season.Season.Title!;
 
-        private void BackButton_Click(object sender, RoutedEventArgs e) => App.Navigation.GoBack();
 
         private void PlayButton_Click(object sender, RoutedEventArgs e)
         {

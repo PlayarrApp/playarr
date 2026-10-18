@@ -74,6 +74,8 @@ pub fn iso(dt: Date) -> String {
     format!("{:04}-{:02}-{:02}", dt.y, dt.m, dt.d)
 }
 
+/// Height of the week columns' scroller in px: the web clips them above the floating nav.
+const WEEK_CLIP: i32 = 422;
 const MONTHS: [&str; 12] = [
     "January",
     "February",
@@ -99,8 +101,17 @@ pub fn day_label(dt: Date) -> String {
     )
 }
 
+/// The real local time, or PLAYARR_PARITY_CLOCK (RFC 3339) so parity captures show the fixture's "today".
+fn now() -> gtk4::glib::DateTime {
+    std::env::var("PLAYARR_PARITY_CLOCK")
+        .ok()
+        .and_then(|v| gtk4::glib::DateTime::from_iso8601(&v, None).ok())
+        .and_then(|d| d.to_local().ok())
+        .unwrap_or_else(|| gtk4::glib::DateTime::now_local().expect("local time"))
+}
+
 fn today() -> Date {
-    let n = gtk4::glib::DateTime::now_local().expect("local time");
+    let n = now();
     Date {
         y: n.year(),
         m: n.month() as u32,
@@ -126,19 +137,29 @@ struct Cal {
     range_label: gtk4::Label,
     /// The period controls; the web sits them 18 px lower on week and month than on the agenda.
     controls: gtk4::Box,
+    /// Carries the agenda's backdrop wash.
+    page: gtk4::Box,
     body: gtk4::Box,
+    days_view: gtk4::ScrolledWindow,
+    fades: [gtk4::Box; 2],
     generation: Cell<u32>,
     entries: RefCell<Vec<CalendarEntry>>,
 }
 
-/// "15:00" in local time for an ISO timestamp, or "All day".
-fn time_label(release_at: Option<&str>) -> String {
+/// The release instant, or None for an all-day release: the server stores date-only releases as midnight UTC, which is a
+/// date, not a moment, so it must neither shift to another day nor show a time (as the web `releaseInstant`).
+fn release_instant(release_at: Option<&str>) -> Option<gtk4::glib::DateTime> {
     release_at
         .and_then(|t| gtk4::glib::DateTime::from_iso8601(t, None).ok())
+        .filter(|d| d.to_unix() % 86_400 != 0)
+}
+
+/// "15:00" in local time for an ISO timestamp, or "All day".
+fn time_label(release_at: Option<&str>) -> String {
+    release_instant(release_at)
         .and_then(|d| d.to_local().ok())
         .and_then(|d| d.format("%H:%M").ok())
         .map(|s| s.to_string())
-        .filter(|s| s != "00:00")
         .unwrap_or_else(|| "All day".into())
 }
 
@@ -218,15 +239,20 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         sub.push(t.to_string());
     }
     if !sub.is_empty() {
-        col.append(
-            &gtk4::Label::builder()
-                .label(sub.join(" · "))
-                .css_classes(["pa-entry-sub"])
-                .xalign(0.0)
-                .ellipsize(gtk4::pango::EllipsizeMode::End)
-                .max_width_chars(1)
-                .build(),
-        );
+        let line = gtk4::Label::builder()
+            .label(sub.join(" · "))
+            .css_classes(["pa-entry-sub"])
+            .xalign(0.0)
+            .max_width_chars(1)
+            .build();
+        // The web week card wraps the episode line; the agenda row keeps one line.
+        if week {
+            line.set_wrap(true);
+            line.set_wrap_mode(gtk4::pango::WrapMode::WordChar);
+        } else {
+            line.set_ellipsize(gtk4::pango::EllipsizeMode::End);
+        }
+        col.append(&line);
     }
     let meta = gtk4::Box::builder()
         .spacing(12)
@@ -249,6 +275,9 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         col.append(&meta);
         col.append(&chip);
     } else {
+        // The web's agenda chip is 21 px tall, sitting 1.5 px below the meta text.
+        chip.add_css_class("agenda");
+        chip.set_valign(gtk4::Align::Center);
         meta.append(&chip);
         col.append(&meta);
     }
@@ -368,9 +397,27 @@ impl Cal {
     fn by_day(&self) -> BTreeMap<Date, Vec<CalendarEntry>> {
         let mut m: BTreeMap<Date, Vec<CalendarEntry>> = BTreeMap::new();
         for e in self.entries.borrow().iter() {
-            if let Some(d) = parse(&e.date) {
+            // Timed releases belong to their local day, all-day ones to the entry date (as the web groupByLocalDay).
+            let day = release_instant(e.release_at.as_deref())
+                .and_then(|d| d.to_local().ok())
+                .map(|d| Date {
+                    y: d.year(),
+                    m: d.month() as u32,
+                    d: d.day_of_month() as u32,
+                })
+                .or_else(|| parse(&e.date));
+            if let Some(d) = day {
                 m.entry(d).or_default().push(e.clone());
             }
+        }
+        // All-day entries first, then by time and title.
+        for list in m.values_mut() {
+            list.sort_by_cached_key(|e| {
+                (
+                    release_instant(e.release_at.as_deref()).map_or(i64::MIN, |d| d.to_unix()),
+                    e.title.to_lowercase(),
+                )
+            });
         }
         m
     }
@@ -422,12 +469,17 @@ impl Cal {
         let sec = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .spacing(13)
-            .margin_bottom(19)
+            .margin_bottom(if week { 19 } else { 31 })
             .build();
         head.set_margin_bottom(0);
         sec.append(&head);
-        for e in entries {
-            sec.append(&entry_widget(&self.app, &self.imgs, e, week));
+        for (i, e) in entries.iter().enumerate() {
+            let card = entry_widget(&self.app, &self.imgs, e, week);
+            // The web's week cards sit 15 px apart; the 8 px column spacing only covers the day heading.
+            if week && i > 0 {
+                card.set_margin_top(7);
+            }
+            sec.append(&card);
         }
         if entries.is_empty() {
             if let Some(t) = empty_text {
@@ -446,7 +498,7 @@ impl Cal {
             sec.set_valign(gtk4::Align::Start);
             sec.set_spacing(8);
             head.set_height_request(22);
-            head.set_margin_top(6);
+            head.set_margin_top(5);
         }
         parent.append(&sec);
     }
@@ -456,6 +508,9 @@ impl Cal {
         // The web lays the month out 720 px wide and the other views 510 px, inside a 360 px page.
         self.body
             .set_size_request(if self.view.get() == View::Month { 720 } else { 510 }, -1);
+        if self.view.get() != View::Week {
+            self.days_view.hadjustment().set_value(0.0);
+        }
         match self.view.get() {
             View::Agenda => {
                 if days.is_empty() {
@@ -480,6 +535,21 @@ impl Cal {
                     let es = days.get(&d).map(Vec::as_slice).unwrap_or(&[]);
                     self.day_section(&cols, d, es, Some("Nothing today"), true);
                 }
+                // The web opens the week scrolled to today's column.
+                let today_col = (0..7).find(|i| add_days(start, *i) == today());
+                let (me, view, cols) = (self.clone(), self.days_view.clone(), cols.clone());
+                gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || {
+                    // A quick switch to Month or Agenda must not inherit the week's scroll.
+                    if me.view.get() != View::Week {
+                        return;
+                    }
+                    let mut col = cols.first_child();
+                    for _ in 0..today_col.unwrap_or(0) {
+                        col = col.and_then(|c| c.next_sibling());
+                    }
+                    view.hadjustment()
+                        .set_value(col.map_or(0.0, |c| f64::from(c.allocation().x())));
+                });
             }
             View::Month => self.render_month(&days),
         }
@@ -574,6 +644,7 @@ impl Cal {
                     &gtk4::Label::builder()
                         .label(d.d.to_string())
                         .css_classes(["pa-mdaynum"])
+                        .xalign(0.0)
                         .build(),
                 );
                 if items.len() > shown {
@@ -593,7 +664,8 @@ impl Cal {
 
     fn set_view(self: &Rc<Self>, v: View) {
         self.view.set(v);
-        self.controls.set_margin_top(if v == View::Agenda { 5 } else { 21 });
+        self.controls.set_margin_top(if v == View::Agenda { 3 } else { 21 });
+        self.days_view.set_margin_top(if v == View::Agenda { 8 } else { 6 });
         let t = today();
         self.anchor.set(match v {
             View::Agenda => t,
@@ -601,6 +673,24 @@ impl Cal {
             View::Month => Date { d: 1, ..t },
         });
         self.selected.set(None);
+        let week = v == View::Week;
+        self.days_view.set_max_content_height(if week { WEEK_CLIP } else { -1 });
+        self.days_view.set_vscrollbar_policy(if week {
+            gtk4::PolicyType::External
+        } else {
+            gtk4::PolicyType::Never
+        });
+        self.days_view.set_kinetic_scrolling(week);
+        // The web agenda's entries run off the page's right edge; the other views stop at the 16 px gutter.
+        self.days_view.set_margin_end(if v == View::Agenda { 0 } else { 16 });
+        if v == View::Agenda {
+            self.page.add_css_class("pa-agenda-bg");
+        } else {
+            self.page.remove_css_class("pa-agenda-bg");
+        }
+        for f in &self.fades {
+            f.set_visible(week);
+        }
         self.refresh();
     }
 
@@ -678,13 +768,13 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
 
     let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     content.set_margin_start(16);
-    content.set_margin_end(16);
     page.append(&content);
 
     let controls = gtk4::Box::builder()
         .spacing(8)
         .halign(gtk4::Align::End)
-        .margin_top(5)
+        .margin_top(3)
+        .margin_end(16)
         .css_classes(["pa-cal-controls"])
         .build();
     let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
@@ -712,7 +802,31 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .propagate_natural_height(true)
         .margin_top(6)
         .build();
-    content.append(&days_view);
+    // Week view: the web clips the columns above the nav and fades their bottom and right edges toward the page.
+    let fades = [
+        ("pa-edge-fade-v", gtk4::Align::End, gtk4::Align::Fill),
+        ("pa-edge-fade", gtk4::Align::Fill, gtk4::Align::End),
+    ]
+    .map(|(class, v, h)| {
+        let f = gtk4::Box::builder()
+            .css_classes([class])
+            .valign(v)
+            .halign(h)
+            .can_target(false)
+            .visible(false)
+            .build();
+        f.set_size_request(
+            if h == gtk4::Align::End { 38 } else { -1 },
+            if v == gtk4::Align::End { 38 } else { -1 },
+        );
+        f
+    });
+    let faded = gtk4::Overlay::new();
+    faded.set_child(Some(&days_view));
+    for f in &fades {
+        faded.add_overlay(f);
+    }
+    content.append(&faded);
     let scroll = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)
@@ -728,7 +842,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         selected: Cell::new(None),
         range_label,
         controls: controls.clone(),
+        page: page.clone(),
         body,
+        days_view,
+        fades,
         generation: Cell::new(0),
         entries: RefCell::default(),
     });
@@ -794,6 +911,14 @@ mod tests {
         assert_eq!(status_chip(&e, t).0, "Missing");
         e.has_file = true;
         assert_eq!(status_chip(&e, t).0, "Available");
+    }
+
+    #[test]
+    fn midnight_utc_is_all_day() {
+        assert!(release_instant(Some("2026-10-07T00:00:00Z")).is_none());
+        assert!(release_instant(Some("2026-10-07T01:00:00Z")).is_some());
+        assert_eq!(time_label(Some("2026-10-07T00:00:00Z")), "All day");
+        assert_eq!(time_label(None), "All day");
     }
 
     #[test]

@@ -1,13 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { hostname } from "node:os";
-import { mkdtemp, mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { withCaptureState, captureCanonicalState, withCanonicalState, resolveCaptureEnvironment, parseAndroidDeviceSession, assertAndroidDeviceAccount } from "./capture-state.mjs";
+import { withCaptureState, captureCanonicalState, withCanonicalState, resolveCaptureEnvironment, parseAndroidDeviceSession, assertAndroidDeviceAccount, guardAndroidDeviceAccount } from "./capture-state.mjs";
 import { clientSecretKeys, parityCredentials } from "./dpad-account.mjs";
 
 const FILE_A = "12345678-1234-4234-8234-1234567890ab";
@@ -395,4 +395,38 @@ test("restore runs after callback failure and account lock serialises concurrent
 test("lock directory must be explicit", async () => {
   mockApi();
   await assert.rejects(withCaptureState({ ...context(undefined), env: { PLAYARR_SERVER_URL: serverUrl } }, async () => {}), /PARITY_LOCK_DIR is required/);
+});
+
+test("a lock directory removed during the run does not fail a restored capture", async () => {
+  const lockDir = await scratch();
+  const api = mockApi([{ media_file_id: FILE_A, position_ms: 700, duration_ms: 2000, state: "part_watched" }]);
+  const key = createHash("sha256").update(`${serverUrl}\nfixture-user`).digest("hex").slice(0, 24);
+  await withCaptureState(context(lockDir), async ({ writeProgress }) => {
+    await writeProgress(FILE_A, { position_ms: 1_200, duration_ms: 2000, completed: false });
+    await rm(join(lockDir, key), { recursive: true, force: true });
+  });
+  assert.equal(api.rows.get(FILE_A).position_ms, 700);
+});
+
+test("android guard launches the app once after an expired-token identity failure, then passes", async () => {
+  const env = { PARITY_DEVICE_ACCOUNT_GUARD: "android", PARITY_USE_DEVICE_TEST_DPAD: "1" };
+  let calls = 0, launches = 0;
+  await guardAndroidDeviceAccount(env, {
+    read: async () => ({}),
+    assert: async () => { if (++calls === 1) throw new Error("Android device account identity check failed"); return true; },
+    launch: async () => { launches++; },
+  });
+  assert.equal(launches, 1);
+  assert.equal(calls, 2);
+});
+
+test("android guard does not relaunch for an account mismatch", async () => {
+  const env = { PARITY_DEVICE_ACCOUNT_GUARD: "android", PARITY_USE_DEVICE_TEST_DPAD: "1" };
+  let launches = 0;
+  await assert.rejects(guardAndroidDeviceAccount(env, {
+    read: async () => ({}),
+    assert: async () => { throw new Error("Android device account does not match the selected approved account"); },
+    launch: async () => { launches++; },
+  }), /does not match/);
+  assert.equal(launches, 0);
 });

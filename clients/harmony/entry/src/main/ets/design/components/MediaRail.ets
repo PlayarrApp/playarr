@@ -136,6 +136,21 @@ class FocusedOverflowModifier implements AttributeModifier<ListAttribute> {
   }
 }
 
+/** Lets a card's focus ring draw past its list cell (only when asked; other rails keep the platform default). */
+class ItemOverflowModifier implements AttributeModifier<ListItemAttribute> {
+  private overflow: boolean;
+
+  constructor(overflow: boolean) {
+    this.overflow = overflow;
+  }
+
+  applyNormalAttribute(instance: ListItemAttribute): void {
+    if (this.overflow) {
+      instance.clip(false);
+    }
+  }
+}
+
 /** Web's `--page-edge-fade-size` on a phone. */
 const RAIL_END_FADE_SIZE: number = 38;
 /** Web TV `--page-edge-fade-size` (5.5 x the 10.8 vp viewport unit, 59.4 at 1920) and `--page-edge-fade-floor`. */
@@ -233,6 +248,8 @@ export struct MediaRail {
   @Prop listHeight: number = 0;
   /** Phone: how far the card row runs on past the page padding at its end (web's rails clip at the screen edge, dimmed by the end fade). */
   @Prop bleedEnd: number = 0;
+  /** Phone detail: draw a card's focus ring past its list cell (the ring is clipped to the cell otherwise). */
+  @Prop overflowItems: boolean = false;
   /** Allow scaled focus decoration into the List's padding when the parent layout has reserved clip inset. */
   @Prop allowFocusedOverflow: boolean = false;
   /** Optional larger phone clip allowance for focused artwork rings. */
@@ -334,11 +351,11 @@ export struct MediaRail {
       .linearGradient({
         angle: 90,
         colors: [
-          [toResourceColorWithAlpha(activeColors().bg, 0), 0],
-          [toResourceColorWithAlpha(activeColors().bg, 0.109), 0.25],
-          [toResourceColorWithAlpha(activeColors().bg, 0.35), 0.5],
-          [toResourceColorWithAlpha(activeColors().bg, 0.591), 0.75],
-          [toResourceColorWithAlpha(activeColors().bg, 0.7), 1],
+          [toResourceColorWithAlpha(activeColors().surface, 0), 0],
+          [toResourceColorWithAlpha(activeColors().surface, 0.109), 0.25],
+          [toResourceColorWithAlpha(activeColors().surface, 0.35), 0.5],
+          [toResourceColorWithAlpha(activeColors().surface, 0.591), 0.75],
+          [toResourceColorWithAlpha(activeColors().surface, 0.7), 1],
         ],
       })
       .hitTestBehavior(HitTestMode.None)
@@ -409,6 +426,7 @@ export struct MediaRail {
             ListItem() {
               this.itemBuilder(item, index, this.activeRailFactor)
             }
+            .attributeModifier(new ItemOverflowModifier(this.overflowItems))
             .onAreaChange((_oldArea: Area, area: Area) => {
               this.onItemAreaChange(item.id, index, area, this.listScroller.currentOffset().xOffset);
               this.updateFade();

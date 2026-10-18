@@ -154,6 +154,18 @@ struct RootView: View {
                 }
                 do {
                     try await environment.signIn(serverURL: server, username: user, password: ParityLaunch.password ?? "")
+                    let profiles = try await environment.apiClient.listProfiles()
+                    let currentProfiles = profiles.filter(\.isCurrent)
+                    guard currentProfiles.count == 1,
+                          currentProfiles[0].username == user,
+                          currentProfiles[0].id == environment.currentUserID else {
+                        ParityLaunch.record("signedIn", false)
+                        ParityLaunch.record("deviceTestIdentityVerified", false)
+                        ParityLaunch.record("identityVerified", false)
+                        ParityLaunch.record("failure", "identity-mismatch")
+                        return
+                    }
+                    ParityLaunch.record("deviceTestIdentityVerified", true)
                     guard let expected = ParityLaunch.expectedUsername,
                           let actual = environment.currentUsername,
                           actual.caseInsensitiveCompare(expected) == .orderedSame else {
@@ -194,7 +206,7 @@ struct RootView: View {
                     Task { await ParityDownloads.run(environment.downloadRepository) }
                 } catch {
                     ParityLaunch.record("identityVerified", false)
-                    ParityLaunch.record("failure", "authentication-or-readiness-failed")
+                    ParityLaunch.record("failure", "authentication-or-readiness-failed: \(error)")
                 }
                 return
             }
@@ -421,6 +433,11 @@ private struct AuthenticatedPlayarrShell: View {
                         .accessibilityValue(ParityLaunch.recordedBool("directPlay").map { String($0) } ?? "pending")
                         .font(.system(size: 1))
                         .foregroundStyle(.clear)
+                    Text("Parity failure")
+                        .accessibilityIdentifier("parity.failure")
+                        .accessibilityValue(ParityLaunch.recordedString("failure") ?? "")
+                        .font(.system(size: 1))
+                        .foregroundStyle(.clear)
                     Text("Requested route ready")
                         .accessibilityIdentifier("parity.screenContentReady")
                         .accessibilityValue(parityReadiness.contentReady ? "true" : "false")
@@ -628,6 +645,7 @@ private struct AuthenticatedPlayarrShell: View {
                                     icon: destination.webIcon,
                                     color: phoneSelectedDestination == destination ? WM.shell : WM.inkSoft
                                 )
+                                .offset(x: 0.33, y: 0.5) // measured: web glyphs sit 1 px right and 1.5 px lower (3x)
                                 .frame(width: 44, height: 46)
                                 .background(
                                     phoneSelectedDestination == destination ? WM.ink : .clear,
@@ -664,10 +682,15 @@ private struct AuthenticatedPlayarrShell: View {
             // The web hides the clock at tablet widths (761 to 1100 pt) on pages with a header.
             if proxy.size.width > 1100 || selected == .home {
             TimelineView(.periodic(from: .now, by: 60)) { context in
+                #if DEBUG
+                let clockDate = ParityLaunch.isActive ? (ParityLaunch.frozenNow ?? context.date) : context.date
+                #else
+                let clockDate = context.date
+                #endif
                 HStack(alignment: .firstTextBaseline, spacing: 11) {
-                    Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
+                    Text(clockDate.formatted(headerTimeStyle))
                         .font(WM.font(12.5, 800))
-                    Text(context.date.formatted(.dateTime.weekday(.abbreviated).day().month(.wide)).uppercased())
+                    Text(clockDate.formatted(headerDateStyle).uppercased())
                         .font(WM.font(8, 700)).tracking(0.6)
                         .foregroundStyle(PlayarrStyle.inkSoft)
                 }
@@ -680,7 +703,7 @@ private struct AuthenticatedPlayarrShell: View {
                 .offset(x: navEdge + 24.4, y: chromeTop)
 
             // Web rail: Downloads and Search, then the four browse tabs, then the four personal tabs, each in its own pill.
-            VStack(spacing: 15) {
+            VStack(spacing: 13) {
                 navGroup(Array(destinations.prefix(2)))
                 if destinations.count > 2 {
                     navGroup(Array(destinations.dropFirst(2).prefix(4)))
@@ -689,15 +712,38 @@ private struct AuthenticatedPlayarrShell: View {
                     navGroup(Array(destinations.dropFirst(6)))
                 }
             }
-            .offset(x: navEdge, y: 110 * proxy.size.height / 1024)
+            .offset(x: navEdge, y: 110 * proxy.size.height / 1024 + 2)
 
             profileTile
-                .offset(x: navEdge, y: proxy.size.height - max(0, proxy.safeAreaInsets.bottom) - 121 * proxy.size.height / 1024)
+                .offset(x: navEdge, y: proxy.size.height - 121 * proxy.size.height / 1024 + 26) // +26: the iPad stage is inset by the status bar and home indicator, measured against the web 1366x1024 capture
         }
     }
 
+    private var headerTimeStyle: Date.FormatStyle {
+        var style = Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)
+        #if DEBUG
+        if ParityLaunch.isActive {
+            style.locale = Locale(identifier: "en_GB")
+            style.timeZone = ParityLaunch.captureTimeZone
+        }
+        #endif
+        return style
+    }
+
+    private var headerDateStyle: Date.FormatStyle {
+        var style = Date.FormatStyle().weekday(.abbreviated).day().month(.wide)
+        #if DEBUG
+        if ParityLaunch.isActive {
+            style.locale = Locale(identifier: "en_GB")
+            style.timeZone = ParityLaunch.captureTimeZone
+        }
+        #endif
+        return style
+    }
+
     private func navGroup(_ group: [Destination]) -> some View {
-        VStack(spacing: 4) {
+        // The web rail pitch is 70 pt: 64 pt tiles with a 6 pt gap.
+        VStack(spacing: 6) {
             ForEach(group, id: \.self) { destination in
                 Button { select(destination) } label: {
                     VStack(spacing: 6) {
@@ -735,15 +781,23 @@ private struct AuthenticatedPlayarrShell: View {
     private var profileTile: some View {
         Button { select(.profiles) } label: {
             VStack(spacing: 4) {
-                currentAvatar(size: 28)
+                currentAvatar(size: 20)
                 Text((environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
-                    .font(WM.font(8.5, 700))
+                    .font(WM.font(7.2, 700))
                     .foregroundStyle(PlayarrStyle.muted)
                     .lineLimit(1)
             }
             .frame(width: 76, height: 75)
             .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PlayarrStyle.line, lineWidth: 1) }
+            .overlay(alignment: .bottom) {
+                // The web rail prints the app version under the profile tile.
+                Text("v\(InstalledAppVersion.current)")
+                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(PlayarrStyle.ink)
+                    .fixedSize()
+                    .offset(y: 13)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Open profile and settings")

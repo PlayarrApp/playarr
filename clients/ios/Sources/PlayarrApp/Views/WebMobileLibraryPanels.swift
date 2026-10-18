@@ -8,6 +8,8 @@ private struct WMPanelFrame<Content: View>: View {
     let kicker: String
     let title: String
     let onClose: () -> Void
+    /// The actions drawer on iPad focuses its Play row on open, so the close button carries no ring there.
+    var closeFocused = true
     @ViewBuilder let content: () -> Content
 
     private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
@@ -40,7 +42,7 @@ private struct WMPanelFrame<Content: View>: View {
 
                     WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose)
                         // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
-                        .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
+                        .overlay(alignment: .trailing) { if closeFocused { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) } }
                 }
                 .padding(.horizontal, 34)
                 .padding(.top, 51 + WM.safeTop)
@@ -256,7 +258,7 @@ struct WMTitleActionsPanel: View {
     let onDownload: () -> Void
     let onClose: () -> Void
 
-    private func row(_ glyph: String, _ label: String, action: @escaping () -> Void) -> some View {
+    private func row(_ glyph: String, _ label: String, focused: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 0) {
                 Text(glyph).font(WM.font(15, 700)).foregroundStyle(WM.pink).frame(width: isPad ? 42 : 30)
@@ -272,6 +274,9 @@ struct WMTitleActionsPanel: View {
                 in: RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous)
             )
             .overlay(RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
+            .overlay {
+                if focused { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.ink, lineWidth: 3).padding(-3.5).allowsHitTesting(false) }
+            }
         }
         .buttonStyle(.plain)
     }
@@ -286,9 +291,9 @@ struct WMTitleActionsPanel: View {
     }
 
     var body: some View {
-        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose) {
+        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, closeFocused: !isPad) {
             VStack(spacing: isPad ? 14 : 15) {
-                row("▶", "Play", action: onPlay)
+                row("▶\u{FE0E}", "Play", focused: isPad, action: onPlay)
                 row("⇩", "Download", action: onDownload)
                 row("+", "Add to Playlist", action: onPlay)
                 row("✓", "Mark as Watched") { mark(watched: true) }

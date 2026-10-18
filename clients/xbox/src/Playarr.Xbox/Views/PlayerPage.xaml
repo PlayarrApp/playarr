@@ -80,14 +80,14 @@
             </Rectangle>
             <Button
                 x:Name="CloseButton"
-                Width="46"
-                Height="46"
-                Margin="0,38,38,0"
+                Width="48"
+                Height="48"
+                Margin="0,38,58,0"
                 Padding="0"
-                CornerRadius="23"
+                CornerRadius="24"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"
-                Background="#33000000"
+                Background="Transparent"
                 BorderBrush="#40FFFFFF"
                 BorderThickness="1"
                 FocusVisualPrimaryBrush="White"
@@ -126,9 +126,8 @@
                     Height="72"
                     Padding="0"
                     CornerRadius="36"
-                    Background="#33000000"
-                    BorderBrush="#40FFFFFF"
-                    BorderThickness="1"
+                    Background="#33FFFFFF"
+                    BorderThickness="0"
                     FocusVisualPrimaryBrush="White"
                     FocusVisualPrimaryThickness="3"
                     FocusVisualSecondaryThickness="0"
@@ -141,9 +140,9 @@
                     AutomationProperties.Name="Next" Click="NextButton_Click" IsEnabled="False" Opacity="0.35">
                     <FontIcon Glyph="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" />
                 </Button>
-                <TextBlock x:Name="TimeText" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
+                <TextBlock x:Name="TimeText" Margin="3,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="32" Margin="0,0,80,70" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+            <StackPanel Orientation="Horizontal" Spacing="33" Margin="0,0,80,70" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <Button x:Name="VolumeButton" Width="44" Height="44" Padding="0" CornerRadius="22" Background="Transparent" BorderThickness="0"
                     FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                     AutomationProperties.Name="Volume" Click="VolumeButton_Click" >
@@ -159,16 +158,27 @@
                     AutomationProperties.Name="Queue" Click="QueueButton_Click" >
                     <FontIcon Glyph="&#xE8FD;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" />
                 </Button>
-                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="22,0,22,0">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="9,0,22,0">
                     <Border BorderBrush="#99FFFFFF" BorderThickness="1" CornerRadius="3" Padding="3,0,3,0" VerticalAlignment="Center">
                         <TextBlock Text="HD" FontSize="8" FontWeight="Bold" Foreground="White" />
                     </Border>
-                    <TextBlock x:Name="QualityText" FontSize="9.5" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
+                    <TextBlock x:Name="QualityText" FontSize="10.5" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
                 </StackPanel>
                 <Button x:Name="InfoButton" Width="44" Height="44" Padding="0" CornerRadius="22" Background="Transparent" BorderThickness="0"
                     FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                     AutomationProperties.Name="Playback info" Click="InfoButton_Click" >
                     <FontIcon Glyph="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" />
+                </Button>
+                <!-- Web "Play on another device": the console is not a handoff target, so the control says so. -->
+                <Button x:Name="DeviceButton" Width="44" Height="44" Padding="0" CornerRadius="22" Background="Transparent" BorderThickness="0"
+                    FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
+                    AutomationProperties.Name="Play on another device">
+                    <FontIcon Glyph="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" />
+                    <Button.Flyout>
+                        <Flyout>
+                            <TextBlock Text="No other devices available" FontSize="14" />
+                        </Flyout>
+                    </Button.Flyout>
                 </Button>
             </StackPanel>
         </Grid>

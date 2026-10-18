@@ -6,6 +6,8 @@ sub init()
     end for
     ThemeSetRole(m.top.findNode("focusRing"), "cardGlow")
     ThemeSetRole(m.top.findNode("focusGlow"), "cardGlow")
+    ' The index over the art stays white in both themes (it sits on the picture); "-" opts the label out of the white-is-ink recolour.
+    m.top.findNode("overlayNumber").addFields({ themeRole: "-" })
     ThemeInitComponent()
     m.focusRingInset = 0
     m.cardContentInsetX = 0
@@ -16,8 +18,8 @@ sub init()
     m.title = m.top.findNode("title")
     m.overlayNumber = m.top.findNode("overlayNumber")
     m.captionPrefix = m.top.findNode("captionPrefix")
-    m.overlayNumber.font = PlayarrMakeFont(600, 19)
-    m.captionPrefix.font = PlayarrMakeFont(700, 9)
+    m.overlayNumber.font = PlayarrMakeFont(600, 21)
+    m.captionPrefix.font = PlayarrMakeFont(700, 10)
     m.kind = m.top.findNode("kind")
     m.titleFont0 = m.title.font
     m.kindFont0 = m.kind.font
@@ -289,7 +291,7 @@ sub emitPosterArtStatus(status as String)
     slot = content.parityArtSlot
     version = content.parityArtVersion
     if generation = invalid or generation < 1 or version = invalid or version < 0 then return
-    if (scope <> "home" and scope <> "movies" and scope <> "series") or slot = invalid or slot = "" then return
+    if (scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music") or slot = invalid or slot = "" then return
     if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
     print "PARITY|art|status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr()
 end sub
@@ -390,7 +392,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.title.font = m.titleFont0
         m.kind.font = m.kindFont0
     end if
-    m.overlayNumber.translation = [artW - 72, artH - 40]
+    m.overlayNumber.translation = [artW - 70, artH - 39]
     m.captionPrefix.translation = [0, artH + 12]
 end sub
 

@@ -151,7 +151,7 @@ struct TVHomeView: View {
     }
 
     /// The web TV Home (`.tv-home`), interactive: the hero on the left follows the focused card; the server's shelves
-    /// stack on the right (`.tv-home-rails`, from x 881.6) and the focused rail scrolls up to the first rail's line.
+    /// stack on the right (`.tv-home-rails`, from x 783.4, web #1557) and the focused rail scrolls up to the first rail's line.
     /// Geometry is the web's at 1920x1080 in screen points; the stage starts after the nav column, hence `- nav`.
     private func productionHomeLoaded(_ viewModel: TVHomeViewModel) -> some View {
         let rails = Self.productionRails(viewModel)
@@ -184,12 +184,15 @@ struct TVHomeView: View {
                 .scrollClipDisabled()
                 .onChange(of: focusedCard?.rail) { _, rail in
                     guard let rail else { return }
-                    withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: .top) }
+                    // The first rail returns to its aligned start; later rails centre on the old line (y 402).
+                    let anchor = rail == "r0" ? UnitPoint.top : UnitPoint(x: 0, y: (Self.railCentreY - Self.railTopY) / (geo.size.height - Self.railTopY + origin.y))
+                    withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
-            // The first rail heading sits at y 402; rails above the focused one slide up past it, as on the web.
-            .padding(.top, 402 - origin.y)
-            .padding(.leading, 881.6 - origin.x - Self.cardBleed)
+            // Web `.tv-home-rails.is-vertical-tracks`: the first rail opens at the Library grid's first row (clamp(128, 15vh, 174)).
+            .padding(.top, Self.railTopY - origin.y)
+            // Web `.tv-home-rails` starts where the Library grid panel starts (100% - 62%), cards at its left padding.
+            .padding(.leading, 783.4 - origin.x - Self.cardBleed)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
@@ -243,6 +246,8 @@ struct TVHomeView: View {
 
     /// Web: an 8 px left bleed keeps the first card's focus glow unclipped.
     private static let cardBleed: CGFloat = 8
+    private static let railTopY: CGFloat = 162
+    private static let railCentreY: CGFloat = 402
     /// Heading (26.5) and the gap to the art (35.3), plus the card (art and caption) and the track's 18/24 padding.
     /// Home cards: the artwork-size column width, or the cover width when Home artwork is Covers.
     private var homeCovers: Bool { displayPreferences.homeCovers }
@@ -991,8 +996,9 @@ struct TVWebHomeCard: View {
                 if progress == nil {
                     Circle()
                         .fill(DesignTokens.Color.brandPrimary)
-                        .frame(width: 13, height: 13)
-                        .padding(10.6)
+                        .frame(width: 11.6, height: 11.6)
+                        .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
+                        .padding(11.5)
                 }
             }
             .background(
@@ -1030,12 +1036,20 @@ struct TVCardFocusGlow: ViewModifier {
     let focused: Bool
     let cornerRadius: CGFloat
 
+    #if os(macOS)
+    // A 3 px stroke is centred on its path, so the path sits 1.5 px out for the ring to touch the art (the web's box-shadow
+    // ring); 3 left a 1.5 px gap that showed as a pale line between art and ring.
+    private let ringOffset: CGFloat = 1.5
+    #else
+    private let ringOffset: CGFloat = 3
+    #endif
+
     func body(content: Content) -> some View {
         content.overlay {
             if focused {
-                RoundedRectangle(cornerRadius: cornerRadius + 3, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius + ringOffset, style: .continuous)
                     .stroke(DesignTokens.Stage.cardGlow, lineWidth: 3)
-                    .padding(-3)
+                    .padding(-ringOffset)
                     #if os(macOS)
                     // Web `0 0 20px 4px` glow at 45%: the 4 px spread is a wider faint stroke under the blur.
                     .background(
@@ -1110,10 +1124,10 @@ struct TVHomeSkeleton: View {
             RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 120, height: 14).placed(x: 153.6, y: 261, w: 120, h: 14)
             RoundedRectangle(cornerRadius: 8).fill(block).frame(width: 330, height: 56).placed(x: 153.6, y: 306, w: 330, h: 56)
             ForEach(0..<2, id: \.self) { rail in
-                let top = 402 + 365.9 * CGFloat(rail)
-                RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 180, height: 18).placed(x: 881.6, y: top + 4, w: 180, h: 18)
+                let top = 162 + 365.9 * CGFloat(rail)
+                RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 180, height: 18).placed(x: 782.6, y: top + 4, w: 180, h: 18)
                 ForEach(0..<4, id: \.self) { card in
-                    let x = 881.6 + 352.1 * CGFloat(card)
+                    let x = 782.6 + 352.1 * CGFloat(card)
                     RoundedRectangle(cornerRadius: 12.48, style: .continuous).fill(block)
                         .placed(x: x, y: top + 61.8, w: 327.2, h: 184)
                     RoundedRectangle(cornerRadius: 3).fill(block).placed(x: x, y: top + 61.8 + 195.3, w: 180, h: 12)
@@ -1290,7 +1304,7 @@ struct TVSearchView: View {
         }
 
         // Web: Filters is the shell action column tile, as on the libraries.
-        TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: 62)
+        TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: TVShellActionColumn.width)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             .padding(.trailing, TVShellActionColumn.edge)
             .padding(.top, TVShellActionColumn.top)
@@ -1574,6 +1588,8 @@ struct TVLibraryKindView: View {
     @FocusState private var selectedID: UUID?
     #endif
     @State private var didLoad = false
+    /// The viewer's strongest watch state per work (web `indexWatchProgressByWork`); nil until the request answers or if it fails.
+    @State private var watchStates: [UUID: WatchState]?
     /// The server's count for the header ("1,754 titles"); nil when it skipped the count.
     @State private var total: Int?
 
@@ -1598,7 +1614,11 @@ struct TVLibraryKindView: View {
         )
     }
 
+    /// The title whose actions drawer is open: the preview keeps it (web), and no card is lifted or ringed meanwhile.
+    @Environment(\.actionsWorkID) private var actionsWorkID
+
     private var selected: Work? {
+        if let actionsWorkID, let match = items.first(where: { $0.id == actionsWorkID }) { return match }
         if let selectedID, let match = items.first(where: { $0.id == selectedID }) {
             return match
         }
@@ -1730,6 +1750,27 @@ struct TVLibraryKindView: View {
         .task(id: "\(workKind?.rawValue ?? "all")-\(sort)-\(order)-\(audioLangs)-\(subtitleLangs)-\(environment.serverURL.absoluteString)") {
             await loadItems()
         }
+        .task(id: environment.serverURL.absoluteString) {
+            await loadWatchStates()
+        }
+    }
+
+    private func loadWatchStates() async {
+        guard let rows = try? await environment.apiClient.listWatchProgress() else { return }
+        func priority(_ state: WatchState) -> Int { state == .partWatched ? 2 : state == .watched ? 1 : 0 }
+        var states: [UUID: WatchState] = [:]
+        for row in rows where states[row.workID].map({ priority(row.state) > priority($0) }) ?? true {
+            states[row.workID] = row.state
+        }
+        watchStates = states
+    }
+
+    /// Web `WatchStateOverlay`: the pink disc marks a work the viewer has not started. Until the progress is known the Mac keeps
+    /// the old rule (a disc on every card except artists and series).
+    private func showsUnwatchedDisc(_ work: Work) -> Bool {
+        guard let watchStates else { return workKind != .artist && workKind != .series }
+        let state = watchStates[work.id]
+        return state == nil || state == .unseen
     }
 
     private var libraryHeading: some View {
@@ -1802,12 +1843,14 @@ struct TVLibraryKindView: View {
                 .padding(.top, 26)
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
-                    .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
+                    // Web `.details-panel .tv-preview-overview`: 0.72vw (13.8 px) at weight 600, line-height 1.58 (21.8 px pitch),
+                    // measured on the light refs of series and music (lines wrap at about 348 px).
+                    .font(TVTheme.font(size: 13.8, css: 600))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
-                    .lineSpacing(4)
-                    .padding(.top, 25)
-                    .frame(maxWidth: 340, alignment: .leading)
+                    .lineSpacing(3)
+                    .padding(.top, 24)
+                    .frame(maxWidth: 348, alignment: .leading)
             }
         }
         .frame(maxWidth: DesignTokens.Shell.titlePanelWidth, alignment: .leading)
@@ -1820,7 +1863,8 @@ struct TVLibraryKindView: View {
             Text(yearString(for: work))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
             if !genreLine.isEmpty {
-                Text("  \(genreLine)")
+                // Web: the gap belongs to the year; a title without one starts flush left (music).
+                Text((yearString(for: work).isEmpty ? "" : "  ") + genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
             }
         }
@@ -1879,8 +1923,12 @@ struct TVLibraryKindView: View {
         // the frame widens by the same amount so the cards stay at the web x.
         #if os(macOS)
         let padL: CGFloat = 48 // the 48 px focused-card shadow blur also stays inside the scroll view, so no hard edge shows at x 759
+        // Row pitch: the web's rows are 240.4 apart (tops 162, 402, 643, 883); a 2026-10-18 hosted run with a 27.4 gap gave
+        // tops 401, 640, 879, so the Mac's caption is about 1 pt shorter than the web's and the gap makes up the rest.
+        let rowGap: CGFloat = 28.5
         #else
         let padL: CGFloat = 0
+        let rowGap: CGFloat = 27
         #endif
         let gridWidth = size.width - 783.4 + padL
         let padR: CGFloat = 0
@@ -1898,7 +1946,7 @@ struct TVLibraryKindView: View {
                     count: cols
                 ),
                 alignment: .leading,
-                spacing: 27
+                spacing: rowGap
             ) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, work in
                     if view == "list" {
@@ -1983,7 +2031,7 @@ struct TVLibraryKindView: View {
         artIncludesDot: Bool,
         gridPosition: TVParityGridPosition? = nil
     ) -> some View {
-        let isSelected = selected?.id == work.id
+        let isSelected = selected?.id == work.id && actionsWorkID == nil
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
                             parityGridPosition: gridPosition) {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
@@ -2021,13 +2069,13 @@ struct TVLibraryKindView: View {
                         radius: isSelected ? 20 : 8,
                         y: isSelected ? 10 : 3
                     )
-                    // SPA fixture crops already include the pink unwatched disc. The web Music grid has no watch state: no disc.
-                    if workKind != .artist, workKind != .series, !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
+                    // SPA fixture crops already include the pink unwatched disc; real art gets one from the viewer's watch state.
+                    if showsUnwatchedDisc(work), !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
                         Circle()
                             .fill(DesignTokens.Color.brandPrimary)
-                            .frame(width: 13, height: 13)
+                            .frame(width: 11.6, height: 11.6)
                             .overlay(Circle().stroke(Color.white, lineWidth: 1.6))
-                            .padding(10.8)
+                            .padding(11.5) // same centre as the 13 pt disc; the stroke adds 1.6 pt, so the drawn disc is 13.2 pt like the web's
                     }
                 }
                 if showTitle {
@@ -2067,7 +2115,7 @@ struct TVLibraryKindView: View {
     /// Web list view row (`.tv-list-card`): a 172.8 x 97.2 thumbnail, the title 14.98/610 and "Genres · Year" 9.6 beside
     /// it; rows 121.9 apart. Same focus look and actions as the cards.
     private func libraryRow(_ work: Work) -> some View {
-        let isSelected = selected?.id == work.id
+        let isSelected = selected?.id == work.id && actionsWorkID == nil
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil) {
             HStack(alignment: .center, spacing: 30) {
                 TVWorkArt(work: work, apiClient: environment.apiClient)
@@ -2371,6 +2419,8 @@ struct TVActionsDrawer: View {
                     TVActionRow(glyph: "\u{2190}", label: "Back") { self.playlists = nil }
                 } else {
                     TVActionRow(glyph: "\u{25B6}\u{FE0E}", label: "Play", preferred: true) { Task { await play() } }
+                    // Web lists Download here too; this client keeps no offline copies, so the row only explains that.
+                    TVActionRow(glyph: "\u{2193}", label: "Download") { message = "Downloads are not available on this device." }
                     TVActionRow(glyph: "\u{FF0B}", label: "Add to Playlist") {
                         Task { playlists = (try? await environment.apiClient.listPlaylists()) ?? [] }
                     }

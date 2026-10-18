@@ -117,6 +117,11 @@ enum ParityLaunch {
         guard let raw = value("--playarr-parity-now") else { return nil }
         return ISO8601DateFormatter().date(from: raw)
     }
+    /// `--playarr-parity-timezone <identifier>`: time zone used to format the parity clock.
+    static var captureTimeZone: TimeZone {
+        guard let identifier = value("--playarr-parity-timezone") else { return .current }
+        return TimeZone(identifier: identifier) ?? .current
+    }
     static var isActive: Bool { server != nil && user != nil }
     static var deterministicCapture: Bool { environmentValue("PLAYARR_PARITY_DISABLE_ANIMATIONS") == "1" }
     @MainActor static func configureDeterministicCapture() {

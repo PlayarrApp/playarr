@@ -306,11 +306,13 @@ function createExitDialog(documentObject, exitApplication, onClosed) {
 
 /**
  * The http(s) URL a click on `target` would leave the packaged app for, or undefined.
- * In-app routes are hash or relative links, so every http(s) link points outside the app.
+ * In-app routes are hash or relative links, so every http(s) link points outside the app, except
+ * on a page served over http(s) itself (the hosted debug build), where in-app links resolve to `currentOrigin`.
  */
-export function externalLinkUrl(target) {
+export function externalLinkUrl(target, currentOrigin = globalThis.location?.origin) {
   const href = target?.closest?.("a[href]")?.href;
-  return typeof href === "string" && /^https?:/i.test(href) ? href : undefined;
+  if (typeof href !== "string" || !/^https?:/i.test(href)) return undefined;
+  return new URL(href).origin === currentOrigin ? undefined : href;
 }
 
 /** Opens an external URL in the TV's browser app; never inside Playarr's own view. */
@@ -394,7 +396,7 @@ export function installTizenPlatformRuntime({
   // A packaged app has no tabs: following a target=_blank or external link would replace Playarr
   // with the page and leave no way back. Hand those URLs to the TV browser instead.
   const handleClick = (event) => {
-    const url = externalLinkUrl(event.target);
+    const url = externalLinkUrl(event.target, windowObject.location?.origin);
     if (!url) return;
     event.preventDefault();
     openTizenExternalUrl(url, tizenObject);

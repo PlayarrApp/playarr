@@ -31,8 +31,8 @@ namespace Playarr.Xbox.Views
         private readonly Frame _frame;
         private readonly Grid _chrome = new Grid { IsHitTestVisible = true };
         private readonly List<(Button Button, Type Page, WorkKind? Kind)> _items = new List<(Button, Type, WorkKind?)>();
-        private readonly TextBlock _time = new TextBlock { FontSize = 18, FontWeight = FontWeights.Bold };
-        private readonly TextBlock _date = new TextBlock { FontSize = 12.5, FontWeight = FontWeights.SemiBold, CharacterSpacing = 60, VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _time = new TextBlock { FontSize = 17.3, FontWeight = FontWeights.Bold, CharacterSpacing = -30 };
+        private readonly TextBlock _date = new TextBlock { FontSize = 11.1, FontWeight = FontWeights.SemiBold, CharacterSpacing = 40, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _profileName = new TextBlock { FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
         private readonly List<(TextBlock Label, string Key)> _labels = new List<(TextBlock, string)>();
         private Border _avatar = null!;
@@ -191,10 +191,10 @@ namespace Playarr.Xbox.Views
             var clock = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 11,
+                Spacing = 11.2,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(478, 67, 0, 0),
+                Margin = new Thickness(483, 67, 0, 0),
                 IsHitTestVisible = false,
             };
             clock.Children.Add(_time);
@@ -216,8 +216,9 @@ namespace Playarr.Xbox.Views
                 Width = RailWidth,
                 Padding = new Thickness(4),
                 CornerRadius = new CornerRadius(24),
-                Background = (Brush)Application.Current.Resources["PlayarrSurface"],
-                BorderBrush = (Brush)Application.Current.Resources["PlayarrLine"],
+                // Measured on the web rail: a lifted fill and a hairline (light: near-white with a soft shadow, dark: 30 26 30 over 27 23 26).
+                Background = (Brush)Application.Current.Resources["PlayarrRailFill"],
+                BorderBrush = (Brush)Application.Current.Resources["PlayarrRailLine"],
                 BorderThickness = new Thickness(1),
             };
         }
@@ -321,6 +322,18 @@ namespace Playarr.Xbox.Views
             foreach (var (button, page, itemKind) in _items)
             {
                 var current = page == e.SourcePageType && (page != typeof(LibraryPage) || itemKind == kind);
+                if (current) { _current.Add(button); } else { _current.Remove(button); }
+                ShowRailFocus(button, button.FocusState != FocusState.Unfocused);
+                Tint(button, current);
+            }
+        }
+
+        /// <summary>The web keeps the Movies or Series item current on a title's detail page.</summary>
+        internal void MarkDetailKind(WorkKind kind)
+        {
+            foreach (var (button, page, itemKind) in _items)
+            {
+                var current = page == typeof(LibraryPage) && itemKind == kind;
                 if (current) { _current.Add(button); } else { _current.Remove(button); }
                 ShowRailFocus(button, button.FocusState != FocusState.Unfocused);
                 Tint(button, current);

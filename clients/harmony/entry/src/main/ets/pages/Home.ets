@@ -115,7 +115,7 @@ import type { NavRailItem } from '../design/components/NavRail';
 import { HOME_NAV_ID, buildNavRailItems, navigateFromRail } from '../navigation/NavItems';
 import { PageShell } from '../design/components/PageShell';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
-import { TouchNavBar } from '../design/components/TouchNavBar';
+import { TouchNavBar, touchNavBarBox } from '../design/components/TouchNavBar';
 import { atLeast } from '../core/SafeInsets';
 import { NavPill } from '../design/components/NavPill';
 import type { NavPillItem } from '../design/components/NavPill';
@@ -150,6 +150,7 @@ import { normaliseResumeMs } from '../core/EndOfPlayback.ts';
 import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 
 import { logWarn } from '../util/Log';
+import { t } from '../core/Language';
 
 const LOG_TAG: string = 'Home';
 
@@ -197,10 +198,9 @@ const TOUCH_RAIL_GAP: number = 50;
 const TOUCH_RAILS_TOP: number = 94;
 /** The touch card's caption block under the art (name and kind line). */
 const TOUCH_CARD_CAPTION_HEIGHT: number = 63;
-/** Web phone poster card (`--card-w`, `--card-w-cover`): the page less a 16 vp gutter and the 52 vp letter-rail clearance, split into
+/** Web phone poster card (`--card-w`, `--card-w-cover`): the page less a 16 vp gutter each side (Home has no letter rail), split into
  * 2 + artwork-size-step columns 12 vp apart. Landscape cards are 16:9, Covers 2:3; the Home screen artwork setting picks which. */
 const TOUCH_GUTTER: number = 16;
-const TOUCH_RAIL_CLEARANCE: number = 52;
 const TOUCH_CARD_GAP: number = 12;
 const TOUCH_RAIL_HEADING_SIZE: number = 16;
 const TOUCH_RAIL_HEADING_GAP: number = 22;
@@ -273,16 +273,16 @@ function cardCaption(kind: WorkKind, releaseDate: string | null): string {
  * whole LIBRARY SECTION rather than one work. */
 function workKindKicker(kind: WorkKind): string {
   if (kind === 'movie') {
-    return 'Movie';
+    return t('pages.home.workKind.movie', 'Movie');
   }
   if (kind === 'series') {
-    return 'Series';
+    return t('pages.home.workKind.series', 'Series');
   }
   if (kind === 'site') {
-    return 'Site';
+    return t('pages.home.workKind.site', 'Site');
   }
   if (kind === 'artist') {
-    return 'Artist';
+    return t('pages.home.workKind.artist', 'Artist');
   }
   return 'Author';
 }
@@ -509,7 +509,7 @@ export struct Home {
 
   private touchCardWidth(): number {
     const columns = Math.max(1, 2 + artworkStep(this.artworkSize));
-    return (this.touchWidthVp - TOUCH_GUTTER - TOUCH_RAIL_CLEARANCE - this.safeRight - TOUCH_CARD_GAP * (columns - 1)) / columns;
+    return (this.touchWidthVp - TOUCH_GUTTER * 2 - this.safeRight - TOUCH_CARD_GAP * (columns - 1)) / columns;
   }
 
   private touchCardHeight(): number {
@@ -912,7 +912,7 @@ export struct Home {
           railId: 'home-continue-watching-tv',
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
           listHeight: this.railListHeight(),
-          heading: 'On deck',
+          heading: t('pages.home.rail.onDeck', 'On deck'),
           items: this.continueWatchingItems,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.tvCardItemBuilder(item, index, activeRailFactor);
@@ -996,7 +996,7 @@ export struct Home {
         ForEach([railKey('continue', this.continueWatchingItems) + this.touchCardKey()], (_key: string) => {
         MediaRail({
           railId: 'home-continue-watching-touch',
-          heading: 'On deck',
+          heading: t('pages.home.rail.onDeck', 'On deck'),
           items: this.continueWatchingItems,
           itemGap: TouchGeometry.railItemGap,
           listHeight: this.touchListHeight(),
@@ -1190,7 +1190,8 @@ export struct Home {
           }
           .scrollBar(BarState.Off)
           .width('100%')
-          .height('100%')
+          // Web scrolls the rails under the translucent nav bar: run the Scroll over the bar's slot (a Stack does not clip its children).
+          .height(`calc(100% + ${touchNavBarBox(this.safeBottom)}vp)`)
         }
         .width('100%')
         .layoutWeight(1)
@@ -1215,7 +1216,7 @@ export struct Home {
           AsyncState({
             kind: AsyncStateKind.Error,
             message: this.errorMessage,
-            retryLabel: 'Retry',
+            retryLabel: t('pages.downloads.retry', 'Retry'),
             retry: ((): void => {
       this.load();
     }),

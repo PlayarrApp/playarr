@@ -663,7 +663,6 @@ struct TVNavIconVector {
     }
 }
 
-#if os(tvOS)
 private struct TVNavVectorIcon: View {
     let tab: TVNavTab
 
@@ -688,7 +687,6 @@ private struct TVNavVectorIcon: View {
         }
     }
 }
-#endif
 
 /// Focus identity shared between floating nav and main stage.
 enum TVShellFocus: Hashable {
@@ -968,6 +966,7 @@ struct TVFloatingNav: View {
         }
         .padding(.vertical, DesignTokens.Shell.navGroupPadding)
         .padding(.horizontal, DesignTokens.Shell.navGroupPadding)
+        .modifier(TVNavPanelShadow())
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
                 .fill(DesignTokens.Color.backgroundElevated.opacity(0.56))
@@ -996,6 +995,7 @@ struct TVFloatingNav: View {
             .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
             .padding(DesignTokens.Shell.navGroupPadding)
+            .modifier(TVNavPanelShadow())
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
                     .fill(DesignTokens.Color.backgroundElevated.opacity(0.56))
@@ -1028,23 +1028,25 @@ struct TVFloatingNav: View {
             selection = tab
             externalFocus.wrappedValue = .nav(tab)
             // Web: Select on a tab opens the page and puts focus on its first item (the page loads a moment later).
-            // Debug parity runs only (-PlayarrSelectEntersPage): the screens' key sequences were written for the old behaviour.
+            // On Apple TV this is the default (the parity key paths are written for it); elsewhere only with -PlayarrSelectEntersPage.
             Task { @MainActor in
+                #if !os(tvOS)
                 guard ProcessInfo.processInfo.arguments.contains("-PlayarrSelectEntersPage") else { return }
-                try? await Task.sleep(for: .milliseconds(700))
+                #endif
+                try? await Task.sleep(for: .milliseconds(300))
                 if case .nav(tab) = externalFocus.wrappedValue { externalFocus.wrappedValue = .stage }
             }
         } label: {
             VStack(spacing: 5) {
-                #if os(tvOS)
                 TVNavVectorIcon(tab: tab)
-                #else
-                Image(systemName: tab.systemImage)
-                    .font(.system(size: 20, weight: .medium))
-                #endif
                 Text(tab.title)
+                    #if os(macOS)
+                    .font(TVTheme.font(size: 8.832, css: 680)) // web .app-nav-label: .46vw / 680 / .035em
+                    .tracking(0.31)
+                    #else
                     .font(TVTheme.font(size: 9, weight: .semibold))
                     .tracking(0.3)
+                    #endif
                     .lineLimit(1)
             }
             .foregroundStyle(
@@ -1064,6 +1066,10 @@ struct TVFloatingNav: View {
                             : Color.clear
                     )
             )
+            #if os(macOS)
+            // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content).
+            .scaleEffect(isActive || isFocused ? 1.05 : 1)
+            #endif
             // Web TV nav: focus looks like the active tab (filled tile, ink text); no ring, no scale.
         }
         // Card-like style stays focusable; .plain can drop remote hand-off.
@@ -1144,6 +1150,23 @@ struct TVNavProfile {
 }
 
 /// A row or nav item's focus: the selected fill (web TV), driven by the system focus; no ring, no platter.
+/// Web `.app-nav-group { box-shadow: 0 14px 42px rgba(56, 38, 33, .1) }`. Mac only: the shadow sits on an opaque page-coloured
+/// plate under the translucent panel fill, so it does not darken the panel through the fill.
+struct TVNavPanelShadow: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.background(
+            RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
+                .fill(DesignTokens.Stage.bg)
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.1), radius: 42,
+                        y: 14)
+        )
+        #else
+        content
+        #endif
+    }
+}
+
 struct TVNavItemFocusFill: ViewModifier {
     var fill: Color = DesignTokens.Color.textPrimary.opacity(0.09)
     var cornerRadius: CGFloat = 16
@@ -1159,8 +1182,13 @@ struct TVNavItemFocusFill: ViewModifier {
 struct TVShellHeader: View {
     /// Frozen clock for parity suite (matches Android mask strategy).
     var frozenClock: Bool = false
-    /// Web `.app-clock`: x 476.1 on every TV page (live web, 2026-10-11).
+    /// Web `.app-clock`: x 476.1 on every TV page (live web, 2026-10-11). The web right-aligns it (ink 483 to 632 on the
+    /// 2026-10-18 refs); the Mac's font metrics put the same text 4.5 pt left, so the Mac starts 4.5 pt further right.
+    #if os(macOS)
+    var clockLeading: CGFloat = 480.6
+    #else
     var clockLeading: CGFloat = 476.1
+    #endif
 
     var body: some View {
         ZStack(alignment: .topLeading) {

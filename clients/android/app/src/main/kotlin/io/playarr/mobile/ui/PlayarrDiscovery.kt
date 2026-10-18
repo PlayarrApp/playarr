@@ -83,6 +83,9 @@ internal fun primaryDiscoveryAction(actions: List<TitleAction>): TitleAction? =
         actions.firstOrNull { it.action == kind && it.enabled }
     }
 
+/** Web `providerReasonText`: providers append the backend task number to unavailable reasons; viewers must not see it. */
+internal fun providerReasonText(reason: String): String = reason.replace(Regex("\\s*\\(task\\s+\\d+\\)\\s*$", RegexOption.IGNORE_CASE), "").trim()
+
 /** Disabled actions that carry a reason, in priority order. */
 internal fun explainedDisabledActions(actions: List<TitleAction>): List<TitleAction> =
     discoveryActionPriority.flatMap { kind ->
@@ -304,7 +307,7 @@ internal fun WatchlistToggleButton(
             enabled = listed != null,
         ) {
             Text(if (listed == true) "✓" else "+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(7.6.dp))
             Text(
                 playarrString(if (listed == true) PlayarrString.WatchlistRemove else PlayarrString.WatchlistAdd),
                 color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1,
@@ -387,7 +390,7 @@ internal fun DiscoveryExtrasSection(
                 val notices = current.response.providers.filter {
                     gamesOnly && it.provider == DiscoveryWire.SOURCE_GAME && it.state != "ok" && !it.reason.isNullOrBlank()
                 }
-                notices.forEach { Text(it.reason.orEmpty(), color = WebInkMuted, fontSize = 12.sp) }
+                notices.forEach { Text(providerReasonText(it.reason.orEmpty()), color = WebInkMuted, fontSize = 12.sp) }
                 if (titles.isEmpty() && notices.isEmpty()) {
                     Text(playarrString(PlayarrString.DiscoveryNone), color = WebInkMuted, fontSize = noteSize, lineHeight = if (webPhone) 13.2.sp else androidx.compose.ui.unit.TextUnit.Unspecified, style = if (webPhone) WebTextStyle else androidx.compose.ui.text.TextStyle.Default)
                 }

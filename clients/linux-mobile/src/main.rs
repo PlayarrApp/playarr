@@ -20,6 +20,10 @@ use libadwaita as adw;
 const APP_ID: &str = "app.playarr.Mobile";
 
 fn main() -> gtk4::glib::ExitCode {
+    // Parity captures only: PLAYARR_PARITY_CLOCK pins "today" and the suite's timezone is UTC.
+    if std::env::var_os("PLAYARR_PARITY_CLOCK").is_some() {
+        std::env::set_var("TZ", "UTC");
+    }
     if let Err(e) = gstreamer::init() {
         eprintln!("GStreamer failed to start: {e}");
     }

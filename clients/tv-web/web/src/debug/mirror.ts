@@ -12,6 +12,7 @@ import {
   mirrorFramePayload,
   realNow,
   MIRROR_ACTIVE_PROFILE_KEY,
+  LIVE_SESSION_KEY,
   MIRROR_PROFILE_SESSIONS_KEY,
   readMirrorIdentity,
   readSelectedSession,
@@ -208,9 +209,11 @@ export function startDebugMirror(): void {
         cfg = { ...(cfg || {}), status: m.status, beatUrl: m.beatUrl, serverUrl: m.serverUrl ?? (cfg && cfg.serverUrl) ?? null };
       }
     };
+    let verified = null; // the last ok verdict and the credentials it was for
     const ask = async (c, auth) => {
-      const list = await (await fetch(c.profiles, { headers: { Authorization: auth } })).json();
-      return Array.isArray(list) ? list.filter((p) => p && p.is_current === true) : [];
+      const res = await fetch(c.profiles, { headers: { Authorization: auth } });
+      const list = await res.json();
+      return { expired: res.status === 401, current: Array.isArray(list) ? list.filter((p) => p && p.is_current === true) : [] };
     };
     setInterval(async () => {
       const c = cfg;
@@ -219,9 +222,13 @@ export function startDebugMirror(): void {
       let body = { ...base, status: c.status };
       if (c.status === "ok" && c.auth) {
         try {
-          let current = await ask(c, c.auth).catch(() => []);
+          let r = await ask(c, c.auth).catch(() => ({ expired: false, current: [] }));
           let userId = c.userId;
-          if (current.length !== 1 && previous) { current = await ask(c, previous.auth).catch(() => []); userId = previous.userId; }
+          if (r.current.length !== 1 && previous) { r = await ask(c, previous.auth).catch(() => ({ expired: false, current: [] })); userId = previous.userId; }
+          let current = r.current;
+          // An idle app does not refresh its expired access token; the account behind the same token is still the one verified earlier.
+          if (r.expired && verified && verified.auth === c.auth && verified.userId === c.userId) { current = [{ id: c.userId, username: verified.username }]; userId = c.userId; }
+          else if (current.length === 1 && userId === c.userId && current[0].id === userId && typeof current[0].username === "string") verified = { auth: c.auth, userId, username: current[0].username };
           body = current.length === 1 && current[0].id === userId && typeof current[0].username === "string"
             ? { ...base, checkedAt: Date.now(), status: "ok", isCurrentCount: 1, username: current[0].username }
             : { ...base, status: "identity_unavailable" };
@@ -239,7 +246,7 @@ export function startDebugMirror(): void {
   const nativeSetItem = Storage.prototype.setItem;
   Storage.prototype.setItem = function (this: Storage, key: string, value: string): void {
     nativeSetItem.call(this, key, value);
-    if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY)) syncCredentials();
+    if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY || key === LIVE_SESSION_KEY)) syncCredentials();
   };
   syncCredentials();
   let verifying = false;
@@ -251,7 +258,9 @@ export function startDebugMirror(): void {
         // A request that timed out while rendering blocked this thread is not an identity change: keep the last good hand-over. The worker
         // still asks the server itself every 2 s, and the guard still compares the server and user the heartbeat reports.
         if (identity.status === "trusted_server_unavailable") return;
-        if (identity.status === "ok") syncCredentials();
+        // A token rotation briefly reads as "session_changed"; the worker's own server query is the authority, so hand over the new
+        // credentials. Only a missing or unreadable selected profile (signed out) is reported as a failure.
+        if (identity.status === "ok" || (identity.status === "session_changed" && readSelectedSession(window.localStorage))) syncCredentials();
         else heartbeatWorker.postMessage({ type: "status", status: identity.status, serverUrl: identity.serverUrl, beatUrl });
       })
       .catch(() => undefined)
@@ -259,6 +268,8 @@ export function startDebugMirror(): void {
   }, 2000);
 
   async function snapshot(reason: string): Promise<void> {
+    // A parity driver on a slow TV pauses the capture loop while it sends keys (window.__mirrorPause), so key handling is not starved.
+    if ((window as unknown as { __mirrorPause?: boolean }).__mirrorPause) return;
     if (busy) {
       pending = true;
       return;
@@ -317,9 +328,22 @@ export function startDebugMirror(): void {
         // unscrolled. Tag every scrolled container and let the embedded CSS translate its children by the offset.
         const scrolled = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((e) => e.scrollTop > 0 || e.scrollLeft > 0);
         let scrollCss = "";
+        // Engines without the individual `translate` property (Chromium before 104, Tizen 6.5) get a transform per child instead,
+        // composed in front of the child's own computed transform.
+        const hasTranslateProperty = typeof CSS !== "undefined" && CSS.supports("translate", "1px");
+        let childId = 0;
         scrolled.forEach((e, i) => {
           e.setAttribute("data-mirror-scroll", String(i));
-          scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
+          if (hasTranslateProperty) {
+            scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
+            return;
+          }
+          for (const child of Array.from(e.children)) {
+            const own = window.getComputedStyle(child).transform;
+            child.setAttribute("data-mirror-scroll-child", String(childId));
+            scrollCss += `[data-mirror-scroll-child="${childId}"]{transform:translate(${-e.scrollLeft}px,${-e.scrollTop}px)${own && own !== "none" ? ` ${own}` : ""} !important}\n`;
+            childId += 1;
+          }
         });
         image = await withTimeout(
           withCollapsingTrackHeights(() => (usePng ? toPng : toJpeg)(document.body, {
@@ -384,7 +408,10 @@ export function startDebugMirror(): void {
       let currentIdentity = initialIdentity;
       if (initialIdentity?.status === "ok") {
         try {
-          currentIdentity = revalidateMirrorIdentity(initialIdentity, await readMirrorIdentity(token));
+          const fresh = await readMirrorIdentity(token);
+          currentIdentity = revalidateMirrorIdentity(initialIdentity, fresh);
+          // A token rotation while the frame rendered changes the credentials, not the account: the same selected identity still posts.
+          if (currentIdentity.status === "session_changed" && !currentIdentity.selectedIdentityChanged && fresh.status === "ok") currentIdentity = fresh;
         } catch {
           currentIdentity = null;
         }

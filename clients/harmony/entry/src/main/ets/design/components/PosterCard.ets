@@ -106,7 +106,9 @@ import { Skeleton } from './Skeleton';
 
 /** Which brief-5.8 focus delta, brief-5.6 shadow pair and interaction
  * duration this card uses. See this file's header comment. */
-export type PosterCardVariant = 'home' | 'titleEpisode';
+/** `'grid'` is the TV Library grid card: the title/episode shadows and timing, with web's `.tv-title-grid` lift (translateY -5, card
+ * 1.015 over the art's 1.025). */
+export type PosterCardVariant = 'home' | 'titleEpisode' | 'grid';
 
 /** One CSS `box-shadow` layer, copied as `{offsetY, radius, alpha}` rather
  * than a pre-built colour string so rest/focused values can be linearly
@@ -245,7 +247,7 @@ export struct PosterCard {
   @State private focusPercent: number = 0;
 
   private isTitleEpisode(): boolean {
-    return this.variant === 'titleEpisode';
+    return this.variant === 'titleEpisode' || this.variant === 'grid';
   }
 
   private resolvedArtworkRadius(): number {
@@ -256,6 +258,9 @@ export struct PosterCard {
   }
 
   private focusDelta(): FocusLiftDelta {
+    if (this.variant === 'grid') {
+      return { translateY: FOCUS_LIFT.gridCard.translateY, scale: FOCUS_LIFT.titleEpisodeCard.scale * FOCUS_LIFT.gridCard.scale };
+    }
     return this.isTitleEpisode() ? FOCUS_LIFT.titleEpisodeCard : FOCUS_LIFT.homeCard;
   }
 
@@ -351,11 +356,11 @@ export struct PosterCard {
   }
 
   private episodeOverlayX(): number {
-    return this.cardWidth - (isTvMetrics() ? tv(36) : 23);
+    return this.cardWidth - (isTvMetrics() ? tv(36) : 26.7);
   }
 
   private episodeOverlayY(): number {
-    return this.cardHeight - (isTvMetrics() ? tv(33) : 21);
+    return this.cardHeight - (isTvMetrics() ? tv(33) : 26.3);
   }
 
   build() {
@@ -370,6 +375,16 @@ export struct PosterCard {
           .backgroundColor(toResourceColor(activeColors().surfaceSoft))
           .scale({ x: this.artworkScale(), y: this.artworkScale() })
           .shadow(this.secondShadowLayer())
+        // Web's 20 vp ring glow. ArkUI draws no shadow for a transparent box, so like the layer above this is an opaque underlay behind the art.
+        Column()
+          .width(this.cardWidth)
+          .height(this.cardHeight)
+          .borderRadius(this.resolvedArtworkRadius())
+          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+          .opacity(this.visualFocus())
+          .scale({ x: this.artworkScale(), y: this.artworkScale() })
+          .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
+          .hitTestBehavior(HitTestMode.None)
       }
       Stack({ alignContent: Alignment.Bottom }) {
         if (this.artwork !== undefined) {
@@ -427,14 +442,16 @@ export struct PosterCard {
       .shadow(this.shadowLayer())
       .outline({ width: tv(FOCUS_RING_WIDTH), color: this.focusRingColor(this.visualFocus()), radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
       // Web's 3 vp outer ring and 20 vp glow (45%): the outline stays outside the art without shifting layout.
-      Column()
-        .width(this.cardWidth)
-        .height(this.cardHeight)
-        .borderRadius(this.resolvedArtworkRadius())
-        .opacity(this.visualFocus())
-        .scale({ x: this.artworkScale(), y: this.artworkScale() })
-        .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
-        .hitTestBehavior(HitTestMode.None)
+      if (isTvMetrics()) {
+        Column()
+          .width(this.cardWidth)
+          .height(this.cardHeight)
+          .borderRadius(this.resolvedArtworkRadius())
+          .opacity(this.visualFocus())
+          .scale({ x: this.artworkScale(), y: this.artworkScale() })
+          .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
+          .hitTestBehavior(HitTestMode.None)
+      }
       }
       .width(this.cardWidth)
       .height(this.cardHeight)
@@ -450,7 +467,7 @@ export struct PosterCard {
             .letterSpacing(this.episodeCopySpacerLetterSpacing())
           Span(this.title)
             .fontSize(this.titleFontSize)
-            .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+            .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT) // phone: web's episode title is not bold
             .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
             .letterSpacing(tv(this.titleFontSize * -0.015))
         }
@@ -458,7 +475,7 @@ export struct PosterCard {
         .width(this.cardWidth)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) })
+        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
       } else {
         Text(this.title).fontFamily(nunito(this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
           .width(this.cardWidth)

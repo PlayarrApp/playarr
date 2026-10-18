@@ -105,8 +105,8 @@ struct HomeCustomiseView: View {
             .scrollIndicators(.hidden)
             .keepInsideSafeArea()
 
-            WMHeaderCircleButton(width: 42, height: 38, glyph: "\u{2190}", action: { dismiss() })
-                .offset(x: 16, y: WM.topInset + 2)
+            PlayarrBackButton(action: { dismiss() })
+                .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             WMText("Customise Home", 17.6, 580, lh: 26.4, ls: -0.792)
                 .frame(height: 38)
                 .offset(x: 68, y: WM.topInset + 2)

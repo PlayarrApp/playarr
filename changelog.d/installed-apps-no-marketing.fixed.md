@@ -1,1 +1,0 @@
-- Installed apps (the hosted VIDAA app, Xbox, Android) never show the marketing site: playarr.app now serves the app at `/` for any `?platform=` marker, app user agent or app cookie, sign-out goes to the login route in installed apps, the PWA starts at `/?platform=web`, and the shell precache no longer stores the marketing page.

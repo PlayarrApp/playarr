@@ -11,6 +11,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlayarrDiscoveryTest {
+    @Test
+    fun providerReasonDropsTheBackendTaskSuffix() {
+        assertEquals("Games catalogue is not available yet", providerReasonText("Games catalogue is not available yet (task 22)"))
+        assertEquals("This source is not reachable right now.", providerReasonText("This source is not reachable right now."))
+    }
+
     private fun action(kind: String, enabled: Boolean = true, reason: String? = null, file: String? = null) =
         TitleAction(action = kind, enabled = enabled, reason = reason, mediaFileId = file)
 

@@ -25,8 +25,12 @@ const CLOSE_SIZE: number = 48;
 const CLOSE_GLYPH_SIZE: number = 26.88;
 // Phone (web phone drawer): the full page width, 20 padding, a 24 px title, a 43 round close button.
 const TOUCH_PADDING_H: number = 20;
-const TOUCH_HEADER_TOP: number = 24;
-const TOUCH_BODY_GAP: number = 24;
+const TOUCH_HEADER_TOP: number = 20.7;
+const TOUCH_BODY_GAP: number = 30;
+// Web phone: the kicker sits 7.3 above the title; the close button's 3 vp ring is outside it, 2.3 vp clear, and the button 1.4 higher.
+const TOUCH_KICKER_GAP: number = 7.3;
+const TOUCH_CLOSE_RING_OUTSET: number = 5.3;
+const TOUCH_CLOSE_LIFT: number = 1.4;
 const TOUCH_TITLE_SIZE: number = 24;
 const TOUCH_TITLE_LETTER_SPACING: number = -0.8;
 const TOUCH_CLOSE_SIZE: number = 43;
@@ -55,7 +59,7 @@ export struct Drawer {
   build() {
     Column() {
       Row() {
-        Column({ space: tv(4) }) {
+        Column({ space: isTvMetrics() ? tv(4) : TOUCH_KICKER_GAP }) {
           Text(this.kicker).fontFamily(nunito(700))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
@@ -70,22 +74,35 @@ export struct Drawer {
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
-        Text('×').fontFamily(nunito(700))
-          .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().ink))
-          .textAlign(TextAlign.Center)
-          .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
-          .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
-          .borderRadius(isTvMetrics() ? tv(CLOSE_SIZE / 2) : TOUCH_CLOSE_SIZE / 2)
-          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-          // web opens the drawer with its close button focused: on the phone it carries the focus ring (the Previewer reports no focus)
-          .border(isTvMetrics() ? { width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) } : { width: 3, color: toResourceColor(activeColors().ink) })
-          .focusable(true)
-          .defaultFocus(true)
-          .onClick(() => {
-            this.onClose();
-          })
+        Stack() {
+          Text('×').fontFamily(nunito(700))
+            .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(toResourceColor(activeColors().ink))
+            .textAlign(TextAlign.Center)
+            .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
+            .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
+            .borderRadius(isTvMetrics() ? tv(CLOSE_SIZE / 2) : TOUCH_CLOSE_SIZE / 2)
+            .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
+            .focusable(true)
+            .defaultFocus(true)
+            .onClick(() => {
+              this.onClose();
+            })
+          if (!isTvMetrics()) {
+            // web opens the drawer with its close button focused: on the phone the ring is drawn from the state (the Previewer reports no focus)
+            Column()
+              .width(TOUCH_CLOSE_SIZE + TOUCH_CLOSE_RING_OUTSET * 2)
+              .height(TOUCH_CLOSE_SIZE + TOUCH_CLOSE_RING_OUTSET * 2)
+              .borderRadius(TOUCH_CLOSE_SIZE / 2 + TOUCH_CLOSE_RING_OUTSET)
+              .border({ width: 3, color: toResourceColor(activeColors().ink) })
+              .hitTestBehavior(HitTestMode.None)
+          }
+        }
+        .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
+        .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
+        .margin({ top: isTvMetrics() ? 0 : -TOUCH_CLOSE_LIFT })
       }
       .width('100%')
       .alignItems(VerticalAlign.Top)
@@ -111,7 +128,7 @@ export struct Drawer {
       right: isTvMetrics() ? tv(PADDING_H) : atLeast(TOUCH_PADDING_H, this.safeRight),
       bottom: isTvMetrics() ? 0 : 24 + this.safeBottom,
     })
-    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, DRAWER_BG_ALPHA))
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, isTvMetrics() ? DRAWER_BG_ALPHA : 1))
     .backdropBlur(DRAWER_BACKDROP_BLUR)
     .shadow({ radius: tv(90), offsetX: -tv(32), offsetY: 0, color: SHADOW_COLOR })
     .position({ x: '100%', y: 0 })

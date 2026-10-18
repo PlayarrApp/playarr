@@ -123,6 +123,13 @@ struct TVPageHeader: View {
     /// Web `--line-strong`: rgba(223, 220, 221, .23) in dark, rgba(56, 38, 33, .28) in light.
     private var lineStrong: Color { scheme == .dark ? Color(red: 223 / 255, green: 220 / 255, blue: 221 / 255).opacity(0.23) : Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.28) }
 
+    /// Gap round the hairline: the Mac's title ink runs 2 pt wider than the web's, so its gaps are 2 pt tighter.
+    #if os(macOS)
+    private let headerSpacing: CGFloat = 22
+    #else
+    private let headerSpacing: CGFloat = 24
+    #endif
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             let size: CGFloat = backFocused ? 58 : 50
@@ -157,7 +164,7 @@ struct TVPageHeader: View {
                     .fixedSize()
             }
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 24) {
+                HStack(alignment: .center, spacing: headerSpacing) {
                     titleText
                     if let subtitle {
                         Rectangle().fill(lineStrong).frame(width: 1, height: 17)
@@ -557,7 +564,17 @@ struct TVDrawer<Content: View>: View {
         .padding(.leading, 46)
         .padding(.trailing, 46)
         .frame(width: 360, height: 1080, alignment: .topLeading)
-        .background(DesignTokens.Stage.surfaceStrong.opacity(0.94))
+        .background {
+            ZStack {
+                #if os(tvOS)
+                // Web `backdrop-filter: blur(38px)`: the page art behind the panel is blurred, not sharp.
+                Rectangle().fill(.regularMaterial)
+                #endif
+                DesignTokens.Stage.surfaceStrong.opacity(0.94)
+            }
+            // Web `box-shadow: -32px 0 90px rgba(40, 26, 24, 0.24)`.
+            .shadow(color: Color(red: 40 / 255, green: 26 / 255, blue: 24 / 255).opacity(0.24), radius: 45, x: -32, y: 0)
+        }
         .focusSection()
         #if os(macOS)
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)

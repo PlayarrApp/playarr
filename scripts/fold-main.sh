@@ -5,15 +5,14 @@
 #
 # Run from a checkout of main whose `origin` can push to main. Local commits ahead of origin/main
 # (board-sync's fragment commit) are kept and rebased onto the current main before each attempt.
-# The fold commit carries the train's identity and `Merge-Train: yes` trailer, the same route and
-# marker the train uses, so check-fragments.sh exempts it.
+# The fold commit carries Thomas McFarlane's identity and a `Board-Fold: yes` trailer, so check-fragments.sh exempts it.
 #
 # Env: DRY_RUN=true  fold locally, push nothing.   FOLD_BRANCH (default main).   FOLD_ATTEMPTS (default 4).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 br="${FOLD_BRANCH:-main}"
 attempts="${FOLD_ATTEMPTS:-4}"
-name="Thomas McFarlane"; email="thomas@mcfarlane.email"; trailer="Merge-Train: yes"
+name="Thomas McFarlane"; email="thomas@mcfarlane.email"; trailer="Board-Fold: yes"
 
 pending() { find tasks.d changelog.d -maxdepth 1 -name '*.md' ! -iname 'readme.md' 2>/dev/null | grep -q .; }
 
@@ -23,7 +22,7 @@ for i in $(seq 1 "$attempts"); do
   if pending; then
     node scripts/fold-fragments.mjs
     git add -A CHANGELOG.md TASKS.md changelog.d tasks.d
-    git -c user.name="$name" -c user.email="$email" commit -q -m "chore(train): fold fragments for direct merges" -m "$trailer"
+    git -c user.name="$name" -c user.email="$email" commit -q -m "chore(board): fold fragments for direct merges" -m "$trailer"
   elif [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$br")" ]; then
     echo "fold-main: no pending fragments"; exit 0
   fi

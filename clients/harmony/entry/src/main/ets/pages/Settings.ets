@@ -14,13 +14,16 @@ import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
-import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
+import { SelectField, themeChoices } from '../design/components/SelectField';
 import type { AudioLanguage } from '../core/AudioLanguages';
 import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../core/AudioLanguages';
 import { getPlayerPreferences, updatePlayerPreferences, getProfilePinSetting, updateProfilePinSetting } from '../data/ProfileRepository';
 import type { Choice } from '../design/components/ChoiceSegments';
 
-import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance } from '../AppContainer';
+import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance, savedLanguageChoice, saveLanguageChoice, deviceLanguageTag } from '../AppContainer';
+import { t, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, resolveLanguage, setCurrentLanguage } from '../core/Language';
+import { getNavStack, replaceRoute } from '../navigation/NavStack';
+import { ROUTES } from '../navigation/Routes';
 import { InvitePanel } from '../design/components/InvitePanel';
 import { ProfileAvatarPanel } from '../design/components/ProfileAvatarPanel';
 import { HomeRailsPanel } from '../design/components/HomeRailsPanel';
@@ -38,45 +41,65 @@ interface SettingsSection {
 const APPEARANCE: string = 'appearance';
 const PLAYER: string = 'player';
 const SERVER: string = 'server';
-// Web `PRODUCT_SETTINGS_SECTIONS` without the admin-only Request latency (08), in web's order.
-const SECTIONS: SettingsSection[] = [
-  { id: APPEARANCE, number: '01', title: 'Appearance' },
-  { id: 'profile-avatar', number: '02', title: 'Profile avatar' },
-  { id: 'language', number: '03', title: 'Language' },
-  { id: PLAYER, number: '04', title: 'Player' },
-  { id: SERVER, number: '05', title: 'Server connection' },
-  { id: 'profile-lock', number: '06', title: 'Profile lock' },
-  { id: 'invite', number: '07', title: 'Invite a friend' },
-  { id: 'remote', number: '09', title: 'Phone remote' },
-  { id: 'your-data', number: '10', title: 'Your data' },
-  { id: 'home', number: '11', title: 'Customise Home' },
-];
-const SECTION_COPY: Map<string, string> = new Map<string, string>([
-  [APPEARANCE, "Choose this device's theme and home screen layout."],
+// Web `PRODUCT_SETTINGS_SECTIONS` without the admin-only Request latency (08), in web's order. Titles and copy are
+// read when a page builds (`t()`), so a language change shows on the next build; text with no web key yet stays English.
+const LANGUAGE: string = 'language';
+const SECTION_KEYS: Map<string, string> = new Map<string, string>([
+  [APPEARANCE, 'appearance'], ['profile-avatar', 'profileAvatar'], [LANGUAGE, 'language'], [PLAYER, 'player'],
+  [SERVER, 'server'], ['profile-lock', 'profileLock'], ['invite', 'invite'], ['remote', 'remote'], ['your-data', 'yourData'],
+]);
+const SECTION_ENGLISH: Map<string, string> = new Map<string, string>([
+  [APPEARANCE, 'Appearance'], ['profile-avatar', 'Profile avatar'], [LANGUAGE, 'Language'], [PLAYER, 'Player'],
+  [SERVER, 'Server connection'], ['profile-lock', 'Profile lock'], ['invite', 'Invite a friend'], ['remote', 'Phone remote'],
+  ['your-data', 'Your data'], ['home', 'Customise Home'],
+]);
+const SECTION_COPY_ENGLISH: Map<string, string> = new Map<string, string>([
   [PLAYER, 'Choose how Playarr should start quality, subtitles and audio.'],
-  [SERVER, 'The server this device is connected to.'],
-  ['profile-avatar', 'Choose how your profile appears on this device.'],
-  ['language', 'Follow this device or keep a language fixed.'],
-  ['profile-lock', 'Require a four-digit PIN before switching profiles.'],
-  ['invite', 'Ask your Playarr Server admin for one friend-invite QR code.'],
-  ['remote', 'Control this device from your phone, or control another device.'],
-  ['your-data', 'Export your watch progress, playlists and preferences, or import them from another Playarr Server.'],
   ['home', 'Choose which rails appear on Home and in what order.'],
 ]);
-const HOME_VIEW_CHOICES: Choice[] = [
-  { value: 'thumbnail', label: 'Thumbnails' },
-  { value: 'cover', label: 'Covers' },
-];
-const ARTWORK_SIZE_CHOICES: Choice[] = [
-  { value: 'small', label: 'Small' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'large', label: 'Large' },
-];
-const SUBTITLE_MODE_CHOICES: Choice[] = [
-  { value: 'off', label: 'Off' },
-  { value: 'forced', label: 'Forced only' },
-  { value: 'always', label: 'Always on' },
-];
+const SECTION_ORDER: string[] = [APPEARANCE, 'profile-avatar', LANGUAGE, PLAYER, SERVER, 'profile-lock', 'invite', 'remote', 'your-data', 'home'];
+const SECTION_NUMBERS: string[] = ['01', '02', '03', '04', '05', '06', '07', '09', '10', '11'];
+
+function sectionTitleOf(id: string): string {
+  const key: string | undefined = SECTION_KEYS.get(id);
+  return key !== undefined ? t('settings.index.' + key + '.title', SECTION_ENGLISH.get(id) ?? '') : t('pages.home.customise.title', 'Customise Home');
+}
+
+function sectionCopyOf(id: string): string {
+  if (id === LANGUAGE) {
+    return t('settings.language.description', 'Follow this device or keep a language fixed.');
+  }
+  const key: string | undefined = SECTION_KEYS.get(id);
+  return t(key !== undefined ? 'settings.index.' + key + '.description' : '', SECTION_COPY_ENGLISH.get(id) ?? '');
+}
+
+function buildSections(): SettingsSection[] {
+  return SECTION_ORDER.map((id: string, index: number): SettingsSection => ({ id: id, number: SECTION_NUMBERS[index], title: sectionTitleOf(id) }));
+}
+function HOME_VIEW_CHOICES(): Choice[] {
+  return [
+    { value: 'thumbnail', label: t('settings.appearance.homeViewThumbnail', 'Thumbnails') },
+    { value: 'cover', label: t('settings.appearance.homeViewCover', 'Covers') },
+  ];
+}
+// web's size words are lower case and shown capitalised; Thai and Japanese have no case
+function upperFirst(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+function ARTWORK_SIZE_CHOICES(): Choice[] {
+  return [
+    { value: 'small', label: upperFirst(t('pages.library.sizeSmall', 'small')) },
+    { value: 'medium', label: t('quality.level.medium', 'Medium') },
+    { value: 'large', label: upperFirst(t('pages.library.sizeLarge', 'large')) },
+  ];
+}
+function SUBTITLE_MODE_CHOICES(): Choice[] {
+  return [
+    { value: 'off', label: t('settings.playerPreferences.subtitlesOff', 'Off') },
+    { value: 'forced', label: t('settings.playerPreferences.subtitlesForced', 'Forced only') },
+    { value: 'always', label: t('settings.playerPreferences.subtitlesAlways', 'Always on') },
+  ];
+}
 const AUDIO_CHOICES: Choice[] = AUDIO_LANGUAGES.map((language: AudioLanguage): Choice => ({ value: language.value, label: language.label }));
 
 // Web `.settings-option`: 480x92 rows from (154, 162); number at +32/+24, title at +92, arrow at +432.
@@ -123,9 +146,12 @@ export struct SettingsScreen {
   @State private lockError: string = '';
   @State private homeView: string = 'thumbnail';
   @State private artworkSize: string = 'medium';
+  /** Settings > Language: 'system' or a fixed language. */
+  @State private languageChoice: string = 'system';
 
   aboutToAppear(): void {
     this.loadAudioLanguage();
+    savedLanguageChoice().then((value: string) => { this.languageChoice = value; });
     this.loadDefaults();
     this.loadAppearanceChoices();
     this.loadPinSetting();
@@ -149,7 +175,7 @@ export struct SettingsScreen {
     }
     if (!remove && this.pinDraft.length !== 4) {
       this.lockStatus = 'error';
-      this.lockError = 'Enter exactly four digits.';
+      this.lockError = t('settings.profileLock.errorFourDigits', 'Enter exactly four digits.');
       return;
     }
     this.lockStatus = 'saving';
@@ -166,15 +192,15 @@ export struct SettingsScreen {
 
   private lockStatusText(): string {
     if (this.lockStatus === 'loading') {
-      return 'Loading profile lock…';
+      return t('settings.profileLock.loading', 'Loading profile lock…');
     }
     if (this.lockStatus === 'saving') {
-      return 'Updating profile lock…';
+      return t('settings.profileLock.updating', 'Updating profile lock…');
     }
     if (this.lockStatus === 'error') {
       return this.lockError;
     }
-    return this.pinLocked ? 'PIN lock is on.' : 'PIN lock is off.';
+    return this.pinLocked ? t('settings.profileLock.lockOn', 'PIN lock is on.') : t('settings.profileLock.lockOff', 'PIN lock is off.');
   }
 
   private async loadAppearanceChoices(): Promise<void> {
@@ -233,7 +259,7 @@ export struct SettingsScreen {
   private audioStatusText(): string {
     const language = audioLanguageLabel(this.audioLanguage);
     if (this.audioStatus === 'loading') {
-      return 'Loading your player preference…';
+      return t('settings.playerPreferences.statusLoading', 'Loading your player preference…');
     }
     if (this.audioStatus === 'saving') {
       return 'Saving ' + language + '…';
@@ -249,7 +275,7 @@ export struct SettingsScreen {
   }
 
   private sectionTitle(): string {
-    const open = SECTIONS.find((section: SettingsSection) => section.id === this.openSection);
+    const open = buildSections().find((section: SettingsSection) => section.id === this.openSection);
     return open !== undefined ? open.title : '';
   }
 
@@ -289,8 +315,8 @@ export struct SettingsScreen {
   @Builder
   private appearancePanel(): void {
     ChoiceSegments({
-      heading: 'Colour theme',
-      choices: THEME_CHOICES,
+      heading: t('settings.appearance.colourThemeLabel', 'Colour theme'),
+      choices: themeChoices(),
       selected: this.themeSetting,
       large: true,
       sectionWidth: this.panelWidth(),
@@ -301,9 +327,9 @@ export struct SettingsScreen {
     })
     this.settingDivider()
     ChoiceSegments({
-      heading: 'Home screen artwork',
-      description: 'Show portrait covers instead of wide media thumbnails on the home screen.',
-      choices: HOME_VIEW_CHOICES,
+      heading: t('settings.appearance.homeViewTitle', 'Home screen artwork'),
+      description: t('settings.appearance.homeViewDescription', 'Show portrait covers instead of wide media thumbnails on the home screen.'),
+      choices: HOME_VIEW_CHOICES(),
       selected: this.homeView,
       large: true,
       sectionWidth: this.panelWidth(),
@@ -314,9 +340,9 @@ export struct SettingsScreen {
     })
     this.settingDivider()
     ChoiceSegments({
-      heading: 'Artwork size',
-      description: 'Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.',
-      choices: ARTWORK_SIZE_CHOICES,
+      heading: t('settings.appearance.artworkSizeTitle', 'Artwork size'),
+      description: t('settings.appearance.artworkSizeDescription', 'Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.'),
+      choices: ARTWORK_SIZE_CHOICES(),
       selected: this.artworkSize,
       large: true,
       sectionWidth: this.panelWidth(),
@@ -354,7 +380,7 @@ export struct SettingsScreen {
   private playerPanel(): void {
     Scroll() {
       Column({ space: tv(16) }) {
-        this.panelHeading('Default quality', 'Start playback at this quality when your connection allows it.')
+        this.panelHeading(t('settings.playerPreferences.qualityTitle', 'Default quality'), 'Start playback at this quality when your connection allows it.')
         QualityMatrix({
           selected: this.defaultQuality,
           matrixWidth: this.panelWidth(),
@@ -362,10 +388,10 @@ export struct SettingsScreen {
             this.setDefault('quality', id);
           },
         })
-        this.panelHeading('Default subtitles', 'Choose when subtitles start, and in which language.')
+        this.panelHeading(t('settings.playerPreferences.subtitlesTitle', 'Default subtitles'), 'Choose when subtitles start, and in which language.')
         ChoiceSegments({
           heading: '',
-          choices: SUBTITLE_MODE_CHOICES,
+          choices: SUBTITLE_MODE_CHOICES(),
           selected: this.subtitleMode,
           sectionWidth: this.panelWidth(),
           onChoose: (value: string): void => {
@@ -382,7 +408,7 @@ export struct SettingsScreen {
             },
           })
         }
-        this.panelHeading('Default audio track', 'Prefer this audio language whenever a matching track is available.')
+        this.panelHeading(t('settings.playerPreferences.audioTitle', 'Default audio track'), t('settings.playerPreferences.audioDescription', 'Prefer this audio language whenever a matching track is available.'))
         SelectField({
           options: AUDIO_CHOICES,
           value: this.audioLanguage,
@@ -412,7 +438,7 @@ export struct SettingsScreen {
   @Builder
   private profileLockPanel(): void {
     Column({ space: tv(16) }) {
-      Text(this.pinLocked ? 'Replace PIN' : 'New PIN').fontFamily(nunito(700))
+      Text(this.pinLocked ? t('settings.profileLock.replacePinLabel', 'Replace PIN') : t('settings.profileLock.newPinLabel', 'New PIN')).fontFamily(nunito(700))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
@@ -430,7 +456,7 @@ export struct SettingsScreen {
           .onChange((value: string) => {
             this.pinDraft = value;
           })
-        Text(this.lockStatus === 'saving' ? 'Saving…' : this.pinLocked ? 'Replace' : 'Set PIN').fontFamily(nunito(700))
+        Text(this.lockStatus === 'saving' ? t('settings.profileLock.saving', 'Saving…') : this.pinLocked ? t('settings.profileLock.replace', 'Replace') : t('settings.profileLock.setPin', 'Set PIN')).fontFamily(nunito(700))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(this.pinDraft.length === 4 ? activeColors().bg : activeColors().inkMuted))
@@ -474,12 +500,38 @@ export struct SettingsScreen {
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(SECTION_COPY.get(this.openSection) ?? '').fontFamily(nunito(400))
+      Text(sectionCopyOf(this.openSection)).fontFamily(nunito(400))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
     .width(tv(this.panelWidth()))
     .alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  private languagePanel(): void {
+    ChoiceSegments({
+      heading: t('settings.language.title', 'Language'),
+      choices: this.languageChoices(),
+      selected: this.languageChoice,
+      large: true,
+      sectionWidth: this.panelWidth(),
+      onChoose: (value: string) => {
+        this.languageChoice = value;
+        setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
+        void saveLanguageChoice(value);
+        // Rebuild the page so every label reads in the new language at once.
+        replaceRoute(getNavStack(), ROUTES.Settings);
+      },
+    })
+  }
+
+  private languageChoices(): Choice[] {
+    const choices: Choice[] = [{ value: 'system', label: t('settings.language.optionSystem', 'Auto') }];
+    for (const language of SUPPORTED_LANGUAGES) {
+      choices.push({ value: language, label: LANGUAGE_NAMES[language] });
+    }
+    return choices;
   }
 
   @Builder
@@ -501,7 +553,7 @@ export struct SettingsScreen {
   @Builder
   private pageContent(): void {
     Column() {
-      ForEach(SECTIONS, (section: SettingsSection) => {
+      ForEach(buildSections(), (section: SettingsSection) => {
         this.sectionRow(section)
       }, (section: SettingsSection): string => `${section.id}:${section.id === this.openSection}`)
     }
@@ -509,6 +561,8 @@ export struct SettingsScreen {
     Column() {
       if (this.openSection === APPEARANCE) {
         this.appearancePanel()
+      } else if (this.openSection === LANGUAGE) {
+        this.languagePanel()
       } else if (this.openSection === PLAYER) {
         this.playerPanel()
       } else if (this.openSection === SERVER) {
@@ -538,6 +592,8 @@ export struct SettingsScreen {
         Column() {
           if (this.openSection === APPEARANCE) {
             this.appearancePanel()
+          } else if (this.openSection === LANGUAGE) {
+            this.languagePanel()
           } else if (this.openSection === PLAYER) {
             this.playerPanel()
           } else if (this.openSection === SERVER) {
@@ -566,33 +622,38 @@ export struct SettingsScreen {
       .align(Alignment.TopStart)
     } else {
       Column() {
-        ForEach(SECTIONS, (section: SettingsSection) => {
-          Row({ space: 16 }) {
+        ForEach(buildSections(), (section: SettingsSection) => {
+          // Web phone `.settings-option`: 328 x 88 rows (16 vp page margin), number at +12/+14, copy at +56, arrow centred at +310.
+          Stack({ alignContent: Alignment.TopStart }) {
             Text(section.number).fontFamily(nunito(700))
               .fontSize(10)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-              .alignSelf(ItemAlign.Start)
-              .margin({ top: 6 })
-            Column({ space: 4 }) {
+              .position({ x: 12, y: 16 })
+            Column({ space: 3.5 }) {
               Text(section.title).fontFamily(nunito(500))
-                .fontSize(20)
+                .fontSize(15.5)
                 .fontWeight(FontWeight.Medium)
+                .letterSpacing(-0.54)
                 .fontColor(toResourceColor(activeColors().ink))
-              Text(SECTION_COPY.get(section.id) ?? '').fontFamily(nunito(400))
-                .fontSize(12)
+              Text(sectionCopyOf(section.id)).fontFamily(nunito(400))
+                .fontSize(11)
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
             .alignItems(HorizontalAlign.Start)
-            .layoutWeight(1)
+            .width(226)
+            .position({ x: 56, y: 24.5 })
             Text('→').fontFamily(nunito(400))
-              .fontSize(18)
+              .fontSize(14)
               .fontColor(toResourceColor(activeColors().ink))
+              .height(88)
+              .position({ x: 303, y: 3 })
           }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+          .width(328)
+          .height(88)
+          .margin({ left: 16, right: 16 })
           .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
           .onClick(() => {
             this.openSection = section.id;
@@ -602,13 +663,15 @@ export struct SettingsScreen {
       }
       .width('100%')
       .height('100%')
+      .padding({ top: 12 }) // web's first row starts 12 vp below the header
     }
   }
 
   build() {
     NavDestination() {
       PageShell({
-        title: 'Preferences',
+        railFrostWidthPct: 65,
+        title: t('settings.index.title', 'Preferences'),
         touch: true,
         selectedId: '',
         kicker: this.sectionOpen ? this.sectionTitle() : '',

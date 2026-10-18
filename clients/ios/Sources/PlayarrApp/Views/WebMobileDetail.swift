@@ -147,7 +147,7 @@ final class WMDetailModel {
 
 // MARK: - Page
 
-private enum WMFormat {
+enum WMFormat {
     static func clock(_ ms: Int64) -> String {
         let total = Int(ms / 1000)
         let hours = total / 3600, minutes = (total % 3600) / 60, seconds = total % 60
@@ -165,7 +165,8 @@ private enum WMFormat {
 
     static func date(_ iso: String?) -> String? {
         guard let iso, let day = Self.parser.date(from: String(iso.prefix(10))) else { return nil }
-        return Self.display.string(from: day)
+        // Chrome's en-GB spells September "Sept"; Foundation's ICU data says "Sep".
+        return Self.display.string(from: day).replacingOccurrences(of: " Sep ", with: " Sept ")
     }
 
     static func yearRange(releaseDate: String?, endDate: String?) -> String? {
@@ -267,11 +268,11 @@ struct WMDetailPage: View {
         if let runtimeMs, runtimeMs > 0 { items.append((WMFormat.runtime(runtimeMs), false)) }
         if let year = WMFormat.yearRange(releaseDate: work.releaseDate, endDate: work.endDate) { items.append((year, false)) }
         if isSeries, let aired = WMFormat.date(selectedEpisode?.detail.episode.airDate) {
-            items.append(("Aired  \(aired)", false))
+            items.append(("Aired \(aired)", false))
         } else if let released = WMFormat.date(work.releaseDate) {
-            items.append(("\(isSeries ? "Premiered" : "Released")  \(released)", false))
+            items.append(("\(isSeries ? "Premiered" : "Released") \(released)", false))
         }
-        if !work.genres.isEmpty { items.append((work.genres.joined(separator: ", "), false)) }
+        for genre in work.genres { items.append((genre, false)) }  // one item per genre, spaced like the web
         return items
     }
 
@@ -280,41 +281,40 @@ struct WMDetailPage: View {
         return work.overview
     }
 
-    @State private var scrolled = false
-
     // MARK: Body
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             WM.page.ignoresSafeArea()
-            // Hero art keeps running behind the top inset while the scroll view below is masked clear of it.
-            artBackdrop(width: 406)
-                .frame(height: WM.safeTop, alignment: .top)
-                .clipped()
-                // Fade out the last points so the strip ends without a seam against the page colour.
-                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: scrolled ? 0.5 : 1), .init(color: .black.opacity(scrolled ? 0 : 1), location: 1)], startPoint: .top, endPoint: .bottom))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             ScrollView(.vertical) {
                 ZStack(alignment: .topLeading) {
-                    // Reports whether the page has scrolled, so the art strip fades only once it no longer continues below.
-                    GeometryReader { geo in
-                        Color.clear.preference(key: DetailScrollKey.self, value: geo.frame(in: .named("detailScroll")).minY < -2)
-                    }
-                    .frame(height: 0)
                     artBackdrop
+                    // The web header is opaque page colour down to 69 pt, then the art fades in over about 50 pt.
+                    LinearGradient(
+                        stops: [
+                            Gradient.Stop(color: WM.page, location: 0),
+                            Gradient.Stop(color: WM.page, location: 69.0 / 120),
+                            Gradient.Stop(color: WM.page.opacity(0.79), location: 79.0 / 120),
+                            Gradient.Stop(color: WM.page.opacity(0.58), location: 87.0 / 120),
+                            Gradient.Stop(color: WM.page.opacity(0.4), location: 95.0 / 120),
+                            Gradient.Stop(color: WM.page.opacity(0.19), location: 105.0 / 120),
+                            Gradient.Stop(color: WM.page.opacity(0.08), location: 112.0 / 120),
+                            Gradient.Stop(color: WM.page.opacity(0), location: 1),
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(width: 390, height: 120)
                     header
                     VStack(alignment: .leading, spacing: 0) {
                         copy
                         actions
                         tracks
                     }
-                    .padding(.top, 368.5)
+                    .padding(.top, 368)
                 }
                 .frame(width: 390, alignment: .topLeading)
                 .padding(.bottom, 140)
             }
-            .coordinateSpace(name: "detailScroll")
-            .onPreferenceChange(DetailScrollKey.self) { scrolled = $0 }
             .scrollIndicators(.hidden)
             .keepInsideSafeArea()
         }
@@ -340,8 +340,8 @@ struct WMDetailPage: View {
     /// The hero art at `width` (the 390 pt web canvas, or the full screen for the strip behind the top inset).
     private func artBackdrop(width: CGFloat) -> some View {
         WMKeyArt(
-            work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5,
-            lightOpacity: 0.41, webMask: true,
+            work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5, artScale: 1.01,
+            lightOpacity: 0.41, darkOpacity: 0.22, webMask: true,
             fadeStops: [(0, 0), (120, 0), (160, 0.25), (200, 0.47), (240, isSeries ? 0.83 : 0.9), (270, 1)]
         )
             .frame(width: width, height: 608, alignment: .topLeading)
@@ -350,12 +350,12 @@ struct WMDetailPage: View {
 
     private var header: some View {
         ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: onBack)
+            PlayarrBackButton(action: onBack)
                 .accessibilityIdentifier("detail-back")
-                .offset(x: 16, y: WM.topInset + 2)
+                .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             // The web hides the header subtitle on phones (#1299), so only the page title shows here.
             WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
-            .offset(x: 68, y: WM.topInset + 2)
+            .offset(x: 70, y: WM.topInset + 2)
         }
     }
 
@@ -365,8 +365,8 @@ struct WMDetailPage: View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(kicker, 10.56, 820, color: WM.brandInk, lh: 15.84, ls: 0.8448)
             Text(work.title)
-                .font(WM.font(39, 560))
-                .tracking(-2.808)
+                .font(WM.font(39.3, 560))
+                .tracking(-2.8296)
                 .foregroundStyle(WM.ink)
                 .lineLimit(1)
                 .frame(width: 358, height: 36.66, alignment: .leading)
@@ -374,14 +374,14 @@ struct WMDetailPage: View {
             if isSeries, let episode = selectedEpisode?.detail.episode {
                 WMText(
                     episode.title ?? "Episode \(episode.episodeNumber)",
-                    14.4, 570, color: WM.inkSoft, lh: 16.56, ls: -0.504
+                    14.4, 570, color: WM.detailInkSoft, lh: 16.56, ls: -0.504
                 )
                 .frame(width: 358, alignment: .leading)
                 .padding(.top, 8.34)
             }
             HStack(spacing: 10) {
                 ForEach(Array(metaItems.enumerated()), id: \.offset) { _, item in
-                    WMText(item.0, 10.24, item.1 ? 680 : 400, color: item.1 ? WM.inkSoft : WM.detailMuted, lh: 15.36)
+                    WMText(item.0, 10.24, item.1 ? 680 : 400, color: item.1 ? WM.detailInkSoft : WM.detailMuted, lh: 15.36)
                         .fixedSize()
                 }
             }
@@ -397,8 +397,10 @@ struct WMDetailPage: View {
                     .font(WM.font(11.52))
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
+                    // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
+                    .lineSpacing(1.2)
                     .frame(width: 347, alignment: .topLeading)
-                    .padding(.top, isSeries ? 10.6 : 12.04)
+                    .padding(.top, isSeries ? 10.6 : 11.2)
             }
         }
         .padding(.leading, 16)
@@ -465,7 +467,7 @@ struct WMDetailPage: View {
                     .offset(x: 0, y: 2)
                     Button { showingPlayback = true } label: {
                         pill(
-                            width: 119, fill: WM.chip.opacity(0.72), glyph: "☷", glyphSize: 12.88,
+                            width: 120.5, fill: WM.chip.opacity(0.72), glyph: "☷", glyphSize: 12.88,
                             glyphColor: WM.pink, label: "Playback", labelSize: 11.2, labelColor: WM.ink, gap: 8
                         )
                     }
@@ -474,7 +476,7 @@ struct WMDetailPage: View {
                     .disabled(playMediaFileID == nil)
                     .offset(x: 112, y: 2)
                     playLink
-                        .offset(x: 235, y: 0)
+                        .offset(x: 236.9, y: 0)
                 }
                 .frame(width: 358, height: 47, alignment: .topLeading)
                 .padding(.top, 13.3)
@@ -501,7 +503,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 126, height: 47, fill: WM.pink, glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 127.7, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 8.6,
                     glyphColor: .white, label: "Play", labelSize: 11.2, labelColor: .white, gap: 11
                 )
             }
@@ -529,7 +531,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 130.1, fill: WM.ink, glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 133.1, fill: WM.ink, glyph: "▶\u{FE0E}", glyphSize: 8.6,
                     glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
                 )
             }
@@ -537,7 +539,7 @@ struct WMDetailPage: View {
             .wmKeyFocus(Capsule())
         } else {
             pill(
-                width: 130.1, fill: WM.ink.opacity(0.4), glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                width: 133.1, fill: WM.ink.opacity(0.4), glyph: "▶\u{FE0E}", glyphSize: 8.6,
                 glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
             )
         }
@@ -612,7 +614,7 @@ struct WMDetailPage: View {
                 season.season.title ?? "Season \(season.season.seasonNumber)",
                 "\(season.episodes.count) episodes"
             )
-            .padding(.top, 24)
+            .padding(.top, 23.2)
             WMFadingRail {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(season.episodes, id: \.id) { episode in
@@ -622,7 +624,7 @@ struct WMDetailPage: View {
                 .padding(.horizontal, 16)
             }
             .frame(height: 127)
-            .padding(.top, 18)
+            .padding(.top, 18.8)
         }
         .padding(.bottom, 47.16)
     }
@@ -632,12 +634,13 @@ struct WMDetailPage: View {
         let card = VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .bottomTrailing) {
                 WMRemoteImage(apiClient: apiClient, sources: episodeSources(episode, season: season))
-                    .frame(width: 179, height: 101)
+                    .frame(width: 181, height: 101.8)
+                    .wmEpisodeArtTreatment()
                     .background(WM.artFill)
                 WMText(String(format: "%02d", episode.episode.episodeNumber), 12.8, 560, color: .white, lh: 19.2)
                     .padding(.trailing, 10).padding(.bottom, 9)
             }
-            .frame(width: 179, height: 101)
+            .frame(width: 181, height: 101.8)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .wmCardShadow()
             .overlay {
@@ -648,17 +651,15 @@ struct WMDetailPage: View {
                 }
             }
             .shadow(color: focused ? WM.cardGlowColor.opacity(0.45) : .clear, radius: focused ? 20 : 0)
-            .scaleEffect(focused ? 1.025 : 1, anchor: .top)
             .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
             HStack(spacing: 9) {
                 WMText(code(season, episode.episode), 9.92, 700, color: focused ? WM.ink : WM.detailMuted, lh: 14.88).fixedSize()
                 WMText(title, 12.48, 610, color: WM.ink, lh: 18.72, ls: -0.1872)
             }
-            .frame(width: 179, alignment: .leading)
-            .padding(.top, 7)
+            .frame(width: 181, alignment: .leading)
+            .padding(.top, 11.8)
         }
-        .frame(width: 179, height: 127, alignment: .topLeading)
-        .offset(y: focused ? -7 : 0)
+        .frame(width: 181, height: 131.8, alignment: .topLeading)
 
         return Group {
             if let mediaFileID = episode.mediaFileID {
@@ -703,7 +704,7 @@ struct WMDetailPage: View {
                 "Chapters",
                 model.chaptersFromServer ? "\(model.chapters.count) chapters" : "\(model.chapters.count) scene markers"
             )
-            .padding(.top, 24)
+            .padding(.top, 22.7)
             WMFadingRail {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(model.chapters) { chapter in
@@ -713,7 +714,7 @@ struct WMDetailPage: View {
                 .padding(.horizontal, 16)
             }
             .frame(height: 132)
-            .padding(.top, 17)
+            .padding(.top, 18.3)
         }
         .padding(.bottom, 42)
     }
@@ -737,22 +738,22 @@ struct WMDetailPage: View {
                             query: ["position_ms": String(chapter.startMS)]
                         )]
                     )
-                    .frame(width: 179, height: 101)
-                    .opacity(0.67)
+                    .frame(width: 181, height: 101.8)
+                    .wmEpisodeArtTreatment()
                     .background(WM.artFill)
                     WMText(String(format: "%02d", chapter.index + 1), 12.8, 560, color: .white, lh: 19.2)
                         .padding(.trailing, 10).padding(.bottom, 9)
                 }
-                .frame(width: 179, height: 101)
+                .frame(width: 181, height: 101.8)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 HStack(spacing: 9) {
                     WMText(WMFormat.clock(chapter.startMS), 9.92, 700, color: WM.detailMuted, lh: 14.88).fixedSize()
                     WMText(chapter.title ?? "Chapter \(chapter.index + 1)", 12.48, 610, lh: 18.72)
                 }
-                .frame(width: 179, alignment: .leading)
+                .frame(width: 181, alignment: .leading)
                 .padding(.top, 12)
             }
-            .frame(width: 179, height: 132, alignment: .topLeading)
+            .frame(width: 181, height: 132, alignment: .topLeading)
         }
         .buttonStyle(.plain)
     }
@@ -880,7 +881,11 @@ struct PlaybackSettingsSheet: View {
     }
 }
 
-private struct DetailScrollKey: PreferenceKey {
-    static let defaultValue = false
-    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+extension View {
+    /// Web `.tv-episode-art`: grayscale(0.25) image under a 135deg black 5% to 48% wash.
+    func wmEpisodeArtTreatment() -> some View {
+        saturation(0.75).overlay(
+            LinearGradient(colors: [.black.opacity(0.05), .black.opacity(0.48)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+    }
 }

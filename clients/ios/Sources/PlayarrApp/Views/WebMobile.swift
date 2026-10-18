@@ -14,9 +14,13 @@ enum WM {
     static let inkSoft = PlayarrStyle.inkSoft
     static let muted = PlayarrStyle.muted
     static let detailMuted = adaptive(light: (77, 66, 72), dark: (194, 181, 187))
+    /// Detail-page subtitle and bold meta ink, measured from the web (darker than the shared soft ink).
+    static let detailInkSoft = adaptive(light: (68, 58, 64), dark: (205, 193, 198))
     static let pink = PlayarrStyle.pink
     static let brandInk = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
     static let cardGlowColor = adaptive(light: (165, 39, 69), dark: (234, 166, 182))
+    /// The web's 3 pt card ring renders about 11% darker than its glow colour (measured 208,147,160 dark and 148,37,62 light).
+    static let cardRingColor = adaptive(light: (148, 37, 62), dark: (208, 147, 160))
     static let artFill = adaptive(light: (223, 220, 221), dark: (49, 42, 48))
     static let chip = PlayarrStyle.surfaceStrong
     static let line = adaptive(light: (56, 38, 33), dark: (223, 220, 221))
@@ -413,22 +417,36 @@ struct WMKeyArt: View {
     /// Draw the whole picture at the page width (no crop) instead of filling the frame.
     var contain = false
     var imageTop: CGFloat = -9
+    /// Scales the picture about its top-left corner (the web detail art measures 1% larger than its nominal box).
+    var artScale: CGFloat = 1
     /// How strong the grey artwork is in the light theme; the web shows it differently per page.
     var lightOpacity: Double = 0.22
+    /// Dark-theme strength; the web detail art is opacity 0.42 under brightness 0.6, about 0.22 net.
+    var darkOpacity: Double = 0.085
     /// The web's horizontal treatment in the light theme: the artwork fades out over its last 28% (mask)
     /// and a page-coloured wash covers its left edge at 54%.
     var webMask = false
     /// Replaces the two-point vertical fade with these (y, how much of the page colour covers) stops.
     var fadeStops: [(y: CGFloat, cover: Double)]?
+    /// Pages that only know a work id (calendar rows) draw its backdrop from the artwork route instead.
+    var backdropWorkID: UUID?
     @Environment(\.colorScheme) private var scheme
+
+    @ViewBuilder private var art: some View {
+        if let work {
+            PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+        } else if let id = backdropWorkID {
+            WMRemoteImage(apiClient: apiClient, sources: [WMRemoteImage.Source(path: "/api/v1/artwork/work/\(id.uuidString)/backdrop")])
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            if let work {
-                PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+            if work != nil || backdropWorkID != nil {
+                art
                     .saturation(0)
-                    .opacity(scheme == .dark ? 0.085 : lightOpacity)
-                    .frame(width: 406, height: contain ? 406 * 9 / 16 : imageHeight)
+                    .opacity(scheme == .dark ? darkOpacity : lightOpacity)
+                    .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
                             LinearGradient(
@@ -517,7 +535,7 @@ extension Work {
         case .artist: singular = "Artist"
         case .author: singular = "Author"
         }
-        guard let year = releaseDate?.prefix(4), year.count == 4, Int(year) != nil else { return singular }
+        guard let year = WMFormat.yearRange(releaseDate: releaseDate, endDate: kind == .series ? endDate : nil) else { return singular }
         return "\(singular) · \(year)"
     }
 }
@@ -536,7 +554,7 @@ enum WMArtwork {
     /// Web phone card: (viewport - 16 gutter - 52 letter-rail pad - 12 per gap) / columns.
     static var cardWidth: CGFloat {
         let n = CGFloat(columns)
-        return ((UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n).rounded() // web --card-w has no minimum; columns come from --card-cols
+        return (UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n // web --card-w has no minimum or rounding (156.5 at 393); columns come from --card-cols
     }
     static func artHeight(cover: Bool) -> CGFloat { cardWidth * (cover ? 3 / 2 : 9 / 16) }
 }
@@ -566,7 +584,7 @@ struct WMRailCard: View {
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
-            WMText(work.singularKindYearLabel, 7.3, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
+            WMText(work.singularKindYearLabel, 7.3, 400, color: WM.ink, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
     }
@@ -610,7 +628,7 @@ struct WMFocusRing: View {
                         .compositingGroup()
                 }
             RoundedRectangle(cornerRadius: cornerRadius + 1.5, style: .continuous)
-                .stroke(WM.cardGlowColor, lineWidth: 3)
+                .stroke(WM.cardRingColor, lineWidth: 3)
                 .frame(width: width + 3, height: height + 3)
         }
         .allowsHitTesting(false)
@@ -629,7 +647,7 @@ struct WMLibraryCard: View {
     var cover = false
     @AppStorage(WMArtwork.sizeKey) private var sizeSetting = "medium"
 
-    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 27.6 }
+    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 27.7 }
 
     var body: some View {
         let width = WMArtwork.cardWidth, art = WMArtwork.artHeight(cover: cover)
@@ -678,12 +696,13 @@ struct WMHeaderCircleButton: View {
     let width: CGFloat
     let height: CGFloat
     let glyph: String
+    var weight: Int = 720
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Text(glyph)
-                .font(WM.font(12.8, 720))
+                .font(WM.font(12.8, weight))
                 .foregroundStyle(WM.inkSoft)
                 .frame(width: width, height: height)
                 .background(WM.chip.opacity(0.66), in: Ellipse())
@@ -703,22 +722,14 @@ struct WMLibraryHeader: View {
     var body: some View {
         let top = WM.topInset + 2
         ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: onBack)
-                .offset(x: 17, y: top)
+            PlayarrBackButton(action: onBack)
+                .offset(x: PlayarrPageTokens.gutter, y: top)
             WMText(title, 22, 520, lh: 33, ls: -1)
                 .offset(x: 71, y: top + 5)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
                 Spacer()
-                Button(action: onFilters) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(WM.inkSoft)
-                        .frame(width: 44, height: 44)
-                        .background(WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
+                PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", iconOnly: true, action: onFilters)
             }
             .padding(.trailing, 16)
             .offset(y: top - 2)

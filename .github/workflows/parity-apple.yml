@@ -61,6 +61,12 @@ permissions:
   contents: read
 
 env:
+  # Captures run against the static seeded parity server (a named tunnel to the lab host), never the live server.
+  # These three repo secrets are the one place that switches every hosted parity workflow.
+  PARITY_SERVER_URL: ${{ secrets.PARITY_STATIC_URL }}
+  PARITY_USERNAME: ${{ secrets.PARITY_STATIC_USERNAME }}
+  PARITY_PASSWORD: ${{ secrets.PARITY_STATIC_PASSWORD }}
+  PARITY_STATIC_SERVER: "1" # the static server's deck is canonical: no live-fixture seeding or pins
   # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
   PARITY_STABLE: "0"
   LEAD_MINUTES: "25" # the successor starts this long before the end of a run
@@ -367,10 +373,10 @@ jobs:
       - name: Start the simulator, sign in and launch
         timeout-minutes: 15
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
         run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
 
       - name: Interactive Search-results focus smoke
@@ -378,12 +384,12 @@ jobs:
         timeout-minutes: 15
         env:
           TRUSTED: ${{ github.workspace }}/smoke-tools
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          PLAYARR_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          PLAYARR_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_PASSWORD: ${{ env.PARITY_PASSWORD }}
           SEARCH_QUERY: ${{ inputs.search_query }}
           PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
         run: |
@@ -397,10 +403,10 @@ jobs:
         continue-on-error: true # a rejected capture must not stop the stream
         timeout-minutes: 30
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
           OUT: ${{ runner.temp }}/capture
           REF: ${{ inputs.ref || github.event.repository.default_branch }}
         run: bash "$TRUSTED/scripts/apple-wall/wall.sh" capture "$DEVICE"
@@ -434,11 +440,11 @@ jobs:
         continue-on-error: true
         timeout-minutes: 25
         env:
-          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_DEVICE_TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          PLAYARR_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          PLAYARR_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_PASSWORD: ${{ env.PARITY_PASSWORD }}
           PARITY_CHROME: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
           SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
@@ -457,9 +463,9 @@ jobs:
         continue-on-error: true
         timeout-minutes: 60
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
           DRIVER_TRACE: "1"
           SUITE_SELECTION: ${{ steps.suite_selection.outputs.selection }}
         run: |
@@ -502,6 +508,10 @@ jobs:
         env:
           STREAM_BIND: 127.0.0.1
           PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] || 'selftest1' }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
         run: |
           export DEADLINE=$(( $(date +%s) + 90 ))
           bash "$TRUSTED/scripts/apple-wall/wall.sh" stream "$DEVICE" &
@@ -538,7 +548,7 @@ jobs:
         if: steps.ts.outcome == 'success'
         continue-on-error: true
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
         run: |
           host=$(python3 -c 'import os, urllib.parse as u; print(u.urlparse(os.environ["SERVER_URL"]).hostname)')
           check() { dscacheutil -q host -a name "$host" | grep -q ip_address; }
@@ -559,9 +569,9 @@ jobs:
         if: steps.ts.outcome == 'success'
         timeout-minutes: 350
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME || secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ contains(inputs.suite_args, '--only dpad') && secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD || secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
           PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] }}
           GH_TOKEN: ${{ github.token }}
           LENGTH: ${{ matrix.length }}

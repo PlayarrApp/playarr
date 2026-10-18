@@ -12,11 +12,13 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
 
-// True when no card-art in view (and none cut by the viewport edge) lacks a loaded poster img.
+// True when no card-art in view (and none cut by the viewport edge) lacks a loaded poster img. A card-art with no img at all and a text
+// fallback (an empty playlist's name) is final: it will never load a poster, so waiting for one timed out every Playlists capture.
 const PLACEHOLDER_CARDS_GONE = () => ![...document.querySelectorAll("[class*=card-art]:not([class*=skeleton])")].some((e) => {
   const r = e.getBoundingClientRect();
   return r.width > 0 && r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0 &&
-    ![...e.querySelectorAll("img")].some((i) => i.complete && i.naturalWidth > 0);
+    ![...e.querySelectorAll("img")].some((i) => i.complete && i.naturalWidth > 0) &&
+    !(!e.querySelector("img") && (e.textContent ?? "").trim().length > 0);
 });
 
 const KEYS = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };
@@ -317,7 +319,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     await labelled("visible images loaded", () => page.waitForFunction(() => [...document.images].filter((i) => {
       const r = i.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
-    }).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 }));
+    }).every((i) => { if (!i.complete && i.loading === "lazy") i.loading = "eager"; return i.complete && i.naturalWidth > 0; }), null, { timeout: 20000 })); // eager: a lazy image inside the viewport but clipped by a scroller never intersects, so never loads
     await labelled("loading placeholders gone", () => page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 }));
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
@@ -462,7 +464,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 });
     }
     if (path === "/calendar") await page.waitForSelector(".calendar-page", { timeout: 30000 });
-    if (path === "/search") await page.waitForSelector(".tv-search-results-grid, .tv-empty-state, .tv-search-prompt", { timeout: 30000 });
+    if (path === "/search") await page.waitForSelector(".tv-search-results-grid:visible, .tv-empty-state:visible, .tv-search-prompt:visible", { timeout: 30000 }); // :visible, as the phone layout also renders a hidden prompt
     if (path.startsWith("/movies/") || path.startsWith("/series/")) await waitForDetailReady({ requireHeroAction: detailActionRequired });
     if (path.startsWith("/player/")) await page.waitForFunction(() => !!document.querySelector("video, .player-error, .player-loading"), null, { timeout: 30000 });
     await settle();
@@ -744,6 +746,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     async focused() { await guard(); return stableFocus(); },
     async screenshot(file) {
       await guard();
+      await page.mouse.move(-1, -1); // a pointer left over a control (the "#" alphabet-rail hover disc) draws a state no device can match
       await waitReady({ screen: new URL(page.url()).pathname.split("/")[1] || "home", phase: "capture" });
       // Every card on screen shows its poster: a card-art without a loaded img is a placeholder (fallback title on grey). Fatal in a stable capture.
       await labelled("every card shows its poster", () => page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 }));

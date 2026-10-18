@@ -6,6 +6,12 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
+import { loadParityConfig } from "./parity-config.mjs";
+
+// Every capture script reads its server and account through this module, so loading parity.env here points them all at the static
+// parity server (PARITY_LIVE=1 keeps the live one). Not when run as the account CLI: that manages live accounts.
+if (process.argv[1] !== fileURLToPath(import.meta.url)) loadParityConfig();
 
 const FILE = `${homedir()}/.secrets`;
 const clientSlug = (value) => {
@@ -22,7 +28,18 @@ export function readSecrets(file = FILE, relevantKeys) {
     const key = i > 0 && !line.startsWith("#") ? line.slice(0, i) : null;
     if (key && (!wanted || wanted.has(key))) out[key] = line.slice(i + 1).replace(/^['"]|['"]$/g, "");
   }
-  return out;
+  return file === FILE ? staticOverlay(out) : out;
+}
+
+// With the static parity server configured (PARITY_SERVER_URL, from parity.env), every script that reads the Device Test or per-client
+// parity account out of ~/.secrets gets the static server and its seeded account instead, so no capture reaches the live server.
+function staticOverlay(out, env = process.env) {
+  const url = env.PARITY_SERVER_URL, user = env.PARITY_ACCOUNT_NAME, password = out.PLAYARR_PARITY_STATIC_PASSWORD ?? env.PLAYARR_PARITY_STATIC_PASSWORD;
+  if (!url || !user || !password) return out;
+  const set = { PLAYARR_SERVER_URL: url, PLAYARR_TEST_SERVER_URL: url, PLAYARR_DEVICE_TEST_SERVER_URL: url };
+  for (const suffix of ["", "_DPAD"]) Object.assign(set, { [`PLAYARR_DEVICE_TEST${suffix}_USERNAME`]: user, [`PLAYARR_DEVICE_TEST${suffix}_PASSWORD`]: password });
+  for (const key of Object.keys(out)) if (/^PLAYARR_PARITY_[A-Z0-9_]+_USERNAME$/.test(key)) { set[key] = user; set[key.replace(/_USERNAME$/, "_PASSWORD")] = password; }
+  return { ...out, ...set };
 }
 
 export function clientSecretKeys(client) {
@@ -43,6 +60,8 @@ export function storeSecrets(values, file = FILE) {
         const before = fs.statSync(lock);
         const ownerText = fs.readFileSync(lock, "utf8").trim();
         const after = fs.statSync(lock);
+        // A flock-style writer (approve_recovered_link.py) leaves an empty lock by design: reclaim it once it is clearly stale.
+        if (!ownerText && before.ino === after.ino && Date.now() - after.mtimeMs > 30_000) { fs.unlinkSync(lock); continue; }
         if (before.dev !== after.dev || before.ino !== after.ino || !/^[1-9]\d*$/.test(ownerText)) {
           if (Date.now() >= deadline) throw new Error("timed out waiting for ~/.secrets write lock; inspect the lock before removing it");
           Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
@@ -122,6 +141,7 @@ export function storeSecrets(values, file = FILE) {
 
 /** Credentials for a named client account. Explicit client selection never falls back to a shared user. */
 export function parityCredentials(env = process.env, sec = readSecrets()) {
+  if (env.PARITY_SERVER_URL && env.PARITY_ACCOUNT_NAME) return { username: env.PARITY_ACCOUNT_NAME, password: sec.PLAYARR_PARITY_STATIC_PASSWORD ?? env.PLAYARR_PARITY_STATIC_PASSWORD };
   if (env.PARITY_CLIENT) {
     const keys = clientSecretKeys(env.PARITY_CLIENT);
     const username = sec[keys.username] ?? env[keys.username];

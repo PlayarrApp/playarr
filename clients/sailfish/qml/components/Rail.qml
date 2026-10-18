@@ -9,6 +9,7 @@ Column {
     property var items: []
     property bool showUnwatched: true
     property bool restRing: false
+    property int parityRail: -1
     signal opened(var work)
     signal held(var work)
     width: parent ? parent.width : 0
@@ -17,7 +18,7 @@ Column {
     // The same card as the library grid (web #924): (viewport - 16 gutter - 52 rail pad - 12 gap) / 2.
     readonly property real cardW: Math.round((width - Tokens.px(16 + 52 + 12)) / 2)
 
-    Label {
+    Label { renderType: Text.NativeRendering;
         x: Tokens.pad
         text: root.title
         color: Tokens.ink
@@ -40,7 +41,10 @@ Column {
                 y: 24 * Tokens.u
                 work: modelData
                 cardWidth: root.cardW
-                ring: root.restRing && index === 0
+                parityRail: root.parityRail
+                parityIndex: index
+                navigationActive: !!(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive)
+                ring: activeFocus || (root.restRing && index === 0 && !(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive))
                 showUnwatched: root.showUnwatched
                 onOpened: root.opened(work)
                 onHeld: root.held(work)

@@ -102,7 +102,7 @@ struct SettingsView: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             ZStack {
-                if phone && selected == nil { WM.page.ignoresSafeArea() } else { settingsBackground.ignoresSafeArea() }
+                if !phone || selected == nil { WM.page.ignoresSafeArea() } else { settingsBackground.ignoresSafeArea() }
                 if phone { phoneLayout(safeTop: WM.safeTop) }
                 else { wideLayout(proxy: proxy) }
             }
@@ -206,24 +206,99 @@ struct SettingsView: View {
         }
     }
 
+    /// Web tablet Preferences (measured at 1366 x 1024 pt): back circle, title and the section kicker on top, the numbered
+    /// index at x 135, and the section panel from x 557.
     private func wideLayout(proxy: GeometryProxy) -> some View {
-        HStack(spacing: 0) {
-            profileFeature
-                .frame(width: proxy.size.width * 0.35, height: proxy.size.height)
-            HStack(spacing: 0) {
-                ScrollView { sectionList.padding(.horizontal, 24).padding(.vertical, 88) }
-                    .frame(width: proxy.size.width * 0.24)
-                    .scrollIndicators(.hidden)
-                ScrollView {
-                    detail(for: selected ?? .appearance)
-                        .padding(.horizontal, 32)
-                        .padding(.top, 94)
-                        .padding(.bottom, 70)
+        let scale = proxy.size.width / 1366
+        let vScale = proxy.size.height / 1024
+        let current = selected ?? .appearance
+        return ZStack(alignment: .topLeading) {
+            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            WMText("Preferences", max(19.2, 24 * scale), 520, lh: 36, ls: -1).offset(x: 182 * scale, y: 57 * scale)
+            WMText(current.title.uppercased(), 7.2, 700, color: WM.muted, lh: 11, ls: 1).offset(x: 182 * scale, y: 111 * scale)
+            ScrollView {
+                VStack(spacing: 0) {
+                    // The web hides Request latency from non-admins; the numbering keeps its gap.
+                    ForEach(Section.allCases.filter { $0 != .requestLatency }) { section in
+                        Button { selected = section } label: {
+                            ZStack(alignment: .topLeading) {
+                                if section == current {
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(PlayarrStyle.ink.opacity(0.07))
+                                }
+                                WMText(section.number, 10, 760, color: WM.muted, lh: 13.44).offset(x: 13, y: 22)
+                                WMText(section.title, 21, 400, lh: 26, ls: -0.5).offset(x: 67, y: 31)
+                                WMText("\u{2192}", 20.8, 400, color: section == current ? WM.ink : WM.muted, lh: 26).offset(x: 261, y: 31)
+                            }
+                            .frame(width: 295, height: 88, alignment: .topLeading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .scrollIndicators(.hidden)
-                .frame(maxWidth: .infinity)
             }
-            .background(PlayarrStyle.surface.opacity(0.9))
+            .scrollIndicators(.hidden)
+            .frame(width: 295, height: proxy.size.height - 153 * vScale)
+            .offset(x: 135 * scale, y: 153 * vScale)
+            ScrollView {
+                if current == .appearance {
+                    tabletAppearance
+                } else {
+                    detail(for: current)
+                }
+            }
+            .scrollIndicators(.hidden)
+            .frame(width: 727 * scale, height: proxy.size.height - 198 * vScale, alignment: .topLeading)
+            .offset(x: 557 * scale, y: 198 * vScale)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// The web's Appearance panel: plain section labels over full-width option rows, selected option filled with the ink colour.
+    private var tabletAppearance: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            tabletOptionSection(
+                title: "Colour theme", description: nil, selection: $appearance,
+                options: [("System", "system"), ("Light", "light"), ("Dark", "dark")]
+            )
+            tabletDivider.padding(.top, 29).padding(.bottom, 32)
+            tabletOptionSection(
+                title: "Home screen artwork", description: "Show portrait covers instead of wide media thumbnails on the home screen.",
+                selection: $homeView, options: [("Thumbnails", "thumbnail"), ("Covers", "cover")]
+            )
+            tabletDivider.padding(.top, 29).padding(.bottom, 32)
+            tabletOptionSection(
+                title: "Artwork size", description: "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.",
+                selection: $artworkSize, options: [("Small", "small"), ("Medium", "medium"), ("Large", "large")]
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var tabletDivider: some View {
+        Rectangle().fill(WM.line.opacity(0.2)).frame(height: 1)
+    }
+
+    private func tabletOptionSection(
+        title: String, description: String?, selection: Binding<String>, options: [(String, String)]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            WMText(title, 16, 400, lh: 24, ls: -0.3)
+            if let description {
+                WMText(description, 10.4, 400, color: WM.muted, lh: 14).padding(.top, 9)
+            }
+            HStack(spacing: 9) {
+                ForEach(options, id: \.1) { option in
+                    let chosen = selection.wrappedValue == option.1
+                    Button { selection.wrappedValue = option.1 } label: {
+                        WMText(option.0, 8.5, 760, color: chosen ? WM.page : WM.inkSoft, lh: 13)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 49)
+                            .background(chosen ? WM.ink : PlayarrStyle.ink.opacity(0.06), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.top, 18)
         }
     }
 

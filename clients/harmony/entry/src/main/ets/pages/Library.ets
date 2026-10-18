@@ -103,6 +103,7 @@
  * that integration lands, with no changes needed here.
  */
 
+import { t } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
@@ -124,6 +125,7 @@ import { artworkStep, cardGeometry, normaliseArtworkSize } from '../core/Artwork
 import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { PageShell } from '../design/components/PageShell';
 import { TouchIconButton } from '../design/components/TouchIconButton';
+import { touchNavBarBox } from '../design/components/TouchNavBar';
 import { atLeast } from '../core/SafeInsets';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
@@ -138,7 +140,7 @@ import { indexWatchProgressByWork, watchMarkFor } from '../core/WatchState';
 import { orderWorks } from '../core/LibraryOrder';
 import type { WatchMark } from '../core/WatchState';
 import type { WatchProgress } from '../core/Types/Playback';
-import { fetchWorkArtworkByPriority, COVER_ARTWORK_PRIORITY, LANDSCAPE_ARTWORK_PRIORITY } from '../data/ArtworkRepository';
+import { fetchWorkArtworkByPriority, COVER_ARTWORK_PRIORITY, HERO_ARTWORK_PRIORITY, LANDSCAPE_ARTWORK_PRIORITY } from '../data/ArtworkRepository';
 
 import { catalogPageSize } from '../core/AppConfig';
 import type { WorkKind } from '../core/Types/Catalog';
@@ -260,22 +262,22 @@ function columnsTemplateFor(columns: number): string {
  * unrecognised value must never crash this page. */
 function libraryKindTitle(kind: string): string {
   if (kind === 'movie') {
-    return 'Movies';
+    return t('pages.library.plural.movies', 'Movies');
   }
   if (kind === 'series') {
-    return 'Series';
+    return t('pages.library.plural.series', 'Series');
   }
   if (kind === 'site') {
-    return 'Sites';
+    return t('pages.library.plural.sites', 'Sites');
   }
   if (kind === 'artist') {
-    return 'Music';
+    return t('pages.library.plural.music', 'Music');
   }
   if (kind === 'author') {
     return 'Authors';
   }
   if (kind.length === 0) {
-    return 'Library';
+    return t('discovery.source.library', 'Library');
   }
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
@@ -301,19 +303,23 @@ interface LibrarySortOption {
 /** Brief 4.8 / 9: `sort` is `"title"` (default) | `"date_added"` |
  * `"recent"`. Listed in the brief's own order. */
 // Web TV Filters drawer: Sort by Title or Date Added; Order A-Z or Z-A.
-const TV_SORT_CHOICES: Choice[] = [
-  { value: 'title', label: 'Title' },
-  { value: 'date_added', label: 'Date Added' },
-];
-const TV_ORDER_CHOICES: Choice[] = [
-  { value: 'asc', label: 'A-Z' },
-  { value: 'desc', label: 'Z-A' },
-];
+function TV_SORT_CHOICES(): Choice[] {
+  return [
+    { value: 'title', label: t('pages.library.sortTitle', 'Title') },
+    { value: 'date_added', label: t('pages.library.sortDateAdded', 'Date Added') },
+  ];
+}
+function TV_ORDER_CHOICES(): Choice[] {
+  return [
+    { value: 'asc', label: t('pages.library.sortAscAlpha', 'A-Z') },
+    { value: 'desc', label: t('pages.library.sortDescAlpha', 'Z-A') },
+  ];
+}
 
 const SORT_OPTIONS: LibrarySortOption[] = [
-  { value: 'title', label: 'Title' },
-  { value: 'date_added', label: 'Date Added' },
-  { value: 'recent', label: 'Recent' },
+  { value: 'title', label: t('pages.library.sortTitle', 'Title') },
+  { value: 'date_added', label: t('pages.library.sortDateAdded', 'Date Added') },
+  { value: 'recent', label: t('pages.downloads.sortRecent', 'Recent') },
 ];
 
 /**
@@ -443,6 +449,7 @@ struct LibraryGridCell {
       cardWidth: this.cardWidth,
       cardHeight: this.cardHeight,
       artworkRadius: this.cardRadius,
+      variant: isTvMetrics() ? 'grid' : 'home',
       title: this.work.title,
       // web's phone cards carry the title only, in Covers too; the TV's cover cards keep the year
       subtitle: this.landscape || !isTvMetrics() ? '' : releaseYearOf(this.work),
@@ -486,6 +493,10 @@ export struct Library {
   @State private total: number = -1;
   /** The TV hero: the focused title, the first one until a card takes focus (web `.tv-library-preview`). */
   @State private hero: Work | undefined = undefined;
+  @State private heroArtwork: image.PixelMap | undefined = undefined;
+  private heroArtworkGeneration: number = 0;
+  private heroArtworkWorkId: string = '';
+  private pendingHeroArtworkWorkId: string = '';
   /** The A-Z rail's current letter: the hero's (web `activeLetter`). */
   @State private activeLetter: string = '#';
   /** The Filters drawer (web `?panel=filters`). */
@@ -503,6 +514,8 @@ export struct Library {
   @State private watchIndex: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private watchLoaded: boolean = false;
   private gridScroller: Scroller = new Scroller();
+  @State private gridFadeTop: boolean = false;
+  @State private gridFadeBottom: boolean = false;
   /** The list view's own scroller (the A to Z rail jumps in whichever view is showing). */
   private listScroller: Scroller = new Scroller();
 
@@ -518,9 +531,15 @@ export struct Library {
   @State private artworkSize: ArtworkSizeName = 'medium';
 
   aboutToAppear(): void {
+    this.restartHeroArtworkIfNeeded();
     this.loadPage(0);
     this.loadWatchProgress();
     this.loadView();
+  }
+
+  aboutToDisappear(): void {
+    this.heroArtworkGeneration += 1;
+    this.pendingHeroArtworkWorkId = '';
   }
 
   private async loadView(): Promise<void> {
@@ -552,10 +571,54 @@ export struct Library {
   }
 
   private setHero(work: Work | undefined): void {
-    this.hero = work;
-    if (work !== undefined) {
-      this.activeLetter = workLetter(work.sort_title, work.title);
+    if (work === undefined) {
+      this.heroArtworkGeneration += 1;
+      this.heroArtwork = undefined;
+      this.heroArtworkWorkId = '';
+      this.pendingHeroArtworkWorkId = '';
+      this.hero = undefined;
+      this.activeLetter = '#';
+      return;
     }
+
+    const sameWork = this.hero !== undefined && this.hero.id === work.id;
+    this.hero = work;
+    this.activeLetter = workLetter(work.sort_title, work.title);
+    if (!isTvMetrics()) {
+      return;
+    }
+    if (sameWork && (this.heroArtworkWorkId === work.id || this.pendingHeroArtworkWorkId === work.id)) {
+      return;
+    }
+
+    const generation = ++this.heroArtworkGeneration;
+    this.pendingHeroArtworkWorkId = work.id;
+    this.loadHeroArtwork(work.id, generation);
+  }
+
+  private async loadHeroArtwork(workId: string, generation: number): Promise<void> {
+    const result = await fetchWorkArtworkByPriority(workId, HERO_ARTWORK_PRIORITY);
+    if (this.heroArtworkGeneration !== generation || this.hero === undefined || this.hero.id !== workId) {
+      return;
+    }
+    this.pendingHeroArtworkWorkId = '';
+    if (result.kind === 'ok') {
+      this.heroArtwork = result.value;
+      this.heroArtworkWorkId = workId;
+    } else {
+      this.heroArtwork = undefined;
+      this.heroArtworkWorkId = '';
+    }
+  }
+
+  private restartHeroArtworkIfNeeded(): void {
+    const hero = this.hero;
+    if (!isTvMetrics() || hero === undefined || this.heroArtworkWorkId === hero.id || this.pendingHeroArtworkWorkId === hero.id) {
+      return;
+    }
+    const generation = ++this.heroArtworkGeneration;
+    this.pendingHeroArtworkWorkId = hero.id;
+    this.loadHeroArtwork(hero.id, generation);
   }
 
   /** Web `jumpToLetter`: the first title at or after the letter in the current order, loading pages until
@@ -676,6 +739,7 @@ export struct Library {
 
   private resetAndReload(): void {
     this.items = [];
+    this.setHero(undefined);
     this.hasMore = true;
     this.errorMessage = '';
     this.loadMoreFailed = false;
@@ -877,8 +941,8 @@ export struct Library {
   private touchFiltersOverlay(): void {
     if (this.filtersOpen && this.actionsWork === undefined) {
       Drawer({
-        kicker: 'Library controls',
-        title: 'Filters',
+        kicker: t('pages.library.libraryControls', 'Library controls'),
+        title: t('pages.library.filters', 'Filters'),
         onClose: (): void => {
           this.filtersOpen = false;
         },
@@ -958,7 +1022,7 @@ export struct Library {
           .columnsGap(TOUCH_CARD_GAP)
           .rowsGap(TOUCH_ROW_GAP)
           .edgeEffect(EdgeEffect.Spring)
-          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg })
+          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg + touchNavBarBox(this.safeBottom) })
           .onAreaChange((_oldValue: Area, newValue: Area) => {
             this.measuredWidthVp = lengthToVp(newValue.width);
           })
@@ -971,7 +1035,8 @@ export struct Library {
           .onReachEnd(() => {
             this.maybeLoadMore(this.items.length - 1);
           })
-          .layoutWeight(1)
+          // Web scrolls the grid under the translucent nav bar: run it over the shell's nav spacer (a Column does not clip its children).
+          .height(`calc(100% + ${touchNavBarBox(this.safeBottom)}vp)`)
           .width('100%')
         }
     }
@@ -1008,6 +1073,36 @@ export struct Library {
     } else {
       this.screenGrid()
     }
+  }
+
+  /** Web's `--page-edge-fade-size` (59.4) on the grid panel: it fades at the top once scrolled and at the bottom while more rows follow (same mask as Stage's scrolling rails). */
+  @Builder
+  private gridEdgeMask(): void {
+    Column() {
+      Column()
+        .width('100%')
+        .height(this.gridFadeTop ? 59.4 : 0)
+        .linearGradient({ angle: 180, colors: [['rgba(0, 0, 0, 0.3)', 0], ['rgba(0, 0, 0, 0.409)', 0.25], ['rgba(0, 0, 0, 0.65)', 0.5],
+          ['rgba(0, 0, 0, 0.891)', 0.75], ['rgba(0, 0, 0, 1)', 1]] })
+      Column()
+        .width('100%')
+        .layoutWeight(1)
+        .backgroundColor('rgba(0, 0, 0, 1)')
+      Column()
+        .width('100%')
+        .height(this.gridFadeBottom ? 59.4 : 0)
+        .linearGradient({ angle: 180, colors: [['rgba(0, 0, 0, 1)', 0], ['rgba(0, 0, 0, 0.891)', 0.25], ['rgba(0, 0, 0, 0.65)', 0.5],
+          ['rgba(0, 0, 0, 0.409)', 0.75], ['rgba(0, 0, 0, 0.3)', 1]] })
+    }
+    .width('100%')
+    .height(tv(1080)) // the panel is the full stage height; '100%' resolved to a shorter box and faded row 3
+    .blendMode(BlendMode.DST_IN)
+    .hitTestBehavior(HitTestMode.None)
+  }
+
+  private updateGridFade(): void {
+    this.gridFadeTop = this.gridScroller.currentOffset().yOffset > 2;
+    this.gridFadeBottom = !this.gridScroller.isAtEnd();
   }
 
   @Builder
@@ -1049,7 +1144,16 @@ export struct Library {
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
+    .overlay(this.gridEdgeMask(), { align: Alignment.TopStart })
+    .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
+    .onScroll((_x: number, _y: number) => {
+      this.updateGridFade();
+    })
+    .onAreaChange((_oldArea: Area, _area: Area) => {
+      this.updateGridFade();
+    })
     .onScrollIndex((_first: number, last: number) => {
+      this.updateGridFade();
       this.maybeLoadMore(last);
     })
     .onReachEnd(() => {
@@ -1151,7 +1255,16 @@ export struct Library {
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
+    .overlay(this.gridEdgeMask(), { align: Alignment.TopStart })
+    .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
+    .onScroll((_x: number, _y: number) => {
+      this.updateGridFade();
+    })
+    .onAreaChange((_oldArea: Area, _area: Area) => {
+      this.updateGridFade();
+    })
     .onScrollIndex((_first: number, last: number) => {
+      this.updateGridFade();
       this.maybeLoadMore(last);
     })
     .onReachEnd(() => {
@@ -1164,7 +1277,7 @@ export struct Library {
   @Builder
   private tvContent(): void {
     Stage({
-      keyArt: '',
+      keyArt: this.heroArtwork ?? '',
       kicker: this.hero !== undefined && this.hero.genres.length > 0 ? this.hero.genres[0] : '',
       title: this.hero !== undefined ? this.hero.title : '',
       metaLines: this.hero !== undefined ? heroMetaLines(this.hero) : [],
@@ -1172,13 +1285,14 @@ export struct Library {
       scrollRails: false,
       railFrost: true,
       railFrostWidthPct: 65,
+      libraryCopy: true,
       railsSlot: (): void => {
         this.tvGrid();
       },
     })
     ActionTile({
       icon: $r('app.media.action_filters'),
-      label: 'Filters',
+      label: t('pages.library.filters', 'Filters'),
       slot: 0,
       onActivate: (): void => {
         this.filtersOpen = true;
@@ -1210,8 +1324,8 @@ export struct Library {
       })
     } else if (this.filtersOpen) {
       Drawer({
-        kicker: 'Library controls',
-        title: 'Filters',
+        kicker: t('pages.library.libraryControls', 'Library controls'),
+        title: t('pages.library.filters', 'Filters'),
         onClose: (): void => {
           this.filtersOpen = false;
         },
@@ -1237,7 +1351,7 @@ export struct Library {
   @Builder
   private filtersBody(): void {
     ChoiceSegments({
-      heading: 'View',
+      heading: t('pages.library.view', 'View'),
       choices: libraryViews(this.kind).map((value: string): Choice => ({ value: value, label: libraryViewLabel(value), icon: libraryViewIcon(value) })),
       selected: this.view,
       onChoose: (value: string): void => {
@@ -1245,16 +1359,16 @@ export struct Library {
       },
     })
     ChoiceSegments({
-      heading: 'Sort by',
-      choices: TV_SORT_CHOICES,
+      heading: t('pages.library.sortBy', 'Sort by'),
+      choices: TV_SORT_CHOICES(),
       selected: this.sort,
       onChoose: (value: string): void => {
         this.setSort(value);
       },
     })
     ChoiceSegments({
-      heading: 'Order',
-      choices: TV_ORDER_CHOICES,
+      heading: t('pages.library.order', 'Order'),
+      choices: TV_ORDER_CHOICES(),
       selected: this.order,
       onChoose: (value: string): void => {
         if (value !== this.order) {
@@ -1263,21 +1377,21 @@ export struct Library {
       },
     })
     MultiSelect({
-      heading: 'Audio language',
+      heading: t('pages.library.audioLanguage', 'Audio language'),
       options: this.languageChoices(this.audioFacets, this.audioLangs),
       selected: this.audioLangs,
-      noneLabel: 'Any language',
-      addLabel: 'Add language',
+      noneLabel: t('pages.library.anyLanguage', 'Any language'),
+      addLabel: t('pages.library.addLanguage', 'Add language'),
       onChange: (values: string[]): void => {
         this.setLanguages(true, values);
       },
     })
     MultiSelect({
-      heading: 'Subtitle language',
+      heading: t('pages.library.subtitleLanguage', 'Subtitle language'),
       options: this.languageChoices(this.subtitleFacets, this.subtitleLangs),
       selected: this.subtitleLangs,
-      noneLabel: 'Any language',
-      addLabel: 'Add language',
+      noneLabel: t('pages.library.anyLanguage', 'Any language'),
+      addLabel: t('pages.library.addLanguage', 'Add language'),
       onChange: (values: string[]): void => {
         this.setLanguages(false, values);
       },
@@ -1290,10 +1404,21 @@ const JUMP_WAIT_MS: number = 100;
 const JUMP_SCROLL_DELAY_MS: number = 50;
 
 
+/** Web `yearRangeLabel`: "2011", or "2011–2019" for an ended series that closed in a later year. */
+function yearRangeOf(work: Work): string {
+  const start = releaseYearOf(work);
+  const raw = work.end_date;
+  if (start.length === 0 || raw === undefined || raw === null || raw.length < 4) {
+    return start;
+  }
+  const end = raw.slice(0, 4);
+  return end > start ? start + '\u2013' + end : start;
+}
+
 /** Web library hero meta: "2003  Action · Crime" (year, then genres). */
 function heroMetaLines(work: Work): string[] {
   const parts: string[] = [];
-  const year = releaseYearOf(work);
+  const year = yearRangeOf(work);
   if (year.length > 0) {
     parts.push(year);
   }

@@ -7,6 +7,7 @@ import { nunito } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
+import { BRAND_PINK } from '../../core/Tokens';
 
 const RAIL_LEFT: number = 1852;
 const RAIL_TOP: number = 270;
@@ -15,6 +16,9 @@ const RAIL_HEIGHT: number = 810;
 const RAIL_PADDING_TOP: number = 8;
 const BUTTON_SIZE: number = 44;
 const LETTER_SIZE: number = 9.216;
+const TV_DISC: number = 24;
+const RING_GAP: number = 2;
+const RING_WIDTH: number = 2;
 // Phone (web `.tv-directory .tv-alphabet` under 760 px): fixed on the right edge, 52 wide, from 88 below the top to 82 above the bottom
 // (clear of the floating nav bar); the letters share that height, each 44 wide, 8.96 px bold.
 const TOUCH_RAIL_WIDTH: number = 52;
@@ -41,17 +45,29 @@ export struct AlphabetRail {
   private touchRail(): void {
     Column() {
       ForEach(this.letters, (letter: string) => {
-        // a 44 vp target around web's 22 vp letter disc
+        // a 44 vp target around web's 22 vp letter disc; the current letter wears web's focus ring (2 px brand, 2 px gap)
         Column() {
-          Text(letter).fontFamily(nunito(700))
-            .width(TOUCH_DISC)
-            .height(TOUCH_DISC)
-            .textAlign(TextAlign.Center)
-            .fontSize(TOUCH_LETTER_SIZE)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
-            .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.78) : Color.Transparent)
-            .borderRadius(TOUCH_DISC / 2)
+          // 22 vp box; the ring overflows it symmetrically (a Stack centres a larger child) so it takes no layout room
+          Stack() {
+            if (letter === this.activeLetter) {
+              Column()
+                .width(TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH)
+                .height(TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH)
+                .borderRadius((TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH) / 2)
+                .border({ width: RING_WIDTH, color: toResourceColor(BRAND_PINK) })
+            }
+            Text(letter).fontFamily(nunito(500))
+              .width(TOUCH_DISC)
+              .height(TOUCH_DISC)
+              .textAlign(TextAlign.Center)
+              .fontSize(TOUCH_LETTER_SIZE)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
+              .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().ink) : Color.Transparent)
+              .borderRadius(TOUCH_DISC / 2)
+          }
+          .width(TOUCH_DISC)
+          .height(TOUCH_DISC)
         }
         .width(TOUCH_LETTER_WIDTH)
         .layoutWeight(1)
@@ -76,23 +92,43 @@ export struct AlphabetRail {
     }
   }
 
+  /** Web's current letter wears the page focus ring: a brand ring a 2 px gap outside the 24 px disc. */
+  @Builder
+  private tvLetter(letter: string): void {
+    Column() {
+      Text(letter).fontFamily(nunito(400))
+        .width(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
+        .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
+        .textAlign(TextAlign.Center)
+        .fontSize(tv(LETTER_SIZE))
+        .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
+        .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.78) : Color.Transparent)
+        .borderRadius(tv(TV_DISC / 2))
+        .translate({ y: -tv(1.5) })
+    }
+    .width(letter === this.activeLetter ? tv(TV_DISC + 2 * RING_GAP + 2 * RING_WIDTH) : tv(BUTTON_SIZE))
+    .height(letter === this.activeLetter ? tv(TV_DISC + 2 * RING_GAP + 2 * RING_WIDTH) : tv(BUTTON_SIZE))
+    .justifyContent(FlexAlign.Center)
+    .borderRadius(tv((TV_DISC + 2 * RING_GAP + 2 * RING_WIDTH) / 2))
+    .border({ width: letter === this.activeLetter ? tv(RING_WIDTH) : 0, color: toResourceColor(BRAND_PINK) })
+  }
+
   @Builder
   private tvRail(): void {
     Scroll() {
       Column() {
         ForEach(this.letters, (letter: string) => {
-          Text(letter).fontFamily(nunito(400))
-            .width(tv(BUTTON_SIZE))
-            .height(tv(BUTTON_SIZE))
-            .textAlign(TextAlign.Center)
-            .fontSize(tv(LETTER_SIZE))
-            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
-            .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().ink) : Color.Transparent)
-            .borderRadius(tv(BUTTON_SIZE / 2))
-            .focusable(true)
-            .onClick(() => {
-              this.onJump(letter);
-            })
+          Column() {
+            // Web's current letter is a 24 px disc in ink-soft (not the 44 px hit area), the letters sit ~1.5 px high.
+            this.tvLetter(letter)
+          }
+          .width(tv(BUTTON_SIZE))
+          .height(tv(BUTTON_SIZE))
+          .justifyContent(FlexAlign.Center)
+          .focusable(true)
+          .onClick(() => {
+            this.onJump(letter);
+          })
         }, (letter: string): string => letter)
       }
       .padding({ top: tv(RAIL_PADDING_TOP) })

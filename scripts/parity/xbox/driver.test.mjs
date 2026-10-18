@@ -89,7 +89,7 @@ test("a confirmed native theme choice permits its matching capture", () => {
 });
 
 test("player-controls fixture is configured as a secret, not a workflow input", () => {
-  const workflow = readFileSync(new URL("../../../.github/workflows/xbox-wall.yml", import.meta.url), "utf8");
+  const workflow = readFileSync(new URL("../../../.github/workflows/parity-xbox.yml", import.meta.url), "utf8");
   const driver = readFileSync(new URL("./driver.mjs", import.meta.url), "utf8");
   const suite = JSON.parse(readFileSync(new URL("../screens.json", import.meta.url), "utf8"));
   const player = suite.screens.find((screen) => screen.id === "player-controls");
