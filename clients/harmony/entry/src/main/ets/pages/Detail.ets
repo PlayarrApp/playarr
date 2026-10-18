@@ -2117,7 +2117,7 @@ struct Detail {
               heading: '',
               headingGap: 0,
               itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle + 2) : PHONE_EPISODE_RAIL_GAP, // +2: web pitch 294 vs 292
-              clipInsetStart: isTvMetrics() ? 56 : PHONE_DETAIL_RAIL_CLIP_START, // 56: the focused card's 48 radius shadow was cut at the list edge, a pale band in light
+              clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
               allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
