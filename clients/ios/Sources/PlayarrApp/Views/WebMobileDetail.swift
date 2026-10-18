@@ -147,7 +147,7 @@ final class WMDetailModel {
 
 // MARK: - Page
 
-private enum WMFormat {
+enum WMFormat {
     static func clock(_ ms: Int64) -> String {
         let total = Int(ms / 1000)
         let hours = total / 3600, minutes = (total % 3600) / 60, seconds = total % 60
@@ -165,7 +165,8 @@ private enum WMFormat {
 
     static func date(_ iso: String?) -> String? {
         guard let iso, let day = Self.parser.date(from: String(iso.prefix(10))) else { return nil }
-        return Self.display.string(from: day)
+        // Chrome's en-GB spells September "Sept"; Foundation's ICU data says "Sep".
+        return Self.display.string(from: day).replacingOccurrences(of: " Sep ", with: " Sept ")
     }
 
     static func yearRange(releaseDate: String?, endDate: String?) -> String? {
@@ -267,11 +268,11 @@ struct WMDetailPage: View {
         if let runtimeMs, runtimeMs > 0 { items.append((WMFormat.runtime(runtimeMs), false)) }
         if let year = WMFormat.yearRange(releaseDate: work.releaseDate, endDate: work.endDate) { items.append((year, false)) }
         if isSeries, let aired = WMFormat.date(selectedEpisode?.detail.episode.airDate) {
-            items.append(("Aired  \(aired)", false))
+            items.append(("Aired \(aired)", false))
         } else if let released = WMFormat.date(work.releaseDate) {
-            items.append(("\(isSeries ? "Premiered" : "Released")  \(released)", false))
+            items.append(("\(isSeries ? "Premiered" : "Released") \(released)", false))
         }
-        if !work.genres.isEmpty { items.append((work.genres.joined(separator: ", "), false)) }
+        for genre in work.genres { items.append((genre, false)) }  // one item per genre, spaced like the web
         return items
     }
 
@@ -340,7 +341,7 @@ struct WMDetailPage: View {
     /// The hero art at `width` (the 390 pt web canvas, or the full screen for the strip behind the top inset).
     private func artBackdrop(width: CGFloat) -> some View {
         WMKeyArt(
-            work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5,
+            work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5, artScale: 1.01,
             lightOpacity: 0.41, webMask: true,
             fadeStops: [(0, 0), (120, 0), (160, 0.25), (200, 0.47), (240, isSeries ? 0.83 : 0.9), (270, 1)]
         )
@@ -350,9 +351,9 @@ struct WMDetailPage: View {
 
     private var header: some View {
         ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: onBack)
+            PlayarrBackButton(action: onBack)
                 .accessibilityIdentifier("detail-back")
-                .offset(x: 16, y: WM.topInset + 2)
+                .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             // The web hides the header subtitle on phones (#1299), so only the page title shows here.
             WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
             .offset(x: 68, y: WM.topInset + 2)
@@ -397,6 +398,8 @@ struct WMDetailPage: View {
                     .font(WM.font(11.52))
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
+                    // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
+                    .lineSpacing(1.57)
                     .frame(width: 347, alignment: .topLeading)
                     .padding(.top, isSeries ? 10.6 : 12.04)
             }
@@ -501,7 +504,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 126, height: 47, fill: WM.pink, glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 126, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 9.52,
                     glyphColor: .white, label: "Play", labelSize: 11.2, labelColor: .white, gap: 11
                 )
             }
@@ -648,7 +651,6 @@ struct WMDetailPage: View {
                 }
             }
             .shadow(color: focused ? WM.cardGlowColor.opacity(0.45) : .clear, radius: focused ? 20 : 0)
-            .scaleEffect(focused ? 1.025 : 1, anchor: .top)
             .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
             HStack(spacing: 9) {
                 WMText(code(season, episode.episode), 9.92, 700, color: focused ? WM.ink : WM.detailMuted, lh: 14.88).fixedSize()

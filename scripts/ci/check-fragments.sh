@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
 # Fails a pull request that edits CHANGELOG.md or TASKS.md directly. Those two files are conflict
-# hotspots, so PRs add fragment files (changelog.d/, tasks.d/) and the merge train folds them in
+# hotspots, so PRs add fragment files (changelog.d/, tasks.d/) and the Fold board workflow folds them in
 # (commit subject "chore(train): fold fragments"). Also validates fragment syntax when node exists.
 #
-# Env: BASE_REF (default main). Looks only at the PR's own non-merge commits.
+# Env: BASE_REF (default main). Looks only at the PR's own non-merge commits, skipping any already on main (a main-into-integration sync).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 base="${BASE_REF:-main}"
 git fetch -q --no-tags origin "$base"
+[ "$base" = main ] || git fetch -q --no-tags origin main
 head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)
 bad=""
 for c in $(git rev-list --no-merges "origin/$base..$head"); do
+  git merge-base --is-ancestor "$c" origin/main && continue  # already landed on main (e.g. a main-into-integration sync)
   # "chore(scrub):" is reserved for owner-ordered repository-wide scrubs (for example removing media
   # titles) that must rewrite existing CHANGELOG.md/TASKS.md text, which fragments cannot express.
   # "chore(board-format):" is reserved for a repository-wide migration of TASKS.md to the canonical
   # epic-table format (one ## heading per epic, eight columns), which rewrites every row.
   case "$(git log -1 --format=%s "$c")" in "chore(train): fold fragments"*|"chore(scrub):"*|"chore(board-format):"*) continue ;; esac
-  # Key mode: the train squashes the branch (with the folded fragments) into one commit it marks.
+  # Key mode: a fold commit carries a Merge-Train trailer.
   git log -1 --format=%B "$c" | grep -qx 'Merge-Train: yes' && continue
   if git diff-tree --no-commit-id --name-only -r "$c" | grep -qxE 'CHANGELOG\.md|TASKS\.md'; then
     bad="$bad$(git log -1 --format='%h %s' "$c")"$'\n'

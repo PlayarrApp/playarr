@@ -51,7 +51,8 @@ internal sealed class Program : NUIApplication
 
     private Shell? _shell;
     private AppEnv? _env;
-    private EventHandler<Window.KeyEventArgs>? _keys;
+    private ReturnTypeEventHandler<object, Window.KeyEventArgs, bool>? _keyIntercept;
+    private readonly ConsumedKeyReleaseTracker _consumedKeysToRelease = new();
 
     private void ShowShell(Window window, FileSessionStore store, string route = "/")
     {
@@ -59,7 +60,7 @@ internal sealed class Program : NUIApplication
         var env = _env;
         if (env is null) return;
         env.Theme = PlayarrTheme.ByName(store.Theme());
-        if (_shell is not null) { (_shell.Page as SearchScreen)?.OnRemoved(); window.Remove(_shell); _shell.Dispose(); }
+        if (_shell is not null) { (_shell.Page as SearchScreen)?.OnRemoved(); (_shell.Page as PlaylistsScreen)?.OnRemoved(); window.Remove(_shell); _shell.Dispose(); }
         var shell = _shell = new Shell(env, Exit);
         window.Add(shell);
         shell.Navigate(route);
@@ -67,8 +68,9 @@ internal sealed class Program : NUIApplication
         env.SignOut = () =>
         {
             store.ClearSessionAsync().GetAwaiter().GetResult();
-            if (_keys is not null) window.KeyEvent -= _keys;
-            if (_shell is not null) { (_shell.Page as SearchScreen)?.OnRemoved(); window.Remove(_shell); _shell.Dispose(); _shell = null; }
+            if (_keyIntercept is not null) window.InterceptKeyEvent -= _keyIntercept;
+            _consumedKeysToRelease.Clear();
+            if (_shell is not null) { (_shell.Page as SearchScreen)?.OnRemoved(); (_shell.Page as PlaylistsScreen)?.OnRemoved(); window.Remove(_shell); _shell.Dispose(); _shell = null; }
             _env = null;
             StartSignIn(window, store);
         };
@@ -81,18 +83,65 @@ internal sealed class Program : NUIApplication
         _debug ??= new DebugMirror(() => _shell!, () => _env!);
         _debug.Start();
 #endif
-        if (_keys is not null) window.KeyEvent -= _keys;
-        _keys = (_, e) =>
+        if (_keyIntercept is not null) window.InterceptKeyEvent -= _keyIntercept;
+        _keyIntercept = (_, e) =>
         {
+            var activeShell = _shell;
             var name = e.Key.KeyPressedName;
-            if (RemoteKeys.FromName(name) == RemoteKey.Select) { HandleSelect(e.Key.State); return; }
-            if (e.Key.State != Key.StateType.Down) return;
+            if (e.Key.State == Key.StateType.Up && _consumedKeysToRelease.TryConsume(name, out var finishSelect))
+            {
+                if (finishSelect) HandleSelect(e.Key.State);
+                else if ((name is "Return" or "KP_Enter") && activeShell?.Page is SearchScreen search)
+                    search.HandleQueryEnterRelease();
+                return true;
+            }
+            if (activeShell is null) return false;
+            var editingContext = activeShell.EditingTextFieldContext;
+            if (editingContext != TextFieldEditingContext.None)
+            {
+                var route = RemoteKeys.ForEditingTextField(name, editingContext);
+                if (route.Action == TextFieldKeyAction.PassThrough) return false;
+                if (e.Key.State == Key.StateType.Down)
+                {
+                    var select = route.Action == TextFieldKeyAction.Remote && route.RemoteKey == RemoteKey.Select;
+                    _consumedKeysToRelease.Mark(name, select);
+                    switch (route.Action)
+                    {
+                        case TextFieldKeyAction.Remote when route.RemoteKey is { } editingRemoteKey:
+                            if (select) HandleSelect(e.Key.State);
+                            else activeShell.OnKey(editingRemoteKey);
+                            break;
+                        case TextFieldKeyAction.SearchEnter when activeShell.Page is SearchScreen search:
+                            search.BeginQueryEnter();
+                            break;
+                        case TextFieldKeyAction.Submit when activeShell.Page is PlaylistsScreen playlists:
+                            playlists.SubmitCreateFromName();
+                            break;
+                    }
+                }
+                return true;
+            }
+
 #if PLAYARR_DEBUG
-            if (e.Key.KeyPressedName == "1") { _ = DebugPlayFirstAsync(env, _shell!); return; }
+            if (name == "1" && e.Key.State == Key.StateType.Down)
+            {
+                _ = DebugPlayFirstAsync(env, activeShell);
+                _consumedKeysToRelease.Mark(name, false);
+                return true;
+            }
 #endif
-            _shell!.OnKey(RemoteKeys.FromName(e.Key.KeyPressedName));
+            var key = RemoteKeys.FromName(name);
+            if (key == RemoteKey.None) return false;
+            if (e.Key.State == Key.StateType.Down)
+            {
+                var select = key == RemoteKey.Select;
+                _consumedKeysToRelease.Mark(name, select);
+                if (select) HandleSelect(e.Key.State);
+                else activeShell.OnKey(key);
+            }
+            return true;
         };
-        window.KeyEvent += _keys;
+        window.InterceptKeyEvent += _keyIntercept;
     }
 
 #if PLAYARR_DEBUG

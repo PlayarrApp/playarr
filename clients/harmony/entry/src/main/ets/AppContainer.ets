@@ -49,6 +49,9 @@
  */
 
 import { common } from '@kit.AbilityKit';
+import { i18n } from '@kit.LocalizationKit';
+import { normaliseLanguagePreference, resolveLanguage, setCurrentLanguage } from './core/Language';
+import type { ResolvedLanguage } from './core/Language';
 import { window } from '@kit.ArkUI';
 
 import { resolveClientPlatform } from './core/AppConfig.ts';
@@ -65,6 +68,8 @@ import {
   getPlayerSubtitleLanguage,
   getPlayerSubtitleMode,
   getThemeOverride,
+  getLanguagePreference,
+  setLanguagePreference,
   initSettingsStore,
   setCalendarLink,
   setLibraryView,
@@ -164,6 +169,31 @@ export async function saveThemeChoice(mode: ThemeOverride): Promise<void> {
 /** The saved colour theme choice (`'system'` until one is saved). */
 export function savedThemeChoice(): Promise<ThemeOverride> {
   return getThemeOverride();
+}
+
+/** Settings > Language: the saved choice ('system' until one is saved). Pages may not import `auth/`. */
+export async function savedLanguageChoice(): Promise<string> {
+  return normaliseLanguagePreference(await getLanguagePreference());
+}
+
+export async function saveLanguageChoice(value: string): Promise<void> {
+  await setLanguagePreference(normaliseLanguagePreference(value));
+}
+
+/** The device language tag (`th-TH`), '' when the system cannot say. */
+export function deviceLanguageTag(): string {
+  try {
+    return i18n.System.getSystemLanguage();
+  } catch (error) {
+    return '';
+  }
+}
+
+/** Resolves the saved choice against the device language and makes it the language `t()` answers in. */
+export async function applySavedLanguage(): Promise<ResolvedLanguage> {
+  const language: ResolvedLanguage = resolveLanguage(await savedLanguageChoice(), deviceLanguageTag());
+  setCurrentLanguage(language);
+  return language;
 }
 
 /** Settings > Player: the device-local playback defaults (quality, subtitle mode and language). Pages may not

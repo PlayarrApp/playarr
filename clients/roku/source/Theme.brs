@@ -42,6 +42,8 @@ function ThemeTokens(mode as String) as Object
             lineStrong: &h38262147
             ' Brand red (.tv-provider kicker, unwatched dot, player accent): the same in both themes.
             brand: &hCF3157FF
+            ' --brand-strong: the focused detail Play pill, the same in both themes.
+            brandStrong: &hA52745FF
             clientAndroid: &h3DDC84FF
             clientWebOS: &hA50034FF
             clientTizen: &h1428A0FF
@@ -99,6 +101,7 @@ function ThemeTokens(mode as String) as Object
         clientChromecast: &hFF4444FF
         clientXbox: &h107C10FF
         clientFireTV: &hFF9900FF
+        brandStrong: &hA52745FF
         brandInk: &hEAA6B6FF
         cardGlow: &hEAA6B6FF
         profileShadow: &h1F0E14FF

@@ -1,0 +1,376 @@
+name: "Parity captures: Apple iOS"
+
+# iPhone and iPad parity runs on GitHub-hosted macOS runners, one parallel job per device and part (dark screens, light
+# screens, playback cases): no chaining. Each job builds the app, boots a simulator, signs in as the device test account
+# and runs the shared suite (scripts/parity, docs/parity/SUITE.md) through drivers/apple-ios.mjs. Artifacts are named
+# apple-wall-<device>-<run id>-<part> and carry build.json plus the part's results. Touch devices skip the D-pad checks.
+#
+# Safety (public repository): workflow_dispatch only, no pull_request trigger, so forks never get a secret. Each secret is
+# passed to the one step that needs it.
+
+run-name: Parity captures Apple iOS [${{ inputs.devices }}]
+
+on:
+  workflow_dispatch:
+    inputs:
+      devices:
+        description: Comma-separated devices (iphone, ipad)
+        type: string
+        default: iphone,ipad
+      ref:
+        description: Exact 40-character app commit SHA to build
+        type: string
+        required: true
+      fixed_now:
+        description: Pinned capture instant, matching the clock the web references were captured at (whole seconds, UTC)
+        type: string
+        default: "2026-10-15T15:42:29Z" # quoted: unquoted, YAML turns it into a timestamp and the app cannot parse it
+      screens:
+        description: Comma-separated screen ids (default - all 15; leave out player-controls while no playback may run)
+        type: string
+        default: ""
+      focus:
+        description: Also capture focus crops (first, last and top-row card of every rail and grid) into the artifact's focus-<mode> folders
+        type: boolean
+        default: false
+      motion:
+        description: Also run the scripted Home scroll (every rail down and up, each rail to its last card) with 5-frame bursts per step into motion/
+        type: boolean
+        default: false
+      poster:
+        description: Also capture Home and the libraries with Covers and each artwork size into poster-<size> folders
+        type: boolean
+        default: false
+      parts:
+        description: Comma-separated parts (dark, light, downloads; playback is out of parity)
+        type: string
+        default: dark,light
+
+permissions:
+  contents: read
+
+# Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
+env:
+  PARITY_STABLE: "0"
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        env:
+          DEVICES: ${{ inputs.devices }}
+          PARTS: ${{ inputs.parts }}
+        run: |
+          python3 - <<'P' >> "$GITHUB_OUTPUT"
+          import json, os
+          ok = lambda v, allowed: [x for x in v.split(",") if x in allowed]
+          include = [{"device": d, "part": p} for d in ok(os.environ["DEVICES"], ("iphone", "ipad")) for p in ok(os.environ["PARTS"], ("dark", "light", "downloads"))]
+          print("matrix=" + json.dumps({"include": include}))
+          P
+
+  run:
+    name: ${{ matrix.device }} ${{ matrix.part }}
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: macos-26
+    timeout-minutes: 120
+    # Both download jobs share the server's transcode slots: one at a time.
+    concurrency:
+      group: ${{ matrix.part == 'downloads' && 'ios-wall-downloads' || format('ios-wall-{0}-{1}-{2}', matrix.device, matrix.part, github.run_id) }}
+    env:
+      DEVICE: ${{ matrix.device }}
+      PART: ${{ matrix.part }}
+      TRUSTED: ${{ github.workspace }}/trusted
+      SRC: ${{ github.workspace }}/src
+    steps:
+      - name: Work directory
+        run: echo "WORK=$RUNNER_TEMP/wall" >> "$GITHUB_ENV"
+
+      - name: Check out the scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+
+      - name: Check out the ref under test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          path: src
+          persist-credentials: false
+
+      - name: Verify exact app commit
+        env:
+          APP_SHA: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          [[ "$APP_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "::error::ref must be an exact 40-character commit SHA"; exit 1; }
+          actual="$(git -C "$SRC" rev-parse HEAD)"
+          requested="$(printf '%s' "$APP_SHA" | tr '[:upper:]' '[:lower:]')"
+          [[ "$actual" == "$requested" ]] || { echo "::error::checked out app SHA does not match the requested SHA"; exit 1; }
+
+      # The iPad wall build needs an iOS 18 simulator (iPadOS 26 does not rotate); the runner image only has 26.
+      - name: Cache the iOS 18 simulator runtime
+        id: ios18-cache
+        if: matrix.device == 'ipad'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ios18-cache
+          key: ios-sim-runtime-18.5-v2-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install the iOS 18 simulator runtime
+        id: ios18-runtime
+        if: matrix.device == 'ipad'
+        timeout-minutes: 40
+        env:
+          CACHE_HIT: ${{ steps.ios18-cache.outputs.cache-hit == 'true' && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+          cache_dir="$RUNNER_TEMP/ios18-cache"
+          mkdir -p "$cache_dir"
+          xcode_path="$(xcode-select -p)"
+          sudo xcode-select --switch "$xcode_path" >/dev/null 2>&1 || { echo "::error::Could not select the current Xcode path"; exit 1; }
+          xcodebuild -version | awk '/^Xcode / { print "Selected Xcode version: " $2 }'
+          xcodebuild -runFirstLaunch >/dev/null 2>&1 || { echo "::error::Xcode first-launch setup failed"; exit 1; }
+          shopt -s nullglob
+          package_metadata() {
+            python3 - "$1" <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          import stat
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          suffix = ".dmg" if path.name.endswith(".dmg") else ".exportedBundle" if path.name.endswith(".exportedBundle") else "unknown"
+          digest = hashlib.sha256()
+          size = 0
+          try:
+              if stat.S_ISREG(path.stat().st_mode):
+                  kind = "file"
+                  with path.open("rb") as package:
+                      for chunk in iter(lambda: package.read(1024 * 1024), b""):
+                          digest.update(chunk)
+                          size += len(chunk)
+              elif path.is_dir():
+                  kind = "directory"
+                  entries = []
+                  for root, dirs, files in os.walk(path, followlinks=False):
+                      dirs.sort()
+                      files.sort()
+                      root_path = pathlib.Path(root)
+                      entries.extend(root_path / name for name in dirs + files)
+                  for entry in sorted(entries, key=lambda item: item.relative_to(path).as_posix()):
+                      relative = entry.relative_to(path).as_posix().encode()
+                      if entry.is_symlink():
+                          value = os.readlink(entry).encode()
+                          digest.update(b"L" + relative + b"\0" + value + b"\0")
+                      elif entry.is_dir():
+                          digest.update(b"D" + relative + b"\0")
+                      elif stat.S_ISREG(entry.stat().st_mode):
+                          file_digest = hashlib.sha256()
+                          with entry.open("rb") as package:
+                              for chunk in iter(lambda: package.read(1024 * 1024), b""):
+                                  file_digest.update(chunk)
+                                  size += len(chunk)
+                          digest.update(b"F" + relative + b"\0" + file_digest.digest())
+                      else:
+                          raise ValueError
+              else:
+                  raise ValueError
+          except Exception:
+              print("Runtime package diagnostics unavailable; package type or contents are unsupported")
+              sys.exit(1)
+          print(f"suffix={suffix} regular_file={str(kind == 'file').lower()} kind={kind} bytes={size} sha256={digest.hexdigest()}")
+          PY
+          }
+          find_package() {
+            local dir="$1"
+            packages=("$dir"/*.dmg "$dir"/*.exportedBundle)
+            (( ${#packages[@]} == 1 )) || return 1
+          }
+          download_package() {
+            local dir="$1"
+            mkdir -p "$dir"
+            xcodebuild -downloadPlatform iOS -buildVersion 18.5 -exportPath "$dir" >/dev/null 2>&1 || return 1
+            find_package "$dir"
+          }
+          copy_for_import() {
+            local source="$1" dest="$2"
+            mkdir -p "$dest"
+            if [[ -f "$source" ]]; then
+              cp "$source" "$dest/$(basename "$source")" >/dev/null 2>&1 || return 1
+            elif [[ -d "$source" ]]; then
+              ditto "$source" "$dest/$(basename "$source")" >/dev/null 2>&1 || return 1
+            else
+              return 1
+            fi
+            imported=("$dest"/*)
+            (( ${#imported[@]} == 1 ))
+          }
+          import_package() {
+            local source="$1" dest="$2" label="$3"
+            if ! copy_for_import "$source" "$dest"; then
+              echo "::error::Could not prepare the iOS 18.5 runtime package for import"
+              return 1
+            fi
+            local package="${imported[0]}" import_exit=0 source_before source_after source_before_sha source_after_sha
+            source_before="$(package_metadata "$source")" || {
+              echo "::error::Could not inspect the iOS 18.5 runtime package before import"
+              return 1
+            }
+            echo "Runtime package phase=before-import $source_before"
+            xcodebuild -importPlatform "$package" >/dev/null 2>&1 || import_exit=$?
+            echo "Runtime import phase=$label exit=$import_exit"
+            source_after="$(package_metadata "$source")" || {
+              echo "::error::Could not inspect the iOS 18.5 runtime package after import"
+              return 1
+            }
+            echo "Runtime package phase=after-import $source_after"
+            source_before_sha="${source_before##*sha256=}"
+            source_after_sha="${source_after##*sha256=}"
+            if [[ "$source_before_sha" != "$source_after_sha" ]]; then
+              echo "::error::Runtime package changed during import; cache save is blocked"
+              return 1
+            fi
+            (( import_exit == 0 )) || return 1
+          }
+          poll_runtime() {
+            local phase="$1" attempt counts total available18 unavailable status
+            available18=0
+            for attempt in {1..30}; do
+              if counts="$(xcrun simctl list runtimes -j 2>/dev/null | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["runtimes"]
+          ios18 = [runtime for runtime in runtimes if runtime.get("name", "").startswith("iOS 18.")]
+          available = sum(runtime.get("isAvailable") is True for runtime in ios18)
+          print(len(ios18), available, len(ios18) - available)
+          ' 2>/dev/null)"; then
+                read -r total available18 unavailable <<< "$counts"
+                if (( available18 > 0 )); then status=available; else status=missing; fi
+              else
+                total=0; available18=0; unavailable=0; status=unavailable
+              fi
+              echo "iOS 18 availability poll phase=$phase attempt=$attempt/30 status=$status total=$total available=$available18 unavailable=$unavailable"
+              if (( available18 > 0 )); then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
+          find_package "$cache_dir" || {
+            if [[ "$CACHE_HIT" == true ]]; then
+              echo "::error::The restored iOS 18.5 runtime cache does not contain exactly one package"
+              exit 1
+            fi
+            download_package "$cache_dir" || { echo "::error::Could not download exactly one iOS 18.5 runtime package"; exit 1; }
+          }
+          cache_package="${packages[0]}"
+          import_package "$cache_package" "$RUNNER_TEMP/ios18-import-primary" primary || {
+            echo "::error::iOS 18.5 runtime import failed"
+            exit 1
+          }
+          if ! poll_runtime primary; then
+            if [[ "$CACHE_HIT" != true ]]; then
+              echo "::error::No available iOS 18 runtime after bounded import poll"
+              exit 1
+            fi
+            echo "Cache-hit import completed without registering iOS 18.5; attempting one fresh download/import fallback"
+            download_package "$RUNNER_TEMP/ios18-fallback" || { echo "::error::Could not download exactly one fallback iOS 18.5 runtime package"; exit 1; }
+            fallback_package="${packages[0]}"
+            import_package "$fallback_package" "$RUNNER_TEMP/ios18-import-fallback" fallback || {
+              echo "::error::Fresh iOS 18.5 runtime fallback import failed"
+              exit 1
+            }
+            poll_runtime fallback || { echo "::error::No available iOS 18 runtime after bounded fallback poll"; exit 1; }
+          fi
+          echo "registered=true" >> "$GITHUB_OUTPUT"
+
+      - name: Save the registered iOS 18 simulator runtime cache
+        if: matrix.device == 'ipad' && steps.ios18-runtime.outputs.registered == 'true' && steps.ios18-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/ios18-cache
+          key: ios-sim-runtime-18.5-v2-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build the app
+        timeout-minutes: 60
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" build "$DEVICE"
+
+      - name: Start the simulator
+        timeout-minutes: 15
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+        run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
+
+      - name: Parity suite (iOS driver)
+        id: suite
+        timeout-minutes: 60
+        env:
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          PARITY_CAPTURE_DETERMINISTIC: "1"
+          # Accepted iPhone web calendar reference: facts.json captured 2026-10-15T15:42:29.032Z; parser uses whole seconds.
+          PARITY_FIXED_NOW: ${{ inputs.fixed_now }}
+          # --reset-progress: On deck and Resume start from the state the web references were captured in.
+          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          REF: ${{ inputs.ref }}
+          SCREENS: ${{ inputs.screens }}
+          FOCUS: ${{ inputs.focus }}
+          POSTER: ${{ inputs.poster }}
+          MOTION: ${{ inputs.motion }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/capture"; mkdir -p "$out"
+          printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","runner":"github-hosted"}\n' \
+            "$REF" "$(git -C "$SRC" rev-parse HEAD)" "$(date -u +%FT%TZ)" > "$out/build.json"
+          cd "$TRUSTED/scripts/parity" && npm ci --no-audit --no-fund
+          case $PART in
+            downloads) only=downloads; themes=dark ;;
+            *) only=screens; themes=$PART ;;
+          esac
+          # Playback is scored against the suite's own expectation (every case plays); touch devices have no D-pad values.
+          echo '{"suite":1,"dpad":{},"playback":{}}' > "$RUNNER_TEMP/expected.json"
+          node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out" --via route --only "$only" --reset-progress --themes "$themes" --expected "$RUNNER_TEMP/expected.json" ${SCREENS:+--screens "$SCREENS"}
+          if [[ "$MOTION" == true && $only == screens ]]; then
+            PARITY_MOTION=1 node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/motion" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home
+          fi
+          if [[ "$POSTER" == true && $only == screens ]]; then
+            for size in small medium large; do
+              PARITY_COVERS=1 PARITY_SIZE=$size node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/poster-$size" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music
+            done
+          fi
+          if [[ "$FOCUS" == true && $only == screens ]]; then
+            for mode in first last top; do
+              PARITY_FOCUS=$mode node suite-run.mjs --driver ./drivers/apple-ios.mjs --out "$out/focus-$mode" --via route --only screens --themes "$themes" --expected "$RUNNER_TEMP/expected.json" --screens home,movies,series,music,film-detail,series-detail
+            done
+          fi
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apple-wall-${{ matrix.device }}-${{ github.run_id }}-${{ matrix.part }}
+          path: ${{ runner.temp }}/capture
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Delete the simulator
+        if: always()
+        run: |
+          [[ -f $WORK/state.env ]] && . "$WORK/state.env" || true
+          [[ -z ${UDID:-} ]] || xcrun simctl delete "$UDID" || true

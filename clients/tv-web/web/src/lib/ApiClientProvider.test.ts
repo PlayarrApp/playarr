@@ -5,6 +5,9 @@ import {
   clearSignedInDeviceState,
   createManagedApiClient,
   profileDisplayNameFor,
+  readStoredProfileSessions,
+  signOutStoredProfiles,
+  writeStoredProfileSessions,
   resolveInitialApiBaseUrl,
   sameStoredProfileSessions,
   selectRestorableProfileSession,
@@ -457,5 +460,50 @@ describe("profileDisplayNameFor", () => {
     expect(profileDisplayNameFor(profiles, "u2")).toBeUndefined();
     expect(profileDisplayNameFor(profiles, "u3")).toBeUndefined();
     expect(profileDisplayNameFor(profiles, "nobody")).toBeUndefined();
+  });
+});
+
+describe("signed-in hint follows an active session, not saved profiles", () => {
+  const saved = (key: string): StoredProfileSession => ({
+    profileKey: key,
+    apiBaseUrl: "http://server.example",
+    userId: `user-${key}`,
+    name: key,
+    deviceId: `device-${key}`,
+    session: { accessToken: "a", refreshToken: "r", tokenType: "Bearer", expiresAt: 100 },
+  });
+  const doc = { cookie: "" };
+
+  beforeEach(() => {
+    doc.cookie = "";
+    vi.stubGlobal("document", doc);
+    vi.stubGlobal("window", { localStorage: createMemoryLocalStorage(), location: { protocol: "http:" } });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("writing and reading saved profiles (boot, cross-tab) never sets the hint", () => {
+    writeStoredProfileSessions([saved("a"), saved("b")]);
+    expect(readStoredProfileSessions("http://server.example")).toHaveLength(2);
+    expect(doc.cookie).toBe("");
+  });
+
+  it("sign-out of the active profile clears the hint while other profiles stay saved", () => {
+    writeStoredProfileSessions([saved("a"), saved("b")]);
+    doc.cookie = "playarr_signed_in=1";
+    const next = signOutStoredProfiles((p) => p.profileKey === "a", true, [], "http://server.example");
+    expect(next.map((p) => p.profileKey)).toEqual(["b"]);
+    expect(doc.cookie).toContain("Max-Age=0");
+  });
+
+  it("sign-out with no active profile (auth failed) still clears the hint", () => {
+    writeStoredProfileSessions([saved("a")]);
+    signOutStoredProfiles(undefined, true, [saved("a")], "http://server.example");
+    expect(doc.cookie).toContain("Max-Age=0");
+  });
+
+  it("removing a non-active saved profile leaves the hint alone", () => {
+    writeStoredProfileSessions([saved("a"), saved("b")]);
+    signOutStoredProfiles((p) => p.profileKey === "b", false, [], "http://server.example");
+    expect(doc.cookie).toBe("");
   });
 });

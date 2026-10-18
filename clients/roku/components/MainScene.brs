@@ -143,7 +143,10 @@ sub init()
     m.searchGroup = m.top.findNode("searchGroup")
     m.searchGrid = m.top.findNode("searchGrid")
     m.searchTitle = m.top.findNode("searchTitle")
+    searchChromeInit()
     m.searchFieldLabel = m.top.findNode("searchFieldLabel")
+    ThemeSetRole(m.top.findNode("searchFieldBg"), "surface")
+    ThemeSetRole(m.top.findNode("searchFieldRing"), "focusRing")
     m.searchEmptyState = m.top.findNode("searchEmptyState")
     m.searchEmptyHint = m.top.findNode("searchEmptyHint")
     m.searchHint = m.top.findNode("searchHint")
@@ -249,8 +252,10 @@ sub init()
     m.settingsActionList.ObserveField("itemSelected", "onSettingsActionSelected")
     m.library.ObserveField("rowItemSelected", "onLibraryItemSelected")
     m.library.ObserveField("rowItemFocused", "onLibraryItemFocused")
+    m.top.ObserveField("screenState", "onScreenStateChanged")
     m.browseGrid.ObserveField("itemSelected", "onBrowseItemSelected")
     m.browseGrid.ObserveField("itemFocused", "onBrowseItemFocused")
+    m.browseGrid.ObserveField("alphabetHandoffRequest", "onBrowseGridAlphabetHandoff")
     m.searchGrid.ObserveField("itemSelected", "onSearchItemSelected")
     m.searchGrid.ObserveField("itemFocused", "onSearchItemFocused")
     m.playlistsGrid.ObserveField("itemSelected", "onPlaylistDirectoryItemSelected")
@@ -967,6 +972,7 @@ sub handleApiFailure(action as String, result as Object)
         showSearchEmptyState(true)
         showOnly("search")
         m.top.screenState = "search"
+        renderNavDockFocus()
         m.searchGrid.SetFocus(true)
         return
     end if
@@ -1572,6 +1578,28 @@ sub onDeepLink()
     m.pendingDeepLink = m.top.deepLink
 end sub
 
+' Parity route /movies/<id> or /series/<id> (the web paths): the title's detail page once the current profile is known.
+sub onDeepRoute()
+    m.pendingRoute = m.top.deepRoute
+end sub
+
+sub openDeepRoute()
+    route = m.pendingRoute
+    m.pendingRoute = ""
+    parts = route.Split("/")
+    if parts.Count() <> 3 or parts[0] <> "" or parts[2] = "" then return
+    kind = ""
+    if parts[1] = "movies" then kind = "movie"
+    if parts[1] = "series" then kind = "series"
+    if kind = "" then return
+    name = "Viewer"
+    for each profile in m.profiles
+        if profile.is_current and profile.display_name <> invalid then name = profile.display_name
+    end for
+    enterHome(name)
+    openWorkDetail({ id: parts[2], title: "", kind: kind }, "route")
+end sub
+
 sub playDeepLink()
     id = m.pendingDeepLink
     m.pendingDeepLink = ""
@@ -1589,6 +1617,10 @@ sub showProfiles(data as Dynamic)
     m.profiles = data
     if m.pendingDeepLink <> invalid and m.pendingDeepLink <> "" and data.Count() > 0
         playDeepLink()
+        return
+    end if
+    if m.pendingRoute <> invalid and m.pendingRoute <> "" and data.Count() > 0
+        openDeepRoute()
         return
     end if
     rememberCurrentProfileId(data)
@@ -2436,6 +2468,7 @@ sub openBrowse(kind as String, label as String)
     m.artActiveScope = ""
     m.browseArtTelemetryArmed = false
     m.browseKind = kind
+    m.browseGrid.alphabetHandoffEnabled = kind = "movie"
     parityEmit("browse", kind)
     m.browseLabel = label
     m.browseItems = []
@@ -2463,6 +2496,12 @@ sub openBrowse(kind as String, label as String)
     m.top.screenState = "browse"
     m.browseGrid.SetFocus(true)
     loadBrowseCatalog(false)
+end sub
+
+sub onBrowseGridAlphabetHandoff(event as Object)
+    if m.top.screenState <> "browse" or m.browseKind <> "movie" then return
+    if m.browseAlphabetMode or m.browseFiltersButtonFocused then return
+    enterBrowseAlphabet(true)
 end sub
 
 sub loadBrowseCatalog(append as Boolean)
@@ -2511,7 +2550,7 @@ end sub
 
 ' Library heading (web .page-header h1: 33.6 px, weight 580, -0.045em tracking).
 sub setBrowseTitle(text as String)
-    m.browseTitle.spec = { text: text, size: 34, weight: 600, tracking: -1.512, role: "ink" }
+    m.browseTitle.spec = PageTitleSpec(text)
 end sub
 
 sub rebuildBrowseContent()
@@ -2523,9 +2562,10 @@ sub rebuildBrowseContent()
     end if
     m.artActiveGeneration = 0
     m.artActiveScope = ""
-    if m.artTelemetryEnabled and (m.browseKind = "movie" or m.browseKind = "series")
+    if m.artTelemetryEnabled and (m.browseKind = "movie" or m.browseKind = "series" or m.browseKind = "artist")
         m.artActiveScope = "movies"
         if m.browseKind = "series" then m.artActiveScope = "series"
+        if m.browseKind = "artist" then m.artActiveScope = "music"
         m.artActiveHasArt = worksHaveCardArt(m.browseItems)
         m.artActiveGeneration = beginArtGeneration(m.artActiveScope)
     end if
@@ -2625,6 +2665,18 @@ function alphabetLetterList() as Object
     return letters
 end function
 
+function browseAlphabetIndexForItem(item as Object) as Integer
+    if item = invalid then return 0
+    sortKey = ""
+    if item.sort_title <> invalid then sortKey = item.sort_title
+    if sortKey = "" and item.title <> invalid then sortKey = item.title
+    sortKey = sortKey.Trim()
+    if sortKey.Len() = 0 then return 0
+    first = UCase(sortKey.Left(1))
+    if first < "A" or first > "Z" then return 0
+    return Asc(first) - 64
+end function
+
 sub buildAlphabetStrip()
     letters = alphabetLetterList()
     m.alphabetLabels = []
@@ -2644,10 +2696,10 @@ sub buildAlphabetStrip()
     end for
 end sub
 
-sub enterBrowseAlphabet()
+sub enterBrowseAlphabet(preserveCurrent as Boolean)
     m.browseGrid.SetFocus(false)
     m.browseAlphabetMode = true
-    m.browseAlphabetIndex = 0
+    if not preserveCurrent then m.browseAlphabetIndex = 0
     renderBrowseAlphabetFocus()
     m.top.SetFocus(true)
 end sub
@@ -2851,7 +2903,7 @@ sub updateBrowsePreview(work as Object)
     if m.browseKeyArt <> invalid
         uri = heroArtworkUrl(work)
         m.browseKeyArtPendingUri = uri
-        if m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
+        if m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series" or m.artActiveScope = "music") and m.artActiveGeneration > 0
             m.browseArtTelemetryVersion += 1
             m.browseArtTelemetryArmed = false
             previewSlot = m.artActiveScope + "-preview"
@@ -2892,7 +2944,7 @@ sub onBrowseKeyArtTimer()
     m.browseKeyArt.SetHttpAgent(agent)
     m.browseKeyArt.loadWidth = 1038
     m.browseKeyArt.loadHeight = 1191
-    m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0
+    m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series" or m.artActiveScope = "music") and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
     if m.browseArtTelemetryArmed
         emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
@@ -2995,7 +3047,7 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
                 item.subtitleOverride = line
             end if
         end if
-        if grid.id = "browseGrid" and m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series") and m.artActiveGeneration > 0 and m.browseView = "screen"
+        if grid.id = "browseGrid" and m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series" or m.artActiveScope = "music") and m.artActiveGeneration > 0 and m.browseView = "screen"
             columns = m.browseGrid.numColumns
             if columns < 1 then columns = 3
             column = artIndex mod columns
@@ -3026,6 +3078,19 @@ sub onBrowseItemFocused(event as Object)
         parityEmit("focus", "open " + m.browseItems[itemIndex].title)
     end if
     browseFadesUpdate(itemIndex)
+    if m.browseKind = "movie" and itemIndex >= 0 and itemIndex < m.browseItems.Count()
+        columns = m.browseGrid.numColumns
+        visibleRows = m.browseGrid.numRows
+        if columns > 0
+            if visibleRows < 1 then visibleRows = 1
+            focusedRow = Int(itemIndex / columns)
+            trackingRow = focusedRow - visibleRows + 1
+            if trackingRow < 0 then trackingRow = 0
+            trackingIndex = trackingRow * columns
+            if trackingIndex >= m.browseItems.Count() then trackingIndex = m.browseItems.Count() - 1
+            m.browseAlphabetIndex = browseAlphabetIndexForItem(m.browseItems[trackingIndex])
+        end if
+    end if
     ' Web keeps the focused row 70 px clear of the bottom edge once the grid scrolls (its rows then sit 56 px higher).
     if m.browseView = "screen"
         if Int(itemIndex / m.browseGrid.numColumns) >= 4
@@ -3062,20 +3127,70 @@ end sub
 ' other partial-cache-node concern elsewhere in this client.
 ' ---------------------------------------------------------------------------
 
+' Web /search page header: back circle, title, result count (after a divider or under the title) and the pill field with its
+' magnifier and Clear. Built once; the XML ring and fill (searchFieldBg, searchFieldRing) are the pill itself.
+sub searchChromeInit()
+    holder = m.searchGroup
+    m.searchTitle.visible = false
+    pgBackButton(holder, 153.6)
+    m.searchHeaderTitle = CreateObject("roSGNode", "TrackedText")
+    m.searchHeaderTitle.translation = [226.6, 56.2]
+    m.searchHeaderTitle.spec = PageTitleSpec("Search")
+    holder.AppendChild(m.searchHeaderTitle)
+    m.searchHeaderDivider = pgRect(holder, 348, 73, 1, 16, "line")
+    m.searchHeaderRule = pgRect(holder, 226.6, 112, 1, 1, "line")
+    m.searchHeaderCount = CreateObject("roSGNode", "TrackedText")
+    holder.AppendChild(m.searchHeaderCount)
+    pgIcon(holder, 181.6, 199, 22, "nav-search.png", "inkSoft")
+    m.searchClearLabel = CreateObject("roSGNode", "Label")
+    m.searchClearLabel.translation = [655, 201]
+    m.searchClearLabel.width = 70
+    m.searchClearLabel.height = 30
+    m.searchClearLabel.horizAlign = "right"
+    m.searchClearLabel.text = "Clear"
+    m.searchClearLabel.font = PlayarrMakeFont(700, 13)
+    m.searchClearLabel.visible = false
+    ThemeSetRole(m.searchClearLabel, "inkSoft")
+    holder.AppendChild(m.searchClearLabel)
+    setSearchHeader("")
+end sub
+
+sub setSearchHeader(count as String)
+    if m.searchHeaderCount = invalid then return
+    m.searchHeaderCount.visible = count <> ""
+    if count = ""
+        m.searchHeaderDivider.visible = false
+        m.searchHeaderRule.visible = false
+        return
+    end if
+    layoutHeaderSub(m.searchHeaderTitle.textWidth, m.searchHeaderCount, m.searchHeaderDivider, m.searchHeaderRule, count)
+end sub
+
+sub setSearchFieldText(query as String)
+    if m.searchFieldLabel <> invalid
+        if query = ""
+            m.searchFieldLabel.text = "Search your libraries and playlists"
+            m.searchFieldLabel.color = ThemeColor("inkMuted")
+        else
+            m.searchFieldLabel.text = query
+            m.searchFieldLabel.color = ThemeColor("ink")
+        end if
+    end if
+    if m.searchClearLabel <> invalid then m.searchClearLabel.visible = query <> ""
+end sub
+
 ' Web /search empty shell first (Start typing to search). OK opens keyboard.
 sub openSearch()
     m.searchQuery = ""
     m.searchItems = []
     m.searchDisplayItems = []
-    m.searchTitle.text = "Search"
-    if m.searchFieldLabel <> invalid
-        m.searchFieldLabel.text = "Search your libraries and playlists"
-        m.searchFieldLabel.color = ThemeColor("inkMuted")
-    end if
+    setSearchHeader("")
+    setSearchFieldText("")
     showSearchEmptyState(true)
     buildGridContent(m.searchGrid, m.searchDisplayItems, 1.5)
     showOnly("search")
     m.top.screenState = "search"
+    renderNavDockFocus()
     m.top.SetFocus(true)
 end sub
 
@@ -3125,15 +3240,13 @@ end sub
 sub performSearch(query as String)
     m.searchItems = []
     m.searchDisplayItems = []
-    m.searchTitle.text = "Search"
-    if m.searchFieldLabel <> invalid
-        m.searchFieldLabel.text = query
-        m.searchFieldLabel.color = ThemeColor("ink")
-    end if
+    setSearchHeader("SEARCHING")
+    setSearchFieldText(query)
     showSearchEmptyState(false)
     buildGridContent(m.searchGrid, m.searchDisplayItems, 1.5)
     showOnly("search")
     m.top.screenState = "search"
+    renderNavDockFocus()
     m.searchGrid.SetFocus(true)
     config = AppConfig()
     path = "/api/v1/catalog/search?q=" + UrlEncode(query) + "&limit=" + config.catalogPageSize.ToStr()
@@ -3143,7 +3256,7 @@ end sub
 sub acceptSearchResults(data as Object)
     if data = invalid or data.items = invalid
         ' Stay in Search shell (no fullscreen status wall).
-        m.searchTitle.text = "Search"
+        setSearchHeader("")
         showSearchEmptyState(true)
         showOnly("search")
         m.top.screenState = "search"
@@ -3227,9 +3340,11 @@ sub applySearchFilter()
     end if
     buildGridContent(m.searchGrid, m.searchDisplayItems)
     if m.searchDisplayItems.Count() = 0
-        m.searchTitle.text = "Search  •  “" + m.searchQuery + "”  •  no results"
+        setSearchHeader("NO RESULTS")
     else
-        m.searchTitle.text = "Search  •  “" + m.searchQuery + "”  •  " + m.searchDisplayItems.Count().ToStr()
+        resultWord = "RESULTS"
+        if m.searchDisplayItems.Count() = 1 then resultWord = "RESULT"
+        setSearchHeader(formatCountWithCommas(m.searchDisplayItems.Count()) + " " + resultWord)
         updateSearchPreview(m.searchDisplayItems[0])
     end if
 end sub
@@ -3726,6 +3841,7 @@ sub openWorkDetail(work as Object, originState as String)
     m.detailOverview.text = ""
     showOnly("detail")
     m.top.screenState = "detail"
+    renderNavDockFocus()
     sendApi("detail", "GET", "/api/v1/catalog/" + UrlEncode(work.id), invalid, true)
 end sub
 
@@ -4828,12 +4944,24 @@ function moveNavDockFocus(delta as Integer) as Boolean
     return true
 end function
 
+' The dock marks the open screen's slot; screens set screenState after showOnly, so re-draw when it changes.
+sub onScreenStateChanged()
+    if m.navLabels <> invalid and m.navLabels.Count() > 0 then renderNavDockFocus()
+end sub
+
 ' Which dock slot matches the current screen (web .app-nav-link.is-active).
 function activeNavDockIndex() as Integer
     state = m.top.screenState
     if state = "search" then return 0
     if state = "home" then return 1
     if state = "playlists" then return 6
+    ' Web lights the library of the open title (Movies for a film, Series for a show, Music for an artist).
+    if state = "detail" and m.selectedWork <> invalid and m.selectedWork.kind <> invalid
+        if m.selectedWork.kind = "series" then return 2
+        if m.selectedWork.kind = "movie" then return 3
+        if m.selectedWork.kind = "site" then return 4
+        if m.selectedWork.kind = "artist" then return 5
+    end if
     if state = "page"
         if m.pageKind = "watchlist" then return 7
         if m.pageKind = "requests" then return 8
@@ -5787,7 +5915,7 @@ sub updateSeriesEpisodeHeader()
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 11, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -5895,6 +6023,9 @@ sub addEpisodeCardFields(item as Object, activeFactor as Float)
     item.activeRailFactor = activeFactor
     item.AddField("cardScale", "float", false)
     item.cardScale = 268.0 / 220.0
+    ' Web episode cards focus like Home cards (lift 6, art 1.025), not like library grid cards.
+    item.AddField("homeCardFocusStyle", "boolean", false)
+    item.homeCardFocusStyle = true
     ' Reserve the lift, ring and glow overflow inside the row's clip (8 px sides, 15 px top), as Home does.
     item.AddField("focusRingOutsideArt", "boolean", false)
     item.focusRingOutsideArt = true
@@ -6673,7 +6804,7 @@ end sub
 
 function beginArtGeneration(scope as String) as Integer
     if not m.artTelemetryEnabled then return 0
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return 0
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return 0
     m.artGeneration += 1
     m.artActiveGeneration = m.artGeneration
     m.artActiveScope = scope
@@ -6683,7 +6814,7 @@ end function
 
 sub announceArtGeneration(generation as Integer, scope as String, hasArt as Boolean)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return
     hasArtText = "0"
     if hasArt then hasArtText = "1"
     parityEmit("art", "begin|" + generation.ToStr() + "|" + scope + "|" + hasArtText + "|" + m.artExpectedSlots.Count().ToStr())
@@ -6691,13 +6822,13 @@ end sub
 
 sub finishArtGeneration(generation as Integer, scope as String)
     if not m.artTelemetryEnabled or generation < 1 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return
     parityEmit("art", "finish|" + generation.ToStr() + "|" + scope)
 end sub
 
 sub emitArtSlot(generation as Integer, scope as String, slot as String, hasSource as Boolean, x as Float, y as Float, width as Float, height as Float, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return
     if not artRectVisible(x, y, width, height) then return
     hasSourceText = "0"
     if hasSource then hasSourceText = "1"
@@ -6711,14 +6842,14 @@ end sub
 
 sub emitArtStatus(generation as Integer, scope as String, slot as String, status as String, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if scope <> "home" and scope <> "movies" and scope <> "series" then return
+    if scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music" and scope <> "calendar" then return
     if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
     parityEmit("art", "status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr())
 end sub
 
 sub emitArtOptionalEmpty(generation as Integer, scope as String, slot as String, version as Integer)
     if not m.artTelemetryEnabled or generation < 1 or version < 0 then return
-    if (scope <> "movies" and scope <> "series") or slot <> (scope + "-preview") then return
+    if (scope <> "movies" and scope <> "series" and scope <> "music") or slot <> (scope + "-preview") then return
     remaining = []
     for each expectedSlot in m.artExpectedSlots
         if expectedSlot <> slot then remaining.Push(expectedSlot)
@@ -6793,8 +6924,8 @@ sub showOnly(name as String)
     m.settingsGroup.visible = name = "settings"
     m.pageGroup.visible = name = "page"
     ' Web .app-clock is at the same place on every screen.
-    m.clockTime.translation = [474, 68]
-    m.clockDate.translation = [529, 73]
+    m.clockTime.translation = [481, 68]
+    m.clockDate.translation = [535, 73]
     m.libraryGroup.visible = name = "library"
     m.homeGroup.visible = name = "home"
     m.browseGroup.visible = name = "browse"
@@ -6820,6 +6951,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         if key = "OK" then selectWorkReleased()
         return false
     end if
+    if m.calFiltersOpen = true then return calFiltersOnKey(key)
     if m.drawerOpen = true then return drawerOnKey(key)
     if m.filtersOpen = true then return filtersOnKey(key)
     state = m.top.screenState
@@ -6876,6 +7008,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.browseGrid.SetFocus(true)
             idx = m.browseGrid.itemFocused
             if idx <> invalid and idx >= 0 and idx < m.browseItems.Count() then parityEmit("focus", "open " + m.browseItems[idx].title)
+        else if m.detailOrigin = "route"
+            ' Opened by a web route with no history: Back is the library of its kind, as in web.
+            if m.selectedWork.kind = "series" then openBrowse("series", "Series") else openBrowse("movie", "Movies")
         else if m.detailOrigin = "search"
             showOnly("search")
             m.top.screenState = "search"
@@ -6926,16 +7061,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         selectBrowseAlphabetLetter()
         return true
     else if state = "browse" and not m.browseAlphabetMode and not m.browseFiltersButtonFocused and key = "options"
-        ' Right was the first choice here (spatially matches the real
-        ' alphabet strip's fixed right-edge position), but confirmed live
-        ' via a debug-console key trace that MarkupGrid swallows Right
-        ' unconditionally, regardless of column, it never once reached
-        ' this far. The "*"/Info remote button (BrightScript key string
-        ' "options") isn't claimed by MarkupGrid at all, so it's used as
-        ' this screen's secondary-action entry point instead, the same
-        ' role this codebase's pairing screen already uses it for
-        ' ("Press * to enter a server address").
-        enterBrowseAlphabet()
+        ' The "*"/Info remote button (BrightScript key string "options")
+        ' remains an explicit alphabet entry route that resets to #; the
+        ' Movies grid boundary handoff preserves the active alphabet entry.
+        enterBrowseAlphabet(false)
         return true
     else if state = "browse" and key = "back"
         showOnly("home")
@@ -6959,6 +7088,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         openSearchDialog()
         return true
     else if state = "search" and key = "up"
+    else if state = "search" and key = "options" and m.searchQuery <> invalid and m.searchQuery <> ""
+        ' The * key is the remote's Clear: back to the empty shell, like web's Clear button.
+        openSearch()
+        return true
         enterSearchFilters()
         return true
     else if state = "search" and key = "back"
@@ -7318,9 +7451,7 @@ end sub
 
 sub detailChromeInit()
     holder = m.top.findNode("detailGroup")
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "surface", 179)
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "line", -1, true)
-    pgIcon(holder, 170, 73, 17, "arrow-left.png", "inkSoft")
+    pgBackButton(holder, 153.6)
     m.detailHeaderTitle = CreateObject("roSGNode", "TrackedText")
     m.detailHeaderTitle.translation = [226.6, 56.2]
     holder.AppendChild(m.detailHeaderTitle)
@@ -7349,7 +7480,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if work.kind = "series" then heading = "Series"
     if work.kind = "site" then heading = "Sites"
     if work.kind = "artist" then heading = "Music"
-    m.detailHeaderTitle.spec = { text: heading, size: 34, weight: 600, tracking: -1.512, role: "ink" }
+    m.detailHeaderTitle.spec = PageTitleSpec(heading)
         layoutHeaderSub(m.detailHeaderTitle.textWidth, m.detailHeaderChip, m.detailHeaderDivider, m.detailHeaderRule, work.title)
     ' Kicker: the first genre, like the library preview.
     kicker = UCase(work.kind)
@@ -7382,7 +7513,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 11, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7392,7 +7523,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     overview = JsonString(work.overview)
     if overview = "" then overview = "No description is available."
     m.detailSynopsis.translation = [153.6, metaY + 37.5]
-    m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 3 }
+    m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
     m.detailActionsTop = metaY + 37.5 + 20.33 * m.detailSynopsis.lineCount + 58
 end sub
 
