@@ -102,7 +102,7 @@ export struct Drawer {
               .border({ width: tv(3), color: toResourceColor(activeColors().ink) })
               .hitTestBehavior(HitTestMode.None)
           }
-          if (!isTvMetrics()) {
+          if (!isTvMetrics() && this.closeRing) {
             // web opens the drawer with its close button focused: on the phone the ring is drawn from the state (the Previewer reports no focus)
             Column()
               .width(TOUCH_CLOSE_SIZE + TOUCH_CLOSE_RING_OUTSET * 2)
