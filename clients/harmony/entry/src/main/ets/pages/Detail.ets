@@ -2593,9 +2593,9 @@ struct Detail {
               .fontColor(brandInk())
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
-              .fontSize(36)
+              .fontSize(this.detail !== null && this.detail.work.kind === 'series' ? 36 : 33.5) // measured against the static refs: a film title is smaller than a series one
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-1.6)
+              .letterSpacing(this.detail !== null && this.detail.work.kind === 'series' ? -1.6 : -1.5)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 250 vp (measured on the static fixture: "Golden / Cathedral 1")
