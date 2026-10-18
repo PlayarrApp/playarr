@@ -4633,8 +4633,13 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                 if (isTelevision && sortMode == "title") {
                     // Web `.tv-alphabet`: 56 dp wide from y 270 to the bottom (8 dp top, 64.8 dp bottom padding), 27 buttons of
                     // 44 x 44 (WCAG 2.5.5 targets) in a column that scrolls; the 24 dp circle marks the active letter.
+                    // Tablet (stage-scaled canvas): the web tablet keeps 44 css px buttons from y 222 and 14.5 px from the edge, unscaled.
+                    val alphaTablet = LocalStageScale.current != 1f
+                    val alphaCss = if (alphaTablet) 1f / LocalStageScale.current else 1f
                     Column(
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 278.dp, end = 18.5.dp, bottom = 64.8.dp).width(44.dp).fillMaxHeight()
+                        modifier = Modifier.align(Alignment.TopEnd)
+                            .padding(top = if (alphaTablet) 222.dp * alphaCss else 278.dp, end = if (alphaTablet) 14.5.dp * alphaCss else 18.5.dp, bottom = 64.8.dp)
+                            .width(44.dp * alphaCss).fillMaxHeight()
                             .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
@@ -4643,10 +4648,10 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             val shownLetter = if (activeLetter == "#") selected.sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
-                            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp * alphaCss), contentAlignment = Alignment.Center) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(24.dp * alphaCss)
                                     .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
                                     .webFocusRing(letterFocused, offset = 1.dp)
                                     .onFocusChanged { letterFocused = it.isFocused }
