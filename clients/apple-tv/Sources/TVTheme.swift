@@ -1152,8 +1152,13 @@ struct TVNavItemFocusFill: ViewModifier {
 struct TVShellHeader: View {
     /// Frozen clock for parity suite (matches Android mask strategy).
     var frozenClock: Bool = false
-    /// Web `.app-clock`: x 476.1 on every TV page (live web, 2026-10-11).
+    /// Web `.app-clock`: x 476.1 on every TV page (live web, 2026-10-11). The web right-aligns it (ink 483 to 632 on the
+    /// 2026-10-18 refs); the Mac's font metrics put the same text 4.5 pt left, so the Mac starts 4.5 pt further right.
+    #if os(macOS)
+    var clockLeading: CGFloat = 480.6
+    #else
     var clockLeading: CGFloat = 476.1
+    #endif
 
     var body: some View {
         ZStack(alignment: .topLeading) {
