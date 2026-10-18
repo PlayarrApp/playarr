@@ -16,6 +16,7 @@ MouseArea {
     property bool primary: false
     property color fill: "transparent"   // a solid fill other than the primary one (transparent = the standard look)
     property color fillInk: Tokens.ink
+    property color textInk: Tokens.ink   // label colour of the standard look (calendar toolbar pills are softer on web)
     property bool outlineOnly: false
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
@@ -78,7 +79,7 @@ MouseArea {
             maximumLineCount: 2
             font.family: root.labelFamily
             font.pixelSize: root.fontSize
-            color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.ink
+            color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
         }
     }
     Label {
@@ -92,6 +93,6 @@ MouseArea {
         maximumLineCount: 2
         horizontalAlignment: Text.AlignHCenter
         font.weight: Font.DemiBold
-        color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.ink
+        color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
     }
 }

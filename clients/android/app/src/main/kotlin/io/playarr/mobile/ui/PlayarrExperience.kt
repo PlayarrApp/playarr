@@ -1325,7 +1325,7 @@ internal val experienceDestinations = listOf(
     ExperienceDestination("folders", PlayarrString.NavFolders, PlayarrWebIcons.Folders, requiresFolders = true),
     ExperienceDestination("playlists", PlayarrString.NavPlaylists, PlayarrWebIcons.Playlists),
     ExperienceDestination("watchlist", PlayarrString.NavWatchlist, PlayarrWebIcons.Watchlist),
-    ExperienceDestination("requests", PlayarrString.NavRequests, PlayarrWebIcons.Watchlist),
+    ExperienceDestination("requests", PlayarrString.NavRequests, PlayarrWebIcons.Requests),
     ExperienceDestination("calendar", PlayarrString.NavCalendar, PlayarrWebIcons.Calendar),
 )
 
@@ -4633,8 +4633,13 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                 if (isTelevision && sortMode == "title") {
                     // Web `.tv-alphabet`: 56 dp wide from y 270 to the bottom (8 dp top, 64.8 dp bottom padding), 27 buttons of
                     // 44 x 44 (WCAG 2.5.5 targets) in a column that scrolls; the 24 dp circle marks the active letter.
+                    // Tablet (stage-scaled canvas): the web tablet keeps 44 css px buttons from y 222 and 14.5 px from the edge, unscaled.
+                    val alphaTablet = LocalStageScale.current != 1f
+                    val alphaCss = if (alphaTablet) 1f / LocalStageScale.current else 1f
                     Column(
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 278.dp, end = 18.5.dp, bottom = 64.8.dp).width(44.dp).fillMaxHeight()
+                        modifier = Modifier.align(Alignment.TopEnd)
+                            .padding(top = if (alphaTablet) 222.dp * alphaCss else 278.dp, end = if (alphaTablet) 14.5.dp * alphaCss else 18.5.dp, bottom = 64.8.dp)
+                            .width(44.dp * alphaCss).fillMaxHeight()
                             .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
@@ -4643,10 +4648,10 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             val shownLetter = if (activeLetter == "#") selected.sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
-                            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp * alphaCss), contentAlignment = Alignment.Center) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(24.dp * alphaCss)
                                     .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
                                     .webFocusRing(letterFocused, offset = 1.dp)
                                     .onFocusChanged { letterFocused = it.isFocused }
@@ -7766,7 +7771,7 @@ internal fun MovieDetailBrowser(
                     }
                 }
             }
-            if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast)
+            if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast, television = true)
             if (similarWorks.isNotEmpty()) {
                 WebMediaTrack(
                     title = playarrString(PlayarrString.DetailSimilarTitles),
@@ -7886,7 +7891,7 @@ private fun WebMediaTrack(
             state = state ?: androidx.compose.foundation.lazy.rememberLazyListState(),
             // Measured against web at 1280 x 800: 10 css px more under the heading; the viewport reaches left so a focused first tile is not clipped.
             modifier = Modifier.padding(top = 17.2.dp + 15.dp * tabletTrack).extendStart(40.dp),
-            contentPadding = PaddingValues(start = 44.dp, top = 18.dp, end = tabletTrackEnd(24.dp)),
+            contentPadding = PaddingValues(start = 40.dp, top = 18.dp, end = tabletTrackEnd(24.dp)),
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             content = cards,
         )
@@ -7943,48 +7948,62 @@ private fun WebEpisodeCard(
 }
 
 @Composable
-private fun DetailCreditsRail(credits: List<CreditResponse>) {
+private fun DetailCreditsRail(credits: List<CreditResponse>, television: Boolean = false) {
+    if (television) {
+        // Web `.tv-cast-track`: 152 dp cards 25 dp apart under the track heading, 103 dp headshots, 36 dp further below the chapters track.
+        Box(Modifier.padding(top = 36.dp)) {
+            WebMediaTrack(playarrString(PlayarrString.DetailCast), playarrString(PlayarrString.DetailCastCount, "count" to credits.size)) {
+                items(credits, key = CreditResponse::id) { credit -> DetailCreditCard(credit, 152.dp, 103.dp) }
+            }
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(playarrString(PlayarrString.DetailCast), color = WebInk, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
             items(credits, key = CreditResponse::id) { credit ->
-                Column(Modifier.width(104.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        Modifier
-                            .size(78.dp)
-                            .clip(CircleShape)
-                            .background(WebSurfaceSoft),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            credit.person.name.firstOrNull()?.uppercase() ?: "?",
-                            color = WebInkMuted,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        credit.person.headshotUrl?.let { url ->
-                            AsyncImage(
-                                model = url,
-                                contentDescription = credit.person.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                    Text(
-                        credit.person.name,
-                        color = WebInk,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 7.dp),
-                    )
-                    credit.character?.let {
-                        Text(it, color = WebInkMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
+                DetailCreditCard(credit, 104.dp, 78.dp)
             }
+        }
+    }
+}
+
+@Composable
+private fun DetailCreditCard(credit: CreditResponse, width: androidx.compose.ui.unit.Dp, avatar: androidx.compose.ui.unit.Dp) {
+    Column(Modifier.width(width), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier
+                .size(avatar)
+                .clip(CircleShape)
+                .background(WebSurfaceSoft),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                credit.person.name.firstOrNull()?.uppercase() ?: "?",
+                color = WebInkMuted,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            credit.person.headshotUrl?.let { url ->
+                AsyncImage(
+                    model = url,
+                    contentDescription = credit.person.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        Text(
+            credit.person.name,
+            color = WebInk,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 7.dp),
+        )
+        credit.character?.let {
+            Text(it, color = WebInkMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

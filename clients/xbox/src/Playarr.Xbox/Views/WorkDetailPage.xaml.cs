@@ -828,7 +828,7 @@ namespace Playarr.Xbox.Views
                     FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 6, 0, 33),
+                    Margin = new Thickness(0, 3, 0, 36),
                 });
                 section.Children.Add(list);
                 SeriesPanel.Children.Add(section);

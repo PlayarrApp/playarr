@@ -89,6 +89,14 @@ Item {
         }
         return best
     }
+    // Web D-pad: Up from the floating nav lands on the page's own Up-from-nav control (Search: the field), not the nearest header button.
+    function navUpTarget(current) {
+        if (!current || current.objectName.indexOf("parity-nav-") !== 0) return null
+        var all = []
+        candidates(page, all)
+        for (var i = 0; i < all.length; ++i) if (all[i].navigationNavUp === true) return all[i]
+        return null
+    }
     function scrollFor(current, dx, dy) {
         if (!current) return false
         for (var p = current.parent; p && p !== page; p = p.parent) {
@@ -329,7 +337,8 @@ Item {
             keyboardNavigationActive = true
             if (moveWithinGrid(focus, dx, dy)) { moved = true; event.accepted = true; return }
             if (scrollAtEdge(focus, dx, dy)) { moved = true; event.accepted = true; return }
-            var target = nextTarget(focus, dx, dy)
+            var target = dy < 0 ? navUpTarget(focus) : null
+            if (!target) target = nextTarget(focus, dx, dy)
             if (!target && scrollFor(focus, dx, dy)) { moved = true; event.accepted = true; return }
             if (target) {
                 target.forceActiveFocus()

@@ -51,6 +51,7 @@ Item {
             id: input
             property bool navigationFocusable: true
             property bool navigationInitialFocus: true
+            property bool navigationNavUp: true
             property string parityLabel: input.text || qsTr("Search")
             anchors { left: parent.left; leftMargin: 42 * Tokens.u; right: parent.right; rightMargin: 18 * Tokens.u; verticalCenter: parent.verticalCenter }
             color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u

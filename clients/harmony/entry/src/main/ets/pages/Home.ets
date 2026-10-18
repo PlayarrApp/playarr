@@ -150,6 +150,7 @@ import { normaliseResumeMs } from '../core/EndOfPlayback.ts';
 import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 
 import { logWarn } from '../util/Log';
+import { t } from '../core/Language';
 
 const LOG_TAG: string = 'Home';
 
@@ -273,16 +274,16 @@ function cardCaption(kind: WorkKind, releaseDate: string | null): string {
  * whole LIBRARY SECTION rather than one work. */
 function workKindKicker(kind: WorkKind): string {
   if (kind === 'movie') {
-    return 'Movie';
+    return t('pages.home.workKind.movie', 'Movie');
   }
   if (kind === 'series') {
-    return 'Series';
+    return t('pages.home.workKind.series', 'Series');
   }
   if (kind === 'site') {
-    return 'Site';
+    return t('pages.home.workKind.site', 'Site');
   }
   if (kind === 'artist') {
-    return 'Artist';
+    return t('pages.home.workKind.artist', 'Artist');
   }
   return 'Author';
 }
@@ -912,7 +913,7 @@ export struct Home {
           railId: 'home-continue-watching-tv',
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
           listHeight: this.railListHeight(),
-          heading: 'On deck',
+          heading: t('pages.home.rail.onDeck', 'On deck'),
           items: this.continueWatchingItems,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.tvCardItemBuilder(item, index, activeRailFactor);
@@ -996,7 +997,7 @@ export struct Home {
         ForEach([railKey('continue', this.continueWatchingItems) + this.touchCardKey()], (_key: string) => {
         MediaRail({
           railId: 'home-continue-watching-touch',
-          heading: 'On deck',
+          heading: t('pages.home.rail.onDeck', 'On deck'),
           items: this.continueWatchingItems,
           itemGap: TouchGeometry.railItemGap,
           listHeight: this.touchListHeight(),
@@ -1215,7 +1216,7 @@ export struct Home {
           AsyncState({
             kind: AsyncStateKind.Error,
             message: this.errorMessage,
-            retryLabel: 'Retry',
+            retryLabel: t('pages.downloads.retry', 'Retry'),
             retry: ((): void => {
       this.load();
     }),
