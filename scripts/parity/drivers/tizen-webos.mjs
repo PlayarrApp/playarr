@@ -67,6 +67,14 @@ export function insideAncestorClips(element, win = globalThis) {
   return true;
 }
 
+// The static seed's calendar posters are plain <img> URLs on the host's loopback artwork port, which the TV cannot reach: serve them through the page's own origin (the receiver forwards /art/*).
+function installLoopbackArt() {
+  const fix = (v) => String(v).replace(/^https?:\/\/(127\.0\.0\.1|localhost):\d+(\/art\/)/, `${location.origin}$2`);
+  const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+  Object.defineProperty(HTMLImageElement.prototype, "src", { ...d, set(v) { d.set.call(this, fix(v)); } });
+  const sa = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function (n, v) { return sa.call(this, n, this instanceof HTMLImageElement && n === "src" ? fix(v) : v); };
+}
 export async function createDriver() {
   // TIZEN_REAL=1 runs the Samsung TV through the webOS CDP path, so DEVICE=webos is forced for it.
   const device = TIZEN_REAL ? "webos" : process.env.DEVICE;
@@ -113,7 +121,7 @@ export async function createDriver() {
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
     await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
-    if (TIZEN_MIRROR) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__mirrorPause = true;" });
+    if (TIZEN_MIRROR) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `window.__mirrorPause = true;(${installLoopbackArt})();` });
     if (pin) {
       // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
       await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
@@ -338,7 +346,7 @@ export async function createDriver() {
       if (device === "tizen") {
         // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
         if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
-        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});window.__parityPinned = true;`;
+        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();window.__parityPinned = true;`;
         tizenPinScript = Buffer.from(source).toString("base64");
         return;
       }
@@ -472,6 +480,8 @@ export async function createDriver() {
         await ev(`(/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash) && ([document.scrollingElement, ...document.querySelectorAll("*")].forEach((e) => { if (e && e.scrollTop > 0) e.scrollTop = 0; }), true))`);
         await settleVisibleImages();
         await guard();
+        // Detail refs are taken at page top (web driver does the same): focus scrolled the page down on the TV.
+        if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
         if (TIZEN_MIRROR) {
           const q = (name) => `${mirrorLocal()}/__mirror/${name}?t=${encodeURIComponent(mirrorToken())}`;
           // A focused text field opens the TV's keyboard, which shrinks the page to the strip above it (Search: 1920x568): blur it first.
