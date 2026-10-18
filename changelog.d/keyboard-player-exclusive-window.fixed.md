@@ -1,0 +1,1 @@
+- Keep the keyboard player-control UI test out of automatic shared-fixture runs; manual playback requires explicit confirmation of an exclusive test-account window.

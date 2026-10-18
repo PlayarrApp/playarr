@@ -17,7 +17,7 @@ sub init()
     m.overlayNumber = m.top.findNode("overlayNumber")
     m.captionPrefix = m.top.findNode("captionPrefix")
     m.overlayNumber.font = PlayarrMakeFont(600, 19)
-    m.captionPrefix.font = PlayarrMakeFont(700, 9)
+    m.captionPrefix.font = PlayarrMakeFont(700, 10)
     m.kind = m.top.findNode("kind")
     m.titleFont0 = m.title.font
     m.kindFont0 = m.kind.font
@@ -289,7 +289,7 @@ sub emitPosterArtStatus(status as String)
     slot = content.parityArtSlot
     version = content.parityArtVersion
     if generation = invalid or generation < 1 or version = invalid or version < 0 then return
-    if (scope <> "home" and scope <> "movies" and scope <> "series") or slot = invalid or slot = "" then return
+    if (scope <> "home" and scope <> "movies" and scope <> "series" and scope <> "music") or slot = invalid or slot = "" then return
     if status <> "pending" and status <> "ready" and status <> "failed" and status <> "empty" then return
     print "PARITY|art|status|" + generation.ToStr() + "|" + scope + "|" + slot + "|" + status + "|" + version.ToStr()
 end sub

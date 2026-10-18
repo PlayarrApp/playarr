@@ -1,0 +1,1 @@
+- Sailfish: profiles logo size, add-profile light spot and caption tone as the web.

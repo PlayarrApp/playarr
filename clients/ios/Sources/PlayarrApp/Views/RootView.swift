@@ -154,6 +154,18 @@ struct RootView: View {
                 }
                 do {
                     try await environment.signIn(serverURL: server, username: user, password: ParityLaunch.password ?? "")
+                    let profiles = try await environment.apiClient.listProfiles()
+                    let currentProfiles = profiles.filter(\.isCurrent)
+                    guard currentProfiles.count == 1,
+                          currentProfiles[0].username == user,
+                          currentProfiles[0].id == environment.currentUserID else {
+                        ParityLaunch.record("signedIn", false)
+                        ParityLaunch.record("deviceTestIdentityVerified", false)
+                        ParityLaunch.record("identityVerified", false)
+                        ParityLaunch.record("failure", "identity-mismatch")
+                        return
+                    }
+                    ParityLaunch.record("deviceTestIdentityVerified", true)
                     guard let expected = ParityLaunch.expectedUsername,
                           let actual = environment.currentUsername,
                           actual.caseInsensitiveCompare(expected) == .orderedSame else {
@@ -664,10 +676,15 @@ private struct AuthenticatedPlayarrShell: View {
             // The web hides the clock at tablet widths (761 to 1100 pt) on pages with a header.
             if proxy.size.width > 1100 || selected == .home {
             TimelineView(.periodic(from: .now, by: 60)) { context in
+                #if DEBUG
+                let clockDate = ParityLaunch.isActive ? (ParityLaunch.frozenNow ?? context.date) : context.date
+                #else
+                let clockDate = context.date
+                #endif
                 HStack(alignment: .firstTextBaseline, spacing: 11) {
-                    Text(context.date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute()))
+                    Text(clockDate.formatted(headerTimeStyle))
                         .font(WM.font(12.5, 800))
-                    Text(context.date.formatted(.dateTime.weekday(.abbreviated).day().month(.wide)).uppercased())
+                    Text(clockDate.formatted(headerDateStyle).uppercased())
                         .font(WM.font(8, 700)).tracking(0.6)
                         .foregroundStyle(PlayarrStyle.inkSoft)
                 }
@@ -694,6 +711,28 @@ private struct AuthenticatedPlayarrShell: View {
             profileTile
                 .offset(x: navEdge, y: proxy.size.height - max(0, proxy.safeAreaInsets.bottom) - 121 * proxy.size.height / 1024)
         }
+    }
+
+    private var headerTimeStyle: Date.FormatStyle {
+        var style = Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)
+        #if DEBUG
+        if ParityLaunch.isActive {
+            style.locale = Locale(identifier: "en_GB")
+            style.timeZone = ParityLaunch.captureTimeZone
+        }
+        #endif
+        return style
+    }
+
+    private var headerDateStyle: Date.FormatStyle {
+        var style = Date.FormatStyle().weekday(.abbreviated).day().month(.wide)
+        #if DEBUG
+        if ParityLaunch.isActive {
+            style.locale = Locale(identifier: "en_GB")
+            style.timeZone = ParityLaunch.captureTimeZone
+        }
+        #endif
+        return style
     }
 
     private func navGroup(_ group: [Destination]) -> some View {

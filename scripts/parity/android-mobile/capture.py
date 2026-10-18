@@ -63,6 +63,12 @@ def main(out, screens):
             sh("input", "swipe", "1000", "2420", "100", "2420", "250"); time.sleep(1)
             tap(desc="Calendar"); time.sleep(1.5)
             sh("input", "swipe", "100", "2420", "1000", "2420", "250")  # scroll the bar back, as the web reference shows it
+        elif s == "calendar-week":
+            # As calendar, then Filters, View, Week and close the panel: the page keeps the Week view.
+            sh("input", "swipe", "1000", "2420", "100", "2420", "250"); time.sleep(1)
+            tap(desc="Calendar"); time.sleep(1.5)
+            sh("input", "swipe", "100", "2420", "1000", "2420", "250")
+            tap(desc="Filters"); time.sleep(1); tap(text="Week"); time.sleep(1); tap(desc="Close filters"); time.sleep(1.5)
         elif s == "search":
             tap(desc="Search"); time.sleep(1); tap_xy(585, 395); sh("input", "text", "Sample"); sh("input", "keyevent", "4")
         elif s == "film-detail":

@@ -16,6 +16,7 @@ import { detailRouteRequest } from "./detail-route.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "..", "suite.json"), "utf8"));
+const screens = JSON.parse(readFileSync(join(here, "..", "screens.json"), "utf8"));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PAGES = "file:///usr/share/harbour-playarr/qml/pages";
 
@@ -49,6 +50,7 @@ export async function createDriver() {
     ssh("defaultuser", [
       "export XDG_RUNTIME_DIR=/run/user/100000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/100000/dbus/user_bus_socket",
       'export PLAYARR_STEPS="$(cat /tmp/pa-steps.txt)"',
+      `export PLAYARR_PARITY_CLOCK=${screens.determinism.clock}`,
       `setsid nohup invoker --type=silica-qt5 --no-wait /usr/bin/harbour-playarr ${marker} >/tmp/pa.log 2>&1 </dev/null &`,
       "sleep 2"].join("\n"));
     const output = ssh("root", scanAppProcessesScript(marker));

@@ -14,11 +14,13 @@ MouseArea {
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
     property real iconSize: fontSize
+    property string iconImage: ""   // a NavIcons.js data URL, drawn instead of the `icon` glyph
+    readonly property real iconW: iconImage !== "" ? iconSize : iconLbl.implicitWidth
     property string labelFamily: Tokens.family
     property bool restRing: false   // web draws the focus ring on the first focusable control at rest (calendar Today)
     property bool lift: false   // web detail actions: box-shadow 0 14px 38px rgba(56,38,33,.12)
-    property bool natural: icon !== ""
-    readonly property real naturalWidth: Math.ceil(iconLbl.implicitWidth + 9 * Tokens.u + tm.implicitWidth) + 32 * Tokens.u
+    property bool natural: icon !== "" || iconImage !== ""
+    readonly property real naturalWidth: Math.ceil(iconW + 9 * Tokens.u + tm.implicitWidth) + 32 * Tokens.u
     implicitHeight: 40 * Tokens.u
     implicitWidth: natural ? naturalWidth : label.implicitWidth + 40 * Tokens.u
     RectangularGlow {
@@ -31,7 +33,7 @@ MouseArea {
         anchors.fill: parent
         radius: height / 2
         color: root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
-        border.width: root.primary || root.fill.a > 0 ? 0 : 1
+        border.width: root.primary || root.fill.a > 0 || root.lift ? 0 : 1
         border.color: Tokens.line
         opacity: root.pressed ? 0.7 : 1
     }
@@ -43,11 +45,18 @@ MouseArea {
     Label { id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.pixelSize: root.fontSize; }
     Row {
         id: content
-        visible: root.icon !== ""
+        visible: root.icon !== "" || root.iconImage !== ""
         anchors.centerIn: parent
         spacing: 9 * Tokens.u
+        Image {
+            visible: root.iconImage !== ""
+            anchors.verticalCenter: parent.verticalCenter
+            width: root.iconSize; height: width; sourceSize: Qt.size(48, 48)
+            source: root.iconImage
+        }
         Label {
             id: iconLbl
+            visible: root.iconImage === ""
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
@@ -56,7 +65,7 @@ MouseArea {
         Label {
             id: label2
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 32 * Tokens.u - iconLbl.implicitWidth - 9 * Tokens.u)
+            width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 32 * Tokens.u - root.iconW - 9 * Tokens.u)
             text: label.text
             wrapMode: Text.Wrap
             maximumLineCount: 2
@@ -67,7 +76,7 @@ MouseArea {
     }
     Label {
         id: label
-        visible: root.icon === ""
+        visible: root.icon === "" && root.iconImage === ""
         anchors.centerIn: parent
         font.family: root.labelFamily
         font.pixelSize: root.fontSize

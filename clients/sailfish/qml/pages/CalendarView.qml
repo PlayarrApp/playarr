@@ -28,6 +28,7 @@ Item {
             busy = false
             if (status !== 200 || !data) { failed = true; groups = []; return }
             groups = Calendar.groupByDate(data.entries)
+            if (mode === "week") todayScroll.restart()
         })
     }
     function entriesOn(iso) {
@@ -56,10 +57,22 @@ Item {
         var t = new Date(e.release_at).getTime()
         return isNaN(t) || t % 86400000 === 0 ? "" : Qt.formatTime(new Date(t), "hh:mm")
     }
+    // Web's entry pill tone: have it, not out yet, out and wanted but absent, or nothing to report (not tracked).
+    function toneOf(e) {
+        if (e.has_file) return "available"
+        if (e.date > Calendar.todayIso()) return "upcoming"
+        return e.monitored === false ? "neutral" : "missing"
+    }
+    // A grouped card reports its worst member: missing, then upcoming, then neutral, then available.
+    function tone(e) {
+        var tones = (e.members || [e]).map(toneOf)
+        var order = ["missing", "upcoming", "neutral"]
+        for (var i = 0; i < order.length; ++i) if (tones.indexOf(order[i]) >= 0) return order[i]
+        return "available"
+    }
     function pill(e) {
-        if (e.has_file) return qsTr("Available")
-        if (e.date > Qt.formatDate(new Date(), "yyyy-MM-dd")) return qsTr("Upcoming")
-        return e.monitored === false ? qsTr("Not tracked") : qsTr("Missing")
+        var t = tone(e)
+        return t === "available" ? qsTr("Available") : t === "upcoming" ? qsTr("Upcoming") : t === "neutral" ? qsTr("Not tracked") : qsTr("Missing")
     }
     onPageChanged: load()
     Component.onCompleted: load()
@@ -107,7 +120,7 @@ Item {
         clip: true
         readonly property real cellW: 102.8 * Tokens.u
         readonly property real cellH: 83.7 * Tokens.u
-        readonly property string todayIso: Qt.formatDate(new Date(), "yyyy-MM-dd")
+        readonly property string todayIso: Calendar.todayIso()
         contentWidth: 7 * cellW
         contentHeight: 34 * Tokens.u + root.weekRows.length * cellH + 120 * Tokens.u
         flickableDirection: Flickable.AutoFlickDirection
@@ -179,7 +192,7 @@ Item {
                         font.pixelSize: 14.8 * Tokens.u
                     }
                     Rectangle {
-                        visible: day.date === Qt.formatDate(new Date(), "yyyy-MM-dd")
+                        visible: day.date === Calendar.todayIso()
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
@@ -192,11 +205,11 @@ Item {
                             id: card
                             x: dayCol.wk ? 0 : Tokens.pad
                             width: dayCol.cw - (dayCol.wk ? 0 : Tokens.pad - 40 * Tokens.u)   // the web agenda card runs past the right edge
-                            height: Math.max(75.7 * Tokens.u, info.height + 18 * Tokens.u)   // web: the 60 px poster plus the padding is the floor
+                            height: Math.max(75.7 * Tokens.u, info.height + 18 * Tokens.u) + (dayCol.wk ? 1 : 0)   // week refs: cards run one pixel taller   // web: the 60 px poster plus the padding is the floor
                             onClicked: root.openEntry(modelData)
                             // Left border: we have it (playable, green) or not, never which library; the card sits over it so it curves with the corners.
-                            Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: card.pressed ? 0.6 : 1 }
-                            Rectangle { x: 4 * Tokens.u; width: parent.width - 4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: Tokens.dark ? "#4d494c" : "#c7c2c1"; opacity: card.pressed ? 0.6 : 1 }
+                            Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: (card.pressed ? 0.6 : 1) * (dayCol.wk ? 0.32 : 1) }   // week refs: the border accent is a third strong
+                            Rectangle { x: 4 * Tokens.u; width: parent.width - 4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: dayCol.wk ? (Tokens.dark ? "#363136" : "#e3dfdf") : (Tokens.dark ? "#4d494c" : "#c7c2c1"); opacity: card.pressed ? 0.6 : 1 }
                             Artwork {
                                 id: poster
                                 x: Math.round(15.7 * Tokens.u)   // whole pixels, as web snaps image rects
@@ -212,12 +225,12 @@ Item {
                                 id: info
                                 anchors { left: poster.right; leftMargin: 14.7 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                                 spacing: 3 * Tokens.u
-                                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.3 * Tokens.u }
+                                Label { width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.3 * Tokens.u }
                                 Label {
                                     width: parent.width
                                     visible: text !== ""
-                                    text: [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
-                                    elide: Text.ElideRight; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 16.2 * Tokens.u
+                                    text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
+                                    elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 16.2 * Tokens.u
                                 }
                                 Row {
                                     spacing: 11 * Tokens.u
@@ -226,7 +239,7 @@ Item {
                                     Label { text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
                                     Rectangle {
                                         width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
-                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : Qt.rgba(0.81, 0.19, 0.34, Tokens.dark ? 0.16 : 0.15); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : Tokens.brandPink
+                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : Qt.rgba(0.81, 0.19, 0.34, Tokens.dark ? 0.16 : 0.15); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : Tokens.brandPink
                                         Label { id: badge; anchors.centerIn: parent; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10.5 * Tokens.u }
                                     }
                                 }
@@ -235,15 +248,23 @@ Item {
                     }
                 }
     }
+    // The web scrolls the week strip so today's column starts at the page padding.
+    Timer { id: todayScroll; interval: 100; onTriggered: {
+        var today = Calendar.todayIso()
+        for (var i = 0; i < root.groups.length; ++i) if (root.groups[i].date === today) {
+            weekFlick.contentX = Math.min(i * 340 * Tokens.u, Math.max(0, weekFlick.contentWidth - weekFlick.width)); return }
+        weekFlick.contentX = 0 } }
     // Week: one column per day side by side, scrolled sideways, as the web lays it out.
     SilicaFlickable {
         id: weekFlick
         visible: root.mode === "week"
         anchors { top: nav.bottom; topMargin: 3 * Tokens.u; left: parent.left; right: parent.right; rightMargin: Tokens.pad; bottom: parent.bottom; bottomMargin: 116 * Tokens.u }   // web clips the day columns at the page padding and above the bar
         contentWidth: weekRow.width + Tokens.pad
-        contentHeight: height
+        contentHeight: height + 1   // never scrolls vertically; the extra pixel keeps the end fade over the clipped day columns, as on web
         flickableDirection: Flickable.HorizontalFlick
         clip: true
+        EdgeFade { target: weekFlick; startSize: 0 }
+        EdgeFade { target: weekFlick; horizontal: true }
         Row {
             id: weekRow
             x: Tokens.pad

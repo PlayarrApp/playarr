@@ -1,0 +1,1 @@
+- Nura parity tooling (score.mjs, reset-deck.mjs) now lives in scripts/parity/nura.

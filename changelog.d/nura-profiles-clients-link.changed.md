@@ -1,0 +1,1 @@
+- Nura profiles page: Clients link, page backdrop gradient and pill shadows as the live web.

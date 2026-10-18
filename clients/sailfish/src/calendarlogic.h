@@ -1,6 +1,11 @@
 // Calendar agenda helpers, unit-tested in tests/tst_util.cpp.
 #pragma once
 #include <QDate>
+#include <QDateTime>
+#include <QList>
+#include <QMap>
+#include <QPair>
+#include <QStringList>
 #include <QLocale>
 #include <QVariantList>
 #include <QVariantMap>
@@ -17,6 +22,75 @@ inline QString dayHeading(const QString &iso, const QLocale &locale)
 {
     const QDate d = QDate::fromString(iso, Qt::ISODate);
     return d.isValid() ? locale.toString(d, QStringLiteral("dddd d MMMM")) : iso;
+}
+
+// Web's compact episode label for one day's episodes of a series: contiguous runs "S02E04\u2013E06", gaps "S02E01, E03", seasons joined by commas.
+inline QString episodeCodes(const QVariantList &members)
+{
+    QMap<int, QList<int>> bySeason;
+    for (const QVariant &v : members) {
+        const QVariantMap m = v.toMap();
+        if (m.value(QStringLiteral("season_number")).isNull() || m.value(QStringLiteral("episode_number")).isNull()) continue;
+        QList<int> &l = bySeason[m.value(QStringLiteral("season_number")).toInt()];
+        const int ep = m.value(QStringLiteral("episode_number")).toInt();
+        if (!l.contains(ep)) l.append(ep);
+    }
+    QStringList parts;
+    for (auto it = bySeason.begin(); it != bySeason.end(); ++it) {
+        QList<int> eps = it.value();
+        std::sort(eps.begin(), eps.end());
+        QList<QPair<int, int>> runs;
+        for (int ep : eps) {
+            if (!runs.isEmpty() && ep == runs.last().second + 1) runs.last().second = ep;
+            else runs.append({ep, ep});
+        }
+        for (int i = 0; i < runs.size(); ++i) {
+            const QString pre = i == 0 ? QStringLiteral("S%1").arg(it.key(), 2, 10, QLatin1Char('0')) : QString();
+            const QString a = QStringLiteral("E%1").arg(runs[i].first, 2, 10, QLatin1Char('0'));
+            parts << pre + a + (runs[i].first == runs[i].second ? QString() : QStringLiteral("\u2013E%1").arg(runs[i].second, 2, 10, QLatin1Char('0')));
+        }
+    }
+    return parts.join(QStringLiteral(", "));
+}
+
+// Web groups episodes of one series released the same day at the same air time into one card ("2 episodes \u00b7 S01E01\u2013E02").
+// The group keeps its first member's fields plus members, group_count and group_codes; has_file holds when every member has one.
+inline QVariantList groupEpisodes(const QVariantList &dayEntries)
+{
+    auto slot = [](const QVariantMap &m) {
+        const QString r = m.value(QStringLiteral("release_at")).toString();
+        return r.isEmpty() || r.contains(QStringLiteral("T00:00:00")) ? QStringLiteral("all-day") : QDateTime::fromString(r, Qt::ISODate).toLocalTime().toString(QStringLiteral("hh:mm"));
+    };
+    QStringList order;
+    QMap<QString, QVariantList> buckets;
+    for (const QVariant &v : dayEntries) {
+        const QVariantMap m = v.toMap();
+        const bool episode = m.value(QStringLiteral("media_kind")).toString() == QLatin1String("episode")
+            && !m.value(QStringLiteral("season_number")).isNull() && !m.value(QStringLiteral("episode_number")).isNull();
+        const QString key = episode ? QStringLiteral("series:") + (m.value(QStringLiteral("work_id")).toString().isEmpty() ? m.value(QStringLiteral("title")).toString() : m.value(QStringLiteral("work_id")).toString()) + QLatin1Char(':') + slot(m)
+                                    : QStringLiteral("single:") + QString::number(order.size());
+        if (!buckets.contains(key)) order << key;
+        buckets[key].append(v);
+    }
+    QVariantList out;
+    for (const QString &key : order) {
+        QVariantList members = buckets.value(key);
+        if (members.size() == 1) { out.append(members.first()); continue; }
+        std::stable_sort(members.begin(), members.end(), [](const QVariant &a, const QVariant &b) {
+            const QVariantMap x = a.toMap(), y = b.toMap();
+            const int sx = x.value(QStringLiteral("season_number")).toInt(), sy = y.value(QStringLiteral("season_number")).toInt();
+            return sx != sy ? sx < sy : x.value(QStringLiteral("episode_number")).toInt() < y.value(QStringLiteral("episode_number")).toInt();
+        });
+        QVariantMap g = members.first().toMap();
+        bool all = true;
+        for (const QVariant &v : members) all = all && v.toMap().value(QStringLiteral("has_file")).toBool();
+        g[QStringLiteral("has_file")] = all;
+        g[QStringLiteral("members")] = members;
+        g[QStringLiteral("group_count")] = members.size();
+        g[QStringLiteral("group_codes")] = episodeCodes(members);
+        out.append(g);
+    }
+    return out;
 }
 
 // Entries grouped by `date`, days ascending; within a day by release time then title. A midnight UTC release is a date-only
@@ -43,7 +117,7 @@ inline QVariantList groupByDate(const QVariantList &entries)
         if (cur.isEmpty()) return;
         QVariantMap m;
         m[QStringLiteral("date")] = cur;
-        m[QStringLiteral("entries")] = bucket;
+        m[QStringLiteral("entries")] = groupEpisodes(bucket);
         days.append(m);
     };
     for (const QVariant &v : sorted) {
