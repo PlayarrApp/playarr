@@ -1040,6 +1040,7 @@ export struct Library {
           .height('100%')
           .width('100%')
           .backgroundColor('#33FF00FF') // DIAGNOSTIC: shows the Grid frame
+          .overlay('n=' + String(this.items.length) + ' total=' + String(this.total) + ' more=' + String(this.hasMore), { align: Alignment.Bottom, offset: { x: 0, y: -90 } })
         }
     }
     .width('100%')
