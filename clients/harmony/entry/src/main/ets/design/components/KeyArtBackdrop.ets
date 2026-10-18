@@ -19,6 +19,15 @@ const BRIGHTNESS_LIGHT: number = 1.1;
 const OPACITY_DARK: number = 0.72;
 const OPACITY_LIGHT: number = 0.24;
 
+/** Web `.tv-home-rails` / `.tv-library-grid-panel` frost: the colour stops that fade in from transparent at the panel's left edge (shared with Stage). */
+export function railFrostColors(): Array<[string, number]> {
+  return resolvedThemeMode() === 'dark' ?
+    [['rgba(40, 35, 40, 0)', 0], ['rgba(40, 35, 40, 0.72)', 0.12], ['rgba(40, 35, 40, 0.9)', 0.34],
+      ['rgba(40, 35, 40, 0.97)', 0.62], ['rgba(40, 35, 40, 1)', 1]] :
+    [['rgba(240, 238, 239, 0)', 0], ['rgba(240, 238, 239, 0.68)', 0.12], ['rgba(240, 238, 239, 0.88)', 0.34],
+      ['rgba(240, 238, 239, 0.96)', 0.62], ['rgba(240, 238, 239, 1)', 1]];
+}
+
 function pct100(pct: number): number {
   return pct / 100;
 }
@@ -26,6 +35,8 @@ function pct100(pct: number): number {
 @Component
 export struct KeyArtBackdrop {
   @Prop keyArt: image.PixelMap | undefined = undefined;
+  /** Web's detail page sits on the same right-hand frost as the Library grid (65%). */
+  @Prop railFrostWidthPct: number = 0;
 
   // Tracked only to re-render on a theme or TV-scale change (see Theme.ets and Metrics.ets).
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
@@ -110,6 +121,13 @@ export struct KeyArtBackdrop {
             [toResourceColorWithAlpha(activeColors().surface, 0), pct100(TvGeometry.stageWashRightFadePct)],
           ],
         })
+      if (this.railFrostWidthPct > 0) {
+        Row()
+          .width(`${this.railFrostWidthPct}%`)
+          .height('100%')
+          .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
+          .linearGradient({ angle: HORIZONTAL_ANGLE, colors: railFrostColors() })
+      }
     }
     .width('100%')
     .height('100%')

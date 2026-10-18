@@ -14,6 +14,8 @@ enum WM {
     static let inkSoft = PlayarrStyle.inkSoft
     static let muted = PlayarrStyle.muted
     static let detailMuted = adaptive(light: (77, 66, 72), dark: (194, 181, 187))
+    /// Detail-page subtitle and bold meta ink, measured from the web (darker than the shared soft ink).
+    static let detailInkSoft = adaptive(light: (68, 58, 64), dark: (205, 193, 198))
     static let pink = PlayarrStyle.pink
     static let brandInk = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
     static let cardGlowColor = adaptive(light: (165, 39, 69), dark: (234, 166, 182))
@@ -548,7 +550,7 @@ enum WMArtwork {
     /// Web phone card: (viewport - 16 gutter - 52 letter-rail pad - 12 per gap) / columns.
     static var cardWidth: CGFloat {
         let n = CGFloat(columns)
-        return ((UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n).rounded() // web --card-w has no minimum; columns come from --card-cols
+        return (UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n // web --card-w has no minimum or rounding (156.5 at 393); columns come from --card-cols
     }
     static func artHeight(cover: Bool) -> CGFloat { cardWidth * (cover ? 3 / 2 : 9 / 16) }
 }
@@ -641,7 +643,7 @@ struct WMLibraryCard: View {
     var cover = false
     @AppStorage(WMArtwork.sizeKey) private var sizeSetting = "medium"
 
-    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 27.6 }
+    static func rowHeight(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 27.7 }
 
     var body: some View {
         let width = WMArtwork.cardWidth, art = WMArtwork.artHeight(cover: cover)

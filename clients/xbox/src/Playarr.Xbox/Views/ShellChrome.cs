@@ -216,8 +216,9 @@ namespace Playarr.Xbox.Views
                 Width = RailWidth,
                 Padding = new Thickness(4),
                 CornerRadius = new CornerRadius(24),
-                Background = (Brush)Application.Current.Resources["PlayarrSurface"],
-                BorderBrush = (Brush)Application.Current.Resources["PlayarrLine"],
+                // Measured on the web rail: a lifted fill and a hairline (light: near-white with a soft shadow, dark: 30 26 30 over 27 23 26).
+                Background = (Brush)Application.Current.Resources["PlayarrRailFill"],
+                BorderBrush = (Brush)Application.Current.Resources["PlayarrRailLine"],
                 BorderThickness = new Thickness(1),
             };
         }

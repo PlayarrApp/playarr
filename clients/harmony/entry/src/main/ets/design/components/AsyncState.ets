@@ -27,6 +27,7 @@ import type { ThemeModeSetting } from '../Theme';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS, SPINNER_ROTATION_MS } from '../Motion';
 import { BRAND_PINK, Spacing, Radii } from '../../core/Tokens';
 import { FOCUS_LIFT, effectiveFocusPercent, DEFAULT_ACTIVE_RAIL_FACTOR } from './FocusLift';
+import { t } from '../../core/Language';
 
 /** brief 5.7: "20x20 ... 2px border". Not in core/Tokens.ts -- see header. */
 const SPINNER_DIAMETER: number = 20;
@@ -48,7 +49,7 @@ export struct AsyncState {
   /** The empty-state or error-state message. Unused while `Loading`. */
   @Prop message: string = '';
   /** The retry button's label. Unused outside `Error`. */
-  @Prop retryLabel: string = 'Retry';
+  @Prop retryLabel: string = t('pages.downloads.retry', 'Retry');
   /** Called when the retry button is activated. Plain (non-reactive)
    * callback field -- functions are not observable state. */
   retry: () => void = () => {};

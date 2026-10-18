@@ -13,16 +13,22 @@
 # PLAYARR_FIXTURE_DB (optional: the fixture's SQLite file, whose watch_progress is cleared before each run).
 #
 # Each run clears the app data first (a leftover explicit theme, saved profile or paired device would change the screens),
-# signs in as fx-viewer, and chooses the app's own theme (not the system appearance) in the display preferences.
+# signs in as the parity account (fx-viewer on the fixture server), and chooses the app's own theme (not the system appearance) in the display preferences.
 set -euo pipefail
 out=$1; theme=$2; shift 2
 case $theme in light) pref=Light ;; dark) pref=Dark ;; *) echo "theme must be light or dark" >&2; exit 2 ;; esac
-server=${PARITY_SERVER:-http://10.0.2.2:18660}
-password=${PARITY_PASSWORD:-fixture-pass-0001}
+# The static parity server, its account and the clock come from scripts/parity/parity.env (PARITY_LIVE=1 skips it: fixture server below).
+here=$(cd "$(dirname "$0")" && pwd)
+[ "${PARITY_LIVE:-}" = 1 ] || eval "$(node "$here/../parity-config.mjs" --shell)"
+server=${PARITY_SERVER:-${PARITY_SERVER_URL:-http://10.0.2.2:18660}}
+user=${PARITY_ACCOUNT_NAME:-fx-viewer}
+if [ -n "${PARITY_PASSWORD:-}" ]; then password=$PARITY_PASSWORD
+elif [ -n "${PARITY_SERVER_URL:-}" ]; then password=$(node -e 'import(process.argv[1]).then((m) => process.stdout.write(m.readSecrets().PLAYARR_PARITY_STATIC_PASSWORD ?? ""))' "$here/../dpad-account.mjs")
+else password=fixture-pass-0001; fi
 pkg=io.playarr.mobile
 dest="$out/tv/$theme"; mkdir -p "$dest"
-# The fixture clock (scripts/fixtures/catalog.mjs FIXTURE_CLOCK): "today" and the chrome clock in debug builds.
-clock=2026-10-07T12:00:00Z
+# The fixture clock (screens.json determinism.clock, as PARITY_CLOCK): "today" and the chrome clock in debug builds.
+clock=${PARITY_CLOCK:-2026-10-07T12:00:00Z}
 
 tap() { adb shell input tap "$1" "$2"; }
 key() { adb shell input keyevent "KEYCODE_$1"; }
@@ -80,7 +86,7 @@ screens=("$@")
 need_viewer=0
 for s in "${screens[@]}"; do [ "$s" != household-blocked ] && need_viewer=1; done
 if [ $need_viewer = 1 ]; then
-  fresh_session fx-viewer
+  fresh_session "$user"
   launch; sleep 6
 fi
 

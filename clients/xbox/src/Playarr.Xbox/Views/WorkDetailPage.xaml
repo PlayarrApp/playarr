@@ -88,7 +88,7 @@
                 FocusVisualSecondaryThickness="0"
                 Click="PrimaryPlay_Click">
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                    <FontIcon Glyph="&#xE102;" FontFamily="Segoe MDL2 Assets" FontSize="9" Foreground="{StaticResource PlayarrSurfaceStrong}" />
+                    <FontIcon x:Name="PlayIcon" Glyph="&#xE102;" FontFamily="Segoe MDL2 Assets" FontSize="9" Foreground="{StaticResource PlayarrSurfaceStrong}" />
                     <TextBlock x:Name="PlayLabel" Text="Play" FontSize="11.5" FontWeight="Bold" Foreground="{StaticResource PlayarrSurfaceStrong}" />
                 </StackPanel>
             </Button>
@@ -102,7 +102,7 @@
 
         <!-- Series: one rail per season (web "Season N" + "N episodes" + episode thumbnails), from x=881. -->
         <ScrollViewer Margin="833,0,0,0" VerticalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled">
-            <StackPanel x:Name="SeriesPanel" Margin="48,345,0,48" Spacing="0" Visibility="Collapsed" />
+            <StackPanel x:Name="SeriesPanel" Margin="49,345,0,48" Spacing="0" Visibility="Collapsed" />
         </ScrollViewer>
     </Grid>
 </Page>

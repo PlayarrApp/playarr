@@ -106,7 +106,9 @@ import { Skeleton } from './Skeleton';
 
 /** Which brief-5.8 focus delta, brief-5.6 shadow pair and interaction
  * duration this card uses. See this file's header comment. */
-export type PosterCardVariant = 'home' | 'titleEpisode';
+/** `'grid'` is the TV Library grid card: the title/episode shadows and timing, with web's `.tv-title-grid` lift (translateY -5, card
+ * 1.015 over the art's 1.025). */
+export type PosterCardVariant = 'home' | 'titleEpisode' | 'grid';
 
 /** One CSS `box-shadow` layer, copied as `{offsetY, radius, alpha}` rather
  * than a pre-built colour string so rest/focused values can be linearly
@@ -245,7 +247,7 @@ export struct PosterCard {
   @State private focusPercent: number = 0;
 
   private isTitleEpisode(): boolean {
-    return this.variant === 'titleEpisode';
+    return this.variant === 'titleEpisode' || this.variant === 'grid';
   }
 
   private resolvedArtworkRadius(): number {
@@ -256,6 +258,9 @@ export struct PosterCard {
   }
 
   private focusDelta(): FocusLiftDelta {
+    if (this.variant === 'grid') {
+      return { translateY: FOCUS_LIFT.gridCard.translateY, scale: FOCUS_LIFT.titleEpisodeCard.scale * FOCUS_LIFT.gridCard.scale };
+    }
     return this.isTitleEpisode() ? FOCUS_LIFT.titleEpisodeCard : FOCUS_LIFT.homeCard;
   }
 

@@ -57,6 +57,18 @@ namespace Playarr.Xbox.Views
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.Filled(Ui.Pill("\u2637  Playback", OpenPlaybackDrawer, 142));
             PlaybackButton.Height = 64;
+            // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
+            PlayButton.GotFocus += (s, e) => PaintPlay(true);
+            PlayButton.LostFocus += (s, e) => PaintPlay(false);
+        }
+
+        private void PaintPlay(bool focused)
+        {
+            var resources = Application.Current.Resources;
+            PlayButton.Background = (Windows.UI.Xaml.Media.Brush)resources[focused ? "PlayarrBrand" : "PlayarrInk"];
+            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrSurfaceStrong"];
+            PlayLabel.Foreground = ink;
+            PlayIcon.Foreground = ink;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -123,7 +135,7 @@ namespace Playarr.Xbox.Views
 
                 if (work.Kind != WorkKind.Series && DateTimeOffset.TryParse(work.ReleaseDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var released))
                 {
-                    meta.Add("Released " + released.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+                    meta.Add("Released " + Ui.GbDate(released));
                 }
 
                 meta.AddRange(work.Genres);
@@ -148,7 +160,8 @@ namespace Playarr.Xbox.Views
             {
                 if (showPlayback)
                 {
-                    PrimaryRow.Children.Insert(0, PlaybackButton);
+                    // After Download, which the web keeps first.
+                    PrimaryRow.Children.Insert(_downloadPill != null && PrimaryRow.Children.Contains(_downloadPill) ? 1 : 0, PlaybackButton);
                 }
                 else
                 {
@@ -277,7 +290,7 @@ namespace Playarr.Xbox.Views
                 text.Children.Add(Ui.Text(string.IsNullOrEmpty(picked.Title) ? picked.Label : picked.Label + " \u00b7 " + picked.Title, 14, FontWeights.SemiBold, "PlayarrInk"));
                 if (DateTimeOffset.TryParse(picked.LastWatchedAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var watched))
                 {
-                    text.Children.Add(Ui.Text("Last watched " + watched.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")), 10, FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 4, 0, 0)));
+                    text.Children.Add(Ui.Text("Last watched " + Ui.GbDate(watched), 10, FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 4, 0, 0)));
                 }
 
                 if (picked.Kind == "unfinished")
@@ -820,7 +833,7 @@ namespace Playarr.Xbox.Views
                     }
                 };
 
-                var section = new StackPanel { Margin = new Thickness(0, 14, 0, 11) };
+                var section = new StackPanel { Margin = new Thickness(0, 13, 0, 11) };
                 section.Children.Add(new TextBlock { Text = SeasonLabel(season), Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
                 section.Children.Add(new TextBlock
                 {
@@ -828,7 +841,7 @@ namespace Playarr.Xbox.Views
                     FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 3, 0, 36),
+                    Margin = new Thickness(0, 1, 0, 40),
                 });
                 section.Children.Add(list);
                 SeriesPanel.Children.Add(section);
@@ -994,7 +1007,7 @@ namespace Playarr.Xbox.Views
 
             if (DateTimeOffset.TryParse(episode.AirDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var aired))
             {
-                meta.Add("Aired " + aired.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+                meta.Add("Aired " + Ui.GbDate(aired));
             }
 
             meta.AddRange(work.Genres);

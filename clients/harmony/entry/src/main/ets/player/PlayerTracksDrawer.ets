@@ -11,6 +11,7 @@ import type { ActionItem } from '../design/components/ActionList';
 import { activeColors, toResourceColor } from '../design/Theme';
 import { tv } from '../design/Metrics';
 import type { AudioTrack, SubtitleTrack } from '../core/Types/Playback.ts';
+import { t } from '../core/Language';
 
 const HEADING_SIZE: number = 14;
 const SECTION_GAP: number = 18;
@@ -32,7 +33,7 @@ export struct PlayerTracksDrawer {
 
   private subtitleActions(): ActionItem[] {
     const items: ActionItem[] = [
-      { id: 'sub:', glyph: this.selectedSubtitleId === SUBTITLES_OFF_ID ? TICK : '', label: 'Off' },
+      { id: 'sub:', glyph: this.selectedSubtitleId === SUBTITLES_OFF_ID ? TICK : '', label: t('settings.playerPreferences.subtitlesOff', 'Off') },
     ];
     for (const track of this.subtitleTracks) {
       items.push({ id: 'sub:' + track.id, glyph: this.selectedSubtitleId === track.id ? TICK : '', label: track.label });
@@ -61,7 +62,7 @@ export struct PlayerTracksDrawer {
   private tracksBody(): void {
     Column({ space: tv(SECTION_GAP) }) {
       if (this.subtitleTracks.length > 0) {
-        this.heading('Subtitles')
+        this.heading(t('pages.workDetail.subtitlesHeading', 'Subtitles'))
         ActionList({
           actions: this.subtitleActions(),
           onChoose: (id: string): void => {
@@ -70,7 +71,7 @@ export struct PlayerTracksDrawer {
         })
       }
       if (this.audioTracks.length > 1) {
-        this.heading('Audio')
+        this.heading(t('pages.workDetail.audioHeading', 'Audio'))
         ActionList({
           actions: this.audioActions(),
           onChoose: (id: string): void => {
@@ -85,7 +86,7 @@ export struct PlayerTracksDrawer {
 
   build() {
     Drawer({
-      kicker: 'Playback',
+      kicker: t('pages.workDetail.playbackButtonLabel', 'Playback'),
       title: 'Audio and subtitles',
       onClose: (): void => {
         this.onClose();

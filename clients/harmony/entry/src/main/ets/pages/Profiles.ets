@@ -57,7 +57,7 @@ import { t, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, resolveLanguage, setCurrentLang
 import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 import { ROUTES } from '../navigation/Routes';
 
-import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
+import { SelectField, themeChoices } from '../design/components/SelectField';
 import type { Choice } from '../design/components/ChoiceSegments';
 import { openInBrowser } from '../util/ExternalLink';
 import { activeColors, resolvedThemeMode, setThemeModeSetting, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -124,6 +124,7 @@ const PHONE_HEADING_SIZE: number = 38.4;
 const PHONE_KICKER_TOP: number = 68;
 const PHONE_CHOICES_TOP: number = 64.3;
 const PHONE_SELECT_HEIGHT: number = 48;
+const PHONE_SELECT_FONT: number = 11.7;
 const PHONE_SELECT_RADIUS: number = 2;
 const PHONE_SELECT_WIDTH: number = 112.5;
 const PHONE_SELECT_TOP: number = 14;
@@ -418,7 +419,10 @@ struct Profiles {
       // Web's top-right controls: the theme select and the language select (Auto, English, Thai, Japanese).
       Row({ space: this.pick(15, 8) }) {
         SelectField({
-          options: THEME_CHOICES,
+          options: themeChoices(),
+          lead: isTvMetrics() ? '' : 'sun',
+          labelWeight: isTvMetrics() ? 700 : 500,
+          labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
           value: this.themeSetting,
           selectWidth: isTvMetrics() ? THEME_SELECT_WIDTH : PHONE_SELECT_WIDTH,
           minHeight: isTvMetrics() ? 56 : PHONE_SELECT_HEIGHT,
@@ -430,6 +434,9 @@ struct Profiles {
         })
         SelectField({
           options: this.languageChoices(),
+          lead: isTvMetrics() ? '' : 'globe',
+          labelWeight: isTvMetrics() ? 700 : 500,
+          labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
           value: this.languageChoice,
           selectWidth: isTvMetrics() ? LANGUAGE_SELECT_WIDTH : PHONE_SELECT_WIDTH,
           minHeight: isTvMetrics() ? 56 : PHONE_SELECT_HEIGHT,

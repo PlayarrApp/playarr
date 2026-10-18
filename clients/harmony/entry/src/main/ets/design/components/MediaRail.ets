@@ -351,11 +351,11 @@ export struct MediaRail {
       .linearGradient({
         angle: 90,
         colors: [
-          [toResourceColorWithAlpha(activeColors().bg, 0), 0],
-          [toResourceColorWithAlpha(activeColors().bg, 0.109), 0.25],
-          [toResourceColorWithAlpha(activeColors().bg, 0.35), 0.5],
-          [toResourceColorWithAlpha(activeColors().bg, 0.591), 0.75],
-          [toResourceColorWithAlpha(activeColors().bg, 0.7), 1],
+          [toResourceColorWithAlpha(activeColors().surface, 0), 0],
+          [toResourceColorWithAlpha(activeColors().surface, 0.109), 0.25],
+          [toResourceColorWithAlpha(activeColors().surface, 0.35), 0.5],
+          [toResourceColorWithAlpha(activeColors().surface, 0.591), 0.75],
+          [toResourceColorWithAlpha(activeColors().surface, 0.7), 1],
         ],
       })
       .hitTestBehavior(HitTestMode.None)
