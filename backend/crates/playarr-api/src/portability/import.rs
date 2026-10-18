@@ -709,7 +709,7 @@ pub async fn apply_plan(state: &AppState, user_id: Uuid, plan: &Plan) -> ImportR
     };
 
     for item in &plan.watch {
-        if !matches!(item.action, WatchAction::Add | WatchAction::Update) {
+        if state.static_mode || !matches!(item.action, WatchAction::Add | WatchAction::Update) {
             continue;
         }
         let row = WatchProgress {

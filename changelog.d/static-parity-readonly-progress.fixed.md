@@ -1,0 +1,1 @@
+- The static parity server (`PLAYARR_STATIC=1`) now answers watch-progress, resume-choice and Home rail-preference writes with success and stores nothing, so a capture run can no longer change On deck, the hero or Continue watching.
