@@ -199,7 +199,7 @@ export struct PosterCard {
   @Prop unseen: boolean = false;
   /** Phone Library caption: medium weight, the muted ink (web phone grid). */
   @Prop softCaption: boolean = false;
-  /** Web phone card title (`--card-title-weight` 610, -0.015em tracking) instead of the soft Medium one. */
+  /** Web phone card title (`--card-title-weight` 610, drawn at 600 because ArkUI only takes steps of 100; -0.015em tracking) instead of the soft Medium one. */
   @Prop webTitle: boolean = false;
   /** Phone: draw the focus ring and glow without real focus (the Previewer never reports it); web rings the next-up episode on open. */
   @Prop ringOn: boolean = false;
@@ -479,10 +479,10 @@ export struct PosterCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
       } else {
-        Text(this.title).fontFamily(nunito(this.webTitle ? 610 : this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
+        Text(this.title).fontFamily(nunito(this.webTitle ? 600 : this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
-          .fontWeight(this.webTitle ? 610 : this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+          .fontWeight(this.webTitle ? 600 : this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
           .letterSpacing(this.webTitle ? this.titleFontSize * -0.015 : 0)
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
           .maxLines(1)
