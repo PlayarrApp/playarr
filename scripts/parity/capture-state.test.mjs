@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { withCaptureState, captureCanonicalState, withCanonicalState, resolveCaptureEnvironment, parseAndroidDeviceSession, assertAndroidDeviceAccount } from "./capture-state.mjs";
+import { withCaptureState, captureCanonicalState, withCanonicalState, resolveCaptureEnvironment, parseAndroidDeviceSession, assertAndroidDeviceAccount, guardAndroidDeviceAccount } from "./capture-state.mjs";
 import { clientSecretKeys, parityCredentials } from "./dpad-account.mjs";
 
 const FILE_A = "12345678-1234-4234-8234-1234567890ab";
@@ -406,4 +406,27 @@ test("a lock directory removed during the run does not fail a restored capture",
     await rm(join(lockDir, key), { recursive: true, force: true });
   });
   assert.equal(api.rows.get(FILE_A).position_ms, 700);
+});
+
+test("android guard launches the app once after an expired-token identity failure, then passes", async () => {
+  const env = { PARITY_DEVICE_ACCOUNT_GUARD: "android", PARITY_USE_DEVICE_TEST_DPAD: "1" };
+  let calls = 0, launches = 0;
+  await guardAndroidDeviceAccount(env, {
+    read: async () => ({}),
+    assert: async () => { if (++calls === 1) throw new Error("Android device account identity check failed"); return true; },
+    launch: async () => { launches++; },
+  });
+  assert.equal(launches, 1);
+  assert.equal(calls, 2);
+});
+
+test("android guard does not relaunch for an account mismatch", async () => {
+  const env = { PARITY_DEVICE_ACCOUNT_GUARD: "android", PARITY_USE_DEVICE_TEST_DPAD: "1" };
+  let launches = 0;
+  await assert.rejects(guardAndroidDeviceAccount(env, {
+    read: async () => ({}),
+    assert: async () => { throw new Error("Android device account does not match the selected approved account"); },
+    launch: async () => { launches++; },
+  }), /does not match/);
+  assert.equal(launches, 0);
 });

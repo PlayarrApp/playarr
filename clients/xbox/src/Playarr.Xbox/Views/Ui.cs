@@ -10,6 +10,10 @@ namespace Playarr.Xbox.Views
     /// <summary>Small shared builders for code-built screens, in the web TV look (tokens from App.xaml).</summary>
     internal static class Ui
     {
+        /// <summary>The web's en-GB short date ("19 Sept 2011": current ICU writes September as Sept).</summary>
+        public static string GbDate(DateTimeOffset date) =>
+            date.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")).Replace(" Sep ", " Sept ");
+
         public static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 
         public static TextBlock Text(string text, double size, FontWeight weight, string brushKey, Thickness margin = default) =>

@@ -20,6 +20,7 @@ import { atLeast } from '../../core/SafeInsets';
 
 import { getCatalogKinds } from '../../data/CatalogRepository';
 import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../../navigation/NavItems';
+import { railFrostColors } from './KeyArtBackdrop';
 import { getNavStack, popRoute } from '../../navigation/NavStack';
 
 // Web back button and title (the shared header look).
@@ -47,6 +48,8 @@ export struct PageShell {
   @Prop selectedId: string = '';
   /** False for a page with no header (Home): the rail, logo and clock only. */
   @Prop showHeader: boolean = true;
+  /** TV: 0 or more paints web's `surface` page base instead of `bg`, plus the right-hand frost of that width in % (0 for none). */
+  @Prop railFrostWidthPct: number = -1;
 
   /** The page's own content, laid out in 1920x1080 coordinates, below the chrome. */
   @BuilderParam content: () => void = this.emptyContent;
@@ -186,6 +189,14 @@ export struct PageShell {
   @Builder
   private chrome(): void {
     Stack() {
+      if (this.railFrostWidthPct > 0) {
+        Row()
+          .width(`${this.railFrostWidthPct}%`)
+          .height('100%')
+          .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
+          .linearGradient({ angle: 90, colors: railFrostColors() })
+          .hitTestBehavior(HitTestMode.None)
+      }
       this.content()
       // NavRail reads `items` once (plain field), so it is created after the kinds arrive.
       if (this.navItems.length > 0) {
@@ -214,7 +225,7 @@ export struct PageShell {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(activeColors().bg))
+    .backgroundColor(toResourceColor(this.railFrostWidthPct >= 0 && isTvMetrics() ? activeColors().surface : activeColors().bg))
   }
 
   @Builder

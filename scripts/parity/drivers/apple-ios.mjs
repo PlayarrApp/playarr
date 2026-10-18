@@ -313,8 +313,16 @@ export async function createDriver() {
       }
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       // Wait for two byte-identical frames so the capture contains the settled screen.
+      // A frame only counts while the app still reports the screen ready: a Home that reloads after the first ready
+      // (frozen animations make the spinner look "stable") must not be captured as "Preparing your home...".
+      const stillReady = async () => {
+        for (let t = 0; t < 120; t += 1) { if (state().screenContentReady === true) return; await sleep(500); }
+        throw new Error(`iOS parity screen ${id} left the ready state and did not recover within 60 seconds`);
+      };
       await captureStableFrame(async () => {
+        await stillReady();
         run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
+        await stillReady();
         return readFileSync(raw);
       }, { attempts: 8, intervalMs: 4000, wait: sleep });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
