@@ -2108,7 +2108,7 @@ struct Detail {
               heading: '',
               headingGap: 0,
               itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle) : PHONE_EPISODE_RAIL_GAP,
-              clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
+              clipInsetStart: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_START,
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
               allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
