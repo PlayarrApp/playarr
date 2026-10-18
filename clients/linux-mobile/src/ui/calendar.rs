@@ -74,6 +74,8 @@ pub fn iso(dt: Date) -> String {
     format!("{:04}-{:02}-{:02}", dt.y, dt.m, dt.d)
 }
 
+/// Height of the week columns' scroller in px: the web clips them above the floating nav.
+const WEEK_CLIP: i32 = 422;
 const MONTHS: [&str; 12] = [
     "January",
     "February",
@@ -136,6 +138,8 @@ struct Cal {
     /// The period controls; the web sits them 18 px lower on week and month than on the agenda.
     controls: gtk4::Box,
     body: gtk4::Box,
+    days_view: gtk4::ScrolledWindow,
+    fades: [gtk4::Box; 2],
     generation: Cell<u32>,
     entries: RefCell<Vec<CalendarEntry>>,
 }
@@ -464,8 +468,13 @@ impl Cal {
             .build();
         head.set_margin_bottom(0);
         sec.append(&head);
-        for e in entries {
-            sec.append(&entry_widget(&self.app, &self.imgs, e, week));
+        for (i, e) in entries.iter().enumerate() {
+            let card = entry_widget(&self.app, &self.imgs, e, week);
+            // The web's week cards sit 15 px apart; the 8 px column spacing only covers the day heading.
+            if week && i > 0 {
+                card.set_margin_top(7);
+            }
+            sec.append(&card);
         }
         if entries.is_empty() {
             if let Some(t) = empty_text {
@@ -484,7 +493,7 @@ impl Cal {
             sec.set_valign(gtk4::Align::Start);
             sec.set_spacing(8);
             head.set_height_request(22);
-            head.set_margin_top(6);
+            head.set_margin_top(5);
         }
         parent.append(&sec);
     }
@@ -639,6 +648,17 @@ impl Cal {
             View::Month => Date { d: 1, ..t },
         });
         self.selected.set(None);
+        let week = v == View::Week;
+        self.days_view.set_max_content_height(if week { WEEK_CLIP } else { -1 });
+        self.days_view.set_vscrollbar_policy(if week {
+            gtk4::PolicyType::External
+        } else {
+            gtk4::PolicyType::Never
+        });
+        self.days_view.set_kinetic_scrolling(week);
+        for f in &self.fades {
+            f.set_visible(week);
+        }
         self.refresh();
     }
 
@@ -750,7 +770,31 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .propagate_natural_height(true)
         .margin_top(6)
         .build();
-    content.append(&days_view);
+    // Week view: the web clips the columns above the nav and fades their bottom and right edges toward the page.
+    let fades = [
+        ("pa-edge-fade-v", gtk4::Align::End, gtk4::Align::Fill),
+        ("pa-edge-fade", gtk4::Align::Fill, gtk4::Align::End),
+    ]
+    .map(|(class, v, h)| {
+        let f = gtk4::Box::builder()
+            .css_classes([class])
+            .valign(v)
+            .halign(h)
+            .can_target(false)
+            .visible(false)
+            .build();
+        f.set_size_request(
+            if h == gtk4::Align::End { 38 } else { -1 },
+            if v == gtk4::Align::End { 38 } else { -1 },
+        );
+        f
+    });
+    let faded = gtk4::Overlay::new();
+    faded.set_child(Some(&days_view));
+    for f in &fades {
+        faded.add_overlay(f);
+    }
+    content.append(&faded);
     let scroll = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)
@@ -767,6 +811,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         range_label,
         controls: controls.clone(),
         body,
+        days_view,
+        fades,
         generation: Cell::new(0),
         entries: RefCell::default(),
     });
