@@ -118,9 +118,9 @@ button.pa-pill.selected { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-thumb { border-radius: 4px; background: @pa_soft; }
 .pa-chip-status { font-size: 9.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; border: 1px solid @pa_line; }
 .pa-chip-status.ok { color: @pa_ink; border-color: alpha(#8ac5a5, 0.55); background: alpha(#8ac5a5, 0.18); }
-.pa-chip-status.soon { color: @pa_ink; border-color: @pa_brand; background: alpha(@pa_brand, 0.22); }
+.pa-chip-status.soon { color: @pa_ink; border-color: alpha(@pa_brand, 0.65); background: alpha(@pa_brand, 0.13); }
 .pa-chip-status.agenda { padding: 1px 10px; }
-.pa-chip-status.gone { color: @pa_ink_soft; border-color: @pa_brand_ink; background: alpha(@pa_brand_ink, 0.18); }
+.pa-chip-status.gone { color: @pa_ink_soft; border-color: alpha(@pa_brand_ink, 0.65); background: alpha(@pa_brand_ink, 0.13); }
 .pa-dot.have { background: #8ac5a5; }
 .pa-dot.missing { background: @pa_brand_ink; }
 
@@ -199,9 +199,10 @@ button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 0 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
 button.pa-entry.have { border-left-color: #8ac5a5; }
 button.pa-entry.missing { border-left-color: @pa_muted; }
-button.pa-entry:not(.week) { padding-bottom: 10px; }
+button.pa-entry:not(.week) { padding: 9px 13px 7px 12px; }
 button.pa-entry:not(.week) .pa-entry-sub { margin-top: 2px; }
-button.pa-entry:not(.week) .pa-entry-metarow { margin-top: 1px; }
+button.pa-entry:not(.week) .pa-entry-metarow { margin-top: 0; }
+button.pa-entry:not(.week) .pa-chip-status.agenda { min-height: 21px; }
 /* Week cards keep their earlier look until measured against the web week */
 button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface; border-color: @pa_line; }
 button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
