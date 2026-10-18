@@ -59,6 +59,7 @@ internal sealed class ProfilesScreen : IPage
                 label: cur ? $"{p.DisplayName}, current profile" : p.DisplayName, () => { if (!cur) Dbg.Log("switch profile not implemented"); });
             if (cur)
             {
+                _focus.Overrides[(currentIndex, RemoteKey.Down)] = _focus.Items.Count; // Down from the avatar reaches the settings pill first, as it did when the pills were centred under it
                 AddPill(x + Circle / 2 - 22 - 52.4f / 1 - 1.6f, 704, 44, "", "settings", $"{p.DisplayName} settings", () => _env.Navigate("/settings"), round: true);
                 AddPill(x + Circle / 2 - 22 - 52.4f / 1 - 1.6f + 52.8f, 704, 101.2f, "Sign out", "signout", $"{p.DisplayName} sign out", () => _env.SignOut());
             }
