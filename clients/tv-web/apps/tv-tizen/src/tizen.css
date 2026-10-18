@@ -146,3 +146,8 @@ html[data-platform="tv-tizen"] .app-user-version {
 html[data-platform="tv-tizen"] .calendar-line-text {
   min-height: 1.2em;
 }
+
+/* Status pill: the same flooring hits its 1.4 line box; border-box min-height of the unrounded line, vertical padding (0.18rem x 2) and 2px of border. */
+html[data-platform="tv-tizen"] .status-pill {
+  min-height: calc(1.4em + 0.36rem + 2px);
+}
