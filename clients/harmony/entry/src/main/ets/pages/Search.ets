@@ -279,7 +279,7 @@ export struct SearchScreen {
   @Builder
   private filtersBody(): void {
     ChoiceSegments({
-      heading: 'Type',
+      heading: t('pages.search.typeLabel', 'Type'),
       choices: searchTypeChoices(this.availableKinds),
       selected: this.mediaType,
       onChoose: (value: string): void => {
@@ -333,7 +333,7 @@ export struct SearchScreen {
         .width(tv(ICON_SIZE))
         .height(tv(ICON_SIZE))
         .colorFilter(tintFilter(activeColors().inkSoft))
-      TextInput({ text: this.query, placeholder: 'Search your libraries and playlists' })
+      TextInput({ text: this.query, placeholder: t('pages.search.searchPlaceholder', 'Search your libraries and playlists') })
         .fontSize(tv(INPUT_SIZE))
         .fontColor(toResourceColor(activeColors().ink))
         .placeholderColor(toResourceColor(activeColors().inkMuted))
@@ -438,7 +438,7 @@ export struct SearchScreen {
           .width(20)
           .height(20)
           .colorFilter(tintFilter(activeColors().inkSoft))
-        TextInput({ text: this.query, placeholder: 'Search your libraries and playlists' })
+        TextInput({ text: this.query, placeholder: t('pages.search.searchPlaceholder', 'Search your libraries and playlists') })
           .fontSize(16)
           .fontColor(toResourceColor(activeColors().ink))
           .placeholderColor(toResourceColor(activeColors().inkMuted))

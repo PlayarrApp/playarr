@@ -22,6 +22,8 @@ import type { Choice } from '../design/components/ChoiceSegments';
 
 import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance, savedLanguageChoice, saveLanguageChoice, deviceLanguageTag } from '../AppContainer';
 import { t, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, resolveLanguage, setCurrentLanguage } from '../core/Language';
+import { getNavStack, replaceRoute } from '../navigation/NavStack';
+import { ROUTES } from '../navigation/Routes';
 import { InvitePanel } from '../design/components/InvitePanel';
 import { ProfileAvatarPanel } from '../design/components/ProfileAvatarPanel';
 import { HomeRailsPanel } from '../design/components/HomeRailsPanel';
@@ -514,6 +516,8 @@ export struct SettingsScreen {
         this.languageChoice = value;
         setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
         void saveLanguageChoice(value);
+        // Rebuild the page so every label reads in the new language at once.
+        replaceRoute(getNavStack(), ROUTES.Settings);
       },
     })
   }
