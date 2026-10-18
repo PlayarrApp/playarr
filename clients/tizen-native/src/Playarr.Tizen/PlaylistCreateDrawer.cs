@@ -72,7 +72,6 @@ internal sealed class PlaylistCreateDrawer : IDisposable
             PositionY = 9,
             Size = new Size(236, 40),
             Focusable = true,
-            MaxLength = int.MaxValue,
             PixelSize = 13,
             TextColor = Ui.C(theme.Ink),
             PlaceholderText = "Playlist name",
@@ -253,6 +252,9 @@ internal sealed class PlaylistCreateDrawer : IDisposable
     }
 
     public void FocusNameInput() => FocusName();
+
+    /// <summary>Capture hook (DebugMirror /text): the emulator on-screen keyboard cannot be driven from the host, so the typed name is set directly.</summary>
+    public void SetName(string value) => _name.Text = value;
 
     public void SetSubmitting(bool submitting)
     {
