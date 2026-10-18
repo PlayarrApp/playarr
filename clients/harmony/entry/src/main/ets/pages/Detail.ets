@@ -2110,7 +2110,7 @@ struct Detail {
         this.rails,
         (rail: DetailRail) => {
           Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 2) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: the subtitle gap above grew by 2
-            this.railHeading(rail.heading, rail.items.length.toString() + ' episodes', true)
+            this.railHeading(rail.heading, tf('pages.workDetail.episodesCount', '{{count}} episodes', { count: rail.items.length.toString() }), true)
             MediaRail({
               railId: rail.id,
               measurementId: this.seriesMeasurementId('rail', this.workId, this.seriesFocusGeneration, rail.id),
