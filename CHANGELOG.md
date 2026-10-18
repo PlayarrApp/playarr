@@ -13,21 +13,6 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Android phone: series detail description ends on a whole word like the web, the watchlist and playlist pills use the web's glyph gap (so Start is the web width), and Calendar Week light uses the web's short start scrim (17.530).
-- Android phone film and series detail: the key art is hidden under the header and fades in below it, and the series title and episode copy sit 1 to 2 px higher, as on the web phone.
-- Android phone library: the unwatched dot keeps its crimson halo and shadow as on the web, and the A to Z index strip sits 1 px lower (17.530).
-- Android phone calendar month: the period button reads "Oct 2026" and the weekday row sits 7 dp lower in the strip header, as on the web phone.
-- Android tablet: series and film detail episode, chapter and cast tracks start at the web x again (a TV-only 4 dp change had pulled them left).
-- Treat a token rotation as a credential hand-over in the debug-mirror identity heartbeat instead of an identity failure.
-- HarmonyOS phone: series-detail episode ring no longer clipped and chip rows match web, Profiles select chevron is a thin stroked glyph, calendar agenda headings sit on the page with web's day gap, Preferences rows start 12 vp lower.
-- Harmony phone: the focused poster card draws its brand glow, the header back arrow and filter glyph match the web's size, and the Series nav icon's play glyph is a polygon.
-- Harmony phone Home cards are 158 vp wide like the web (no letter-rail clearance), the Library and Home content scrolls under the nav bar, the alphabet rail's current letter wears the brand ring, and the Series nav icon's play triangle renders.
-- Nura: the Agenda runs entries to the page's right edge, uses the web's card height, chip size and chip colours, and the capture tooling rejects frames with a green display artefact.
-- Nura: the Agenda has the web's backdrop wash and control spacing, the month dots are the web size, the title actions rows sit 2 px lower like the web, Week keeps its own chip colours, and the capture guard also rejects black display tiles.
-- Restrict Android calendar week columns and entries to the selected seven-day window while preserving wider agenda results.
-- Tizen 6.5 TVs (Chromium 85): single-line text boxes keep their fractional line height, so Music, Series, Movies, Calendar and Settings rows line up with the web.
-- Tizen 6.5 TVs: the calendar status pill keeps its fractional line height, so week cards no longer drift against the web.
-- Apple TV: the Library preview overview uses the web size, weight and line height, so its lines wrap like the web (series, music, movies).
 - Android phone film and series detail: the header shows the back pill and the kind title only, as the web phone header does; the work title stays a TV subtitle.
 - Android phone: library rows follow the web's fractional 136 css px pitch, Home starts with the first On deck card selected, the Calendar week columns end above the nav bar with the web fade, the Calendar toolbar draws the Today ring on open, agenda entries take the width of the widest entry (as the web's grid does), the nav bar's idle icons use the muted ink with the web's narrower selected pill and smaller avatar, and unavailable discovery sources no longer show the backend "(task N)" suffix.
 - Android phone Profiles: the "PROFILES" kicker uses the web brand-ink colour (light rose in dark, deep rose in light) instead of the accent rose.
@@ -625,7 +610,6 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Parity: a static, seeded, frozen reference server (`scripts/parity/static-server.sh`, `PLAYARR_STATIC=1`) and one shared capture config (`scripts/parity/parity.env`), so web refs and device captures stop drifting with a live library.
 - Validate the configured fixture server and Device Test profile before the Apple iOS wall builds or captures.
 - HarmonyOS: a string layer from the web's English, Thai and Japanese tables and Settings > Language; navigation labels and Settings text follow it.
 - Add a native Tizen playlist directory with filters and a Create drawer for personal playlists.
@@ -858,10 +842,6 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- HarmonyOS phone: page background is the surface colour as on web, Preferences rows match web's metrics, the profile theme and language selects show a sun and globe in medium weight, and the first episode card's focus ring is no longer clipped.
-- Nura: the add-profile circle has the web's dashed border and a dimmer plus and label, and the calendar agenda leaves the web's gap between days and sizes its status chip as the web.
-- Nura: the light film detail art sits under the page's top cover, the light Profiles page and its dropdowns use the web's flat grey, and the month grid shades the previous month's cells, aligns the day numbers and starts chips 5 px lower.
-- Apple TV: actions drawer blurs and shades the page behind it, keeps the opened title in the library preview with no lifted card; library grid rows 240.4 apart, preview line spacing and flush-left genre line as the web.
 - Helm chart `playarr-dev`: regional instances accept `strategy` and `exposure.mode: externalIP` (a public ClusterIP Service with `externalIPs` and `externalTrafficPolicy: Local`). `RollingUpdate` is rejected with `hostPort` and, until the server supports two processes on one volume, without an explicit `allowConcurrentPods` opt-in. Defaults render unchanged.
 - The iPad capture workflow now reports sanitized Xcode runtime download errors and package inventory when the pinned iOS 18.5 runtime cannot be acquired.
 - HarmonyOS: Requests in the navigation uses web's plus-in-circle icon.
