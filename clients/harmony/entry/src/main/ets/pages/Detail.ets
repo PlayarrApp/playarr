@@ -369,6 +369,7 @@ struct DetailRowArtworkCard {
   @Prop activeRailFactor: number = 1;
   @Prop episodeCaption: string = '';
   @Prop episodeNumberOverlay: string = '';
+  @Prop artWash: number = 0;
   @Prop focusId: string = '';
   @Prop ringOn: boolean = false;
   @Prop unseen: boolean = false;
@@ -394,6 +395,7 @@ struct DetailRowArtworkCard {
       activeRailFactor: this.activeRailFactor,
       episodeCaption: this.episodeCaption,
       episodeNumberOverlay: this.episodeNumberOverlay,
+      artWash: this.artWash,
       ringOn: this.ringOn,
       unseen: this.unseen,
       measurementId: this.measurementId,
@@ -2198,6 +2200,7 @@ struct Detail {
       subtitle: (item as DetailRow).subtitle,
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: ((item as DetailRow).episodeNumberOverlay ?? ''), // parenthesised: the capture patch anchors on the series card's line
+      artWash: 0.32,
       cardWidth: tv(CHAPTER_CARD_WIDTH),
       cardHeight: tv(CHAPTER_CARD_HEIGHT),
       activeRailFactor: activeRailFactor,
