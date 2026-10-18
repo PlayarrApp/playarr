@@ -24,6 +24,12 @@ def confirm_detail_route_source(detail_sources, name, state, work_id):
     return True
 
 
+def preview_focus_confirmed(state):
+    """Accept only the bridge's explicit acknowledgement of a selected live card."""
+    acknowledgement = state.get("focus_ack")
+    return isinstance(acknowledgement, str) and acknowledgement.startswith("ok:")
+
+
 def summarize_detail_load_events(events, *, sequence_after, work_id, generation,
                                 remote_input_sent_before_focus_assertion):
     """Keep only safe Detail-load state and API outcome fields for one Previewer route generation."""
@@ -283,6 +289,8 @@ def _episode_art_scope(events, *, sequence_after, work_id, generation, frame_siz
         "missing_image_area_count": sum(not row["has_positive_image_area"] for row in visible),
         "missing_completion_count": sum(not row["has_image_completion"] for row in visible),
         "invalid_geometry_count": invalid_geometry_count,
+        "visible_rows_with_image_geometry": sum(row["bounds"] is not None for row in visible),
+        "visible_rows_with_positive_stage": sum(row["row_id"] in positive_area_rows for row in visible),
         "container_area_report_count": container_area_report_count,
         "container_area_sender_failures": container_area_sender_failures,
         "container_area_receiver_accept_count": container_area_receiver_accept_count,
@@ -368,6 +376,8 @@ def analyze_episode_art_frame(image, *, events, sequence_after, work_id, generat
         "missing_image_area_count": scope["missing_image_area_count"],
         "missing_completion_count": scope["missing_completion_count"],
         "invalid_geometry_count": scope["invalid_geometry_count"],
+        "visible_rows_with_image_geometry": scope["visible_rows_with_image_geometry"],
+        "visible_rows_with_positive_stage": scope["visible_rows_with_positive_stage"],
         "container_area_report_count": scope["container_area_report_count"],
         "container_area_sender_failures": scope["container_area_sender_failures"],
         "container_area_receiver_accept_count": scope["container_area_receiver_accept_count"],
@@ -415,6 +425,14 @@ def analyze_episode_art_frame(image, *, events, sequence_after, work_id, generat
         **common,
         "crops": crops,
     }
+
+
+def previewer_focus_unavailable(layout_summary):
+    """True when the app asked for the target focus and FocusController.requestFocus threw: the Previewer has no focus controller,
+    so focus cannot be asserted there (it is never reported as accepted); the frame itself is still judged on art and visibility."""
+    count = layout_summary.get("series-focus-request-count", {}).get("value", {}).get("max")
+    issued = layout_summary.get("series-focus-request-issued", {}).get("value", {})
+    return isinstance(count, (int, float)) and count >= 1 and issued.get("max") == 0
 
 
 def decoded_art_is_accepted(completion_seen, episode_art_metrics):
@@ -705,7 +723,7 @@ POSTER_STALL_MIN_BLOCKS = 2
 
 def posters_stalled(name, image_completes, flat_blocks, home_flat=False):
     """True when the Previewer's image pipeline has stalled for this frame: Home's first Recently Added posters are flat, or two or more
-    flat card blocks show on any screen, or Home completed far fewer images than a healthy process. The caller restarts the Previewer."""
+    flat card blocks show on any screen, or Home completed far fewer images than a healthy process. The capture fails and retains diagnostics for investigation."""
     if flat_blocks >= POSTER_STALL_MIN_BLOCKS or (name == "home" and home_flat):
         return True
     return name == "home" and image_completes is not None and image_completes < POSTER_STALL_MIN_COMPLETE

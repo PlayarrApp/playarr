@@ -1,5 +1,6 @@
 // Suite driver (docs/parity/SUITE.md) for the Samsung Tizen emulator and the LG webOS simulator.
 //   DEVICE=tizen|webos  [TIZEN_DISPLAY=:25] [WEBOS_DISPLAY=:26] [WEBOS_CDP=9226] [PARITY_NETLOG=<dir>]
+//   PARITY_PIN_CLOCK=2026-10-07T12:00:00Z  [webos only] pins Date, zone and locale from the inspector without stable mode
 // webOS: Chrome DevTools Protocol (keys and eval). Tizen: X key events to the emulator window plus the debug build's
 // netlog.js eval channel (a debug build with scripts/parity/tizen-webos/netlog.js; the host side is logserver.py <dir>/log.txt). Both then drive the same page functions.
 import { execFileSync } from "node:child_process";
@@ -7,12 +8,24 @@ import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { installRegionPin, installVisualDate } from "./web.mjs";
 import { assertDeviceTestIdentity, fetchCurrentIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const NETLOG = process.env.PARITY_NETLOG ?? join(tmpdir(), "playarr-netlog");
 const XCLICK = join(here, "..", "tizen-webos", "xclick.py");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Real TVs are driven over the inspector: webOS (WEBOS_REAL=1, ares inspector forward) and Samsung Tizen (TIZEN_REAL=1, the debug port of `sdb shell 0 debug <app id>`).
+const TIZEN_REAL = process.env.TIZEN_REAL === "1";
+const REAL_TV = process.env.WEBOS_REAL === "1" || TIZEN_REAL;
+const CDP_HOST = process.env.CDP_HOST ?? "127.0.0.1";
+// Samsung TVs cannot return pixels over the inspector (Page.captureScreenshot never answers), so TIZEN_MIRROR=<receiver base as the TV reaches it>
+// runs the debug-mirror build of the Tizen app (apps/tv-tizen/vite.config.debug-mirror.ts) from the local receiver: the driver navigates the TV's
+// app page there over the inspector and takes screenshots from the frames the page posts (token: PLAYARR_VIDAA_MIRROR_TOKEN, never logged).
+const TIZEN_MIRROR = TIZEN_REAL ? process.env.TIZEN_MIRROR?.replace(/\/$/, "") : undefined;
+const mirrorToken = () => process.env.PLAYARR_VIDAA_MIRROR_TOKEN ?? "";
+const mirrorLocal = () => (process.env.TIZEN_MIRROR_LOCAL ?? TIZEN_MIRROR ?? "").replace(/\/$/, "");
+const mirrorEntry = (route = "/") => `${TIZEN_MIRROR}/?mirrorPng=1&mirrorPointer=1&mirrorWidth=1920&mirrorToken=${encodeURIComponent(mirrorToken())}#${route}`;
 const KEYCODE = { up: 38, down: 40, left: 37, right: 39, select: 13, back: 27 };
 const KEYNAME = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };
 const XKEY = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
@@ -36,12 +49,37 @@ function pageHook() {
   if (ms) { const f = ms.setActionHandler.bind(ms); ms.setActionHandler = (a, h) => { window.__mediaHandlers[a] = h; return f(a, h); }; }
 }
 
+// Selectors below avoid :is(): the Samsung TVs on Tizen 6.5 run Chromium 85, where an unsupported selector makes querySelector throw.
+// Page code (injected into the app): true when `element` is not cut off by a scrolling or clipping ancestor. A lazy image
+// below a column's scroll edge is on screen by its rectangle but never loads and is not visible to the user.
+export function insideAncestorClips(element, win = globalThis) {
+  let rect = element.getBoundingClientRect();
+  for (let node = element.parentElement; node && node !== win.document?.documentElement; node = node.parentElement) {
+    const style = win.getComputedStyle(node);
+    if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+    const clip = node.getBoundingClientRect();
+    const left = Math.max(rect.left, clip.left), right = Math.min(rect.right, clip.right);
+    const top = Math.max(rect.top, clip.top), bottom = Math.min(rect.bottom, clip.bottom);
+    if (right <= left || bottom <= top) return false;
+    rect = { left, right, top, bottom };
+  }
+  return true;
+}
+
 export async function createDriver() {
-  const device = process.env.DEVICE;
+  // TIZEN_REAL=1 runs the Samsung TV through the webOS CDP path, so DEVICE=webos is forced for it.
+  const device = TIZEN_REAL ? "webos" : process.env.DEVICE;
   if (!["tizen", "webos"].includes(device)) throw new Error("DEVICE=tizen|webos required");
   const display = device === "tizen" ? process.env.TIZEN_DISPLAY ?? ":25" : process.env.WEBOS_DISPLAY ?? ":26";
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
+  let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
+  // PARITY_PIN_CLOCK=<ISO instant> pins the clock without the isolated-account stable mode (the real TV stays on the shared Device Test account), so Calendar renders the web refs' date.
+  let pin = null; // { fixedNow, timeZone, locale } from setDeterministicCapture or PARITY_PIN_CLOCK, re-applied on every CDP connection
+  if (process.env.PARITY_PIN_CLOCK && device === "webos") {
+    if (!Number.isFinite(Date.parse(process.env.PARITY_PIN_CLOCK))) throw new Error("PARITY_PIN_CLOCK must be an ISO instant");
+    pin = { fixedNow: process.env.PARITY_PIN_CLOCK, timeZone: "UTC", locale: "en-GB" };
+  }
   let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme;
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env: process.env, client: process.env.PARITY_CLIENT });
   const trustedServerUrl = loadTrustedDeviceTestServerUrl();
@@ -59,7 +97,7 @@ export async function createDriver() {
     if (socket.readyState < WebSocket.CLOSING) socket.close();
   }
   async function cdpConnect() {
-    const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
+    const list = await (await fetch(`http://${CDP_HOST}:${cdpPort}/json/list`)).json();
     const t = list.find((x) => new RegExp(process.env.WEBOS_MATCH ?? "webos-stage").test(x.url));
     if (!t) throw new Error("webOS app page not found (launcher showing?)");
     const socket = new WebSocket(t.webSocketDebuggerUrl);
@@ -74,9 +112,20 @@ export async function createDriver() {
     // Records the Media Session action handlers (the now-playing buttons) on every new document, as the web driver does.
     await cdp("Page.enable");
     await cdp("Page.addScriptToEvaluateOnNewDocument", { source: `(${pageHook})()` });
+    if (TIZEN_MIRROR) await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__mirrorPause = true;" });
+    if (pin) {
+      // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
+      await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
+      await cdp("Emulation.setLocaleOverride", { locale: pin.locale });
+      // A real TV's inspector does not always honour the zone override (the Samsung QN700B showed ICT, 19:00, on some screens): pin the zone in the page too.
+      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)});(${installRegionPin})(${JSON.stringify(pin.timeZone)}, ${JSON.stringify(pin.locale)})`;
+      await cdp("Page.addScriptToEvaluateOnNewDocument", { source: install });
+      await cdp("Runtime.evaluate", { expression: install });
+    }
   }
   async function keyboardVisible() {
-    const list = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
+    if (TIZEN_REAL) return false; // the Samsung TV shows no system keyboard target on the inspector
+    const list = await (await fetch(`http://${CDP_HOST}:${cdpPort}/json/list`)).json();
     const target = list.find((item) => /#\/keyboard\//.test(item.url));
     if (!target) throw new Error("webOS system keyboard visibility is unavailable");
     const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -143,8 +192,16 @@ export async function createDriver() {
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.text);
     return r?.result?.value;
   }
+  // Store the pin for the next page start and apply it to this page too; a no-op when the page already runs it.
+  async function applyTizenPin() {
+    if (!tizenPinScript) return;
+    await ev(`(localStorage.setItem("__parityPin", atob("${tizenPinScript}")), window.__parityPinned || (0, eval)(atob("${tizenPinScript}")), true)`);
+    if ((await ev("window.__parityPinned === true")) !== true) throw new Error("tizen page did not take the pinned clock");
+  }
   async function guard() {
-    const identity = await ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+    const check = () => ev(`(${fetchCurrentIdentity.toString()})({ expectedServerUrl: ${JSON.stringify(trustedServerUrl)} })`);
+    // The app rotates its access token while the check is in flight (slower on a real TV): re-validate once against the new session.
+    const identity = await check().catch((error) => { if (/session changed during identity check/.test(error.message)) return check(); throw error; });
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   }
   // Reload at a hash route and wait until the app is up again (a reload drops the debug channel for a few seconds).
@@ -155,7 +212,7 @@ export async function createDriver() {
       for (let a = 0; a < 4; a += 1) {
         writeFileSync(`${NETLOG}/cmd.txt`, `hash:${route}`);
         await sleep(8000);
-        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await guard(); return; }
+        for (let i = 0; i < 6; i += 1) if ((await ev("location.hash").catch(() => undefined)) === `#${route}`) { await applyTizenPin(); await guard(); return; }
       }
       throw new Error(`tizen did not reach ${route}`);
     }
@@ -185,7 +242,7 @@ export async function createDriver() {
       '[data-page-id="library"] .tv-title-card',
     ] : path === "/calendar" ? [
       '[data-page-id="calendar"].calendar-page',
-      '[data-page-id="calendar"] :is(.calendar-scroll, .calendar-agenda-content)',
+      '[data-page-id="calendar"] .calendar-scroll, [data-page-id="calendar"] .calendar-agenda-content',
     ] : path.startsWith("/settings") ? [
       '[data-page-id="settings"].settings-page',
       '[data-page-id="settings"] .settings-workspace',
@@ -194,7 +251,7 @@ export async function createDriver() {
       '[data-page-id="music-detail"] .tv-detail-title',
     ] : path === "/playlists" ? [
       '[data-page-id="playlists"].tv-playlists',
-      '[data-page-id="playlists"] :is(.tv-playlist-directory-card, .tv-home-card)',
+      '[data-page-id="playlists"] .tv-playlist-directory-card, [data-page-id="playlists"] .tv-home-card',
     ] : path.startsWith("/movies/") || path.startsWith("/series/") || path.startsWith("/sites/") || path.startsWith("/search/") || path.startsWith("/library/") || path.startsWith("/playlists/") ? [
       '[data-page-id="work-detail"].tv-detail',
       '[data-page-id="work-detail"] .tv-detail-title',
@@ -236,9 +293,10 @@ export async function createDriver() {
           return animation.playState === "running" && Number.isFinite(endTime);
         });
         if (${device === "webos"} && activeAnimations.length) return null;
+        const insideAncestorClips = ${insideAncestorClips.toString()};
         const visible = [...document.images].filter((img) => {
           const r = img.getBoundingClientRect(), s = getComputedStyle(img);
-          return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth &&
+          return insideAncestorClips(img) && r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth &&
             s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0 && !!(img.currentSrc || img.getAttribute("src") || img.getAttribute("srcset"));
         });
         if (${requireVisibleImage} && !visible.length) return null;
@@ -265,7 +323,19 @@ export async function createDriver() {
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
   return {
-    async setDeterministicCapture() { throw new Error(`${device} stable deterministic capture unsupported: this packaged Chromium client has no app-owned clock and animation contract`); },
+    // webOS is driven over CDP, so the clock, zone and locale are pinned from the inspector; Tizen's driver has no CDP channel (netlog eval only).
+    async setDeterministicCapture({ fixedNow, timeZone = "UTC", locale = "en-GB" } = {}) {
+      if (!fixedNow || !Number.isFinite(Date.parse(fixedNow))) throw new Error(`${device} deterministic capture requires a valid fixedNow instant`);
+      if (device === "tizen") {
+        // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
+        if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
+        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});window.__parityPinned = true;`;
+        tizenPinScript = Buffer.from(source).toString("base64");
+        return;
+      }
+      pin = { fixedNow, timeZone, locale };
+      if (ws && ws.readyState === 1) { closeCdp(); await cdpConnect(); }
+    },
     async captureBuildIdentity() { throw new Error(`${device} stable build identity unsupported: deployed package digest is not exposed by this driver`); },
     async waitReady() { throw new Error(`${device} stable deterministic capture unsupported: readiness is not exposed through the native app contract`); },
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
@@ -273,15 +343,27 @@ export async function createDriver() {
     async start() {
       if (device === "webos") {
         await cdpConnect();
+        if (TIZEN_MIRROR) {
+          await cdp("Page.navigate", { url: mirrorEntry("/") });
+          await sleep(6000);
+          closeCdp();
+          await cdpConnect();
+        }
         await guard();
       } else {
         await guard();
         execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
+        await applyTizenPin();
       }
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
       await guard();
     },
-    async stop() { closeCdp(); },
+    async stop() {
+      closeCdp();
+      // The TV's inspector proxy never completes the WebSocket close handshake, so its sockets keep node alive after the run;
+      // the unref'd timer does not delay a normal exit and ends the process once everything else is done.
+      if (REAL_TV) setTimeout(() => process.exit(process.exitCode ?? 0), 2000).unref();
+    },
     async setTheme(t) {
       await guard();
       await ev(`(localStorage.setItem("playarr-theme", ${JSON.stringify(t)}), true)`);
@@ -338,9 +420,11 @@ export async function createDriver() {
         if (k === "select") {
           // Chromium needs the character event to run native button activation. rawKeyDown alone
           // focuses controls but does not click action buttons in the webOS simulator.
-          await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c });
+          // Real TV: a separate char event lands after the route change the keydown caused and activates the new page's focus (Enter on the nav profile entry bounced Profiles back to Home), so send one keyDown that carries the text.
+          const real = REAL_TV;
+          await cdp("Input.dispatchKeyEvent", { type: "keyDown", ...c, ...(real ? { text: "\r", unmodifiedText: "\r" } : {}) });
           try {
-            await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
+            if (!real) await cdp("Input.dispatchKeyEvent", { type: "char", ...c, text: "\r", unmodifiedText: "\r" });
             if (long) { await sleep(900); await guard(); }
           } finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         } else {
@@ -349,6 +433,8 @@ export async function createDriver() {
           finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         }
       }
+      // Real TV: the app applies a directional key on the next animation frame and a busy main thread can delay it by seconds; two frames flush the queue.
+      if (REAL_TV) await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
       await sleep(device === "webos" ? 1000 : 350);
       await guard();
     },
@@ -370,6 +456,36 @@ export async function createDriver() {
     },
     async screenshot(file) {
       await guard();
+      if (REAL_TV) {
+        // Real TV: no X display. The inspector's Page.captureScreenshot shows the app only (no system menus, keyboard or video plane).
+        if (await ev(BAD)) throw new Error("signed out or error page");
+        await settleVisibleImages();
+        await guard();
+        if (TIZEN_MIRROR) {
+          const q = (name) => `${mirrorLocal()}/__mirror/${name}?t=${encodeURIComponent(mirrorToken())}`;
+          // A focused text field opens the TV's keyboard, which shrinks the page to the strip above it (Search: 1920x568): blur it first.
+          if (Number(await ev("innerHeight")) < 1000) {
+            await ev("(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)");
+            if (!(await until("innerHeight >= 1070", 15000))) throw new Error("the TV keyboard did not close before capture");
+          }
+          await ev("window.__mirrorPause = false");
+          const since = Date.now() / 1000;
+          let frame;
+          for (let i = 0; i < 90 && !frame; i += 1) {
+            await sleep(1500);
+            const candidate = await (await fetch(q("latest.json"))).json().catch(() => null);
+            if (candidate?.hasImage && !candidate.captureError && Number(candidate.receivedAt) > since && String(candidate.route).includes(await ev("location.hash"))) frame = candidate;
+          }
+          if (!frame) throw new Error("no fresh mirror frame from the TV page");
+          writeFileSync(file, Buffer.from(await (await fetch(q("latest.jpg"))).arrayBuffer()));
+          await ev("window.__mirrorPause = true");
+        } else {
+          const shot = await cdp("Page.captureScreenshot", { format: "png", fromSurface: true });
+          writeFileSync(file, Buffer.from(shot.result.data, "base64"));
+        }
+        await guard();
+        return;
+      }
       if (device === "webos" && (await keyboardVisible())) {
         const searchInput = await ev(`(() => { const e = document.activeElement; return location.hash === "#/search" && e?.matches('input[type="search"]') && e.value === ""; })()`);
         if (!searchInput) throw new Error("webOS system keyboard is visible; refusing an obscured capture");

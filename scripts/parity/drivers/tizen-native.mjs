@@ -5,6 +5,8 @@
 //   PLAYARR_TIZEN_DISPLAY (X display of the emulator window, default :25), PLAYARR_TIZEN_WINDOW (X window id when the window is not at 0,0
 //   of its display, default root), PLAYARR_SDB.
 import { execFileSync } from "node:child_process";
+import { assertDeviceTestIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
+import { captureWallTime } from "../capture-timezone.mjs";
 
 const SDB = process.env.PLAYARR_SDB ?? "sdb";
 const SERIAL = process.env.PLAYARR_TIZEN_SERIAL ?? "emulator-26101";
@@ -21,45 +23,107 @@ async function call(method, path) {
   return res.json();
 }
 
-export async function createDriver({ request = call, delay = sleep } = {}) {
+export async function createDriver({ request = call, delay = sleep, env = process.env, secrets, setupForward, captureScreenshot, pixelSignature } = {}) {
   let state = {};
+  let forwarded = false;
+  const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: env.PARITY_CLIENT, ...(secrets ? { secrets } : {}) });
+  const trustedServerUrl = loadTrustedDeviceTestServerUrl({ env, ...(secrets ? { secrets } : {}) });
+  const ensureForwarded = () => {
+    if (forwarded) return;
+    try {
+      if (setupForward) setupForward();
+      else execFileSync(SDB, ["-s", SERIAL, "forward", `tcp:${PORT}`, "tcp:8765"], { stdio: "ignore" });
+    }
+    catch { /* an existing forward is usable; the next request fails closed if it is not */ }
+    forwarded = true;
+  };
+  const verifyAccount = async () => {
+    ensureForwarded();
+    const identity = await request("GET", "/identity");
+    return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
+  };
+  const readState = async () => {
+    const next = await request("GET", "/state");
+    if (typeof next.ready !== "boolean" || !Number.isInteger(next.pending) || next.pending < 0) {
+      throw new Error("Tizen readiness response is incomplete; refusing deterministic capture");
+    }
+    state = next;
+    return next;
+  };
+  const waitStable = async ({ timeoutMs = 40000, stableSamples = 2 } = {}) => {
+    let stable = 0;
+    let previous = "";
+    for (let waited = 0; waited <= timeoutMs; waited += 1000) {
+      const current = await readState();
+      if (current.ready && current.pending === 0) {
+        if (current.animationMode !== "none") throw new Error("Tizen native animation mode is not verified for deterministic capture");
+        // Playback position advances continuously; player screenshots capture paused controls, so exclude that clock from visual readiness.
+        const signature = JSON.stringify([current.route, current.focused, current.position, current.theme, current.playing]);
+        stable = signature === previous ? stable + 1 : 1;
+        previous = signature;
+        if (stable >= stableSamples) return current;
+      } else { stable = 0; previous = ""; }
+      if (waited < timeoutMs) await delay(1000);
+    }
+    throw new Error("Tizen app did not reach stable ready state before deterministic capture");
+  };
   const ownedDownloads = new Set();
   return {
-    async setDeterministicCapture() { throw new Error("Tizen native stable deterministic capture unsupported: the app has no clock or animation pinning hook"); },
-    async captureBuildIdentity() { throw new Error("Tizen native stable build identity unsupported: deployed package digest is not exposed by this driver"); },
-    async waitReady() { throw new Error("Tizen native stable deterministic capture unsupported: readiness is not exposed by the app"); },
+    async setDeterministicCapture({ fixedNow, disableAnimations } = {}) {
+      if (disableAnimations !== true || typeof fixedNow !== "string" || !Number.isFinite(Date.parse(fixedNow))) throw new Error("Tizen deterministic capture requires a valid fixed clock and disabled animations");
+      await verifyAccount();
+      ensureForwarded();
+      await request("POST", `/capture-clock?now=${encodeURIComponent(captureWallTime(fixedNow))}`);
+      await waitStable();
+    },
+    async captureBuildIdentity() {
+      await verifyAccount();
+      ensureForwarded();
+      const identity = await request("GET", "/build");
+      if (typeof identity.app !== "string" || !identity.app || typeof identity.version !== "string" || !identity.version.trim() || !/^[a-f0-9]{64}$/.test(identity.sha256 ?? "")) {
+        throw new Error("Tizen application build identity is incomplete");
+      }
+      return identity;
+    },
+    async waitReady() { await verifyAccount(); await waitStable(); },
     async start() {
-      try { execFileSync(SDB, ["-s", SERIAL, "forward", `tcp:${PORT}`, "tcp:8765"], { stdio: "ignore" }); } catch { /* already forwarded */ }
-      state = await request("GET", "/state");
+      await verifyAccount();
+      await waitStable();
     },
     async stop() {},
-    async setTheme(t) { if (state.theme !== t) { state = await request("POST", `/theme?name=${t}`); await delay(6000); } },
+    async setTheme(t) { await verifyAccount(); if (state.theme !== t) { await request("POST", `/theme?name=${encodeURIComponent(t)}`); await waitStable(); } },
     // a page is settled once the app reports it ready (data loaded); a slow server can take far longer than a fixed wait
     async settle(ms) {
       await delay(ms);
-      for (let waited = 0; waited < 40000; waited += 1000) {
-        state = await request("GET", "/state");
-        if (state.ready !== false) break;
-        await delay(1000);
-      }
-      // chapter and cast images load after the page is ready
-      for (let waited = 0; waited < 25000 && state.pending > 0; waited += 1000) { await delay(1000); state = await request("GET", "/state"); }
-      await delay(2500); // posters decode after the page and the image downloads are done
+      await verifyAccount();
+      await waitStable();
     },
-    async home() { state = await request("POST", "/route?path=/"); await this.settle(5000); },
-    async route(p) { state = await request("POST", `/route?path=${encodeURIComponent(p)}`); await this.settle(4000); },
-    async key(k, { long } = {}) { state = await request("POST", `/key?name=${k}${long ? "&long=1" : ""}`); await delay(long ? 1500 : KEY_MS); },
-    async location() { state = await request("GET", "/state"); return state.route; },
-    async focused() { state = await request("GET", "/state"); return state.focused == null ? null : { label: state.focused, position: state.position ?? null }; },
+    async home() { await verifyAccount(); await request("POST", "/route?path=/"); await this.settle(5000); },
+    async route(p) { await verifyAccount(); await request("POST", `/route?path=${encodeURIComponent(p)}`); await this.settle(4000); },
+    async key(k, { long } = {}) { await verifyAccount(); await request("POST", `/key?name=${encodeURIComponent(k)}${long ? "&long=1" : ""}`); await delay(long ? 1500 : KEY_MS); await waitStable(); },
+    async location() { await verifyAccount(); await readState(); return state.route; },
+    async focused() { await verifyAccount(); await readState(); return state.focused == null ? null : { label: state.focused, position: state.position ?? null }; },
     async screenshot(file) {
-      await delay(2500);
-      execFileSync("import", ["-window", process.env.PLAYARR_TIZEN_WINDOW ?? "root", file], { env: { ...process.env, DISPLAY } });
+      await verifyAccount();
+      await waitStable();
+      if (state.route.startsWith("/player/") && state.playing) throw new Error("Tizen player capture requires paused playback for deterministic pixels");
+      const first = `${file}.stability.png`;
+      const capture = captureScreenshot ?? ((path) => execFileSync("import", ["-window", process.env.PLAYARR_TIZEN_WINDOW ?? "root", path], { env: { ...process.env, DISPLAY } }));
+      const signature = pixelSignature ?? ((path) => execFileSync("identify", ["-format", "%#", path], { encoding: "utf8" }).trim());
+      capture(first);
+      await delay(1000);
+      await verifyAccount();
+      await waitStable();
+      if (state.route.startsWith("/player/") && state.playing) throw new Error("Tizen player capture requires paused playback for deterministic pixels");
+      capture(file);
+      if (signature(first) !== signature(file)) throw new Error("Tizen rendered pixels changed between deterministic readiness samples");
     },
     // Downloads run through the engine's debug endpoints (the UI path was checked by hand): what is stored, paused and removed is the real
     // engine against the real server tickets. Notifications and now-playing: the TV profile has none (supports stays false), and the
     // grouped series-level actions are not built.
     supports: { downloads: true, "grouped-downloads": true },
     async download(c) {
+      await verifyAccount();
       const m = c.media; const started = Date.now(); const within = (c.expect.withinSeconds ?? 300) * 1000;
       const list = async () => (await request("GET", "/dl/list"));
       const get = async (id) => (await list()).find((x) => x.Id === id);
@@ -127,6 +191,7 @@ export async function createDriver({ request = call, delay = sleep } = {}) {
       ownedDownloads.clear();
     },
     async play(c, expect) {
+      await verifyAccount();
       state = await request("POST", `/route?path=/player/${c.file}`);
       const t0 = Date.now();
       let p0 = null;

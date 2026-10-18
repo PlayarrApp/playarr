@@ -4,10 +4,13 @@
 //   PARITY_LINK_CMD (command that approves a TV link code for the Device Test account; the code is appended: the account's
 //   sessions are evicted by other runs, so a signed-out app links again, then carries on),
 //   PARITY_XDISPLAY (e.g. :98: read screenshots from the emulator's X window; the guest screencap can crash some emulators).
+//   PARITY_DEVICE_ACCOUNT_GUARD=android and PARITY_USE_DEVICE_TEST_DPAD=1 enable the approved D-pad account identity guard.
 // The device must already be signed in as the Device Test profile and out of touch mode (a fresh emulator boot is).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { guardAndroidDeviceAccount } from "../capture-state.mjs";
 
 const run = promisify(execFile);
 const KEYS = { up: "DPAD_UP", down: "DPAD_DOWN", left: "DPAD_LEFT", right: "DPAD_RIGHT", select: "DPAD_CENTER", back: "BACK" };
@@ -35,7 +38,34 @@ const instantNanos = (value) => {
   return epochSeconds * 1_000_000_000n + nanos;
 };
 
-export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env } = {}) {
+// Nav route base each suite screen ends on; also the set of screens the app's capture barrier covers.
+const EXPECTED_ROUTE = {
+  home: "home", movies: "movies", series: "series", music: "music", search: "search", settings: "settings",
+  profiles: "profiles", filters: "movies", actions: "movies", "calendar-month": "calendar", "calendar-week": "calendar",
+  "calendar-agenda": "calendar", "film-detail": "experience-detail", "series-detail": "experience-detail",
+  "player-controls": "experience-player",
+};
+
+export function captureReadinessState(lines, { generation, screen, surface }) {
+  if (typeof generation !== "string" || !generation) return { ready: false, reason: "missing generation" };
+  const marker = [...lines].reverse().find((line) => line.startsWith("capture_state ") && line.includes(`generation=${generation} `));
+  if (!marker) return { ready: false, reason: "missing generation marker" };
+  const fields = Object.fromEntries(marker.slice("capture_state ".length).split(/\s+/).map((part) => part.split("=")));
+  const count = Number(fields.data_count), seen = Number(fields.art_seen), pending = Number(fields.art_pending), failed = Number(fields.art_failed);
+  if (fields.screen !== screen) return { ready: false, reason: "wrong screen" };
+  if (surface && fields.surface !== surface) return { ready: false, reason: "wrong surface" };
+  if (fields.data !== "ready" || !Number.isSafeInteger(count) || count < 0) return { ready: false, reason: "route data loading" };
+  if (fields.layout !== "ready") return { ready: false, reason: "layout loading" };
+  if (![seen, pending, failed].every((value) => Number.isSafeInteger(value) && value >= 0) || pending !== 0 || failed !== 0 || (count > 0 && seen === 0)) return { ready: false, reason: "visible artwork incomplete" };
+  return { ready: true, marker };
+}
+
+export function stableCaptureObservation(previous, current) {
+  return Boolean(current.ready && current.routeMatches && current.focus &&
+    previous.marker === current.marker && previous.focus === current.focus);
+}
+
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, accountGuard = guardAndroidDeviceAccount, execute = run } = {}) {
   const env = envOverride, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
   const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
   // Injectable clock (tests): the readiness loop's deadline arithmetic then never depends on how long a real process took.
@@ -43,7 +73,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   const sleep = clock.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const execBounded = async (command, args, { timeoutMs = commandTimeoutMs, label = "external command", ...options } = {}) => {
     try {
-      return await run(command, args, { env, ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
+      return await execute(command, args, { env, ...options, timeout: timeoutMs, killSignal: "SIGTERM" });
     } catch (e) {
       if (e.killed && e.signal === "SIGTERM") throw new Error(`${label} timed out after ${timeoutMs}ms`);
       throw e;
@@ -74,18 +104,32 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     }
   };
   const shell = (...a) => adb("shell", ...a);
+  const guardDeviceAccount = async () => {
+    if (env.PARITY_DEVICE_ACCOUNT_GUARD !== "android") return;
+    await accountGuard({ ...env, PARITY_PACKAGE: pkg });
+  };
   let theme = "dark";
   let parityClock = null;
+  let captureGeneration = null;
+  let captureScreen = null;
+  let captureSurface = null;
+  let captureTarget = null;
   let savedAnimationScales = null;
+  let savedRegion = null; // { timeZone, locales } as found, restored in stop()
   const animationScaleKeys = ["window_animation_scale", "transition_animation_scale", "animator_duration_scale"];
 
   const parityLines = async () => (await adb("logcat", "-d", "-s", "PlayarrParity:I")).split("\n").map((l) => l.replace(/^.*PlayarrParity: /, "")).filter(Boolean);
   // pause: the debug build pauses the player at its first frame (a still frame for the player-controls screen); off for playback cases.
   const launch = async (route, pause = true) => {
+    await guardDeviceAccount();
+    const requestedCaptureScreen = captureTarget ? (captureSurface ? "movies" : captureTarget) : null;
+    captureScreen = requestedCaptureScreen ?? (["movies", "series", "music"].includes(route) ? route : null);
+    captureGeneration = captureScreen ? randomUUID() : null;
     await shell("am", "force-stop", pkg);
     await adb("logcat", "-c");
     await shell("am", "start", "-n", `${pkg}/.MainActivity`, "--es", "parity_route", route,
       ...(parityClock ? ["--es", "parity_clock", parityClock] : []),
+      ...(captureGeneration ? ["--es", "parity_capture_generation", captureGeneration, "--es", "parity_capture_screen", captureScreen] : []),
       ...(pause ? ["--el", "parity_pause_at_ms", "500"] : []));
     if (parityClock) await waitForClockConsumption();
   };
@@ -111,7 +155,14 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   // Each adb call gets the full command timeout: clamping it to the time left before a readiness deadline gave calls a few
   // milliseconds near the end, which a real process cannot meet (a flaky "timed out after 26ms").
   const tree = async () => {
-    await adbWithTimeout(commandTimeoutMs, "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml");
+    try {
+      await adbWithTimeout(commandTimeoutMs, "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml");
+    } catch (error) {
+      // A dump that timed out leaves its uiautomator process running on the device, and every later dump then fails with
+      // "already registered": stop it and try once more.
+      await adbWithTimeout(commandTimeoutMs, "shell", "pkill", "-f", "uiautomator").catch(() => {});
+      try { await adbWithTimeout(commandTimeoutMs, "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml"); } catch { throw error; }
+    }
     return adbWithTimeout(commandTimeoutMs, "exec-out", "cat", "/sdcard/parity-ui.xml");
   };
   const attr = (node, name) => (node.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] ?? "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
@@ -168,7 +219,8 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   };
   return {
     supports: { nowPlaying: true },
-    async setDeterministicCapture({ fixedNow, disableAnimations } = {}) {
+    async setDeterministicCapture({ fixedNow, disableAnimations, timeZone, locale } = {}) {
+      await guardDeviceAccount();
       if (typeof fixedNow !== "string" || !Number.isFinite(Date.parse(fixedNow)) || instantNanos(fixedNow) === null) throw new Error("Android deterministic capture requires a valid fixedNow ISO date");
       if (disableAnimations !== true) throw new Error("Android deterministic capture requires disableAnimations: true");
       parityClock = fixedNow;
@@ -180,28 +232,58 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         scales[key] = Number(value) === 0 ? "1" : value;
       }
       savedAnimationScales ??= scales;
+      if (timeZone || locale) {
+        // Pin the zone and the app locale with the clock so the pinned instant renders the same time string and date format as the web refs.
+        savedRegion ??= { timeZone: (await shell("getprop", "persist.sys.timezone")).trim(), locales: ((await shell("cmd", "locale", "get-app-locales", pkg)).match(/\[(.*)\]/)?.[1] ?? "").trim() };
+        if (timeZone) {
+          await shell("cmd", "alarm", "set-timezone", timeZone);
+          if ((await shell("getprop", "persist.sys.timezone")).trim() !== timeZone) throw new Error(`Android could not set time zone ${timeZone}`);
+        }
+        if (locale) await shell("cmd", "locale", "set-app-locales", pkg, "--locales", locale);
+      }
       for (const key of animationScaleKeys) {
         await shell("settings", "put", "global", key, "0");
         if ((await shell("settings", "get", "global", key)).trim() !== "0") throw new Error(`Android could not disable system animation scale ${key}`);
       }
     },
-    async waitReady({ screen, phase = "capture" } = {}) {
+    async waitReady({ screen, phase = "capture", surface } = {}) {
       if (!["route", "focus", "capture"].includes(phase)) throw new Error(`unsupported Android readiness phase: ${phase}`);
-      if (phase === "capture") throw new Error("Android stable capture readiness unsupported: image-idle signals cannot prove route data is loaded, so artwork may still change");
+      const requestedSurface = surface ?? ({ filters: "filters", actions: "actions" }[screen]);
+      const target = ["filters", "actions"].includes(screen) ? "movies" : screen ?? captureScreen;
+      if (phase === "capture" && !(target in EXPECTED_ROUTE)) throw new Error(`Android stable capture readiness unsupported for ${screen ?? "unknown"}`);
+      const displaySize = requestedSurface ? await shell("wm", "size") : "";
+      const displayWidth = requestedSurface ? Number(/Override size:\s*(\d+)x/.exec(displaySize)?.[1] ?? /Physical size:\s*(\d+)x/.exec(displaySize)?.[1]) : 0;
       const deadline = now() + readinessTimeoutMs;
-      let previous = "", stable = 0;
+      let previous = "", previousMarker = "", stable = 0;
       while (now() < deadline) {
         const lines = await parityLines();
+        if (phase === "capture") {
+          const capture = captureReadinessState(lines, { generation: captureGeneration, screen: target, surface: requestedSurface });
+          const xml = await tree();
+          if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml)) throw new Error("Android capture readiness reached a sign-in or error screen");
+          const focus = (xml.match(/<node [^>]*>/g) ?? []).find((node) => {
+            const rect = bounds(node);
+            return attr(node, "focused") === "true" && attr(node, "focusable") === "true" && rect.length === 4 && rect[2] > rect[0] && rect[3] > rect[1] && rect[2] - rect[0] < 1900 && (!requestedSurface || (displayWidth > 0 && rect[0] >= displayWidth * 0.65));
+          }) ?? "";
+          const lastRouteLine = lines.findLast((line) => line.startsWith("route=")) ?? "";
+          const currentRoute = /^route=(\S+)/.exec(lastRouteLine)?.[1]?.split("/")[0];
+          if (stableCaptureObservation(
+            { marker: previousMarker, focus: previous },
+            { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus },
+          )) {
+            stable += 1;
+            if (stable >= 2) return;
+          } else stable = 0;
+          previous = focus;
+          previousMarker = capture.ready ? capture.marker : "";
+          await sleep(Math.min(readinessPollMs, Math.max(0, deadline - now())));
+          continue;
+        }
         const xml = await tree();
         if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml)) throw new Error(`Android ${phase} readiness reached a sign-in or error screen`);
         const lastRoute = lines.findLast((line) => line.startsWith("route=")) ?? "";
         const routeValue = /^route=(\S+)/.exec(lastRoute)?.[1] ?? "";
-        const expectedRoute = ({
-          home: "home", movies: "movies", series: "series", music: "music", search: "search", settings: "settings",
-          profiles: "profiles", filters: "movies", actions: "movies", "calendar-month": "calendar", "calendar-week": "calendar",
-          "calendar-agenda": "calendar", "film-detail": "experience-detail", "series-detail": "experience-detail",
-          "player-controls": "experience-player",
-        })[screen];
+        const expectedRoute = EXPECTED_ROUTE[screen];
         const routeBase = routeValue.split("/")[0];
         const knownRoute = routeBase === "home" || LIBRARIES.has(routeBase) || routeBase === "calendar" ||
           routeBase === "experience-detail" || routeBase === "experience-player";
@@ -220,6 +302,10 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       }
       throw new Error(`Android ${phase} readiness timed out without stable focused content`);
     },
+    async setCaptureTarget(screen) {
+      captureTarget = screen in EXPECTED_ROUTE ? screen : null;
+      captureSurface = ({ filters: "filters", actions: "actions" })[screen] ?? null;
+    },
     async captureBuildIdentity() {
       const apk = (await shell("pm", "path", pkg)).trim().match(/^package:(.+)$/m)?.[1];
       if (!apk) throw new Error("Android could not resolve the installed APK path for build identity");
@@ -228,14 +314,25 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       return { package: pkg, apk, sha256: digest.toLowerCase() };
     },
     async start() {
+      await guardDeviceAccount();
+      // The TV launcher ignores DPAD_DOWN for touch-mode recovery. Bring the guarded app
+      // forward first so the same key reaches Compose and restores directional focus.
+      await launch("home");
+      const isDisplayZeroInTouchMode = (output) => {
+        const lines = output.split("\n");
+        const marker = lines.findIndex((line) => /TouchModePerDisplay:/.test(line));
+        if (marker >= 0) return lines.slice(marker, marker + 5).some((line) => /Display:\s*0\s+TouchMode:\s*1\b/.test(line));
+        return /(?:^|\s)TouchMode:\s*1\b/.test(output);
+      };
       const touch = await shell("dumpsys", "input");
       // A tap (the USB-debugging prompt watcher taps) puts the device in touch mode, which hides every focus state; a key press leaves it.
-      if (/TouchMode: 1/.test(touch)) {
+      if (isDisplayZeroInTouchMode(touch)) {
         await shell("input", "keyevent", "KEYCODE_DPAD_DOWN");
-        if (/TouchMode: 1/.test(await shell("dumpsys", "input"))) throw new Error("device stays in touch mode: restart the emulator");
+        if (isDisplayZeroInTouchMode(await shell("dumpsys", "input"))) throw new Error("device stays in touch mode after guarded app launch and DPAD recovery");
       }
     },
     async setTheme(t) {
+      await guardDeviceAccount();
       theme = t;
       const xml = `<?xml version="1.0" encoding="utf-8" standalone="yes" ?><map><string name="theme">${t === "light" ? "Light" : "Dark"}</string></map>`;
       await shell("am", "force-stop", pkg);
@@ -244,6 +341,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     async home() { await launch("home"); await settled(); await relink("home", true); },
     async route(r) { const a = appRoute(r); await launch(a); await settled(); await relink(a, true); },
     async key(k, { long } = {}) {
+      await guardDeviceAccount();
       await shell("input", "keyevent", ...(long ? ["--longpress"] : []), `KEYCODE_${KEYS[k]}`);
       await sleep(long ? 1500 : k === "select" || k === "back" ? 2500 : 600); // a page change takes a moment to settle focus
     },
@@ -291,7 +389,8 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       return label == null ? null : { label, position };
     },
     async screenshot(file) {
-      if (parityClock) await this.waitReady({ phase: "capture" });
+      await guardDeviceAccount();
+      if (parityClock) await this.waitReady({ screen: captureSurface ?? captureScreen, phase: "capture" });
       const xml = await tree();
       if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml.replace(/<node [^>]*package="(?!io\.playarr)[^>]*>/g, ""))) throw new Error("signed out or error screen");
       const png = env.PARITY_XDISPLAY
@@ -323,6 +422,13 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       return r;
     },
     async stop() {
+      if (savedRegion) {
+        const region = savedRegion; savedRegion = null;
+        try {
+          if (region.timeZone) await shell("cmd", "alarm", "set-timezone", region.timeZone);
+          await shell("cmd", "locale", "set-app-locales", pkg, "--locales", region.locales);
+        } catch (error) { throw new Error(`Android failed to restore time zone and locale: ${String(error?.message ?? error).split("\n")[0]}`); }
+      }
       if (savedAnimationScales) {
         const failures = [];
         for (const key of animationScaleKeys) {

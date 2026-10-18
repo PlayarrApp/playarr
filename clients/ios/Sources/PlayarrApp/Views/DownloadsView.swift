@@ -28,6 +28,9 @@ struct DownloadsView: View {
     @Environment(\.playarrGoHome) private var goHome
     @State private var editing: DownloadEditTarget?
     @State private var showingFilters = false
+    #if DEBUG
+    @State private var parityDownloadsLoaded = false
+    #endif
 
     private var isPhone: Bool { PlayarrLayout.isPhone(UIScreen.main.bounds.size) }
 
@@ -46,8 +49,16 @@ struct DownloadsView: View {
         .navigationTitle("Downloads")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(.visible, for: .navigationBar)
-        .task { viewModel.refresh() }
+        .task {
+            viewModel.refresh()
+            #if DEBUG
+            parityDownloadsLoaded = true
+            #endif
+        }
         .onAppear { viewModel.refresh() }
+        #if DEBUG
+        .parityScreenLoad(parityDownloadsLoaded ? .ready : .loading)
+        #endif
         .sheet(item: $editing) { target in
             DownloadEditSheet(records: target.records, title: target.title, apiClient: apiClient, downloadRepository: downloadRepository)
         }
@@ -74,8 +85,8 @@ struct DownloadsView: View {
                 description: "Download a title from its detail page to watch it without a connection."
             )
             .offset(x: 37, y: 80)
-            WMHeaderCircleButton(width: 44, height: 40, glyph: "\u{2190}", action: goHome)
-                .offset(x: 15, y: WM.topInset + 1)
+            PlayarrBackButton(action: goHome)
+                .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             WMText("Downloads", 21.6, 580, lh: 32, ls: -0.972).offset(x: 68, y: WM.topInset + 5)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

@@ -315,6 +315,75 @@ final class PlayerViewModelLifecycleTests: XCTestCase {
         XCTAssertTrue(PlayerViewModel.shouldWriteProgress(positionMS: 1, completed: false))
         XCTAssertTrue(PlayerViewModel.shouldWriteProgress(positionMS: 0, completed: true))
     }
+
+    func testLibraryLanguageSelectionFiltersBrowseAndCanBeClearedByToggling() async {
+        let recorder = LibraryBrowseRecorder()
+        let viewModel = LibraryViewModel(apiClient: LibraryLanguageAPIClient(recorder: recorder))
+
+        await viewModel.toggleAudioLanguage("en")
+
+        XCTAssertEqual(viewModel.selectedAudioLanguages, ["en"])
+        let filteredCalls = await recorder.filteredCalls
+        XCTAssertEqual(filteredCalls, [LibraryBrowseCall(audio: ["en"], subtitles: [])])
+        XCTAssertEqual(viewModel.languageFacets?.audio.first?.code, "en")
+
+        await viewModel.toggleAudioLanguage("en")
+
+        XCTAssertTrue(viewModel.selectedAudioLanguages.isEmpty)
+        let unfilteredBrowseCount = await recorder.unfilteredBrowseCount
+        XCTAssertEqual(unfilteredBrowseCount, 1)
+    }
+}
+
+private struct LibraryBrowseCall: Equatable, Sendable {
+    let audio: [String]
+    let subtitles: [String]
+}
+
+private actor LibraryBrowseRecorder {
+    private(set) var filteredCalls: [LibraryBrowseCall] = []
+    private(set) var unfilteredBrowseCount = 0
+
+    func recordFiltered(audio: [String], subtitles: [String]) {
+        filteredCalls.append(LibraryBrowseCall(audio: audio, subtitles: subtitles))
+    }
+
+    func recordUnfiltered() { unfilteredBrowseCount += 1 }
+}
+
+private struct LibraryLanguageAPIClient: PlayarrAPIClient {
+    let recorder: LibraryBrowseRecorder
+    let baseURL = URL(string: "https://playarr.example")!
+
+    func fetchHealth() async throws {}
+    func fetchReadiness() async throws {}
+    func fetchVersion() async throws -> VersionEnvelope {
+        VersionEnvelope(serverVersion: "0.1.0", apiVersion: "v1")
+    }
+    func login(_ body: LoginRequest) async throws -> LoginResponse { throw APIError.unauthorized(nil) }
+    func browseCatalog(kind: WorkKind?, genre: String?, tag: String?, sort: String?, limit: Int?, offset: Int?) async throws -> CatalogPage {
+        await recorder.recordUnfiltered()
+        return CatalogPage(items: [], total: 0)
+    }
+    func browseCatalog(kind: WorkKind?, sort: String?, order: String?, audioLang: [String], subtitleLang: [String], limit: Int?, offset: Int?) async throws -> CatalogPage {
+        await recorder.recordFiltered(audio: audioLang, subtitles: subtitleLang)
+        return CatalogPage(items: [], total: 0)
+    }
+    func searchCatalog(query: String, limit: Int?) async throws -> [Work] { [] }
+    func fetchWork(id: UUID) async throws -> WorkDetail { throw APIError.notFound(nil) }
+    func playbackInfo(
+        mediaFileID: UUID,
+        containers: [String],
+        videoCodecs: [String],
+        audioCodecs: [String],
+        maxBitrateBps: Int64?,
+        profile: String?
+    ) async throws -> PlaybackInfoResponse { throw APIError.notFound(nil) }
+    func requestData(method: String, path: String, query: [URLQueryItem], body: Data?, expectedStatuses: Set<Int>) async throws -> Data {
+        Data(#"{"audio":[{"code":"en","name":"English","count":1}],"subtitle":[]}"#.utf8)
+    }
+    func sendWebhook(instanceID: UUID, payload: Data) async throws {}
+    func resolvedURL(forPath path: String) -> URL? { URL(string: path, relativeTo: baseURL)?.absoluteURL }
 }
 
 private struct WorkDetailAPIClient: PlayarrAPIClient {

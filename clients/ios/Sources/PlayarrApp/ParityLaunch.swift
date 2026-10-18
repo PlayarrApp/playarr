@@ -28,6 +28,7 @@ enum ParityLaunch {
 
     static var server: String? { value("--playarr-parity-server") ?? environmentValue("PLAYARR_PARITY_SERVER") }
     static var user: String? { value("--playarr-parity-user") ?? environmentValue("PLAYARR_PARITY_USER") }
+    static var expectedUsername: String? { environmentValue("PLAYARR_PARITY_EXPECTED_USERNAME") }
     static var password: String? { value("--playarr-parity-password") ?? environmentValue("PLAYARR_PARITY_PASSWORD") }
     static var route: String? { value("--playarr-parity-route") ?? environmentValue("PLAYARR_PARITY_ROUTE") }
     private static var parts: [String] {
@@ -65,19 +66,39 @@ enum ParityLaunch {
     static var motion: Bool { ProcessInfo.processInfo.arguments.contains("--playarr-parity-motion") }
     static var selectsHomeSeries: Bool { environmentValue("PLAYARR_PARITY_SELECT_HOME_SERIES") == "1" }
     /// `--playarr-parity-play <media file id>` with route `play`: opens the player on that file and plays it (suite playback cases).
-    static var playFile: String? { value("--playarr-parity-play") }
+    @MainActor static var playFile: String? {
+        value("--playarr-parity-play") ?? environmentValue("PLAYARR_PARITY_PLAY_FILE").flatMap { $0.isEmpty ? nil : $0 } ?? recordedString("directPlayFileID")
+    }
     /// Routes `calendar-month`, `calendar-week` and `calendar-agenda` open the calendar in that view.
     static var calendarMode: CalendarViewMode? {
         switch parts.first { case "calendar-month": .month; case "calendar-week": .week; case "calendar-agenda": .agenda; default: nil }
     }
     /// Merges one key into Documents/parity-state.json, which the simulator driver reads (signed in, playback state).
+    static var acceptanceStateURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("parity-state.json")
+    }
+    @MainActor private static var didResetAcceptanceState = false
     @MainActor static func record(_ key: String, _ value: Any) {
-        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("parity-state.json")
+        let url = acceptanceStateURL
         var state = (try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any] ?? [:]
         state[key] = value
-        if let data = try? JSONSerialization.data(withJSONObject: state) { try? data.write(to: url) }
+        if let data = try? JSONSerialization.data(withJSONObject: state) { try? data.write(to: url, options: .atomic) }
     }
-    static var isPlayerRoute: Bool { parts.first == "player" || parts.first == "player-quality" }
+    @MainActor static func recordedBool(_ key: String) -> Bool? {
+        let url = acceptanceStateURL
+        return ((try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any])?[key] as? Bool
+    }
+    @MainActor static func recordedString(_ key: String) -> String? {
+        let url = acceptanceStateURL
+        return ((try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any])?[key] as? String
+    }
+    @MainActor static var identityVerified: Bool { isActive && recordedBool("identityVerified") == true }
+    @MainActor static func resetAcceptanceState() {
+        guard !didResetAcceptanceState else { return }
+        didResetAcceptanceState = true
+        try? FileManager.default.removeItem(at: acceptanceStateURL)
+    }
+    static var isPlayerRoute: Bool { parts.first == "player" || parts.first == "player-quality" || parts.first == "play" }
     static var title: String? {
         ["detail", "player", "player-quality"].contains(parts.first ?? "") && parts.count > 2 ? parts[2] : nil
     }
@@ -96,7 +117,21 @@ enum ParityLaunch {
         guard let raw = value("--playarr-parity-now") else { return nil }
         return ISO8601DateFormatter().date(from: raw)
     }
+    /// `--playarr-parity-timezone <identifier>`: time zone used to format the parity clock.
+    static var captureTimeZone: TimeZone {
+        guard let identifier = value("--playarr-parity-timezone") else { return .current }
+        return TimeZone(identifier: identifier) ?? .current
+    }
     static var isActive: Bool { server != nil && user != nil }
+    static var deterministicCapture: Bool { environmentValue("PLAYARR_PARITY_DISABLE_ANIMATIONS") == "1" }
+    @MainActor static func configureDeterministicCapture() {
+        guard deterministicCapture else { return }
+        UIView.setAnimationsEnabled(false)
+    }
+    @MainActor static func recordAnimationsDisabledAfterRootTransaction() {
+        guard deterministicCapture, recordedBool("animationsDisabled") != true else { return }
+        record("animationsDisabled", true)
+    }
     /// `PLAYARR_REAL_INSETS=1`: keep the real safe-area insets and status bar (the safe-area capture test). A parity
     /// capture otherwise reports zero insets, because the web references have none.
     static var zeroInsets: Bool { isActive && environmentValue("PLAYARR_REAL_INSETS") != "1" }
@@ -134,7 +169,15 @@ struct ParityPlayerHost: View {
             }
         }
         .task {
-            if target == nil, let file = ParityLaunch.playFile, let id = UUID(uuidString: file) { target = (id, ""); return }
+            if target == nil, let file = ParityLaunch.playFile, let id = UUID(uuidString: file) {
+                guard ParityLaunch.recordedBool("directPlay") == true else { return }
+                target = (id, "")
+                return
+            }
+            if ParityLaunch.playFile != nil {
+                ParityLaunch.record("directPlay", false)
+                return
+            }
             guard target == nil, let title = ParityLaunch.title else { return }
             let page = try? await apiClient.browseCatalog(kind: .movie, genre: nil, tag: nil, sort: nil, limit: 100, offset: nil)
             guard let work = page?.items.first(where: { $0.title == title || title == "@first" }),

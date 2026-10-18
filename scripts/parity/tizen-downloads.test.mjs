@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDriver } from "./drivers/tizen-native.mjs";
 
+const trusted = "https://test.example";
+const accountEnv = { PLAYARR_USERNAME: "device-test", PLAYARR_TEST_SERVER_URL: trusted };
+const secrets = { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: trusted };
 const media = {
   file: "file-a",
   work: "work-a",
@@ -22,6 +25,7 @@ function fakeRequest(initial = [], { failRemove = [] } = {}) {
     async request(method, path) {
       requests.push({ method, path });
       const url = new URL(path, "http://parity.invalid");
+      if (method === "GET" && url.pathname === "/identity") return { username: "device-test", isCurrentCount: 1, serverUrl: trusted };
       if (method === "GET" && url.pathname === "/dl/list") return structuredClone(records);
       if (method === "POST" && url.pathname === "/dl/start") {
         const file = url.searchParams.get("file");
@@ -78,7 +82,7 @@ test("cleanup removes only downloads created by this driver", async () => {
     file: true,
     keep: "forever",
   }]);
-  const driver = await createDriver({ request: fake.request, delay: async () => {} });
+  const driver = await createDriver({ request: fake.request, delay: async () => {}, env: accountEnv, secrets });
 
   assert.equal((await driver.download(action("start"))).state, "ok");
   fake.requests.length = 0;
@@ -100,7 +104,7 @@ test("start refuses an unowned ticket for the same media before calling start", 
     file: true,
     keep: "forever",
   }]);
-  const driver = await createDriver({ request: fake.request, delay: async () => {} });
+  const driver = await createDriver({ request: fake.request, delay: async () => {}, env: accountEnv, secrets });
 
   const result = await driver.download(action("start"));
 
@@ -112,7 +116,7 @@ test("start refuses an unowned ticket for the same media before calling start", 
 
 test("start fails closed when an old debug mirror omits ownership metadata", async () => {
   const fake = fakeRequest([{ Id: "unknown-ticket", state: "Ready", file: true }]);
-  const driver = await createDriver({ request: fake.request, delay: async () => {} });
+  const driver = await createDriver({ request: fake.request, delay: async () => {}, env: accountEnv, secrets });
 
   const result = await driver.download(action("start"));
 
@@ -133,7 +137,7 @@ test("group action refuses matching unowned tickets and preserves them", async (
     file: true,
     keep: "forever",
   }]);
-  const driver = await createDriver({ request: fake.request, delay: async () => {} });
+  const driver = await createDriver({ request: fake.request, delay: async () => {}, env: accountEnv, secrets });
 
   const result = await driver.download(action("season-delete"));
 
@@ -155,7 +159,7 @@ test("group action may remove a matching ticket owned by this driver only", asyn
     file: true,
     keep: "forever",
   }]);
-  const driver = await createDriver({ request: fake.request, delay: async () => {} });
+  const driver = await createDriver({ request: fake.request, delay: async () => {}, env: accountEnv, secrets });
 
   assert.equal((await driver.download(action("start"))).state, "ok");
   assert.equal((await driver.download(action("season-delete"))).state, "ok");
@@ -165,7 +169,7 @@ test("group action may remove a matching ticket owned by this driver only", asyn
 
 test("cleanup continues after an owned-ticket removal error", async () => {
   const fake = fakeRequest([], { failRemove: ["created-1"] });
-  const driver = await createDriver({ request: fake.request, delay: async () => {} });
+  const driver = await createDriver({ request: fake.request, delay: async () => {}, env: accountEnv, secrets });
 
   assert.equal((await driver.download(action("start"))).state, "ok");
   const secondMedia = { ...media, file: "file-b", episode: 2 };

@@ -40,6 +40,7 @@ ICONS = {
     "player-playlist": '<path d="M4 6.5h10M4 11.5h10M4 16.5h7"/><path d="m16 14 4 2.5-4 2.5z" fill="white" stroke="none"/>',
     "player-health": '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="0.9" fill="white" stroke="none"/>',
     "player-audio": '<path d="M5 9.5v5h4l4.5 3.5V6L9 9.5z" fill="white" stroke="none"/><path d="M16.5 9a4.5 4.5 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/>',
+    "player-minimise": '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>',
     "player-close": '<path d="M6 6l12 12M18 6 6 18"/>',
     "tile-filters": '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
     "tile-bell": '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',

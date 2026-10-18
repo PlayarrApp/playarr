@@ -14,6 +14,7 @@ import { signedInProfileProbe, verifiedDeviceTestUser as matchesDeviceTestUser }
 
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "..", "suite.json"), "utf8"));
+const screens = JSON.parse(readFileSync(join(here, "..", "screens.json"), "utf8"));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PAGES = "file:///usr/share/harbour-playarr/qml/pages";
 const readParityLog = (ssh, identity) => identity ? readOwnedRouteLog(ssh, identity) : "";
@@ -78,6 +79,7 @@ export async function createDriver() {
     ssh("defaultuser", [
       "export XDG_RUNTIME_DIR=/run/user/100000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/100000/dbus/user_bus_socket",
       'export PLAYARR_STEPS="$(cat /run/user/100000/pa-steps.txt)"',
+      `export PLAYARR_PARITY_CLOCK=${screens.determinism.clock}`,
       `setsid nohup invoker --type=silica-qt5 --no-wait /usr/bin/harbour-playarr ${marker} >/run/user/100000/pa.log 2>&1 </dev/null &`,
       "sleep 2"].join("\n"));
     const output = ssh("root", scanAppProcessesScript(marker));
@@ -102,7 +104,8 @@ export async function createDriver() {
   function plan(route, screenId, marker = "ROUTE") {
     const [path, q] = route.split("?");
     const view = new URLSearchParams(q ?? "").get("view");
-    if (screenId === "actions") return [["wait", "wait", `js:pageStack.currentPage.${theme === "light" ? "actionsFirst('movie')" : "actionsHome()"}`], 16];
+    // The suite's keys long-press the first card of the Movies library (the web ref's "2 Fast 2 Furious"), not Home's first card, which follows On deck.
+    if (screenId === "actions") return [["wait", "wait", "js:pageStack.currentPage.actionsFirst('movie')"], 16];
     if (path === "/") return [["wait"], 12];
     if (path === "/movies" && q?.includes("panel=filters")) return [["wait", ...section("movies"), "wait", `js:pageStack.push('${PAGES}/FiltersPage.qml')`], 16];
     if (path === "/movies") return [["wait", ...section("movies")], 14];

@@ -8,11 +8,13 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync, renameSync } from "
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, routeStateLabel, validateSuite } from "./suite-lib.mjs";
+import { assertCanonicalHomeProgress, pinCapture, readinessMode, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, routeStateLabel, validateSuite } from "./suite-lib.mjs";
 import { dpadAttempts, routeAttempts } from "./run-policy.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { mergeSelectedResults } from "./selective-results.mjs";
 import { resolveCaptureEnvironment, withCaptureState } from "./capture-state.mjs";
+import { applyCanonicalDeck } from "./canonical-deck.mjs";
+import { readSecrets } from "./dpad-account.mjs";
 import { assertCaptureManifestTargetAvailable, buildShaFromIdentity, createCaptureManifest, sameCaptureBuildIdentity } from "./capture-manifest.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -26,6 +28,7 @@ const wantScreens = opt("screens", "").split(",").filter(Boolean);
 const wantCases = opt("cases", "").split(",").filter(Boolean);
 const reset = args.includes("--reset-progress");
 const failFast = args.includes("--fail-fast");
+const preflightHomeFixture = args.includes("--preflight-home-fixture");
 const pinned = () => [...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file)];
 // Player checks play a title, which changes On deck on the shared account: they run only in the PLAYBACK-PHASE window (the file named by
 // PLAYARR_PLAYBACK_PHASE_FILE exists) or with --player, and never with --skip-player.
@@ -44,9 +47,17 @@ const unknownOnly = only.filter((name) => !knownOnly.has(name));
 if (unknownOnly.length) throw new Error(`unknown --only section(s): ${unknownOnly.join(", ")}`);
 const via = opt("via", "keys");
 const reference = args.includes("--reference");
-const deterministic = args.includes("--stable") || process.env.PARITY_STABLE === "1";
+// Stable is the default so client captures match the web refs (fixed clock, canonical On deck); PARITY_STABLE=0 is the only opt-out.
+let deterministic = args.includes("--stable") || process.env.PARITY_STABLE !== "0";
+// State pinning (clock, canonical deck, catalogue, animations) applies to every driver; strict readiness and build identity
+// only to drivers that declare driver.strictReadiness. Others use their own normal readiness wait.
+let strict = false;
+if (deterministic) process.env.PARITY_SEED_CANONICAL ??= "1";
 if (deterministic && reset) throw new Error("stable capture cannot combine with --reset-progress; seed canonical state before running");
-const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
+if (preflightHomeFixture && reset) throw new Error("Home fixture preflight cannot run with --reset-progress; verify canonical state without mutation");
+const fixedNow = process.env.DEVICE === "ipad"
+  ? (process.env.PARITY_CAPTURE_NOW || FIXTURE_CLOCK)
+  : (process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK);
 const regressionReason = process.env.PARITY_REGRESSION_REASON;
 const unknownThemes = themes.filter((theme) => !suite.themes.includes(theme));
 if (unknownThemes.length) throw new Error(`unknown --themes value(s): ${unknownThemes.join(", ")}`);
@@ -66,6 +77,9 @@ if (!reference && playerAllowed && only.includes("dpad") && suite.dpad.some((d) 
   throw new Error("player-ok-toggle web reference has no exact Play/Pause state; regenerate it with --reference before scoring");
 }
 async function runSuite(captureSnapshot, registerInterruptCleanup) {
+if (preflightHomeFixture && (!only.includes("screens") || (wantScreens.length > 0 && !wantScreens.includes("home")))) {
+  throw new Error("--preflight-home-fixture requires a screen capture that includes Home");
+}
 const driver = await (await import(pathToFileURL(resolve(opt("driver"))).href)).createDriver({ out, args });
 let signalReceived = null;
 let stopPromise = null;
@@ -127,7 +141,7 @@ async function press(keys) {
 }
 async function waitReady(screen, phase) {
   assertNotInterrupted();
-  if (!deterministic) return;
+  if (!strict) return;
   if (driver.waitReady) { await driver.waitReady({ screen, phase }); assertNotInterrupted(); return; }
   throw new Error(`stable capture unsupported: driver lacks waitReady(${phase})`);
 }
@@ -137,6 +151,7 @@ async function reach(screen, tries = routeAttempts({ failFast })) {
 }
 async function reachOnce(screen) {
   assertNotInterrupted();
+  await driver.setCaptureTarget?.(screen.id);
   await driver.home();
   assertNotInterrupted();
   // A pinned `open` path is always used (every device shows the same title); otherwise keys, or the route as a fallback.
@@ -152,25 +167,32 @@ async function reachOnce(screen) {
   if (!routeMatches(screen.match ?? screen.route, at)) throw new Error(`${screen.id}: ended on ${at}, expected ${screen.route}`);
 }
 
+if (preflightHomeFixture) {
+  await assertCanonicalHomeProgress(process.env);
+  console.log("Home fixture preflight passed before app launch: one canonical part_watched row");
+}
 if (reset) {
   assertNotInterrupted();
   await resetProgress([...pinned(), ...catalogFiles]);
   assertNotInterrupted();
 } // before any capture: On deck and Resume start from the same state on every device
 if (deterministic) {
-  if (!driver.setDeterministicCapture) throw new Error("stable capture unsupported: driver lacks setDeterministicCapture");
-  await driver.setDeterministicCapture({ fixedNow, disableAnimations: true });
+  deterministic = await pinCapture(driver, { fixedNow, explicit: args.includes("--stable") });
   assertNotInterrupted();
 }
-const buildBeforeCapture = deterministic ? await driver.captureBuildIdentity() : null;
+const readiness = readinessMode(driver, deterministic);
+strict = readiness === "strict";
+console.log(`capture state pinned=${deterministic} readiness=${readiness}`);
+const buildBeforeCapture = strict ? await driver.captureBuildIdentity() : null;
 assertNotInterrupted();
 await driver.start?.({ theme: themes[0] });
 assertNotInterrupted();
 await waitReady("home", "route");
+const referenceBuildBeforeCapture = reference && !deterministic ? await driver.captureBuildIdentity?.() : null;
 if (only.includes("screens")) {
   const selectedScreens = suite.screens.filter((x) => !wantScreens.length || wantScreens.includes(x.id));
   const selectiveCapture = selectedScreens.length !== suite.screens.length || themes.length !== suite.themes.length || themes.some((theme, index) => theme !== suite.themes[index]);
-  if (deterministic) assertCaptureManifestTargetAvailable(selectiveCapture, existsSync(join(out, "captures.json")));
+  if (strict) assertCaptureManifestTargetAvailable(selectiveCapture, existsSync(join(out, "captures.json")));
   const captureRows = [];
   for (const theme of themes) {
     assertNotInterrupted();
@@ -179,27 +201,68 @@ if (only.includes("screens")) {
     mkdirSync(join(out, theme), { recursive: true });
     for (const s of selectedScreens) {
       assertNotInterrupted();
+      for (let attempt = 1; ; attempt++) {
       failureContext = { stage: "screens", id: s.id, route: routeStateLabel(s.route) };
+      driver.takeNetworkFlaps?.();
       try {
+        let homeFixtureBefore = null;
+        if (preflightHomeFixture && s.id === "home") {
+          homeFixtureBefore = await assertCanonicalHomeProgress(process.env);
+          console.log("Home fixture preflight passed before navigation: one canonical part_watched row");
+        }
         await reach(s);
         await waitReady(s.id, "capture");
         const path = join(out, theme, `${s.id}.png`);
         await driver.screenshot(path);
         assertNotInterrupted();
+        if (preflightHomeFixture && s.id === "home") {
+          const homeFixtureAfter = await assertCanonicalHomeProgress(process.env);
+          if (homeFixtureBefore.signature !== homeFixtureAfter.signature) {
+            throw new Error("Home fixture changed during capture; capture refused");
+          }
+          console.log("Home fixture preflight passed after capture: one canonical part_watched row");
+        }
         captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, bytes: readFileSync(path), capturedAt: new Date().toISOString() });
         summary.screens += 1;
+        const flaps = driver.takeNetworkFlaps?.() ?? 0;
+        if (flaps && attempt < 3) { // a flap mid-capture can leave images missing: retake
+          captureRows.pop(); summary.screens -= 1;
+          console.log(`RETAKE ${theme} ${s.id}: ${flaps} request(s) aborted by net::ERR_NETWORK_CHANGED (host interface change), attempt ${attempt}`);
+          continue;
+        }
         console.log(`ok ${theme} ${s.id}`);
       }
-      catch (e) { if (signalReceived) throw e; summary.failed.push(`${theme}/${s.id}`); checksFailed = true; console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); if (failFast) throw e; }
+      catch (e) {
+        if (signalReceived) throw e;
+        const flaps = driver.takeNetworkFlaps?.() ?? 0;
+        if (flaps && attempt < 3) { console.log(`RETAKE ${theme} ${s.id}: ${flaps} request(s) aborted by net::ERR_NETWORK_CHANGED (host interface change), attempt ${attempt}`); continue; }
+        if (preflightHomeFixture && s.id === "home") {
+          writeFileSync(join(out, "home-fixture-invalid.json"), `${JSON.stringify({ valid: false, reason: "Home fixture verification or capture failed" })}\n`);
+        }
+        summary.failed.push(`${theme}/${s.id}`); checksFailed = true; console.log(`FAIL ${theme} ${s.id}: ${e.message.split("\n")[0]}`); if (failFast) throw e;
+      }
+      break;
+      }
     }
   }
-  if (deterministic && summary.failed.length === 0) {
+  if (strict && summary.failed.length === 0) {
     if (!captureSnapshot?.hash) throw new Error("stable screen manifest requires an isolated state snapshot");
     const buildAfterScreens = await driver.captureBuildIdentity?.();
     if (!buildBeforeCapture || !sameCaptureBuildIdentity(buildBeforeCapture, buildAfterScreens)) throw new Error("stable screen manifest requires an unchanged verified build identity");
-    const captures = createCaptureManifest({ suite: suite.version, buildIdentity: buildAfterScreens, clock: fixedNow, state: captureSnapshot.hash, captures: captureRows });
+    const captures = createCaptureManifest({ suite: suite.version, buildIdentity: buildAfterScreens, clock: fixedNow, state: captureSnapshot.hash, readiness, captures: captureRows });
     mkdirSync(out, { recursive: true });
     writeFileSync(join(out, "captures.json"), `${JSON.stringify(captures, null, 2)}\n`, { flag: "wx" });
+  }
+  if (deterministic && !strict && summary.failed.length === 0) { // no verified build identity here, so the readiness mode is logged on its own
+    mkdirSync(out, { recursive: true });
+    writeFileSync(join(out, "readiness.json"), `${JSON.stringify({ suite: suite.version, clock: fixedNow, state: captureSnapshot?.hash ?? "unisolated", readiness, captures: captureRows.map(({ id, theme, path }) => ({ id, theme, path })) }, null, 2)}\n`, { flag: "wx" });
+  }
+  if (reference && referenceBuildBeforeCapture && summary.failed.length === 0) {
+    const referenceBuildAfterCapture = await driver.captureBuildIdentity?.();
+    if (!sameCaptureBuildIdentity(referenceBuildBeforeCapture, referenceBuildAfterCapture)) throw new Error("deployed build changed during reference capture");
+    const match = /^([0-9a-f]{40,64})@(.+)$/i.exec(referenceBuildAfterCapture);
+    if (!match || !Number.isFinite(Date.parse(match[2]))) throw new Error("reference capture build identity is invalid");
+    writeFileSync(join(out, "reference-build.json"), `${JSON.stringify({ sha: match[1], built_at: match[2] }, null, 2)}\n`, { flag: "wx" });
   }
 }
 // Extra captures for focus-crop checks (the last row of a long grid, the last item of a short one): not scored, no web ref, and only
@@ -216,7 +279,7 @@ if (only.includes("screens") && !only.includes("dpad") && driver.endCrops) {
         await driver.setLaunchArgs?.(c.launchArgs ?? []); // e.g. Home artwork = Covers
         await reach(suite.screens.find((x) => x.id === c.from));
         await press(c.keys);
-        if (deterministic) await waitReady(c.id, "capture");
+        if (strict) await waitReady(c.id, "capture");
         else await sleep(c.settle ?? 1200); // legacy captures can preserve intentional motion sampling
         await driver.screenshot(join(out, theme, "crops", `${c.id}.png`));
         console.log(`ok ${theme} crop ${c.id}`);
@@ -250,7 +313,7 @@ if (only.includes("dpad")) {
         await reach(from);
         // The player needs a known state before the first key: playing, controls up, focus on play/pause (driver.playerReady), else a fixed wait.
         if (d.wait) {
-          if (driver.playerReady) await driver.playerReady(); else if (deterministic) throw new Error("stable capture unsupported: driver lacks playerReady"); else await sleep(d.wait);
+          if (driver.playerReady) await driver.playerReady(); else if (strict) throw new Error("stable capture unsupported: driver lacks playerReady"); else await sleep(d.wait);
           assertNotInterrupted();
           // Every driver: the playhead must be past 1 s before the first key (a slow player eats keys and shows the wrong state).
           if (driver.playhead) { const t0 = Date.now(); while (Date.now() - t0 < 45000) { assertNotInterrupted(); const head = await driver.playhead(); assertNotInterrupted(); if (head > 1) break; await sleep(500); } if (!((await driver.playhead()) > 1)) throw new Error("player did not start playing within 45 s"); assertNotInterrupted(); }
@@ -292,17 +355,19 @@ if (only.includes("dpad")) {
   mkdirSync(out, { recursive: true });
   const dpadFile = join(out, "dpad.json");
   const selectedIds = suite.dpad.filter((x) => !wantChecks.length || wantChecks.includes(x.id)).map((x) => x.id);
-  const buildAfter = deterministic ? await driver.captureBuildIdentity?.() : null;
+  const buildAfter = strict ? await driver.captureBuildIdentity?.() : null;
   assertNotInterrupted();
-  if (deterministic && !sameCaptureBuildIdentity(buildBeforeCapture, buildAfter)) throw new Error(`deployed build changed during capture: ${JSON.stringify(buildBeforeCapture) ?? "unknown"} to ${JSON.stringify(buildAfter) ?? "unknown"}`);
+  if (strict && !sameCaptureBuildIdentity(buildBeforeCapture, buildAfter)) throw new Error(`deployed build changed during capture: ${JSON.stringify(buildBeforeCapture) ?? "unknown"} to ${JSON.stringify(buildAfter) ?? "unknown"}`);
   const build = buildAfter;
-  if (deterministic && (!build || !captureSnapshot?.hash)) throw new Error("stable capture requires build identity and isolated state snapshot");
+  if (strict && (!build || !captureSnapshot?.hash)) throw new Error("stable capture requires build identity and isolated state snapshot");
   const provenance = {
     suite: suite.version,
     build: build ? buildShaFromIdentity(build) : "unverified-build",
     clock: deterministic ? fixedNow : "unpinned",
     state: captureSnapshot?.hash ?? "unisolated",
-    stable: deterministic,
+    stable: strict,
+    pinned: deterministic,
+    readiness,
     referenceSha256: expectedReferenceSha256,
   };
   const previous = existsSync(dpadFile) ? JSON.parse(readFileSync(dpadFile, "utf8")) : null;
@@ -407,18 +472,9 @@ if (process.env.PARITY_CLIENT) {
     const { env } = context;
     Object.assign(process.env, env);
     let snapshot = context.snapshot;
-    if (process.env.PARITY_SEED_CANONICAL === "1") {
-      const deckFile = process.env.PARITY_DECK_MEDIA_FILE_ID;
-      if (!deckFile) throw new Error("PARITY_DECK_MEDIA_FILE_ID is required to seed canonical capture state");
-      const seedModule = process.env.PARITY_SEED_MODULE;
-      if (!seedModule) throw new Error("PARITY_SEED_MODULE is required when PARITY_SEED_CANONICAL=1");
-      const { seedCanonicalDeck } = await import(pathToFileURL(resolve(seedModule)).href);
-      ({ snapshot } = await seedCanonicalDeck(context, {
-        deckFile,
-        positionMs: Number(process.env.PARITY_DECK_POSITION_MS ?? 15098),
-        durationMs: Number(process.env.PARITY_DECK_DURATION_MS ?? 6742000),
-      }));
-    } else {
+    const seeded = await applyCanonicalDeck(context, process.env, readSecrets());
+    if (seeded) snapshot = seeded;
+    else {
       await context.clearResumeChoices();
       snapshot = await context.snapshotNow();
     }

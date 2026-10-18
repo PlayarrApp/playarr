@@ -1,0 +1,1 @@
+- Keep the SafeArea player route out of automatic shared-fixture runs while preserving the four non-player captures; manual player capture requires explicit exclusive-window confirmation.

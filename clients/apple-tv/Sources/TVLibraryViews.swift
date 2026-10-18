@@ -1290,7 +1290,7 @@ struct TVSearchView: View {
         }
 
         // Web: Filters is the shell action column tile, as on the libraries.
-        TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: 62)
+        TVHeaderPill(label: "Filters", symbol: "slider.horizontal.3", width: TVShellActionColumn.width)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             .padding(.trailing, TVShellActionColumn.edge)
             .padding(.top, TVShellActionColumn.top)
@@ -2208,7 +2208,7 @@ struct TVLibraryKindView: View {
     /// The release year (owner ruling 2026-10-08: never the date the title was added); a playlist shows its count.
     private func yearString(for work: Work) -> String {
         if let count = playlistCounts[work.id] { return count == 1 ? "1 title" : "\(count) titles" }
-        return TVWebFormat.year(work.releaseDate) ?? ""
+        return TVWebFormat.yearRange(work.releaseDate, endDate: work.endDate) ?? ""
     }
 
     /// Web `orderWorks`: titles compare like a person reads them (numbers by value, case and accents ignored: "2"

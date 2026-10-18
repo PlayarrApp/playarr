@@ -48,7 +48,7 @@
 
 
 import { registerNunito } from '../design/Typography';
-import { getServerDirectory, getSessionManager, savedThemeChoice } from '../AppContainer';
+import { getServerDirectory, getSessionManager, savedThemeChoice, applySavedLanguage } from '../AppContainer';
 import type { DeviceProfile } from '../core/DeviceProfile';
 import { DEVICE_PROFILE_STORAGE_KEY } from '../device/DeviceProfileService';
 
@@ -86,6 +86,7 @@ struct Index {
     savedThemeChoice().then((mode: ThemeModeSetting) => {
       setThemeModeSetting(mode);
     });
+    void applySavedLanguage();
     const profile = AppStorage.get<DeviceProfile>(DEVICE_PROFILE_STORAGE_KEY);
     if (profile !== undefined && profile.inputMode === 'dpad') {
       // brief section 6.3: the focus ring is hidden by default, and the

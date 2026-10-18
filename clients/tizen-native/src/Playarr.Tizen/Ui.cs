@@ -195,6 +195,15 @@ internal static class Ui
         return Gradient(x, atTop ? y : y - size, w, size, false, stops);
     }
 
+    public static View HorizontalEdgeFade(float x, float y, float h, Rgba surface, bool atLeft)
+    {
+        const float size = 59.4f, floor = 0.3f;
+        float A(float k) => 1 - (floor + (1 - floor) * k);
+        var edge = new[] { (0f, A(0)), (0.25f, A(0.156f)), (0.5f, A(0.5f)), (0.75f, A(0.844f)), (1f, A(1)) };
+        var stops = (atLeft ? edge : edge.Reverse().Select(e => (1 - e.Item1, e.Item2))).Select(e => (e.Item1, new Rgba(surface.R, surface.G, surface.B, e.Item2))).ToArray();
+        return Gradient(atLeft ? x : x - size, y, size, h, true, stops);
+    }
+
     /// <summary>
     /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
     /// that fades in from nothing at the left edge to full at the right.
@@ -244,11 +253,14 @@ internal static class Ui
     }
 
     /// <summary>An ImageView drawn through a grayscale/contrast/brightness shader (web's filter on the Home key art).</summary>
-    public static ImageView FilteredImage(string url, float x, float y, float w, float h, float contrast, float brightness)
+    public static ImageView FilteredImage(string url, float x, float y, float w, float h, float contrast, float brightness, float fadeStartX = 1f)
     {
+        var alphaMask = fadeStartX >= 1f
+            ? "1.0"
+            : $"clamp((1.0 - vTexCoord.x) / {1f - fadeStartX:0.###}, 0.0, 1.0)";
         var frag = "precision mediump float;\nvarying mediump vec2 vTexCoord;\nuniform sampler2D sTexture;\nuniform lowp vec4 uColor;\n" +
                    "void main(){ vec4 c = texture2D(sTexture, vTexCoord); float g = dot(c.rgb, vec3(0.299, 0.587, 0.114)); " +
-                   $"g = ((g - 0.5) * {contrast:0.###} + 0.5) * {brightness:0.###}; gl_FragColor = vec4(vec3(g), c.a) * uColor; }}";
+                   $"g = ((g - 0.5) * {contrast:0.###} + 0.5) * {brightness:0.###}; float mask = {alphaMask}; gl_FragColor = vec4(vec3(g), c.a * mask) * uColor; }}";
         var shader = new PropertyMap();
         shader.Add("fragmentShader", new PropertyValue(frag));
         var map = new PropertyMap();
@@ -280,6 +292,11 @@ internal static class Ui
     public static ImageView Icon(string name, float x, float y, float size, Rgba tint) => new(ResPath($"icons/{name}.svg"))
     {
         PositionX = x, PositionY = y, Size = new Size(size, size), Color = C(tint),
+    };
+
+    public static ImageView Icon(string name, float x, float y, float width, float height, Rgba tint) => new(ResPath($"icons/{name}.svg"))
+    {
+        PositionX = x, PositionY = y, Size = new Size(width, height), Color = C(tint),
     };
 
     private static PropertyMap AddWeight(this PropertyMap map, int weight)

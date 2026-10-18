@@ -96,6 +96,7 @@ struct WorkDetailView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .playarrChromeHidden(!(viewModel.detail.map { $0.work.kind == .movie || $0.work.kind == .series } ?? false))
+        .parityScreenLoad(parityLoadState)
         .onAppear {
             isVisible = true
             updateVisibleDetailRoute()
@@ -104,6 +105,14 @@ struct WorkDetailView: View {
         .onDisappear {
             isVisible = false
             visibleDetailRoutes?.deactivate(id: visibleDetailRouteID)
+        }
+    }
+
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.loadState {
+        case .loaded where viewModel.detail != nil: .ready
+        case .failed: .failed
+        default: .loading
         }
     }
 
@@ -194,7 +203,7 @@ struct WorkDetailView: View {
         // The title stops at the shell clock (stage chrome puts it at 24% of the width), as on the web.
         let room = max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 182 * scale - 4) // the web fits the detail up to the shell clock (24% of the width)
         return ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 43, height: 43, glyph: "←") { dismiss() }.offset(x: 122 * scale, y: 55 * scale)
+            PlayarrBackButton { dismiss() }.offset(x: 122 * scale, y: 55 * scale)
             WMTitleWithDetail(detail: detail.work.title, maxWidth: room, size: 9.92, gap: 15) {
                 WMText(detail.work.kind == .movie ? "Movies" : "Series", max(19.2, 24 * scale), 520, lh: 36, ls: -1)
             }

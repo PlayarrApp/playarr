@@ -33,21 +33,15 @@ on:
   push:
     branches:
       - main
-  # Started by the merge train (scripts/merge-train.sh) for branches it pushed
-  # with GITHUB_TOKEN, whose pushes trigger no workflows. Also usable by hand.
+  # Manual runs; a dispatch on main runs everything.
   workflow_dispatch:
-  # Nightly full run of everything (no affected-only selection) to catch drift
-  # that a narrowed PR run could miss.
-  schedule:
-    - cron: '17 2 * * *'
 
 concurrency:
   # PRs share one group per PR number and are cancelled by newer pushes. Pushes to main share ONE group, with
   # cancel-in-progress off: GitHub then lets a running main run finish and keeps only the NEWEST pending one, so the
   # latest main is always tested and deployed. Per-SHA groups (the earlier setup) let every merge queue its own full
-  # run: on 11 Oct 2026 the queue held 30+ stale main runs (about 60 cancelled by hand), starving PR runs and the merge
-  # train. A skipped intermediate commit is covered by the next run, which tests a tree containing it. Scheduled and
-  # manual runs keep their own per-SHA group so a push never supersedes them.
+  # run: on 11 Oct 2026 the queue held 30+ stale main runs (about 60 cancelled by hand), starving PR runs. A skipped intermediate commit is covered by the next run, which tests a tree
+  # containing it. Manual runs keep their own per-SHA group so a push never supersedes them.
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref == 'refs/heads/main' && 'main') || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -82,7 +76,6 @@ jobs:
       harmony: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.harmony == 'true' }}
       linux-mobile: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.linux-mobile == 'true' }}
       tv-web: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.tv-web == 'true' }}
-      server-image: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.server-image == 'true' }}
       firetv: ${{ steps.all.outputs.full == 'true' || steps.filter.outputs.firetv == 'true' }}
       tv_web_filters: ${{ steps.tvweb.outputs.tv_web_filters }}
     steps:
@@ -105,6 +98,9 @@ jobs:
       - name: Require cleartext HTTP to user-entered servers
         run: scripts/ci/check-cleartext-policy.sh
 
+      - name: Keep iOS debug-only parity symbols out of Release code
+        run: scripts/ci/check-ios-debug-parity.sh
+
       # Owner rule: public screenshots come from scripts/showcase (open-movie demo library), not the parity fixture.
       - name: Require showcase-made public screenshots
         env:
@@ -122,8 +118,8 @@ jobs:
         run: scripts/ci/check-no-coauthor.sh
 
       # Owner rule (docs/design/page-layout.md, section 7.4): the look of the shared page layout changes only on an
-      # explicit owner request that names the reference, recorded as a Layout-Change line in the PR body. Train runs
-      # (workflow_dispatch on the PR branch) read the body through the API.
+      # explicit owner request that names the reference, recorded as a Layout-Change line in the PR body. Branch
+      # dispatches read the body through the API.
       - name: Require an owner request for shared layout look changes
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -134,10 +130,6 @@ jobs:
       - name: Layout owner-request gate tests
         run: scripts/ci/test-layout-owner-request.sh
 
-      # Owner ruling 8 October 2026: native-against-web parity captures are manual (workflow_dispatch), never a PR check.
-      - name: Require native parity workflows to be manual
-        run: scripts/ci/check-parity-manual.sh
-
       # The repository is public: no hostnames, addresses, paths or pins of a
       # real deployment. Site-specific names come from a secret, never the tree.
       - name: Reject environment-specific data
@@ -145,8 +137,6 @@ jobs:
           ENV_DATA_DENYLIST: ${{ secrets.ENV_DATA_DENYLIST }}
         run: scripts/ci/check-env-data.sh
 
-      - name: Merge train logic tests
-        run: scripts/ci/test-merge-train.sh
       - name: Post-merge fold tests
         run: scripts/ci/test-fold-main.sh
 
@@ -154,16 +144,16 @@ jobs:
         run: scripts/ci/test-android-main-version.sh
 
       - name: Release notes script tests
-        run: node --test scripts/release-notes.test.mjs scripts/fold-fragments.test.mjs scripts/board-sync.test.mjs
+        run: node --test scripts/release-notes.test.mjs scripts/release/build-clients-json.test.mjs scripts/fold-fragments.test.mjs scripts/board-sync.test.mjs
 
       - name: Profile avatar presets match the web reference
         run: node clients/shared/profile-avatars/render.mjs --check
 
-      # Nightly and post-merge dispatches on main validate everything.
+      # Dispatches on main validate everything.
       - name: Full run?
         id: all
         run: |
-          if [ "$GITHUB_EVENT_NAME" = schedule ] || { [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF_NAME" = main ]; }; then
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF_NAME" = main ]; then
             echo full=true >> "$GITHUB_OUTPUT"
           fi
 
@@ -172,25 +162,28 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref || 'main' }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: scripts/ci/rust-scope.sh | tee -a "$GITHUB_OUTPUT"
 
       # Affected-only Android selection with the same diff logic as the Rust scope (so dispatched
-      # train runs select correctly too). Full `build` on main, nightly and main dispatches.
+      # branch runs select correctly too). Full `build` on main dispatches only; pushes diff against the previous main tip.
       - name: Select affected Android work
         id: android
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref || 'main' }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: scripts/ci/android-scope.sh | tee -a "$GITHUB_OUTPUT"
 
       # Affected-only tv-web lint and typecheck: changed workspace packages plus their
       # dependents on a pull request; empty means everything (scripts/ci/tv-web-scope.sh).
-      # Full on nightly and main dispatches like the other scopes.
+      # Full on main dispatches like the other scopes.
       - name: Select affected tv-web packages
         id: tvweb
         env:
-          EVENT_NAME: ${{ steps.all.outputs.full == 'true' && 'schedule' || github.event_name }}
+          EVENT_NAME: ${{ steps.all.outputs.full == 'true' && 'full' || github.event_name }}
           BASE_REF: ${{ github.base_ref || 'main' }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: scripts/ci/tv-web-scope.sh | tee -a "$GITHUB_OUTPUT"
 
       - uses: dorny/paths-filter@v3
@@ -219,15 +212,6 @@ jobs:
               # web/src/components/shell/headerButtonParity.test.ts reads the Apple clients' Swift sources.
               - 'clients/apple-tv/**'
               - 'clients/ios/**'
-              # The layout parity job diffs against these pins with the shared capture tools.
-              - 'docs/parity/web/layout/**'
-              - 'scripts/parity/**'
-              - '.github/workflows/ci.yml'
-            # The server image builds the Admin and web assets from clients/tv-web inside the Dockerfile.
-            server-image:
-              - 'infra/docker/backend.Dockerfile'
-              - '.dockerignore'
-              - 'clients/tv-web/**'
               - '.github/workflows/ci.yml'
             # The Fire TV app builds against the shared tv-web packages, the shared translations and the web
             # stylesheet its token test reads, so a change to any of them can break its tests.
@@ -268,7 +252,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend -> target
-          # Only main (every push is a full run) and the nightly write the cache; PRs restore
+          # Only main pushes write the cache; PRs restore
           # main's. PR-scoped 1 GB saves evicted main's entries from the 10 GB repository quota.
           save-if: ${{ github.ref == 'refs/heads/main' }}
           # Persist the partial target dir even when clippy/test fails so the
@@ -368,7 +352,7 @@ jobs:
   android-apk:
     name: Android signed APK (main)
     needs: changes
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: needs.changes.outputs.android == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 50
     environment: release-android
@@ -553,6 +537,9 @@ jobs:
 
       - name: dotnet test (Playarr.Tizen.Logic.Tests)
         run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj
+
+      - name: Build debug hooks (compile validation only)
+        run: dotnet build src/Playarr.Tizen/Playarr.Tizen.csproj -c Debug -p:PlayarrDebug=true
 
       - name: Build the test-signed tpk
         run: dotnet build src/Playarr.Tizen/Playarr.Tizen.csproj -c Release
@@ -815,110 +802,6 @@ jobs:
         run: pnpm --filter @playarr-tv/web run test
 
   # ---------------------------------------------------------------------
-  # Page layout parity (docs/design/page-layout.md, section 7.3): the canonical header and action pill, built from the
-  # shared components, must equal the committed 30 September reference and pins, and every page's pills and header band
-  # must equal the canonical ones at 0 pixels, in both themes. Needs no fixture server and no Rust build: it serves the
-  # built web client with the deterministic mock API of scripts/nav-perf.
-  # ---------------------------------------------------------------------
-  web-layout-parity:
-    # Four shards, each a separate runner; ci-required reads the combined result of the matrix under this job id.
-    # The nav steps alone measured ~14.6 min as one shard (run 37938948043: 18 scripts, 15 min timeout hit), so they
-    # are split by measured script time into nav-a and nav-b (run 38004049406: nav-b hit the 25 min limit with nav-rail-centre at
-    # ~8 min, so that script and nav-library-frames moved to nav-a). nav-b takes every nav-*-e2e script
-    # not listed under nav-a, so a new script is never skipped.
-    name: web layout parity (${{ matrix.shard }})
-    needs: changes
-    if: needs.changes.outputs.tv-web == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [layout, drawer, nav-a, nav-b]
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      # pnpm 11 needs Node >= 22.13: install Node before pnpm/action-setup runs (same toolchain as tv-web-ci.yml).
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.13.0
-          run_install: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: pnpm
-          cache-dependency-path: clients/tv-web/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: clients/tv-web
-        run: pnpm install --frozen-lockfile
-
-      - name: Build web workspace dependencies
-        working-directory: clients/tv-web
-        run: pnpm --filter './packages/**' run build
-
-      - name: Install the capture tools and Chromium
-        working-directory: scripts/parity
-        run: npm ci --no-audit --no-fund && npx playwright-core install --with-deps chromium
-
-      - name: Layout parity (reference pin, pill identity, header bands)
-        if: matrix.shard == 'layout'
-        working-directory: clients/tv-web/web
-        run: node scripts/layout-parity.mjs --out "$RUNNER_TEMP/layout-parity"
-
-      - name: Drawer close mirrors drawer open
-        if: matrix.shard == 'drawer'
-        working-directory: clients/tv-web/web
-        run: node scripts/drawer-close.mjs
-
-      - name: Build the web client for the edge fade and keyboard checks
-        if: matrix.shard != 'layout'
-        working-directory: clients/tv-web/web
-        run: pnpm exec vite build
-
-      - name: Scroll edge fade (profile, first paint, no box, unclipped focus shadow) in both themes
-        if: matrix.shard == 'drawer'
-        working-directory: clients/tv-web/web
-        run: node scripts/edge-fade-e2e.mjs
-
-      - name: Search results stay left of the Filters button (TV, tablet, phone, both themes)
-        if: matrix.shard == 'drawer'
-        working-directory: clients/tv-web/web
-        run: node scripts/search-contain-e2e.mjs
-
-      - name: Keyboard e2e (BACK keys, focus start and restore)
-        if: startsWith(matrix.shard, 'nav-')
-        working-directory: clients/tv-web/web
-        run: |
-          shard_a="nav-back nav-details nav-drawer-focus nav-focus nav-home-skeleton nav-home-speed nav-keys nav-layers nav-library-drawer nav-mobile-stage nav-rail-centre nav-library-frames nav-wheel-scroll"
-          for script in scripts/nav-*-e2e.mjs; do
-            name=$(basename "$script" -e2e.mjs)
-            case " $shard_a " in *" $name "*) in_a=1 ;; *) in_a=0 ;; esac
-            want_a=0
-            [ "${{ matrix.shard }}" = nav-a ] && want_a=1
-            if [ "$in_a" = "$want_a" ]; then
-              echo "=== $name"; start=$SECONDS
-              node "$script" --no-build --dist dist || exit 1
-              echo "--- $name: passed ($((SECONDS - start))s)"
-            fi
-          done
-
-      - name: Upload the diff images
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: layout-parity-diffs-${{ matrix.shard }}
-          path: ${{ runner.temp }}/layout-parity
-          if-no-files-found: ignore
-
-  # ---------------------------------------------------------------------
   # OpenAPI contract: regenerate the utoipa-derived spec and diff it
   # against the committed copy. Delegates to scripts/openapi-diff-check.sh
   # (owned by the dev-scripts scaffolding) so the regeneration/diff logic
@@ -987,111 +870,7 @@ jobs:
         run: npm test -- --ci
 
   # ---------------------------------------------------------------------
-  # Server image web stage: builds the Dockerfile's `web` export stage from a clean checkout,
-  # exactly as the post-merge Regional image and the Release do, so a change that breaks the
-  # image build (a workspace package missing from the build, a bad COPY) fails before merge.
-  # Only the Node stages run (BuildKit skips the Rust ones for this target).
-  # ---------------------------------------------------------------------
-  server-image-web:
-    name: Server image web stage
-    needs: changes
-    if: needs.changes.outputs.server-image == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      # BuildKit comes from mirror.gcr.io (a public Docker Hub mirror), digest-pinned, and the Dockerfile uses its
-      # built-in frontend (no `# syntax=` pull), so Docker Hub auth outages (1.9931) cannot fail this job.
-      - uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: image=mirror.gcr.io/moby/buildkit@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
-
-      - name: Build the web export stage
-        env:
-          # Digest-pinned node:23-slim index, pulled through mirror.gcr.io.
-          NODE_IMAGE: mirror.gcr.io/library/node:23-slim@sha256:86191b94d2a163be41f3dc7fe5e5fcaca8ba2f1be7275d98a06343483c17414a
-        run: |
-          set -o pipefail
-          # Bounded retry (3 attempts, 15 s then 45 s backoff) only for registry/network 5xx-style failures;
-          # a real build error fails on the first attempt.
-          for attempt in 1 2 3; do
-            if docker buildx build -f infra/docker/backend.Dockerfile --target web \
-                 --build-arg "NODE_IMAGE=$NODE_IMAGE" --output type=cacheonly . 2>&1 | tee build.log; then
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ] && grep -Eqi '(50[0-9]|bad gateway|service unavailable|gateway time-?out|TLS handshake timeout|i/o timeout|connection reset|unexpected EOF|failed to (resolve|fetch|authorize)|toomanyrequests)' build.log; then
-              delay=$((attempt == 1 ? 15 : 45))
-              echo "::warning::Registry error on attempt $attempt, retrying in ${delay}s"
-              sleep "$delay"
-            else
-              exit 1
-            fi
-          done
-
-  # ---------------------------------------------------------------------
-  # Web behaviour (owner ruling 8 October 2026: CI tests the web styles as the main source of truth; the native parity
-  # regression is manual). Runs every Playwright smoke and behaviour script that needs only the built bundle and the mock
-  # API (rail geometry, calendar navigation, TV viewport, nav smoke, header, motion ...) against one shared build. The
-  # list lives in clients/tv-web/web/scripts/web-behaviour.config.json and a unit test fails when a new script is not on it.
-  # ---------------------------------------------------------------------
-  web-behaviour:
-    # Four shards balanced by measured script time (web-behaviour.config.json "seconds"), each well inside 20 minutes.
-    name: web behaviour (${{ matrix.shard }}/4)
-    needs: changes
-    if: needs.changes.outputs.tv-web == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      # pnpm 11 needs Node >= 22.13: install Node before pnpm/action-setup runs (same toolchain as tv-web-ci.yml).
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.13.0
-          run_install: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: pnpm
-          cache-dependency-path: clients/tv-web/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: clients/tv-web
-        run: pnpm install --frozen-lockfile
-
-      - name: Build web workspace dependencies
-        working-directory: clients/tv-web
-        run: pnpm --filter './packages/**' run build
-
-      - name: Build the web bundle once
-        working-directory: clients/tv-web/web
-        run: pnpm exec vite build
-
-      - name: Install the capture tools and Chromium
-        working-directory: scripts/parity
-        run: npm ci --no-audit --no-fund && npx playwright-core install --with-deps chromium
-
-      - name: Run this shard of the web behaviour scripts
-        working-directory: clients/tv-web/web
-        run: node scripts/web-behaviour.mjs --dist dist --shard ${{ matrix.shard }}/4
-
-  # ---------------------------------------------------------------------
-  # Storybook (clients/tv-web/web/.storybook): the public component catalogue deployed at /storybook. Builds it and
-  # runs the render and accessibility smoke over every story in both themes (scripts/storybook-smoke.mjs).
+  # Storybook (clients/tv-web/web/.storybook): the public component catalogue deployed at /storybook. Typechecks the stories and builds it. The render smoke (browser) is a local script (docs/testing/local-device-tests.md).
   # ---------------------------------------------------------------------
   web-storybook:
     name: web storybook
@@ -1136,14 +915,6 @@ jobs:
         working-directory: clients/tv-web/web
         run: pnpm run build:storybook
 
-      - name: Install the capture tools and Chromium
-        working-directory: scripts/parity
-        run: npm ci --no-audit --no-fund && npx playwright-core install --with-deps chromium
-
-      - name: Render and accessibility smoke over every story
-        working-directory: clients/tv-web/web
-        run: node scripts/storybook-smoke.mjs
-
   # ---------------------------------------------------------------------
   # Terminal aggregator -- see the file header comment for why this is the
   # only job that should be a required status check.
@@ -1162,11 +933,8 @@ jobs:
       - harmony-hap
       - linux-mobile-check
       - tv-web-check
-      - server-image-web
       - firetv-check
-      - web-layout-parity
       - web-storybook
-      - web-behaviour
       - openapi-contract-check
     if: always()
     runs-on: ubuntu-latest
@@ -1179,7 +947,7 @@ jobs:
           echo "$NEEDS_JSON" | jq .
 
           fail=0
-          for job in changes backend-check android-check android-apk xbox-check tizen-native-check xbox-uwp-package harmony-check harmony-hap linux-mobile-check tv-web-check server-image-web firetv-check web-layout-parity web-storybook web-behaviour openapi-contract-check; do
+          for job in changes backend-check android-check android-apk xbox-check tizen-native-check xbox-uwp-package harmony-check harmony-hap linux-mobile-check tv-web-check firetv-check web-storybook openapi-contract-check; do
             result=$(echo "$NEEDS_JSON" | jq -r --arg j "$job" '.[$j].result // "missing"')
             echo "Job '$job' result: $result"
             case "$result" in
@@ -1201,25 +969,3 @@ jobs:
           fi
 
           echo "All required jobs passed or were skipped (not applicable to this change)."
-
-  # ---------------------------------------------------------------------
-  # Resume the merge train the moment the batch CI finishes. The train's workflow_run trigger on this
-  # workflow was observed to drop the completion of a long-running dispatched run (a green batch sat
-  # for 6 minutes), so the batch's own CI run starts the train explicitly. The schedule and the
-  # workflow_run trigger stay as fallbacks. Only the train's scratch branch; a dispatch with
-  # GITHUB_TOKEN is allowed to start workflows.
-  # ---------------------------------------------------------------------
-  kick-train:
-    name: Resume merge train
-    needs: ci-required
-    if: always() && github.event_name == 'workflow_dispatch' && github.ref_name == 'train/batch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Dispatch the merge train
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run merge-train.yml --repo "$GITHUB_REPOSITORY" --ref main -f dry_run=false

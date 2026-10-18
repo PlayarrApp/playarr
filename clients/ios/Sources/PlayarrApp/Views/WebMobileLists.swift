@@ -28,8 +28,8 @@ private struct WMListPage<Content: View>: View {
                 .webEdgeFade(.vertical, size: 38, enabled: phone)
 
                 let top = WM.topInset + 1
-                WMHeaderCircleButton(width: 44, height: 40, glyph: "←", action: onBack)
-                    .offset(x: phone ? 15 : max(102, proxy.size.width * 0.08) - 52, y: top)
+                PlayarrBackButton(action: onBack)
+                    .offset(x: phone ? PlayarrPageTokens.gutter : max(102, proxy.size.width * 0.08) - 52, y: top + 1)
                 // Web: the heading row is 44 pt tall (the back button) with the title line box centred in it.
                 WMText(title, 21.6, 580, lh: 44, ls: -0.972)
                     .offset(x: phone ? 68 : max(102, proxy.size.width * 0.08), y: top - 2)
@@ -232,7 +232,20 @@ struct WatchlistView: View {
             if let error = model.removeError { WMListNote(text: error, tone: WM.pink) }
         }
         .task { await model.load() }
+        #if DEBUG
+        .parityScreenLoad(parityLoadState)
+        #endif
     }
+
+    #if DEBUG
+    private var parityLoadState: ParityScreenLoad {
+        switch model.state {
+        case .loading: .loading
+        case .failed: .failed
+        case .ready: .ready
+        }
+    }
+    #endif
 
     private func row(_ entry: WatchlistEntry) -> some View {
         let title = entry.title
@@ -361,7 +374,20 @@ struct RequestsView: View {
         }
         .refreshable { await model.load() }
         .task { await model.load() }
+        #if DEBUG
+        .parityScreenLoad(parityLoadState)
+        #endif
     }
+
+    #if DEBUG
+    private var parityLoadState: ParityScreenLoad {
+        switch model.state {
+        case .loading: .loading
+        case .failed: .failed
+        case .ready: .ready
+        }
+    }
+    #endif
 
     private func metaParts(_ request: RequestView) -> [String] {
         var parts: [String] = []

@@ -124,7 +124,17 @@ internal fun playarrPageHeader(
     back = PlayarrBack(playarrString(PlayarrString.CommonBack), onBack),
     actions = buildList {
         addAll(actions)
-        if (filters != null) add(PlayarrPageAction.Filters(filters.label, filters.active, filters.badge, filters.onClick))
+        if (filters != null) {
+            add(
+                PlayarrPageAction.Filters(
+                    label = filters.label,
+                    open = filters.active,
+                    activeCount = filters.badge,
+                    onLeft = filters.onLeft,
+                    onToggle = filters.onClick,
+                ),
+            )
+        }
     },
     backActive = backActive,
     largeTitle = largeTitle,
@@ -137,6 +147,7 @@ internal data class PlayarrFilterAction(
     val onClick: () -> Unit,
     val active: Boolean = false,
     val badge: Int = 0,
+    val onLeft: (() -> Unit)? = null,
 )
 
 /**
@@ -155,10 +166,12 @@ internal fun PlayarrFiltersSheet(
     navigationAbovePane: Boolean = true,
     footer: (@Composable RowScope.() -> Unit)? = null,
     initialFocus: FocusRequester? = null,
+    captureSurface: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     PlayarrSheetFrame(
         initialFocus = initialFocus,
+        captureSurface = captureSurface,
         paneTitle = title,
         hostPhonePane = true,
         navigationAbovePane = navigationAbovePane,
@@ -207,6 +220,7 @@ internal fun PlayarrPanel(
 @Composable
 private fun PlayarrSheetFrame(
     initialFocus: FocusRequester? = null,
+    captureSurface: String? = null,
     paneTitle: String? = null,
     hostPhonePane: Boolean = false,
     navigationAbovePane: Boolean = true,
@@ -221,7 +235,7 @@ private fun PlayarrSheetFrame(
     val focus = remember { FocusRequester() }
     val dismiss = if (dismissible) onClose else ({})
     if (io.playarr.shared.designsystem.page.LocalPlayarrFormFactor.current == io.playarr.shared.designsystem.page.PlayarrFormFactor.Tv) {
-        PlayarrTvDrawer(titleContent, kicker, closeLabel, onClose, dismissible, footer, focus, content, initialFocus)
+        PlayarrTvDrawer(titleContent, kicker, closeLabel, onClose, dismissible, footer, focus, content, initialFocus, captureSurface)
         return
     }
     val phoneDrawerHost = LocalPhoneDrawerHost.current
@@ -376,7 +390,9 @@ private fun PlayarrTvDrawer(
     focus: FocusRequester,
     content: @Composable ColumnScope.() -> Unit,
     initialFocus: FocusRequester? = null,
+    captureSurface: String? = null,
 ) {
+    val captureToken = parityCaptureGenerationToken()
     val dismiss = if (dismissible) onClose else ({})
     Dialog(
         onDismissRequest = dismiss,
@@ -401,6 +417,7 @@ private fun PlayarrTvDrawer(
             val shadow = Color(0x3D281A18)
             Box(
                 Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(drawerWidth)
+                    .parityCaptureSurface(captureToken, captureSurface)
                     .drawBehind {
                         drawRect(
                             androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, shadow), startX = -122.dp.toPx(), endX = 0f),
@@ -479,7 +496,12 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
             // Web `.tv-filter-choice-grid button`: min-height clamp(44, 3.6 vw, 56) and font clamp(7.68, 0.55 vw, 10.88) css px (56 / 10.56 at 1920).
             modifier = modifier.height(webVw(44f, 3.6f, 56f)).webFocusRing(focused, radius = 12.dp, offset = 2.dp),
         ) {
-            Box(Modifier.padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+            Column(
+                Modifier.fillMaxHeight().padding(horizontal = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(if (icon == null) 0.dp else 4.dp, Alignment.CenterVertically),
+            ) {
+                icon?.invoke(if (selected) WebBackground else WebInkSoft)
                 Text(label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(680), maxLines = 1)
             }
         }

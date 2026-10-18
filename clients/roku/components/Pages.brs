@@ -42,9 +42,18 @@ sub pagesInit()
     m.calendarView = "month"
     m.calendarViewDialogPendingClose = false
     m.calendarKinds = []
+    m.calFilterTypes = {}
+    m.calFilterStatuses = {}
+    m.calFilterMonitored = false
+    m.calFiltersOpen = false
     m.pageScrollY = 0
     m.settingsPanel = "appearance"
     m.artworkSizePref = "medium"
+    m.calendarArtPosters = []
+    m.calendarArtPosterIndex = 0
+    m.calendarArtVisibleSlots = {}
+    m.calendarArtHasArt = false
+    m.calendarArtPosterOverflow = false
 end sub
 
 ' ---------------------------------------------------------------------------
@@ -142,18 +151,157 @@ function pgIcon(parent as Object, x as Float, y as Float, size as Integer, file 
     return poster
 end function
 
+function calendarSizedPosterUrl(url as String) as String
+    ' Match the web calendar's sizedPosterUrl default: only the exact TMDB
+    ' original path is changed, while other providers and URL suffixes stay intact.
+    for each scheme in ["https://", "http://"]
+        prefix = scheme + "image.tmdb.org/t/p/original/"
+        if url.Left(prefix.Len()) = prefix
+            tail = Mid(url, prefix.Len() + 1)
+            pathEnd = tail.Len()
+            queryAt = Instr(1, tail, "?")
+            hashAt = Instr(1, tail, "#")
+            if queryAt > 0 and queryAt - 1 < pathEnd then pathEnd = queryAt - 1
+            if hashAt > 0 and hashAt - 1 < pathEnd then pathEnd = hashAt - 1
+            if pathEnd > 0 then return scheme + "image.tmdb.org/t/p/w185/" + tail
+        end if
+    end for
+    return url
+end function
+
+function calendarArtworkUrl(entry as Object) as String
+    if entry = invalid then return ""
+    if entry.poster_url <> invalid and entry.poster_url <> ""
+        posterUrl = entry.poster_url
+        if posterUrl.Left(7) = "http://" or posterUrl.Left(8) = "https://"
+            return calendarSizedPosterUrl(posterUrl)
+        end if
+    end if
+    if entry.work_id <> invalid and entry.work_id <> "" and m.serverUrl <> ""
+        return m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
+    end if
+    return ""
+end function
+
+sub trackCalendarArtworkPoster(poster as Object, url as String)
+    if poster = invalid or m.artTelemetryEnabled <> true then return
+    if m.pageKind <> "calendar" or (m.calendarView <> "week" and m.calendarView <> "agenda") then return
+    if m.calendarArtPosters.Count() >= 256
+        m.calendarArtPosterOverflow = true
+        return
+    end if
+    slot = "calendar-r0-c" + m.calendarArtPosterIndex.ToStr()
+    m.calendarArtPosterIndex += 1
+    poster.AddField("calendarArtSlot", "string", false)
+    poster.calendarArtSlot = slot
+    poster.AddField("calendarArtGeneration", "integer", false)
+    poster.calendarArtGeneration = 0
+    poster.AddField("calendarArtVersion", "integer", false)
+    poster.calendarArtVersion = 0
+    poster.AddField("calendarArtHasSource", "boolean", false)
+    poster.calendarArtHasSource = url <> ""
+    poster.ObserveField("loadStatus", "onCalendarArtworkLoadStatus")
+    m.calendarArtPosters.Push({ poster: poster, slot: slot })
+end sub
+
+function calendarEntriesHaveArtwork(entries as Object) as Boolean
+    if entries = invalid then return false
+    for each entry in entries
+        if calendarArtworkUrl(entry) <> "" then return true
+    end for
+    return false
+end function
+
+sub calendarEmitArtManifest()
+    if m.artTelemetryEnabled <> true or m.pageKind <> "calendar" or m.pageStatus <> "ready" then return
+    if m.calendarView <> "week" and m.calendarView <> "agenda" then return
+
+    generation = beginArtGeneration("calendar")
+    m.artActiveGeneration = generation
+    m.artActiveScope = "calendar"
+    m.artActiveHasArt = m.calendarArtHasArt
+    m.calendarArtVisibleSlots = {}
+    visible = []
+    overflow = m.calendarArtPosterOverflow or m.calendarArtPosters.Count() > 256
+    bodyX = 0.0
+    bodyY = 0.0
+    if m.pageBody.translation <> invalid
+        bodyX = m.pageBody.translation[0]
+        bodyY = m.pageBody.translation[1]
+    end if
+    if not overflow
+        for each record in m.calendarArtPosters
+            poster = record.poster
+            x = poster.translation[0] + bodyX
+            y = poster.translation[1] + bodyY
+            if artRectVisible(x, y, poster.width, poster.height)
+                visible.Push({ poster: poster, slot: record.slot, x: x, y: y, width: poster.width, height: poster.height })
+                if visible.Count() > 64
+                    overflow = true
+                    exit for
+                end if
+            end if
+        end for
+    end if
+
+    if overflow
+        ' More visible slots than the bounded manifest can prove: announce an
+        ' unmatched expected slot so the opt-in gate fails closed.
+        m.artExpectedSlots.Push("calendar-overflow")
+        announceArtGeneration(generation, "calendar", m.artActiveHasArt)
+        finishArtGeneration(generation, "calendar")
+        return
+    end if
+
+    for each slot in visible
+        poster = slot.poster
+        poster.calendarArtGeneration = generation
+        m.calendarArtVisibleSlots[slot.slot] = true
+        emitArtSlot(generation, "calendar", slot.slot, poster.calendarArtHasSource, slot.x, slot.y, slot.width, slot.height, 0)
+        emitCalendarArtworkStatus(poster)
+    end for
+    announceArtGeneration(generation, "calendar", m.artActiveHasArt)
+    finishArtGeneration(generation, "calendar")
+end sub
+
+sub emitCalendarArtworkStatus(poster as Object)
+    if poster = invalid then return
+    if poster.calendarArtHasSource <> true
+        emitArtStatus(poster.calendarArtGeneration, "calendar", poster.calendarArtSlot, "empty", poster.calendarArtVersion)
+        return
+    end if
+    status = "pending"
+    if poster.loadStatus = "ready"
+        status = "ready"
+    else if poster.loadStatus = "failed"
+        status = "failed"
+    end if
+    emitArtStatus(poster.calendarArtGeneration, "calendar", poster.calendarArtSlot, status, poster.calendarArtVersion)
+end sub
+
+sub onCalendarArtworkLoadStatus(event as Object)
+    poster = event.GetRoSGNode()
+    if poster = invalid or poster.calendarArtGeneration < 1 then return
+    if poster.calendarArtGeneration <> m.artActiveGeneration or m.artActiveScope <> "calendar" then return
+    if m.calendarArtVisibleSlots[poster.calendarArtSlot] <> true then return
+    emitCalendarArtworkStatus(poster)
+end sub
+
 function pgArtwork(parent as Object, x as Float, y as Float, w as Float, h as Float, url as String) as Object
     poster = CreateObject("roSGNode", "Poster")
     poster.translation = [x, y]
     poster.width = w
     poster.height = h
     poster.loadDisplayMode = "scaleToZoom"
+    trackCalendarArtworkPoster(poster, url)
     if url <> ""
         agent = CreateObject("roHttpAgent")
         agent.SetCertificatesFile("common:/certs/ca-bundle.crt")
         agent.InitClientCertificates()
+        headers = {}
         g = GetGlobalAA()
-        if g.playarrArtHeaders <> invalid then agent.SetHeaders(g.playarrArtHeaders)
+        if g.playarrArtHeaders <> invalid then headers = artworkHeaders(url, g.playarrArtHeaders)
+        if headers.Count() > 0 then agent.SetHeaders(headers)
         poster.SetHttpAgent(agent)
         poster.uri = url
     end if
@@ -201,11 +349,28 @@ end function
 
 ' Header action tile (web .tv-filter-launcher, the 30 September reference): 62 x 72, radius 14, a 1px line, an icon over a
 ' tiny label. Used for every header action (Calendar link, Filters).
-sub pgTile(parent as Object, x as Float, y as Float, label as String, icon as String, action as String, data = invalid as Dynamic)
+' Shared page header pieces (web PageHeader): the round Back button, the title spec and the right-hand action tile. Every page
+' (Pages, Library, Detail, Search) draws these here and nowhere else; clients/roku/tests/test_page_anatomy.py enforces it.
+sub pgBackButton(parent as Object, x as Float)
+    pgRound(parent, x, 56.3, 50, 50, 25, "surface", 179)
+    pgRound(parent, x, 56.3, 50, 50, 25, "line", -1, true)
+    pgIcon(parent, x + 16.4, 73, 17, "arrow-left.png", "inkSoft")
+end sub
+
+function PageTitleSpec(text as String) as Object
+    return { text: text, size: 34, weight: 600, tracking: -1.512, role: "ink" }
+end function
+
+' The action tile's visuals only (Library draws its own focus ring); pgTile adds the focus target.
+sub pgShellTile(parent as Object, x as Float, y as Float, label as String, icon as String)
     pgRound(parent, x, y, 62, 72, 14, "surfaceStrong", 199)
     pgRound(parent, x, y, 62, 72, 14, "line", -1, true)
     pgIcon(parent, x + 20, y + 15, 22, icon, "inkMuted")
     pgLabel(parent, x, y + 44, 62, 14, label, 8, 800, "inkMuted", { horizAlign: "center" })
+end sub
+
+sub pgTile(parent as Object, x as Float, y as Float, label as String, icon as String, action as String, data = invalid as Dynamic)
+    pgShellTile(parent, x, y, label, icon)
     pgFocusable(x, y, 62, 72, 14, action, data)
 end sub
 
@@ -232,9 +397,7 @@ sub pageBegin(title as String, panelX as Float)
     if m.clientsStageChrome <> invalid then m.clientsStageChrome.visible = clientsPage
     backX = 153.6
     if clientsPage then backX = 0
-    pgRound(m.pageHead, backX, 56.3, 50, 50, 25, "surface", 179)
-    pgRound(m.pageHead, backX, 56.3, 50, 50, 25, "line", -1, true)
-    pgIcon(m.pageHead, backX + 16.4, 73, 17, "arrow-left.png", "inkSoft")
+    pgBackButton(m.pageHead, backX)
     pgFocusable(backX, 56.3, 50, 50, 25, "back")
     if clientsPage
         pgFocusable(1552, 50, 144, 48, 24, "clientsTheme")
@@ -323,6 +486,7 @@ sub pageFocusRender()
     end if
     m.pageRing.visible = not m.navDockMode
     pageOnFocus(item)
+    if m.artTelemetryEnabled = true and m.pageKind = "calendar" then calendarEmitArtManifest()
 end sub
 
 sub pageOnFocus(item as Object)
@@ -1499,10 +1663,108 @@ end function
 
 ' Status text as web shows it: Available, Upcoming (monitored, still to come), Missing (monitored, already due), Not tracked.
 function calendarStatusText(entry as Object) as String
+    if entry.groupStatus <> invalid then return entry.groupStatus
     if entry.has_file = true then return "Available"
     if entry.monitored <> true then return "Not tracked"
     if calendarEntryLocalDay(entry) <= calendarTodayString() then return "Missing"
     return "Upcoming"
+end function
+
+' Web entryAvailable: a file we have, and when the server listed actions an enabled play or resume (the viewer can play it).
+function calendarEntryAvailable(entry as Object) as Boolean
+    if entry.has_file <> true then return false
+    if entry.actions = invalid or entry.actions.Count() = 0 then return true
+    for each a in entry.actions
+        if (a.action = "play" or a.action = "resume") and a.enabled = true then return true
+    end for
+    return false
+end function
+
+' Availability of what a card shows: a series group is available only when every folded episode is.
+function calendarItemAvailable(entry as Object) as Boolean
+    if entry.groupAvail <> invalid then return entry.groupAvail
+    return calendarEntryAvailable(entry)
+end function
+
+' Web groupSeriesEpisodes: episodes of one series on the same day and air time fold into one item (the first episode stands for
+' the group; groupCount, groupCodes, groupAvail and groupStatus describe it). Pass the entries of one list; order is kept.
+function calendarGroupEntries(list as Object) as Object
+    buckets = {}
+    order = []
+    for each e in list
+        e.groupCount = 1
+        e.groupCodes = invalid
+        e.groupAvail = invalid
+        e.groupStatus = invalid
+        key = "single:" + JsonString(e.id)
+        if e.media_kind = "episode" and e.season_number <> invalid and e.episode_number <> invalid
+            slot = "all-day"
+            if calendarHasTime(e) then slot = calendarTime(calendarEntryDate(e))
+            who = JsonString(e.title)
+            if e.work_id <> invalid then who = JsonString(e.work_id)
+            key = "series:" + who + ":" + calendarEntryLocalDay(e) + ":" + slot
+        end if
+        if buckets[key] = invalid
+            buckets[key] = []
+            order.Push(key)
+        end if
+        buckets[key].Push(e)
+    end for
+    items = []
+    for each key in order
+        members = buckets[key]
+        if members.Count() > 1
+            for each e in members
+                e.groupSort = Right("0000" + e.season_number.ToStr(), 4) + Right("0000" + e.episode_number.ToStr(), 4)
+            end for
+            members.SortBy("groupSort")
+            n = members.Count()
+            parts = []
+            avail = true
+            rank = 0
+            worst = "Available"
+            i = 0
+            while i < n
+                j = i
+                while j + 1 < n
+                    nxt = members[j + 1]
+                    if nxt.season_number <> members[i].season_number or nxt.episode_number <> members[j].episode_number + 1 then exit while
+                    j = j + 1
+                end while
+                label = ""
+                if i = 0
+                    label = "S" + calendarTwo(members[i].season_number)
+                else if members[i - 1].season_number <> members[i].season_number
+                    label = "S" + calendarTwo(members[i].season_number)
+                end if
+                label = label + "E" + calendarTwo(members[i].episode_number)
+                if j > i then label = label + "–E" + calendarTwo(members[j].episode_number)
+                parts.Push(label)
+                i = j + 1
+            end while
+            for each e in members
+                if not calendarEntryAvailable(e) then avail = false
+                st = calendarStatusText(e)
+                r = 0
+                if st = "Missing" then r = 3
+                if st = "Upcoming" then r = 2
+                if st = "Not tracked" then r = 1
+                if r > rank
+                    rank = r
+                    worst = st
+                end if
+            end for
+            rep = members[0]
+            rep.groupCount = n
+            rep.groupCodes = parts.Join(", ")
+            rep.groupAvail = avail
+            rep.groupStatus = worst
+            items.Push(rep)
+        else
+            items.Push(members[0])
+        end if
+    end for
+    return items
 end function
 
 function calendarTwo(value as Integer) as String
@@ -1551,6 +1813,7 @@ function calendarDayHeading(dt as Object, withYear as Boolean) as String
 end function
 
 function calendarEntrySubtitle(entry as Object) as String
+    if entry.groupCount <> invalid and entry.groupCount > 1 then return entry.groupCount.ToStr() + " episodes · " + entry.groupCodes
     text = ""
     if entry.season_number <> invalid and entry.episode_number <> invalid
         text = "S" + calendarTwo(entry.season_number) + "E" + calendarTwo(entry.episode_number)
@@ -1601,6 +1864,12 @@ end sub
 sub renderCalendarBody()
     calendarEnsureRange()
     pageBegin("Calendar", 0)
+    if m.artTelemetryEnabled = true
+        m.calendarArtPosters = []
+        m.calendarArtPosterIndex = 0
+        m.calendarArtVisibleSlots = {}
+        m.calendarArtPosterOverflow = false
+    end if
     ' Controls on the right of the header row (web: the range switcher, Previous, Today, Next).
     pgRound(m.pageHead, 1793, 56.2, 50, 50, 25, "surface")
     pgRound(m.pageHead, 1793, 56.2, 50, 50, 25, "line", -1, true)
@@ -1619,7 +1888,7 @@ sub renderCalendarBody()
     pgTile(m.pageHead, shellActionX(), shellActionY(1), "Filters", "tile-filters.png", "calFilters")
 
     entries = []
-    if m.pageData <> invalid and m.pageData.entries <> invalid then entries = m.pageData.entries
+    if m.pageData <> invalid and m.pageData.entries <> invalid then entries = calendarApplyFilters(m.pageData.entries)
     if m.pageStatus = "loading" and entries.Count() = 0
         pgLabel(m.pageBody, 786, 240, 600, 30, "Loading the release calendar…", 14, 400, "inkMuted")
         return
@@ -1628,10 +1897,13 @@ sub renderCalendarBody()
         pgLabel(m.pageBody, 153.6, 240, 1200, 30, m.pageError, 14, 400, "danger")
         return
     end if
+    m.calendarArtHasArt = false
+    if m.artTelemetryEnabled = true then m.calendarArtHasArt = calendarEntriesHaveArtwork(entries)
     if m.calendarView = "month"
         renderCalendarMonth(entries)
     else if m.calendarView = "week"
         renderCalendarWeek(entries)
+        calendarWeekClip()
     else
         renderCalendarAgenda(entries)
     end if
@@ -1651,6 +1923,7 @@ sub renderCalendarAgenda(entries as Object)
         pgLabel(m.pageBody, 153.6, 240, 1200, 30, "No releases in this range.", 19, 400, "inkSoft")
         return
     end if
+    entries = calendarGroupEntries(entries)
     selected = invalid
     if m.calendarSelected = invalid then m.calendarSelected = ""
     for each entry in entries
@@ -1717,10 +1990,13 @@ sub renderCalendarAgenda(entries as Object)
             ay = ay + 34
             lastDay = day
         end if
-        pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "surfaceStrong")
+        role = "inkMuted"
+        if calendarItemAvailable(entry) then role = "success"
+        pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, role)
+        pgRound(m.pageBody, 790.4, ay, 1044.8, 99.6, 14, "surfaceStrong")
+        pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "line", -1, true)
         if entry.id = m.calendarSelected then pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "ink", 56, true)
-        art = ""
-        if entry.work_id <> invalid then art = m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
+        art = calendarArtworkUrl(entry)
         pgRound(m.pageBody, 802.4, ay + 19.8, 40, 60, 6, "surfaceSoft")
         pgArtwork(m.pageBody, 802.4, ay + 19.8, 40, 60, art)
         pgLabel(m.pageBody, 856.8, ay + 9, 900, 28, entry.title, 19, 600, "ink")
@@ -1780,7 +2056,7 @@ sub renderCalendarMonth(entries as Object)
                 end if
                 chip = chips[index[e.title]]
                 chip.count = chip.count + 1
-                if e.has_file <> true then chip.have = false
+                if not calendarEntryAvailable(e) then chip.have = false
             end for
         end if
         n = chips.Count()
@@ -1804,6 +2080,19 @@ sub renderCalendarMonth(entries as Object)
 end sub
 
 ' Week view (web calendar week): one column per day, a card per release with the availability colour on its left edge.
+' Web's week list is a scroll area that ends at y 937 with a fade (the page bottom margin); content below it is clipped, not drawn.
+sub calendarWeekClip()
+    pgRect(m.pageHead, 140, 937, 1780, 143, "surface")
+    fade = CreateObject("roSGNode", "Poster")
+    fade.uri = "pkg:/images/edge-fade-b.png"
+    fade.translation = [140, 881]
+    fade.width = 1780
+    fade.height = 56
+    fade.blendColor = ThemeColor("surface")
+    ThemeSetRole(fade, "surface")
+    m.pageHead.AppendChild(fade)
+end sub
+
 sub renderCalendarWeek(entries as Object)
     r = calendarViewRange()
     byDay = {}
@@ -1830,15 +2119,14 @@ sub renderCalendarWeek(entries as Object)
         list = byDay[day]
         y = 208.0
         if list <> invalid
-            for each entry in calendarDayList(list)
+            for each entry in calendarDayList(calendarGroupEntries(list))
                 ' Web's 4 px availability border follows the card's rounded corners: the accent shape under a card face shifted 4 px.
                 role = "inkMuted"
-                if entry.has_file = true then role = "success"
+                if calendarItemAvailable(entry) then role = "success"
                 pgRound(m.pageBody, x, y, 440, 106, 14, role)
                 pgRound(m.pageBody, x + 4, y, 436, 106, 14, "surfaceStrong")
                 pgRound(m.pageBody, x, y, 440, 106, 14, "line", -1, true)
-                art = ""
-                if entry.work_id <> invalid then art = m.serverUrl + "/api/v1/artwork/work/" + UrlEncode(entry.work_id) + "/poster"
+                art = calendarArtworkUrl(entry)
                 pgRound(m.pageBody, x + 16, y + 23, 40, 60, 6, "surfaceSoft")
                 pgArtwork(m.pageBody, x + 16, y + 23, 40, 60, art)
                 pgLabel(m.pageBody, x + 70, y + 9, 360, 26, entry.title, 20, 600, "ink", { maxLines: 1 })
@@ -1918,7 +2206,7 @@ sub calendarAction(item as Object)
     else if a = "calLink"
         sendApi("calendarFeed", "POST", "/api/v1/calendar/feed", {}, true)
     else if a = "calFilters"
-        openCalendarFilters()
+        calFiltersOpen()
     end if
     if a = "calPrev" or a = "calNext" or a = "calToday" or a = "cell" then pageFocusRender()
 end sub
@@ -1947,22 +2235,7 @@ sub onCalendarViewButton(event as Object)
     end if
 end sub
 
-sub openCalendarFilters()
-    dialog = CreateObject("roSGNode", "Dialog")
-    dialog.title = "Filters"
-    dialog.message = ["Choose the release types to show."]
-    dialog.buttons = ["All", "Episodes", "Movies", "Albums"]
-    dialog.ObserveField("buttonSelected", "onCalendarFilterButton")
-    m.top.dialog = dialog
-end sub
 
-sub onCalendarFilterButton(event as Object)
-    index = event.GetData()
-    if m.top.dialog <> invalid then m.top.dialog.close = true
-    kinds = [[], ["episode"], ["movie"], ["album"]]
-    if index >= 0 and index < kinds.Count() then m.calendarKinds = kinds[index]
-    loadCalendar()
-end sub
 
 sub acceptCalendarFeed(data as Dynamic)
     dialog = CreateObject("roSGNode", "Dialog")
@@ -2143,17 +2416,12 @@ end sub
 ' Library header chrome (web .tv-library-heading): round back button, a divider before the title count, and the Filters pill.
 sub browseChromeInit()
     holder = m.top.findNode("browseGroup")
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "surface", 179)
-    pgRound(holder, 153.6, 56.3, 50, 50, 25, "line", -1, true)
-    pgIcon(holder, 170, 73, 17, "arrow-left.png", "inkSoft")
+    pgBackButton(holder, 153.6)
     m.browseDivider = pgRect(holder, 348, 73, 1, 16, "line")
     m.browseRule = pgRect(holder, 226.6, 112, 1, 1, "line")
     tx = shellActionX()
     ty = shellActionY(0)
-    pgRound(holder, tx, ty, 62, 72, 14, "surfaceStrong", 199)
-    pgRound(holder, tx, ty, 62, 72, 14, "line", -1, true)
-    pgIcon(holder, tx + 20, ty + 15, 22, "tile-filters.png", "inkMuted")
-    pgLabel(holder, tx, ty + 44, 62, 14, "Filters", 8, 800, "inkMuted", { horizAlign: "center" })
+    pgShellTile(holder, tx, ty, "Filters", "tile-filters.png")
     m.browseFiltersRing = CreateObject("roSGNode", "Poster")
     m.browseFiltersRing.uri = "pkg:/images/round-ring-r12.9.png"
     m.browseFiltersRing.translation = [tx - 3, ty - 3]
@@ -2185,8 +2453,8 @@ end function
 
 sub edgeFadesInit()
     home = m.top.findNode("homeGroup")
-    m.homeFadeLeft = pgFade(home, "l", 786, 410, 96, 670)
-    m.homeFadeRight = pgFade(home, "r", 1824, 410, 96, 670)
+    m.homeFadeLeft = pgFade(home, "l", 729.6, 170, 53.76, 670)
+    m.homeFadeRight = pgFade(home, "r", 1824, 170, 96, 670)
     browse = m.top.findNode("browseGroup")
     m.browseFadeTop = pgFade(browse, "t", 740, 128, 1110, 40)
     m.browseFadeBottom = pgFade(browse, "b", 740, 1020.6, 1110, 59.4)
