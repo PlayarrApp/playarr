@@ -16,29 +16,31 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
     m.drawerOpen = true
     m.global.cardFocusOff = true
     ' Web draws the drawer over the page with no scrim: the page behind keeps its full strength.
-    pgRect(g, 1560, 0, 360, 1080, "panel")
+    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
     pgLabel(g, 1606, 56, 190, 16, UCase(kicker), 11, 700, "inkMuted")
-    pgLabel(g, 1606, 82, 200, 110, title, 36, 600, "ink", { wrap: true, maxLines: 2 })
-    pgRound(g, 1826, 54, 48, 48, 24, "surface", 179)
-    pgRound(g, 1826, 54, 48, 48, 24, "line", -1, true)
+    pgLabel(g, 1606, 75, 214, 120, title, 36, 600, "ink", { wrap: true, maxLines: 2, lineSpacing: -8 })
+    pgRound(g, 1825.5, 53.5, 49, 49, 25, "surface", 179)
+    pgRound(g, 1825.5, 53.5, 49, 49, 25, "line", -1, true)
     pgIcon(g, 1838, 66, 24, "player-close.png", "ink")
     m.drawerRings = []
     for i = 0 to items.Count() - 1
-        y = 218 + 82 * i
+        y = 221 + 82 * i
         pgRound(g, 1602, y, 276, 68, 14, "surfaceSoft")
         icon = items[i].icon
         if icon = "plus"
             pgRect(g, 1625, y + 33, 18, 2, "brand")
             pgRect(g, 1633, y + 25, 2, 18, "brand")
         else if icon = "circle"
-            pgRound(g, 1624, y + 24, 20, 20, 10, "brand", -1, true)
+            pgIcon(g, 1625, y + 29, 10, "circle-outline.png", "brand")
         else if icon <> invalid and icon <> ""
             pgIcon(g, 1624, y + 24, 20, icon, "brand")
         end if
         pgLabel(g, 1666, y, 200, 68, items[i].label, 19, 700, "ink", { vertAlign: "center" })
-        ring = pgRound(g, 1599, y - 3, 282, 74, 16, "focusRing", -1, true)
-        pgRound(g, 1600, y - 2, 280, 72, 15, "focusRing", -1, true)
+        ring = CreateObject("roSGNode", "Group")
+        pgRound(ring, 1599, y - 3, 282, 74, 16, "focusRing", -1, true)
+        pgRound(ring, 1600, y - 2, 280, 72, 15, "focusRing", -1, true)
         ring.visible = false
+        g.AppendChild(ring)
         m.drawerRings.Push(ring)
     end for
     g.visible = true

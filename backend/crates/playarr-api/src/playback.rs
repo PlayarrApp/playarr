@@ -708,6 +708,9 @@ pub async fn update_watch_progress_handler(
         ),
         updated_at: Some(body.occurred_at.unwrap_or_else(chrono::Utc::now)),
     };
+    if state.static_mode {
+        return Ok(Json(progress));
+    }
     // The file can be removed between the lookup above and this write (a sync
     // replaced it); the foreign key then rejects the row. That is "unknown
     // file" to the client, not a server error.
@@ -4678,6 +4681,57 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    /// The frozen parity server answers a progress write with success and stores nothing, so Home
+    /// and On deck read the same before and after.
+    #[tokio::test]
+    async fn static_mode_progress_write_succeeds_and_changes_nothing() {
+        let (_router, state) = test_state().await;
+        let work_id = seed_movie(&state, "Static Progress Movie").await;
+        let mut file = media_file();
+        file.work_id = work_id;
+        let id = file.id;
+        let instance = file.source_instance_id;
+        state.media_file_repo.create(&file).await.unwrap();
+        state.media_files.insert(file);
+        let user_id = Uuid::new_v4();
+        seed_streaming_user_with_library_allow(&state, user_id, vec![instance]).await;
+        let token = mint_access_token(&state, user_id);
+        let mut app = state.app.clone();
+        app.static_mode = true;
+        let router = crate::test_support::router_for_test(app);
+
+        let put = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("PUT")
+                    .uri(format!("/api/v1/playback/{id}/progress"))
+                    .header("Authorization", bearer_header(&token))
+                    .header("Content-Type", "application/json")
+                    .body(Body::from(r#"{"position_ms":1000,"duration_ms":100000}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(put.status(), StatusCode::OK);
+        let list = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/playback/progress")
+                    .header("Authorization", bearer_header(&token))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(list.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(list.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let rows: Vec<WatchProgress> = serde_json::from_slice(&bytes).unwrap();
+        assert!(rows.is_empty());
     }
 
     /// The file vanishes between the lookup and the write (the lookup still

@@ -13,6 +13,16 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.
+- Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
+- Android phone Settings index: the numbered rows are spread over whole pixels (162, 162 and 163 px) instead of a rounded 162 px, so the list pitch matches the web.
+- Fire TV (Vega): the Search grid starts at the web's x (777 px), the detail page kicker takes the web's theme colours (dark rose, light maroon) and the Calendar month grid is as wide as the web's (1663 px, with the right-hand action column).
+- HarmonyOS phone: series-detail text block, title wrap and synopsis height match web, series year chip uses the end date, Profiles selects no longer wrap their label, Library filter language sections have web's gap.
+- HarmonyOS phone: film action pills share the row width, episode ring glow is no longer cut at the rail edge, Library filter language selects use web's smaller regular label, the preview build pins the parity clock (Calendar agenda), the preview contract test follows the static-server workflow env.
+- Sailfish: agenda cards end at the page padding, loopback poster URLs fall back to the work art, the edge fade is limited to the active calendar view, and the Profiles header and select styling match the web.
+- Sailfish: nav icons 21 px as on the web, Actions page rows use the web's weight, glyphs and title position.
+- Sailfish: Home rails use the web's 170 px cards, title pages lead with the next-up episode on series, wrap long titles like the web and show Chapters (generated "Chapter 1" fallback) and Similar Titles (genre-ranked library fallback) when the server returns none.
+- The static parity server (`PLAYARR_STATIC=1`) now answers watch-progress, resume-choice and Home rail-preference writes with success and stores nothing, so a capture run can no longer change On deck, the hero or Continue watching.
 - Android phone: series detail description ends on a whole word like the web, the watchlist and playlist pills use the web's glyph gap (so Start is the web width), and Calendar Week light uses the web's short start scrim (17.530).
 - Android phone film and series detail: the key art is hidden under the header and fades in below it, and the series title and episode copy sit 1 to 2 px higher, as on the web phone.
 - Android phone library: the unwatched dot keeps its crimson halo and shadow as on the web, and the A to Z index strip sits 1 px lower (17.530).

@@ -90,7 +90,7 @@ button.pa-cell.selected { background: @pa_accent; color: @pa_on_accent; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface; padding: 8px 12px; border-radius: 10px; }
 
 /* Web page header (mobile): round back button, 21.6px title, tinted subtitle, square action button */
-.pa-h1 { font-size: 21.6px; font-weight: 580; color: @pa_ink; }
+.pa-h1 { font-size: 21.6px; font-weight: 580; letter-spacing: -1px; color: @pa_ink; }
 .pa-subtitle { font-size: 10.56px; font-weight: 820; color: @pa_brand_ink; letter-spacing: 1px; }
 button.pa-hbtn { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; box-shadow: none; padding: 0; min-width: 42px; min-height: 42px; }
 button.pa-hbtn.round { border-radius: 999px; }
@@ -196,17 +196,17 @@ button.pa-pill, .pa-pill { background: @pa_surface; font-size: 11.52px; font-wei
 .pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 0 12px; min-height: 19px; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding: 16px; border-radius: 12px; min-height: 93px; }
 /* Agenda rows as the web phone: a strong-surface card with the web's strong hairline above and below (its right edge runs off the page), a 4 px availability bar on the left; unavailable is the muted ink */
-button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 0 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
+button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 1px 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
 button.pa-entry.have { border-left-color: #8ac5a5; }
 button.pa-entry.missing { border-left-color: @pa_muted; }
-button.pa-entry:not(.week) { padding: 9px 13px 7px 12px; }
+button.pa-entry:not(.week) { padding: 9px 12px 7px 12px; }
 button.pa-entry:not(.week) .pa-entry-sub { margin-top: 2px; }
 button.pa-entry:not(.week) .pa-entry-metarow { margin-top: 0; }
 button.pa-entry:not(.week) .pa-chip-status.agenda { min-height: 21px; }
 /* Week cards keep their earlier look until measured against the web week */
 button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface; border-color: @pa_line; }
 button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
-.pa-today-chip { font-size: 10.24px; letter-spacing: 1px; font-weight: 700; padding: 0 10px; min-height: 0; }
+.pa-today-chip { font-size: 10.7px; letter-spacing: 1px; font-weight: 700; padding: 0 10px; min-height: 20px; }
 .pa-thumb { border-radius: 6px; }
 
 /* Drawers, measured from the web */
@@ -301,3 +301,8 @@ button.pa-entry.week .pa-chip-status { margin-top: 2px; }
 
 /* The web agenda sits on a faint wash with a lighter corner at the top left (white over the page, so invisible on the light theme) */
 .pa-agenda-bg { background: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 150px), linear-gradient(180deg, rgba(255, 255, 255, 0.057) 0px, rgba(255, 255, 255, 0.057) 350px, rgba(255, 255, 255, 0) 450px); }
+
+/* The web's rail stack on a film page: a faint panel from the first rail down, brighter over its heading block and towards the right */
+.pa-rail-band { background: linear-gradient(90deg, rgba(255, 255, 255, 0.005), rgba(255, 255, 255, 0.057) 150px, rgba(255, 255, 255, 0.062) 360px) top / 100% 28px no-repeat, linear-gradient(90deg, rgba(255, 255, 255, 0.005), rgba(255, 255, 255, 0.03) 150px, rgba(255, 255, 255, 0.057) 360px); }
+.pa-glyph { color: @pa_brand_ink; font-size: 20px; }
+.pa-glyph.s { font-size: 9px; }

@@ -30,7 +30,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         ("calendar", calendar::build(app.clone(), client.clone(), imgs.clone())),
     ];
     // The web clips the scrolling icons at the bar's own edge, so the inset lives on the row, not the bar.
-    let row = gtk4::Box::builder().spacing(2).margin_start(6).margin_end(6).build();
+    let row = gtk4::Box::builder().spacing(2).margin_start(5).margin_end(6).build();
 
     // Profile avatar first.
     let me = gtk4::Button::builder()

@@ -158,7 +158,7 @@ namespace Playarr.Xbox.ViewModels
             _ = LoadWorksAsync();
         }
 
-        /// <summary>Web Filters "Audio language" and "Subtitle language" (one code each; <c>null</c> is "Any language").</summary>
+        /// <summary>Web Filters "Audio language" and "Subtitle language" (comma-separated codes; <c>null</c> is "Any language").</summary>
         public string? AudioLang { get; private set; }
 
         public string? SubtitleLang { get; private set; }
@@ -180,6 +180,29 @@ namespace Playarr.Xbox.ViewModels
             }
 
             _ = LoadWorksAsync();
+        }
+
+        /// <summary>The codes selected for one type (the parameter is comma-separated, as on the web).</summary>
+        public List<string> LanguageCodes(bool audio)
+        {
+            var raw = audio ? AudioLang : SubtitleLang;
+            return string.IsNullOrEmpty(raw) ? new List<string>() : raw!.Split(',').ToList();
+        }
+
+        /// <summary>Adds or removes one language for a type; <c>null</c> clears the type ("Any language").</summary>
+        public void ToggleLanguage(bool audio, string? code)
+        {
+            var codes = LanguageCodes(audio);
+            if (code == null)
+            {
+                codes.Clear();
+            }
+            else if (!codes.Remove(code))
+            {
+                codes.Add(code);
+            }
+
+            SelectLanguage(audio, codes.Count == 0 ? null : string.Join(",", codes));
         }
 
         /// <summary>The languages still offered for the current kind and filters (web <c>catalogLanguages</c>).</summary>

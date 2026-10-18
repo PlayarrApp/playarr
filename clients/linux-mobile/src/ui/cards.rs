@@ -175,6 +175,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         .spacing(3)
         .margin_top(11)
         .margin_bottom(0)
+        .margin_start(2) // the web's caption sits 2 css px inside the art
         .build();
     caption.append(
         &gtk4::Label::builder()

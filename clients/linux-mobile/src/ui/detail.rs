@@ -34,6 +34,8 @@ pub struct Loaded {
     focus: Option<(i32, String)>,
     /// Series: watch progress by media file, for the episode cards' unseen dot and progress bar.
     progress: std::collections::HashMap<String, crate::model::WatchProgress>,
+    /// Library titles ranked by genre: the web's Similar Titles when the server has none.
+    similar: Vec<crate::model::Work>,
 }
 
 fn fetch(c: &Client, id: &str) -> Result<Loaded, crate::api::ApiError> {
@@ -76,11 +78,13 @@ fn fetch(c: &Client, id: &str) -> Result<Loaded, crate::api::ApiError> {
     } else {
         Default::default()
     };
+    let similar = c.similar_works(&detail.work);
     Ok(Loaded {
         detail,
         resume,
         focus,
         progress,
+        similar,
     })
 }
 
@@ -199,7 +203,22 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     } else {
         Tone::Brand
     };
-    row.append(&icons::image(icon, if small { 9 } else { 12 }, tone));
+    // The web draws these two as the text glyphs U+21E9 and U+2637, not icons.
+    match (icon, crimson, primary) {
+        ("downloads", _, false) => row.append(
+            &gtk4::Label::builder()
+                .label("\u{21E9}")
+                .css_classes(["pa-glyph", "s"])
+                .build(),
+        ),
+        ("list", _, false) => row.append(
+            &gtk4::Label::builder()
+                .label("\u{2637}")
+                .css_classes(["pa-glyph"])
+                .build(),
+        ),
+        _ => row.append(&icons::image(icon, if small { 9 } else { 12 }, tone)),
+    }
     let class = if small { "pa-action-label-s" } else { "pa-action-label" };
     // The large pills wrap ("Resume / from 0:23") as the web's do; the small ones fit on one line.
     row.append(
@@ -221,7 +240,14 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
         })
         .valign(gtk4::Align::Start)
         .build();
-    b.set_size_request(width, 44);
+    if crimson {
+        // The web's Play pill is 47 px tall (focus scale) and sits 3 px left of the row's gap.
+        b.set_size_request(width, 47);
+        b.set_margin_start(-3);
+        b.set_margin_top(-3);
+    } else {
+        b.set_size_request(width, 44);
+    }
     b
 }
 
@@ -284,16 +310,43 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     }
     // A film's title block sits 6 and 7 px (css) closer than the episode view's, as the web phone's.
     let film = focus_ep.is_none();
-    gap(&body, if film { 5 } else { 10 });
-    body.append(
-        &gtk4::Label::builder()
-            .label(&w.title)
-            .css_classes(["pa-display"])
-            .wrap(true)
-            .xalign(0.0)
-            .build(),
+    let title_label = gtk4::Label::builder()
+        .label(&w.title)
+        .css_classes(["pa-display"])
+        .xalign(0.0)
+        .build();
+    // The web's title box is 12ch (about 245 css px): break the title there. GTK cannot cap a label's width.
+    let wrapped = wrap_title(&title_label, &w.title, 245);
+    let two = wrapped.contains('\n');
+    // A two-line title sits 5 px higher than a one-line one.
+    gap(
+        &body,
+        if film {
+            5
+        } else if two {
+            9
+        } else {
+            10
+        },
     );
-    gap(&body, if film { 4 } else { 11 });
+    title_label.set_label(&wrapped);
+    if two {
+        // The web sets the title at line-height 0.94; GTK's CSS line-height does not reach wrapped Pango lines.
+        let attrs = gtk4::pango::AttrList::new();
+        attrs.insert(gtk4::pango::AttrFloat::new_line_height(0.70));
+        title_label.set_attributes(Some(&attrs));
+    }
+    body.append(&title_label);
+    gap(
+        &body,
+        if film {
+            4
+        } else if two {
+            9
+        } else {
+            11
+        },
+    );
     if let Some((_, e)) = &focus_ep {
         body.append(
             &gtk4::Label::builder()
@@ -324,7 +377,14 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         meta.push((w.kind_label().to_string(), true));
         if let Some(m) = l.detail.runtime_ms.filter(|m| *m > 0) {
             let mins = (m + 30_000) / 60_000;
-            meta.push((format!("{}h {:02}m", mins / 60, mins % 60), false));
+            meta.push((
+                if mins < 60 {
+                    format!("{} min", mins.max(1))
+                } else {
+                    format!("{}h {:02}m", mins / 60, mins % 60)
+                },
+                false,
+            ));
         }
         if let Some(y) = w.year_range() {
             meta.push((y, false));
@@ -339,8 +399,16 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             .take(if series { 1 } else { 3 })
             .map(|g| (g.clone(), false)),
     );
-    body.append(&meta_row(&meta));
-    gap(&body, 10);
+    let meta_flow = meta_row(&meta);
+    if focus_ep.is_some() {
+        // The episode meta row starts 2 px left of where the flow puts it, so the genre fits on the first line as on the web.
+        meta_flow.set_margin_start(-1);
+        meta_flow.set_margin_end(-4);
+        // The web's episode synopsis sits 14 px closer to the meta row than the film's.
+        meta_flow.set_margin_bottom(-6);
+    }
+    body.append(&meta_flow);
+    gap(&body, if film { 11 } else { 0 });
     let overview = focus_ep
         .as_ref()
         .and_then(|(_, e)| e.episode.overview.clone())
@@ -356,11 +424,11 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             // The web's synopsis is 52ch wide, 17 px short of the page's right margin.
             .margin_end(17)
             .build();
-        l.set_height_request(50);
+        l.set_height_request(if film { 34 } else { 50 });
         l.set_valign(gtk4::Align::Start);
         body.append(&l);
     }
-    gap(&body, 14);
+    gap(&body, if series { 28 } else { 14 });
 
     let title = w.title.clone();
     let play = {
@@ -494,6 +562,20 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     // Negative margins do not take the pill scroller's focus room back, so the series gap is shortened by the
     // room kept above and below (measured against the web capture).
     gap(&body, if series { 53 - 2 * FOCUS_ROOM } else { 28 });
+    // The static server (like most libraries) has no chapters: the web shows one generated marker per interval.
+    let mut band = None;
+    if let (false, "movie", Some(file)) = (series, w.kind.as_str(), l.detail.media_file_id.as_deref()) {
+        let runtime = l.detail.runtime_ms.unwrap_or(0);
+        if runtime > 0 {
+            let outer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+            outer.add_css_class("pa-rail-band");
+            let b = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+            b.set_margin_start(16);
+            b.append(&chapters_rail(imgs, file, runtime, &title, play.clone()));
+            outer.append(&b);
+            band = Some((outer, b));
+        }
+    }
     let mut focus_index = 0;
     // Next and Previous (on the lock screen or a headset) walk the episodes in order.
     let queue: Vec<(String, String)> = seasons
@@ -524,7 +606,18 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             play.clone(),
         ));
     }
-    if series && !seasons.is_empty() {
+    if !l.similar.is_empty() {
+        let rail = similar_rail(app, imgs, &l.similar);
+        match &band {
+            Some((_, b)) => b.append(&rail),
+            None => body.append(&rail),
+        }
+    }
+    if let Some((outer, _)) = band {
+        page.append(&outer);
+    }
+    // Nothing watched: the page opens at its top (the web refs), not at the first season.
+    if series && !seasons.is_empty() && l.resume.as_ref().is_some_and(|r| r.1 > 0) {
         // Open scrolled to the next-up episode's season, as the web does.
         let adj = scroll.vadjustment();
         let target = 415.5 + 238.0 * focus_index as f64;
@@ -721,6 +814,184 @@ fn season_rail(
     faded.add_overlay(&fade);
     col.append(&faded);
     col.set_margin_bottom(39 - FOCUS_ROOM);
+    col
+}
+
+/// `text` with a line break wherever a line would pass `max_px` css pixels at `label`'s font.
+fn wrap_title(label: &gtk4::Label, text: &str, max_px: i32) -> String {
+    let layout = label.create_pango_layout(None);
+    // The layout is made before the style's -2.6 px letter spacing applies, so take it off per character.
+    let width = |t: &str| {
+        layout.set_text(t);
+        layout.pixel_size().0 - (t.chars().count() as f64 * 2.6) as i32
+    };
+    let mut out = String::new();
+    let mut line = String::new();
+    for word in text.split_whitespace() {
+        let next = if line.is_empty() {
+            word.to_string()
+        } else {
+            format!("{line} {word}")
+        };
+        if !line.is_empty() && width(&next) > max_px {
+            out.push_str(&line);
+            out.push('\n');
+            line = word.to_string();
+        } else {
+            line = next;
+        }
+    }
+    out.push_str(&line);
+    out
+}
+
+/// Heading and count over a rail, as the season rails have them.
+fn rail_head(col: &gtk4::Box, title: &str, count: &str) {
+    col.append(
+        &gtk4::Label::builder()
+            .label(title)
+            .css_classes(["pa-season-title"])
+            .xalign(0.0)
+            .margin_start(FOCUS_ROOM)
+            .build(),
+    );
+    col.append(
+        &gtk4::Label::builder()
+            .label(count)
+            .css_classes(["pa-season-count"])
+            .xalign(0.0)
+            .margin_start(FOCUS_ROOM)
+            .margin_top(5)
+            .margin_bottom(19 - FOCUS_ROOM)
+            .build(),
+    );
+}
+
+/// A rail of fixed-width cards in the room a clipping scroller needs for the focus ring.
+fn rail_of(col: &gtk4::Box, row: &gtk4::Box) {
+    row.set_margin_start(FOCUS_ROOM);
+    row.set_margin_top(FOCUS_ROOM);
+    row.set_margin_bottom(FOCUS_ROOM);
+    col.set_margin_start(-FOCUS_ROOM);
+    col.set_margin_end(-16);
+    let rail = gtk4::ScrolledWindow::builder()
+        .child(row)
+        .vscrollbar_policy(gtk4::PolicyType::Never)
+        .propagate_natural_height(true)
+        .build();
+    col.append(&rail);
+    col.set_margin_bottom(39 - FOCUS_ROOM);
+}
+
+/// The web's generated chapters: one marker every 5 to 30 minutes (about ten per film), each a frame of the file.
+fn chapters_rail(
+    imgs: &Images,
+    file: &str,
+    runtime_ms: i64,
+    title: &str,
+    play: impl Fn(String, i64, String) + Clone + 'static,
+) -> gtk4::Box {
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    // The film band starts 29 px under the buttons, the heading 24 px further down.
+    col.set_margin_top(24);
+    let target = runtime_ms as f64 / 10.0;
+    let step = [5, 10, 15, 20, 30]
+        .iter()
+        .map(|m| m * 60_000)
+        .find(|m| *m as f64 >= target)
+        .unwrap_or(30 * 60_000);
+    let count = ((runtime_ms + step - 1) / step).max(1);
+    rail_head(&col, "Chapters", &format!("{count} scene markers"));
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+    for i in 0..count {
+        let start = i * step;
+        let pic = gtk4::Picture::builder()
+            .content_fit(gtk4::ContentFit::Cover)
+            .can_shrink(true)
+            .css_classes(["pa-ep-pic"])
+            .build();
+        let frame = gtk4::Overlay::builder()
+            .child(&pic)
+            .overflow(gtk4::Overflow::Hidden)
+            .css_classes(["pa-art"])
+            .build();
+        frame.set_size_request(EP_W, EP_H);
+        imgs.load(format!("/api/v1/media/{file}/thumbnail?position_ms={start}"), &pic);
+        frame.add_overlay(&gtk4::Box::builder().css_classes(["pa-ep-shade"]).build());
+        frame.add_overlay(
+            &gtk4::Label::builder()
+                .label(format!("{:02}", i + 1))
+                .css_classes(["pa-ep-badge"])
+                .halign(gtk4::Align::End)
+                .valign(gtk4::Align::End)
+                .margin_end(10)
+                .margin_bottom(10)
+                .build(),
+        );
+        let card = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        card.append(&frame);
+        let cap = gtk4::Box::builder().spacing(8).margin_top(12).build();
+        cap.append(
+            &gtk4::Label::builder()
+                .label(fmt_clock(start))
+                .css_classes(["pa-ep-code"])
+                .build(),
+        );
+        cap.append(
+            &gtk4::Label::builder()
+                .label(format!("Chapter {}", i + 1))
+                .css_classes(["pa-ep-name"])
+                .xalign(0.0)
+                .build(),
+        );
+        card.append(&cap);
+        card.set_size_request(EP_W, -1);
+        let b = gtk4::Button::builder()
+            .child(&card)
+            .css_classes(["pa-card"])
+            .valign(gtk4::Align::Start)
+            .build();
+        let (file, play, t) = (file.to_string(), play.clone(), title.to_string());
+        b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
+        row.append(&b);
+    }
+    rail_of(&col, &row);
+    col
+}
+
+/// "Similar Titles / N titles" and a rail of title cards.
+fn similar_rail(app: &Rc<App>, imgs: &Images, works: &[crate::model::Work]) -> gtk4::Box {
+    let col = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    // The web leaves 64 px between the rails (the season rail's own margin is 25 short of it).
+    col.set_margin_top(25);
+    rail_head(
+        &col,
+        "Similar Titles",
+        &if works.len() == 1 {
+            "1 title".to_string()
+        } else {
+            format!("{} titles", works.len())
+        },
+    );
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+    for w in works {
+        let (app, imgs2) = (app.clone(), imgs.clone());
+        row.append(&super::cards::card(
+            imgs,
+            w,
+            super::cards::CardOpts {
+                meta: Some(w.kind_label().to_string()),
+                ..Default::default()
+            },
+            move |w| {
+                if let Some(client) = app.client.borrow().clone() {
+                    let page = super::detail::build(app.clone(), client, imgs2.clone(), w.id.clone());
+                    app.push_bare(&w.title, &page);
+                }
+            },
+        ));
+    }
+    rail_of(&col, &row);
     col
 }
 
