@@ -11,6 +11,7 @@ import type { UserInviteRequest } from '../../core/Types/Profiles';
 import { buildInviteUrl } from '../../core/InviteUrl';
 import { getMyInviteRequest, createInviteRequest, generateApprovedInvite } from '../../data/ProfileRepository';
 import { getServerDirectory } from '../../AppContainer';
+import { t } from '../../core/Language';
 
 @Component
 export struct InvitePanel {
@@ -47,31 +48,31 @@ export struct InvitePanel {
   private statusText(): string {
     const request = this.request;
     if (request === null) {
-      return 'You have not requested an invite yet.';
+      return t('settings.invite.statusNone', 'You have not requested an invite yet.');
     }
     if (request.status === 'pending') {
-      return 'Waiting for an admin to review your request.';
+      return t('settings.invite.statusPending', 'Waiting for an admin to review your request.');
     }
     if (request.status === 'approved') {
-      return 'Approved - generate your QR code when you are ready to share it.';
+      return t('settings.invite.statusApproved', 'Approved - generate your QR code when you are ready to share it.');
     }
     if (request.status === 'denied') {
-      return 'Your previous request was not approved. You can ask again.';
+      return t('settings.invite.statusDenied', 'Your previous request was not approved. You can ask again.');
     }
-    return 'Your approved invite was generated. Request another when you need one.';
+    return t('settings.invite.statusGenerated', 'Your approved invite was generated. Request another when you need one.');
   }
 
   private buttonLabel(): string {
     if (this.status === 'saving') {
-      return 'Working…';
+      return t('settings.invite.working', 'Working…');
     }
     if (this.request !== null && this.request.status === 'approved') {
-      return 'Generate invite QR';
+      return t('settings.invite.generateQr', 'Generate invite QR');
     }
     if (this.request !== null && this.request.status === 'pending') {
-      return 'Request pending';
+      return t('settings.invite.requestPending', 'Request pending');
     }
-    return 'Request invite QR';
+    return t('settings.invite.requestQr', 'Request invite QR');
   }
 
   private async onAction(): Promise<void> {
@@ -123,7 +124,7 @@ export struct InvitePanel {
             .fontSize(tv(13.824))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
-          TextArea({ text: this.message, placeholder: 'For example: For Sam — films and television series, please.' })
+          TextArea({ text: this.message, placeholder: t('settings.invite.messagePlaceholder', 'For example: For Sam — films and television series, please.') })
             .maxLength(500)
             .fontSize(tv(15.36))
             .fontColor(toResourceColor(activeColors().ink))

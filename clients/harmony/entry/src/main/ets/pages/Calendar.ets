@@ -53,7 +53,7 @@ import {
   shiftAnchor,
   startOfMonth,
   visibleRange,
-  WEEKDAY_SHORT,
+  weekdayShort,
   groupSeriesEpisodes,
   itemAvailable,
   itemLineText,
@@ -483,7 +483,8 @@ export struct ReleaseCalendar {
     .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(toResourceColor(activeColors().bg))
+    // The TV's agenda sits on an opaque list; the phone's headings sit straight on the page like web's.
+    .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent)
   }
 
   @Builder
@@ -629,7 +630,7 @@ export struct ReleaseCalendar {
   private monthView(): void {
     Column() {
       Row() {
-        ForEach(WEEKDAY_SHORT, (name: string) => {
+        ForEach(weekdayShort(), (name: string) => {
           Text(name).fontFamily(nunito(400))
             .fontSize(tv(MONTH_WEEKDAY_SIZE))
             .letterSpacing(tv(0.96))
@@ -857,6 +858,7 @@ export struct ReleaseCalendar {
         [`${entrySubtitle(this.selected)}    ${entryWhenLabel(this.selected)}`] : [],
       synopsis: '',
       scrollRails: false,
+      railFrost: true,
       railsSlot: (): void => {
         this.agenda();
       },
@@ -1029,7 +1031,7 @@ export struct ReleaseCalendar {
         .width('100%')
         .layoutWeight(1)
     } else {
-      List({ space: 16 }) {
+      List({ space: 32 }) {
         ForEach(this.groups, (group: DayGroup) => {
           ListItem() {
             Column({ space: PHONE_ENTRY_GAP }) {
@@ -1088,6 +1090,7 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
+      .margin({ bottom: 5 }) // web's text block sits 2.5 vp higher in the card than the centred one
     }
     .width('100%')
     .constraintSize({
@@ -1161,7 +1164,7 @@ export struct ReleaseCalendar {
     Scroll() {
       Column() {
         Row() {
-          ForEach(WEEKDAY_SHORT, (name: string) => {
+          ForEach(weekdayShort(), (name: string) => {
             Text(name).fontFamily(nunito(400))
               .fontSize(tv(MONTH_WEEKDAY_SIZE))
               .letterSpacing(tv(0.96))
@@ -1290,6 +1293,7 @@ export struct ReleaseCalendar {
     NavDestination() {
       Stack() {
       PageShell({
+        railFrostWidthPct: this.view === 'agenda' ? -1 : 0,
         title: t('pages.calendar.title', 'Calendar'),
         touch: true,
         touchContent: (): void => {

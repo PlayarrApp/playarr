@@ -6,6 +6,8 @@ sub init()
     end for
     ThemeSetRole(m.top.findNode("focusRing"), "cardGlow")
     ThemeSetRole(m.top.findNode("focusGlow"), "cardGlow")
+    ' The index over the art stays white in both themes (it sits on the picture); "-" opts the label out of the white-is-ink recolour.
+    m.top.findNode("overlayNumber").addFields({ themeRole: "-" })
     ThemeInitComponent()
     m.focusRingInset = 0
     m.cardContentInsetX = 0

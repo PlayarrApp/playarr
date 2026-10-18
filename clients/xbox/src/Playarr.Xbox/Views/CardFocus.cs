@@ -15,11 +15,12 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal static class CardFocus
     {
-        private const double Lift = -7;
+        public const double Lift = -7;
+        public const double LibraryLift = -5; // measured: the web library card sits 2 px lower than Home cards when focused
         private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(260);
 
         /// <param name="halo">False for a rail whose container has no room for the soft glow and the art scale (reserve it with <see cref="ReserveFocusRoom"/> instead).</param>
-        public static void Attach(ListViewBase list, bool halo = true)
+        public static void Attach(ListViewBase list, bool halo = true, double ringOutset = 0, double lift = Lift)
         {
             // No selection, hover, press or focus fill: the web card shows only the lift, the scale and the glow ring.
             list.ContainerContentChanging += (s, e) =>
@@ -30,8 +31,8 @@ namespace Playarr.Xbox.Views
                     ClearFill(container);
                 }
             };
-            list.GotFocus += (s, e) => Apply(e.OriginalSource, true, halo);
-            list.LostFocus += (s, e) => Apply(e.OriginalSource, false, halo);
+            list.GotFocus += (s, e) => Apply(e.OriginalSource, true, halo, ringOutset, lift);
+            list.LostFocus += (s, e) => Apply(e.OriginalSource, false, halo, ringOutset, lift);
         }
 
         /// <summary>
@@ -107,7 +108,7 @@ namespace Playarr.Xbox.Views
         /// The glow's soft part, <c>0 0 20px 4px</c> at 45 % of the glow colour beyond the 3 px ring: stacked outward 2 px
         /// strokes fading with distance, on a zero-size canvas that is the card's last child (it never moves the art).
         /// </summary>
-        private static void SetSoftGlow(Panel card, Grid art, bool focused)
+        private static void SetSoftGlow(Panel card, Grid art, bool focused, double ringOutset)
         {
             Canvas? canvas = null;
             foreach (var child in card.Children)
@@ -174,6 +175,25 @@ namespace Playarr.Xbox.Views
                     Canvas.SetTop((FrameworkElement)canvas.Children[canvas.Children.Count - 1], origin.Y - d);
                 }
 
+                if (ringOutset > 0)
+                {
+                    // Web library cards: the 3 px ring sits outside the scaled art by the outline offset.
+                    const double artScale = 1.025;
+                    var width = art.ActualWidth * artScale + 2 * ringOutset;
+                    var height = art.ActualHeight * artScale + 2 * ringOutset;
+                    var outer = new Border
+                    {
+                        Width = width,
+                        Height = height,
+                        CornerRadius = new CornerRadius(radius * artScale + ringOutset),
+                        BorderThickness = new Thickness(3),
+                        BorderBrush = new SolidColorBrush(Theme.CardGlow),
+                    };
+                    Canvas.SetLeft(outer, origin.X + (art.ActualWidth - width) / 2);
+                    Canvas.SetTop(outer, origin.Y + (art.ActualHeight - height) / 2);
+                    canvas.Children.Add(outer);
+                }
+
                 card.Children.Add(canvas);
 
             }
@@ -195,9 +215,9 @@ namespace Playarr.Xbox.Views
         };
 
         /// <summary>The soft glow and the art scale (<c>--card-art-scale</c>, 1.025 about the centre; the caption stays put).</summary>
-        private static void ApplyHalo(Panel card, Grid art, bool focused)
+        private static void ApplyHalo(Panel card, Grid art, bool focused, double ringOutset)
         {
-            SetSoftGlow(card, art, focused);
+            SetSoftGlow(card, art, focused, ringOutset);
             if (!(art.RenderTransform is ScaleTransform scale))
             {
                 scale = new ScaleTransform { ScaleX = 1, ScaleY = 1 };
@@ -220,7 +240,7 @@ namespace Playarr.Xbox.Views
 
         }
 
-        private static void Apply(object source, bool focused, bool halo)
+        private static void Apply(object source, bool focused, bool halo, double ringOutset, double lift)
         {
             if (!(source is SelectorItem { ContentTemplateRoot: Panel card }))
             {
@@ -268,10 +288,11 @@ namespace Playarr.Xbox.Views
                 art.Children.Add(ring);
             }
 
-            ring.Visibility = focused ? Visibility.Visible : Visibility.Collapsed;
+            // A ring outset from the art is drawn by the glow canvas instead (the art clips its own children).
+            ring.Visibility = focused && !(halo && ringOutset > 0) ? Visibility.Visible : Visibility.Collapsed;
             if (halo)
             {
-                ApplyHalo(card, art, focused);
+                ApplyHalo(card, art, focused, ringOutset);
             }
 
             if (!(card.RenderTransform is TranslateTransform move))
@@ -284,7 +305,7 @@ namespace Playarr.Xbox.Views
             var animation = new DoubleAnimationUsingKeyFrames();
             animation.KeyFrames.Add(new SplineDoubleKeyFrame
             {
-                Value = focused ? Lift : 0,
+                Value = focused ? lift : 0,
                 KeyTime = KeyTime.FromTimeSpan(Duration),
                 KeySpline = new KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.2, 0.8), ControlPoint2 = new Windows.Foundation.Point(0.2, 1) },
             });

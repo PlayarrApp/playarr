@@ -2015,12 +2015,12 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(4) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 4) }) {
       Text(heading).fontFamily(nunito(400))
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
       Text(count).fontFamily(nunito(400))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(11))
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11))
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
@@ -2109,7 +2109,7 @@ struct Detail {
       ForEach(
         this.rails,
         (rail: DetailRail) => {
-          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
+          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 2) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
             this.railHeading(rail.heading, rail.items.length.toString() + ' episodes', true)
             MediaRail({
               railId: rail.id,
@@ -2170,7 +2170,7 @@ struct Detail {
   @Builder
   private tvContent(): void {
     Stack() {
-      KeyArtBackdrop({ keyArt: this.heroArtwork })
+      KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 65 })
 
       Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 20 : 0)) }) {
         FeatureCopy({
@@ -2346,7 +2346,7 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 4 : 8) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
           .fontSize(10.24)
@@ -2490,7 +2490,7 @@ struct Detail {
         .height(HERO_TOUCH_HEIGHT)
         .linearGradient({
           direction: GradientDirection.Bottom,
-          colors: [[toResourceColorWithAlpha(activeColors().bg, 0.78), 0.0], [toResourceColorWithAlpha(activeColors().bg, 0.9), 0.55], [toResourceColor(activeColors().bg), 1.0]],
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0.78), 0.0], [toResourceColorWithAlpha(activeColors().surface, 0.9), 0.55], [toResourceColor(activeColors().surface), 1.0]],
         })
 
         Column({ space: TouchGeometry.detailListSpacing }) {
@@ -2522,7 +2522,7 @@ struct Detail {
               .fontSize(11.52)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(16.7)
-              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 15 : 10) : 12 })
+              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 11.7 : 10) : 12 })
               .maxLines(3)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
@@ -2589,9 +2589,9 @@ struct Detail {
         .linearGradient({
           direction: GradientDirection.Bottom,
           colors: [
-            [toResourceColor(activeColors().bg), 0.0],
-            [toResourceColor(activeColors().bg), (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP) / (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)],
-            [toResourceColorWithAlpha(activeColors().bg, 0), 1.0],
+            [toResourceColor(activeColors().surface), 0.0],
+            [toResourceColor(activeColors().surface), (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP) / (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)],
+            [toResourceColorWithAlpha(activeColors().surface, 0), 1.0],
           ],
         })
         .hitTestBehavior(HitTestMode.None)
@@ -2640,7 +2640,7 @@ struct Detail {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(activeColors().bg))
+    .backgroundColor(toResourceColor(activeColors().surface))
   }
 
   @Builder
@@ -2669,7 +2669,7 @@ struct Detail {
         .height('100%')
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
-        .backgroundColor(toResourceColor(activeColors().bg))
+        .backgroundColor(toResourceColor(isTvMetrics() ? activeColors().bg : activeColors().surface))
       } else if (isTvMetrics()) {
         this.tvLayout()
       } else {
@@ -2677,7 +2677,7 @@ struct Detail {
       }
     }
     .hideTitleBar(true)
-    .backgroundColor(toResourceColor(activeColors().bg))
+    .backgroundColor(toResourceColor(isTvMetrics() ? activeColors().bg : activeColors().surface))
     .onKeyEvent((event: KeyEvent): boolean => {
       if (event.type === KeyType.Down) {
         this.cancelInitialEpisodeFocus();

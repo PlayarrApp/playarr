@@ -1,0 +1,1 @@
+- HarmonyOS phone: series-detail episode ring no longer clipped and chip rows match web, Profiles select chevron is a thin stroked glyph, calendar agenda headings sit on the page with web's day gap, Preferences rows start 12 vp lower.

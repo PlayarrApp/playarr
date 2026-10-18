@@ -7528,7 +7528,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
 end sub
 
 function formatReleaseDate(iso as String) as String
-    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"]
     if Len(iso) < 10 then return iso
     month = Val(Mid(iso, 6, 2))
     day = Val(Mid(iso, 9, 2))
