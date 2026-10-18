@@ -267,6 +267,15 @@ impl std::fmt::Display for UpdateChannel {
     }
 }
 
+/// True when `PLAYARR_STATIC` is set to `1` or `true`: the parity static server, whose calendar comes only from its seeded DB.
+fn static_calendar_only() -> bool {
+    is_static_flag(std::env::var("PLAYARR_STATIC").ok().as_deref())
+}
+
+fn is_static_flag(value: Option<&str>) -> bool {
+    value.is_some_and(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -1986,7 +1995,12 @@ async fn boot_api(
 
     // Calendar: refresh every source's data in the background so the calendar
     // API answers from the cache and never waits on an *arr instance.
-    tokio::spawn(playarr_api::calendar_cache::run_refresher(state.clone()));
+    // PLAYARR_STATIC=1 (the parity static server): the seeded chunks are the whole calendar, so load them once and never refresh.
+    if static_calendar_only() {
+        state.calendar_cache.load().await;
+    } else {
+        tokio::spawn(playarr_api::calendar_cache::run_refresher(state.clone()));
+    }
 
     // Read the catalogue into memory now, so the first Home or Library request
     // after a start does not pay for the scan.
@@ -3517,6 +3531,12 @@ async fn apply_update(target_version: &str) -> anyhow::Result<()> {
 #[cfg(test)]
 mod bootstrap_tests {
     use super::*;
+
+    #[test]
+    fn static_flag_is_on_only_for_one_or_true() {
+        assert!(is_static_flag(Some("1")) && is_static_flag(Some("TRUE")));
+        assert!(!is_static_flag(None) && !is_static_flag(Some("0")) && !is_static_flag(Some("")));
+    }
     use playarr_auth::PasswordVerifier as _;
     use playarr_db::repo::{SqlxPolicyRepo, SqlxUserRepo};
     use playarr_db::{DbPool, PolicyRepo, UserRepo};
