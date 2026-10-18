@@ -107,7 +107,7 @@ MouseArea {
         id: caption
         anchors { top: art.bottom; topMargin: (compact ? 11 : 11.7) * Tokens.u; left: parent.left; right: parent.right; leftMargin: 1.7 * Tokens.u }
         spacing: 3 * Tokens.u
-        Label {
+        Label { renderType: Text.NativeRendering;
             width: parent.width
             text: work ? (work.deckTitle || work.title) : ""
             elide: Text.ElideRight
@@ -116,7 +116,7 @@ MouseArea {
             font.letterSpacing: -0.015 * 8.9 * Tokens.u
             font.pixelSize: 8.9 * Tokens.u
         }
-        Label {
+        Label { renderType: Text.NativeRendering;
             visible: !root.compact
             width: parent.width
             text: work && work.deckSub ? work.deckSub : work ? kindLabel(work.kind) + (work.release_date ? " · " + work.release_date.substr(0, 4) : "") : ""

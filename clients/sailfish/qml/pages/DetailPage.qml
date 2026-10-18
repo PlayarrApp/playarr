@@ -144,7 +144,7 @@ PlayarrPage {
                     }
                 }
             }
-            Label {
+            Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
                 text: work.genres && work.genres.length ? work.genres[0].toUpperCase() : ""
                 visible: text !== ""
@@ -154,7 +154,7 @@ PlayarrPage {
                 font.letterSpacing: 1 * Tokens.u
                 font.pixelSize: 10 * Tokens.u
             }
-            Label {
+            Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
                 width: parent.width - 2 * Tokens.pad
                 text: work.title
@@ -171,16 +171,16 @@ PlayarrPage {
                 x: Tokens.pad
                 spacing: 11.5 * Tokens.u
                 height: implicitHeight - 1.5 * Tokens.u
-                Label { text: work.kind === "movie" ? qsTr("Movie") : work.kind === "series" ? qsTr("Series") : qsTr("Music"); font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                Label { visible: !!detail && !!detail.runtime_ms; text: detail ? hm(detail.runtime_ms) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                Label { visible: !!work.release_date; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                Label { visible: !!work.release_date; text: work.release_date ? qsTr("Released %1").arg(dmy(work.release_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: work.kind === "movie" ? qsTr("Movie") : work.kind === "series" ? qsTr("Series") : qsTr("Music"); font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; visible: !!detail && !!detail.runtime_ms; text: detail ? hm(detail.runtime_ms) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; visible: !!work.release_date; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; visible: !!work.release_date; text: work.release_date ? qsTr("Released %1").arg(dmy(work.release_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                 Repeater {
                     model: work.genres ? work.genres.slice(0, 3) : []
-                    Label { text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                 }
             }
-            Label {
+            Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
                 width: parent.width - 2 * Tokens.pad
                 visible: !!work.overview
@@ -254,7 +254,7 @@ PlayarrPage {
                 }
             }
             BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; size: BusyIndicatorSize.Medium; running: !detail && !failed }
-            Label {
+            Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
                 visible: failed
                 text: qsTr("Could not load this title")
@@ -268,7 +268,7 @@ PlayarrPage {
                 width: parent.width
                 spacing: 11.5 * Tokens.u
                 visible: seasons.length > 0 && !!page.target && !!page.target.episode
-                Label {
+                Label { renderType: Text.NativeRendering;
                     x: Tokens.pad; width: parent.width - 2 * Tokens.pad
                     text: page.target && page.target.episode ? (page.target.episode.episode.title || qsTr("Episode")) : ""
                     elide: Text.ElideRight
@@ -277,17 +277,17 @@ PlayarrPage {
                 }
                 Row {
                     x: Tokens.pad; spacing: 11.5 * Tokens.u
-                    Label { text: page.target && page.target.season ? qsTr("Season %1").arg(page.target.season.season_number) : ""; font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                    Label { text: page.target && page.target.episode ? "S" + ("0" + page.target.season.season_number).slice(-2) + " \u00B7 E" + ("0" + page.target.episode.episode.episode_number).slice(-2) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                    Label { visible: !!page.target && !!page.target.episode && !!page.target.episode.runtime_ms; text: page.target && page.target.episode ? Math.round((page.target.episode.runtime_ms || 0) / 60000) + " min" : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                    Label { visible: yearRange() !== ""; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                    Label { visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.air_date; text: page.target && page.target.episode && page.target.episode.episode.air_date ? qsTr("Aired %1").arg(dmy(page.target.episode.episode.air_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; text: page.target && page.target.season ? qsTr("Season %1").arg(page.target.season.season_number) : ""; font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; text: page.target && page.target.episode ? "S" + ("0" + page.target.season.season_number).slice(-2) + " \u00B7 E" + ("0" + page.target.episode.episode.episode_number).slice(-2) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; visible: !!page.target && !!page.target.episode && !!page.target.episode.runtime_ms; text: page.target && page.target.episode ? Math.round((page.target.episode.runtime_ms || 0) / 60000) + " min" : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; visible: yearRange() !== ""; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.air_date; text: page.target && page.target.episode && page.target.episode.episode.air_date ? qsTr("Aired %1").arg(dmy(page.target.episode.episode.air_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                     Repeater {
                         model: work.genres ? work.genres.slice(0, 3) : []
-                        Label { text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                        Label { renderType: Text.NativeRendering; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                     }
                 }
-                Label {
+                Label { renderType: Text.NativeRendering;
                     x: Tokens.pad; width: parent.width - 2 * Tokens.pad
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
@@ -369,8 +369,8 @@ PlayarrPage {
                     width: col.width
                     spacing: 6 * Tokens.u   // web: 24 px from the season heading to its count
                     property var sdata: modelData
-                    Label { x: Tokens.pad; text: qsTr("Season %1").arg(modelData.season.season_number); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 15.4 * Tokens.u }
-                    Label { x: Tokens.pad; text: qsTr("%1 episodes").arg(modelData.episodes.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10.6 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("Season %1").arg(modelData.season.season_number); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 15.4 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("%1 episodes").arg(modelData.episodes.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10.6 * Tokens.u }
                     Item { width: 1; height: 6.5 * Tokens.u }
                     Item {
                         width: col.width; height: 178.8 * Tokens.u * 9 / 16 + 58 * Tokens.u
@@ -445,7 +445,7 @@ PlayarrPage {
                                     Rectangle { id: thumbMask; anchors.fill: parent; radius: thumb.radius; visible: false }
                                     Desaturate { id: thumbGrey; anchors.fill: parent; source: thumbArt; desaturation: 0.25; visible: false }
                                     OpacityMask { anchors.fill: parent; source: thumbGrey; maskSource: thumbMask }
-                                    Label { anchors { right: parent.right; bottom: parent.bottom; rightMargin: 11.5 * Tokens.u; bottomMargin: 8.8 * Tokens.u }
+                                    Label { renderType: Text.NativeRendering; anchors { right: parent.right; bottom: parent.bottom; rightMargin: 11.5 * Tokens.u; bottomMargin: 8.8 * Tokens.u }
                                             text: ("0" + modelData.episode.episode_number).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: 12.8 * Tokens.u }
                                     UnseenDot {
                                         visible: !epCard.pr || epCard.pr.state === "unseen"
@@ -489,8 +489,8 @@ PlayarrPage {
                                     anchors { top: thumb.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; }
                                     spacing: 9.5 * Tokens.u
                                     readonly property bool current: !!page.target && page.target.id === modelData.media_file_id
-                                    Label { id: codeLbl; text: "S" + ("0" + seasonCol.sdata.season.season_number).slice(-2) + " \u00B7 E" + ("0" + modelData.episode.episode_number).slice(-2); color: parent.current ? Tokens.ink : Tokens.inkSoft; font.family: parent.current ? Tokens.family820 : Tokens.family580; font.pixelSize: 9.5 * Tokens.u }
-                                    Label {
+                                    Label { renderType: Text.NativeRendering; id: codeLbl; text: "S" + ("0" + seasonCol.sdata.season.season_number).slice(-2) + " \u00B7 E" + ("0" + modelData.episode.episode_number).slice(-2); color: parent.current ? Tokens.ink : Tokens.inkSoft; font.family: parent.current ? Tokens.family820 : Tokens.family580; font.pixelSize: 9.5 * Tokens.u }
+                                    Label { renderType: Text.NativeRendering;
                                         id: titleLbl
                                         width: epCard.width - codeLbl.width - 14 * Tokens.u
                                         text: modelData.episode.title || ""; elide: Text.ElideRight
@@ -509,7 +509,7 @@ PlayarrPage {
                 model: albums
                 Column {
                     width: col.width
-                    Label {
+                    Label { renderType: Text.NativeRendering;
                         x: Tokens.pad
                         text: modelData.album.title
                         color: Tokens.ink
@@ -529,7 +529,7 @@ PlayarrPage {
                             enabled: !!modelData.media_file_id
                             opacity: enabled ? 1 : 0.4
                             onClicked: navigationActivate()
-                            Label {
+                            Label { renderType: Text.NativeRendering;
                                 x: Tokens.pad
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width - 2 * Tokens.pad

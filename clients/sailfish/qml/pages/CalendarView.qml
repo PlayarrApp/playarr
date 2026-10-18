@@ -236,7 +236,7 @@ Item {
         Row {
             Repeater {
                 model: [qsTr("MON"), qsTr("TUE"), qsTr("WED"), qsTr("THU"), qsTr("FRI"), qsTr("SAT"), qsTr("SUN")]
-                Label { width: month.cellW; height: 34 * Tokens.u; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 1.5 * Tokens.u; font.pixelSize: 12 * Tokens.u }
+                Label { renderType: Text.NativeRendering; width: month.cellW; height: 34 * Tokens.u; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 1.5 * Tokens.u; font.pixelSize: 12 * Tokens.u }
             }
         }
         Column {
@@ -275,10 +275,10 @@ Item {
                                          : cell.es[0].has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a")
                                          : cell.isToday ? (Tokens.dark ? "#f1a4a8" : "#722f34") : Tokens.brandPink
                                 }
-                                Label { width: month.cellW - 40 * Tokens.u; text: cell.es.length ? cell.es[0].title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 12.5 * Tokens.u }
+                                Label { renderType: Text.NativeRendering; width: month.cellW - 40 * Tokens.u; text: cell.es.length ? cell.es[0].title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 12.5 * Tokens.u }
                             }
-                            Label { x: 12.2 * Tokens.u; y: 49.5 * Tokens.u; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: 12.5 * Tokens.u }
-                            Label { visible: cell.es.length > 1; x: 43 * Tokens.u; y: 49.5 * Tokens.u; text: qsTr("+%1 more").arg(cell.es.length - 1); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 12.5 * Tokens.u }
+                            Label { renderType: Text.NativeRendering; x: 12.2 * Tokens.u; y: 49.5 * Tokens.u; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: 12.5 * Tokens.u }
+                            Label { renderType: Text.NativeRendering; visible: cell.es.length > 1; x: 43 * Tokens.u; y: 49.5 * Tokens.u; text: qsTr("+%1 more").arg(cell.es.length - 1); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 12.5 * Tokens.u }
                         }
                     }
                 }
@@ -298,7 +298,7 @@ Item {
                         x: dayCol.wk ? 0 : Tokens.pad
                         height: (dayCol.wk ? 6 : 40) * Tokens.u
                         spacing: 8 * Tokens.u
-                    Label {
+                    Label { renderType: Text.NativeRendering;
                         text: Calendar.dayHeading(day.date)
                         color: Tokens.ink
                         anchors.verticalCenter: parent.verticalCenter
@@ -310,7 +310,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
-                        Label { id: todayLbl; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.ink; font.family: Tokens.family610; font.letterSpacing: 0.6 * Tokens.u; font.pixelSize: 11 * Tokens.u }
+                        Label { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.ink; font.family: Tokens.family610; font.letterSpacing: 0.6 * Tokens.u; font.pixelSize: 11 * Tokens.u }
                     }
                     }
                     Repeater {
@@ -344,8 +344,8 @@ Item {
                                 id: info
                                 anchors { left: poster.right; leftMargin: 14.7 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                                 spacing: 3 * Tokens.u
-                                Label { width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.3 * Tokens.u }
-                                Label {
+                                Label { renderType: Text.NativeRendering; width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.3 * Tokens.u }
+                                Label { renderType: Text.NativeRendering;
                                     width: parent.width
                                     visible: text !== ""
                                     text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
@@ -353,13 +353,13 @@ Item {
                                 }
                                 Row {
                                     spacing: 11 * Tokens.u
-                                    Label { text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
-                                    Label { text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
-                                    Label { text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
+                                    Label { renderType: Text.NativeRendering; text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
+                                    Label { renderType: Text.NativeRendering; text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
+                                    Label { renderType: Text.NativeRendering; text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
                                     Rectangle {
                                         width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
                                         color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#392c2f" : "#e8dedd") : (Tokens.dark ? "#341c23" : "#f5dee2"); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#996a6e" : "#aa8285") : Tokens.brandPink
-                                        Label { id: badge; anchors.centerIn: parent; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10.5 * Tokens.u }
+                                        Label { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10.5 * Tokens.u }
                                     }
                                 }
                             }
@@ -470,8 +470,8 @@ Item {
             x: 8 * Tokens.u; y: 7 * Tokens.u
             width: parent.width - 16 * Tokens.u
             height: 28 * Tokens.u
-            Label { width: parent.width / 2; height: parent.height; text: qsTr("Month"); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: 13 * Tokens.u }
-            Label { width: parent.width / 2; height: parent.height; text: qsTr("Year"); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: 13 * Tokens.u }
+            Label { renderType: Text.NativeRendering; width: parent.width / 2; height: parent.height; text: qsTr("Month"); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: 13 * Tokens.u }
+            Label { renderType: Text.NativeRendering; width: parent.width / 2; height: parent.height; text: qsTr("Year"); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: 13 * Tokens.u }
         }
         SilicaListView {
             id: monthList
@@ -505,7 +505,7 @@ Item {
                     border.width: monthChoice.activeFocus ? 2 * Tokens.u : 0
                     border.color: Tokens.brandInk
                 }
-                Label { anchors.fill: parent; text: model.name; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u }
+                Label { renderType: Text.NativeRendering; anchors.fill: parent; text: model.name; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u }
             }
         }
         SilicaListView {
@@ -539,7 +539,7 @@ Item {
                     border.width: yearChoice.activeFocus ? 2 * Tokens.u : 0
                     border.color: Tokens.brandInk
                 }
-                Label { anchors.fill: parent; text: String(model.year); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u }
+                Label { renderType: Text.NativeRendering; anchors.fill: parent; text: String(model.year); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u }
             }
         }
         Timer {
