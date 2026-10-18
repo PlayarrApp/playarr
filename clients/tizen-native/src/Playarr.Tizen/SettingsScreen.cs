@@ -105,9 +105,9 @@ internal sealed class SettingsScreen : IPage
         {
             var y = 162 + i * 91.9f; var idx = i;
             var card = Ui.Box(153.6f, y, 480.4f, 91.9f, i == 0 ? _t.SurfaceSoft : new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, 0.0f), 18);
-            card.Add(Ui.Text(Numbers[i], 32, 23.8f, 9.92f, 800, _t.Ink, 40, 14.88f));
+            card.Add(Ui.Text(Numbers[i], 32, 26.8f, 9.92f, 800, _t.Ink, 40, 14.88f));
             card.Add(Ui.Text(Options[i], 92, 23.8f, 29.6f, 500, _t.Ink, 307.6f, 44.4f, spacing: -1.04f));
-            card.Add(Ui.Text("→", 432.6f, 30.3f, 20.8f, 400, i == 0 ? _t.Ink : _t.InkMuted, 30, 31.2f));
+            card.Add(Ui.Text("→", 420.6f, 31f, 20.8f, 400, i == 0 ? _t.Ink : _t.InkMuted, 30, 31.2f));
             var ring = Ring.Make(480.4f, 91.9f, 18, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
             _list.Add(card);
             _focus.Items.Add(new Focusable
