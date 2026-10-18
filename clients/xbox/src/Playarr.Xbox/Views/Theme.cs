@@ -29,6 +29,8 @@ namespace Playarr.Xbox.Views
             ("PlayarrSurface", "#1B181B", "#FBFAF9"),
             ("PlayarrSurfaceStrong", "#211D21", "#FFFFFF"),
             ("PlayarrSurfaceSoft", "#312A30", "#DFDCDD"),
+            ("PlayarrRailFill", "#1E1A1E", "#FDFDFC"),
+            ("PlayarrRailLine", "#282428", "#F0EEED"),
             ("PlayarrInk", "#F4F0F1", "#382621"),
             ("PlayarrInkSoft", "#CDC1C6", "#443A40"),
             ("PlayarrInkMuted", "#C2B5BB", "#4D4248"),

@@ -38,8 +38,8 @@ PlayarrPage {
             Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line }
             Column {
                 anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: badge.left; rightMargin: 8 * Tokens.u; verticalCenter: parent.verticalCenter }
-                Label { width: parent.width; text: modelData.title + (modelData.year ? " (" + modelData.year + ")" : ""); elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
-                Label { width: parent.width; text: modelData.status_note || (modelData.kind === "series" ? qsTr("Series") : qsTr("Movie")); elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
+                Label { renderType: Text.NativeRendering; width: parent.width; text: modelData.title + (modelData.year ? " (" + modelData.year + ")" : ""); elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
+                Label { renderType: Text.NativeRendering; width: parent.width; text: modelData.status_note || (modelData.kind === "series" ? qsTr("Series") : qsTr("Movie")); elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
             }
             Rectangle {
                 id: badge
@@ -47,7 +47,7 @@ PlayarrPage {
                 width: bl.width + 16 * Tokens.u; height: bl.height + 6 * Tokens.u; radius: height / 2
                 color: "transparent"; border.width: 1
                 border.color: modelData.status === "declined" || modelData.status === "failed" ? Tokens.danger : modelData.status === "available" ? Tokens.accent : Tokens.brandPink
-                Label { id: bl; anchors.centerIn: parent; text: page.statusText(modelData.status); color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 12 * Tokens.u }
+                Label { renderType: Text.NativeRendering; id: bl; anchors.centerIn: parent; text: page.statusText(modelData.status); color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 12 * Tokens.u }
             }
         }
         EdgeFade { target: list }

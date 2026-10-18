@@ -3199,6 +3199,44 @@ internal fun webRailSurfaceBrush(): Brush {
 }
 
 /**
+ * Web `-webkit-line-clamp` ends the last line at a word boundary with a joined ellipsis ("heavy…"), where Compose's
+ * `TextOverflow.Ellipsis` cuts mid-word ("sta…"). Drop whole words until the text plus the ellipsis fits `maxLines`.
+ */
+@Composable
+internal fun WebClampedText(
+    text: String,
+    color: Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    lineHeight: androidx.compose.ui.unit.TextUnit,
+    fontWeight: FontWeight,
+    style: androidx.compose.ui.text.TextStyle,
+    maxLines: Int,
+    modifier: Modifier = Modifier,
+) {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val resolved = androidx.compose.material3.LocalTextStyle.current.merge(style)
+        .merge(androidx.compose.ui.text.TextStyle(color = color, fontSize = fontSize, lineHeight = lineHeight, fontWeight = fontWeight))
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+        val width = constraints.maxWidth
+        val shown = remember(text, width, resolved, maxLines) {
+            fun fits(candidate: String) = !measurer.measure(
+                candidate, resolved, constraints = androidx.compose.ui.unit.Constraints(maxWidth = width), maxLines = maxLines,
+            ).didOverflowHeight
+            if (fits(text)) return@remember text
+            val words = text.trim().split(' ')
+            var lo = 1
+            var hi = words.size - 1
+            while (lo < hi) {
+                val mid = (lo + hi + 1) / 2
+                if (fits(words.take(mid).joinToString(" ") + "\u2026")) lo = mid else hi = mid - 1
+            }
+            words.take(lo).joinToString(" ") + "\u2026"
+        }
+        Text(shown, color = color, fontSize = fontSize, lineHeight = lineHeight, fontWeight = fontWeight, style = style, maxLines = maxLines)
+    }
+}
+
+/**
  * Web hero title (`h2`: 69.12 px / 560, tracking -0.072em, line-height 0.9, max-width 9ch, at most two lines).
  * Compose will not compress a line box below the font's own metrics, so each wrapped line is drawn in its own
  * 62.208 dp box with the glyphs centred, which is where CSS puts them.
@@ -3333,7 +3371,7 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                 // Web Home `DetailsPanel` meta: the runtime alone.
                 Text(runtime, color = soft, fontSize = homeOverviewFont.sp, lineHeight = (homeOverviewFont * 1.58f).sp, fontWeight = FontWeight(600), style = glow, modifier = Modifier.padding(top = 21.6.dp + (if (tabletHero) 3.dp else 0.dp)))
             }
-            Text(
+            WebClampedText(
                 work.overview?.takeIf(String::isNotBlank) ?: playarrString(PlayarrString.HomeNoSynopsis),
                 color = soft,
                 fontSize = if (library) overviewFont.sp else homeOverviewFont.sp,
@@ -3341,7 +3379,6 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                 fontWeight = FontWeight(600),
                 style = glow,
                 maxLines = 5,
-                overflow = TextOverflow.Ellipsis,
                 // Web `max-width: 42ch` of the overview font: 324 dp on Home, 348 dp in the library.
                 modifier = Modifier.padding(top = 21.7.dp + (if (tabletHero) 2.dp else 0.dp)).widthIn(max = if (library) (if (tabletHero) 387.dp else 348.dp) else if (tabletHero) 350.dp else 324.dp),
             )
@@ -4638,7 +4675,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                     val alphaCss = if (alphaTablet) 1f / LocalStageScale.current else 1f
                     Column(
                         modifier = Modifier.align(Alignment.TopEnd)
-                            .padding(top = if (alphaTablet) 222.dp * alphaCss else 278.dp, end = if (alphaTablet) 14.5.dp * alphaCss else 18.5.dp, bottom = 64.8.dp)
+                            .padding(top = if (alphaTablet) 222.dp * alphaCss else 278.dp, end = if (alphaTablet) 14.5.dp * alphaCss else 18.5.dp)
                             .width(44.dp * alphaCss).fillMaxHeight()
                             .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -4669,6 +4706,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             }
                             }
                         }
+                        // Web keeps the 64.8 px bottom padding inside the scrolling column, so letters run to the screen edge.
+                        Spacer(Modifier.height(64.8.dp))
                     }
                 }
             }
@@ -6348,6 +6387,8 @@ private fun ExperienceVideoDetailContent(
             // Web `.tv-detail`: key art 58% of the viewport tall (490 px), wash 72% (608 px).
             PhoneKeyArt(detail.work, serverUrl, accessToken, Modifier.fillMaxWidth().height(489.5.dp))
             PhoneStageWash(Modifier.fillMaxWidth().height(607.7.dp))
+            // Web: the art is fully hidden under the header for the first 125 px and fades in by 200 px (measured on the live refs).
+            Box(Modifier.fillMaxWidth().height(108.5.dp).background(Brush.verticalGradient(0f to WebSurface, 0.627f to WebSurface, 1f to Color.Transparent)))
         } else {
         AuthenticatedArtwork(
             work = detail.work,
@@ -6572,7 +6613,7 @@ private fun PhoneVideoDetailBody(
                     Text(
                         work.title, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -9.3.dp.toPx() },
+                        modifier = Modifier.graphicsLayer { translationY = -10.4.dp.toPx() },
                     )
                 }
                 if (episode != null) {
@@ -6581,10 +6622,10 @@ private fun PhoneVideoDetailBody(
                         episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episodeNumber),
                         color = WebInkSoft, fontSize = 14.4.sp, lineHeight = 16.56.sp, fontWeight = FontWeight(570), letterSpacing = (-0.504).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -1.7.dp.toPx() },
+                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() },
                     )
                 }
-                Spacer(Modifier.height(if (episode != null) 8.dp else 12.dp))
+                Spacer(Modifier.height(if (episode != null) 6.9.dp else 12.dp))
                 FlowRow(Modifier.offset(y = (-1.3).dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     metaItems.forEachIndexed { index, item ->
                         Text(

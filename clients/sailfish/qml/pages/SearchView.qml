@@ -68,7 +68,7 @@ Item {
             EnterKey.iconSource: "image://theme/icon-m-enter-close"
             EnterKey.onClicked: focus = false
             onTextChanged: debounce.restart()
-            Label { visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
+            Label { renderType: Text.NativeRendering; visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
         }
     }
     WorkGrid {

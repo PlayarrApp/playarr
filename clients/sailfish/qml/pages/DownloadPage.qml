@@ -60,8 +60,8 @@ PlayarrPage {
             id: col
             width: parent.width
             spacing: 12 * Tokens.u
-            Label { x: Tokens.pad; width: parent.width - 2 * Tokens.pad; text: page.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
-            Label { x: Tokens.pad; text: qsTr("QUALITY"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u; font.letterSpacing: 1.5 * Tokens.u }
+            Label { renderType: Text.NativeRendering; x: Tokens.pad; width: parent.width - 2 * Tokens.pad; text: page.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
+            Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("QUALITY"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u; font.letterSpacing: 1.5 * Tokens.u }
             Repeater {
                 model: page.options
                 MenuRow {
@@ -72,7 +72,7 @@ PlayarrPage {
                     onClicked: page.quality = modelData.id
                 }
             }
-            Label { x: Tokens.pad; text: qsTr("KEEP UNTIL"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u; font.letterSpacing: 1.5 * Tokens.u }
+            Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("KEEP UNTIL"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u; font.letterSpacing: 1.5 * Tokens.u }
             ChipRow {
                 options: [ { id: "forever", label: qsTr("Forever") }, { id: "date", label: qsTr("Date") }, { id: "after-watched", label: qsTr("After watched") } ]
                 value: page.keepType
@@ -80,19 +80,19 @@ PlayarrPage {
             }
             Row {
                 x: Tokens.pad; spacing: 10 * Tokens.u; visible: page.keepType === "date"
-                Label { anchors.verticalCenter: parent.verticalCenter; text: qsTr("In %1 days (%2)").arg(page.keepDays).arg(page.keepDateIso()); color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
+                Label { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: qsTr("In %1 days (%2)").arg(page.keepDays).arg(page.keepDateIso()); color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
                 PillButton { text: "−"; implicitWidth: 40 * Tokens.u; onClicked: page.keepDays = Math.max(1, page.keepDays - 7) }
                 PillButton { text: "+"; implicitWidth: 40 * Tokens.u; onClicked: page.keepDays += 7 }
             }
             Row {
                 x: Tokens.pad; spacing: 10 * Tokens.u; visible: page.keepType === "after-watched"
-                Label { anchors.verticalCenter: parent.verticalCenter; text: qsTr("%1 %2 after watching").arg(page.amount).arg(page.unit === "weeks" ? qsTr("weeks") : qsTr("days")); color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
+                Label { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: qsTr("%1 %2 after watching").arg(page.amount).arg(page.unit === "weeks" ? qsTr("weeks") : qsTr("days")); color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
                 PillButton { text: "−"; implicitWidth: 40 * Tokens.u; onClicked: page.amount = Math.max(1, page.amount - 1) }
                 PillButton { text: "+"; implicitWidth: 40 * Tokens.u; onClicked: page.amount += 1 }
                 PillButton { text: page.unit === "weeks" ? qsTr("weeks") : qsTr("days"); implicitWidth: 80 * Tokens.u; onClicked: page.unit = page.unit === "weeks" ? "days" : "weeks" }
             }
             PillButton { x: Tokens.pad; primary: true; enabled: !page.busy; text: edit ? qsTr("Save") : qsTr("Start download"); onClicked: page.save() }
-            Label { x: Tokens.pad; visible: page.note !== ""; text: page.note; color: Tokens.danger; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
+            Label { renderType: Text.NativeRendering; x: Tokens.pad; visible: page.note !== ""; text: page.note; color: Tokens.danger; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
         }
         VerticalScrollDecorator {}
     }

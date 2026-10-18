@@ -21,8 +21,8 @@ PlayarrPage {
             width: parent.width
             spacing: 10 * Tokens.u
             Item { width: 1; height: 24 * Tokens.u }
-            Label { x: Tokens.pad; text: qsTr("CHOOSE WHERE TO PICK UP."); color: Tokens.dark ? Tokens.brandPinkSoft : "#8c2344"; font.family: Tokens.family820; font.letterSpacing: 1.2 * Tokens.u; font.pixelSize: 8 * Tokens.u }
-            Label { x: Tokens.pad; width: parent.width - 2 * Tokens.pad; text: qsTr("Resume %1").arg(page.seriesTitle); wrapMode: Text.Wrap; color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 22 * Tokens.u }
+            Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("CHOOSE WHERE TO PICK UP."); color: Tokens.dark ? Tokens.brandPinkSoft : "#8c2344"; font.family: Tokens.family820; font.letterSpacing: 1.2 * Tokens.u; font.pixelSize: 8 * Tokens.u }
+            Label { renderType: Text.NativeRendering; x: Tokens.pad; width: parent.width - 2 * Tokens.pad; text: qsTr("Resume %1").arg(page.seriesTitle); wrapMode: Text.Wrap; color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 22 * Tokens.u }
             Repeater {
                 model: page.plan ? page.plan.options : []
                 MouseArea {
@@ -33,9 +33,9 @@ PlayarrPage {
                         id: info
                         x: 14 * Tokens.u; y: 12 * Tokens.u; width: parent.width - 28 * Tokens.u
                         spacing: 3 * Tokens.u
-                        Label { text: page.caption(modelData.kind); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 8.5 * Tokens.u }
-                        Label { width: parent.width; text: modelData.label + (modelData.title ? " · " + modelData.title : ""); wrapMode: Text.Wrap; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 11.5 * Tokens.u }
-                        Label { visible: !!modelData.last_watched_at; text: qsTr("Last watched %1").arg(modelData.last_watched_at ? Qt.formatDate(new Date(modelData.last_watched_at), "d MMM yyyy") : ""); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 8.5 * Tokens.u }
+                        Label { renderType: Text.NativeRendering; text: page.caption(modelData.kind); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 8.5 * Tokens.u }
+                        Label { renderType: Text.NativeRendering; width: parent.width; text: modelData.label + (modelData.title ? " · " + modelData.title : ""); wrapMode: Text.Wrap; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 11.5 * Tokens.u }
+                        Label { renderType: Text.NativeRendering; visible: !!modelData.last_watched_at; text: qsTr("Last watched %1").arg(modelData.last_watched_at ? Qt.formatDate(new Date(modelData.last_watched_at), "d MMM yyyy") : ""); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 8.5 * Tokens.u }
                         Rectangle {
                             visible: modelData.kind === "unfinished"
                             width: parent.width; height: 3 * Tokens.u; radius: height / 2; color: Tokens.surfaceSoft
