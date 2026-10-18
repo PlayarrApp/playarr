@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web: hero, detail and library-preview artwork starts at the nav clearance, so artwork with a baked-in title never renders under the left nav (the nav-overlap e2e no longer exempts it).
 - Installed apps (the hosted VIDAA app, Xbox, Android) never show the marketing site: playarr.app now serves the app at `/` for any `?platform=` marker, app user agent or app cookie, sign-out goes to the login route in installed apps, the PWA starts at `/?platform=web`, and the shell precache no longer stores the marketing page.
 - Web: browser Back restores a library scroll position even when the list mounts after the route (and again after Forward then Back).
 - Web: the film and series detail copy no longer shows, hides and animates in again on navigation; it fades in once with the page.
@@ -3248,6 +3249,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Web: the nav-overlap e2e also covers tall and near-square desktop windows (1600x1164 at 1x and 2x and with a classic scrollbar, 1440x1080, 1280x1024, 1024x1024, 1366x1366, 1080x1920) and checks the hero title's leftmost glyph against the nav rail on Home, the library pages and film, series and artist detail.
 - Add opt-in stable native capture readiness checks for Android TV Movies, Series and Music; other routes retain their existing screenshot path and fail closed when stable capture readiness is requested.
 - Harmony capture runs now validate the signed-in device-test profile and pinned detail and progress fixtures before starting the Previewer.
 - Allow an explicit Harmony phone core diagnostic capture to skip player-controls and record the omission, while the default core capture still requires all 15 screens.
