@@ -1432,7 +1432,7 @@ sub renderSmartTvClientGuide(clientId as String)
     brand = "Samsung"
     device = "Samsung TV"
     title = "Install Playarr on your Samsung TV"
-    installDescription = "Use a 2023-or-newer Samsung television running Tizen 7.0 or newer, and keep it on the same local network as the computer. You need Tizen Studio with the Samsung TV extensions, a valid certificate profile and either a compatible signed WGT above or one you sign from source."
+    installDescription = "Use a 2023-or-newer Samsung television running Tizen 6.5 or newer, and keep it on the same local network as the computer. You need Tizen Studio with the Samsung TV extensions, a valid certificate profile and either a compatible signed WGT above or one you sign from source."
     officialUrl = "https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-device.html"
     sourceUrl = "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-tizen"
     appId = "StrmarrTV1.Playarr Server"
