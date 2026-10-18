@@ -137,8 +137,8 @@ struct CalendarView: View {
             }
             .padding(.leading, 120)
             .padding(.trailing, 86 * scale)
-            .padding(.top, 168 * proxy.size.height / 1024)
-            .padding(.bottom, 24)
+            .padding(.top, 171 * proxy.size.height / 1024)
+            .padding(.bottom, 136 * proxy.size.height / 1024)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
 
             PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
@@ -179,7 +179,7 @@ struct CalendarView: View {
                 PlayarrHeaderPill(label: "Calendar link", systemImage: "bell") { showingSubscription = true }
                 PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", count: viewModel.filters.activeCount) { showingFilters = true }
             }
-            .frame(width: proxy.size.width - 16 * scale, alignment: .trailing)
+            .frame(width: proxy.size.width - 3 * scale, alignment: .trailing)
             .offset(y: min(max(116, proxy.size.height * 0.14), 164))
         }
     }
@@ -209,6 +209,13 @@ struct CalendarView: View {
             return formatter.string(from: anchor)
         }
         let sameYear = utc.component(.year, from: start) == utc.component(.year, from: end)
+        if sameYear, utc.component(.month, from: start) == utc.component(.month, from: end) {
+            // Inside one month the web drops the repeated month: "5 \u{2013} 11 Oct".
+            formatter.dateFormat = "d"
+            let first = formatter.string(from: start)
+            formatter.dateFormat = "d MMM"
+            return "\(first) \u{2013} \(formatter.string(from: end))"
+        }
         formatter.dateFormat = sameYear ? "d MMM" : "d MMM yyyy"
         let first = formatter.string(from: start)
         if sameYear {
@@ -265,6 +272,8 @@ struct CalendarView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             if case .loaded = viewModel.loadState, !viewModel.dayGroups.isEmpty, viewModel.mode == .agenda {
+                // The web agenda sits on the first release's backdrop in the dark theme only.
+                WMKeyArt(work: nil, apiClient: apiClient, lightOpacity: 0, backdropWorkID: viewModel.dayGroups.first?.items.first?.entries.first?.workID)
                 phoneAgenda(groups: viewModel.dayGroups)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
@@ -484,14 +493,14 @@ struct CalendarView: View {
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .offset(x: 16, y: 15)
-                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: 9)
+                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: 7.7)
                 if let entry {
                     WMText(
                         [entry.episodeCode, entry.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} "),
                         16, 400, color: WM.inkSoft, lh: 24
                     )
                     .frame(width: 220, alignment: .leading)
-                    .offset(x: 70, y: 35)
+                    .offset(x: 70, y: 33.7)
                     HStack(spacing: 12) {
                         let time = calendarTimeLabel24(entry)
                         WMText(time.isEmpty || time == "00:00" ? "All day" : time, 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
@@ -688,9 +697,9 @@ struct CalendarView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             ScrollView {
-                                LazyVStack(spacing: 13.6) {
+                                LazyVStack(spacing: phone ? 13.6 : 15.6) {
                                     ForEach(group.items) { item in
-                                        weekItemCard(item, width: laneWidth)
+                                        weekItemCard(item, width: laneWidth, tablet: !phone)
                                     }
                                     if group.items.isEmpty {
                                         Text("Nothing scheduled")
@@ -705,6 +714,7 @@ struct CalendarView: View {
                         .frame(width: laneWidth, height: proxy.size.height, alignment: .topLeading)
                     }
                 }
+                .padding(.trailing, 16)  // the web track ends 16 pt short of the edge when the last lane is today
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.viewAligned)
@@ -722,7 +732,7 @@ struct CalendarView: View {
         }
     }
 
-    private func weekItemCard(_ item: CalendarItem, width: CGFloat) -> some View {
+    private func weekItemCard(_ item: CalendarItem, width: CGFloat, tablet: Bool) -> some View {
         let entry = item.entries.first
         return Button {
             viewModel.select(item)
@@ -766,15 +776,22 @@ struct CalendarView: View {
                     }
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, tablet ? 8.5 : 8)
             .padding(.horizontal, 12)
             .frame(width: width, alignment: .leading)
             .frame(minHeight: 64, alignment: .leading)
             .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            // The web's 4 pt leading edge, flush with the card and cut by its corners (green once in the library).
             .overlay(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? Color(red: 0.12, green: 0.33, blue: 0.25) : WM.ink)
-                    .frame(width: 4).padding(.vertical, 8)
+                if tablet {
+                    Rectangle().fill(entry?.hasFile == true ? Color(red: 138 / 255, green: 197 / 255, blue: 165 / 255) : PlayarrStyle.ink)
+                        .frame(width: 4)
+                } else {
+                    RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? Color(red: 0.12, green: 0.33, blue: 0.25) : WM.ink)
+                        .frame(width: 4).padding(.vertical, 8)
+                }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
         .buttonStyle(.plain)

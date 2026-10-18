@@ -585,7 +585,9 @@ enum TVParityState {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? scenes.first?.windows.first
         let focused = window.flatMap { UIFocusSystem.focusSystem(for: $0)?.focusedItem }
-        return (label(of: focused, in: window), focused.map { String(String(describing: $0).prefix(160)) })
+        // No label found: report the item's frame so a driver trace still shows where focus is.
+        let found = label(of: focused, in: window) ?? focused.map { "@\(Int($0.frame.minX)),\(Int($0.frame.minY)) \(Int($0.frame.width))x\(Int($0.frame.height))" }
+        return (found, focused.map { String(String(describing: $0).prefix(160)) })
     }
     #else
     // The Mac has no focus-system item to read: the tiles' own tags are the focus.

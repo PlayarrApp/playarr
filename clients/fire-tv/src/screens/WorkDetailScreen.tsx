@@ -7,13 +7,14 @@
  * Not on this platform: the Download button (the web shows it only where the device can download) and the playback-settings
  * drawer, which a later change adds.
  */
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useContext, useEffect, useMemo, useState} from 'react';
 import {Pressable, View} from 'react-native';
 import type {CreditResponse, EpisodeDetail, MediaChapter, ResumePlan, SeasonDetail, Work, WorkDetail} from '@playarr-tv/api-client';
 import {useAsyncData, useWorkDetail} from '@playarr-tv/api-client/react';
 import {useApiClient} from '../api/ApiClientProvider';
 import {episodeArtworkUrl, mediaThumbnailUrl, preferredArtworkKind, workArtworkUrl} from '../api/artworkUrl';
 import {useLanguage} from '../i18n/LanguageProvider';
+import {DetailRailContext} from '../navigation/DetailRailContext';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {runtimeLabel} from '../lib/runtimeLabel';
 import {snapshotFromWork, useWatchlistToggle} from '../lib/watchlist';
@@ -146,6 +147,12 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
   const similar = useAsyncData(() => client.getSimilarWorks(workId), [client, workId]);
   const progressState = useAsyncData(() => client.listWatchProgress(), [client, workId]);
   const detailWork = state.status === 'ready' ? state.data.work : null;
+  const setRailTarget = useContext(DetailRailContext);
+  const railKind = detailWork?.kind;
+  useEffect(() => {
+    setRailTarget(railKind === 'movie' ? 'movies' : railKind === 'series' ? 'series' : railKind === 'site' ? 'sites' : null);
+    return () => setRailTarget(null);
+  }, [railKind, setRailTarget]);
   const isSeries = detailWork !== null && (detailWork.kind === 'series' || detailWork.kind === 'site');
   const plan = useAsyncData<ResumePlan | null>(() => client.getResumePlan(workId).catch(() => null), [client, workId], {enabled: isSeries});
   const movieMediaFileId = state.status === 'ready' ? state.data.media_file_id ?? null : null;

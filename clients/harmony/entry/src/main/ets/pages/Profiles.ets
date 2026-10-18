@@ -57,7 +57,7 @@ import { t, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, resolveLanguage, setCurrentLang
 import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 import { ROUTES } from '../navigation/Routes';
 
-import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
+import { SelectField, themeChoices } from '../design/components/SelectField';
 import type { Choice } from '../design/components/ChoiceSegments';
 import { openInBrowser } from '../util/ExternalLink';
 import { activeColors, resolvedThemeMode, setThemeModeSetting, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -419,7 +419,7 @@ struct Profiles {
       // Web's top-right controls: the theme select and the language select (Auto, English, Thai, Japanese).
       Row({ space: this.pick(15, 8) }) {
         SelectField({
-          options: THEME_CHOICES,
+          options: themeChoices(),
           lead: isTvMetrics() ? '' : 'sun',
           labelWeight: isTvMetrics() ? 700 : 500,
           labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
@@ -445,6 +445,8 @@ struct Profiles {
             this.languageChoice = value;
             setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
             void saveLanguageChoice(value);
+            // Rebuild the page so every label reads in the new language at once.
+            replaceRoute(getNavStack(), ROUTES.Profiles);
           },
         })
       }

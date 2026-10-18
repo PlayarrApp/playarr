@@ -14,6 +14,8 @@ enum WM {
     static let inkSoft = PlayarrStyle.inkSoft
     static let muted = PlayarrStyle.muted
     static let detailMuted = adaptive(light: (77, 66, 72), dark: (194, 181, 187))
+    /// Detail-page subtitle and bold meta ink, measured from the web (darker than the shared soft ink).
+    static let detailInkSoft = adaptive(light: (68, 58, 64), dark: (205, 193, 198))
     static let pink = PlayarrStyle.pink
     static let brandInk = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
     static let cardGlowColor = adaptive(light: (165, 39, 69), dark: (234, 166, 182))
@@ -422,12 +424,22 @@ struct WMKeyArt: View {
     var webMask = false
     /// Replaces the two-point vertical fade with these (y, how much of the page colour covers) stops.
     var fadeStops: [(y: CGFloat, cover: Double)]?
+    /// Pages that only know a work id (calendar rows) draw its backdrop from the artwork route instead.
+    var backdropWorkID: UUID?
     @Environment(\.colorScheme) private var scheme
+
+    @ViewBuilder private var art: some View {
+        if let work {
+            PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+        } else if let id = backdropWorkID {
+            WMRemoteImage(apiClient: apiClient, sources: [WMRemoteImage.Source(path: "/api/v1/artwork/work/\(id.uuidString)/backdrop")])
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            if let work {
-                PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+            if work != nil || backdropWorkID != nil {
+                art
                     .saturation(0)
                     .opacity(scheme == .dark ? 0.085 : lightOpacity)
                     .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)

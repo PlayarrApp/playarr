@@ -36,14 +36,14 @@ PlayarrPage {
         anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 56 * Tokens.u }
         spacing: 18 * Tokens.u
         Avatar { anchors.horizontalCenter: parent.horizontalCenter; width: 96 * Tokens.u; source: page.profile.avatar }
-        Label {
+        Label { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             text: page.profile.name
             color: Tokens.ink
             font.family: Tokens.family
             font.pixelSize: 24 * Tokens.u
         }
-        Label {
+        Label { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             text: qsTr("Enter the profile PIN")
             color: Tokens.inkSoft
@@ -63,7 +63,7 @@ PlayarrPage {
                 }
             }
         }
-        Label {
+        Label { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             height: 20 * Tokens.u
             text: page.message
@@ -88,7 +88,7 @@ PlayarrPage {
                         border.width: 1; border.color: Tokens.line
                         opacity: parent.pressed ? 0.6 : 1
                     }
-                    Label { anchors.centerIn: parent; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 28 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 28 * Tokens.u }
                 }
             }
         }

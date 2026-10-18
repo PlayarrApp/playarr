@@ -17,6 +17,7 @@ import {
   IS_WEBOS,
   PLAYARR_CLIENT_PLATFORM,
 } from "./lib/clientPlatform";
+import { syncInstalledAppHint } from "./lib/signedInHint";
 import { installTvStageScale } from "./lib/tvStageScale";
 import { installVidaaLongPress } from "./lib/vidaaLongPress";
 import { installScrollEdgeFades } from "./lib/scrollEdgeFade";
@@ -120,6 +121,9 @@ if (parityMode !== "off" && !tvCrossEngine) {
   document.documentElement.dataset.parity = parityMode;
   installParityApplyHook();
 }
+
+// Installed apps are never shown the marketing site, signed in or not (see worker.js and appSignal.js).
+syncInstalledAppHint(PLAYARR_CLIENT_PLATFORM !== "web");
 
 const Router = IS_PACKAGED_TV ? HashRouter : BrowserRouter;
 

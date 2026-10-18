@@ -104,6 +104,7 @@ import {
 } from '../lib/catalogKindsCache';
 import {PlayerHandleContext} from './PlayerHandleContext';
 import {CatalogKindsContext} from '../lib/catalogKindsContext';
+import {DetailRailContext} from './DetailRailContext';
 import {HomeScreen} from '../screens/HomeScreen';
 import {LibraryScreen, type LibraryKind} from '../screens/LibraryScreen';
 import {MusicDetailScreen} from '../screens/MusicDetailScreen';
@@ -373,6 +374,7 @@ export function AppShellNavigator(): React.ReactElement {
     };
   }, [client, apiBaseUrl]);
 
+  const [detailTarget, setDetailTarget] = useState<RailTarget | null>(null);
   const household = useHouseholdStatus(client, activeRoute);
   const householdBlock = householdBlockFromStatus(household.status);
 
@@ -389,10 +391,13 @@ export function AppShellNavigator(): React.ReactElement {
     requests: ROUTES.requests,
     calendar: ROUTES.calendar,
   };
-  const activeTarget = (Object.keys(railRoutes) as RailTarget[]).find((target) => railRoutes[target] === activeRoute) ?? null;
+  const activeTarget =
+    (Object.keys(railRoutes) as RailTarget[]).find((target) => railRoutes[target] === activeRoute) ??
+    (activeRoute === ROUTES.workDetail ? detailTarget : activeRoute === ROUTES.musicDetail ? 'music' : null);
 
   return (
     <View style={{flex: 1, backgroundColor: colour.bg}}>
+      <DetailRailContext.Provider value={setDetailTarget}>
       <CatalogKindsContext.Provider value={availableWorkKinds}>
       <ContentStack.Navigator screenOptions={{headerShown: false, animationEnabled: false}}>
         <ContentStack.Screen name={ROUTES.home} component={HomeScreen} />
@@ -423,6 +428,7 @@ export function AppShellNavigator(): React.ReactElement {
         <ContentStack.Screen name={ROUTES.notFound} component={NotFoundScreenScreen} />
       </ContentStack.Navigator>
       </CatalogKindsContext.Provider>
+      </DetailRailContext.Provider>
       {household.status && householdBlock ? (
         <HouseholdBlockedScreen client={client} status={household.status} onSwitchProfile={() => navigation.navigate(ROUTES.profiles)} />
       ) : null}

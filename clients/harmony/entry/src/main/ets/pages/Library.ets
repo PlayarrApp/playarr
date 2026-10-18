@@ -276,7 +276,7 @@ function libraryKindTitle(kind: string): string {
     return 'Authors';
   }
   if (kind.length === 0) {
-    return 'Library';
+    return t('discovery.source.library', 'Library');
   }
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
@@ -1297,7 +1297,7 @@ export struct Library {
   @Builder
   private filtersBody(): void {
     ChoiceSegments({
-      heading: 'View',
+      heading: t('pages.library.view', 'View'),
       choices: libraryViews(this.kind).map((value: string): Choice => ({ value: value, label: libraryViewLabel(value), icon: libraryViewIcon(value) })),
       selected: this.view,
       onChoose: (value: string): void => {

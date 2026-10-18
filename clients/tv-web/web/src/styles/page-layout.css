@@ -62,18 +62,6 @@
   --card-cols-cover: calc(5 + var(--card-size-step));
   --card-grid-gap: clamp(14px, calc(1.35 * var(--vw)), 28px);
   --card-grid-gap-cover: clamp(12px, calc(1 * var(--vw)), 20px);
-  --card-w: calc(
-    (
-      var(--card-rail-vw) * var(--vw) - var(--card-pad-left) - var(--card-pad-right) -
-        (var(--card-cols) - 1) * var(--card-grid-gap)
-    ) / var(--card-cols)
-  );
-  --card-w-cover: calc(
-    (
-      var(--card-rail-vw) * var(--vw) - var(--card-pad-left) - var(--card-pad-right) -
-        (var(--card-cols-cover) - 1) * var(--card-grid-gap-cover)
-    ) / var(--card-cols-cover)
-  );
   --card-art-ratio: 16 / 9;
   --card-art-ratio-cover: 2 / 3;
   --card-radius: clamp(8px, calc(0.65 * var(--vw)), 13px);
@@ -110,6 +98,23 @@
   --page-edge-fade-floor: 0.3;
 }
 
+/* The one definition of the card size. It is evaluated on the root and again on a phone grid beside a letter rail, whose --card-pad-right is wider. */
+:root,
+[data-page-id]:has(.tv-alphabet) .tv-library-grid-panel {
+  --card-w: calc(
+    (
+      var(--card-rail-vw) * var(--vw) - var(--card-pad-left) - var(--card-pad-right) -
+        (var(--card-cols) - 1) * var(--card-grid-gap)
+    ) / var(--card-cols)
+  );
+  --card-w-cover: calc(
+    (
+      var(--card-rail-vw) * var(--vw) - var(--card-pad-left) - var(--card-pad-right) -
+        (var(--card-cols-cover) - 1) * var(--card-grid-gap-cover)
+    ) / var(--card-cols-cover)
+  );
+}
+
 :root[data-artwork-size="small"] {
   --card-size-step: 1;
 }
@@ -131,17 +136,19 @@
   :root {
     --card-rail-vw: 100;
     --card-pad-left: var(--mobile-page-gutter);
-    /* Clears the library letter rail; the poster card is one size everywhere, so every phone card takes this width. */
-    --card-pad-right: calc(var(--mobile-alpha-rail) + var(--safe-right));
+    /* Pages without a letter rail run to the page gutter; only the library grid reserves the rail (below). */
+    --card-pad-right: var(--mobile-page-gutter);
     --card-cols: calc(2 + var(--card-size-step));
     --card-cols-cover: calc(2 + var(--card-size-step));
     --card-grid-gap: 12px;
     --card-grid-gap-cover: 12px;
   }
 
-  /* The Library grid also clears the letter rail (--mobile-alpha-rail) on its right; other pages keep the gutter. */
-  .tv-library-grid-panel {
+  /* A grid beside a letter rail (the page mounts .tv-alphabet) clears it on its right (--mobile-alpha-rail); every other page keeps the gutter. */
+  [data-page-id]:has(.tv-alphabet) .tv-library-grid-panel {
     --directory-rail-pad: var(--mobile-alpha-rail);
+    /* The letter rail is here only: the grid's cards are sized for the space beside it (--card-w below is recomputed on this panel). */
+    --card-pad-right: calc(var(--mobile-alpha-rail) + var(--safe-right));
   }
 }
 
@@ -386,6 +393,22 @@
     width: 44px;
     height: 44px;
     flex: 0 0 44px;
+  }
+
+  /* Detail pages scroll the whole document on phones: pin the header and fade the content out under it (the shared edge-fade size). */
+  .tv-detail > .tv-detail-heading {
+    position: fixed;
+  }
+  .tv-detail > .tv-detail-heading::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: calc(-1 * var(--page-header-top));
+    right: -116px; /* the heading's own right inset */
+    left: calc(-1 * var(--mobile-page-gutter));
+    height: calc(var(--page-header-top) + 44px + 8px + var(--page-edge-fade-size));
+    background: linear-gradient(var(--surface) calc(100% - var(--page-edge-fade-size)), transparent);
+    pointer-events: none;
   }
 }
 
@@ -652,6 +675,35 @@ body[data-input-mode="remote"] .action-pill {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  /* A longer notice (the notifications unblock hint) wraps instead of clipping. */
+  min-width: 0;
+  max-width: 24rem;
+  white-space: normal;
+}
+
+.page-actions-status[data-action-id="notifications-hint"] {
+  line-height: 1.3;
+}
+
+@media (max-width: 760px) {
+  /* The long unblock hint drops below the header, clear of the action column. */
+  .page-actions-status[data-action-id="notifications-hint"] {
+    position: fixed;
+    top: calc(var(--mobile-top-inset, 14px) + 52px);
+    left: var(--mobile-page-gutter, 16px);
+    right: var(--mobile-page-gutter, 16px);
+    max-width: none;
+    z-index: 5;
+    text-align: center;
+  }
+}
+
+/* A longer label (Notifications blocked) wraps under its icon inside the fixed tile width. */
+.shell-action-column .action-pill[data-notifications-blocked] span {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
 }
 
 /*

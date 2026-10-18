@@ -80,8 +80,8 @@ PlayarrPage {
                 Column {
                     anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 18 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
                     spacing: 4 * Tokens.u
-                    Label { text: qsTr("TITLE ACTIONS"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 0.8 * Tokens.u }
-                    Label {
+                    Label { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 0.8 * Tokens.u }
+                    Label { renderType: Text.NativeRendering;
                         id: titleLbl
                         width: parent.width; text: page.work.title; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
                         lineHeightMode: Text.FixedHeight; lineHeight: 33 * Tokens.u
@@ -97,20 +97,20 @@ PlayarrPage {
                     width: 43.7 * Tokens.u; height: width
                     onClicked: pageStack.pop()
                     Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.dark ? "#262226" : "#dedcdd"; border.width: 1; border.color: Tokens.lineStrong }
-                    Label { anchors.centerIn: parent; text: "\u2715"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u2715"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10 * Tokens.u }
                 }
             }
             ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; navigationInitialFocus: true; parityIndex: 0; navigationActivate: function() { page.play() }; onClicked: page.play() }
             ActionRow { glyph: "⤓"; text: qsTr("Download"); visible: page.downloadActionVisible; parityIndex: 1; navigationActivate: function() { page.download() }; onClicked: page.download() }
             ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlistActionVisible; parityIndex: 2; navigationActivate: function() { page.showPlaylists = !page.showPlaylists }; onClicked: page.showPlaylists = !page.showPlaylists }
-            Label { x: Tokens.pad * 2; visible: page.showPlaylists && page.playlists.length === 0; text: qsTr("No personal playlists yet. Create one from the Playlists page."); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u; wrapMode: Text.Wrap; width: col.width - 3 * Tokens.pad }
+            Label { renderType: Text.NativeRendering; x: Tokens.pad * 2; visible: page.showPlaylists && page.playlists.length === 0; text: qsTr("No personal playlists yet. Create one from the Playlists page."); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u; wrapMode: Text.Wrap; width: col.width - 3 * Tokens.pad }
             Repeater {
                 model: page.showPlaylists ? page.playlists : []
                 ActionRow { glyph: "♪"; text: modelData.name; x: Tokens.pad * 2; width: col.width - 3 * Tokens.pad; parityIndex: 3 + index; navigationActivate: function() { page.addTo(modelData) }; onClicked: page.addTo(modelData) }
             }
             ActionRow { glyph: "✓"; text: qsTr("Mark as Watched"); parityIndex: 3 + (page.showPlaylists ? page.playlists.length : 0); navigationActivate: function() { page.mark(true) }; onClicked: page.mark(true) }
             ActionRow { glyph: "○"; text: qsTr("Mark as Unwatched"); parityIndex: 4 + (page.showPlaylists ? page.playlists.length : 0); navigationActivate: function() { page.mark(false) }; onClicked: page.mark(false) }
-            Label { x: Tokens.pad; visible: page.note !== ""; text: page.note; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u }
+            Label { renderType: Text.NativeRendering; x: Tokens.pad; visible: page.note !== ""; text: page.note; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u }
         }
         EdgeFade { target: flick }
         VerticalScrollDecorator {}

@@ -11,6 +11,7 @@ import { getServerDirectory } from '../../AppContainer';
 import { absoluteUrl } from '../../core/Url';
 import { formatBytes, previewLines, resultLine } from '../../core/PortableData';
 import type { UserDataExportJob, UserDataImportSession, UserDataImportPreview, UserDataImportResult } from '../../core/Types/PortableData';
+import { t } from '../../core/Language';
 import {
   startDataExport,
   getDataExport,
@@ -82,7 +83,7 @@ export struct YourDataPanel {
       await this.sleep(POLL_MS);
       const next = await getDataExport(job.id);
       if (next.kind !== 'ok') {
-        this.exportError = 'The export could not be completed. Try again.';
+        this.exportError = t('settings.yourData.exportFailed', 'The export could not be completed. Try again.');
         break;
       }
       job = next.value;
@@ -109,10 +110,10 @@ export struct YourDataPanel {
       return 'Ready: ' + job.counts.watch_progress + ' watch records and ' + job.counts.playlists + ' playlists.';
     }
     if (job.status === 'failed') {
-      return 'The export could not be completed. Try again.';
+      return t('settings.yourData.exportFailed', 'The export could not be completed. Try again.');
     }
     if (job.status === 'expired') {
-      return 'This export expired. Prepare a new one.';
+      return t('settings.yourData.exportExpired', 'This export expired. Prepare a new one.');
     }
     return 'Working on: ' + job.progress.stage;
   }
@@ -137,7 +138,7 @@ export struct YourDataPanel {
       await this.sleep(POLL_MS);
       const next = await getImportSession(created.value.id);
       if (next.kind !== 'ok') {
-        this.importError = 'This code has expired. Show a new one to try again.';
+        this.importError = t('settings.yourData.transferExpired', 'This code has expired. Show a new one to try again.');
         return;
       }
       this.session = next.value;
@@ -234,15 +235,15 @@ export struct YourDataPanel {
   build() {
     Scroll() {
       Column({ space: tv(14) }) {
-        this.heading('Export my data')
-        this.copy('Creates one ZIP with your watch progress, personal playlists (in order) and audio-language preference. Open the CSV files in a spreadsheet, or keep the file to import elsewhere.', true)
+        this.heading(t('settings.yourData.exportTitle', 'Export my data'))
+        this.copy(t('settings.yourData.exportDescription', 'Creates one ZIP with your watch progress, personal playlists (in order) and audio-language preference. Open the CSV files in a spreadsheet, or keep the file to import elsewhere.'), true)
         this.copy("The file contains only this profile's data. It never contains passwords, tokens, file paths, other people's activity or the media itself.", false)
         Row({ space: tv(12) }) {
-          this.button(this.exportBusy ? 'Preparing...' : 'Prepare my data', true, !this.exportBusy, (): void => {
+          this.button(this.exportBusy ? t('settings.yourData.exportPreparing', 'Preparing...') : t('settings.yourData.exportStart', 'Prepare my data'), true, !this.exportBusy, (): void => {
             this.startExport();
           })
           if (this.exportJob !== null && this.exportJob.status === 'ready') {
-            this.button(this.exportLink.length > 0 ? 'Show a new code' : 'Show download code', false, true, (): void => {
+            this.button(this.exportLink.length > 0 ? t('settings.yourData.transferNewCode', 'Show a new code') : t('settings.yourData.transferShowDownloadCode', 'Show download code'), false, true, (): void => {
               this.showExportCode();
             })
           }
@@ -251,7 +252,7 @@ export struct YourDataPanel {
           this.copy(this.exportStatus(this.exportJob), true)
         }
         if (this.exportLink.length > 0) {
-          this.copy('Scan this code with your phone or computer camera, open the link and save the file there. The link works once.', true)
+          this.copy(t('settings.yourData.transferDownloadHelp', 'Scan this code with your phone or computer camera, open the link and save the file there. The link works once.'), true)
           this.qr(this.exportLink)
         }
         if (this.exportError.length > 0) {
@@ -262,25 +263,25 @@ export struct YourDataPanel {
 
         Divider().width(tv(this.panelWidth)).strokeWidth(1).color(toResourceColorWithAlpha(activeColors().ink, 0.083)).margin({ top: tv(16), bottom: tv(16) })
 
-        this.heading('Import data')
-        this.copy('Choose a Playarr export. You will see what it would change before anything is saved. Nothing is deleted, and your account, permissions and other profiles are never touched.', true)
+        this.heading(t('settings.yourData.importTitle', 'Import data'))
+        this.copy(t('settings.yourData.importDescription', 'Choose a Playarr export. You will see what it would change before anything is saved. Nothing is deleted, and your account, permissions and other profiles are never touched.'), true)
         Row({ space: tv(12) }) {
-          this.button(this.session !== null ? 'Show a new code' : 'Upload from another device', true,
+          this.button(this.session !== null ? t('settings.yourData.transferNewCode', 'Show a new code') : t('settings.yourData.transferStartUpload', 'Upload from another device'), true,
             !this.importBusy && !(this.session !== null && this.session.status === 'uploading'), (): void => {
             this.startSession();
           })
           if (this.session !== null) {
-            this.button('Cancel', false, true, (): void => {
+            this.button(t('pages.downloads.cancel', 'Cancel'), false, true, (): void => {
               this.cancelSession();
             })
           }
         }
         if (this.session !== null && this.session.status === 'waiting' && this.uploadLink.length > 0) {
-          this.copy('Scan this code with your phone or computer camera, then choose your Playarr data file on that device. You review everything here before it is applied.', true)
+          this.copy(t('settings.yourData.transferUploadHelp', 'Scan this code with your phone or computer camera, then choose your Playarr data file on that device. You review everything here before it is applied.'), true)
           this.qr(this.uploadLink)
         }
         if (this.session !== null && this.session.status === 'uploading') {
-          this.copy('Receiving the file...', true)
+          this.copy(t('settings.yourData.transferReceiving', 'Receiving the file...'), true)
         }
         if (this.session !== null && this.session.status === 'uploaded') {
           this.copy('File received (' + formatBytes(this.session.size_bytes) + '). Review it below.', true)
@@ -290,17 +291,17 @@ export struct YourDataPanel {
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
         Row({ space: tv(12) }) {
-          this.button('Keep whichever is newer', !this.keepExisting, true, (): void => {
+          this.button(t('settings.yourData.conflictsNewest', 'Keep whichever is newer'), !this.keepExisting, true, (): void => {
             this.keepExisting = false;
           })
-          this.button('Always keep what is here', this.keepExisting, true, (): void => {
+          this.button(t('settings.yourData.conflictsKeep', 'Always keep what is here'), this.keepExisting, true, (): void => {
             this.keepExisting = true;
           })
         }
-        this.button(this.includePreferences ? '✓ Also apply my audio-language preference' : 'Also apply my audio-language preference', this.includePreferences, true, (): void => {
+        this.button(this.includePreferences ? '✓ Also apply my audio-language preference' : t('settings.yourData.includePreferences', 'Also apply my audio-language preference'), this.includePreferences, true, (): void => {
           this.includePreferences = !this.includePreferences;
         })
-        this.button('Preview import', false, this.session !== null && this.session.status === 'uploaded' && !this.importBusy, (): void => {
+        this.button(t('settings.yourData.previewButton', 'Preview import'), false, this.session !== null && this.session.status === 'uploaded' && !this.importBusy, (): void => {
           this.runPreview();
         })
         if (this.importError.length > 0) {
@@ -319,8 +320,8 @@ export struct YourDataPanel {
           ForEach(previewLines(this.preview), (line: string) => {
             this.copy('• ' + line, true)
           }, (line: string): string => line)
-          this.copy('Applying writes these changes to your profile only. Running the same import again changes nothing.', false)
-          this.button('Apply import', true, !this.importBusy && this.result === null, (): void => {
+          this.copy(t('settings.yourData.confirmNote', 'Applying writes these changes to your profile only. Running the same import again changes nothing.'), false)
+          this.button(t('settings.yourData.applyButton', 'Apply import'), true, !this.importBusy && this.result === null, (): void => {
             this.runApply();
           })
         }

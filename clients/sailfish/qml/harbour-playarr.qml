@@ -10,7 +10,7 @@ ApplicationWindow {
     _defaultPageOrientations: Orientation.Portrait
     cover: Component {
         CoverBackground {
-            Label {
+            Label { renderType: Text.NativeRendering;
                 anchors.centerIn: parent
                 text: "Playarr"
                 font.family: Tokens.family

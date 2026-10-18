@@ -118,7 +118,7 @@ once `ci-required` is green. Agents do not merge, and there is no `ready` label.
   (Owner empty), `blocked`, `blocked_on_owner` or `parked`, never a stale `in_progress`. The board mod computes
   the epic ETA itself; do not add ETA lines under headings.
 - The `Fold board` workflow (`fold-board.yml`, `scripts/fold-main.sh`) folds any pending fragments on every
-  push to `main`, committing with a `Merge-Train: yes` trailer (exempt in `check-fragments.sh`) and the deploy key. Fragments never sit unfolded for long.
+  push to `main`, committing with a `Board-Fold: yes` trailer (exempt in `check-fragments.sh`) and the deploy key. Fragments never sit unfolded for long.
 - When a PR merges, the `Board sync` workflow (`scripts/board-sync.mjs`) folds fragments straight onto `main`
   (Actions may not open PRs here) that flip rows naming it from `in_review` (or `in_progress` with "PR open" in Notes)
   to `done` with "PR #n merged <date>" appended to Notes, or to `in_progress` while other listed PRs

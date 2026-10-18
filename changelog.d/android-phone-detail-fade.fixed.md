@@ -1,0 +1,1 @@
+- Android phone film and series detail: the key art is hidden under the header and fades in below it, and the series title and episode copy sit 1 to 2 px higher, as on the web phone.

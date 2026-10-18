@@ -71,6 +71,28 @@ Item {
             GradientStop { position: 1; color: "#272227" }
         }
     }
+    // Movies dark only: the ghost of the first card's art along the left edge (web +37 at x=0, easing out over ~300 px,
+    // full down to y=420 and gone by ~640).
+    LinearGradient {
+        id: ghost
+        visible: Tokens.dark && root.kind === "movie"
+        width: 150 * Tokens.u; height: 320 * Tokens.u
+        start: Qt.point(0, 0); end: Qt.point(width, 0)
+        gradient: Gradient {
+            GradientStop { position: 0; color: "#29ffffff" }
+            GradientStop { position: 0.1; color: "#1fffffff" }
+            GradientStop { position: 0.233; color: "#14ffffff" }
+            GradientStop { position: 0.4; color: "#0effffff"} GradientStop { position: 0.667; color: "#05ffffff" }
+            GradientStop { position: 1; color: "#00ffffff" }
+        }
+        layer.enabled: visible
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: ghost.width; height: ghost.height
+                gradient: Gradient { GradientStop { position: 0; color: "white" } GradientStop { position: 0.66; color: "white" } GradientStop { position: 1; color: "transparent" } }
+            }
+        }
+    }
     MouseArea {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
@@ -88,7 +110,7 @@ Item {
         title: root.title
         onBackClicked: root.goHome()
     }
-    Label {
+    Label { renderType: Text.NativeRendering;
         id: count
         anchors { top: heading.bottom; topMargin: -4 * Tokens.u; left: parent.left; leftMargin: 70 * Tokens.u }
         visible: false   // web phone hides the header subtitle (#1299); the label keeps the grid's anchor
@@ -155,7 +177,7 @@ Item {
                 }
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.dark ? "#d4d1d4" : Qt.rgba(0.22, 0.15, 0.13, 0.78) }   // web: ink at 78%
-                Label { anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.96 * Tokens.u
+                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.96 * Tokens.u
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#1b181b" : "#ffffff") : Tokens.inkSoft }
             }
         }

@@ -14,7 +14,7 @@ import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
-import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
+import { SelectField, themeChoices } from '../design/components/SelectField';
 import type { AudioLanguage } from '../core/AudioLanguages';
 import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../core/AudioLanguages';
 import { getPlayerPreferences, updatePlayerPreferences, getProfilePinSetting, updateProfilePinSetting } from '../data/ProfileRepository';
@@ -22,6 +22,8 @@ import type { Choice } from '../design/components/ChoiceSegments';
 
 import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance, savedLanguageChoice, saveLanguageChoice, deviceLanguageTag } from '../AppContainer';
 import { t, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, resolveLanguage, setCurrentLanguage } from '../core/Language';
+import { getNavStack, replaceRoute } from '../navigation/NavStack';
+import { ROUTES } from '../navigation/Routes';
 import { InvitePanel } from '../design/components/InvitePanel';
 import { ProfileAvatarPanel } from '../design/components/ProfileAvatarPanel';
 import { HomeRailsPanel } from '../design/components/HomeRailsPanel';
@@ -80,11 +82,15 @@ function HOME_VIEW_CHOICES(): Choice[] {
     { value: 'cover', label: t('settings.appearance.homeViewCover', 'Covers') },
   ];
 }
+// web's size words are lower case and shown capitalised; Thai and Japanese have no case
+function upperFirst(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 function ARTWORK_SIZE_CHOICES(): Choice[] {
   return [
-    { value: 'small', label: 'Small' },
+    { value: 'small', label: upperFirst(t('pages.library.sizeSmall', 'small')) },
     { value: 'medium', label: t('quality.level.medium', 'Medium') },
-    { value: 'large', label: 'Large' },
+    { value: 'large', label: upperFirst(t('pages.library.sizeLarge', 'large')) },
   ];
 }
 function SUBTITLE_MODE_CHOICES(): Choice[] {
@@ -310,7 +316,7 @@ export struct SettingsScreen {
   private appearancePanel(): void {
     ChoiceSegments({
       heading: t('settings.appearance.colourThemeLabel', 'Colour theme'),
-      choices: THEME_CHOICES,
+      choices: themeChoices(),
       selected: this.themeSetting,
       large: true,
       sectionWidth: this.panelWidth(),
@@ -514,6 +520,8 @@ export struct SettingsScreen {
         this.languageChoice = value;
         setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
         void saveLanguageChoice(value);
+        // Rebuild the page so every label reads in the new language at once.
+        replaceRoute(getNavStack(), ROUTES.Settings);
       },
     })
   }
