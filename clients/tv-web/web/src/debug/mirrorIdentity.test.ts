@@ -217,3 +217,26 @@ describe("readSelectedSession", () => {
     expect(readSelectedSession(storage)?.auth).toBe("Bearer stale-token");
   });
 });
+
+describe("expired access token on an idle app", () => {
+  const jwt = (exp: number) => `h.${btoa(JSON.stringify({ sub: "user-a", exp })).replace(/=+$/, "")}.s`;
+
+  it("keeps the verdict verified for the same token once it has expired, and fails for an unverified one", async () => {
+    const sessionFor = (access: string) => (key: string) => key === MIRROR_ACTIVE_PROFILE_KEY ? marker : session(access, "r-idle");
+    const valid = fixture({ getItem: sessionFor(jwt(200)), now: () => 100_000 });
+    expect((await readMirrorIdentity("receiver-token", valid.dependencies)).status).toBe("ok");
+
+    const expired = fixture({ getItem: sessionFor(jwt(200)), now: () => 400_000 });
+    const rejecting = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).endsWith("/users/profiles") ? new Response("{}", { status: 401 }) : expired.dependencies.fetch(input, init)) as unknown as typeof fetch;
+    const again = await readMirrorIdentity("receiver-token", { ...expired.dependencies, fetch: rejecting });
+    expect(again.status).toBe("ok");
+    expect(again.username).toBe("qa-user");
+    expect(again.checkedAt).toBe(400_000);
+
+    const other = fixture({ getItem: sessionFor(jwt(199)), now: () => 400_000 });
+    const refused = await readMirrorIdentity("receiver-token", { ...other.dependencies, fetch: rejecting });
+    expect(refused.status).toBe("trusted_server_unavailable");
+    expect(refused.profileHttpStatus).toBe(401);
+  });
+});

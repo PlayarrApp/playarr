@@ -248,6 +248,9 @@ export function revalidateMirrorIdentity(
   };
 }
 
+/** The newest "ok" verdict, reused for the same expired token (see readMirrorIdentity). */
+let lastVerified: MirrorIdentity | null = null;
+
 /**
  * Verify the active saved profile against receiver-provided trust settings and the server's
  * authenticated profile list. The selected identity and credential tuples stay in memory only.
@@ -301,6 +304,8 @@ export async function readMirrorIdentity(
     return failed("untrusted_server", now, { markerPresent, sessionsArray, serverUrl: selectedServer });
   }
 
+  const selectedIdentity = JSON.stringify([selected.profileKey, selected.userId, selectedServer]);
+  const selectedCredentials = JSON.stringify([selected.accessToken, selected.tokenType, selected.refreshToken]);
   let profiles: unknown;
   try {
     profiles = await fetchJson(fetcher, `${trustedServer}${PROFILE_LIST_PATH}`, {
@@ -308,6 +313,13 @@ export async function readMirrorIdentity(
     });
   } catch (error) {
     const status = (error as { status?: unknown } | null)?.status;
+    // An idle app only refreshes its 15-minute access token on its next request, so the stored token expires while nothing is happening.
+    // The account behind a given token never changes: once it is verified, the same expired token (same profile, user, server and
+    // credentials) keeps that verdict, and the app's next refresh is verified afresh.
+    const expired = (secondsUntilExpiry(selected.accessToken, now()) ?? 1) < 0;
+    if (status === 401 && expired && lastVerified?.selectedIdentity === selectedIdentity && lastVerified.selectedCredentials === selectedCredentials) {
+      return { ...lastVerified, checkedAt: now() };
+    }
     return failed("trusted_server_unavailable", now, {
       markerPresent, sessionsArray, serverMatched: true, serverUrl: selectedServer,
       profileHttpStatus: typeof status === "number" ? status : 0,
@@ -324,8 +336,6 @@ export async function readMirrorIdentity(
     return failed("identity_unavailable", now, { markerPresent, sessionsArray, serverMatched: true });
   }
   const selectedAfter = withLiveCredentials(selectProfile(markerAfter, sessionsAfter), storage);
-  const selectedIdentity = JSON.stringify([selected.profileKey, selected.userId, selectedServer]);
-  const selectedCredentials = JSON.stringify([selected.accessToken, selected.tokenType, selected.refreshToken]);
   const selectedIdentityAfter = selectedAfter
     ? JSON.stringify([selectedAfter.profileKey, selectedAfter.userId, canonicalServerUrl(selectedAfter.apiBaseUrl)])
     : null;
@@ -373,6 +383,7 @@ export async function readMirrorIdentity(
     selectedIdentity,
     selectedCredentials,
   });
+  if (result.status === "ok") lastVerified = result;
   return result;
 }
 
