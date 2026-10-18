@@ -124,7 +124,7 @@ const PHONE_CARD_NO_MAX: number = 10000;
 const PHONE_LINE_TITLE: number = 24;
 const PHONE_LINE_META: number = 21;
 const PHONE_AGENDA_BLEED: number = 0; // the static-server web ref keeps the cards inside the page padding
-const PHONE_AGENDA_CARD_MIN_WIDTH: number = 390;
+const PHONE_AGENDA_CARD_MIN_WIDTH: number = 328; // web (static refs): the card ends 16 vp from the right edge
 const PHONE_CONTROL_FONT: number = 11.2;
 // Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
 const PHONE_CONTROL_GAP: number = 9.6;
@@ -455,7 +455,7 @@ export struct ReleaseCalendar {
     Scroll() {
       this.phoneCard(item, PHONE_AGENDA_CARD_MIN_WIDTH, false, itemSubtitle(item).length > 0 ? PHONE_ENTRY_HEIGHT : PHONE_ENTRY_HEIGHT_NO_SUBTITLE)
     }
-    .scrollable(ScrollDirection.Horizontal)
+    .scrollable(ScrollDirection.Horizontal) // the card now fits, so nothing scrolls
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
     .width(`calc(100% + ${PHONE_AGENDA_BLEED}vp)`) // web: the agenda cards end at the page padding
