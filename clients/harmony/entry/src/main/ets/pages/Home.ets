@@ -1002,7 +1002,7 @@ export struct Home {
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
           headingGap: TOUCH_RAIL_HEADING_GAP,
-          bleedEnd: atLeast(Spacing.md, this.safeRight),
+          bleedEnd: TOUCH_GUTTER + atLeast(Spacing.md, this.safeRight), // the rail sits in the 16 vp gutter: run on to the screen edge so the next card peeks as on web
           allowFocusedOverflow: true,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
@@ -1019,7 +1019,7 @@ export struct Home {
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
           headingGap: TOUCH_RAIL_HEADING_GAP,
-          bleedEnd: atLeast(Spacing.md, this.safeRight),
+          bleedEnd: TOUCH_GUTTER + atLeast(Spacing.md, this.safeRight), // the rail sits in the 16 vp gutter: run on to the screen edge so the next card peeks as on web
           allowFocusedOverflow: true,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.touchCardItemBuilder(item, index, activeRailFactor);
