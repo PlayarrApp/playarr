@@ -490,7 +490,7 @@ impl App {
 
     /// The web's red dot: a title with no watch progress yet.
     pub fn is_unseen(&self, w: &crate::model::Work) -> bool {
-        matches!(w.kind.as_str(), "movie" | "series")
+        matches!(w.kind.as_str(), "movie" | "series" | "artist")
             && self.watch.borrow().get(&w.id).map(|s| s == "unseen").unwrap_or(true)
     }
 

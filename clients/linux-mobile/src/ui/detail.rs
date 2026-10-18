@@ -420,7 +420,6 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     } else {
         row1.append(&download);
         let playback = action_pill("list", "Playback", 104, false, false);
-        playback.set_sensitive(false);
         playback.set_tooltip_text(Some("Playback options are not available yet."));
         row1.append(&playback);
         if w.kind == "movie" {

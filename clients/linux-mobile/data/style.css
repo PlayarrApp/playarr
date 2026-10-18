@@ -24,7 +24,7 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
 .pa-art-title { font-size: 9.28px; color: @pa_muted; }
 .pa-cap-title { font-size: 8.8px; font-weight: 610; color: @pa_ink; }
 .pa-cap-meta { font-size: 6.88px; color: @pa_muted; }
-.pa-unseen { min-width: 6px; min-height: 6px; border-radius: 999px; background: @pa_brand; border: 1.5px solid #f4f0f1; }
+.pa-unseen { min-width: 5px; min-height: 5px; border-radius: 999px; background: @pa_brand; border: 2px solid rgba(255, 255, 255, 0.94); box-shadow: 0 2px 9px rgba(31, 14, 20, 0.45), 0 0 0 1px alpha(@pa_brand, 0.35); }
 .pa-art.selected { box-shadow: 0 0 0 3px @pa_focus_glow, 0 0 20px 4px alpha(@pa_focus_glow, 0.45), 0 24px 48px rgba(56, 38, 33, 0.3), 0 10px 20px rgba(56, 38, 33, 0.2); }
 .pa-home-focus-halo.selected {
   box-shadow: 0 0 20px 4px alpha(@pa_focus_glow, 0.45), 0 0 0 3px @pa_focus_glow, 0 11px 22px rgba(56, 38, 33, 0.22), 0 26px 52px rgba(56, 38, 33, 0.32);
@@ -117,8 +117,9 @@ button.pa-pill.selected { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-entry-meta { font-size: 10px; color: @pa_muted; }
 .pa-thumb { border-radius: 4px; background: @pa_soft; }
 .pa-chip-status { font-size: 9.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; border: 1px solid @pa_line; }
-.pa-chip-status.ok { color: @pa_ink; border-color: #8ac5a5; background: alpha(#8ac5a5, 0.18); }
+.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#8ac5a5, 0.55); background: alpha(#8ac5a5, 0.18); }
 .pa-chip-status.soon { color: @pa_ink; border-color: @pa_brand; background: alpha(@pa_brand, 0.22); }
+.pa-chip-status.agenda { padding: 3px 10px 0; }
 .pa-chip-status.gone { color: @pa_ink_soft; border-color: @pa_brand_ink; background: alpha(@pa_brand_ink, 0.18); }
 .pa-dot.have { background: #8ac5a5; }
 .pa-dot.missing { background: @pa_brand_ink; }
@@ -239,13 +240,13 @@ button.pa-letter.active { background: @pa_ink; color: @pa_bg; min-width: 18px; m
 .pa-search text { caret-color: transparent; }
 
 /* Month grid, as the web's calendar-month cells */
-.pa-mday { font-size: 12px; letter-spacing: 1px; color: @pa_muted; padding: 15px 6px 6px; }
+.pa-mday { font-size: 12px; letter-spacing: 1px; color: @pa_muted; padding: 14px 6px 7px; }
 .pa-mcell { border: 1px solid @pa_line; padding: 1px 5px; }
 .pa-mcell.outside { background: alpha(@pa_surface, 0.4); color: @pa_muted; }
 .pa-mcell.today { box-shadow: inset 0 0 0 2px @pa_accent; }
 .pa-mline { min-height: 22px; padding: 0 6px; font-size: 12.5px; color: @pa_ink; }
-.pa-mfoot { min-height: 44px; padding: 0 6px 0 3px; }
-.pa-mdaynum { font-size: 12.8px; font-weight: 640; min-width: 26px; }
+.pa-mfoot { min-height: 44px; padding: 0 0 0 2px; }
+.pa-mdaynum { font-size: 12.8px; font-weight: 640; min-width: 22px; }
 .pa-mcell.outside .pa-mdaynum { color: @pa_muted; }
 .pa-mmore { font-size: 12.5px; color: @pa_ink_soft; }
 .pa-dot.soon { background: @pa_brand; }

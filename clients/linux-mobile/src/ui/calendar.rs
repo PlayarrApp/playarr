@@ -273,6 +273,9 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         col.append(&meta);
         col.append(&chip);
     } else {
+        // The web's agenda chip is 21 px tall, sitting 1.5 px below the meta text.
+        chip.add_css_class("agenda");
+        chip.set_valign(gtk4::Align::Center);
         meta.append(&chip);
         col.append(&meta);
     }
@@ -532,8 +535,12 @@ impl Cal {
                 }
                 // The web opens the week scrolled to today's column.
                 let today_col = (0..7).find(|i| add_days(start, *i) == today());
-                let (view, cols) = (self.days_view.clone(), cols.clone());
+                let (me, view, cols) = (self.clone(), self.days_view.clone(), cols.clone());
                 gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || {
+                    // A quick switch to Month or Agenda must not inherit the week's scroll.
+                    if me.view.get() != View::Week {
+                        return;
+                    }
                     let mut col = cols.first_child();
                     for _ in 0..today_col.unwrap_or(0) {
                         col = col.and_then(|c| c.next_sibling());
@@ -599,7 +606,7 @@ impl Cal {
                 }
                 let shown = items.len().min(chips);
                 for (_, e, n) in items.iter().take(shown) {
-                    let row = gtk4::Box::builder().spacing(7).css_classes(["pa-mline"]).build();
+                    let row = gtk4::Box::builder().spacing(9).css_classes(["pa-mline"]).build();
                     let tone = match status_chip(e, today_date).1 {
                         "ok" => "have",
                         "soon" => "soon",
@@ -626,7 +633,7 @@ impl Cal {
                     cell.append(&row);
                 }
                 let foot = gtk4::Box::builder()
-                    .spacing(6)
+                    .spacing(12)
                     .valign(gtk4::Align::End)
                     .vexpand(true)
                     .css_classes(["pa-mfoot"])
