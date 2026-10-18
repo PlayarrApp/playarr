@@ -103,6 +103,7 @@
  * that integration lands, with no changes needed here.
  */
 
+import { t } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
@@ -260,16 +261,16 @@ function columnsTemplateFor(columns: number): string {
  * unrecognised value must never crash this page. */
 function libraryKindTitle(kind: string): string {
   if (kind === 'movie') {
-    return 'Movies';
+    return t('pages.library.plural.movies', 'Movies');
   }
   if (kind === 'series') {
-    return 'Series';
+    return t('pages.library.plural.series', 'Series');
   }
   if (kind === 'site') {
-    return 'Sites';
+    return t('pages.library.plural.sites', 'Sites');
   }
   if (kind === 'artist') {
-    return 'Music';
+    return t('pages.library.plural.music', 'Music');
   }
   if (kind === 'author') {
     return 'Authors';
@@ -932,8 +933,8 @@ export struct Library {
   private touchFiltersOverlay(): void {
     if (this.filtersOpen && this.actionsWork === undefined) {
       Drawer({
-        kicker: 'Library controls',
-        title: 'Filters',
+        kicker: t('pages.library.libraryControls', 'Library controls'),
+        title: t('pages.library.filters', 'Filters'),
         onClose: (): void => {
           this.filtersOpen = false;
         },
@@ -1233,7 +1234,7 @@ export struct Library {
     })
     ActionTile({
       icon: $r('app.media.action_filters'),
-      label: 'Filters',
+      label: t('pages.library.filters', 'Filters'),
       slot: 0,
       onActivate: (): void => {
         this.filtersOpen = true;
@@ -1265,8 +1266,8 @@ export struct Library {
       })
     } else if (this.filtersOpen) {
       Drawer({
-        kicker: 'Library controls',
-        title: 'Filters',
+        kicker: t('pages.library.libraryControls', 'Library controls'),
+        title: t('pages.library.filters', 'Filters'),
         onClose: (): void => {
           this.filtersOpen = false;
         },
@@ -1300,7 +1301,7 @@ export struct Library {
       },
     })
     ChoiceSegments({
-      heading: 'Sort by',
+      heading: t('pages.library.sortBy', 'Sort by'),
       choices: TV_SORT_CHOICES,
       selected: this.sort,
       onChoose: (value: string): void => {
@@ -1308,7 +1309,7 @@ export struct Library {
       },
     })
     ChoiceSegments({
-      heading: 'Order',
+      heading: t('pages.library.order', 'Order'),
       choices: TV_ORDER_CHOICES,
       selected: this.order,
       onChoose: (value: string): void => {
@@ -1318,21 +1319,21 @@ export struct Library {
       },
     })
     MultiSelect({
-      heading: 'Audio language',
+      heading: t('pages.library.audioLanguage', 'Audio language'),
       options: this.languageChoices(this.audioFacets, this.audioLangs),
       selected: this.audioLangs,
-      noneLabel: 'Any language',
-      addLabel: 'Add language',
+      noneLabel: t('pages.library.anyLanguage', 'Any language'),
+      addLabel: t('pages.library.addLanguage', 'Add language'),
       onChange: (values: string[]): void => {
         this.setLanguages(true, values);
       },
     })
     MultiSelect({
-      heading: 'Subtitle language',
+      heading: t('pages.library.subtitleLanguage', 'Subtitle language'),
       options: this.languageChoices(this.subtitleFacets, this.subtitleLangs),
       selected: this.subtitleLangs,
-      noneLabel: 'Any language',
-      addLabel: 'Add language',
+      noneLabel: t('pages.library.anyLanguage', 'Any language'),
+      addLabel: t('pages.library.addLanguage', 'Add language'),
       onChange: (values: string[]): void => {
         this.setLanguages(false, values);
       },

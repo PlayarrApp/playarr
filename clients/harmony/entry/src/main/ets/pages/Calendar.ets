@@ -9,6 +9,7 @@
  * panel's actions and the Calendar link tile.
  */
 
+import { t } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { ActionTile } from '../design/components/ActionTile';
@@ -430,7 +431,7 @@ export struct ReleaseCalendar {
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColorWithAlpha(activeColors().ink, day === this.today ? 0.9 : 1))
       if (day === this.today) {
-        Text('Today').fontFamily(nunito(500))
+        Text(t('pages.calendar.today', 'Today')).fontFamily(nunito(500))
           .fontSize(tv(TODAY_TAG_SIZE))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
@@ -636,25 +637,25 @@ export struct ReleaseCalendar {
         heading: 'Type',
         options: TYPE_CHOICES,
         selected: this.filters.types,
-        noneLabel: 'Any type',
-        addLabel: 'Add type',
+        noneLabel: t('pages.calendar.anyType', 'Any type'),
+        addLabel: t('pages.calendar.addType', 'Add type'),
         onChange: (values: string[]): void => {
           this.setFilters({ types: values, statuses: this.filters.statuses, monitoredOnly: this.filters.monitoredOnly });
         },
       })
       MultiSelect({
-        heading: 'Status',
+        heading: t('pages.calendar.filterStatus', 'Status'),
         options: STATUS_CHOICES,
         selected: this.filters.statuses,
-        noneLabel: 'Any status',
-        addLabel: 'Add status',
+        noneLabel: t('pages.calendar.anyStatus', 'Any status'),
+        addLabel: t('pages.calendar.addStatus', 'Add status'),
         onChange: (values: string[]): void => {
           this.setFilters({ types: this.filters.types, statuses: values, monitoredOnly: this.filters.monitoredOnly });
         },
       })
       this.monitoringToggle()
       if (activeFilterCount(this.filters) > 0) {
-        Text('Clear filters').fontFamily(nunito(700))
+        Text(t('pages.calendar.clearFilters', 'Clear filters')).fontFamily(nunito(700))
           .fontSize(tv(CHOICE_FONT))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -677,7 +678,7 @@ export struct ReleaseCalendar {
   @Builder
   private monitoringToggle(): void {
     Column({ space: tv(12) }) {
-      Text('Monitoring').fontFamily(nunito(700))
+      Text(t('pages.calendar.filterMonitored', 'Monitoring')).fontFamily(nunito(700))
         .fontSize(tv(9.6))
         .fontWeight(FontWeight.Bold)
         .letterSpacing(tv(0.672))
@@ -694,7 +695,7 @@ export struct ReleaseCalendar {
           .borderRadius(tv(4))
           .border({ width: 2, color: toResourceColor(activeColors().inkSoft) })
           .backgroundColor(toResourceColor(this.filters.monitoredOnly ? activeColors().inkSoft : activeColors().surface))
-        Text('Monitored only').fontFamily(nunito(400))
+        Text(t('pages.calendar.monitoredOnly', 'Monitored only')).fontFamily(nunito(400))
           .fontSize(tv(19.2))
           .fontColor(toResourceColor(activeColors().ink))
       }
@@ -736,7 +737,7 @@ export struct ReleaseCalendar {
           })
         }
         if (this.plan()!.openWorkId !== null) {
-          this.panelButton(this.selected !== undefined && this.selected.media_kind === 'episode' ? 'Open series' : 'Open',
+          this.panelButton(this.selected !== undefined && this.selected.media_kind === 'episode' ? t('pages.calendar.openSeries', 'Open series') : t('pages.calendar.open', 'Open'),
             this.plan()!.play === null, (): void => {
               this.openSelected();
             })
@@ -829,7 +830,7 @@ export struct ReleaseCalendar {
     // Web's slot 0: the Calendar link (bell); Filters is the second tile.
     ActionTile({
       icon: $r('app.media.action_bell'),
-      label: 'Calendar link',
+      label: t('pages.calendar.subscription.title', 'Calendar link'),
       slot: 0,
       onActivate: (): void => {
         this.linkOpen = true;
@@ -837,7 +838,7 @@ export struct ReleaseCalendar {
     })
     ActionTile({
       icon: $r('app.media.action_filters'),
-      label: 'Filters',
+      label: t('pages.search.filters', 'Filters'),
       slot: 1,
       onActivate: (): void => {
         this.filtersOpen = true;
@@ -845,8 +846,8 @@ export struct ReleaseCalendar {
     })
     if (this.linkOpen) {
       Drawer({
-        kicker: 'Calendar',
-        title: 'Calendar link',
+        kicker: t('pages.calendar.title', 'Calendar'),
+        title: t('pages.calendar.subscription.title', 'Calendar link'),
         onClose: (): void => {
           this.linkOpen = false;
         },
@@ -856,8 +857,8 @@ export struct ReleaseCalendar {
       })
     } else if (this.filtersOpen) {
       Drawer({
-        kicker: 'Calendar',
-        title: 'Filters',
+        kicker: t('pages.calendar.title', 'Calendar'),
+        title: t('pages.search.filters', 'Filters'),
         onClose: (): void => {
           this.filtersOpen = false;
         },
@@ -887,7 +888,7 @@ export struct ReleaseCalendar {
       this.headerControl('←', true, (): void => {
         this.page(-1);
       })
-      this.headerControl('Today', false, (): void => {
+      this.headerControl(t('pages.calendar.today', 'Today'), false, (): void => {
         this.page(0);
       })
       this.headerControl('→', true, (): void => {
@@ -933,7 +934,7 @@ export struct ReleaseCalendar {
       this.touchControl('←', 44, (): void => {
         this.page(-1);
       })
-      this.touchControl('Today', 80, (): void => {
+      this.touchControl(t('pages.calendar.today', 'Today'), 80, (): void => {
         this.page(0);
       })
       this.touchControl('→', 44, (): void => {
@@ -957,7 +958,7 @@ export struct ReleaseCalendar {
       .borderRadius(22)
       .backgroundColor(toResourceColor(activeColors().bg))
       // web opens the page with Today focused (the Previewer reports no focus): the ring is drawn from the state
-      .border(label === 'Today' ? { width: 3, color: toResourceColor(activeColors().ink) } : { width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+      .border(label === t('pages.calendar.today', 'Today') ? { width: 3, color: toResourceColor(activeColors().ink) } : { width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       .onClick(() => {
         onTap();
       })
@@ -1145,8 +1146,8 @@ export struct ReleaseCalendar {
     }
     if (this.linkOpen) {
       Drawer({
-        kicker: 'Calendar',
-        title: 'Calendar link',
+        kicker: t('pages.calendar.title', 'Calendar'),
+        title: t('pages.calendar.subscription.title', 'Calendar link'),
         onClose: (): void => {
           this.linkOpen = false;
         },
@@ -1156,8 +1157,8 @@ export struct ReleaseCalendar {
       })
     } else if (this.filtersOpen) {
       Drawer({
-        kicker: 'Calendar',
-        title: 'Filters',
+        kicker: t('pages.calendar.title', 'Calendar'),
+        title: t('pages.search.filters', 'Filters'),
         onClose: (): void => {
           this.filtersOpen = false;
         },
@@ -1172,7 +1173,7 @@ export struct ReleaseCalendar {
     NavDestination() {
       Stack() {
       PageShell({
-        title: 'Calendar',
+        title: t('pages.calendar.title', 'Calendar'),
         touch: true,
         touchContent: (): void => {
           this.touchContentBody();

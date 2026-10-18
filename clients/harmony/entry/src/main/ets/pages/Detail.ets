@@ -100,6 +100,7 @@
  * reject outright.
  */
 
+import { t, tf } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
@@ -422,16 +423,16 @@ interface DetailSeasonRowArea {
 
 function kindLabel(kind: WorkKind): string {
   if (kind === 'movie') {
-    return 'Movie';
+    return t('pages.home.workKind.movie', 'Movie');
   }
   if (kind === 'series') {
-    return 'Series';
+    return t('pages.home.workKind.series', 'Series');
   }
   if (kind === 'site') {
     return 'Site';
   }
   if (kind === 'artist') {
-    return 'Artist';
+    return t('pages.home.workKind.artist', 'Artist');
   }
   return 'Author';
 }
@@ -498,14 +499,14 @@ function episodeMediaFileId(detail: EpisodeDetail): string | null {
 
 function buildEpisodeRow(detail: EpisodeDetail, seasonNumber: number): DetailRow {
   const episode = detail.episode;
-  let title = 'Episode ' + String(episode.episode_number);
+  let title = tf('pages.workDetail.episodeNumber', 'Episode {{number}}', { number: String(episode.episode_number) });
   if (episode.title !== undefined && episode.title !== null && episode.title.length > 0) {
     title = episode.title;
   }
   const row: DetailRow = {
     id: episode.id,
     title: title,
-    subtitle: 'Episode ' + String(episode.episode_number),
+    subtitle: tf('pages.workDetail.episodeNumber', 'Episode {{number}}', { number: String(episode.episode_number) }),
     episodeCaption: seriesEpisodeCaption(seasonNumber, episode.episode_number),
     episodeNumberOverlay: seriesEpisodeOverlayNumber(episode.episode_number),
     mediaFileId: episodeMediaFileId(detail),
@@ -519,7 +520,7 @@ function seasonHeading(season: Season): string {
   if (season.title !== undefined && season.title !== null && season.title.length > 0) {
     return season.title;
   }
-  return 'Season ' + String(season.season_number);
+  return tf('pages.workDetail.seasonNumber', 'Season {{number}}', { number: String(season.season_number) });
 }
 
 function buildSeasonRail(detail: SeasonDetail): DetailRail {
@@ -691,7 +692,7 @@ function buildSimilarRail(works: Work[]): DetailRail {
     };
     items.push(row);
   }
-  const rail: DetailRail = { id: 'similar', heading: 'Similar Titles', items: items };
+  const rail: DetailRail = { id: 'similar', heading: t('pages.workDetail.similarTitlesHeading', 'Similar Titles'), items: items };
   return rail;
 }
 
@@ -711,7 +712,7 @@ function chapterTimeLabel(ms: number): string {
 /** One chapter card (web Chapters rail): "Chapter 01" (or the chapter's own title) under the card, its start time as the caption. */
 function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
   const number = chapter.index < 9 ? '0' + (chapter.index + 1).toString() : (chapter.index + 1).toString();
-  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : 'Chapter ' + number;
+  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : tf('pages.workDetail.chapterNumber', 'Chapter {{number}}', { number: String(number) });
   const row: DetailRow = {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
@@ -1065,7 +1066,7 @@ struct Detail {
     for (const chapter of result.value) {
       rows.push(chapterRow(chapter, mediaFileId));
     }
-    this.chaptersRail = { id: 'chapters', heading: 'Chapters', items: rows };
+    this.chaptersRail = { id: 'chapters', heading: t('pages.workDetail.chaptersHeading', 'Chapters'), items: rows };
     for (const chapter of result.value) {
       const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
@@ -1794,7 +1795,7 @@ struct Detail {
   private shellTitle(): string {
     const kind = this.detail !== null ? this.detail.work.kind : 'movie';
     if (kind === 'series') {
-      return 'Series';
+      return t('pages.home.workKind.series', 'Series');
     }
     if (kind === 'artist') {
       return 'Music';
@@ -1870,15 +1871,15 @@ struct Detail {
           this.playPrimary();
         })
         if (this.resumePlan.action !== 'start') {
-          this.actionPill('Ask again', '\u21BA', false, true, (): void => {
+          this.actionPill(t('pages.workDetail.resumeAskAgain', 'Ask again'), '\u21BA', false, true, (): void => {
             void this.askAgain();
           })
         }
       }
-      this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, true, (): void => {
+      this.actionPill(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), this.listed === true ? '\u2713' : '+', false, true, (): void => {
         void this.toggleWatchlist();
       })
-      this.actionPill('Add to Playlist', '+', false, true, (): void => {
+      this.actionPill(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), '+', false, true, (): void => {
         this.actionsOpen = true;
       })
     }
@@ -1896,11 +1897,11 @@ struct Detail {
   private tvTitleActions(): void {
     Column({ space: tv(PILL_ROW_GAP) }) {
       Row({ space: tv(PILL_GAP) }) {
-        this.actionPill('Download', '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(t('components.mediaContextMenu.download', 'Download'), '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
           this.actionsOpen = true;
         })
         if (this.primaryMediaFileId !== null && this.detail !== null && this.detail.work.kind === 'movie') {
-          this.actionPill('Playback', '\u2630', false, true, (): void => {
+          this.actionPill(t('pages.workDetail.playbackButtonLabel', 'Playback'), '\u2630', false, true, (): void => {
             this.optionsOpen = true;
           })
         }
@@ -1909,10 +1910,10 @@ struct Detail {
         })
       }
       Row({ space: tv(PILL_GAP) }) {
-        this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, true, (): void => {
+        this.actionPill(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), this.listed === true ? '\u2713' : '+', false, true, (): void => {
           void this.toggleWatchlist();
         })
-        this.actionPill('Add to Playlist', '+', false, true, (): void => {
+        this.actionPill(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), '+', false, true, (): void => {
           this.actionsOpen = true;
         })
       }
@@ -1947,13 +1948,13 @@ struct Detail {
   /** The primary pill's label: Resume from m:ss for a part-watched movie, else Play (Unavailable while nothing is playable). */
   private primaryLabel(): string {
     if (this.primaryMediaFileId === null) {
-      return 'Unavailable';
+      return t('pages.workDetail.unavailable', 'Unavailable');
     }
     if (this.resumePlan !== null) {
       return resumeButtonLabel(this.resumePlan);
     }
     if (this.resumeMs > 0) {
-      return 'Resume from ' + chapterTimeLabel(this.resumeMs);
+      return tf('pages.workDetail.resumeFrom', 'Resume from {{position}}', { position: chapterTimeLabel(this.resumeMs) });
     }
     return 'Play';
   }
@@ -2044,7 +2045,7 @@ struct Detail {
       }
       if (this.chaptersRail !== null) {
         Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading('Chapters', this.chaptersRail.items.length.toString() + ' chapters')
+          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
           MediaRail({
             railId: 'chapters',
             headingGap: 0,
@@ -2416,10 +2417,10 @@ struct Detail {
       .onClick(() => {
         this.playPrimary();
       })
-      this.touchSeriesAction(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+      this.touchSeriesAction(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
       })
-      this.touchSeriesAction('Add to Playlist', (): void => {
+      this.touchSeriesAction(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), (): void => {
         this.touchActionsOpen = true;
       })
     }
@@ -2438,19 +2439,19 @@ struct Detail {
   @Builder
   private touchMovieActionRows(): void {
     Row({ space: 8 }) {
-      this.touchActionButton('Download', (): void => {
+      this.touchActionButton(t('components.mediaContextMenu.download', 'Download'), (): void => {
         this.touchActionsOpen = true;
       }, 8, '\u21E9')
-      this.touchActionButton('Playback', (): void => {
+      this.touchActionButton(t('pages.workDetail.playbackButtonLabel', 'Playback'), (): void => {
         this.touchActionsOpen = true;
       }, 11, '\u2637')
       this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
     }
     Row({ space: 8 }) {
-      this.touchActionButton(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+      this.touchActionButton(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
       }, 8, this.listed === true ? '\u2713' : '+')
-      this.touchActionButton('Add to Playlist', (): void => {
+      this.touchActionButton(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), (): void => {
         this.touchActionsOpen = true;
       }, 8, '+')
     }
@@ -2576,7 +2577,7 @@ struct Detail {
           .onClick(() => {
             popRoute(getNavStack());
           })
-        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? 'Series' : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
+        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
           .fontSize(22)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
