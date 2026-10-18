@@ -483,7 +483,8 @@ export struct ReleaseCalendar {
     .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(toResourceColor(activeColors().bg))
+    // The TV's agenda sits on an opaque list; the phone's headings sit straight on the page like web's.
+    .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent)
   }
 
   @Builder
@@ -1030,7 +1031,7 @@ export struct ReleaseCalendar {
         .width('100%')
         .layoutWeight(1)
     } else {
-      List({ space: 16 }) {
+      List({ space: 32 }) {
         ForEach(this.groups, (group: DayGroup) => {
           ListItem() {
             Column({ space: PHONE_ENTRY_GAP }) {
@@ -1089,6 +1090,7 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
+      .margin({ bottom: 5 }) // web's text block sits 2.5 vp higher in the card than the centred one
     }
     .width('100%')
     .constraintSize({

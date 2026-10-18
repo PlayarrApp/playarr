@@ -9,7 +9,7 @@
 import { nunito } from '../Typography';
 import { activeColors, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
-import { tv } from '../Metrics';
+import { isTvMetrics, tv } from '../Metrics';
 import type { Choice } from './ChoiceSegments';
 import { t } from '../../core/Language';
 
@@ -84,10 +84,19 @@ export struct SelectField {
           .fontWeight(this.labelWeight >= 700 ? FontWeight.Bold : FontWeight.Medium)
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .layoutWeight(1)
-        Text('⌄').fontFamily(nunito(400))
-          .fontSize(tv(FONT))
-          .fontColor(this.textColor(this.highlighted === '#trigger'))
-          .rotate({ angle: this.open ? 180 : 0 })
+        if (isTvMetrics()) {
+          Text('⌄').fontFamily(nunito(400))
+            .fontSize(tv(FONT))
+            .fontColor(this.textColor(this.highlighted === '#trigger'))
+            .rotate({ angle: this.open ? 180 : 0 })
+        } else {
+          // Phone: web's thin stroked chevron; the text glyph sits low and heavy in Nunito.
+          Image($r('app.media.select_chevron'))
+            .width(this.labelSize * 1.2)
+            .height(this.labelSize * 1.2)
+            .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
+            .rotate({ angle: this.open ? 180 : 0 })
+        }
       }
       .width(tv(this.selectWidth))
       .constraintSize({ minHeight: tv(this.minHeight) })
