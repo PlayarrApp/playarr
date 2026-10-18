@@ -57,6 +57,18 @@ namespace Playarr.Xbox.Views
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.Filled(Ui.Pill("\u2637  Playback", OpenPlaybackDrawer, 142));
             PlaybackButton.Height = 64;
+            // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
+            PlayButton.GotFocus += (s, e) => PaintPlay(true);
+            PlayButton.LostFocus += (s, e) => PaintPlay(false);
+        }
+
+        private void PaintPlay(bool focused)
+        {
+            var resources = Application.Current.Resources;
+            PlayButton.Background = (Windows.UI.Xaml.Media.Brush)resources[focused ? "PlayarrBrand" : "PlayarrInk"];
+            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrSurfaceStrong"];
+            PlayLabel.Foreground = ink;
+            PlayIcon.Foreground = ink;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -148,7 +160,8 @@ namespace Playarr.Xbox.Views
             {
                 if (showPlayback)
                 {
-                    PrimaryRow.Children.Insert(0, PlaybackButton);
+                    // After Download, which the web keeps first.
+                    PrimaryRow.Children.Insert(_downloadPill != null && PrimaryRow.Children.Contains(_downloadPill) ? 1 : 0, PlaybackButton);
                 }
                 else
                 {

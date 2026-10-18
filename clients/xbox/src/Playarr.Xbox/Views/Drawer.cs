@@ -119,6 +119,13 @@ namespace Playarr.Xbox.Views
             _opener?.Focus(FocusState.Programmatic);
         }
 
+        /// <summary>The web's unselected chip: a faint ink tint on the panel (about 7 % light, 4 % dark), not a transparent outline.</summary>
+        private static Brush RestingChip()
+        {
+            var ink = ((SolidColorBrush)Ui.Res("PlayarrInk")).Color;
+            return new SolidColorBrush(Color.FromArgb((byte)(Theme.IsLight ? 19 : 10), ink.R, ink.G, ink.B));
+        }
+
         /// <summary>A labelled group ("SORT BY") with segmented options, the selected one filled like the web.</summary>
         public static StackPanel Segmented(string label, string[] options, int selected, Action<int> onSelect, string? automationIdPrefix = null)
         {
@@ -148,7 +155,7 @@ namespace Playarr.Xbox.Views
                     Height = 56,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     CornerRadius = new CornerRadius(6),
-                    Background = isSelected ? Ui.Res("PlayarrInk") : new SolidColorBrush(Colors.Transparent),
+                    Background = isSelected ? Ui.Res("PlayarrInk") : RestingChip(),
                     BorderBrush = Ui.Res("PlayarrLineStrong"),
                     BorderThickness = new Thickness(1),
                     Content = new TextBlock
