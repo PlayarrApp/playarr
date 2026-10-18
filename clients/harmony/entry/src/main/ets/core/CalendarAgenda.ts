@@ -141,12 +141,12 @@ export function entryPillTone(entry: CalendarEntry, today: string): EntryPillTon
 
 export function pillLabel(tone: EntryPillTone): string {
   if (tone === "available") {
-    return "Available";
+    return t("pages.calendar.pillAvailable", "Available");
   }
   if (tone === "upcoming") {
-    return "Upcoming";
+    return t("pages.calendar.statusUpcoming", "Upcoming");
   }
-  return tone === "missing" ? "Missing" : "Not tracked";
+  return tone === "missing" ? t("pages.calendar.statusMissing", "Missing") : t("pages.calendar.pillNotTracked", "Not tracked");
 }
 
 /** The left border: playable (a file the viewer can play) versus not; never the library or kind. */
@@ -185,25 +185,25 @@ export function entrySubtitle(entry: CalendarEntry): string {
 
 export function releaseTypeLabel(type: CalendarReleaseType): string {
   if (type === "air") {
-    return "Airs";
+    return t("pages.calendar.releaseAir", "Airs");
   }
   if (type === "cinema") {
-    return "In cinemas";
+    return t("pages.calendar.releaseCinema", "In cinemas");
   }
   if (type === "digital") {
-    return "Digital release";
+    return t("pages.calendar.releaseDigital", "Digital release");
   }
-  return type === "physical" ? "Physical release" : "Release";
+  return type === "physical" ? t("pages.calendar.releasePhysical", "Physical release") : t("pages.calendar.releaseGeneric", "Release");
 }
 
 export function mediaKindLabel(kind: CalendarMediaKind): string {
   if (kind === "episode") {
-    return "Episodes";
+    return t("pages.calendar.kindEpisode", "Episodes");
   }
   if (kind === "movie") {
-    return "Movies";
+    return t("pages.calendar.kindMovie", "Movies");
   }
-  return kind === "album" ? "Albums" : "Books";
+  return kind === "album" ? t("pages.calendar.kindAlbum", "Albums") : t("pages.calendar.kindBook", "Books");
 }
 
 /** Thai and Japanese use the locale's own names for a UTC calendar day, as web; English keeps the fixed names below. */
@@ -372,7 +372,17 @@ export function buildWeekDays(anchor: string, groups: DayGroup[], today: string)
   return days;
 }
 
-export const WEEKDAY_SHORT: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_SHORT_ENGLISH: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Month-grid column heads, Monday first: fixed names in English, the locale's own (Intl, as web) in Thai and Japanese. */
+export function weekdayShort(): string[] {
+  if (currentLanguage() === "en") {
+    return WEEKDAY_SHORT_ENGLISH;
+  }
+  // 2024-01-01 was a Monday
+  return WEEKDAY_SHORT_ENGLISH.map((_name: string, i: number): string =>
+    localeDay(new Date(Date.UTC(2024, 0, 1 + i)), { weekday: "short", timeZone: "UTC" }));
+}
 
 export function dayOfMonth(day: string): number {
   return parseDay(day).getUTCDate();

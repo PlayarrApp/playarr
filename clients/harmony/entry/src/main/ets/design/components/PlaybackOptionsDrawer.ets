@@ -11,6 +11,7 @@ import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Them
 import { tv } from '../Metrics';
 import { getMediaPlaybackOptions, updateMediaPlaybackOptions } from '../../data/PlaybackRepository';
 import type { MediaPlaybackOptions, MediaPlaybackPreferences } from '../../core/Types/Playback.ts';
+import { t } from '../../core/Language';
 
 const SECTION_WIDTH: number = 268;
 const SECTION_GAP: number = 14;
@@ -75,7 +76,7 @@ export struct PlaybackOptionsDrawer {
   }
 
   private audioChoices(options: MediaPlaybackOptions): Choice[] {
-    const choices: Choice[] = [{ value: NONE, label: 'Automatic' }];
+    const choices: Choice[] = [{ value: NONE, label: t('pages.workDetail.automatic', 'Automatic') }];
     for (const track of options.audio_tracks) {
       choices.push({ value: track.id, label: track.label });
     }
@@ -83,7 +84,7 @@ export struct PlaybackOptionsDrawer {
   }
 
   private subtitleChoices(options: MediaPlaybackOptions): Choice[] {
-    const choices: Choice[] = [{ value: NONE, label: 'Off' }];
+    const choices: Choice[] = [{ value: NONE, label: t('settings.playerPreferences.subtitlesOff', 'Off') }];
     for (const track of options.subtitle_tracks) {
       choices.push({ value: track.id, label: track.label });
     }
@@ -117,7 +118,7 @@ export struct PlaybackOptionsDrawer {
   private optionsBody(): void {
     Column({ space: tv(SECTION_GAP) }) {
       if (this.options !== null) {
-        this.heading('Quality')
+        this.heading(t('pages.workDetail.qualityHeading', 'Quality'))
         SelectField({
           options: this.qualityChoices(this.options),
           value: this.qualityId,
@@ -126,7 +127,7 @@ export struct PlaybackOptionsDrawer {
             this.qualityId = value;
           },
         })
-        this.heading('Audio')
+        this.heading(t('pages.workDetail.audioHeading', 'Audio'))
         SelectField({
           options: this.audioChoices(this.options),
           value: this.audioId,
@@ -135,7 +136,7 @@ export struct PlaybackOptionsDrawer {
             this.audioId = value;
           },
         })
-        this.heading('Subtitles')
+        this.heading(t('pages.workDetail.subtitlesHeading', 'Subtitles'))
         SelectField({
           options: this.subtitleChoices(this.options),
           value: this.subtitleId,
@@ -144,7 +145,7 @@ export struct PlaybackOptionsDrawer {
             this.subtitleId = value;
           },
         })
-        this.pill(this.saving ? 'Saving' : 'Save', (): void => {
+        this.pill(this.saving ? 'Saving' : t('pages.downloads.save', 'Save'), (): void => {
           void this.save();
         })
       } else if (this.failed) {
@@ -159,8 +160,8 @@ export struct PlaybackOptionsDrawer {
 
   build() {
     Drawer({
-      kicker: 'Movie',
-      title: 'Playback settings',
+      kicker: t('pages.search.kindMovie', 'Movie'),
+      title: t('pages.workDetail.playbackSettingsTitle', 'Playback settings'),
       onClose: (): void => {
         this.onClose();
       },

@@ -996,8 +996,9 @@ struct TVWebHomeCard: View {
                 if progress == nil {
                     Circle()
                         .fill(DesignTokens.Color.brandPrimary)
-                        .frame(width: 13, height: 13)
-                        .padding(10.6)
+                        .frame(width: 11.6, height: 11.6)
+                        .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
+                        .padding(11.5)
                 }
             }
             .background(
@@ -1035,12 +1036,20 @@ struct TVCardFocusGlow: ViewModifier {
     let focused: Bool
     let cornerRadius: CGFloat
 
+    #if os(macOS)
+    // A 3 px stroke is centred on its path, so the path sits 1.5 px out for the ring to touch the art (the web's box-shadow
+    // ring); 3 left a 1.5 px gap that showed as a pale line between art and ring.
+    private let ringOffset: CGFloat = 1.5
+    #else
+    private let ringOffset: CGFloat = 3
+    #endif
+
     func body(content: Content) -> some View {
         content.overlay {
             if focused {
-                RoundedRectangle(cornerRadius: cornerRadius + 3, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius + ringOffset, style: .continuous)
                     .stroke(DesignTokens.Stage.cardGlow, lineWidth: 3)
-                    .padding(-3)
+                    .padding(-ringOffset)
                     #if os(macOS)
                     // Web `0 0 20px 4px` glow at 45%: the 4 px spread is a wider faint stroke under the blur.
                     .background(
@@ -1605,7 +1614,11 @@ struct TVLibraryKindView: View {
         )
     }
 
+    /// The title whose actions drawer is open: the preview keeps it (web), and no card is lifted or ringed meanwhile.
+    @Environment(\.actionsWorkID) private var actionsWorkID
+
     private var selected: Work? {
+        if let actionsWorkID, let match = items.first(where: { $0.id == actionsWorkID }) { return match }
         if let selectedID, let match = items.first(where: { $0.id == selectedID }) {
             return match
         }
@@ -1830,12 +1843,14 @@ struct TVLibraryKindView: View {
                 .padding(.top, 26)
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
-                    .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
+                    // Web `.details-panel .tv-preview-overview`: 0.72vw (13.8 px) at weight 600, line-height 1.58 (21.8 px pitch),
+                    // measured on the light refs of series and music (lines wrap at about 348 px).
+                    .font(TVTheme.font(size: 13.8, css: 600))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
-                    .lineSpacing(4)
-                    .padding(.top, 25)
-                    .frame(maxWidth: 340, alignment: .leading)
+                    .lineSpacing(3)
+                    .padding(.top, 24)
+                    .frame(maxWidth: 348, alignment: .leading)
             }
         }
         .frame(maxWidth: DesignTokens.Shell.titlePanelWidth, alignment: .leading)
@@ -1848,7 +1863,8 @@ struct TVLibraryKindView: View {
             Text(yearString(for: work))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
             if !genreLine.isEmpty {
-                Text("  \(genreLine)")
+                // Web: the gap belongs to the year; a title without one starts flush left (music).
+                Text((yearString(for: work).isEmpty ? "" : "  ") + genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
             }
         }
@@ -2015,7 +2031,7 @@ struct TVLibraryKindView: View {
         artIncludesDot: Bool,
         gridPosition: TVParityGridPosition? = nil
     ) -> some View {
-        let isSelected = selected?.id == work.id
+        let isSelected = selected?.id == work.id && actionsWorkID == nil
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
                             parityGridPosition: gridPosition) {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
@@ -2099,7 +2115,7 @@ struct TVLibraryKindView: View {
     /// Web list view row (`.tv-list-card`): a 172.8 x 97.2 thumbnail, the title 14.98/610 and "Genres · Year" 9.6 beside
     /// it; rows 121.9 apart. Same focus look and actions as the cards.
     private func libraryRow(_ work: Work) -> some View {
-        let isSelected = selected?.id == work.id
+        let isSelected = selected?.id == work.id && actionsWorkID == nil
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil) {
             HStack(alignment: .center, spacing: 30) {
                 TVWorkArt(work: work, apiClient: environment.apiClient)
@@ -2403,6 +2419,8 @@ struct TVActionsDrawer: View {
                     TVActionRow(glyph: "\u{2190}", label: "Back") { self.playlists = nil }
                 } else {
                     TVActionRow(glyph: "\u{25B6}\u{FE0E}", label: "Play", preferred: true) { Task { await play() } }
+                    // Web lists Download here too; this client keeps no offline copies, so the row only explains that.
+                    TVActionRow(glyph: "\u{2193}", label: "Download") { message = "Downloads are not available on this device." }
                     TVActionRow(glyph: "\u{FF0B}", label: "Add to Playlist") {
                         Task { playlists = (try? await environment.apiClient.listPlaylists()) ?? [] }
                     }

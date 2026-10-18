@@ -10,6 +10,7 @@ import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
 import { QUALITY_LEVELS, QUALITY_TIERS, ORIGINAL_QUALITY } from '../../core/PlayerDefaults';
 import type { QualityTier, QualityOption } from '../../core/PlayerDefaults';
+import { t } from '../../core/Language';
 
 const HEADING_COLUMN: number = 120;
 const CELL_HEIGHT: number = 60;
@@ -60,7 +61,7 @@ export struct QualityMatrix {
 
   build() {
     Column({ space: tv(CELL_GAP) }) {
-      this.cell(ORIGINAL_QUALITY, 'Original', 'Best available source', this.matrixWidth)
+      this.cell(ORIGINAL_QUALITY, t('quality.original', 'Original'), t('quality.originalDetail', 'Best available source'), this.matrixWidth)
       Row({ space: tv(CELL_GAP) }) {
         Blank().width(tv(HEADING_COLUMN))
         ForEach(QUALITY_LEVELS, (level: string) => {

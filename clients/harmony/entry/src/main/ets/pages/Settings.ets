@@ -14,7 +14,7 @@ import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
-import { SelectField, THEME_CHOICES } from '../design/components/SelectField';
+import { SelectField, themeChoices } from '../design/components/SelectField';
 import type { AudioLanguage } from '../core/AudioLanguages';
 import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../core/AudioLanguages';
 import { getPlayerPreferences, updatePlayerPreferences, getProfilePinSetting, updateProfilePinSetting } from '../data/ProfileRepository';
@@ -82,11 +82,15 @@ function HOME_VIEW_CHOICES(): Choice[] {
     { value: 'cover', label: t('settings.appearance.homeViewCover', 'Covers') },
   ];
 }
+// web's size words are lower case and shown capitalised; Thai and Japanese have no case
+function upperFirst(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 function ARTWORK_SIZE_CHOICES(): Choice[] {
   return [
-    { value: 'small', label: 'Small' },
+    { value: 'small', label: upperFirst(t('pages.library.sizeSmall', 'small')) },
     { value: 'medium', label: t('quality.level.medium', 'Medium') },
-    { value: 'large', label: 'Large' },
+    { value: 'large', label: upperFirst(t('pages.library.sizeLarge', 'large')) },
   ];
 }
 function SUBTITLE_MODE_CHOICES(): Choice[] {
@@ -312,7 +316,7 @@ export struct SettingsScreen {
   private appearancePanel(): void {
     ChoiceSegments({
       heading: t('settings.appearance.colourThemeLabel', 'Colour theme'),
-      choices: THEME_CHOICES,
+      choices: themeChoices(),
       selected: this.themeSetting,
       large: true,
       sectionWidth: this.panelWidth(),
@@ -619,32 +623,37 @@ export struct SettingsScreen {
     } else {
       Column() {
         ForEach(buildSections(), (section: SettingsSection) => {
-          Row({ space: 16 }) {
+          // Web phone `.settings-option`: 328 x 88 rows (16 vp page margin), number at +12/+14, copy at +56, arrow centred at +310.
+          Stack({ alignContent: Alignment.TopStart }) {
             Text(section.number).fontFamily(nunito(700))
               .fontSize(10)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-              .alignSelf(ItemAlign.Start)
-              .margin({ top: 6 })
-            Column({ space: 4 }) {
+              .position({ x: 12, y: 16 })
+            Column({ space: 3.5 }) {
               Text(section.title).fontFamily(nunito(500))
-                .fontSize(20)
+                .fontSize(15.5)
                 .fontWeight(FontWeight.Medium)
+                .letterSpacing(-0.54)
                 .fontColor(toResourceColor(activeColors().ink))
               Text(sectionCopyOf(section.id)).fontFamily(nunito(400))
-                .fontSize(12)
+                .fontSize(11)
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
             .alignItems(HorizontalAlign.Start)
-            .layoutWeight(1)
+            .width(226)
+            .position({ x: 56, y: 24.5 })
             Text('→').fontFamily(nunito(400))
-              .fontSize(18)
+              .fontSize(14)
               .fontColor(toResourceColor(activeColors().ink))
+              .height(88)
+              .position({ x: 303, y: 3 })
           }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+          .width(328)
+          .height(88)
+          .margin({ left: 16, right: 16 })
           .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
           .onClick(() => {
             this.openSection = section.id;
@@ -654,12 +663,14 @@ export struct SettingsScreen {
       }
       .width('100%')
       .height('100%')
+      .padding({ top: 12 }) // web's first row starts 12 vp below the header
     }
   }
 
   build() {
     NavDestination() {
       PageShell({
+        railFrostWidthPct: 65,
         title: t('settings.index.title', 'Preferences'),
         touch: true,
         selectedId: '',

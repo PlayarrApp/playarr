@@ -86,12 +86,14 @@ pub fn css(dark: bool) -> String {
     } else {
         "linear-gradient(0deg, @pa_bg 8%, alpha(@pa_bg, 0) 45%)"
     };
-    // The dark web page covers the top 68 px of the art, then lets it ramp in over 18 px (web reference).
-    let cover = if dark {
-        ".pa-khero-cover { opacity: 1; background: linear-gradient(180deg, @pa_bg 68px, alpha(@pa_bg, 0) 86px); }\n.pa-khero-root.scrolled .pa-khero-cover { background: @pa_bg; }\n.pa-key-art.soft { opacity: 0.13; }\n"
-    } else {
-        ""
-    };
+    // The web page covers the top 68 px of the detail art, then lets it ramp in over 18 px (web references).
+    let cover = ".pa-khero-cover { opacity: 1; background: linear-gradient(180deg, @pa_bg 68px, alpha(@pa_bg, 0) 86px); }\n.pa-khero-root.scrolled .pa-khero-cover { background: @pa_bg; }\n".to_string()
+        + if dark {
+            ".pa-key-art.soft { opacity: 0.13; }\n.pa-add-label { opacity: 0.8; }\n"
+        } else {
+            // The light Profiles page is a flat #f5f3f2 (web), its top-bar dropdowns the same.
+            ".pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #f5f3f2; }\n.pa-topbar dropdown.pa-dropdown > button { background: #f5f3f2; }\n.pa-mcell.outside { background: #efeeed; }\n"
+        };
     let hero = format!(
         ".pa-khero-fade {{ background: {edge}; }}\n{hard}.pa-key-art.pa-khero {{ opacity: {}; filter: {}; }}\n",
         if dark { "0.5" } else { "0.16" },
@@ -101,13 +103,13 @@ pub fn css(dark: bool) -> String {
             "grayscale(1) contrast(0.88) brightness(1.1)"
         }
     );
-    // Light agenda availability is the web's dark green (dark keeps the mint of style.css).
+    // Light agenda availability is the web's dark green (dark keeps the mint of style.css); the light agenda has no backdrop wash.
     let have = if dark {
         ""
     } else {
-        "button.pa-entry.have { border-left-color: #224c3a; }\n.pa-dot.have { background: #224c3a; }\n.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#224c3a, 0.65); background: alpha(#224c3a, 0.16); }\n"
+        "button.pa-entry.have { border-left-color: #224c3a; }\n.pa-dot.have { background: #224c3a; }\n.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#224c3a, 0.65); background: alpha(#224c3a, 0.16); }\n.pa-agenda-bg { background: none; }\n"
     };
-    defs + &hero + include_str!("../data/style.css") + have + cover
+    defs + &hero + include_str!("../data/style.css") + have + &cover
 }
 
 thread_local! {

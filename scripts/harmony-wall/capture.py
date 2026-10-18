@@ -423,9 +423,9 @@ def walk(folder, suffix):
     click(1877, 272); time.sleep(4); click(1830, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-month"), folder)
     route("search", 12); snap(n("search"), folder)
     route("settings", 8)
-    if folder.endswith("dark") and device == "tv":
-        # web's reference has Dark chosen explicitly (the colour theme row shows it selected); the Previewer starts on System
-        click(394, 207); time.sleep(3); click(1645, 285); time.sleep(4)
+    if device == "tv":
+        # web's reference has the theme chosen explicitly (the colour theme row shows Dark or Light selected); the Previewer starts on System
+        click(394, 207); time.sleep(3); click(1645 if folder.endswith("dark") else 1295, 285); time.sleep(4)
     snap(n("settings"), folder)
     extra_screens(folder)
     if os.environ.get("MOTION") == "true" and device == "tv":
@@ -804,7 +804,7 @@ else:
 
     guarded("search-results", search_results)
     guarded("calendar-period", period_picker)
-    for nm, yy in (("settings-appearance", 300), ("settings-player", 510), ("settings-server", 720)):
+    for nm, yy in (("settings-appearance", 347), ("settings-player", 1139), ("settings-server", 1403)):
         guarded(nm, lambda nm=nm, yy=yy: settings_panel(nm, yy))
 
     # Round 3 poster mode: Settings > Appearance > Home screen artwork = Covers, then each artwork size, and Home in each (the setting
