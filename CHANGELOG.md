@@ -13,6 +13,21 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The hosted iOS parity workflow passes its pinned clock to the app as text, so iPhone captures confirm the fixed clock.
+- A release dry run no longer fails in the web deploy job's post-job cache save when the deploy steps are skipped.
+- The release collects the Xbox package under its real `.msix` name and picks the HarmonyOS HAP by name, failing the release if the HAP is missing, so `clients.json` no longer lists Xbox as pending.
+- The Samsung TV install page now says Tizen 6.5 and 2022-or-newer TVs, matching the app's real floor (English, Japanese and Thai).
+- Web: the Downloads notifications toggle moves into the page action column and the Downloads panel keeps clear of the action bar, so nothing overlaps.
+- HarmonyOS TV Home opens aligned with the Library grid like web: rails and cards start 53 vp inside the rail column and the first heading sits at the Library first-row top; a focused later rail still centres.
+- The Nura capture helper clicks the display's left margin before each screenshot, so a sheet or drawer that opened after a long idle wait is no longer missed.
+- Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
+- Roku: Left from the first Home rail enters the dock on Home again after Home moved to the Library-aligned top.
+- Fix the Xbox playback-quality test to distinguish the legacy bitrate property from the canonical video bitrate property.
+- Add Tizen readiness, account, build, and deterministic clock checks for future parity captures.
+- Add a debug-only sign-out hook that rotates the Tizen test device identity without clearing app data.
+- Apply the suite-declared timezone consistently to web and Tizen deterministic captures.
+- Tizen playback quality now reflects the negotiated source bitrate, subtitle menus show available tracks and the selected track, and Home and series detail pages fade at their scroll edges. Series episode captions remain readable in light mode and synopsis text has room for five lines. Subtitle track selection remains unavailable where the native player cannot select a track.
+- Tizen Calendar Week now keeps all seven day columns reachable with horizontal and per-day vertical focus scrolling, and uses the filters icon for Filters.
 - Send the debug-mirror identity heartbeat from a Web Worker so a device-test guard can judge the signed-in account while renders block the page.
 - Fire TV: Home opens aligned with the Library grid like web (rails start 98 px further left, first rail 240 px higher, 54 px left fade); a focused later rail is held where it was.
 - Harmony preview captures now stop on the first failure, verify the signed-in Device Test account before capture input or screenshots, and refuse to capture when canonical watch-progress seeding fails.
@@ -529,6 +544,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Releases now build the Samsung Tizen native tpk, name every package after its client variant (for example `playarr-lg-webos-<version>.ipk`, `playarr-android-<version>.apk`) and attach a `clients.json` that lists every variant with its minimum OS and download route. Older asset names stay beside the new ones.
 - On iPad, Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) settings. Covers draws Home rails as portrait posters at the Library cover card width, and the size changes the Library column count and the Home card width.
 - macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.
 - Xbox: the library Filters drawer has a View choice, Screen or Cover, and Cover shows portrait posters as the web.
@@ -754,6 +770,12 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The marketing site moved to its own repository and Worker (`PlayarrApp/playarr-site`). `playarr.app` now serves it on `/`
+  for signed-out visitors and on the Clients, docs and legal routes through a `SITE` service binding; the web app, the
+  duplicate React legal and Clients pages and `site/` are gone from this repository. The app sets a `playarr_signed_in`
+  routing-hint cookie so signed-in users keep landing in the app. Deploy `playarr-site` before `playarr-web`.
+- Nura library grids space their rows at the web phone's pitch (24.35 css px), so the third and later rows line up with the web's.
+- Let the Apple iOS wall take the pinned capture instant as an input, and print compiler errors when the Apple parity iOS build fails; the iPhone calendar parity captures now use the clock the web references show (Agenda dark 90.75 to 93.90).
 - Nura player controls follow the web phone player: a flat seek bar, a centred time, and two rows of icon buttons (previous, play or pause, next, mute, audio, subtitles, queue; then quality, health, play on and full screen), with a bordered close button. Previous, next, mute and full screen work; the rest show disabled until the player supports them.
 - Nura page headers draw the web phone's 42 px round and square buttons, the letter rail sits 1 px lower, and a film's title block closes up to the web's spacing.
 - Android TV Filters now use closed language multi-select fields with vertical, D-pad navigable options and web-sized View glyphs; drawer focus styling restores the opener card, and Left from Library Filters returns focus to the selected content item.
@@ -1439,6 +1461,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- Removed the merge train workflow and scripts, plus the cron schedules in CI, Apple wall and untracked-branches. PRs target `integration/parity`, which the coordinator batches into `main` with a merge commit once `ci-required` is green.
 - Removed the tvOS live simulator workflow and its keepalive script: the live Apple TV simulator runs only on the MacBook over ssh (owner decision), and this public repository never runs a self-hosted or long-lived Apple runner job.
 - Web calendar: the unused `CALENDAR_KINDS` and `filterByKinds` helpers are gone; the calendar test now checks rendered markup and the effective scroll rules instead of stale CSS text.
 - Web calendar: the unused `CALENDAR_KINDS` and `filterByKinds` helpers are gone; the calendar test now checks rendered markup and the effective scroll rules instead of stale CSS text.
@@ -3210,6 +3233,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Add opt-in stable native capture readiness checks for Android TV Movies, Series and Music; other routes retain their existing screenshot path and fail closed when stable capture readiness is requested.
 - Harmony capture runs now validate the signed-in device-test profile and pinned detail and progress fixtures before starting the Previewer.
 - Allow an explicit Harmony phone core diagnostic capture to skip player-controls and record the omission, while the default core capture still requires all 15 screens.
 - Add selector regression coverage for partial viewport intersections, dead or invisible cards, offscreen positions and invalid geometry in the HarmonyOS preview focus route.

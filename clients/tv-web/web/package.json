@@ -33,6 +33,7 @@
     "smoke:tablet-layout": "node scripts/tablet-layout.mjs",
     "smoke:tv-viewport": "node scripts/tv-viewport.mjs",
     "smoke:edge-fade": "node scripts/edge-fade-e2e.mjs",
+    "smoke:search-input-entry": "node scripts/search-input-entry-e2e.mjs",
     "smoke:search-contain": "node scripts/search-contain-e2e.mjs",
     "smoke:alphabet-rail": "node scripts/alphabet-rail-e2e.mjs",
     "smoke:relay-port": "node scripts/relay-port-e2e.mjs",

@@ -13,7 +13,7 @@
 #      so the internal names it describes are not published here).
 #
 # Every tracked file is scanned, including TASKS.md, CHANGELOG.md and the tasks.d/ and changelog.d/
-# fragments, so a fragment cannot reintroduce environment data before the train folds it.
+# fragments, so a fragment cannot reintroduce environment data before the fold.
 #
 # Output names files and line numbers only, never the matched text, so a
 # finding does not leak through public CI logs.

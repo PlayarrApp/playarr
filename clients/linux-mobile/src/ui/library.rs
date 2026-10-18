@@ -38,6 +38,8 @@ pub struct CardGrid {
     pub widget: gtk4::Box,
     /// The row being filled and how many cards it holds.
     row: RefCell<Option<(gtk4::Box, usize)>>,
+    /// Rows started so far, for the web's fractional row pitch.
+    rows: Cell<usize>,
 }
 
 pub const COL_GAP: i32 = 12;
@@ -53,13 +55,21 @@ impl CardGrid {
                 .margin_top(1)
                 .build(),
             row: RefCell::default(),
+            rows: Cell::new(0),
         }
     }
 
     pub fn append(&self, card: &impl IsA<gtk4::Widget>) {
         let mut cur = self.row.borrow_mut();
         if cur.as_ref().map_or(true, |(_, n)| *n >= super::cards::cols()) {
-            let row = gtk4::Box::builder().spacing(COL_GAP).build();
+            // The web's rows are 0.35 css px further apart than the 24 px gap gives (measured on the music, series and
+            // movies grids at 2x: rows 3 and 4 sit 2 device px lower), so every third row takes one extra px.
+            let n = self.rows.replace(self.rows.get() + 1);
+            let extra = |n: usize| (n as f64 * 0.35).round() as i32;
+            let row = gtk4::Box::builder()
+                .spacing(COL_GAP)
+                .margin_top(if n == 0 { 0 } else { extra(n) - extra(n - 1) })
+                .build();
             self.widget.append(&row);
             *cur = Some((row, 0));
         }
@@ -79,6 +89,7 @@ impl CardGrid {
         while let Some(c) = self.widget.first_child() {
             self.widget.remove(&c);
         }
+        self.rows.set(0);
         self.row.replace(None);
     }
 

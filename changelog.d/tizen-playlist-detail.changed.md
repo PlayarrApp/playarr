@@ -1,0 +1,1 @@
+- Tizen playlist detail now presents horizontal track rails, the focused title's synopsis and kind, and playlist create, edit, reparent, and delete controls.

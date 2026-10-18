@@ -1,11 +1,21 @@
 name: iOS tests
 
-# Compiles the iOS app and runs its unit tests on a hosted macOS simulator whenever a pull
-# request touches clients/ios, and builds and tests the macOS app (clients/apple-tv, PlayarrMac
-# target: the tvOS sources plus PlayarrKit) whenever a pull request touches what it compiles.
-# Each job runs only for its own paths. The tvOS leg and manual runs stay in simulator-tests.yml.
+# Compiles the iOS app and runs its XCTest unit targets (the UI test target is excluded: UI tests are
+# local, see docs/testing/local-device-tests.md) whenever a pull
+# request or a push to main touches clients/ios, and builds and tests the macOS app (clients/apple-tv, PlayarrMac target:
+# the tvOS sources plus PlayarrKit) whenever one touches what it compiles.
+# Each job runs only for its own paths.
 on:
   pull_request:
+    paths:
+      - clients/ios/**
+      - clients/apple-tv/**
+      - docs/parity/fonts/**
+      - .github/workflows/ios-tests.yml
+      - .github/scripts/apple-test-simulator/**
+  push:
+    branches:
+      - main
     paths:
       - clients/ios/**
       - clients/apple-tv/**
@@ -18,7 +28,7 @@ permissions:
 
 concurrency:
   group: ios-tests-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
@@ -72,28 +82,20 @@ jobs:
           INPUT_DESTINATION: platform=iOS Simulator,name=iPhone 17
         run: node .github/scripts/apple-test-simulator/main.js
 
-      - name: Run the Xcode tests
+      - name: Run the Xcode unit tests
         shell: bash
         working-directory: clients/ios
         timeout-minutes: 45
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
-          TEST_RUNNER_PLAYARR_UI_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_RUNNER_PLAYARR_UI_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_RUNNER_PLAYARR_UI_TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
         run: |
           set -euo pipefail
           [[ "$SIMULATOR_UDID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
           xcodebuild test -scheme PlayarrApp -configuration Debug \
             -resultBundlePath "$RUNNER_TEMP/ios.xcresult" \
             -workspace "$GITHUB_WORKSPACE/clients/ios/Playarr.xcworkspace" \
+            -skip-testing:PlayarrAppUITests \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" 2>&1 | tee "$RUNNER_TEMP/ios-log.txt"
-          test_case="Test Case '-[PlayarrAppUITests.DetailNavigationUITests testHomeAndSearchSeriesDetailsSelectSeriesAndRestoreTheirOrigin]' passed"
-          if ! grep -Fq "$test_case" "$RUNNER_TEMP/ios-log.txt"; then
-            echo "Expected iPhone navigation UI test did not execute and pass: $test_case" >&2
-            exit 1
-          fi
-          grep -F "$test_case" "$RUNNER_TEMP/ios-log.txt"
 
       - name: Delete the test simulator
         if: ${{ always() && steps.simulator.outputs.udid != '' }}
@@ -109,6 +111,15 @@ jobs:
         with:
           name: ios-log-attempt-${{ github.run_attempt }}
           path: ${{ runner.temp }}/ios-log.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload the Xcode result bundle
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-xcresult-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ios.xcresult
           if-no-files-found: ignore
           retention-days: 7
 

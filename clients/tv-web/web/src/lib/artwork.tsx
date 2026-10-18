@@ -493,7 +493,7 @@ export function PersonHeadshot({
     <>
       {fallback}
       {hasHeadshot && !visible ? (
-        <i ref={anchorRef} aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
+        <i ref={anchorRef} aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, pointerEvents: "none" }} />
       ) : null}
     </>
   );
@@ -552,7 +552,7 @@ export function CachedArtworkImage({
           <i
             ref={lazyAnchorRef}
             aria-hidden="true"
-            style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, pointerEvents: "none" }}
           />
         ) : null}
       </>
@@ -611,7 +611,7 @@ export function CachedAlbumArtworkImage({
           <i
             ref={lazyAnchorRef}
             aria-hidden="true"
-            style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, pointerEvents: "none" }}
           />
         ) : null}
       </>

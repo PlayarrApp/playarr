@@ -4,7 +4,7 @@
 # Prints key=value lines (for $GITHUB_OUTPUT):
 #   tv_web_filters=<space separated pnpm --filter selectors>   (empty: run everything)
 #
-# - Pushes, the nightly schedule and dispatches on main run everything.
+# - Dispatches on main run everything. A push to main is scoped against the previous tip (BEFORE_SHA).
 # - A pull request whose changes under clients/tv-web are all inside workspace packages
 #   (packages/*, apps/*, web, admin) selects each changed package plus everything that depends
 #   on it, as `...{./<dir>}` directory selectors (no git history is needed to apply them).
@@ -18,11 +18,19 @@ cd "$(dirname "$0")/../.."
 full() { echo "tv_web_filters="; exit 0; }
 
 if [ -z "${CHANGED_FILES:-}" ]; then
-  [ "${EVENT_NAME:-}" = pull_request ] || full
-  base="${BASE_REF:-main}"
-  git fetch -q --no-tags origin "$base" 2>/dev/null || full
-  head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)
-  CHANGED_FILES=$(git diff --name-only "origin/$base...$head") || full
+  case "${EVENT_NAME:-}" in pull_request | push) ;; *) full ;; esac
+  if [ "${EVENT_NAME:-}" = push ]; then
+    # Push to main: diff against the previous tip (BEFORE_SHA); unknown history means a full run.
+    before="${BEFORE_SHA:-}"
+    case "$before" in "" | 0000000000000000000000000000000000000000) full ;; esac
+    git cat-file -e "$before^{commit}" 2>/dev/null || full
+    CHANGED_FILES=$(git diff --name-only "$before" HEAD) || full
+  else
+    base="${BASE_REF:-main}"
+    git fetch -q --no-tags origin "$base" 2>/dev/null || full
+    head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD)
+    CHANGED_FILES=$(git diff --name-only "origin/$base...$head") || full
+  fi
 fi
 
 T=clients/tv-web

@@ -30,18 +30,7 @@ namespace Playarr.Xbox.Views
             _scroll = new ScrollViewer { Content = _rows, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Margin = new Thickness(228, 190, 58, 0), VerticalAlignment = VerticalAlignment.Top, Height = 850 };
             CardFocus.ReserveFocusRoom(_scroll, top: 0, bottom: 0);
             RootGrid.Children.Add(_scroll);
-            var filters = new Button
-            {
-                Width = 58, Height = 70, Margin = new Thickness(0, 152, 14, 0), Padding = new Thickness(0), CornerRadius = new CornerRadius(12),
-                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
-                Background = Ui.Res("PlayarrSurface"), BorderBrush = Ui.Res("PlayarrLine"), BorderThickness = new Thickness(1),
-                FocusVisualPrimaryBrush = Theme.FocusRing, FocusVisualPrimaryThickness = new Thickness(3), FocusVisualSecondaryThickness = new Thickness(0),
-            };
-            var tile = new StackPanel { Spacing = 8 };
-            tile.Children.Add(new FontIcon { Glyph = "\uE71C", FontFamily = new Windows.UI.Xaml.Media.FontFamily("Segoe MDL2 Assets"), FontSize = 15 });
-            tile.Children.Add(new TextBlock { Text = "Filters", FontSize = 9, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center });
-            filters.Content = tile;
-            filters.Click += (s, e) => OpenFilters();
+            var filters = Ui.ActionTile(Ui.FiltersIcon(), "Filters", 152, OpenFilters);
             RootGrid.Children.Add(filters);
             _empty = new Grid { Visibility = Visibility.Collapsed };
             _empty.Children.Add(Ui.EmptyState("", "No downloads yet", "Titles you download to watch without a connection appear here."));

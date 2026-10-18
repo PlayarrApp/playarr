@@ -9,6 +9,7 @@ import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
 import { clockDate, clockTime } from '../../core/ClockFormat';
+import { currentLanguage } from '../../core/Language';
 
 // ArkUI takes weights in steps of 100; web uses 760 (time) and 640 (date).
 const TIME_FONT_SIZE: number = 17.28;
@@ -52,14 +53,16 @@ export struct Clock {
         .fontWeight(TIME_FONT_WEIGHT)
         .letterSpacing(tv(TIME_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(clockDate(this.now)).fontFamily(nunito(DATE_FONT_WEIGHT))
+      Text(clockDate(this.now, currentLanguage())).fontFamily(nunito(DATE_FONT_WEIGHT))
         .fontSize(tv(DATE_FONT_SIZE))
         .fontWeight(DATE_FONT_WEIGHT)
         .letterSpacing(tv(DATE_LETTER_SPACING))
         .textCase(TextCase.UpperCase)
         .fontColor(toResourceColor(activeColors().ink))
     }
-    .alignItems(VerticalAlign.Bottom)
+    // Web centres the date on the time (measured: time 1 vp and date 4 vp lower than web with bottom alignment).
+    .alignItems(VerticalAlign.Center)
+    .translate({ y: -tv(1) })
     .focusable(false)
   }
 }

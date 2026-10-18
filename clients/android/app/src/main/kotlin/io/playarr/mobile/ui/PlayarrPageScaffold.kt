@@ -166,10 +166,12 @@ internal fun PlayarrFiltersSheet(
     navigationAbovePane: Boolean = true,
     footer: (@Composable RowScope.() -> Unit)? = null,
     initialFocus: FocusRequester? = null,
+    captureSurface: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     PlayarrSheetFrame(
         initialFocus = initialFocus,
+        captureSurface = captureSurface,
         paneTitle = title,
         hostPhonePane = true,
         navigationAbovePane = navigationAbovePane,
@@ -218,6 +220,7 @@ internal fun PlayarrPanel(
 @Composable
 private fun PlayarrSheetFrame(
     initialFocus: FocusRequester? = null,
+    captureSurface: String? = null,
     paneTitle: String? = null,
     hostPhonePane: Boolean = false,
     navigationAbovePane: Boolean = true,
@@ -232,7 +235,7 @@ private fun PlayarrSheetFrame(
     val focus = remember { FocusRequester() }
     val dismiss = if (dismissible) onClose else ({})
     if (io.playarr.shared.designsystem.page.LocalPlayarrFormFactor.current == io.playarr.shared.designsystem.page.PlayarrFormFactor.Tv) {
-        PlayarrTvDrawer(titleContent, kicker, closeLabel, onClose, dismissible, footer, focus, content, initialFocus)
+        PlayarrTvDrawer(titleContent, kicker, closeLabel, onClose, dismissible, footer, focus, content, initialFocus, captureSurface)
         return
     }
     val phoneDrawerHost = LocalPhoneDrawerHost.current
@@ -387,7 +390,9 @@ private fun PlayarrTvDrawer(
     focus: FocusRequester,
     content: @Composable ColumnScope.() -> Unit,
     initialFocus: FocusRequester? = null,
+    captureSurface: String? = null,
 ) {
+    val captureToken = parityCaptureGenerationToken()
     val dismiss = if (dismissible) onClose else ({})
     Dialog(
         onDismissRequest = dismiss,
@@ -412,6 +417,7 @@ private fun PlayarrTvDrawer(
             val shadow = Color(0x3D281A18)
             Box(
                 Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(drawerWidth)
+                    .parityCaptureSurface(captureToken, captureSurface)
                     .drawBehind {
                         drawRect(
                             androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, shadow), startX = -122.dp.toPx(), endX = 0f),

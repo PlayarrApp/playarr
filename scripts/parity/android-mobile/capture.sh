@@ -7,6 +7,8 @@
 set -euo pipefail
 out=$1; theme=$2; shift 2
 here=$(cd "$(dirname "$0")" && pwd)
+# The web references freeze the clock at the fixture instant; the app clock must match or Calendar and dates differ.
+clock=${PARITY_CLOCK:-$(sed -n 's/.*FIXTURE_CLOCK = "\([^"]*\)".*/\1/p' "$here/../../fixtures/catalog.mjs")}
 case $theme in light) pref=Light ;; dark) pref=Dark ;; *) echo "theme must be light or dark" >&2; exit 2 ;; esac
 mkdir -p "$out"
 for screen in "$@"; do
@@ -16,7 +18,7 @@ for screen in "$@"; do
   adb shell "run-as io.playarr.mobile sh -c 'mkdir -p shared_prefs; echo \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\" ?><map><string name=\\\"theme\\\">$pref</string></map>\" > shared_prefs/playarr_display.xml'"
   # parity_no_insets: lay out as the web reference does (no system-bar insets; the diff masks the bars).
   # parity_pause_at_ms: the player pauses at 2.0 s once playing. Both are honoured by debuggable builds only.
-  adb shell am start --ez parity_no_insets true --el parity_pause_at_ms 2000 -n io.playarr.mobile/.MainActivity >/dev/null
+  adb shell am start --ez parity_no_insets true --el parity_pause_at_ms 2000 --es parity_clock "$clock" -n io.playarr.mobile/.MainActivity >/dev/null
   sleep 9
   python3 "$here/capture.py" "$out" "$screen"
 done

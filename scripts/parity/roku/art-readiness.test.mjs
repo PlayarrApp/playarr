@@ -110,3 +110,15 @@ test("reset removes generations from a previous channel launch", () => {
   resetArtReadinessState(state);
   assert.equal(state.generations.size, 0);
 });
+
+test("calendar slots parse and gate readiness like the other scopes", () => {
+  const state = createArtReadinessState();
+  for (const [text, seq] of [
+    ["begin|1|calendar|1|1", 1],
+    ["slot|1|calendar|calendar-r0-c0|1|802.4|293.8|40|60|0", 2],
+    ["status|1|calendar|calendar-r0-c0|ready|0", 3],
+    ["finish|1|calendar", 4],
+  ]) reduceArtEvent(state, event(text, seq));
+  assert.equal(artReadiness(state.generations.get("calendar:1"), { scope: "calendar" }).ready, true);
+  assert.equal(parseArtEvent("slot|1|calendar|home-hero|1|0|0|1|1|0", 1), null);
+});

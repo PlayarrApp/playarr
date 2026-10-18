@@ -107,8 +107,8 @@ tizen install -n <generated-name>.wgt -t <target-name> -- apps/tv-tizen/dist
 
 ## Compatibility and release boundaries
 
-- The developer-package baseline is Tizen 7.0+ (2023 Samsung TVs). The bundle
-  targets ES2018 and the build's CSS baseline is Chromium 94. Older
+- The developer-package baseline is Tizen 6.5+ (2022 Samsung TVs). The bundle
+  targets ES2018 and the build's CSS baseline is Chromium 85. Older
   models are not claimed until tested and certified on representative
   hardware.
 - Local unit, type, and package-preparation tests cannot exercise Samsung's

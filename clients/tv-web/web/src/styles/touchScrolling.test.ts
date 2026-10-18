@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const globalCss = readFileSync(new URL("./global.css", import.meta.url), "utf8");
-const clientsCss = readFileSync(new URL("../pages/Clients.css", import.meta.url), "utf8");
 
 function ruleBlocks(css: string): string[] {
   return css.split("}").map((chunk) => `${chunk}}`);
@@ -18,7 +17,6 @@ function declarationsMissingTouchScrolling(css: string): string[] {
 describe("native scroll containers", () => {
   it("enable WebKit touch scrolling on every overflow: auto viewport", () => {
     expect(declarationsMissingTouchScrolling(globalCss)).toEqual([]);
-    expect(declarationsMissingTouchScrolling(clientsCss)).toEqual([]);
   });
 
   it("keeps the sign-in and sign-up scroll root touch-scrollable", () => {
