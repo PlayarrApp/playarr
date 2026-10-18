@@ -1829,11 +1829,12 @@ struct TVLibraryKindView: View {
             previewMeta(work)
                 .padding(.top, 26)
             if let overview = work.overview, !overview.isEmpty {
+                // As the search preview: 13.824/600 in the soft ink (web `.tv-preview` overview), pitch kept at 21.7.
                 Text(overview)
-                    .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
-                    .foregroundStyle(DesignTokens.Stage.inkMuted)
+                    .font(TVTheme.font(size: 13.824, css: 600))
+                    .foregroundStyle(DesignTokens.Color.textPrimary.opacity(0.86))
                     .lineLimit(5)
-                    .lineSpacing(4)
+                    .lineSpacing(3.5)
                     .padding(.top, 25)
                     .frame(maxWidth: 340, alignment: .leading)
             }
@@ -1844,15 +1845,12 @@ struct TVLibraryKindView: View {
 
     private func previewMeta(_ work: Work) -> some View {
         let genreLine = work.genres.prefix(2).joined(separator: " · ")
-        return HStack(spacing: 0) {
+        return HStack(spacing: 12.8) {
             Text(yearString(for: work))
-                .foregroundStyle(DesignTokens.Color.textSecondary)
-            if !genreLine.isEmpty {
-                Text("  \(genreLine)")
-                    .foregroundStyle(DesignTokens.Color.textDisabled)
-            }
+            if !genreLine.isEmpty { Text(genreLine) }
         }
-        .font(TVTheme.font(size: 13, weight: .medium))
+        .foregroundStyle(DesignTokens.Color.textPrimary.opacity(0.86))
+        .font(TVTheme.font(size: 13.056, css: 600))
     }
 
     @ViewBuilder
