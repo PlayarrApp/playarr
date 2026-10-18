@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The static parity server (`PLAYARR_STATIC=1`) now answers watch-progress, resume-choice and Home rail-preference writes with success and stores nothing, so a capture run can no longer change On deck, the hero or Continue watching.
 - Android phone: series detail description ends on a whole word like the web, the watchlist and playlist pills use the web's glyph gap (so Start is the web width), and Calendar Week light uses the web's short start scrim (17.530).
 - Android phone film and series detail: the key art is hidden under the header and fades in below it, and the series title and episode copy sit 1 to 2 px higher, as on the web phone.
 - Android phone library: the unwatched dot keeps its crimson halo and shadow as on the web, and the A to Z index strip sits 1 px lower (17.530).
