@@ -484,6 +484,7 @@ export struct PosterCard {
           .fontSize(this.titleFontSize)
           .fontWeight(this.webTitle ? FontWeight.Medium : this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
           .letterSpacing(this.webTitle ? this.titleFontSize * -0.015 : 0)
+          .lineHeight(this.webTitle ? 10.9 : undefined) // keep the 8 vp line box: a larger font would grow every grid row
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
