@@ -59,8 +59,9 @@ internal sealed class ProfilesScreen : IPage
                 label: cur ? $"{p.DisplayName}, current profile" : p.DisplayName, () => { if (!cur) Dbg.Log("switch profile not implemented"); });
             if (cur)
             {
-                AddPill(x + Circle / 2 - 22 - 52.4f / 1 + 12.4f, 704, 44, "", "settings", $"{p.DisplayName} settings", () => _env.Navigate("/settings"), round: true);
-                AddPill(x + Circle / 2 - 22 - 52.4f / 1 + 12.4f + 52.8f, 704, 101.2f, "Sign out", "signout", $"{p.DisplayName} sign out", () => _env.SignOut());
+                _focus.Overrides[(currentIndex, RemoteKey.Down)] = _focus.Items.Count; // Down from the avatar reaches the settings pill first, as it did when the pills were centred under it
+                AddPill(x + Circle / 2 - 22 - 52.4f / 1 - 1.6f, 704, 44, "", "settings", $"{p.DisplayName} settings", () => _env.Navigate("/settings"), round: true);
+                AddPill(x + Circle / 2 - 22 - 52.4f / 1 - 1.6f + 52.8f, 704, 101.2f, "Sign out", "signout", $"{p.DisplayName} sign out", () => _env.SignOut());
             }
         }
         AddAdd(left + profiles.Count * Pitch);
@@ -74,9 +75,9 @@ internal sealed class ProfilesScreen : IPage
     {
         var box = Ui.Box(x, 49.7f, w, 48, _t.Bg, 0);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.23f);
-        box.Add(Ui.Icon(label == "theme" ? "settings" : "sites", 19.4f, 16, 16, _t.InkMuted));
+        box.Add(Ui.Icon(label == "theme" ? "sun" : "sites", 19.4f, 16, 16, _t.InkMuted));
         box.Add(Ui.Text(text, 45, 15.3f, 11.52f, 700, _t.Ink, w - 80, 17.3f));
-        box.Add(Ui.Text("\u2304", w - 27, 14.5f, 12, 400, _t.InkMuted, 12, 17));
+        box.Add(Ui.Icon("chevron-down", w - 32, 18, 12, _t.InkMuted));
         var ring = Ring.Make(w, 48, 0, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
         _body.Add(box);
         _focus.Items.Add(new Focusable { Rect = () => new Box(x, 49.7f, w, 48), Label = label, Select = select, Style = f => ring.Show(f) });
@@ -88,8 +89,8 @@ internal sealed class ProfilesScreen : IPage
         var art = new ImageView(Ui.ResPath($"avatars/{preset}.png")) { Size = new Size(Circle, Circle), CornerRadius = Circle / 2 };
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
         var ring = Ring.Make(Circle, Circle, Circle / 2, new Rgba(1, 1, 1)); ring.Show(false);
-        var nameL = Ui.Text(name, 0, Circle + 11.4f, 17.28f, 700, _t.Ink, Circle, 25.92f, HorizontalAlignment.Center);
-        var subL = Ui.Text(sub, 0, Circle + 44.8f, 9.408f, 800, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f);
+        var nameL = Ui.Text(name, 0, Circle + 8.4f, 17.28f, 700, _t.Ink, Circle, 25.92f, HorizontalAlignment.Center);
+        var subL = Ui.Text(sub, 0, Circle + 42.3f, 9.408f, 600, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f);
         var disc = new View { Size = new Size(Circle, Circle) };
         disc.Add(art); disc.Add(ring);
         holder.Add(disc); holder.Add(nameL); holder.Add(subL);
@@ -104,14 +105,20 @@ internal sealed class ProfilesScreen : IPage
     private void AddAdd(float x)
     {
         var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, Circle + 120) };
-        var disc = Ui.Box(0, 0, Circle, Circle, _t.SurfaceStrong, Circle / 2);
-        disc.BorderlineWidth = 1; disc.BorderlineColor = Ui.LineA(_t, 0.15f);
+        // web .profile-card-add: the brand wash, sampled from the web capture (top to bottom); the soft top-left highlight is not drawn
+        var wash = _t.Name == "dark"
+            ? Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(84, 36, 52, 1f)), (1f, Rgba.Of(145, 40, 76, 1f)))
+            : Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(234, 188, 198, 1f)), (1f, Rgba.Of(188, 82, 113, 1f)));
+        wash.CornerRadius = Circle / 2;
+        wash.BorderlineWidth = 1; wash.BorderlineColor = Ui.LineA(_t, 0.15f);
+        var disc = new View { Size = new Size(Circle, Circle) };
+        disc.Add(wash);
         disc.Add(Ui.Text("+", 0, 64.4f, 76.8f, 400, _t.InkSoft, Circle, 115.2f, HorizontalAlignment.Center));
         var ring = Ring.Make(Circle, Circle, Circle / 2, new Rgba(1, 1, 1)); ring.Show(false);
         disc.Add(ring);
         holder.Add(disc);
-        holder.Add(Ui.Text("Sign in", 0, Circle + 11.4f, 17.28f, 700, _t.InkSoft, Circle, 25.92f, HorizontalAlignment.Center));
-        holder.Add(Ui.Text("Add another profile", 0, Circle + 44.8f, 9.408f, 800, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f));
+        holder.Add(Ui.Text("Sign in", 0, Circle + 8.4f, 17.28f, 700, _t.InkSoft, Circle, 25.92f, HorizontalAlignment.Center));
+        holder.Add(Ui.Text("Add another profile", 0, Circle + 42.3f, 9.408f, 600, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f));
         _body.Add(holder);
         _focus.Items.Add(new Focusable
         {
@@ -125,8 +132,13 @@ internal sealed class ProfilesScreen : IPage
     {
         var box = Ui.Box(x, y, w, 44, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 22);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f);
-        if (text.Length > 0) box.Add(Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center));
-        else box.Add(Ui.Text("⚙", 0, 11, 18, 400, _t.InkSoft, w, 22, HorizontalAlignment.Center));
+        if (icon == "signout")
+        {
+            box.Add(Ui.Icon("log-out", 18, 15, 14, _t.InkSoft));
+            box.Add(Ui.Text(text, 42, 13.9f, 10.752f, 700, _t.InkSoft, w - 42, 16.128f));
+        }
+        else if (text.Length > 0) box.Add(Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center));
+        else box.Add(Ui.Icon("settings", 14, 14, 16, _t.Brand));
         var ring = Ring.Make(w, 44, 22, new Rgba(1, 1, 1)); ring.Show(false);
         box.Add(ring);
         _body.Add(box);

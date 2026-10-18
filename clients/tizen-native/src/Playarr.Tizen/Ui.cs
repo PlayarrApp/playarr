@@ -17,87 +17,9 @@ internal static class Ui
         return _measure.NaturalSize.Width;
     }
 
-    /// <summary>Greedy word wrap like the browser's, using measured widths; the last line gets an ellipsis when text is cut at maxLines.</summary>
-    public static List<string> WrapLines(string text, float size, int weight, float spacing, float width, int maxLines = int.MaxValue, string family = Font, bool balance = false)
-    {
-        var greedy = Wrap(text, size, weight, spacing, width, maxLines, family);
-        return balance && !text.Contains('\u200B') && greedy.Count > 1 && greedy.Count <= maxLines ? Balanced(text, size, weight, spacing, width, greedy.Count, family) ?? greedy : greedy;
-    }
-
-    /// <summary>
-    /// Chrome's text-wrap: balance as the Android TV worker fitted it (97 % of 400 titles): keep the greedy line count at the box width, then take the break set
-    /// with the smallest sum of squared line widths, plus 5000 px² when the last line is a single word. shortcut: breaks only after spaces, not hyphens.
-    /// </summary>
-    private static List<string>? Balanced(string text, float size, int weight, float spacing, float width, int lineCount, string family)
-    {
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var memo = new Dictionary<(int, int), float>();
-        float W(int a, int b) { if (!memo.TryGetValue((a, b), out var w)) memo[(a, b)] = w = TextWidth(string.Join(' ', words[a..b]), size, weight, spacing, family); return w; }
-        var best = float.MaxValue; int[]? bestCuts = null; var cuts = new int[lineCount + 1];
-        void Go(int line, int start, float cost)
-        {
-            if (line == lineCount - 1)
-            {
-                if (start >= words.Length) return;
-                var w = W(start, words.Length); if (w > width) return;
-                var total = cost + w * w + (words.Length - start == 1 ? 5000 : 0);
-                if (total < best) { best = total; bestCuts = (int[])cuts.Clone(); bestCuts[lineCount] = words.Length; bestCuts[line] = start; }
-                return;
-            }
-            for (var end = start + 1; end < words.Length - (lineCount - 1 - line) + 1; end++)
-            {
-                var w = W(start, end); if (w > width) break;
-                cuts[line] = start; Go(line + 1, end, cost + w * w);
-            }
-        }
-        Go(0, 0, 0);
-        if (bestCuts is null) return null;
-        var lines = new List<string>();
-        for (var i = 0; i < lineCount; i++) lines.Add(string.Join(' ', words[bestCuts[i]..bestCuts[i + 1]]));
-        return lines;
-    }
-
-    private static List<string> Wrap(string text, float size, int weight, float spacing, float width, int maxLines, string family)
-    {
-        var lines = new List<string>(); var cur = "";
-        if (!text.Contains('\u200B'))
-        {
-            foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            {
-                var next = cur.Length == 0 ? word : cur + " " + word;
-                if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width) { lines.Add(cur); cur = word; } else cur = next;
-            }
-        }
-        else
-        {
-            foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            {
-                var parts = word.Split('\u200B');
-                for (var i = 0; i < parts.Length; i++)
-                {
-                    var part = parts[i];
-                    if (part.Length == 0) continue;
-                    var separator = i == 0 && cur.Length > 0 ? " " : "";
-                    var next = cur + separator + part;
-                    if (cur.Length > 0 && TextWidth(next, size, weight, spacing, family) > width)
-                    {
-                        lines.Add(cur);
-                        cur = part;
-                    }
-                    else cur = next;
-                }
-            }
-        }
-        if (cur.Length > 0) lines.Add(cur);
-        if (lines.Count > maxLines)
-        {
-            lines.RemoveRange(maxLines, lines.Count - maxLines);
-            var last = lines[^1];
-            while (last.Length > 0 && TextWidth(last + "\u2026", size, weight, spacing, family) > width) last = last[..^1].TrimEnd();
-            lines[^1] = last + "\u2026";
-        }
-        return lines;
-    }
+    /// <summary>Greedy word wrap like the browser's, using measured widths; see <see cref="TextWrap"/>.</summary>
+    public static List<string> WrapLines(string text, float size, int weight, float spacing, float width, int maxLines = int.MaxValue, string family = Font, bool balance = false) =>
+        TextWrap.WrapLines(text, s => TextWidth(s, size, weight, spacing, family), width, maxLines, balance);
 
     /// <summary>A wrapped paragraph as one single-line label per line (CSS line height <paramref name="lh"/>); returns the number of lines.</summary>
     public static int Paragraph(View parent, string text, float x, float y, float size, int weight, Rgba color, float width, float lh, float spacing = 0, int maxLines = int.MaxValue, bool balance = false)

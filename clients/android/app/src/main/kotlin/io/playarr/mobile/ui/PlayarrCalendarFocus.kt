@@ -169,7 +169,7 @@ private val FadeInk = Color(0xFF1F0E14)
  * the sides). Apply it to the viewport, outside the scrolling modifier. The state is also published in semantics.
  */
 @Composable
-internal fun Modifier.calendarEdgeFades(edges: CalendarEdges): Modifier {
+internal fun Modifier.calendarEdgeFades(edges: CalendarEdges, startBand: androidx.compose.ui.unit.Dp? = null): Modifier {
     val config = LocalConfiguration.current
     val vertical = (config.screenHeightDp * 0.04f).coerceIn(28f, 54f).dp
     val horizontal = (config.screenWidthDp * 0.036f).coerceIn(32f, 58f).dp
@@ -184,7 +184,10 @@ internal fun Modifier.calendarEdgeFades(edges: CalendarEdges): Modifier {
                 val size = scrimBand.toPx()
                 if (edges.top) drawScrim(Offset(0f, 0f), Offset(0f, size), size.coerceAtMost(this.size.height), horizontalBand = true)
                 if (edges.bottom) drawScrim(Offset(0f, this.size.height), Offset(0f, this.size.height - size), size.coerceAtMost(this.size.height), horizontalBand = true)
-                if (edges.start) drawScrim(Offset(0f, 0f), Offset(size, 0f), size.coerceAtMost(this.size.width), horizontalBand = false)
+                if (edges.start) {
+                    val band = startBand?.toPx() ?: size
+                    drawScrim(Offset(0f, 0f), Offset(band, 0f), band.coerceAtMost(this.size.width), horizontalBand = false)
+                }
                 if (edges.end) drawScrim(Offset(this.size.width, 0f), Offset(this.size.width - size, 0f), size.coerceAtMost(this.size.width), horizontalBand = false)
             } else {
                 val v = vertical.toPx()

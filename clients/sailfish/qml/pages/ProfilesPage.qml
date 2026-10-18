@@ -146,17 +146,20 @@ PlayarrPage {
                     GradientStop { position: 0; color: Tokens.dark ? "#6a2c42" : "#eec4cd" }
                     GradientStop { position: 1; color: Tokens.dark ? "#962a4e" : "#b84b6b" }
                 }
-                Canvas {   // web: a 1 px dashed ring (Qt 5 Canvas has no setLineDash, so the dashes are arcs)
+                Canvas {   // web: .profile-add .profile-avatar draws its 1 px border dashed
                     anchors.fill: parent
                     renderTarget: Canvas.Image
-                    property color ring: Tokens.dark ? "#7c4154" : "#bb7f8c"
-                    onRingChanged: requestPaint()
+                    property color tint: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.66)
+                    onTintChanged: requestPaint()
                     onWidthChanged: requestPaint()
                     onPaint: {
-                        var c = getContext("2d"), r = (width - Tokens.u) / 2, n = Math.round(2 * Math.PI * r / (5.6 * Tokens.u))
-                        c.reset(); c.strokeStyle = ring; c.lineWidth = Tokens.u
-                        for (var i = 0; i < n; ++i) {
-                            c.beginPath(); c.arc(width / 2, height / 2, r, i * 2 * Math.PI / n, (i + 0.55) * 2 * Math.PI / n); c.stroke()
+                        var ctx = getContext("2d"), w = Math.max(1, Tokens.u), r = (width - w) / 2, c = width / 2
+                        var dash = 3 * Tokens.u / r, period = 5 * Tokens.u / r
+                        ctx.clearRect(0, 0, width, height)
+                        ctx.strokeStyle = tint; ctx.lineWidth = w
+                        // dashes drawn as separate arcs: Qt 5.6 Context2D has no portable setLineDash
+                        for (var a = -Math.PI / 2; a < 1.5 * Math.PI - 0.001; a += period) {
+                            ctx.beginPath(); ctx.arc(c, c, r, a, Math.min(a + dash, 1.5 * Math.PI), false); ctx.stroke()
                         }
                     }
                 }

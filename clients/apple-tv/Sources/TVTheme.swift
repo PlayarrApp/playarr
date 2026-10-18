@@ -1026,10 +1026,12 @@ struct TVFloatingNav: View {
             selection = tab
             externalFocus.wrappedValue = .nav(tab)
             // Web: Select on a tab opens the page and puts focus on its first item (the page loads a moment later).
-            // Debug parity runs only (-PlayarrSelectEntersPage): the screens' key sequences were written for the old behaviour.
+            // On Apple TV this is the default (the parity key paths are written for it); elsewhere only with -PlayarrSelectEntersPage.
             Task { @MainActor in
+                #if !os(tvOS)
                 guard ProcessInfo.processInfo.arguments.contains("-PlayarrSelectEntersPage") else { return }
-                try? await Task.sleep(for: .milliseconds(700))
+                #endif
+                try? await Task.sleep(for: .milliseconds(300))
                 if case .nav(tab) = externalFocus.wrappedValue { externalFocus.wrappedValue = .stage }
             }
         } label: {

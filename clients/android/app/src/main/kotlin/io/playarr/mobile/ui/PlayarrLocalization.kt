@@ -802,6 +802,7 @@ internal enum class PlayarrString(
     WatchStateUnwatched("Unwatched", "ยังไม่ได้ดู", "未視聴"),
     DetailChapterNumber("Chapter {{number}}", "บทที่ {{number}}", "チャプター{{number}}"),
     DetailCast("Cast", "นักแสดง", "キャスト"),
+    DetailCastCount("{{count}} people", "{{count}} คน", "{{count}}人"),
     DetailSimilarTitles("Similar Titles", "เรื่องที่คล้ายกัน", "似ているタイトル"),
     DetailPlaybackSaved(
         "Playback settings saved.",
