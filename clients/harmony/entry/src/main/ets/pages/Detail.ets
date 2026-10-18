@@ -225,8 +225,6 @@ const TOUCH_SETTLE_FALLBACK_VP: number = 377;
 const TOUCH_SETTLE_INTERVAL_MS: number = 250;
 /** Phone: where the text block starts (the backdrop's lower part is under it, faded). */
 const TOUCH_TEXT_TOP: number = 343;
-// web phone series: the text starts 49 vp higher than a film's (static fixture, 2026-10-18)
-const TOUCH_TEXT_TOP_SERIES: number = 294;
 
 // Web `.tv-detail-play` / `.tv-detail-playback-settings` at 1920 wide (clamps of 0.62vw / 0.58vw, 4.2vw, 8.5vw / 7.6vw).
 const PILL_HEIGHT: number = 64;
@@ -2569,7 +2567,7 @@ struct Detail {
           }
         }
         .padding({
-          top: this.detail !== null && this.detail.work.kind === 'series' ? TOUCH_TEXT_TOP_SERIES : TOUCH_TEXT_TOP,
+          top: TOUCH_TEXT_TOP,
           bottom: TouchGeometry.detailListBottom,
           left: atLeast(16, this.safeLeft),
           right: atLeast(16, this.safeRight),

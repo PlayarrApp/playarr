@@ -735,6 +735,10 @@ else:
                     if clean < 2:
                         debug(name + "-placeholder-art")
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
+                # the web refs are taken at page top; the app scrolls to the next-up episode, so drag back up before the frame
+                for _ in range(3):
+                    get("/swipe", x1=540, y1=500, x2=540, y2=2200, steps=12, ms=300); time.sleep(1.5)
+                time.sleep(2)
                 snap(name, folder, 100000)
                 if kind == "series":  # the saved frame itself must show art (the page may have moved since the last check)
                     saved = os.path.join(folder, name + ".png")
