@@ -9,7 +9,7 @@ const identity = { username: "device-test", isCurrentCount: 1, serverUrl: truste
 test("route helpers drop mirror flags and keep real queries", () => {
   assert.equal(suiteRoute("/calendar?view=month&mirrorPng=1&platform=tv-vidaa&r=5"), "/calendar?view=month");
   assert.equal(suiteRoute("/#/movies?mirrorTheme=dark"), "/movies");
-  assert.equal(launchPath("/", { theme: "light", fixedNow: "2026-10-07T12:00:00.000Z" }), "/?mirrorPng=1&mirrorPointer=1&mirrorTheme=light&mirrorNow=2026-10-07T12%3A00%3A00");
+  assert.equal(launchPath("/", { theme: "light", fixedNow: "2026-10-07T12:00:00.000Z" }), "/?mirrorPng=1&mirrorPointer=1&mirrorWidth=1920&mirrorTheme=light&mirrorNow=2026-10-07T12%3A00%3A00");
   assert.throws(() => launchPath("//evil.example", { theme: "dark" }), /plain app route/);
   assert.throws(() => launchPath("/x y", { theme: "dark" }), /plain app route/);
 });

@@ -27,7 +27,7 @@ export function suiteRoute(frameRoute) {
 /** Launch path for open-debug: the route plus the mirror flags (lossless frames, no focus ring from pointer clicks, theme, frozen clock). */
 export function launchPath(route, { theme, fixedNow }) {
   if (!/^\/[A-Za-z0-9_./?=&%-]*$/.test(route) || route.startsWith("//")) throw new Error(`VIDAA route is not a plain app route: ${route.slice(0, 40)}`);
-  const flags = ["mirrorPng=1", "mirrorPointer=1", `mirrorTheme=${theme}`];
+  const flags = ["mirrorPng=1", "mirrorPointer=1", "mirrorWidth=1920", `mirrorTheme=${theme}`]; // 1920: the suite scores against 1920x1080 references
   if (fixedNow) flags.push(`mirrorNow=${encodeURIComponent(fixedNow.replace(/Z$/, "").replace(/\.\d+$/, ""))}`);
   return `${route}${route.includes("?") ? "&" : "?"}${flags.join("&")}`;
 }
@@ -66,7 +66,7 @@ export async function createDriver({
   const json = getJson ?? (async (u) => (await fetch(u, { signal: AbortSignal.timeout(8000) })).json());
   const buffer = getBuffer ?? (async (u) => Buffer.from(await (await fetch(u, { signal: AbortSignal.timeout(15000) })).arrayBuffer()));
   let theme = "dark";
-  let fixedNow = null;
+  let fixedNow = env.PLAYARR_VIDAA_FIXED_NOW ?? null; // set when the suite runs unpinned (PARITY_STABLE=0) so calendar screens still use the reference clock
   let route = "/";
 
   const guardFrame = (frame) => assertDeviceTestIdentity({ identity: frame.identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
