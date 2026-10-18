@@ -131,7 +131,7 @@ const HOME_SHADOW_REST: ShadowLayerSpec[] = [
   { offsetY: 3, radius: 9, alpha: 0.1 },
 ];
 const HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
-  { offsetY: 26, radius: 52, alpha: 0.32 },
+  { offsetY: 26, radius: 68, alpha: 0.55 }, // ArkUI's blur draws lighter than CSS's: measured on the light static refs
   { offsetY: 11, radius: 22, alpha: 0.22 },
 ];
 
