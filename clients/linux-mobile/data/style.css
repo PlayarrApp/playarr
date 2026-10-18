@@ -246,6 +246,7 @@ button.pa-letter.active { background: @pa_ink; color: @pa_bg; min-width: 18px; m
 .pa-mcell.outside { background: alpha(@pa_surface, 0.4); color: @pa_muted; }
 .pa-mcell.today { box-shadow: inset 0 0 0 2px @pa_accent; }
 .pa-mline { min-height: 22px; padding: 0 6px; font-size: 12.5px; color: @pa_ink; }
+.pa-mline .pa-dot { min-width: 8px; min-height: 8px; border-radius: 4px; }
 .pa-mfoot { min-height: 44px; padding: 0 0 0 6px; }
 .pa-mdaynum { font-size: 12.8px; font-weight: 640; min-width: 24px; }
 .pa-mcell.outside .pa-mdaynum { color: @pa_muted; }
@@ -297,3 +298,6 @@ button.pa-entry.week .pa-entry-title, button.pa-entry.week .pa-entry-sub, button
 button.pa-entry.week.have, button.pa-entry.week.have:hover { border-left-color: #8ac5a5; }
 button.pa-entry.week.missing, button.pa-entry.week.missing:hover { border-left-color: @pa_muted; }
 button.pa-entry.week .pa-chip-status { margin-top: 2px; }
+
+/* The web agenda sits on a faint wash with a lighter corner at the top left (white over the page, so invisible on the light theme) */
+.pa-agenda-bg { background: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 150px), linear-gradient(180deg, rgba(255, 255, 255, 0.057) 0px, rgba(255, 255, 255, 0.057) 350px, rgba(255, 255, 255, 0) 450px); }
