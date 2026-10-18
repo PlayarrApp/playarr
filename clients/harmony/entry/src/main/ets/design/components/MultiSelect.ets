@@ -177,5 +177,6 @@ export struct MultiSelect {
       .alignItems(HorizontalAlign.Start)
     }
     .alignItems(HorizontalAlign.Start)
+    .margin({ bottom: isTvMetrics() ? tv(32) : 0 }) // web: 38 px from a select to the next label
   }
 }

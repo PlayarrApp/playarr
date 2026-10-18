@@ -105,6 +105,6 @@ export struct ChoiceSegments {
       }
     }
     .alignItems(HorizontalAlign.Start)
-    .margin({ bottom: isTvMetrics() || this.large ? tv(SECTION_GAP) : TOUCH_SECTION_GAP })
+    .margin({ bottom: this.large ? tv(SECTION_GAP) : (isTvMetrics() ? tv(SECTION_GAP + 3) : TOUCH_SECTION_GAP) })
   }
 }
