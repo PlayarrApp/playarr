@@ -9,6 +9,7 @@ import { tv } from '../Metrics';
 import type { RailPreferenceEntry } from '../../core/Types/Catalog';
 import { moveRail, toggleRail, toPreferencesRequest } from '../../core/RailPrefs';
 import { getRailPreferences, saveRailPreferences, resetRailPreferences } from '../../data/CatalogRepository';
+import { t } from '../../core/Language';
 
 @Component
 export struct HomeRailsPanel {
@@ -83,7 +84,7 @@ export struct HomeRailsPanel {
         Text('Could not load your rails.').fontFamily(nunito(400))
           .fontSize(tv(13.824))
           .fontColor(toResourceColor(activeColors().danger))
-        this.pill('Retry', true, (): void => {
+        this.pill(t('pages.downloads.retry', 'Retry'), true, (): void => {
           this.load();
         })
       } else {
@@ -99,7 +100,7 @@ export struct HomeRailsPanel {
                   .fontWeight(FontWeight.Medium)
                   .fontColor(toResourceColorWithAlpha(activeColors().ink, rail.hidden ? 0.5 : 1))
                   .layoutWeight(1)
-                this.pill(rail.hidden ? 'Show' : 'Hide', true, (): void => {
+                this.pill(rail.hidden ? t('pages.folders.show', 'Show') : t('pages.home.customise.hide', 'Hide'), true, (): void => {
                   this.save(toggleRail(this.rails, rail.id));
                 })
                 this.pill('↑', index > 0, (): void => {
@@ -111,7 +112,7 @@ export struct HomeRailsPanel {
               }
               .width(tv(this.panelWidth))
             }, (rail: RailPreferenceEntry): string => `${rail.id}:${rail.hidden}`)
-            this.pill('Reset to default', true, (): void => {
+            this.pill(t('pages.home.customise.reset', 'Reset to default'), true, (): void => {
               this.reset();
             })
           }

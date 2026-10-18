@@ -13,6 +13,7 @@ import { tv } from '../Metrics';
 import { getCalendarFeed, createCalendarFeed } from '../../data/CalendarRepository';
 import { getServerDirectory, loadStoredCalendarLink, storeCalendarLink } from '../../AppContainer';
 import { planCalendarLinkOpen, classifyCalendarLinkFailure, calendarLinkFailureText, calendarLinkScope } from '../../core/CalendarLink';
+import { t } from '../../core/Language';
 
 const TEXT_SIZE: number = 13.44;
 const HEADING_SIZE: number = 15.36;
@@ -120,15 +121,15 @@ export struct CalendarLinkPanel {
 
   build() {
     Column({ space: tv(SECTION_GAP) }) {
-      this.body('Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.', true)
+      this.body(t('pages.calendar.subscription.description', 'Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.'), true)
       if (this.failure.length > 0) {
         this.body(this.failure, false)
-        this.pill('Try again', (): void => {
+        this.pill(t('components.states.retry', 'Try again'), (): void => {
           this.open();
         })
       }
       if (this.busy && this.url.length === 0) {
-        this.body('Getting your link…', true)
+        this.body(t('pages.calendar.link.preparing', 'Getting your link…'), true)
       }
       if (this.url.length > 0) {
         QRCode(this.url)
@@ -145,27 +146,27 @@ export struct CalendarLinkPanel {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       if (this.needsReset && this.url.length === 0) {
-        this.body('Your link was created on another device and is not stored here. Reset it to get a new link to copy.', true)
+        this.body(t('pages.calendar.link.otherDevice', 'Your link was created on another device and is not stored here. Reset it to get a new link to copy.'), true)
       }
       Text('Add it to your calendar app').fontFamily(nunito(500))
         .fontSize(tv(HEADING_SIZE))
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
-      this.body('Google Calendar: Other calendars (+) > From URL, then paste the link.', true)
-      this.body('Apple Calendar: File > New Calendar Subscription, then paste the link.', true)
-      this.body('Outlook: Add calendar > Subscribe from web, then paste the link.', true)
+      this.body(t('pages.calendar.subscription.instructionGoogle', 'Google Calendar: Other calendars (+) > From URL, then paste the link.'), true)
+      this.body(t('pages.calendar.subscription.instructionApple', 'Apple Calendar: File > New Calendar Subscription, then paste the link.'), true)
+      this.body(t('pages.calendar.subscription.instructionOutlook', 'Outlook: Add calendar > Subscribe from web, then paste the link.'), true)
       if (this.confirming) {
-        this.body('Resetting makes a new link and the current link stops working straight away. Calendars using it will need the new link.', false)
+        this.body(t('pages.calendar.subscription.confirmRegenerate', 'Resetting makes a new link and the current link stops working straight away. Calendars using it will need the new link.'), false)
         Row({ space: tv(9.6) }) {
-          this.pill('Reset link', (): void => {
+          this.pill(t('pages.calendar.subscription.regenerate', 'Reset link'), (): void => {
             this.reset();
           })
-          this.pill('Cancel', (): void => {
+          this.pill(t('pages.downloads.cancel', 'Cancel'), (): void => {
             this.confirming = false;
           })
         }
       } else if (!this.busy && this.failure.length === 0) {
-        this.pill('Reset link', (): void => {
+        this.pill(t('pages.calendar.subscription.regenerate', 'Reset link'), (): void => {
           this.confirming = true;
         })
       }

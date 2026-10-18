@@ -2015,12 +2015,12 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(4) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 4) }) {
       Text(heading).fontFamily(nunito(400))
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
       Text(count).fontFamily(nunito(400))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(11))
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11))
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
@@ -2109,7 +2109,7 @@ struct Detail {
       ForEach(
         this.rails,
         (rail: DetailRail) => {
-          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
+          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 2) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
             this.railHeading(rail.heading, rail.items.length.toString() + ' episodes', true)
             MediaRail({
               railId: rail.id,
@@ -2170,7 +2170,7 @@ struct Detail {
   @Builder
   private tvContent(): void {
     Stack() {
-      KeyArtBackdrop({ keyArt: this.heroArtwork })
+      KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 65 })
 
       Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 20 : 0)) }) {
         FeatureCopy({

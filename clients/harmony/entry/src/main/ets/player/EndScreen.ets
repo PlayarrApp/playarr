@@ -20,6 +20,7 @@ import { Spacing, Radii, BRAND_PINK } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
 import { toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { isTvMetrics, tv } from '../design/Metrics';
+import { t } from '../core/Language';
 
 const CARD_BACKDROP: RgbaColor = { r: 8, g: 6, b: 8, a: 0.88 };
 const CARD_TEXT_PRIMARY: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
@@ -102,9 +103,9 @@ export struct EndScreen {
       if (this.countdownRunning) {
         return 'Playing in ' + String(this.secondsRemaining);
       }
-      return 'Up next';
+      return t('components.player.surface.upNext', 'Up next');
     }
-    return this.finishedTitle.length > 0 ? 'Finished: ' + this.finishedTitle : 'Finished';
+    return this.finishedTitle.length > 0 ? 'Finished: ' + this.finishedTitle : t('components.player.endScreen.finished', 'Finished');
   }
 
   build() {
@@ -127,22 +128,22 @@ export struct EndScreen {
         Flex({ wrap: FlexWrap.Wrap }) {
           if ((this.nextTitle.length > 0)) {
             EndButton({
-              label: (this.phase === 'upNext') ? 'Play now' : 'Play next',
+              label: (this.phase === 'upNext') ? t('components.player.endScreen.playNow', 'Play now') : 'Play next',
               primary: true,
               takeDefaultFocus: true,
               onActivate: this.onPlayNow,
             })
           }
           if ((this.phase === 'upNext') && this.countdownRunning) {
-            EndButton({ label: 'Cancel', onActivate: this.onCancel })
+            EndButton({ label: t('pages.downloads.cancel', 'Cancel'), onActivate: this.onCancel })
           }
           EndButton({
-            label: 'Replay',
+            label: t('components.player.endScreen.replay', 'Replay'),
             primary: !(this.nextTitle.length > 0),
             takeDefaultFocus: !(this.nextTitle.length > 0),
             onActivate: this.onReplay,
           })
-          EndButton({ label: 'Back to details', onActivate: this.onExit })
+          EndButton({ label: t('pages.player.backToDetails', 'Back to details'), onActivate: this.onExit })
         }
 
         if (this.hasSuggestions) {

@@ -115,14 +115,17 @@ class PlayarrCalendarLogicTest {
                 entry("a2", "2026-10-05", title = "Alpha", season = 1, episode = 2),
                 entry("a1", "2026-10-05", title = "Alpha", season = 1, episode = 1),
                 entry("timed", "2026-10-05", title = "Zulu", releaseAt = "2026-10-05T01:00:00Z"),
+                entry("outside-before", "2026-10-03"),
+                entry("outside-after", "2026-11-04"),
             ),
             kinds = emptySet(),
             window = window,
             fillEmptyDays = false,
         )
-        assertEquals(listOf(d("2026-10-05"), d("2026-10-06")), groups.map { it.date })
-        assertEquals(listOf("a1", "a2", "timed"), groups[0].entries.map { it.id }) // all-day first, as web
-        assertEquals(4, groups.sumOf { it.entries.size })
+        assertEquals(listOf(d("2026-10-03"), d("2026-10-05"), d("2026-10-06"), d("2026-11-04")), groups.map { it.date })
+        assertEquals(listOf("a1", "a2", "timed"), groups[1].entries.map { it.id }) // all-day first, as web
+        assertEquals(listOf("outside-before", "outside-after"), listOf(groups.first().entries.single().id, groups.last().entries.single().id))
+        assertEquals(6, groups.sumOf { it.entries.size })
     }
 
     @Test
@@ -132,10 +135,14 @@ class PlayarrCalendarLogicTest {
             entry("ep", "2026-10-06", kind = "episode"),
             entry("mv", "2026-10-07", kind = "movie"),
             entry("new", "2026-10-07", kind = "podcast"),
+            entry("before", "2026-10-04"),
+            entry("after", "2026-10-12"),
         )
         val all = groupCalendarEntries(entries, emptySet(), window, fillEmptyDays = true)
         assertEquals(7, all.size)
+        assertEquals(window.days, all.map { it.date })
         assertTrue(all.first().entries.isEmpty())
+        assertEquals(listOf("ep", "mv", "new"), all.flatMap { it.entries }.map { it.id })
 
         val moviesOnly = groupCalendarEntries(entries, setOf(CalendarMediaKind.Movie), window, fillEmptyDays = true)
         assertEquals(listOf("mv", "new"), moviesOnly.flatMap { it.entries }.map { it.id })

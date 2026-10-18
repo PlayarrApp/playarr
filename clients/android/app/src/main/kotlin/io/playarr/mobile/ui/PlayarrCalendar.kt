@@ -2051,7 +2051,7 @@ private fun TvCalendarDetails(item: CalendarItem, locale: Locale, zone: ZoneId, 
     val kindLabel = if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind
     val allDay = playarrString(PlayarrString.CalendarAllDay)
     val whenText = remember(entry.releaseAt, locale, zone, allDay) {
-        entry.releaseAt?.let { playarrFullDateTime(it, zone, locale) } ?: "${formatCalendarDay(entry.date, locale)} · $allDay"
+        entry.releaseAt?.let { playarrFullDateTime(it, zone, locale) } ?: "${phoneCalendarDayHeading(entry.date, locale)} · $allDay"
     }
     val palette = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette
     // Tablet web at 1280 x 800: the same clamp minimums as the library hero make the text larger and lower than the 1920 values.
@@ -2073,9 +2073,9 @@ private fun TvCalendarDetails(item: CalendarItem, locale: Locale, zone: ZoneId, 
         // Web: a group of episodes has no single synopsis; a lone release shows its own when the source gave one.
         if (item is CalendarItem.Single) {
             entry.overview?.trim()?.takeIf(String::isNotEmpty)?.let {
-                Text(
+                WebClampedText(
                     it, color = palette.detailsSoft, fontSize = overviewFont.sp, lineHeight = (overviewFont * 1.58f).sp, fontWeight = FontWeight(600),
-                    style = WebTextStyle, maxLines = 5, overflow = TextOverflow.Ellipsis,
+                    style = WebTextStyle, maxLines = 5,
                     modifier = Modifier.padding(top = 21.7.dp + (if (tablet) 2.dp else 0.dp)).width(if (tablet) 387.dp else 348.dp),
                 )
             }
