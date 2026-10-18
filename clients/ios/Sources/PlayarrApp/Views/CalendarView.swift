@@ -210,7 +210,8 @@ struct CalendarView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 212)
+            // Week lanes start 68 pt higher than the month grid (web mobile week, measured against the 393 pt capture).
+            .padding(.top, viewModel.mode == .week ? 144 : 212)
             .padding(.bottom, 120)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
