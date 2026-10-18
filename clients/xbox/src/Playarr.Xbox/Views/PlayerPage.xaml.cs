@@ -74,9 +74,17 @@ namespace Playarr.Xbox.Views
             _chromeHide.Start();
         }
 
+        // Parity capture holds the controls open so the delayed screenshot still shows them (web captures the paused, controlled frame).
+        private bool _chromePinnedForTest;
+
         private void HideChrome()
         {
             _chromeHide.Stop();
+            if (_chromePinnedForTest)
+            {
+                return;
+            }
+
             if (_openPanel == null && ChromePanel.Visibility == Visibility.Visible)
             {
                 AnimateScrim(0, Scrim.Height, () => ChromePanel.Visibility = Visibility.Collapsed);
@@ -318,6 +326,7 @@ namespace Playarr.Xbox.Views
         /// <summary>Parity capture: pause on the current frame and show the controls, so a screenshot matches the web's.</summary>
         internal async System.Threading.Tasks.Task<bool> PauseForTestAsync(double? seekSeconds = null)
         {
+            _chromePinnedForTest = true;
             _viewModel?.Player.Pause();
             if (_viewModel != null && seekSeconds is { } at)
             {

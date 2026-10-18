@@ -319,9 +319,22 @@ export function startDebugMirror(): void {
         // unscrolled. Tag every scrolled container and let the embedded CSS translate its children by the offset.
         const scrolled = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((e) => e.scrollTop > 0 || e.scrollLeft > 0);
         let scrollCss = "";
+        // Engines without the individual `translate` property (Chromium before 104, Tizen 6.5) get a transform per child instead,
+        // composed in front of the child's own computed transform.
+        const hasTranslateProperty = typeof CSS !== "undefined" && CSS.supports("translate", "1px");
+        let childId = 0;
         scrolled.forEach((e, i) => {
           e.setAttribute("data-mirror-scroll", String(i));
-          scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
+          if (hasTranslateProperty) {
+            scrollCss += `[data-mirror-scroll="${i}"]>*{translate:${-e.scrollLeft}px ${-e.scrollTop}px !important}\n`;
+            return;
+          }
+          for (const child of Array.from(e.children)) {
+            const own = window.getComputedStyle(child).transform;
+            child.setAttribute("data-mirror-scroll-child", String(childId));
+            scrollCss += `[data-mirror-scroll-child="${childId}"]{transform:translate(${-e.scrollLeft}px,${-e.scrollTop}px)${own && own !== "none" ? ` ${own}` : ""} !important}\n`;
+            childId += 1;
+          }
         });
         image = await withTimeout(
           withCollapsingTrackHeights(() => (usePng ? toPng : toJpeg)(document.body, {
@@ -386,7 +399,10 @@ export function startDebugMirror(): void {
       let currentIdentity = initialIdentity;
       if (initialIdentity?.status === "ok") {
         try {
-          currentIdentity = revalidateMirrorIdentity(initialIdentity, await readMirrorIdentity(token));
+          const fresh = await readMirrorIdentity(token);
+          currentIdentity = revalidateMirrorIdentity(initialIdentity, fresh);
+          // A token rotation while the frame rendered changes the credentials, not the account: the same selected identity still posts.
+          if (currentIdentity.status === "session_changed" && !currentIdentity.selectedIdentityChanged && fresh.status === "ok") currentIdentity = fresh;
         } catch {
           currentIdentity = null;
         }
