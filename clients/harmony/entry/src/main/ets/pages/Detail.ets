@@ -1811,6 +1811,16 @@ struct Detail {
     return this.detail !== null && this.detail.work.kind === 'series';
   }
 
+  /** Web's series pills carry a soft drop shadow (light theme; the dark pills are flat). */
+  private pillShadow(primary: boolean): ShadowOptions {
+    if (!this.isSeriesPage() || resolvedThemeMode() === 'dark') {
+      return { radius: 0, color: Color.Transparent };
+    }
+    return primary
+      ? { radius: tv(22), offsetY: tv(10), color: 'rgba(56, 38, 33, 0.28)' }
+      : { radius: tv(22), offsetY: tv(8), color: 'rgba(56, 38, 33, 0.08)' };
+  }
+
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
@@ -1831,6 +1841,7 @@ struct Detail {
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .backgroundColor(primary ? toResourceColor(activeColors().ink) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .shadow(this.pillShadow(primary))
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
     .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
@@ -1854,7 +1865,7 @@ struct Detail {
   private tvSeriesActions(): void {
     Row({ space: tv(PILL_GAP) }) {
       if (this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null) {
-        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25B6\uFE0E', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
         if (this.resumePlan.action !== 'start') {
@@ -1863,7 +1874,7 @@ struct Detail {
           })
         }
       }
-      this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+      this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, true, (): void => {
         void this.toggleWatchlist();
       })
       this.actionPill('Add to Playlist', '+', false, true, (): void => {
@@ -1892,12 +1903,12 @@ struct Detail {
             this.optionsOpen = true;
           })
         }
-        this.actionPill(this.primaryLabel(), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(this.primaryLabel(), '\u25B6\uFE0E', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
       }
       Row({ space: tv(PILL_GAP) }) {
-        this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+        this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, true, (): void => {
           void this.toggleWatchlist();
         })
         this.actionPill('Add to Playlist', '+', false, true, (): void => {

@@ -41,7 +41,7 @@ const KICKER_COLOR_LIGHT: RgbaColor = { r: 130, g: 30, b: 54, a: 1 };
 const KICKER_COLOR_DARK: RgbaColor = { r: 234, g: 166, b: 182, a: 1 };
 
 const HERO_TITLE_FONT_SIZE: number = 69.12;
-const HERO_TITLE_FONT_WEIGHT: number = 600;
+const HERO_TITLE_FONT_WEIGHT: number = 500; // web 560: nearest static instance below 600 is the closer width
 const HERO_TITLE_LETTER_SPACING: number = HERO_TITLE_FONT_SIZE * -0.072;
 const HERO_TITLE_LINE_HEIGHT: number = 62;
 const HERO_TITLE_MAX_WIDTH: number = 373;
@@ -65,7 +65,7 @@ const COPY_TEXT_FONT_WEIGHT: number = 600;
 const SYNOPSIS_FONT_WEIGHT: number = 400;
 const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
-const SYNOPSIS_MAX_WIDTH: number = 324;
+const SYNOPSIS_MAX_WIDTH: number = 328;
 const SYNOPSIS_MAX_LINES: number = 5;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
