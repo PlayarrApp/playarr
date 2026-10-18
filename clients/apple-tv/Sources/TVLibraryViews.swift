@@ -184,11 +184,14 @@ struct TVHomeView: View {
                 .scrollClipDisabled()
                 .onChange(of: focusedCard?.rail) { _, rail in
                     guard let rail else { return }
-                    withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: .top) }
+                    // The first rail returns to its aligned start; later rails centre on the old line (y 402).
+                    let anchor = rail == "r0" ? UnitPoint.top : UnitPoint(x: 0, y: (Self.railCentreY - Self.railTopY) / (geo.size.height - Self.railTopY + origin.y))
+                    withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
-            // The first rail heading sits at y 162; rails above the focused one slide up past it, as on the web.
-            .padding(.top, 162 - origin.y)
+            // Web `.tv-home-rails.is-vertical-tracks`: the first rail opens at the Library grid's first row (clamp(128, 15vh, 174)).
+            .padding(.top, Self.railTopY - origin.y)
+            // Web `.tv-home-rails` starts where the Library grid panel starts (100% - 62%), cards at its left padding.
             .padding(.leading, 783.4 - origin.x - Self.cardBleed)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -243,6 +246,8 @@ struct TVHomeView: View {
 
     /// Web: an 8 px left bleed keeps the first card's focus glow unclipped.
     private static let cardBleed: CGFloat = 8
+    private static let railTopY: CGFloat = 162
+    private static let railCentreY: CGFloat = 402
     /// Heading (26.5) and the gap to the art (35.3), plus the card (art and caption) and the track's 18/24 padding.
     /// Home cards: the artwork-size column width, or the cover width when Home artwork is Covers.
     private var homeCovers: Bool { displayPreferences.homeCovers }
@@ -1110,10 +1115,10 @@ struct TVHomeSkeleton: View {
             RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 120, height: 14).placed(x: 153.6, y: 261, w: 120, h: 14)
             RoundedRectangle(cornerRadius: 8).fill(block).frame(width: 330, height: 56).placed(x: 153.6, y: 306, w: 330, h: 56)
             ForEach(0..<2, id: \.self) { rail in
-                let top = 402 + 365.9 * CGFloat(rail)
-                RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 180, height: 18).placed(x: 881.6, y: top + 4, w: 180, h: 18)
+                let top = 162 + 365.9 * CGFloat(rail)
+                RoundedRectangle(cornerRadius: 4).fill(block).frame(width: 180, height: 18).placed(x: 782.6, y: top + 4, w: 180, h: 18)
                 ForEach(0..<4, id: \.self) { card in
-                    let x = 881.6 + 352.1 * CGFloat(card)
+                    let x = 782.6 + 352.1 * CGFloat(card)
                     RoundedRectangle(cornerRadius: 12.48, style: .continuous).fill(block)
                         .placed(x: x, y: top + 61.8, w: 327.2, h: 184)
                     RoundedRectangle(cornerRadius: 3).fill(block).placed(x: x, y: top + 61.8 + 195.3, w: 180, h: 12)

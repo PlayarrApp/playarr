@@ -44,6 +44,12 @@ pub fn rail_w() -> i32 {
     (360 - 16 - 52 - (cols - 1) * 12) / cols
 }
 
+/// Home has no letter rail, so its cards use the full 328 px between the page gutters (the web drops the rail gutter without a rail).
+pub fn home_w() -> i32 {
+    let cols = cols() as i32;
+    (360 - 32 - (cols - 1) * 12) / cols
+}
+
 /// Art height of a 16:9 thumbnail card (79 at the default size).
 pub fn art_h() -> i32 {
     (rail_w() as f64 * 9.0 / 16.0).round() as i32
@@ -60,11 +66,8 @@ pub fn cover_art_h() -> i32 {
 }
 
 pub fn home_art_h() -> i32 {
-    if home_cover() {
-        cover_art_h()
-    } else {
-        art_h()
-    }
+    let ratio = if home_cover() { 1.5 } else { 9.0 / 16.0 };
+    (home_w() as f64 * ratio).round() as i32
 }
 
 pub struct CardOpts<'a> {

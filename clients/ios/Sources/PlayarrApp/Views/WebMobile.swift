@@ -413,6 +413,8 @@ struct WMKeyArt: View {
     /// Draw the whole picture at the page width (no crop) instead of filling the frame.
     var contain = false
     var imageTop: CGFloat = -9
+    /// Scales the picture about its top-left corner (the web detail art measures 1% larger than its nominal box).
+    var artScale: CGFloat = 1
     /// How strong the grey artwork is in the light theme; the web shows it differently per page.
     var lightOpacity: Double = 0.22
     /// The web's horizontal treatment in the light theme: the artwork fades out over its last 28% (mask)
@@ -428,7 +430,7 @@ struct WMKeyArt: View {
                 PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
                     .saturation(0)
                     .opacity(scheme == .dark ? 0.085 : lightOpacity)
-                    .frame(width: 406, height: contain ? 406 * 9 / 16 : imageHeight)
+                    .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
                             LinearGradient(

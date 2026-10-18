@@ -1,0 +1,1 @@
+- Apple TV: Home rails start at the Library grid's left edge and top as on the web, and the Calendar takes first focus on Today.

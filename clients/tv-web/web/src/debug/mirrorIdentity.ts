@@ -37,6 +37,9 @@ export interface MirrorIdentity {
   selectedCredentialsChanged: boolean;
   selectedIdentity: string | null;
   selectedCredentials: string | null;
+  /** Diagnostics for a failed profile request: HTTP status (0 = network error or timeout) and seconds until the access token expires (negative = expired). */
+  profileHttpStatus?: number;
+  tokenExpiresInS?: number;
 }
 
 export interface MirrorIdentityDependencies {
@@ -95,7 +98,7 @@ async function fetchJson(
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const response = await fetcher(url, { ...init, signal: controller.signal });
-    if (!response.ok) throw new Error("request failed");
+    if (!response.ok) throw Object.assign(new Error("request failed"), { status: response.status });
     return await response.json();
   } finally {
     clearTimeout(timer);
@@ -114,6 +117,17 @@ async function fetchNoContent(
     if (!response.ok) throw new Error("request failed");
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/** Seconds until the access token's `exp` claim (negative once expired); undefined when it is not a readable JWT. */
+function secondsUntilExpiry(accessToken: string, nowMs: number): number | undefined {
+  try {
+    const part = accessToken.split(".")[1] ?? "";
+    const exp = (JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/"))) as { exp?: unknown }).exp;
+    return typeof exp === "number" ? Math.round(exp - nowMs / 1000) : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -169,10 +183,42 @@ function selectProfile(markerRaw: string | null, sessionsRaw: string | null): Se
   }
 }
 
+export const LIVE_SESSION_KEY = "playarr:session";
+
+/** The access token's `sub` claim (unverified; only used to tie the live session to the selected profile). */
+function tokenSubject(accessToken: string): string | undefined {
+  try {
+    const part = accessToken.split(".")[1] ?? "";
+    const sub = (JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/"))) as { sub?: unknown }).sub;
+    return typeof sub === "string" ? sub : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The app refreshes its access token in its live session (`playarr:session`) and copies it into the saved profile only
+ * sometimes, so the saved copy goes stale after the first refresh (15 minutes). When the live session belongs to the
+ * same user, use its credentials: they are the ones the app is actually signed in with.
+ */
+function withLiveCredentials(selected: SelectedProfile | null, storage: Pick<Storage, "getItem">): SelectedProfile | null {
+  if (!selected) return selected;
+  try {
+    const live = JSON.parse(storage.getItem(LIVE_SESSION_KEY) ?? "null") as Partial<Record<"accessToken" | "tokenType" | "refreshToken", unknown>> | null;
+    if (
+      live && typeof live.accessToken === "string" && live.accessToken && typeof live.tokenType === "string" && live.tokenType &&
+      typeof live.refreshToken === "string" && tokenSubject(live.accessToken) === selected.userId
+    ) return { ...selected, accessToken: live.accessToken, tokenType: live.tokenType, refreshToken: live.refreshToken };
+  } catch {
+    // unreadable live session: keep the saved credentials
+  }
+  return selected;
+}
+
 /** The selected profile's server, user and Authorization value, read synchronously from storage (no network); null when unavailable. */
 export function readSelectedSession(storage: Pick<Storage, "getItem">): { userId: string; serverUrl: string; auth: string } | null {
   try {
-    const selected = selectProfile(storage.getItem(MIRROR_ACTIVE_PROFILE_KEY), storage.getItem(MIRROR_PROFILE_SESSIONS_KEY));
+    const selected = withLiveCredentials(selectProfile(storage.getItem(MIRROR_ACTIVE_PROFILE_KEY), storage.getItem(MIRROR_PROFILE_SESSIONS_KEY)), storage);
     const serverUrl = selected && canonicalServerUrl(selected.apiBaseUrl);
     return selected && serverUrl ? { userId: selected.userId, serverUrl, auth: `${selected.tokenType} ${selected.accessToken}` } : null;
   } catch {
@@ -201,6 +247,9 @@ export function revalidateMirrorIdentity(
     selectedCredentialsChanged: initial.selectedCredentials !== current.selectedCredentials,
   };
 }
+
+/** The newest "ok" verdict, reused for the same expired token (see readMirrorIdentity). */
+let lastVerified: MirrorIdentity | null = null;
 
 /**
  * Verify the active saved profile against receiver-provided trust settings and the server's
@@ -231,7 +280,7 @@ export async function readMirrorIdentity(
   } catch {
     // Report malformed storage without including its contents.
   }
-  const selected = selectProfile(markerRaw, sessionsRaw);
+  const selected = withLiveCredentials(selectProfile(markerRaw, sessionsRaw), storage);
   if (!selected) return failed("identity_unavailable", now, { markerPresent, sessionsArray });
 
   let trusted: TrustedConfig;
@@ -255,13 +304,27 @@ export async function readMirrorIdentity(
     return failed("untrusted_server", now, { markerPresent, sessionsArray, serverUrl: selectedServer });
   }
 
+  const selectedIdentity = JSON.stringify([selected.profileKey, selected.userId, selectedServer]);
+  const selectedCredentials = JSON.stringify([selected.accessToken, selected.tokenType, selected.refreshToken]);
   let profiles: unknown;
   try {
     profiles = await fetchJson(fetcher, `${trustedServer}${PROFILE_LIST_PATH}`, {
       headers: { Authorization: `${selected.tokenType} ${selected.accessToken}` },
     });
-  } catch {
-    return failed("trusted_server_unavailable", now, { markerPresent, sessionsArray, serverMatched: true, serverUrl: selectedServer });
+  } catch (error) {
+    const status = (error as { status?: unknown } | null)?.status;
+    // An idle app only refreshes its 15-minute access token on its next request, so the stored token expires while nothing is happening.
+    // The account behind a given token never changes: once it is verified, the same expired token (same profile, user, server and
+    // credentials) keeps that verdict, and the app's next refresh is verified afresh.
+    const expired = (secondsUntilExpiry(selected.accessToken, now()) ?? 1) < 0;
+    if (status === 401 && expired && lastVerified?.selectedIdentity === selectedIdentity && lastVerified.selectedCredentials === selectedCredentials) {
+      return { ...lastVerified, checkedAt: now() };
+    }
+    return failed("trusted_server_unavailable", now, {
+      markerPresent, sessionsArray, serverMatched: true, serverUrl: selectedServer,
+      profileHttpStatus: typeof status === "number" ? status : 0,
+      tokenExpiresInS: secondsUntilExpiry(selected.accessToken, now()),
+    });
   }
 
   let markerAfter: string | null;
@@ -272,9 +335,7 @@ export async function readMirrorIdentity(
   } catch {
     return failed("identity_unavailable", now, { markerPresent, sessionsArray, serverMatched: true });
   }
-  const selectedAfter = selectProfile(markerAfter, sessionsAfter);
-  const selectedIdentity = JSON.stringify([selected.profileKey, selected.userId, selectedServer]);
-  const selectedCredentials = JSON.stringify([selected.accessToken, selected.tokenType, selected.refreshToken]);
+  const selectedAfter = withLiveCredentials(selectProfile(markerAfter, sessionsAfter), storage);
   const selectedIdentityAfter = selectedAfter
     ? JSON.stringify([selectedAfter.profileKey, selectedAfter.userId, canonicalServerUrl(selectedAfter.apiBaseUrl)])
     : null;
@@ -322,6 +383,7 @@ export async function readMirrorIdentity(
     selectedIdentity,
     selectedCredentials,
   });
+  if (result.status === "ok") lastVerified = result;
   return result;
 }
 
@@ -364,6 +426,8 @@ export async function reportMirrorIdentityStatus(
     sessionsRawChanged: identity.sessionsRawChanged,
     selectedIdentityChanged: identity.selectedIdentityChanged,
     selectedCredentialsChanged: identity.selectedCredentialsChanged,
+    profileHttpStatus: identity.profileHttpStatus,
+    tokenExpiresInS: identity.tokenExpiresInS,
   };
   await fetchNoContent(fetcher, `${receiverOrigin}/__mirror/identity-status?t=${encodeURIComponent(token)}`, {
     method: "POST",

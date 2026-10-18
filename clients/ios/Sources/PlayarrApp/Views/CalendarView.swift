@@ -669,14 +669,24 @@ struct CalendarView: View {
         GeometryReader { proxy in
             // The web tablet lane is a fixed 324 pt column (measured on the 1366 pt iPad capture).
             let laneWidth: CGFloat = phone ? max(300, screenWidth * 0.82) : 324
+            ScrollViewReader { reader in
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(viewModel.dayGroups) { group in
                         VStack(alignment: .leading, spacing: 6.4) {
-                            Text(CalendarDays.displayDate(group.day).map { Self.groupFormatter.string(from: $0) } ?? group.day)
-                                .font(.custom("Avenir Next", fixedSize: 14.4).weight(.semibold))
-                                .foregroundStyle(PlayarrStyle.ink)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            HStack(spacing: 12) {
+                                Text(CalendarDays.displayDate(group.day).map { Self.groupFormatter.string(from: $0) } ?? group.day)
+                                    .font(.custom("Avenir Next", fixedSize: 14.4).weight(.semibold))
+                                    .foregroundStyle(PlayarrStyle.ink)
+                                if group.day == viewModel.today {
+                                    WMText("TODAY", 10.4, 700, color: WM.inkSoft, lh: 15.6, ls: 1.5)
+                                        .fixedSize()
+                                        .padding(.horizontal, 12)
+                                        .frame(height: 21)
+                                        .overlay(Capsule().stroke(WM.inkSoft, lineWidth: 1))
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             ScrollView {
                                 LazyVStack(spacing: 13.6) {
                                     ForEach(group.items) { item in
@@ -699,6 +709,16 @@ struct CalendarView: View {
             }
             .scrollTargetBehavior(.viewAligned)
             .scrollIndicators(.hidden)
+            // The web week track opens on the today lane when the range holds it.
+            .onAppear { scrollToToday(reader) }
+            .onChange(of: viewModel.dayGroups.first?.id) { _, _ in scrollToToday(reader) }
+            }
+        }
+    }
+
+    private func scrollToToday(_ reader: ScrollViewProxy) {
+        if let today = viewModel.dayGroups.first(where: { $0.day == viewModel.today }) {
+            reader.scrollTo(today.id, anchor: .leading)
         }
     }
 
@@ -752,7 +772,7 @@ struct CalendarView: View {
             .frame(minHeight: 64, alignment: .leading)
             .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? PlayarrStyle.accent : PlayarrStyle.ink)
+                RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? Color(red: 0.12, green: 0.33, blue: 0.25) : WM.ink)
                     .frame(width: 4).padding(.vertical, 8)
             }
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))

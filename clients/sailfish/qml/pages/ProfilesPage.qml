@@ -146,7 +146,23 @@ PlayarrPage {
                     GradientStop { position: 0; color: Tokens.dark ? "#6a2c42" : "#eec4cd" }
                     GradientStop { position: 1; color: Tokens.dark ? "#962a4e" : "#b84b6b" }
                 }
-                border.width: 1; border.color: Qt.rgba(1, 1, 1, Tokens.dark ? 0.2 : 0.4)
+                Canvas {   // web: .profile-add .profile-avatar draws its 1 px border dashed
+                    anchors.fill: parent
+                    renderTarget: Canvas.Image
+                    property color tint: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.66)
+                    onTintChanged: requestPaint()
+                    onWidthChanged: requestPaint()
+                    onPaint: {
+                        var ctx = getContext("2d"), w = Math.max(1, Tokens.u), r = (width - w) / 2, c = width / 2
+                        var dash = 3 * Tokens.u / r, period = 5 * Tokens.u / r
+                        ctx.clearRect(0, 0, width, height)
+                        ctx.strokeStyle = tint; ctx.lineWidth = w
+                        // dashes drawn as separate arcs: Qt 5.6 Context2D has no portable setLineDash
+                        for (var a = -Math.PI / 2; a < 1.5 * Math.PI - 0.001; a += period) {
+                            ctx.beginPath(); ctx.arc(c, c, r, a, Math.min(a + dash, 1.5 * Math.PI), false); ctx.stroke()
+                        }
+                    }
+                }
                 RadialGradient {   // web: a soft light spot up and left of centre
                     x: 0.30 * parent.width - width / 2; y: 0.26 * parent.width - height / 2
                     width: 0.5 * parent.width; height: width; horizontalRadius: width / 2; verticalRadius: height / 2
