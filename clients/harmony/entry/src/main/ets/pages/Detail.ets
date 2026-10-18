@@ -225,6 +225,8 @@ const TOUCH_SETTLE_FALLBACK_VP: number = 377;
 const TOUCH_SETTLE_INTERVAL_MS: number = 250;
 /** Phone: where the text block starts (the backdrop's lower part is under it, faded). */
 const TOUCH_TEXT_TOP: number = 343;
+// web phone series: the text starts 49 vp higher than a film's (static fixture, 2026-10-18)
+const TOUCH_TEXT_TOP_SERIES: number = 294;
 
 // Web `.tv-detail-play` / `.tv-detail-playback-settings` at 1920 wide (clamps of 0.62vw / 0.58vw, 4.2vw, 8.5vw / 7.6vw).
 const PILL_HEIGHT: number = 64;
@@ -2509,6 +2511,8 @@ struct Detail {
               .letterSpacing(-1.6)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
+              // web phone: a series title wraps at about 250 vp (measured on the static fixture: "Golden / Cathedral 1")
+              .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 250 : '100%' })
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunito(500))
                 .fontSize(14.4)
@@ -2524,6 +2528,8 @@ struct Detail {
               .lineHeight(16.7)
               .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 11.7 : 10) : 12 })
               .maxLines(3)
+              // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
+              .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
               this.touchActionRows()
@@ -2563,7 +2569,7 @@ struct Detail {
           }
         }
         .padding({
-          top: TOUCH_TEXT_TOP,
+          top: this.detail !== null && this.detail.work.kind === 'series' ? TOUCH_TEXT_TOP_SERIES : TOUCH_TEXT_TOP,
           bottom: TouchGeometry.detailListBottom,
           left: atLeast(16, this.safeLeft),
           right: atLeast(16, this.safeRight),
