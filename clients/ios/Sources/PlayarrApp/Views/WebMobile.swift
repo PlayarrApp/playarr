@@ -19,6 +19,8 @@ enum WM {
     static let pink = PlayarrStyle.pink
     static let brandInk = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
     static let cardGlowColor = adaptive(light: (165, 39, 69), dark: (234, 166, 182))
+    /// The web's 3 pt card ring renders about 11% darker than its glow colour (measured 208,147,160 dark and 148,37,62 light).
+    static let cardRingColor = adaptive(light: (148, 37, 62), dark: (208, 147, 160))
     static let artFill = adaptive(light: (223, 220, 221), dark: (49, 42, 48))
     static let chip = PlayarrStyle.surfaceStrong
     static let line = adaptive(light: (56, 38, 33), dark: (223, 220, 221))
@@ -624,7 +626,7 @@ struct WMFocusRing: View {
                         .compositingGroup()
                 }
             RoundedRectangle(cornerRadius: cornerRadius + 1.5, style: .continuous)
-                .stroke(WM.cardGlowColor, lineWidth: 3)
+                .stroke(WM.cardRingColor, lineWidth: 3)
                 .frame(width: width + 3, height: height + 3)
         }
         .allowsHitTesting(false)
