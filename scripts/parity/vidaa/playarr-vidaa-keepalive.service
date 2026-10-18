@@ -1,0 +1,15 @@
+[Unit]
+Description=Playarr VIDAA TV keepalive (one MQTT session, wedge detection, Playarr foreground)
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=VIDAA_HOST=192.168.1.118
+Environment=VIDAA_MIRROR_PORT=18742
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/Storage/Projects/repositories/.data/PlayarrApp/playarr/scratch/20261008-vidaa-remote/venv/bin/python /home/Storage/Projects/repositories/.data/PlayarrApp/playarr/scripts/vidaa/keepalive.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
