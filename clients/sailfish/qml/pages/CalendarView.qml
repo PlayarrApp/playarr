@@ -323,10 +323,10 @@ Item {
                             function navigationActivate() { root.openEntry(modelData) }
                             x: dayCol.wk ? 0 : Tokens.pad
                             width: dayCol.cw - (dayCol.wk ? 0 : Tokens.pad - 40 * Tokens.u)   // the web agenda card runs past the right edge
-                            height: Math.max(75.7 * Tokens.u, info.height + 18 * Tokens.u) + (dayCol.wk ? 1 : 0)   // week refs: cards run one pixel taller   // web: the 60 px poster plus the padding is the floor
+                            height: Math.max(75.7 * Tokens.u, info.height + 18 * Tokens.u) + (dayCol.wk ? 1 : 2)   // refs: week cards run one pixel taller, agenda cards two   // web: the 60 px poster plus the padding is the floor
                             onClicked: navigationActivate()
                             // Left border: we have it (playable, green) or not, never which library; the card sits over it so it curves with the corners.
-                            Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: (card.pressed ? 0.6 : 1) * (dayCol.wk ? 0.32 : 1) }   // week refs: the border accent is a third strong
+                            Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: (card.pressed ? 0.6 : 1) * (dayCol.wk && modelData.has_file ? 0.32 : 1) }   // week refs: an available card's accent is a third strong, a missing one is full
                             Rectangle { x: 4 * Tokens.u; width: parent.width - 4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: dayCol.wk ? (Tokens.dark ? "#363136" : "#e3dfdf") : (Tokens.dark ? "#4d494c" : "#c7c2c1"); opacity: card.pressed ? 0.6 : 1 }
                             Artwork {
                                 id: poster
@@ -348,7 +348,7 @@ Item {
                                     width: parent.width
                                     visible: text !== ""
                                     text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
-                                    elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 16.2 * Tokens.u
+                                    elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.family; font.pixelSize: 16.2 * Tokens.u
                                 }
                                 Row {
                                     spacing: 11 * Tokens.u
@@ -357,7 +357,7 @@ Item {
                                     Label { text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u }
                                     Rectangle {
                                         width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
-                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : Qt.rgba(0.81, 0.19, 0.34, Tokens.dark ? 0.16 : 0.15); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : Tokens.brandPink
+                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#392c2f" : "#e8dedd") : (Tokens.dark ? "#341c23" : "#f5dee2"); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#996a6e" : "#aa8285") : Tokens.brandPink
                                         Label { id: badge; anchors.centerIn: parent; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10.5 * Tokens.u }
                                     }
                                 }
