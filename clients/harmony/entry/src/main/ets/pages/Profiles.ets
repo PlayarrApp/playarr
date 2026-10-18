@@ -52,7 +52,8 @@ import type { RgbaColor } from '../core/Tokens';
 
 import { listProfiles, verifyPin, syncCurrentAvatar } from '../data/ProfileRepository';
 
-import { getSessionManager, getServerDirectory, saveThemeChoice } from '../AppContainer';
+import { getSessionManager, getServerDirectory, saveThemeChoice, savedLanguageChoice, saveLanguageChoice, deviceLanguageTag } from '../AppContainer';
+import { t, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, resolveLanguage, setCurrentLanguage } from '../core/Language';
 import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 import { ROUTES } from '../navigation/Routes';
 
@@ -106,6 +107,7 @@ const CLIENTS_URL: string = 'https://playarr.app/clients';
 const THEME_SELECT_LEFT: number = 1551;
 const THEME_SELECT_TOP: number = 50;
 const THEME_SELECT_WIDTH: number = 144;
+const LANGUAGE_SELECT_WIDTH: number = 168;
 const TV_ADD_START: string = '#3d202a';
 const TV_ADD_END: string = '#a82655';
 // Light theme: the add tile's gradient is the pale mix web draws, and the kicker is web's `--brand-ink`.
@@ -128,7 +130,6 @@ const PHONE_SELECT_TOP: number = 14;
 const PHONE_SELECT_RIGHT: number = 14;
 const PHONE_FOOTER_RIGHT: number = 22;
 const PHONE_FOOTER_BOTTOM: number = 23;
-const AUTO_LANGUAGE_CHOICES: Choice[] = [{ value: 'auto', label: 'Auto' }];
 const PIN_DIALOG_AVATAR_DIAMETER: number = 72;
 
 const TILE_MARGIN: number = Spacing.md;
@@ -161,6 +162,7 @@ struct Profiles {
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
 
   /** Web's update note under the Check for updates pill; '' before it is tapped. */
+  @State private languageChoice: string = 'system';
   @State private updateNote: string = '';
   @State private viewState: ProfilesViewState = ProfilesViewState.Loading;
   @State private profiles: AvailableProfileResponse[] = [];
@@ -179,6 +181,7 @@ struct Profiles {
   @StorageProp('currentAvatarPreset') private avatarOverride: string = '';
 
   aboutToAppear(): void {
+    savedLanguageChoice().then((value: string) => { this.languageChoice = value; });
     syncCurrentAvatar();
     this.loadProfiles();
   }
@@ -326,11 +329,19 @@ struct Profiles {
     });
   }
 
+  private languageChoices(): Choice[] {
+    const choices: Choice[] = [{ value: 'system', label: t('settings.language.optionSystem', 'Auto') }];
+    for (const language of SUPPORTED_LANGUAGES) {
+      choices.push({ value: language, label: LANGUAGE_NAMES[language] });
+    }
+    return choices;
+  }
+
   private statusLabel(profile: AvailableProfileResponse): string {
     if (profile.is_current) {
-      return 'Watching now';
+      return t('pages.profiles.statusCurrent', 'Watching now');
     }
-    return profile.pin_locked ? 'PIN required' : 'Ready';
+    return profile.pin_locked ? t('pages.profiles.statusPinRequired', 'PIN required') : t('pages.profiles.statusReady', 'Ready');
   }
 
   /** Web's foot-of-page pills (Check for updates, Clients): a 44 px pill on surface-strong at 0.64, text only. */
@@ -388,8 +399,8 @@ struct Profiles {
       // Web's foot-of-page pills: Check for updates (bottom left) and the Clients link (bottom right). HarmonyOS has
       // no in-app installer, so the update check says what web says for a build that cannot update itself.
       if (isTvMetrics()) {
-        this.footerPill(this.updateNote.length > 0 ? 'Try update again' : 'Check for updates', FOOTER_LEFT, FOOTER_TOP, (): void => {
-          this.updateNote = 'This Playarr build cannot start native updates.';
+        this.footerPill(this.updateNote.length > 0 ? t('pages.profiles.updateRetry', 'Try update again') : t('pages.profiles.checkForUpdates', 'Check for updates'), FOOTER_LEFT, FOOTER_TOP, (): void => {
+          this.updateNote = t('pages.profiles.updateUnavailable', 'This Playarr build cannot start native updates.');
         })
       }
       if (this.updateNote.length > 0 && isTvMetrics()) {
@@ -398,11 +409,14 @@ struct Profiles {
           .fontColor(toResourceColor(activeColors().inkSoft))
           .position({ x: tv(FOOTER_LEFT), y: tv(FOOTER_TOP - 28) })
       }
-      this.footerPill(isTvMetrics() ? 'Clients ↗' : 'Clients →', FOOTER_RIGHT_LEFT, FOOTER_TOP, (): void => {
-        openInBrowser(getContext(this), CLIENTS_URL);
-      }, !isTvMetrics())
-      // Web's top-right theme control (the language select needs the Language setting, which is not built here).
-      Row({ space: this.pick(0, 8) }) {
+      // Web's TV profile picker has no Clients pill (the 2026-10-18 reference shows only Check for updates).
+      if (!isTvMetrics()) {
+        this.footerPill('Clients →', FOOTER_RIGHT_LEFT, FOOTER_TOP, (): void => {
+          openInBrowser(getContext(this), CLIENTS_URL);
+        }, true)
+      }
+      // Web's top-right controls: the theme select and the language select (Auto, English, Thai, Japanese).
+      Row({ space: this.pick(15, 8) }) {
         SelectField({
           options: THEME_CHOICES,
           value: this.themeSetting,
@@ -414,23 +428,25 @@ struct Profiles {
             saveThemeChoice(value as ThemeModeSetting);
           },
         })
-        if (!isTvMetrics()) {
-          // shortcut: web's language select; the Language setting is not built, so Auto is the only choice and the control only mirrors web's layout.
-          SelectField({
-            options: AUTO_LANGUAGE_CHOICES,
-            value: 'auto',
-            selectWidth: PHONE_SELECT_WIDTH,
-            minHeight: PHONE_SELECT_HEIGHT,
-            radius: PHONE_SELECT_RADIUS,
-            onChange: (_value: string): void => {},
-          })
-        }
+        SelectField({
+          options: this.languageChoices(),
+          value: this.languageChoice,
+          selectWidth: isTvMetrics() ? LANGUAGE_SELECT_WIDTH : PHONE_SELECT_WIDTH,
+          minHeight: isTvMetrics() ? 56 : PHONE_SELECT_HEIGHT,
+          radius: isTvMetrics() ? 12 : PHONE_SELECT_RADIUS,
+          onChange: (value: string): void => {
+            this.languageChoice = value;
+            setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
+            void saveLanguageChoice(value);
+          },
+        })
+      }
       }
         .position(isTvMetrics() ? { x: tv(THEME_SELECT_LEFT), y: tv(THEME_SELECT_TOP) } : { x: '100%', y: PHONE_SELECT_TOP })
         .markAnchor(isTvMetrics() ? { x: 0, y: 0 } : { x: PHONE_SELECT_RIGHT + PHONE_SELECT_WIDTH * 2 + 8, y: 0 })
         .zIndex(2)
       Column() {
-      Text('Profiles').fontFamily(nunito(900))
+      Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunito(900))
         .fontSize(isTvMetrics() ? tv(10.368) : tv(10.368) * 0.705)
         .fontWeight(FontWeight.Bolder)
         .letterSpacing(isTvMetrics() ? tv(1.348) : tv(1.348) * 0.705)
@@ -439,7 +455,7 @@ struct Profiles {
         .height(tv(16))
         .margin({ top: this.pick(162, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 145 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
-      Text('Who’s watching?').fontFamily(nunito(500))
+      Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunito(500))
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(this.pick(-5.806, -2.77))
@@ -479,7 +495,7 @@ struct Profiles {
                 this.tvActionButton($r('app.media.nav_settings'), '', BRAND_PINK, () => {
                   pushRoute(getNavStack(), ROUTES.Settings);
                 })
-                this.tvActionButton($r('app.media.action_sign_out'), 'Sign out', activeColors().inkSoft, () => {
+                this.tvActionButton($r('app.media.action_sign_out'), t('settings.account.signOut', 'Sign out'), activeColors().inkSoft, () => {
                   this.handleSignOut();
                 })
               }
@@ -516,12 +532,12 @@ struct Profiles {
           .borderRadius(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH) / 2)
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
-          Text($r('app.string.profiles_sign_in')).fontFamily(nunito(700))
+          Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunito(700))
             .fontSize(this.pick(17.28, 12))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: this.pick(9, 10.8) })
-          Text($r('app.string.profiles_add_another_profile')).fontFamily(nunito(700))
+          Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunito(700))
             .fontSize(this.pick(9.408, 7.3))
             .fontWeight(FontWeight.Bold)
             .letterSpacing(this.pick(0.423, 0.33))
