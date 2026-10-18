@@ -663,9 +663,9 @@ struct CalendarView: View {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(viewModel.dayGroups) { group in
                         VStack(alignment: .leading, spacing: 6.4) {
-                            Text(dayHeading(group.day, today: viewModel.today))
+                            Text(CalendarDays.displayDate(group.day).map { Self.groupFormatter.string(from: $0) } ?? group.day)
                                 .font(.custom("Avenir Next", fixedSize: 14.4).weight(.semibold))
-                                .foregroundStyle(group.day == viewModel.today ? PlayarrStyle.pink : PlayarrStyle.muted)
+                                .foregroundStyle(PlayarrStyle.ink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             ScrollView {
                                 LazyVStack(spacing: 13.6) {
@@ -723,13 +723,15 @@ struct CalendarView: View {
                         .foregroundStyle(PlayarrStyle.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                     if let entry {
-                        CalendarWeekMetadataLayout(horizontalSpacing: 12, verticalSpacing: 3.2) {
-                            Text(calendarTimeLabel(entry) ?? "All day")
+                        // One row like the web: the badge never wraps under the title.
+                        HStack(spacing: 12) {
+                            Text(calendarTimeLabel(entry).flatMap { $0 == "00:00" ? nil : $0 } ?? "All day")
                             Text(releaseTypeLabel(entry.releaseType))
                             if item.entries.count == 1 { Text(kindLabel(entry.mediaKind)) }
                             agendaBadge(entry)
                         }
                         .font(.custom("Avenir Next", fixedSize: 12.8))
+                        .lineLimit(1)
                         .foregroundStyle(PlayarrStyle.muted)
                     }
                 }
@@ -953,56 +955,6 @@ struct CalendarView: View {
     }
 }
 
-private struct CalendarWeekMetadataLayout: Layout {
-    var horizontalSpacing: CGFloat
-    var verticalSpacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let availableWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var contentWidth: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > 0, x + horizontalSpacing + size.width > availableWidth {
-                y += rowHeight + verticalSpacing
-                x = 0
-                rowHeight = 0
-            }
-            if x > 0 { x += horizontalSpacing }
-            x += size.width
-            contentWidth = max(contentWidth, x)
-            rowHeight = max(rowHeight, size.height)
-        }
-
-        return CGSize(width: proposal.width ?? contentWidth, height: y + rowHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > bounds.minX, x + horizontalSpacing + size.width > bounds.maxX {
-                y += rowHeight + verticalSpacing
-                x = bounds.minX
-                rowHeight = 0
-            }
-            if x > bounds.minX { x += horizontalSpacing }
-            subview.place(
-                at: CGPoint(x: x, y: y),
-                proposal: ProposedViewSize(width: size.width, height: size.height)
-            )
-            x += size.width
-            rowHeight = max(rowHeight, size.height)
-        }
-    }
-}
-
 /// "TODAY", "TOMORROW", otherwise "MON 6 OCT".
 func dayHeading(_ day: String, today: String) -> String {
     if day == today { return "TODAY" }
@@ -1074,9 +1026,18 @@ private struct CalendarItemRow: View {
     }
 }
 
+private let calendarTimeFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_GB")
+    formatter.timeZone = TimeZone(identifier: "UTC")
+    formatter.dateFormat = "HH:mm"
+    return formatter
+}()
+
+/// 24-hour "01:00" in UTC, as the web calendar shows it.
 func calendarTimeLabel(_ entry: CalendarEntry) -> String? {
     guard let at = entry.releaseAt else { return nil }
-    return at.formatted(date: .omitted, time: .shortened)
+    return calendarTimeFormatter.string(from: at)
 }
 
 struct CalendarStateBadge: View {
