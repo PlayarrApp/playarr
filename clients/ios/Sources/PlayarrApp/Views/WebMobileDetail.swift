@@ -364,13 +364,18 @@ struct WMDetailPage: View {
     private var copy: some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(kicker, 10.56, 820, color: WM.brandInk, lh: 15.84, ls: 0.8448)
-            Text(work.title)
-                .font(WM.font(39.3, 560))
-                .tracking(-2.8296)
-                .foregroundStyle(WM.ink)
-                .lineLimit(1)
-                .frame(width: 358, height: 36.66, alignment: .leading)
-                .padding(.top, 9.16)
+            // Web title box: max-width 12ch with balanced wrapping, so a long title takes two even lines.
+            ViewThatFits(in: .horizontal) {
+                titleText(work.title).fixedSize()
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(balancedTitleLines(work.title).enumerated()), id: \.offset) { _, line in
+                        titleText(line).fixedSize()
+                    }
+                }
+            }
+            .frame(width: 270, alignment: .leading)
+            .frame(width: 358, alignment: .leading)
+            .padding(.top, 9.16)
             if isSeries, let episode = selectedEpisode?.detail.episode {
                 WMText(
                     episode.title ?? "Episode \(episode.episodeNumber)",
@@ -400,10 +405,32 @@ struct WMDetailPage: View {
                     // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
                     .lineSpacing(1.2)
                     .frame(width: 347, alignment: .topLeading)
+                    // A series synopsis keeps three lines of room (web `.is-episodic`), so the buttons never move.
+                    .frame(minHeight: isSeries ? 50.2 : nil, alignment: .topLeading)
                     .padding(.top, isSeries ? 10.6 : 11.2)
             }
         }
         .padding(.leading, 16)
+    }
+
+    private func titleText(_ text: String) -> some View {
+        Text(text)
+            .font(WM.font(39.3, 560))
+            .tracking(-2.8296)
+            .foregroundStyle(WM.ink)
+            .lineLimit(1)
+            .frame(height: 36.66, alignment: .leading)
+    }
+
+    /// The word split with the most even line lengths (the web's `text-wrap: balance` for two lines).
+    private func balancedTitleLines(_ title: String) -> [String] {
+        let words = title.split(separator: " ").map(String.init)
+        guard words.count > 1 else { return [title] }
+        let best = (1..<words.count).min { a, b in
+            abs(words[..<a].joined(separator: " ").count - words[a...].joined(separator: " ").count)
+                < abs(words[..<b].joined(separator: " ").count - words[b...].joined(separator: " ").count)
+        } ?? 1
+        return [words[..<best].joined(separator: " "), words[best...].joined(separator: " ")]
     }
 
     // MARK: Actions
