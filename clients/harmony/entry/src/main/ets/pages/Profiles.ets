@@ -441,7 +441,6 @@ struct Profiles {
           },
         })
       }
-      }
         .position(isTvMetrics() ? { x: tv(THEME_SELECT_LEFT), y: tv(THEME_SELECT_TOP) } : { x: '100%', y: PHONE_SELECT_TOP })
         .markAnchor(isTvMetrics() ? { x: 0, y: 0 } : { x: PHONE_SELECT_RIGHT + PHONE_SELECT_WIDTH * 2 + 8, y: 0 })
         .zIndex(2)
