@@ -404,7 +404,7 @@ sub pageBegin(title as String, panelX as Float)
         pgFocusable(1710, 50, 168, 48, 24, "clientsLanguage")
         applyClientsChrome()
     else
-        pgLabel(m.pageHead, 226.6, 56.2, 900, 50, title, 34, 600, "ink", { vertAlign: "center" })
+        pgTrackedText(m.pageHead, 226.6, 57.2, 900, title, 34, 600, -1.512, "ink", false, "left", 1, 50)
     end if
 end sub
 
@@ -1432,7 +1432,7 @@ sub renderSmartTvClientGuide(clientId as String)
     brand = "Samsung"
     device = "Samsung TV"
     title = "Install Playarr on your Samsung TV"
-    installDescription = "Use a 2023-or-newer Samsung television running Tizen 7.0 or newer, and keep it on the same local network as the computer. You need Tizen Studio with the Samsung TV extensions, a valid certificate profile and either a compatible signed WGT above or one you sign from source."
+    installDescription = "Use a 2022-or-newer Samsung television running Tizen 6.5 or newer, and keep it on the same local network as the computer. You need Tizen Studio with the Samsung TV extensions, a valid certificate profile and either a compatible signed WGT above or one you sign from source."
     officialUrl = "https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-device.html"
     sourceUrl = "https://github.com/ThomasMcFarlane/playarr/tree/main/clients/tv-web/apps/tv-tizen"
     appId = "StrmarrTV1.Playarr Server"
@@ -1663,10 +1663,108 @@ end function
 
 ' Status text as web shows it: Available, Upcoming (monitored, still to come), Missing (monitored, already due), Not tracked.
 function calendarStatusText(entry as Object) as String
+    if entry.groupStatus <> invalid then return entry.groupStatus
     if entry.has_file = true then return "Available"
     if entry.monitored <> true then return "Not tracked"
     if calendarEntryLocalDay(entry) <= calendarTodayString() then return "Missing"
     return "Upcoming"
+end function
+
+' Web entryAvailable: a file we have, and when the server listed actions an enabled play or resume (the viewer can play it).
+function calendarEntryAvailable(entry as Object) as Boolean
+    if entry.has_file <> true then return false
+    if entry.actions = invalid or entry.actions.Count() = 0 then return true
+    for each a in entry.actions
+        if (a.action = "play" or a.action = "resume") and a.enabled = true then return true
+    end for
+    return false
+end function
+
+' Availability of what a card shows: a series group is available only when every folded episode is.
+function calendarItemAvailable(entry as Object) as Boolean
+    if entry.groupAvail <> invalid then return entry.groupAvail
+    return calendarEntryAvailable(entry)
+end function
+
+' Web groupSeriesEpisodes: episodes of one series on the same day and air time fold into one item (the first episode stands for
+' the group; groupCount, groupCodes, groupAvail and groupStatus describe it). Pass the entries of one list; order is kept.
+function calendarGroupEntries(list as Object) as Object
+    buckets = {}
+    order = []
+    for each e in list
+        e.groupCount = 1
+        e.groupCodes = invalid
+        e.groupAvail = invalid
+        e.groupStatus = invalid
+        key = "single:" + JsonString(e.id)
+        if e.media_kind = "episode" and e.season_number <> invalid and e.episode_number <> invalid
+            slot = "all-day"
+            if calendarHasTime(e) then slot = calendarTime(calendarEntryDate(e))
+            who = JsonString(e.title)
+            if e.work_id <> invalid then who = JsonString(e.work_id)
+            key = "series:" + who + ":" + calendarEntryLocalDay(e) + ":" + slot
+        end if
+        if buckets[key] = invalid
+            buckets[key] = []
+            order.Push(key)
+        end if
+        buckets[key].Push(e)
+    end for
+    items = []
+    for each key in order
+        members = buckets[key]
+        if members.Count() > 1
+            for each e in members
+                e.groupSort = Right("0000" + e.season_number.ToStr(), 4) + Right("0000" + e.episode_number.ToStr(), 4)
+            end for
+            members.SortBy("groupSort")
+            n = members.Count()
+            parts = []
+            avail = true
+            rank = 0
+            worst = "Available"
+            i = 0
+            while i < n
+                j = i
+                while j + 1 < n
+                    nxt = members[j + 1]
+                    if nxt.season_number <> members[i].season_number or nxt.episode_number <> members[j].episode_number + 1 then exit while
+                    j = j + 1
+                end while
+                label = ""
+                if i = 0
+                    label = "S" + calendarTwo(members[i].season_number)
+                else if members[i - 1].season_number <> members[i].season_number
+                    label = "S" + calendarTwo(members[i].season_number)
+                end if
+                label = label + "E" + calendarTwo(members[i].episode_number)
+                if j > i then label = label + "–E" + calendarTwo(members[j].episode_number)
+                parts.Push(label)
+                i = j + 1
+            end while
+            for each e in members
+                if not calendarEntryAvailable(e) then avail = false
+                st = calendarStatusText(e)
+                r = 0
+                if st = "Missing" then r = 3
+                if st = "Upcoming" then r = 2
+                if st = "Not tracked" then r = 1
+                if r > rank
+                    rank = r
+                    worst = st
+                end if
+            end for
+            rep = members[0]
+            rep.groupCount = n
+            rep.groupCodes = parts.Join(", ")
+            rep.groupAvail = avail
+            rep.groupStatus = worst
+            items.Push(rep)
+        else
+            items.Push(members[0])
+        end if
+    end for
+    return items
 end function
 
 function calendarTwo(value as Integer) as String
@@ -1715,6 +1813,7 @@ function calendarDayHeading(dt as Object, withYear as Boolean) as String
 end function
 
 function calendarEntrySubtitle(entry as Object) as String
+    if entry.groupCount <> invalid and entry.groupCount > 1 then return entry.groupCount.ToStr() + " episodes · " + entry.groupCodes
     text = ""
     if entry.season_number <> invalid and entry.episode_number <> invalid
         text = "S" + calendarTwo(entry.season_number) + "E" + calendarTwo(entry.episode_number)
@@ -1824,6 +1923,7 @@ sub renderCalendarAgenda(entries as Object)
         pgLabel(m.pageBody, 153.6, 240, 1200, 30, "No releases in this range.", 19, 400, "inkSoft")
         return
     end if
+    entries = calendarGroupEntries(entries)
     selected = invalid
     if m.calendarSelected = invalid then m.calendarSelected = ""
     for each entry in entries
@@ -1890,7 +1990,11 @@ sub renderCalendarAgenda(entries as Object)
             ay = ay + 34
             lastDay = day
         end if
-        pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "surfaceStrong")
+        role = "inkMuted"
+        if calendarItemAvailable(entry) then role = "success"
+        pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, role)
+        pgRound(m.pageBody, 790.4, ay, 1044.8, 99.6, 14, "surfaceStrong")
+        pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "line", -1, true)
         if entry.id = m.calendarSelected then pgRound(m.pageBody, 786.4, ay, 1048.8, 99.6, 14, "ink", 56, true)
         art = calendarArtworkUrl(entry)
         pgRound(m.pageBody, 802.4, ay + 19.8, 40, 60, 6, "surfaceSoft")
@@ -1952,7 +2056,7 @@ sub renderCalendarMonth(entries as Object)
                 end if
                 chip = chips[index[e.title]]
                 chip.count = chip.count + 1
-                if e.has_file <> true then chip.have = false
+                if not calendarEntryAvailable(e) then chip.have = false
             end for
         end if
         n = chips.Count()
@@ -2015,10 +2119,10 @@ sub renderCalendarWeek(entries as Object)
         list = byDay[day]
         y = 208.0
         if list <> invalid
-            for each entry in calendarDayList(list)
+            for each entry in calendarDayList(calendarGroupEntries(list))
                 ' Web's 4 px availability border follows the card's rounded corners: the accent shape under a card face shifted 4 px.
                 role = "inkMuted"
-                if entry.has_file = true then role = "success"
+                if calendarItemAvailable(entry) then role = "success"
                 pgRound(m.pageBody, x, y, 440, 106, 14, role)
                 pgRound(m.pageBody, x + 4, y, 436, 106, 14, "surfaceStrong")
                 pgRound(m.pageBody, x, y, 440, 106, 14, "line", -1, true)

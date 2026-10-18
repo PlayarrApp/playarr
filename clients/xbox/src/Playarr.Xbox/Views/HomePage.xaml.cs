@@ -226,7 +226,7 @@ namespace Playarr.Xbox.Views
             list.ItemsPanel = (ItemsPanelTemplate)Windows.UI.Xaml.Markup.XamlReader.Load(
                 "<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
                 "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
-            list.ItemContainerStyle = CatalogTileFactory.CardContainerStyle;
+            list.ItemContainerStyle = CatalogTileFactory.HomeCardContainerStyle;
             list.ItemClick += RailItem_Click;
             CardFocus.Attach(list);
             CardActions.Attach(list, id => rail.Items.FirstOrDefault(w => w.Id == id));
@@ -244,7 +244,7 @@ namespace Playarr.Xbox.Views
                 list.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, cover: Appearance.HomeCover));
             }
 
-            var section = new StackPanel { Spacing = 38, Margin = new Thickness(54, 0, 0, 0) };
+            var section = new StackPanel { Spacing = 37, Margin = new Thickness(53, 0, 0, 0) };
             section.Children.Add(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
             section.Children.Add(list);
             return section;

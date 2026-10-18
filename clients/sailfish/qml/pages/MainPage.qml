@@ -44,13 +44,20 @@ PlayarrPage {
             if (item.kind !== undefined) item.kind = page.section === "movies" ? "movie" : page.section === "series" ? "series" : "artist"
             if (item.title !== undefined) item.title = page.section === "movies" ? qsTr("Movies") : page.section === "series" ? qsTr("Series") : qsTr("Music")
             if (item.reload) item.reload()
+            page.navigation.resetForContent()
         }
     }
     // Same item for movies/series/music: reload when the kind changes.
-    onSectionChanged: if (loader.item && loader.item.kind !== undefined) {
-        loader.item.kind = section === "movies" ? "movie" : section === "series" ? "series" : "artist"
-        loader.item.title = section === "movies" ? qsTr("Movies") : section === "series" ? qsTr("Series") : qsTr("Music")
-        loader.item.reload()
+    onSectionChanged: {
+        if (loader.item && loader.item.kind !== undefined) {
+            loader.item.kind = section === "movies" ? "movie" : section === "series" ? "series" : "artist"
+            loader.item.title = section === "movies" ? qsTr("Movies") : section === "series" ? qsTr("Series") : qsTr("Music")
+            loader.item.reload()
+            page.navigation.resetForContent()
+        } else {
+            page.navigation.moved = false
+            page.navigation.focusRequested = false
+        }
     }
 
     NavBar {

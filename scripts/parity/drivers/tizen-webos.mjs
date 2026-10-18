@@ -1,5 +1,6 @@
 // Suite driver (docs/parity/SUITE.md) for the Samsung Tizen emulator and the LG webOS simulator.
 //   DEVICE=tizen|webos  [TIZEN_DISPLAY=:25] [WEBOS_DISPLAY=:26] [WEBOS_CDP=9226] [PARITY_NETLOG=<dir>]
+//   PARITY_PIN_CLOCK=2026-10-07T12:00:00Z  [webos only] pins Date, zone and locale from the inspector without stable mode
 // webOS: Chrome DevTools Protocol (keys and eval). Tizen: X key events to the emulator window plus the debug build's
 // netlog.js eval channel (a debug build with scripts/parity/tizen-webos/netlog.js; the host side is logserver.py <dir>/log.txt). Both then drive the same page functions.
 import { execFileSync } from "node:child_process";
@@ -73,7 +74,12 @@ export async function createDriver() {
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
   let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
-  let pin = null; // { fixedNow, timeZone, locale } from setDeterministicCapture, re-applied on every CDP connection
+  // PARITY_PIN_CLOCK=<ISO instant> pins the clock without the isolated-account stable mode (the real TV stays on the shared Device Test account), so Calendar renders the web refs' date.
+  let pin = null; // { fixedNow, timeZone, locale } from setDeterministicCapture or PARITY_PIN_CLOCK, re-applied on every CDP connection
+  if (process.env.PARITY_PIN_CLOCK && device === "webos") {
+    if (!Number.isFinite(Date.parse(process.env.PARITY_PIN_CLOCK))) throw new Error("PARITY_PIN_CLOCK must be an ISO instant");
+    pin = { fixedNow: process.env.PARITY_PIN_CLOCK, timeZone: "UTC", locale: "en-GB" };
+  }
   let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme;
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env: process.env, client: process.env.PARITY_CLIENT });
   const trustedServerUrl = loadTrustedDeviceTestServerUrl();
@@ -111,7 +117,8 @@ export async function createDriver() {
       // The same pin the web driver gives the browser: zone, locale and a fixed Date (wall time still advances), for this document and every new one.
       await cdp("Emulation.setTimezoneOverride", { timezoneId: pin.timeZone });
       await cdp("Emulation.setLocaleOverride", { locale: pin.locale });
-      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)})`;
+      // A real TV's inspector does not always honour the zone override (the Samsung QN700B showed ICT, 19:00, on some screens): pin the zone in the page too.
+      const install = `(${installVisualDate})(${JSON.stringify(pin.fixedNow)});(${installRegionPin})(${JSON.stringify(pin.timeZone)}, ${JSON.stringify(pin.locale)})`;
       await cdp("Page.addScriptToEvaluateOnNewDocument", { source: install });
       await cdp("Runtime.evaluate", { expression: install });
     }
@@ -293,6 +300,14 @@ export async function createDriver() {
             s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0 && !!(img.currentSrc || img.getAttribute("src") || img.getAttribute("srcset"));
         });
         if (${requireVisibleImage} && !visible.length) return null;
+        // A card whose art has not loaded yet (no src, or fading in at opacity 0) is not in the visible list; on Home only, wait for it for the first 30 s (a card with no art at all must not block the capture).
+        if (${requireVisibleImage} && ${i} < 40) {
+          const bare = [...document.querySelectorAll(".media-card")].filter((card) => {
+            const r = card.getBoundingClientRect();
+            return insideAncestorClips(card) && r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth && ![...card.querySelectorAll("img")].some((img) => (img.currentSrc || img.getAttribute("src")) && img.complete && img.naturalWidth > 0);
+          });
+          if (bare.length) return null;
+        }
         if (visible.some((img) => !img.currentSrc || !img.complete || img.naturalWidth === 0)) return null;
         try { await Promise.all(visible.map((img) => img.decode())); } catch { return null; }
         const page = document.querySelector("[data-page-id]");
@@ -456,6 +471,11 @@ export async function createDriver() {
         await guard();
         if (TIZEN_MIRROR) {
           const q = (name) => `${mirrorLocal()}/__mirror/${name}?t=${encodeURIComponent(mirrorToken())}`;
+          // A focused text field opens the TV's keyboard, which shrinks the page to the strip above it (Search: 1920x568): blur it first.
+          if (Number(await ev("innerHeight")) < 1000) {
+            await ev("(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)");
+            if (!(await until("innerHeight >= 1070", 15000))) throw new Error("the TV keyboard did not close before capture");
+          }
           await ev("window.__mirrorPause = false");
           const since = Date.now() / 1000;
           let frame;
