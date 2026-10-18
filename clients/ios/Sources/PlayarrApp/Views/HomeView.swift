@@ -14,7 +14,19 @@ enum HomeLayout {
     }
 
     static func railWidth(viewportWidth: CGFloat, phone: Bool) -> CGFloat {
-        phone ? viewportWidth : viewportWidth * 0.549 // web tablet: rails start at 616 pt of 1366 (cards at 640)
+        phone ? viewportWidth : viewportWidth * 0.62 // web tablet: Home opens aligned with the Library, rails start at 519 pt of 1366 (cards at 557)
+    }
+
+    /// The Library's rail inset: Home cards start at the grid's left edge.
+    static func railInset(viewportWidth: CGFloat) -> CGFloat { min(max(28, viewportWidth * 0.028), 54) }
+
+    /// Web tablet: a Home thumbnail is the Library's screen card (three 229 pt columns at 1366 pt, one more or fewer by artwork size).
+    static func screenCardWidth(viewportWidth: CGFloat, step: Int) -> CGFloat {
+        let columns = CGFloat(max(1, 3 + step))
+        let controlEdge = max(min(max(5, viewportWidth * 0.0065), 14), 0)
+        let trailing = controlEdge + max(min(max(48, viewportWidth * 0.036), 62), 56) + min(max(18, viewportWidth * 0.015), 30)
+        let gap = min(max(14, viewportWidth * 0.0135), 28)
+        return (viewportWidth * 0.62 - railInset(viewportWidth: viewportWidth) - trailing - gap * (columns - 1)) / columns
     }
 
     static func cardWidth(viewportWidth: CGFloat, phone: Bool) -> CGFloat {
@@ -228,7 +240,7 @@ struct HomeView: View {
                         height: proxy.size.height,
                         alignment: .topLeading
                     )
-                    .offset(x: phone ? 0 : proxy.size.width * 0.451)
+                    .offset(x: phone ? 0 : proxy.size.width * 0.38)
                     .zIndex(2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -307,13 +319,13 @@ struct HomeView: View {
     private func rails(phone: Bool, width: CGFloat, height: CGFloat) -> some View {
         let railWidth = HomeLayout.railWidth(viewportWidth: width, phone: phone)
         return ScrollView(.vertical) {
-            LazyVStack(alignment: .leading, spacing: phone ? 24 : 80) {
+            LazyVStack(alignment: .leading, spacing: phone ? 24 : 73) {
                 ForEach(viewModel.rails) { rail in
                     mediaRail(rail, phone: phone, width: width)
                 }
             }
             .frame(width: railWidth, alignment: .leading)
-            .padding(.top, phone ? HomeLayout.phoneTopOffset : height * 0.395)
+            .padding(.top, phone ? HomeLayout.phoneTopOffset : min(max(128, height * 0.15), 174) + 4) // web --library-rail-top
             .padding(.bottom, phone ? 112 : height * 0.5)
         }
         .refreshable { await viewModel.load() }
@@ -348,9 +360,10 @@ struct HomeView: View {
         let thumbWidth = HomeLayout.cardWidth(viewportWidth: width, phone: phone)
         let coverColumns = CGFloat(max(1, 5 + step))
         let posterWidth = (width * 0.65 - max(28, width * 0.058) - max(80, width * 0.065) - min(28, width * 0.0135) * (coverColumns - 1)) / coverColumns
-        let mediaCardWidth = covers ? posterWidth : thumbWidth * 3 / CGFloat(max(1, 3 + step))
+        let mediaCardWidth = covers ? posterWidth : (phone ? thumbWidth * 3 / CGFloat(max(1, 3 + step)) : HomeLayout.screenCardWidth(viewportWidth: width, step: step))
+        let inset = phone ? HomeLayout.phoneGutter : HomeLayout.railInset(viewportWidth: width)
         let railWidth = HomeLayout.railWidth(viewportWidth: width, phone: phone)
-        return VStack(alignment: .leading, spacing: phone ? 8 : 22) {
+        return VStack(alignment: .leading, spacing: phone ? 8 : 26) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(rail.title)
                     .font(phone ? .custom("Avenir Next", fixedSize: 16).weight(.semibold) : WM.font(13.5, 500))
@@ -360,10 +373,10 @@ struct HomeView: View {
                     .font(.custom("Avenir Next", fixedSize: phone ? 10.5 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted) }
             }
-            .padding(.horizontal, phone ? HomeLayout.phoneGutter : 24)
+            .padding(.horizontal, inset)
 
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: phone ? 12 : 18) {
+                LazyHStack(alignment: .top, spacing: phone ? 12 : min(max(14, width * 0.0135), 28)) {
                     ForEach(rail.works) { work in
                         workLink(work) {
                             if covers {
@@ -373,13 +386,14 @@ struct HomeView: View {
                                     work: work,
                                     apiClient: apiClient,
                                     progress: viewModel.progressByWorkID[work.id],
-                                    width: mediaCardWidth
+                                    width: mediaCardWidth,
+                                    screenGridViewportWidth: phone ? nil : width
                                 )
                             }
                         }
                     }
                 }
-                .padding(.horizontal, phone ? HomeLayout.phoneGutter : 24)
+                .padding(.horizontal, inset)
                 .padding(.vertical, 8)
             }
             .scrollClipDisabled() // card shadows and the focus glow reach past the rail's frame, as on web

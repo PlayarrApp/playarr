@@ -100,6 +100,7 @@
  * reject outright.
  */
 
+import { t, tf } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
@@ -205,13 +206,16 @@ const HERO_TOUCH_HEIGHT: number = 340;
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
 const PHONE_SEASON_LIST_HEIGHT: number = 165;
-const PHONE_SEASON_HEADER_CARD_GAP: number = 19;
+const PHONE_SEASON_HEADER_CARD_GAP: number = 21.18;
 const PHONE_DETAIL_RAIL_CLIP_START: number = 16;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
+// Web phone detail header (#175): the 44 vp Back button 16 vp from the top, an 8 vp gap, then the 28 vp edge fade of the pinned scrim.
+const PHONE_BACK_SIZE: number = 44;
+const PHONE_HEADER_TOP: number = 16;
+const PHONE_HEADER_GAP: number = 8;
+const PHONE_HEADER_FADE: number = 28;
 // Season to season is 237 on web; the phone capture measured 14.3 vp short with 21, so the gap is 35.3.
-const PHONE_SEASON_ROW_GAP: number = 37.6;
-// Web: 57 vp from the action row to the first season heading (the hero ends there); the page spacing gave 21.
-const PHONE_SEASONS_TOP_GAP: number = 36;
+const PHONE_SEASON_ROW_GAP: number = 35.65;
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
@@ -242,6 +246,7 @@ const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
 const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 361;
+const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 719;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
@@ -423,23 +428,23 @@ interface DetailSeasonRowArea {
 
 function kindLabel(kind: WorkKind): string {
   if (kind === 'movie') {
-    return 'Movie';
+    return t('pages.home.workKind.movie', 'Movie');
   }
   if (kind === 'series') {
-    return 'Series';
+    return t('pages.home.workKind.series', 'Series');
   }
   if (kind === 'site') {
-    return 'Site';
+    return t('pages.workDetail.kindSite', 'Site');
   }
   if (kind === 'artist') {
-    return 'Artist';
+    return t('pages.home.workKind.artist', 'Artist');
   }
   return 'Author';
 }
 
 function humanizeAvailability(availability: Availability): string {
   if (availability === 'available') {
-    return 'Available';
+    return t('pages.requests.status.available', 'Available');
   }
   if (availability === 'partially_available') {
     return 'Partially available';
@@ -499,14 +504,14 @@ function episodeMediaFileId(detail: EpisodeDetail): string | null {
 
 function buildEpisodeRow(detail: EpisodeDetail, seasonNumber: number): DetailRow {
   const episode = detail.episode;
-  let title = 'Episode ' + String(episode.episode_number);
+  let title = tf('pages.workDetail.episodeNumber', 'Episode {{number}}', { number: String(episode.episode_number) });
   if (episode.title !== undefined && episode.title !== null && episode.title.length > 0) {
     title = episode.title;
   }
   const row: DetailRow = {
     id: episode.id,
     title: title,
-    subtitle: 'Episode ' + String(episode.episode_number),
+    subtitle: tf('pages.workDetail.episodeNumber', 'Episode {{number}}', { number: String(episode.episode_number) }),
     episodeCaption: seriesEpisodeCaption(seasonNumber, episode.episode_number),
     episodeNumberOverlay: seriesEpisodeOverlayNumber(episode.episode_number),
     mediaFileId: episodeMediaFileId(detail),
@@ -520,7 +525,7 @@ function seasonHeading(season: Season): string {
   if (season.title !== undefined && season.title !== null && season.title.length > 0) {
     return season.title;
   }
-  return 'Season ' + String(season.season_number);
+  return tf('pages.workDetail.seasonNumber', 'Season {{number}}', { number: String(season.season_number) });
 }
 
 function buildSeasonRail(detail: SeasonDetail): DetailRail {
@@ -621,7 +626,7 @@ function buildBooksRail(books: BookDetail[]): DetailRail {
   for (const book of books) {
     items.push(buildBookRow(book));
   }
-  const rail: DetailRail = { id: 'books', heading: 'Books', items: items };
+  const rail: DetailRail = { id: 'books', heading: t('pages.calendar.typeBooks', 'Books'), items: items };
   return rail;
 }
 
@@ -692,7 +697,7 @@ function buildSimilarRail(works: Work[]): DetailRail {
     };
     items.push(row);
   }
-  const rail: DetailRail = { id: 'similar', heading: 'Similar Titles', items: items };
+  const rail: DetailRail = { id: 'similar', heading: t('pages.workDetail.similarTitlesHeading', 'Similar Titles'), items: items };
   return rail;
 }
 
@@ -712,7 +717,7 @@ function chapterTimeLabel(ms: number): string {
 /** One chapter card (web Chapters rail): "Chapter 01" (or the chapter's own title) under the card, its start time as the caption. */
 function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
   const number = chapter.index < 9 ? '0' + (chapter.index + 1).toString() : (chapter.index + 1).toString();
-  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : 'Chapter ' + number;
+  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : tf('pages.workDetail.chapterNumber', 'Chapter {{number}}', { number: String(number) });
   const row: DetailRow = {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
@@ -1066,7 +1071,7 @@ struct Detail {
     for (const chapter of result.value) {
       rows.push(chapterRow(chapter, mediaFileId));
     }
-    this.chaptersRail = { id: 'chapters', heading: 'Chapters', items: rows };
+    this.chaptersRail = { id: 'chapters', heading: t('pages.workDetail.chaptersHeading', 'Chapters'), items: rows };
     for (const chapter of result.value) {
       const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
@@ -1630,6 +1635,8 @@ struct Detail {
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: (item as DetailRow).episodeNumberOverlay ?? '',
       focusId: seriesEpisodeFocusId((item as DetailRow).id),
+      titleFontSize: isTvMetrics() ? 11.904 : 12.4, // web phone's episode caption is a little larger than the TV's
+      subtitleFontSize: isTvMetrics() ? 8.832 : 9.5,
       ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,
       unseen: this.episodeUnseen(item as DetailRow),
       cardWidth: this.seriesCardWidth(),
@@ -1795,12 +1802,12 @@ struct Detail {
   private shellTitle(): string {
     const kind = this.detail !== null ? this.detail.work.kind : 'movie';
     if (kind === 'series') {
-      return 'Series';
+      return t('pages.home.workKind.series', 'Series');
     }
     if (kind === 'artist') {
-      return 'Music';
+      return t('shell.nav.music', 'Music');
     }
-    return 'Movies';
+    return t('shell.nav.movies', 'Movies');
   }
 
   /** The nav tile that stays marked on this page: the title's own kind (`movie`, `series`, `artist`). */
@@ -1811,6 +1818,16 @@ struct Detail {
   /** Web's series detail draws its secondary actions as flat text beside the filled Start pill (movie detail keeps the translucent capsules). */
   private isSeriesPage(): boolean {
     return this.detail !== null && this.detail.work.kind === 'series';
+  }
+
+  /** Web's series pills carry a soft drop shadow (light theme; the dark pills are flat). */
+  private pillShadow(primary: boolean): ShadowOptions {
+    if (!this.isSeriesPage() || resolvedThemeMode() === 'dark') {
+      return { radius: 0, color: Color.Transparent };
+    }
+    return primary
+      ? { radius: tv(22), offsetY: tv(10), color: 'rgba(56, 38, 33, 0.28)' }
+      : { radius: tv(22), offsetY: tv(8), color: 'rgba(56, 38, 33, 0.08)' };
   }
 
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
@@ -1832,7 +1849,8 @@ struct Detail {
     .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(primary ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().ink, this.isSeriesPage() ? 0 : PILL_FILL_ALPHA))
+    .backgroundColor(primary ? toResourceColor(activeColors().ink) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .shadow(this.pillShadow(primary))
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
     .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
@@ -1856,19 +1874,19 @@ struct Detail {
   private tvSeriesActions(): void {
     Row({ space: tv(PILL_GAP) }) {
       if (this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null) {
-        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
         if (this.resumePlan.action !== 'start') {
-          this.actionPill('Ask again', '\u21BA', false, true, (): void => {
+          this.actionPill(t('pages.workDetail.resumeAskAgain', 'Ask again'), '\u21BA', false, true, (): void => {
             void this.askAgain();
           })
         }
       }
-      this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+      this.actionPill(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), this.listed === true ? '\u2713' : '+', false, true, (): void => {
         void this.toggleWatchlist();
       })
-      this.actionPill('Add to Playlist', '+', false, true, (): void => {
+      this.actionPill(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), '+', false, true, (): void => {
         this.actionsOpen = true;
       })
     }
@@ -1886,23 +1904,23 @@ struct Detail {
   private tvTitleActions(): void {
     Column({ space: tv(PILL_ROW_GAP) }) {
       Row({ space: tv(PILL_GAP) }) {
-        this.actionPill('Download', '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(t('components.mediaContextMenu.download', 'Download'), '\u21E9', false, this.primaryMediaFileId !== null, (): void => {
           this.actionsOpen = true;
         })
         if (this.primaryMediaFileId !== null && this.detail !== null && this.detail.work.kind === 'movie') {
-          this.actionPill('Playback', '\u2630', false, true, (): void => {
+          this.actionPill(t('pages.workDetail.playbackButtonLabel', 'Playback'), '\u2630', false, true, (): void => {
             this.optionsOpen = true;
           })
         }
-        this.actionPill(this.primaryLabel(), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(this.primaryLabel(), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
       }
       Row({ space: tv(PILL_GAP) }) {
-        this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+        this.actionPill(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), this.listed === true ? '\u2713' : '+', false, true, (): void => {
           void this.toggleWatchlist();
         })
-        this.actionPill('Add to Playlist', '+', false, true, (): void => {
+        this.actionPill(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), '+', false, true, (): void => {
           this.actionsOpen = true;
         })
       }
@@ -1937,15 +1955,15 @@ struct Detail {
   /** The primary pill's label: Resume from m:ss for a part-watched movie, else Play (Unavailable while nothing is playable). */
   private primaryLabel(): string {
     if (this.primaryMediaFileId === null) {
-      return 'Unavailable';
+      return t('pages.workDetail.unavailable', 'Unavailable');
     }
     if (this.resumePlan !== null) {
       return resumeButtonLabel(this.resumePlan);
     }
     if (this.resumeMs > 0) {
-      return 'Resume from ' + chapterTimeLabel(this.resumeMs);
+      return tf('pages.workDetail.resumeFrom', 'Resume from {{position}}', { position: chapterTimeLabel(this.resumeMs) });
     }
-    return 'Play';
+    return t('pages.workDetail.play', 'Play');
   }
 
   /** Web's cast circle: the person's initials (their headshot over them when there is one) and their name under it. */
@@ -1997,12 +2015,12 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 7 : tv(4) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(4) }) {
       Text(heading).fontFamily(nunito(400))
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
       Text(count).fontFamily(nunito(400))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 11 : tv(11))
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(11))
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
@@ -2034,7 +2052,7 @@ struct Detail {
       }
       if (this.chaptersRail !== null) {
         Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading('Chapters', this.chaptersRail.items.length.toString() + ' chapters')
+          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
           MediaRail({
             railId: 'chapters',
             headingGap: 0,
@@ -2050,7 +2068,7 @@ struct Detail {
       }
       if (this.cast.length > 0) {
         Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading('Cast', this.cast.length.toString() + ' people')
+          this.railHeading(t('pages.workDetail.cast', 'Cast'), this.cast.length.toString() + ' people')
           MediaRail({
             railId: 'cast',
             headingGap: 0,
@@ -2098,9 +2116,12 @@ struct Detail {
               measurementId: this.seriesMeasurementId('rail', this.workId, this.seriesFocusGeneration, rail.id),
               heading: '',
               headingGap: 0,
-              itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle) : PHONE_EPISODE_RAIL_GAP,
+              itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle + 2) : PHONE_EPISODE_RAIL_GAP, // +2: web pitch 294 vs 292
               clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
+              allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
+              bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
+              overflowItems: !isTvMetrics(),
               items: rail.items,
               listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : PHONE_SEASON_LIST_HEIGHT,
               initialItemIndex: this.initialEpisodeIndex(rail),
@@ -2125,7 +2146,7 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: isTvMetrics() ? 0 : PHONE_SEASONS_TOP_GAP })
+    .margin({ top: isTvMetrics() ? 0 : 36.8 })
   }
 
   @Builder
@@ -2167,14 +2188,19 @@ struct Detail {
 
       if (this.detail !== null && this.detail.work.kind === 'series') {
         Scroll(this.seriesStackScroller) {
-          this.tvRightColumn()
+          Column() {
+            this.tvRightColumn()
+          }
+          .width('100%')
+          .padding({ left: tv(SERIES_COLUMN_BLEED) })
         }
         .id(this.seriesMeasurementId('page', this.workId, this.seriesFocusGeneration, ''))
         .align(Alignment.Top)
-        .width(tv(RIGHT_COLUMN_WIDTH))
+        .width(tv(RIGHT_COLUMN_WIDTH + SERIES_COLUMN_BLEED))
         .height(tv(SERIES_COLUMN_HEIGHT))
         .scrollBar(BarState.Off)
-        .position({ x: tv(RIGHT_COLUMN_X), y: tv(SERIES_COLUMN_TOP) })
+        // The scroll box starts BLEED left of the column so the first card's focus ring (and lift) is not cut at the box edge.
+        .position({ x: tv(RIGHT_COLUMN_X - SERIES_COLUMN_BLEED), y: tv(SERIES_COLUMN_TOP) })
         .onAreaChange(this.seriesPageAreaReporter(this.workId, this.seriesFocusGeneration))
         .onScroll(this.seriesPageScrollReporter(this.workId, this.seriesFocusGeneration))
       } else {
@@ -2320,7 +2346,7 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(4) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 4 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
           .fontSize(10.24)
@@ -2355,13 +2381,13 @@ struct Detail {
   @Builder
   private touchSeriesAction(label: string, onTap: () => void): void {
     Row({ space: 4 }) {
-      Text('+').fontFamily(nunito(500))
+      Text('+').fontFamily(nunito(700))
         .fontSize(8)
-        .fontColor(toResourceColor(BRAND_PINK_SOFT))
-      Text(label).fontFamily(nunito(500))
+        .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
+      Text(label).fontFamily(nunito(700))
         .fontSize(8)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
     .layoutWeight(1)
@@ -2399,10 +2425,10 @@ struct Detail {
       .onClick(() => {
         this.playPrimary();
       })
-      this.touchSeriesAction(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+      this.touchSeriesAction(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
       })
-      this.touchSeriesAction('Add to Playlist', (): void => {
+      this.touchSeriesAction(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), (): void => {
         this.touchActionsOpen = true;
       })
     }
@@ -2421,23 +2447,23 @@ struct Detail {
   @Builder
   private touchMovieActionRows(): void {
     Row({ space: 8 }) {
-      this.touchActionButton('Download', (): void => {
+      this.touchActionButton(t('components.mediaContextMenu.download', 'Download'), (): void => {
         this.touchActionsOpen = true;
-      }, 8)
-      this.touchActionButton('Playback', (): void => {
+      }, 8, '\u21E9')
+      this.touchActionButton(t('pages.workDetail.playbackButtonLabel', 'Playback'), (): void => {
         this.touchActionsOpen = true;
-      }, 11)
+      }, 11, '\u2637')
       this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
     }
     Row({ space: 8 }) {
-      this.touchActionButton(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', (): void => {
+      this.touchActionButton(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
       }, 8, this.listed === true ? '\u2713' : '+')
-      this.touchActionButton('Add to Playlist', (): void => {
+      this.touchActionButton(t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist'), (): void => {
         this.touchActionsOpen = true;
       }, 8, '+')
     }
-    .margin({ top: 12 })
+    .margin({ top: 11 })
   }
 
   /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the
@@ -2496,7 +2522,7 @@ struct Detail {
               .fontSize(11.52)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(16.7)
-              .margin({ top: this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 15 : 10 })
+              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 15 : 10) : 12 })
               .maxLines(3)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
@@ -2504,13 +2530,37 @@ struct Detail {
             }
             .width('100%')
             .alignItems(HorizontalAlign.Start)
-            .margin({ top: 14 })
+            .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 12.5 : 12 })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
 
           // the TV page's rails, Chapters and Cast column, one copy: its sizes are web CSS px, which are vp here
-          this.tvRightColumn()
+          // web phone: the rails of a film sit on a glass panel that fades in from the left edge, bleeding to both sides.
+          // Series keep the unpanelled rails: a panel layer behind the season rails left the dark episode art unpainted in the Previewer.
+          if (this.detail !== null && this.detail.work.kind === 'series') {
+            this.tvRightColumn()
+          } else {
+            Stack({ alignContent: Alignment.TopStart }) {
+              Column()
+                .width('100%')
+                .height('100%')
+                .linearGradient({
+                  direction: GradientDirection.Right,
+                  colors: resolvedThemeMode() === 'dark' ?
+                    [['rgba(255, 244, 255, 0)', 0.0], ['rgba(255, 244, 255, 0.058)', 0.35], ['rgba(255, 244, 255, 0.058)', 1.0]] :
+                    [['rgba(255, 255, 255, 0.71)', 0.0], ['rgba(255, 255, 255, 0.71)', 1.0]],
+                })
+              Column() {
+                this.tvRightColumn()
+              }
+              .width('100%')
+              .alignItems(HorizontalAlign.Start)
+              .padding({ top: 36, left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight) })
+            }
+            .width(`calc(100% + ${atLeast(16, this.safeLeft) + atLeast(16, this.safeRight)}vp)`)
+            .margin({ left: -atLeast(16, this.safeLeft) })
+          }
         }
         .padding({
           top: TOUCH_TEXT_TOP,
@@ -2521,27 +2571,6 @@ struct Detail {
         .width('100%')
         .alignItems(HorizontalAlign.Start)
 
-      Row({ space: 12 }) {
-        Text('←').fontFamily(nunito(700))
-          .fontSize(17)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().inkSoft))
-          .textAlign(TextAlign.Center)
-          .width(40)
-          .height(40)
-          .borderRadius(20)
-          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-          .onClick(() => {
-            popRoute(getNavStack());
-          })
-        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? 'Series' : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
-          .fontSize(22)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(toResourceColor(activeColors().ink))
-      }
-      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(17.5, this.safeTop) })
-      .alignItems(VerticalAlign.Center)
        }
        .width('100%')
       }
@@ -2552,6 +2581,41 @@ struct Detail {
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
       .onAppear(() => { this.settleTouchEpisode(0); })
+
+      // web (#175): on phones the Back row stays pinned and the content fades out under it (solid to the row, then the edge fade)
+      Column()
+        .width('100%')
+        .height(atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)
+        .linearGradient({
+          direction: GradientDirection.Bottom,
+          colors: [
+            [toResourceColor(activeColors().bg), 0.0],
+            [toResourceColor(activeColors().bg), (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP) / (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)],
+            [toResourceColorWithAlpha(activeColors().bg, 0), 1.0],
+          ],
+        })
+        .hitTestBehavior(HitTestMode.None)
+      Row({ space: 10 }) {
+        Text('←').fontFamily(nunito(700))
+          .fontSize(11)
+          .fontWeight(FontWeight.Normal)
+          .fontColor(toResourceColor(activeColors().inkSoft))
+          .textAlign(TextAlign.Center)
+          .width(PHONE_BACK_SIZE)
+          .height(PHONE_BACK_SIZE)
+          .borderRadius(PHONE_BACK_SIZE / 2)
+          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+          .onClick(() => {
+            popRoute(getNavStack());
+          })
+        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
+          .fontSize(22)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(toResourceColor(activeColors().ink))
+      }
+      .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
+      .alignItems(VerticalAlign.Center)
 
       // Keep the floating nav above page overlays and below title actions.
       TouchNavBar({ selectedId: this.detail !== null ? this.detail.work.kind : '' })
@@ -2585,7 +2649,7 @@ struct Detail {
       AsyncState({
         kind: AsyncStateKind.Error,
         message: this.errorMessage,
-        retryLabel: 'Retry',
+        retryLabel: t('pages.downloads.retry', 'Retry'),
         retry: () => {
           this.loadDetail();
         },

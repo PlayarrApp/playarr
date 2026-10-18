@@ -12,12 +12,12 @@ const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.met
 
 // Tizen packages a directory of static assets into a .wgt and serves them
 // from the device's local filesystem -- relative asset paths (`base: "./"`)
-// are required. The supported Tizen 6.5 floor uses Chromium 85, so JavaScript
+// are required. The supported Tizen 7 floor uses Chromium 94, so JavaScript
 // and CSS output must remain within that engine's syntax/capability baseline.
 export default defineConfig({
   base: "./",
   publicDir: "../../web/public",
-  plugins: [legacyTvCssPlugin(), react()],
+  plugins: [legacyTvCssPlugin({ chromium85: true }), react()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __PLAYARR_PLATFORM__: JSON.stringify("tv-tizen"),
@@ -27,6 +27,8 @@ export default defineConfig({
   build: {
     outDir: "dist",
     target: "es2018",
+    // Tizen 6.5 TVs (2022 models) run Chromium 85: a newer target lets the minifier merge top/right/bottom/left back into `inset`, which
+    // that engine ignores (the full-bleed key art collapsed to its content height).
     cssTarget: "chrome85",
   },
 });

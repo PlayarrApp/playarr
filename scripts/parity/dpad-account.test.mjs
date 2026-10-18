@@ -130,3 +130,15 @@ test("storeSecrets reclaims a dead PID lock", () => {
   assert.equal(fs.existsSync(lock), false);
   assert.equal(backups(file).length, 1);
 });
+
+test("storeSecrets reclaims an empty lock older than 30 seconds", () => {
+  const { file } = fixtureFile();
+  fs.writeFileSync(file, "VALUE=old\n", { mode: 0o600 });
+  const lock = `${file}.lock`;
+  fs.writeFileSync(lock, "", { mode: 0o600 });
+  const old = new Date(Date.now() - 60_000);
+  fs.utimesSync(lock, old, old);
+  storeSecrets({ VALUE: "new" }, file);
+  assert.equal(fs.readFileSync(file, "utf8"), "VALUE=new\n");
+  assert.equal(fs.existsSync(lock), false);
+});

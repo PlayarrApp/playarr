@@ -4,11 +4,16 @@ import Sailfish.Silica 1.0
 
 // One selectable row of a sheet (check mark column + text).
 MouseArea {
+    property bool navigationFocusable: true
+    property bool navigationInitialFocus: false
+    property int parityRail: -1
+    property int parityIndex: -1
+    property var navigationActivate: null
     property string text
     property bool selected: false
     width: parent ? parent.width : 0
     height: 44 * Tokens.u
-    Label {
+    Label { renderType: Text.NativeRendering;
         id: check
         width: 28 * Tokens.u
         anchors.verticalCenter: parent.verticalCenter
@@ -16,7 +21,7 @@ MouseArea {
         color: Tokens.brandPinkSoft
         font.pixelSize: 16 * Tokens.u
     }
-    Label {
+    Label { renderType: Text.NativeRendering;
         anchors { left: check.right; right: parent.right; verticalCenter: parent.verticalCenter }
         text: parent.text
         elide: Text.ElideRight

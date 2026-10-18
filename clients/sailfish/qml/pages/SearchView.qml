@@ -49,13 +49,26 @@ Item {
         Image { x: 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; width: 14 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("search", Tokens.ink) }
         TextInput {
             id: input
+            property bool navigationFocusable: true
+            property bool navigationInitialFocus: true
+            property bool navigationNavUp: true
+            property string parityLabel: input.text || qsTr("Search")
             anchors { left: parent.left; leftMargin: 42 * Tokens.u; right: parent.right; rightMargin: 18 * Tokens.u; verticalCenter: parent.verticalCenter }
             color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u
             inputMethodHints: Qt.ImhNoPredictiveText
+            // D-pad focus rests on the field without the on-screen keyboard or a caret; Enter or a tap starts editing.
+            property bool editing: false
+            readOnly: !editing
+            cursorVisible: editing && activeFocus
+            onActiveFocusChanged: if (!activeFocus) editing = false
+            Keys.onReturnPressed: { if (!editing) { editing = true; Qt.inputMethod.show() } else event.accepted = false }
+            Keys.onEscapePressed: { if (editing) { editing = false; Qt.inputMethod.hide() } else event.accepted = false }
+            Keys.onEnterPressed: { if (!editing) { editing = true; Qt.inputMethod.show() } else event.accepted = false }
+            MouseArea { anchors.fill: parent; enabled: !input.editing; onClicked: { input.editing = true; input.forceActiveFocus(); Qt.inputMethod.show() } }
             EnterKey.iconSource: "image://theme/icon-m-enter-close"
             EnterKey.onClicked: focus = false
             onTextChanged: debounce.restart()
-            Label { visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
+            Label { renderType: Text.NativeRendering; visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
         }
     }
     WorkGrid {

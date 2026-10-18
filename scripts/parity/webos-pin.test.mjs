@@ -6,6 +6,9 @@ import { installRegionPin, installVisualDate } from "./drivers/web.mjs";
 
 const load = async (device) => {
   process.env.DEVICE = device;
+  // The guard needs a trusted server; CI has no local secrets file, so give it an inert one (nothing connects).
+  process.env.PLAYARR_DEVICE_TEST_SERVER_URL ||= "https://server.example.invalid";
+  process.env.PLAYARR_DEVICE_TEST_USERNAME ||= "device-test";
   const { createDriver } = await import("./drivers/tizen-webos.mjs");
   return createDriver();
 };

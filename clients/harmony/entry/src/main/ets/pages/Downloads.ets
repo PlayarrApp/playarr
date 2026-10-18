@@ -33,6 +33,7 @@ import { downloadSections, downloadMetaParts } from '../core/Downloads';
 import type { DownloadRecord, DownloadSections } from '../core/Downloads';
 
 import { DOWNLOADS_NAV_ID } from '../navigation/NavItems';
+import { t } from '../core/Language';
 
 // Rows start where the other list pages do: (826, 173), 1042 wide.
 const LIST_LEFT: number = 826;
@@ -140,27 +141,27 @@ export struct DownloadsScreen {
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
       if (record.status === 'queued' || record.status === 'processing' || record.status === 'downloading') {
-        this.pill('Cancel', (): void => {
+        this.pill(t('pages.downloads.cancel', 'Cancel'), (): void => {
           cancelDownload(record.id);
         })
       }
       if (record.status === 'failed' || record.status === 'canceled' || record.status === 'expired') {
-        this.pill('Retry', (): void => {
+        this.pill(t('pages.downloads.retry', 'Retry'), (): void => {
           retryDownload(record.id);
         })
       }
       if (record.status === 'ready' && record.filePath !== undefined && record.filePath.length > 0) {
-        this.pill('Play', (): void => {
+        this.pill(t('pages.workDetail.play', 'Play'), (): void => {
           this.playOffline(record);
         })
       }
       if (record.status === 'ready') {
-        this.pill('Edit', (): void => {
+        this.pill(t('pages.downloads.edit', 'Edit'), (): void => {
           this.editingId = record.id;
         })
       }
       if (record.status !== 'queued' && record.status !== 'processing' && record.status !== 'downloading') {
-        this.pill('Delete', (): void => {
+        this.pill(t('components.playlistContextMenu.delete', 'Delete'), (): void => {
           removeDownload(record.id);
         })
       }
@@ -238,9 +239,9 @@ export struct DownloadsScreen {
       .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
     } else {
       List({ space: tv(ROW_GAP) }) {
-        this.section('Active', this.sections().active)
-        this.section('Needs attention', this.sections().needsAttention)
-        this.section('Downloaded', this.sections().downloaded)
+        this.section(t('pages.downloads.activeHeading', 'Active'), this.sections().active)
+        this.section(t('pages.downloads.needsAttentionHeading', 'Needs attention'), this.sections().needsAttention)
+        this.section(t('pages.downloads.statusReady', 'Downloaded'), this.sections().downloaded)
       }
       .width(tv(LIST_WIDTH))
       .height(tv(1080))
@@ -250,8 +251,8 @@ export struct DownloadsScreen {
     }
     if (this.editingId.length > 0) {
       Drawer({
-        kicker: 'Downloads',
-        title: 'Keep until',
+        kicker: t('pages.downloads.title', 'Downloads'),
+        title: t('components.downloadQualityDrawer.keepUntilHeading', 'Keep until'),
         onClose: (): void => {
           this.editingId = '';
         },
@@ -269,7 +270,7 @@ export struct DownloadsScreen {
   build() {
     NavDestination() {
       PageShell({
-        title: 'Downloads',
+        title: t('pages.downloads.title', 'Downloads'),
         selectedId: DOWNLOADS_NAV_ID,
         content: (): void => {
           this.pageContent();

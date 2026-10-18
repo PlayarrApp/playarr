@@ -1,0 +1,1 @@
+- Sailfish: the library alphabet rail draws the web focus ring (crimson ring with a page-coloured gap) around the first letter.

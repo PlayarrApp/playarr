@@ -4,6 +4,7 @@
  * read the viewer's time zone. English labels as web `en.ts`.
  */
 
+import { currentLanguage, t } from "./Language";
 import type { CalendarEntry, CalendarMediaKind, CalendarReleaseType } from "./Types/Calendar";
 
 export const AGENDA_DAYS = 30;
@@ -205,22 +206,34 @@ export function mediaKindLabel(kind: CalendarMediaKind): string {
   return kind === "album" ? "Albums" : "Books";
 }
 
+/** Thai and Japanese use the locale's own names for a UTC calendar day, as web; English keeps the fixed names below. */
+function localeDay(date: Date, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(currentLanguage(), options).format(date);
+}
+
+function localeRange(from: Date, to: Date): string {
+  return localeDay(from, { day: "numeric", month: "short", timeZone: "UTC" }) + " – " + localeDay(to, { day: "numeric", month: "short", timeZone: "UTC" });
+}
+
 /** "15:00", or "All day" for a date-only release. */
 export function entryTimeLabel(entry: CalendarEntry): string {
   const instant = releaseInstant(entry);
-  return instant !== null ? `${pad(instant.getHours(), 2)}:${pad(instant.getMinutes(), 2)}` : "All day";
+  return instant !== null ? `${pad(instant.getHours(), 2)}:${pad(instant.getMinutes(), 2)}` : t("pages.calendar.allDay", "All day");
 }
 
 /** "Sunday 11 October" (agenda day heading). */
 export function dayHeading(day: string): string {
   const date = parseDay(day);
+  if (currentLanguage() !== "en") {
+    return localeDay(date, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  }
   return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
 }
 
 /** "Sunday, 11 October 2026 at 15:00", or "Sunday, 11 October 2026" for all day (details panel). */
 export function entryWhenLabel(entry: CalendarEntry): string {
   const date = parseDay(entryLocalDay(entry));
-  const dayText = `${WEEKDAYS[date.getUTCDay()]}, ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+  const dayText = currentLanguage() !== "en" ? localeDay(date, { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : `${WEEKDAYS[date.getUTCDay()]}, ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
   const instant = releaseInstant(entry);
   return instant !== null ? `${dayText} at ${entryTimeLabel(entry)}` : dayText;
 }
@@ -229,6 +242,9 @@ export function entryWhenLabel(entry: CalendarEntry): string {
 export function agendaRangeLabel(start: string): string {
   const from = parseDay(start);
   const to = parseDay(addDays(start, AGENDA_DAYS - 1));
+  if (currentLanguage() !== "en") {
+    return localeRange(from, to);
+  }
   if (from.getUTCMonth() === to.getUTCMonth() && from.getUTCFullYear() === to.getUTCFullYear()) {
     return `${from.getUTCDate()} – ${to.getUTCDate()} ${MONTHS_SHORT[to.getUTCMonth()]}`;
   }
@@ -295,11 +311,17 @@ export function shiftAnchor(view: CalendarView, anchor: string, direction: numbe
 export function rangeLabel(view: CalendarView, anchor: string): string {
   if (view === "month") {
     const date = parseDay(startOfMonth(anchor));
+    if (currentLanguage() !== "en") {
+      return localeDay(date, { month: "short", year: "numeric", timeZone: "UTC" });
+    }
     return `${MONTHS_SHORT[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
   }
   const range = visibleRange(view, anchor);
   const from = parseDay(range.start);
   const to = parseDay(range.end);
+  if (currentLanguage() !== "en") {
+    return localeRange(from, to);
+  }
   if (from.getUTCMonth() === to.getUTCMonth() && from.getUTCFullYear() === to.getUTCFullYear()) {
     return `${from.getUTCDate()} – ${to.getUTCDate()} ${MONTHS_SHORT[to.getUTCMonth()]}`;
   }

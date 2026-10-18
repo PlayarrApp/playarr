@@ -28,6 +28,10 @@ const CHOICE_RADIUS: number = 12;
 const CHOICE_LABEL_SIZE: number = 10.56;
 const DESCRIPTION_SIZE: number = 13.824;
 const SECTION_GAP: number = 30;
+// Web phone drawer choices: 46.7 high, 11.5 type, sections 8 vp closer than the TV's.
+const TOUCH_CHOICE_HEIGHT: number = 46.7;
+const TOUCH_CHOICE_LABEL_SIZE: number = 11.5;
+const TOUCH_SECTION_GAP: number = 22;
 const LARGE_HEADING_SIZE: number = 26.4;
 const LARGE_HEADING_LETTER_SPACING: number = -0.924;
 const LARGE_HEADING_GAP: number = 16;
@@ -82,9 +86,9 @@ export struct ChoiceSegments {
         ForEach(this.choices, (choice: Choice) => {
           Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + choice.label).fontFamily(nunito(700))
             .width(tv(this.choiceWidth()))
-            .height(tv(CHOICE_HEIGHT))
+            .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)
-            .fontSize(tv(CHOICE_LABEL_SIZE))
+            .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkSoft))
             .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
@@ -99,6 +103,6 @@ export struct ChoiceSegments {
       }
     }
     .alignItems(HorizontalAlign.Start)
-    .margin({ bottom: tv(SECTION_GAP) })
+    .margin({ bottom: isTvMetrics() || this.large ? tv(SECTION_GAP) : TOUCH_SECTION_GAP })
   }
 }

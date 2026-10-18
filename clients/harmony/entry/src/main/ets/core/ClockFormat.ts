@@ -12,6 +12,10 @@ export function clockTime(now: Date): string {
   return `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
 }
 
-export function clockDate(now: Date): string {
+/** English is built from parts (engines disagree on the combined en-GB format); Thai and Japanese use the locale's own names, as web. */
+export function clockDate(now: Date, language: string = 'en'): string {
+  if (language !== 'en') {
+    return new Intl.DateTimeFormat(language, { weekday: 'short', day: 'numeric', month: 'long' }).format(now);
+  }
   return `${WEEKDAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]}`;
 }

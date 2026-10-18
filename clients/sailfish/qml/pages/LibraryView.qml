@@ -1,5 +1,6 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import QtGraphicalEffects 1.0
 import "../components"
 import "../components/Library.js" as Library
 import "../components/NavIcons.js" as NavIcons
@@ -57,6 +58,41 @@ Item {
     }
     // Web's client-side order: natural title order (digits compare as numbers) or date added.
     function orderWorks(list) { return Library.order(list, Api.setting("lib.sort", "title"), Api.setting("lib.order", "asc")) }
+    // Web dark library pages sit on a faint key-art wash that measures as a flat tint (about 39,34,39) from x=180 px to the
+    // right edge, easing from the plain page colour on the left (web captures, music/series/movies, y 5 to 1200).
+    LinearGradient {
+        visible: Tokens.dark
+        anchors.fill: parent; start: Qt.point(0, 0); end: Qt.point(width, 0)
+        gradient: Gradient {
+            GradientStop { position: 0; color: "#1b181b" }
+            GradientStop { position: 0.03; color: "#1f1c1f" }
+            GradientStop { position: 0.23; color: "#262126" }
+            GradientStop { position: 0.4; color: "#272227" }
+            GradientStop { position: 1; color: "#272227" }
+        }
+    }
+    // Movies dark only: the ghost of the first card's art along the left edge (web +37 at x=0, easing out over ~300 px,
+    // full down to y=420 and gone by ~640).
+    LinearGradient {
+        id: ghost
+        visible: Tokens.dark && root.kind === "movie"
+        width: 150 * Tokens.u; height: 320 * Tokens.u
+        start: Qt.point(0, 0); end: Qt.point(width, 0)
+        gradient: Gradient {
+            GradientStop { position: 0; color: "#29ffffff" }
+            GradientStop { position: 0.1; color: "#1fffffff" }
+            GradientStop { position: 0.233; color: "#14ffffff" }
+            GradientStop { position: 0.4; color: "#0effffff"} GradientStop { position: 0.667; color: "#05ffffff" }
+            GradientStop { position: 1; color: "#00ffffff" }
+        }
+        layer.enabled: visible
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: ghost.width; height: ghost.height
+                gradient: Gradient { GradientStop { position: 0; color: "white" } GradientStop { position: 0.66; color: "white" } GradientStop { position: 1; color: "transparent" } }
+            }
+        }
+    }
     MouseArea {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
@@ -74,7 +110,7 @@ Item {
         title: root.title
         onBackClicked: root.goHome()
     }
-    Label {
+    Label { renderType: Text.NativeRendering;
         id: count
         anchors { top: heading.bottom; topMargin: -4 * Tokens.u; left: parent.left; leftMargin: 70 * Tokens.u }
         visible: false   // web phone hides the header subtitle (#1299); the label keeps the grid's anchor
@@ -133,9 +169,15 @@ Item {
             MouseArea {
                 width: 26 * Tokens.u; height: 19 * Tokens.u
                 onClicked: root.jumpTo(modelData)
+                Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
+                    visible: root.activeLetter === modelData
+                    x: -4 * Tokens.u; y: (index === 0 ? -1 : -8) * Tokens.u; width: parent.width + 8 * Tokens.u; height: parent.height + 14 * Tokens.u; clip: true
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? 1 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? 1 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
+                }
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.dark ? "#d4d1d4" : Qt.rgba(0.22, 0.15, 0.13, 0.78) }   // web: ink at 78%
-                Label { anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.96 * Tokens.u
+                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.96 * Tokens.u
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#1b181b" : "#ffffff") : Tokens.inkSoft }
             }
         }

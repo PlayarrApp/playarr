@@ -1,4 +1,5 @@
 #include <QGuiApplication>
+#include <time.h>
 #include <QDebug>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -60,6 +61,11 @@ private:
 
 int main(int argc, char *argv[])
 {
+    // Parity captures only: PLAYARR_PARITY_CLOCK pins "today" (see Calendar::today), and the suite's timezone is UTC.
+    if (qEnvironmentVariableIsSet("PLAYARR_PARITY_CLOCK")) {
+        qputenv("TZ", "UTC");
+        tzset();
+    }
     QScopedPointer<QGuiApplication> app(SailfishApp::application(argc, argv));
     app->setApplicationVersion(QStringLiteral(APP_VERSION));
     Api api;
