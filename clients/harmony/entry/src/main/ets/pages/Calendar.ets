@@ -440,6 +440,7 @@ export struct ReleaseCalendar {
             .fontColor(toResourceColor(activeColors().inkSoft))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
           Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
@@ -881,7 +882,7 @@ export struct ReleaseCalendar {
       .textAlign(TextAlign.Center)
       .height(tv(HEADER_CONTROL_SIZE))
       .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
-      .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20) })
+      .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(8) : 0 }) // the arrow glyph sat 4 px above the web's
       .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
       .backgroundColor(toResourceColor(activeColors().bg))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
