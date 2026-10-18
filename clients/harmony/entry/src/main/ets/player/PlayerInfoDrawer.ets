@@ -8,6 +8,7 @@ import { nunito } from '../design/Typography';
 import { Drawer } from '../design/components/Drawer';
 import { activeColors, toResourceColor } from '../design/Theme';
 import { tv } from '../design/Metrics';
+import { t } from '../core/Language';
 
 const TITLE_SIZE: number = 22;
 const META_SIZE: number = 13;
@@ -76,7 +77,7 @@ export struct PlayerInfoDrawer {
 
   build() {
     Drawer({
-      kicker: 'Playback',
+      kicker: t('pages.workDetail.playbackButtonLabel', 'Playback'),
       title: 'Info',
       onClose: (): void => {
         this.onClose();

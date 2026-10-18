@@ -55,6 +55,11 @@ else
 fi
 MOCK
 
+cat > "$BIN/green" <<'MOCK'
+#!/usr/bin/env bash
+[ "${GREEN_MODE:-clean}" = clean ]
+MOCK
+
 cat > "$BIN/identity" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -66,7 +71,7 @@ cat > "$BIN/sleep" <<'MOCK'
 #!/usr/bin/env bash
 exit 0
 MOCK
-chmod +x "$BIN/ssh" "$BIN/cap" "$BIN/nudge" "$BIN/hasher" "$BIN/identity" "$BIN/sleep"
+chmod +x "$BIN/ssh" "$BIN/cap" "$BIN/nudge" "$BIN/hasher" "$BIN/green" "$BIN/identity" "$BIN/sleep"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 expect_error() {
@@ -86,7 +91,7 @@ run_case() {
     PLAYARR_CONTROL="$TEST_ROOT/remote-route" \
     PLAYARR_CAPTURE_IDENTITY_GUARD="$BIN/identity" \
     PLAYARR_NURA_SSH="$BIN/ssh" PLAYARR_NURA_CAP="$BIN/cap" PLAYARR_NURA_NUDGE="$BIN/nudge" \
-    PLAYARR_CAPTURE_HASHER="$BIN/hasher" \
+    PLAYARR_CAPTURE_HASHER="$BIN/hasher" PLAYARR_CAPTURE_GREEN_CHECK="$BIN/green" \
     PLAYARR_CAPTURE_ACK_ATTEMPTS="${PLAYARR_CAPTURE_ACK_ATTEMPTS:-2}" \
     PLAYARR_CAPTURE_STABILITY_ATTEMPTS="${PLAYARR_CAPTURE_STABILITY_ATTEMPTS:-3}" \
     PLAYARR_CAPTURE_STABILITY_DELAY="${PLAYARR_CAPTURE_STABILITY_DELAY:-0}" \
@@ -156,6 +161,12 @@ if HASH_MODE=unstable run_case unstable > "$TEST_ROOT/unstable.log" 2>&1; then
 fi
 [ ! -e "$TEST_ROOT/out/unstable/DONE" ] || fail "unstable capture left DONE"
 expect_error "$TEST_ROOT/unstable.log" 'capture did not stabilise'
+
+if GREEN_MODE=green run_case green > "$TEST_ROOT/green.log" 2>&1; then
+  fail "a capture with a green artefact was accepted"
+fi
+[ ! -e "$TEST_ROOT/out/green/DONE" ] || fail "green capture left DONE"
+expect_error "$TEST_ROOT/green.log" 'green artefact'
 
 if NUDGE_MODE=fail run_case nudge-failure > "$TEST_ROOT/nudge-failure.log" 2>&1; then
   fail "display nudge failure was accepted"

@@ -14,7 +14,7 @@ export struct TouchIconButton {
   build() {
     Image(this.icon)
       .colorFilter(tintFilter(activeColors().inkSoft))
-      .padding(10)
+      .padding(12)
       .width(43)
       .height(43)
       .borderRadius(13)

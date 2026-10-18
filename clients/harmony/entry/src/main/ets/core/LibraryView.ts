@@ -1,18 +1,14 @@
 // core/LibraryView.ts: the Library's View choice, as web lib/libraryView.ts: list, screen (the default, a hero beside a
 // landscape grid), cover (a portrait wall) and, for music only, Cover Flow (not built here yet).
 
+import { t } from "./Language";
+
 export const DEFAULT_LIBRARY_VIEW: string = "screen";
 
 /** The views a library kind offers, in web's order. Cover Flow is the artist wall, so it is offered only once it is built. */
 export function libraryViews(kind: string): string[] {
   return kind === "artist" ? ["list", "screen", "cover"] : ["list", "screen", "cover"];
 }
-
-const VIEW_LABELS: Record<string, string> = {
-  list: "List",
-  screen: "Screen",
-  cover: "Cover",
-};
 
 /** The glyph web draws above a view's label (a stack of rows, three landscape cards, three portrait cards). */
 const VIEW_ICONS: Record<string, string> = {
@@ -25,8 +21,13 @@ export function libraryViewIcon(view: string): string {
   return VIEW_ICONS[view] ?? "";
 }
 
+/** Web's lower-case view words, shown capitalised (Thai and Japanese have no case). */
 export function libraryViewLabel(view: string): string {
-  return VIEW_LABELS[view] ?? view;
+  if (view !== "list" && view !== "screen" && view !== "cover") {
+    return view;
+  }
+  const word = t("pages.library.view" + view.charAt(0).toUpperCase() + view.slice(1), view);
+  return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
 /** A saved view that this kind still offers, else the default (Cover Flow and unknown values fall back, as web). */

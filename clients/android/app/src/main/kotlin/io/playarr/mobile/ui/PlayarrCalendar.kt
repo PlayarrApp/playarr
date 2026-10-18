@@ -387,7 +387,8 @@ private fun PhoneCalendarRound(modifier: Modifier, glyph: String, description: S
 
 /** Range title as the web formats it (`Intl` date-range style): "7 Oct – 5 Nov 2026" in en-GB, "Oct 7 – Nov 5, 2026" in en-US. */
 private fun phoneCalendarRangeTitle(mode: CalendarViewMode, anchor: LocalDate, window: CalendarWindow, locale: Locale): String {
-    if (mode == CalendarViewMode.Month) return calendarWindowTitle(mode, anchor, window, locale)
+    // Web phone toolbar: the month button reads "Oct 2026", as the short label.
+    if (mode == CalendarViewMode.Month) return PlayarrDateFormat("yMMM", locale).format(anchor)
     // Web phone toolbar: no year, and a week inside one month reads "5 \u2013 11 Oct".
     val start = window.start
     val end = if (mode == CalendarViewMode.Agenda) window.end.minusDays(1) else window.end
@@ -610,8 +611,8 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             Column(Modifier.weight(1f).padding(start = 14.4.dp)) {
                 Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(2.4.dp))
-                // Web `entrySubtitle` is the episode code and subtitle only: a movie shows no line (phone only; TV keeps the kind fallback).
-                val rowSubtitle = if (m === TvCalendarMetrics) calendarItemSubtitle(item) else (item as? CalendarItem.Single)?.entry?.let { e -> listOfNotNull(e.episodeCode(), e.subtitle?.takeIf(String::isNotBlank)).joinToString(" \u00b7 ") } ?: calendarItemSubtitle(item)
+                // Web `entrySubtitle` is the episode code and subtitle only: a movie shows no line (phone and TV week; the TV agenda keeps the kind fallback).
+                val rowSubtitle = if (m === TvCalendarMetrics && !tvWeek) calendarItemSubtitle(item) else (item as? CalendarItem.Single)?.entry?.let { e -> listOfNotNull(e.episodeCode(), e.subtitle?.takeIf(String::isNotBlank)).joinToString(" \u00b7 ") } ?: calendarItemSubtitle(item)
                 if (rowSubtitle.isNotEmpty()) {
                     Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(2.4.dp))
@@ -1117,7 +1118,8 @@ private fun CalendarWeekBody(
         LocalCalendarToday provides today,
     ) {
     // Phone web: the start scrim only dims the first letters of the heading, not the card stripe.
-    Box(modifier.calendarEdgeFades(track.horizontalEdges(), startBand = if (!isTelevision && webColumn == null) 30.dp else null)) {
+    // Web TV week: the track ends 26 dp short of the action column and 47 dp above the screen bottom, so the last column and the card list fade out there.
+    Box(modifier.then(if (isTelevision && webColumn == null) Modifier.padding(end = 26.dp, bottom = 47.dp) else Modifier).calendarEdgeFades(track.horizontalEdges(), startBand = if (!isTelevision && webColumn == null) 30.dp else null)) {
         Row(
             // Phone: web's week columns end 726.8 css px down (118 dp above the screen bottom) and fade out there, above the nav bar.
             Modifier.fillMaxSize().horizontalScroll(track).padding(end = 24.dp, bottom = if (isTelevision || webColumn != null) 0.dp else PHONE_WEEK_BOTTOM_DP.dp),
@@ -1138,11 +1140,11 @@ private fun CalendarWeekBody(
                             .calendarEdgeFades(scroll.verticalEdges())
                             .verticalScroll(scroll)
                             
-                            .padding(top = topPad ?: if (isTelevision) 53.dp else PHONE_WEEK_TOP_PAD_DP.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
+                            .padding(top = topPad ?: if (isTelevision) 51.dp else PHONE_WEEK_TOP_PAD_DP.dp, bottom = 48.dp), // web: columns start at y 174, below the toolbar row
                         verticalArrangement = Arrangement.spacedBy(if (isTelevision) 6.dp else 0.dp),
                     ) {
                         if (true) {
-                            Row(Modifier.height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(Modifier.then(if (isTelevision) Modifier.offset(y = 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
                                     phoneCalendarDayHeading(group.date, locale), color = WebInk, fontSize = if (isTelevision) 18.7.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision) 560 else 640),
                                     style = WebTextStyle, modifier = Modifier.semantics { heading() },
@@ -1175,7 +1177,7 @@ private fun CalendarWeekBody(
                                         .calendarFocusReveal()
                                 if (true) {
                                     // Web: 6 px under the day heading, 14 px between entries (the 6 above plus 8 here).
-                                    Box(Modifier.padding(bottom = if (isTelevision) 8.dp else if (webColumn != null) 11.5.dp else 13.5.dp)) { // web tablet week: 0.5 rem list gap plus 3.5 rem-line card, 2 css px tighter than the phone's
+                                    Box(Modifier.padding(bottom = if (isTelevision) 7.dp else if (webColumn != null) 11.5.dp else 13.5.dp)) { // web tablet week: 0.5 rem list gap plus 3.5 rem-line card, 2 css px tighter than the phone's
                                         PhoneCalendarEntry(item, selected = item.key == selectedKey, zone = zone, onClick = { onSelect(item) }, modifier = rowModifier)
                                     }
                                 } else {
@@ -1557,7 +1559,7 @@ private fun CalendarMonthChips(
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(headerHeight)) {
                 calendarWeekdayLabels(firstDay, locale).forEach { label ->
-                    Text(label.uppercase(locale), color = if (isTelevision) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                    Text(label.uppercase(locale), color = if (isTelevision) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(top = if (phoneStrip) 7.dp else 0.dp))
                 }
             }
             rows.forEachIndexed { rowIndex, week ->
@@ -2050,7 +2052,7 @@ private fun TvCalendarDetails(item: CalendarItem, locale: Locale, zone: ZoneId, 
     val kindLabel = if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind
     val allDay = playarrString(PlayarrString.CalendarAllDay)
     val whenText = remember(entry.releaseAt, locale, zone, allDay) {
-        entry.releaseAt?.let { playarrFullDateTime(it, zone, locale) } ?: "${formatCalendarDay(entry.date, locale)} · $allDay"
+        entry.releaseAt?.let { playarrFullDateTime(it, zone, locale) } ?: "${phoneCalendarDayHeading(entry.date, locale)} · $allDay"
     }
     val palette = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette
     // Tablet web at 1280 x 800: the same clamp minimums as the library hero make the text larger and lower than the 1920 values.
@@ -2072,9 +2074,9 @@ private fun TvCalendarDetails(item: CalendarItem, locale: Locale, zone: ZoneId, 
         // Web: a group of episodes has no single synopsis; a lone release shows its own when the source gave one.
         if (item is CalendarItem.Single) {
             entry.overview?.trim()?.takeIf(String::isNotEmpty)?.let {
-                Text(
+                WebClampedText(
                     it, color = palette.detailsSoft, fontSize = overviewFont.sp, lineHeight = (overviewFont * 1.58f).sp, fontWeight = FontWeight(600),
-                    style = WebTextStyle, maxLines = 5, overflow = TextOverflow.Ellipsis,
+                    style = WebTextStyle, maxLines = 5,
                     modifier = Modifier.padding(top = 21.7.dp + (if (tablet) 2.dp else 0.dp)).width(if (tablet) 387.dp else 348.dp),
                 )
             }
