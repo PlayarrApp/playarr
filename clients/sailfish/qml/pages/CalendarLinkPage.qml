@@ -100,8 +100,10 @@ PlayarrPage {
                 fill: Tokens.dark ? "#dfdcdd" : "#4d4248"; fillInk: Tokens.dark ? "#211d21" : "#ffffff"
                 onClicked: { urlField.selectAll(); urlField.copy(); urlField.deselect(); page.copied = true }
             }
-            Rectangle {
-                visible: page.url !== ""; width: 240 * Tokens.u; height: width; radius: 14 * Tokens.u; color: "#ffffff"
+            Item {   // web: the code sits 3 px closer to Copy link and 1 px further from the steps heading
+                visible: page.url !== ""; width: 240 * Tokens.u; height: width - 2
+              Rectangle {
+                y: -3; width: 240 * Tokens.u; height: width; radius: 14 * Tokens.u; color: "#ffffff"
                 Canvas {
                     id: qrCanvas
                     anchors { fill: parent; margins: 20 * Tokens.u }
@@ -117,19 +119,20 @@ PlayarrPage {
                     }
                     Connections { target: page; onQrChanged: qrCanvas.requestPaint() }
                 }
+              }
             }
             Label { visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Your link was created on another device and is not stored here. Reset it to get a new link to copy.")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-            Label { text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 1 * Tokens.u; topPadding: 0 }
+            Label { text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 1 * Tokens.u; topPadding: 0; bottomPadding: 2 * Tokens.u }
             Column {
-              spacing: 7 * Tokens.u
+              spacing: 8.25 * Tokens.u
               Repeater {
                 model: [ qsTr("Google Calendar: Other calendars (+) > From URL, then paste the link."),
                          qsTr("Apple Calendar: File > New Calendar Subscription, then paste the link."),
                          qsTr("Outlook: Add calendar > Subscribe from web, then paste the link.") ]
                 Row {
-                    spacing: 11 * Tokens.u; width: body.width
+                    spacing: 11 * Tokens.u; x: 4 * Tokens.u; width: body.width - 4 * Tokens.u   // web list indent
                     Label { text: "•"; color: Tokens.ink; font.pixelSize: 10 * Tokens.u }
                     Label { width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                 }
