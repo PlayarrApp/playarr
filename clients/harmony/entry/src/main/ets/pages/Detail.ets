@@ -824,7 +824,8 @@ struct Detail {
   /** Web's unseen dot on episode cards: the viewer's progress rows by media file, once loaded. */
   @State private episodeProgress: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private episodeProgressLoaded: boolean = false;
-  @State private playFocused: boolean = !isTvMetrics();
+  // true from the start on both: web opens a film with Play focused (the Previewer never reports focus); only the TV film Play pill and the phone Play read it
+  @State private playFocused: boolean = true;
   @State private optionsOpen: boolean = false;
   /** On this profile's watchlist: null until the server has answered. */
   @State private listed: boolean | null = null;
@@ -1830,17 +1831,22 @@ struct Detail {
       : { radius: tv(22), offsetY: tv(8), color: 'rgba(56, 38, 33, 0.08)' };
   }
 
+  /** The TV film Play pill in web's focused look (accent fill, ring): web opens a film with Play focused. */
+  private filmPlayFocused(primary: boolean): boolean {
+    return primary && isTvMetrics() && !this.isSeriesPage() && this.playFocused;
+  }
+
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
       Text(glyph).fontFamily(nunito(400))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
-        .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().accent))
+        .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().accent))
       Text(label).fontFamily(nunito(700))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
         .fontWeight(FontWeight.Bold)
-        .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().ink))
+        .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
         .maxLines(1)
     }
     .height(tv(PILL_HEIGHT))
@@ -1849,11 +1855,23 @@ struct Detail {
     .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(primary ? toResourceColor(activeColors().ink) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .backgroundColor(primary ? (this.filmPlayFocused(primary) ? toResourceColor(activeColors().accent) : toResourceColor(activeColors().ink)) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
     .shadow(this.pillShadow(primary))
+    .border(this.filmPlayFocused(primary) ? { width: tv(3), color: resolvedThemeMode() === 'dark' ? '#ffffff' : toResourceColor(activeColors().ink) } : { width: 0 })
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
-    .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
+    .defaultFocus(enabled && primary && !this.isSeriesPage())
+    .onFocus((): void => {
+      if (primary) {
+        this.playFocused = true;
+      }
+      this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration)();
+    })
+    .onBlur((): void => {
+      if (primary) {
+        this.playFocused = false;
+      }
+    })
     .onClick(() => {
       this.cancelInitialEpisodeFocus();
       onPress();
