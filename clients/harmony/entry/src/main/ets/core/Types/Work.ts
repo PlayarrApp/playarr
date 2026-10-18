@@ -84,6 +84,8 @@ export interface Work {
   tags: string[];
   added_at: string;
   release_date: string | null;
+  /** Set by the server once a series has ended (web `yearRangeLabel`). */
+  end_date?: string | null;
   monitored: boolean;
   availability: Availability;
 }

@@ -2,6 +2,7 @@
 """Tiny Playarr API stand-in for offscreen smoke runs: python3 fake_server.py <port>.
 Serves placeholder data only (neutral titles, generated solid-colour artwork)."""
 import json, struct, sys, zlib
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -25,6 +26,8 @@ def work(i, kind, title, art=True):
 MOVIES = [work(i, "movie", f"Test Movie {c}", art=i % 2 == 0) for i, c in enumerate("ABCDEF")]
 SERIES = [work(10 + i, "series", f"Sample Series {i + 1}") for i in range(3)]
 DL = bytes(range(256)) * 12000  # about 3 MB of placeholder bytes
+CAPABILITY_STATUS = int(os.environ.get("FAKE_CAPABILITY_STATUS", "200"))
+CAPABILITY_GRANTED = os.environ.get("FAKE_CAN_DOWNLOAD", "true").lower() == "true"
 ALL = {w["id"]: w for w in MOVIES + SERIES}
 
 
@@ -47,6 +50,8 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         p = self.path.split("?")[0]
+        if p == "/api/v1/users/me/capabilities":
+            return self.send(CAPABILITY_STATUS, {"can_download": CAPABILITY_GRANTED, "can_request": False, "is_admin": False})
         if p == "/api/v1/home/rails":
             return self.send(200, {"rails": [{"id": "m", "kind": "recent", "library": "movie", "title": "Recently Added in Movies", "items": MOVIES},
                                               {"id": "s", "kind": "recent", "library": "series", "title": "Recently Added in Series", "items": SERIES}]})
@@ -96,4 +101,6 @@ class H(BaseHTTPRequestHandler):
         return self.send(404, {})
 
 
-ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
+server = ThreadingHTTPServer(("localhost", int(sys.argv[1])), H)
+print("FAKE_SERVER_READY:%d" % server.server_address[1], flush=True)
+server.serve_forever()

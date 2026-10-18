@@ -165,7 +165,8 @@ enum WMFormat {
 
     static func date(_ iso: String?) -> String? {
         guard let iso, let day = Self.parser.date(from: String(iso.prefix(10))) else { return nil }
-        return Self.display.string(from: day)
+        // Chrome's en-GB spells September "Sept"; Foundation's ICU data says "Sep".
+        return Self.display.string(from: day).replacingOccurrences(of: " Sep ", with: " Sept ")
     }
 
     static func yearRange(releaseDate: String?, endDate: String?) -> String? {
@@ -650,7 +651,6 @@ struct WMDetailPage: View {
                 }
             }
             .shadow(color: focused ? WM.cardGlowColor.opacity(0.45) : .clear, radius: focused ? 20 : 0)
-            .scaleEffect(focused ? 1.025 : 1, anchor: .top)
             .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
             HStack(spacing: 9) {
                 WMText(code(season, episode.episode), 9.92, 700, color: focused ? WM.ink : WM.detailMuted, lh: 14.88).fixedSize()

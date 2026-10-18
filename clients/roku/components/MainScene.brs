@@ -5915,7 +5915,7 @@ sub updateSeriesEpisodeHeader()
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 11, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -6924,8 +6924,8 @@ sub showOnly(name as String)
     m.settingsGroup.visible = name = "settings"
     m.pageGroup.visible = name = "page"
     ' Web .app-clock is at the same place on every screen.
-    m.clockTime.translation = [474, 68]
-    m.clockDate.translation = [529, 73]
+    m.clockTime.translation = [481, 68]
+    m.clockDate.translation = [535, 73]
     m.libraryGroup.visible = name = "library"
     m.homeGroup.visible = name = "home"
     m.browseGroup.visible = name = "browse"
@@ -7513,7 +7513,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 11, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7523,7 +7523,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     overview = JsonString(work.overview)
     if overview = "" then overview = "No description is available."
     m.detailSynopsis.translation = [153.6, metaY + 37.5]
-    m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 3 }
+    m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
     m.detailActionsTop = metaY + 37.5 + 20.33 * m.detailSynopsis.lineCount + 58
 end sub
 
