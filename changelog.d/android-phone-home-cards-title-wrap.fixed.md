@@ -1,0 +1,1 @@
+- Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
