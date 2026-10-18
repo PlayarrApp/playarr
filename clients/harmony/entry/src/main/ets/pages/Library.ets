@@ -448,6 +448,7 @@ struct LibraryGridCell {
       cardWidth: this.cardWidth,
       cardHeight: this.cardHeight,
       artworkRadius: this.cardRadius,
+      variant: isTvMetrics() ? 'grid' : 'home',
       title: this.work.title,
       // web's phone cards carry the title only, in Covers too; the TV's cover cards keep the year
       subtitle: this.landscape || !isTvMetrics() ? '' : releaseYearOf(this.work),
@@ -1070,6 +1071,28 @@ export struct Library {
     }
   }
 
+  /** Web's scroll-edge fade on the TV grids: the last row dims toward the bottom edge (eased ramp down to alpha 0.3 over 59.4 vp). The grid
+   * and this layer are drawn offscreen together; the layer's alpha (DST_IN) is the mask. shortcut: bottom edge only, the top fade
+   * (shown once scrolled) is not drawn, add it when a scrolled capture needs it. */
+  @Builder
+  private gridEdgeMask(): void {
+    Column() {
+      Column()
+        .width('100%')
+        .layoutWeight(1)
+        .backgroundColor('rgba(0, 0, 0, 1)')
+      Column()
+        .width('100%')
+        .height(tv(59.4))
+        .linearGradient({ angle: 180, colors: [['rgba(0, 0, 0, 1)', 0], ['rgba(0, 0, 0, 0.891)', 0.25], ['rgba(0, 0, 0, 0.65)', 0.5],
+          ['rgba(0, 0, 0, 0.409)', 0.75], ['rgba(0, 0, 0, 0.3)', 1]] })
+    }
+    .width('100%')
+    .height('100%')
+    .blendMode(BlendMode.DST_IN)
+    .hitTestBehavior(HitTestMode.Transparent)
+  }
+
   @Builder
   private coverWall(): void {
     Grid(this.gridScroller) {
@@ -1107,6 +1130,8 @@ export struct Library {
     .height('100%')
     .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop), left: tv(LIBRARY_GLOW_ROOM), right: tv(LIBRARY_GLOW_ROOM) })
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
+    .overlay(this.gridEdgeMask(), { align: Alignment.TopStart })
+    .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
     .onScrollIndex((_first: number, last: number) => {
@@ -1163,6 +1188,8 @@ export struct Library {
     .height('100%')
     .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop), left: tv(LIBRARY_GLOW_ROOM), right: tv(LIBRARY_GLOW_ROOM) })
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
+    .overlay(this.gridEdgeMask(), { align: Alignment.TopStart })
+    .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
     .scrollBar(BarState.Off)
     .onScrollIndex((_first: number, last: number) => {
       this.maybeLoadMore(last);
@@ -1209,6 +1236,8 @@ export struct Library {
     .height('100%')
     .padding({ top: tv(TvGeometry.libraryGridTop), bottom: tv(TvGeometry.libraryGridTop), left: tv(LIBRARY_GLOW_ROOM), right: tv(LIBRARY_GLOW_ROOM) })
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
+    .overlay(this.gridEdgeMask(), { align: Alignment.TopStart })
+    .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
     .onScrollIndex((_first: number, last: number) => {
@@ -1232,6 +1261,7 @@ export struct Library {
       scrollRails: false,
       railFrost: true,
       railFrostWidthPct: 65,
+      libraryCopy: true,
       railsSlot: (): void => {
         this.tvGrid();
       },

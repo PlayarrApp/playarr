@@ -69,6 +69,13 @@ const SYNOPSIS_MAX_WIDTH: number = 324;
 // Nunito renders ~2% wider than web's at this size, so lines break one word earlier; trim the tracking, not the column.
 const SYNOPSIS_LETTER_SPACING: number = -0.12;
 const SYNOPSIS_MAX_LINES: number = 5;
+// Web's Library hero (`.tv-preview-meta` / `.tv-preview-overview`, measured on the 1920x1080 capture): regular-weight meta, a 14.4 synopsis
+// on a 21.7 pitch wrapping at 42ch (about 348 vp). Detail and Home keep the sizes above.
+const LIBRARY_META_FONT_WEIGHT: number = 400;
+const LIBRARY_SYNOPSIS_FONT_SIZE: number = 14.4;
+const LIBRARY_SYNOPSIS_LINE_HEIGHT: number = 21.7;
+const LIBRARY_SYNOPSIS_MAX_WIDTH: number = 348;
+const LIBRARY_SYNOPSIS_LETTER_SPACING: number = -0.2;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
 const GAP_KICKER_TITLE: number = 34;
@@ -104,6 +111,8 @@ export struct FeatureCopy {
    * the gaps above the meta lines and the synopsis (vp, may be negative). */
   @Prop metaGapAdjust: number = 0;
   @Prop synopsisGapAdjust: number = 0;
+  /** The TV Library hero: web's preview meta and synopsis sizes (see `LIBRARY_*` above). */
+  @Prop libraryCopy: boolean = false;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -199,9 +208,9 @@ export struct FeatureCopy {
           ForEach(
             this.metaLines,
             (line: string) => {
-              Text(line).fontFamily(nunito(COPY_TEXT_FONT_WEIGHT))
+              Text(line).fontFamily(nunito(this.libraryCopy ? LIBRARY_META_FONT_WEIGHT : COPY_TEXT_FONT_WEIGHT))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE))
-                .fontWeight(COPY_TEXT_FONT_WEIGHT)
+                .fontWeight(this.libraryCopy ? LIBRARY_META_FONT_WEIGHT : COPY_TEXT_FONT_WEIGHT)
                 .fontColor(this.copyTextColor())
             },
             (line: string, index: number) => `${index}-${line}`
@@ -214,12 +223,12 @@ export struct FeatureCopy {
       if (this.synopsis.length > 0) {
         // web `.tv-detail-synopsis`: --ink-muted, no weight set (body 400)
         Text(this.synopsis).fontFamily(nunito(SYNOPSIS_FONT_WEIGHT))
-          .fontSize(tv(COPY_TEXT_FONT_SIZE))
+          .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
           .fontWeight(SYNOPSIS_FONT_WEIGHT)
-          .lineHeight(tv(SYNOPSIS_LINE_HEIGHT))
-          .letterSpacing(tv(SYNOPSIS_LETTER_SPACING))
+          .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))
+          .letterSpacing(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LETTER_SPACING : SYNOPSIS_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().inkMuted))
-          .constraintSize({ maxWidth: tv(SYNOPSIS_MAX_WIDTH) })
+          .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust) })
