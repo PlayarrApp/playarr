@@ -396,6 +396,8 @@ struct Profiles {
   private tvPicker(): void {
     Stack({ alignContent: Alignment.Top }) {
       PlayarrLogo({ logoSize: this.pick(TvGeometry.logoSize, 25) })
+        // web `.app-logo-icon`: a soft drop shadow (the Previewer may ignore it, as it did the avatar glow)
+        .shadow(isTvMetrics() ? { radius: 0, color: Color.Transparent } : (resolvedThemeMode() === 'dark' ? { radius: 8, offsetY: 4, color: 'rgba(0, 0, 0, 0.42)' } : { radius: 6, offsetY: 3.5, color: 'rgba(56, 38, 33, 0.2)' }))
         .position({ x: this.pick(TvGeometry.logoLeft, 25), y: this.pick(TvGeometry.logoTop, 26) })
       // Web's foot-of-page pills: Check for updates (bottom left) and the Clients link (bottom right). HarmonyOS has
       // no in-app installer, so the update check says what web says for a build that cannot update itself.
