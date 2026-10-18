@@ -184,6 +184,65 @@ namespace Playarr.Xbox.Views
             return group;
         }
 
+        /// <summary>
+        /// The web's language select: a tinted box showing the current choice and a chevron; Enter lists "Any language" and
+        /// the languages <paramref name="load"/> returns in a flyout.
+        /// </summary>
+        public static StackPanel Dropdown(string label, string current, Func<System.Threading.Tasks.Task<System.Collections.Generic.IList<Playarr.Core.Models.LanguageFacet>>> load, Action<string?> onSelect)
+        {
+            var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
+            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
+            caption.CharacterSpacing = 120;
+            group.Children.Add(caption);
+            var content = new Grid();
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            content.Children.Add(Ui.Text(current, 10.5, FontWeights.SemiBold, "PlayarrInk"));
+            var chevron = new FontIcon { Glyph = "\uE70D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 8, Foreground = Ui.Res("PlayarrInkSoft") };
+            Grid.SetColumn(chevron, 1);
+            content.Children.Add(chevron);
+            var button = new Button
+            {
+                Height = 58,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                Padding = new Thickness(20, 0, 20, 0),
+                CornerRadius = new CornerRadius(12),
+                Background = RestingChip(),
+                BorderBrush = Ui.Res("PlayarrLineStrong"),
+                BorderThickness = new Thickness(1),
+                Content = content,
+                FocusVisualPrimaryBrush = Theme.FocusRing,
+                FocusVisualPrimaryThickness = new Thickness(3),
+                FocusVisualSecondaryThickness = new Thickness(0),
+            };
+            button.Click += async (s, e) =>
+            {
+                var flyout = new MenuFlyout();
+                var any = new MenuFlyoutItem { Text = "Any language" };
+                any.Click += (a, b) => onSelect(null);
+                flyout.Items.Add(any);
+                try
+                {
+                    foreach (var facet in await load())
+                    {
+                        var code = facet.Code;
+                        var item = new MenuFlyoutItem { Text = string.IsNullOrEmpty(facet.Name) ? code : facet.Name };
+                        item.Click += (a, b) => onSelect(code);
+                        flyout.Items.Add(item);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Only "Any language" is offered when the facets cannot load.
+                }
+
+                flyout.ShowAt(button);
+            };
+            group.Children.Add(button);
+            return group;
+        }
+
         /// <summary>A labelled select as a vertical list (many or long options), the selected row filled.</summary>
         public static StackPanel Choice(string label, string[] options, int selected, Action<int> onSelect)
         {
