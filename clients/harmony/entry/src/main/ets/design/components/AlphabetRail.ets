@@ -45,17 +45,29 @@ export struct AlphabetRail {
   private touchRail(): void {
     Column() {
       ForEach(this.letters, (letter: string) => {
-        // a 44 vp target around web's 22 vp letter disc
+        // a 44 vp target around web's 22 vp letter disc; the current letter wears web's focus ring (2 px brand, 2 px gap)
         Column() {
-          Text(letter).fontFamily(nunito(700))
-            .width(TOUCH_DISC)
-            .height(TOUCH_DISC)
-            .textAlign(TextAlign.Center)
-            .fontSize(TOUCH_LETTER_SIZE)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
-            .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.78) : Color.Transparent)
-            .borderRadius(TOUCH_DISC / 2)
+          // 22 vp box; the ring overflows it symmetrically (a Stack centres a larger child) so it takes no layout room
+          Stack() {
+            if (letter === this.activeLetter) {
+              Column()
+                .width(TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH)
+                .height(TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH)
+                .borderRadius((TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH) / 2)
+                .border({ width: RING_WIDTH, color: toResourceColor(BRAND_PINK) })
+            }
+            Text(letter).fontFamily(nunito(500))
+              .width(TOUCH_DISC)
+              .height(TOUCH_DISC)
+              .textAlign(TextAlign.Center)
+              .fontSize(TOUCH_LETTER_SIZE)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
+              .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().ink) : Color.Transparent)
+              .borderRadius(TOUCH_DISC / 2)
+          }
+          .width(TOUCH_DISC)
+          .height(TOUCH_DISC)
         }
         .width(TOUCH_LETTER_WIDTH)
         .layoutWeight(1)
