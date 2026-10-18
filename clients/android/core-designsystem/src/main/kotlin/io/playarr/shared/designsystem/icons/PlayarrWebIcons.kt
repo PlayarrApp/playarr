@@ -90,6 +90,9 @@ object PlayarrWebIcons {
     val Watchlist: ImageVector by lazy {
         IconSpec("WebWatchlist").stroke("M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z", "M12 7.5v5M9.5 10h5").build()
     }
+    val Requests: ImageVector by lazy {
+        IconSpec("WebRequests").stroke(circle(12f, 12f, 8.5f), "M12 8v8M8 12h8").build()
+    }
     val Folders: ImageVector by lazy {
         IconSpec("WebFolders").stroke("M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z").build()
     }
