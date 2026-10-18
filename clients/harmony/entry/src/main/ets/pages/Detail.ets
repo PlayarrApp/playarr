@@ -249,6 +249,7 @@ const RIGHT_COLUMN_X: number = 882;
 const RIGHT_COLUMN_Y: number = 543;
 const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
+const RIGHT_COLUMN_FADE: number = 50;
 const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 543; // static-server refs: the first season heading rests with the other details' right column (was 361, the scrolled old ref)
 const SERIES_COLUMN_BLEED: number = 12;
@@ -2257,6 +2258,19 @@ struct Detail {
         .scrollBar(BarState.Off)
         .position({ x: tv(RIGHT_COLUMN_X), y: tv(RIGHT_COLUMN_Y) })
       }
+      // web: the right column's scroll box fades out over its last 50 px
+      Row()
+        .width(tv(RIGHT_COLUMN_WIDTH))
+        .height(tv(RIGHT_COLUMN_FADE))
+        .linearGradient({
+          angle: 180,
+          colors: [
+            [toResourceColorWithAlpha(activeColors().surface, 0), 0],
+            [toResourceColor(activeColors().surface), 1],
+          ],
+        })
+        .hitTestBehavior(HitTestMode.None)
+        .position({ x: tv(RIGHT_COLUMN_X), y: tv(1080 - RIGHT_COLUMN_FADE) })
     }
     .width('100%')
     .height('100%')

@@ -6,7 +6,8 @@
 import { nunito } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
-import { tv } from '../Metrics';
+import { tv, isTvMetrics } from '../Metrics';
+import { BRAND_PINK } from '../../core/Tokens';
 
 export interface ActionItem {
   glyph: string;
@@ -20,7 +21,7 @@ const ROW_RADIUS: number = 14;
 const ROW_PADDING_H: number = 18;
 const GLYPH_COLUMN: number = 42;
 const GLYPH_SIZE: number = 19.5;
-const LABEL_SIZE: number = 16;
+const LABEL_SIZE: number = 19.4;
 
 @Component
 export struct ActionList {
@@ -39,7 +40,7 @@ export struct ActionList {
           Text(action.glyph).fontFamily(nunito(400))
             .width(tv(GLYPH_COLUMN))
             .fontSize(tv(GLYPH_SIZE))
-            .fontColor(toResourceColor(activeColors().accent))
+            .fontColor(toResourceColor(isTvMetrics() ? BRAND_PINK : activeColors().accent))
           Text(action.label).fontFamily(nunito(700))
             .fontSize(tv(LABEL_SIZE))
             .fontWeight(FontWeight.Bold)
@@ -50,6 +51,7 @@ export struct ActionList {
         .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
         .borderRadius(tv(ROW_RADIUS))
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+        .outline(isTvMetrics() && action.id === this.actions[0].id ? { width: tv(3), color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) } : { width: 0 }) // web: the first action starts focused
         .opacity(this.busyId.length > 0 && this.busyId !== action.id ? 0.5 : 1)
         .focusable(this.busyId.length === 0)
         .defaultFocus(action.id === this.actions[0].id)
