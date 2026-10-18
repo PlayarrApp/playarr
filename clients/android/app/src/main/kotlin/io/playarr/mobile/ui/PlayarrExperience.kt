@@ -6385,6 +6385,8 @@ private fun ExperienceVideoDetailContent(
             // Web `.tv-detail`: key art 58% of the viewport tall (490 px), wash 72% (608 px).
             PhoneKeyArt(detail.work, serverUrl, accessToken, Modifier.fillMaxWidth().height(489.5.dp))
             PhoneStageWash(Modifier.fillMaxWidth().height(607.7.dp))
+            // Web: the art is fully hidden under the header for the first 125 px and fades in by 200 px (measured on the live refs).
+            Box(Modifier.fillMaxWidth().height(108.5.dp).background(Brush.verticalGradient(0f to WebSurface, 0.627f to WebSurface, 1f to Color.Transparent)))
         } else {
         AuthenticatedArtwork(
             work = detail.work,
@@ -6609,7 +6611,7 @@ private fun PhoneVideoDetailBody(
                     Text(
                         work.title, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -9.3.dp.toPx() },
+                        modifier = Modifier.graphicsLayer { translationY = -10.4.dp.toPx() },
                     )
                 }
                 if (episode != null) {
@@ -6618,10 +6620,10 @@ private fun PhoneVideoDetailBody(
                         episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episodeNumber),
                         color = WebInkSoft, fontSize = 14.4.sp, lineHeight = 16.56.sp, fontWeight = FontWeight(570), letterSpacing = (-0.504).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -1.7.dp.toPx() },
+                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() },
                     )
                 }
-                Spacer(Modifier.height(if (episode != null) 8.dp else 12.dp))
+                Spacer(Modifier.height(if (episode != null) 6.9.dp else 12.dp))
                 FlowRow(Modifier.offset(y = (-1.3).dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     metaItems.forEachIndexed { index, item ->
                         Text(
