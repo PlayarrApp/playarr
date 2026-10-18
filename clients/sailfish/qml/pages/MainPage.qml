@@ -18,6 +18,14 @@ PlayarrPage {
         })
     }
     function openFirst(kind) { firstWork(kind, open) }
+    // The parity captures open the pinned item (scripts/parity/web-refs.json detailItems), never a grid card.
+    function openNamed(kind, title) {
+        Api.request("GET", "/api/v1/catalog?kind=" + kind + "&available_only=true&limit=200&sort=title&order=asc", null, function (st, d) {
+            if (st !== 200 || !d) return
+            var hit = d.items.filter(function (w) { return w.title === title })
+            if (hit.length) open(hit[0])
+        })
+    }
     function loaderItem() { return loader.item }   // for the PLAYARR_STEPS smoke scripts
     function actionsFirst(kind) { firstWork(kind, actions) }
     // The web opens its actions panel on the first card of Home; the suite driver does the same.
