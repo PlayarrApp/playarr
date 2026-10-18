@@ -2015,7 +2015,7 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(4) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 6 : 4) }) { // TV season subtitle sits 22 px under the heading on web
       Text(heading).fontFamily(nunito(400))
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
@@ -2109,7 +2109,7 @@ struct Detail {
       ForEach(
         this.rails,
         (rail: DetailRail) => {
-          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
+          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 2) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: the subtitle gap above grew by 2
             this.railHeading(rail.heading, rail.items.length.toString() + ' episodes', true)
             MediaRail({
               railId: rail.id,
@@ -2117,7 +2117,7 @@ struct Detail {
               heading: '',
               headingGap: 0,
               itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle + 2) : PHONE_EPISODE_RAIL_GAP, // +2: web pitch 294 vs 292
-              clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
+              clipInsetStart: isTvMetrics() ? 56 : PHONE_DETAIL_RAIL_CLIP_START, // 56: the focused card's 48 radius shadow was cut at the list edge, a pale band in light
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
               allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
