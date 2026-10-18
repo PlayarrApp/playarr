@@ -629,7 +629,7 @@ export struct SettingsScreen {
               .fontSize(10)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-              .position({ x: 12, y: 14 })
+              .position({ x: 12, y: 16 })
             Column({ space: 3.5 }) {
               Text(section.title).fontFamily(nunito(500))
                 .fontSize(15.5)
@@ -644,12 +644,12 @@ export struct SettingsScreen {
             }
             .alignItems(HorizontalAlign.Start)
             .width(226)
-            .position({ x: 56, y: 23 })
+            .position({ x: 56, y: 24.5 })
             Text('→').fontFamily(nunito(400))
               .fontSize(14)
               .fontColor(toResourceColor(activeColors().ink))
               .height(88)
-              .position({ x: 303, y: 0 })
+              .position({ x: 303, y: 3 })
           }
           .width(328)
           .height(88)
@@ -663,6 +663,7 @@ export struct SettingsScreen {
       }
       .width('100%')
       .height('100%')
+      .padding({ top: 12 }) // web's first row starts 12 vp below the header
     }
   }
 
