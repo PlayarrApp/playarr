@@ -564,7 +564,17 @@ struct TVDrawer<Content: View>: View {
         .padding(.leading, 46)
         .padding(.trailing, 46)
         .frame(width: 360, height: 1080, alignment: .topLeading)
-        .background(DesignTokens.Stage.surfaceStrong.opacity(0.94))
+        .background {
+            ZStack {
+                #if os(tvOS)
+                // Web `backdrop-filter: blur(38px)`: the page art behind the panel is blurred, not sharp.
+                Rectangle().fill(.regularMaterial)
+                #endif
+                DesignTokens.Stage.surfaceStrong.opacity(0.94)
+            }
+            // Web `box-shadow: -32px 0 90px rgba(40, 26, 24, 0.24)`.
+            .shadow(color: Color(red: 40 / 255, green: 26 / 255, blue: 24 / 255).opacity(0.24), radius: 45, x: -32, y: 0)
+        }
         .focusSection()
         #if os(macOS)
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)

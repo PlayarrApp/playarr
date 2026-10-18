@@ -1,1 +1,0 @@
-- Sailfish profiles page: Clients link at the bottom right as the live web.

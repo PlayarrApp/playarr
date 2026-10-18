@@ -364,6 +364,48 @@
               }
             }
           },
+          "strategy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "Recreate",
+                  "RollingUpdate"
+                ]
+              },
+              "maxSurge": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maxUnavailable": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "allowConcurrentPods": {
+                "type": "boolean"
+              }
+            }
+          },
+          "exposure": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "enum": [
+                  "hostPort",
+                  "externalIP"
+                ]
+              },
+              "externalIPs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$"
+                }
+              }
+            }
+          },
           "hostExposure": {
             "type": "object",
             "additionalProperties": false,

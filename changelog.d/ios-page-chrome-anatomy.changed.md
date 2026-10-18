@@ -1,1 +1,0 @@
-- iOS: one Back button (a 44 pt circle) and one Filters tile on every page, following the shared page anatomy.

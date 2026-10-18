@@ -1,1 +1,0 @@
-- Nura: the film detail art sits under the page's top cover as on the web, the Playback pill is no longer greyed out, the month grid keeps the web's 720 px track and opens at Monday, agenda status chips take the web's size and softer border, library cards show the unseen dot for artists and the web's dot style, and the library backdrop is dimmer in dark.
