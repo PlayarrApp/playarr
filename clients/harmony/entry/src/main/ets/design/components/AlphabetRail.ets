@@ -4,10 +4,10 @@
  */
 
 import { nunito } from '../Typography';
-import { activeColors, resolvedThemeMode, toResourceColor, toResourceColorWithAlpha } from '../Theme';
+import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
-import { BRAND_PINK_SOFT } from '../../core/Tokens';
+import { BRAND_PINK } from '../../core/Tokens';
 
 const RAIL_LEFT: number = 1852;
 const RAIL_TOP: number = 270;
@@ -90,7 +90,7 @@ export struct AlphabetRail {
         .textAlign(TextAlign.Center)
         .fontSize(tv(LETTER_SIZE))
         .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
-        .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().inkSoft) : Color.Transparent)
+        .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.78) : Color.Transparent)
         .borderRadius(tv(TV_DISC / 2))
         .translate({ y: -tv(1.5) })
     }
@@ -98,7 +98,7 @@ export struct AlphabetRail {
     .height(letter === this.activeLetter ? tv(TV_DISC + 2 * RING_GAP + 2 * RING_WIDTH) : tv(BUTTON_SIZE))
     .justifyContent(FlexAlign.Center)
     .borderRadius(tv((TV_DISC + 2 * RING_GAP + 2 * RING_WIDTH) / 2))
-    .border({ width: letter === this.activeLetter ? tv(RING_WIDTH) : 0, color: resolvedThemeMode() === 'dark' ? toResourceColor(BRAND_PINK_SOFT) : toResourceColor({ r: 165, g: 39, b: 69, a: 1 }) })
+    .border({ width: letter === this.activeLetter ? tv(RING_WIDTH) : 0, color: toResourceColor(BRAND_PINK) })
   }
 
   @Builder
