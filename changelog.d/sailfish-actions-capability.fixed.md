@@ -1,0 +1,1 @@
+- Sailfish hides the Download action unless the server grants download capability, matching the web client and preventing denied or failed capability checks from shifting the Actions menu. Smoke coverage checks granted, denied, and failed capability responses.

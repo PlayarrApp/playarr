@@ -1,0 +1,1 @@
+- Nura and Sailfish calendars can pin "today" to the parity fixture clock (PLAYARR_PARITY_CLOCK, UTC) for captures; unset in normal use.

@@ -19,8 +19,8 @@ import { SearchablePlaylistSelect } from "./SearchablePlaylistSelect";
 import { Drawer } from "./shell";
 import { Button } from "./ui";
 import { isBackKey } from "../lib/backKey";
-import { isLongHold, LONG_PRESS_MS } from "../lib/longPress";
 
+const LONG_PRESS_MS = 650;
 type PlaylistContextView = "actions" | "edit" | "delete";
 
 function descendantsOf(
@@ -87,7 +87,6 @@ export function usePlaylistContextMenu({
   const parentTriggerRef = useRef<HTMLButtonElement | null>(null);
   const longPressTimerRef = useRef<number | undefined>(undefined);
   const longPressTriggeredRef = useRef(false);
-  const pressedAtRef = useRef<number | undefined>(undefined);
   // The card whose Enter keydown is still held: a release that lands on another card belongs to what was pressed.
   const pressedRef = useRef<EventTarget | null>(null);
 
@@ -263,7 +262,6 @@ export function usePlaylistContextMenu({
         longPressTriggeredRef.current = false;
         const origin = event.currentTarget;
         pressedRef.current = origin;
-        pressedAtRef.current = event.timeStamp;
         longPressTimerRef.current = window.setTimeout(() => {
           longPressTriggeredRef.current = true;
           open(playlist, origin, false);
@@ -281,10 +279,6 @@ export function usePlaylistContextMenu({
         const pressedHere = pressedRef.current === event.currentTarget;
         pressedRef.current = null;
         if (!pressedHere) return;
-        if (!longPressTriggeredRef.current && isLongHold(pressedAtRef.current, event.timeStamp)) {
-          longPressTriggeredRef.current = true;
-          open(playlist, event.currentTarget, false);
-        }
         if (!longPressTriggeredRef.current) event.currentTarget.click();
         else {
           window.requestAnimationFrame(() => firstActionRef.current?.focus());

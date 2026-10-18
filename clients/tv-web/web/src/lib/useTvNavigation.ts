@@ -1739,7 +1739,6 @@ export function useTvNavigation(
         autoKind: autoFocused && autoFocused.element === activeElement ? autoFocused.kind : null,
         bestKind: pick?.kind ?? null,
         userInteracted,
-        defaultMoved: autoFocused?.element === activeElement && defaultTarget !== undefined && defaultTarget !== activeElement,
       });
       if (
         !shouldAutoFocusViewDefault({
@@ -1837,14 +1836,8 @@ export function useTvNavigation(
     // re-ran full focusable collection on every artwork mount, which is the
     // dominant long-task source under 4K + CPU throttle while rails hydrate.
     let defaultFocusFrame = 0;
-    const scheduleFocusViewDefault = (records?: MutationRecord[]) => {
+    const scheduleFocusViewDefault = () => {
       if (defaultFocusFrame) return;
-      // The explicit default moved to another card while still holding our own auto-placed focus: follow it.
-      const defaultMoved =
-        autoFocused?.kind === "explicit" &&
-        autoFocused.element === document.activeElement &&
-        Array.isArray(records) &&
-        records.some((record) => record.type === "attributes");
       // Cheap exits first: a remote hold mutates the DOM (virtualisation) and must not trigger full focusable
       // walks mid-key. Focus already placed by the page or the user needs no default. The check no longer skips
       // everything in remote mode: a detail page opened with OK has to place its start focus when its data arrives.
@@ -1859,8 +1852,7 @@ export function useTvNavigation(
       const upgradeable =
         autoFocused !== null &&
         (!autoFocused.element.isConnected ||
-          (autoFocused.element === active && autoFocused.kind !== "explicit") ||
-          defaultMoved);
+          (autoFocused.element === active && autoFocused.kind !== "explicit"));
       if (focusHandled && !upgradeable) return;
       defaultFocusFrame = window.requestAnimationFrame(() => {
         defaultFocusFrame = 0;
