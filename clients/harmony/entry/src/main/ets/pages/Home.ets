@@ -183,7 +183,7 @@ const TOP_RAIL_MORE_SERIES: string = 'moreSeries';
  * (12/10) -- `design/components/PosterCard.ets`'s own header comment names
  * these as the documented touch override, matching `pages/DesignGallery.ets`'s
  * `touchRailItem` demo exactly. */
-const TOUCH_CARD_TITLE_FONT_SIZE: number = 8;
+const TOUCH_CARD_TITLE_FONT_SIZE: number = 8.5;
 const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 7;
 
 /** `TouchGeometryTokens` has no dedicated rail-to-rail spacing field (only
@@ -202,7 +202,8 @@ const TOUCH_CARD_CAPTION_HEIGHT: number = 63;
  * 2 + artwork-size-step columns 12 vp apart. Landscape cards are 16:9, Covers 2:3; the Home screen artwork setting picks which. */
 const TOUCH_GUTTER: number = 16;
 const TOUCH_CARD_GAP: number = 12;
-const TOUCH_RAIL_HEADING_SIZE: number = 16;
+// Measured on the static refs: heading 2.6% narrower than 16 vp / 600, card title 6% wider than 8 vp.
+const TOUCH_RAIL_HEADING_SIZE: number = 15.6;
 const TOUCH_RAIL_HEADING_GAP: number = 22;
 
 /** Extra bottom clearance under the touch rails column so the last rail's
@@ -514,7 +515,7 @@ export struct Home {
 
   private touchCardHeight(): number {
     const w = this.touchCardWidth();
-    return this.homeView === 'cover' ? w * 1.5 : (w * 9) / 16;
+    return this.homeView === 'cover' ? w * 1.5 : Math.floor((w * 9) / 16); // web's 16:9 box is 88 vp at 158 wide
   }
 
   /** Part of the rails' keys: the cards rebuild when the art mode or the card width changes. */
@@ -1001,6 +1002,7 @@ export struct Home {
           itemGap: TouchGeometry.railItemGap,
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
+          headingWeight: 500,
           headingGap: TOUCH_RAIL_HEADING_GAP,
           bleedEnd: atLeast(Spacing.md, this.safeRight),
           allowFocusedOverflow: true,
@@ -1018,6 +1020,7 @@ export struct Home {
           itemGap: TouchGeometry.railItemGap,
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
+          headingWeight: 500,
           headingGap: TOUCH_RAIL_HEADING_GAP,
           bleedEnd: atLeast(Spacing.md, this.safeRight),
           allowFocusedOverflow: true,
