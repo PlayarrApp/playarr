@@ -1,0 +1,1 @@
+- HarmonyOS: Requests in the navigation uses web's plus-in-circle icon.

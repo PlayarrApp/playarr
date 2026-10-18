@@ -52,9 +52,12 @@ export function navIconFor(id: string): ResourceStr {
   if (id === PLAYLISTS_NAV_ID) {
     return $r('app.media.nav_playlists');
   }
-  if (id === WATCHLIST_NAV_ID || id === REQUESTS_NAV_ID) {
-    // Web gives Requests the Watchlist icon.
+  if (id === WATCHLIST_NAV_ID) {
     return $r('app.media.nav_watchlist');
+  }
+  if (id === REQUESTS_NAV_ID) {
+    // Web RequestsIcon: a plus in a circle.
+    return $r('app.media.nav_requests');
   }
   if (id === SEARCH_NAV_ID) {
     return $r('app.media.nav_search');
