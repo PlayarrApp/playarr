@@ -31,7 +31,7 @@ import {
   subscribeToAndroidTvUpdates,
   type AndroidTvUpdateState,
 } from "../lib/androidTvUpdate";
-import { IS_TV, PLAYARR_CLIENT_PLATFORM } from "../lib/clientPlatform";
+import { IS_TV, PLAYARR_CLIENT_PLATFORM, signedOutEntryUrl } from "../lib/clientPlatform";
 import { isBackKey } from "../lib/backKey";
 import {
   readProfileDirectory,
@@ -522,8 +522,8 @@ export function ProfilesPage(
 
   function handleProfileLogout(profile: ViewerProfile) {
     logoutProfile(profile.id);
-    // Full navigation: the playarr.app Worker serves the marketing site at "/" once the hint is gone.
-    if (!IS_TV) window.location.assign("/");
+    // Full navigation: the playarr.app Worker serves the marketing site at "/" to a browser once the hint is gone.
+    if (!IS_TV) window.location.assign(signedOutEntryUrl());
   }
 
   function checkForUpdates() {
@@ -741,17 +741,19 @@ export function ProfilesPage(
         </div>
       ) : null}
 
-      <a
-        id="profiles-clients"
-        className="profile-clients-link"
-        href="https://playarr.app/clients"
-        data-navigation-focus-key="profiles:clients"
-        data-tv-edge-target-up="#profile-add"
-        data-tv-edge-target-left={isAndroidTv ? "#profiles-check-updates" : undefined}
-      >
-        {t("pages.clients.navClients")}
-        <span aria-hidden="true">→</span>
-      </a>
+      {PLAYARR_CLIENT_PLATFORM === "web" ? (
+        <a
+          id="profiles-clients"
+          className="profile-clients-link"
+          href="https://playarr.app/clients"
+          data-navigation-focus-key="profiles:clients"
+          data-tv-edge-target-up="#profile-add"
+          data-tv-edge-target-left={isAndroidTv ? "#profiles-check-updates" : undefined}
+        >
+          {t("pages.clients.navClients")}
+          <span aria-hidden="true">→</span>
+        </a>
+      ) : null}
 
       {loadState.status === "loading" ? (
         <div className="profiles-status" role="status" aria-label={t("pages.profiles.loading")}>
