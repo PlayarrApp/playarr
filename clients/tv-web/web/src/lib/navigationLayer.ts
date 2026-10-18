@@ -188,13 +188,12 @@ function restoreSnapshot(snapshot: NavigationSnapshot): (() => void) | false {
   if (snapshot.focusKey && !focusTarget) return false;
   // A saved scroll offset needs its scroller on screen: while the page still shows a skeleton there is nothing to restore
   // into, and reporting success would spend the one restore (the 700 ms settle) before the list exists.
+  // The page-level scroller (`page:/route`) is always mounted, so it alone must not count as "the scroller is on screen":
+  // every scroller saved away from the top has to be present, or a slow-mounting grid is skipped and the restore spent.
   const scrollKeys = Object.keys(snapshot.scroll);
-  if (
-    scrollKeys.length > 0 &&
-    !scrollKeys.some((key) => document.querySelector(`[data-navigation-scroll-key="${CSS.escape(key)}"]`))
-  ) {
-    return false;
-  }
+  const present = (key: string) => document.querySelector(`[data-navigation-scroll-key="${CSS.escape(key)}"]`) !== null;
+  const moved = scrollKeys.filter((key) => (snapshot.scroll[key]?.top ?? 0) > 0 || (snapshot.scroll[key]?.left ?? 0) > 0);
+  if (moved.length > 0 ? !moved.every(present) : scrollKeys.length > 0 && !scrollKeys.some(present)) return false;
 
   const applyScroll = () => {
     for (const [key, position] of Object.entries(snapshot.scroll)) {
@@ -258,7 +257,9 @@ export function useNavigationLayer(
   useEffect(() => {
     const entryKey = location.key;
     const route = location.pathname;
-    const positions: Record<string, ScrollPosition> = {};
+    // Seeded from the entry's saved offsets: the restore on Back scrolls before this listener is attached, so a scroller
+    // that only the restore moved would otherwise be missing here and be saved as the top on the next departure.
+    const positions: Record<string, ScrollPosition> = { ...readSnapshot(entryKey)?.scroll };
     const onScroll = (event: Event) => {
       const element = event.target;
       if (!(element instanceof HTMLElement)) return;
