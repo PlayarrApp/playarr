@@ -56,9 +56,17 @@ namespace Playarr.Xbox.Views
             _header = Ui.PageHeader(Root, "Library", null, () => App.Navigation.GoBack());
             Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 152, OpenFilters));
             _viewModel = new LibraryViewModel(App.Environment);
-            WorksGridView.ItemContainerStyle = Appearance.LibraryCover ? CatalogTileFactory.CoverGridCardContainerStyle : CatalogTileFactory.GridCardContainerStyle;
+            WorksGridView.ItemContainerStyle = Appearance.LibraryList ? CatalogTileFactory.ListCardContainerStyle : Appearance.LibraryCover ? CatalogTileFactory.CoverGridCardContainerStyle : CatalogTileFactory.GridCardContainerStyle;
             WorksGridView.GotFocus += WorksGridView_GotFocus;
-            CardFocus.Attach(WorksGridView, true, 4);
+            if (Appearance.LibraryList)
+            {
+                CardFocus.Attach(WorksGridView, false, 0, CardFocus.LibraryLift);
+            }
+            else
+            {
+                CardFocus.Attach(WorksGridView, true, 4, CardFocus.LibraryLift);
+            }
+
             EdgeFade.AttachVertical(Root, WorksGridView);
             CardActions.Attach(WorksGridView, id => _worksById.TryGetValue(id, out var work) ? work : null);
             Root.GotFocus += Root_GotFocus;
@@ -146,7 +154,7 @@ namespace Playarr.Xbox.Views
                 foreach (var work in _viewModel.Works)
                 {
                     _worksById[work.Id] = work;
-                    WorksGridView.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, caption: false, cover: Appearance.LibraryCover));
+                    WorksGridView.Items.Add(Appearance.LibraryList ? CatalogTileFactory.CreateListRow(work, 1020) : CatalogTileFactory.CreateLandscapeCard(work, caption: false, cover: Appearance.LibraryCover));
                 }
 
                 var preview = _viewModel.Works.FirstOrDefault(work => _refreshFocusPending && work.Id == _refreshFocusId)
@@ -449,13 +457,16 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        private static string LanguageName(string? code) => string.IsNullOrEmpty(code) ? "Any language" : code!;
+
         private void OpenFilters()
         {
             var body = new StackPanel();
-            // shortcut: the web also has List and Cover flow; Xbox has Screen and Cover.
-            body.Children.Add(Drawer.Segmented("View", new[] { "Screen", "Cover" }, Appearance.LibraryCover ? 1 : 0, i =>
+            // shortcut: the web also has Cover flow (artists only); Xbox has List, Screen and Cover.
+            var views = new[] { "list", "screen", "cover" };
+            body.Children.Add(Drawer.Segmented("View", new[] { "List", "Screen", "Cover" }, Math.Max(0, Array.IndexOf(views, Appearance.LibraryView)), i =>
             {
-                Appearance.LibraryCover = i == 1;
+                Appearance.LibraryView = views[i];
                 Drawer.TryCloseCurrent();
                 App.Navigation.NavigateReplacingCurrent(typeof(LibraryPage), _viewModel.SelectedKind!);
             }));
@@ -467,6 +478,16 @@ namespace Playarr.Xbox.Views
             body.Children.Add(Drawer.Segmented("Order", _viewModel.SelectedSort == null ? new[] { "A\u2013Z", "Z\u2013A" } : new[] { "Newest", "Oldest" }, _viewModel.Reversed ? 1 : 0, i =>
             {
                 _viewModel.SelectOrder(i == 1);
+                Drawer.TryCloseCurrent();
+            }));
+            body.Children.Add(Drawer.Dropdown("Audio language", LanguageName(_viewModel.AudioLang), async () => (await _viewModel.LoadLanguagesAsync()).Audio, code =>
+            {
+                _viewModel.SelectLanguage(true, code);
+                Drawer.TryCloseCurrent();
+            }));
+            body.Children.Add(Drawer.Dropdown("Subtitle language", LanguageName(_viewModel.SubtitleLang), async () => (await _viewModel.LoadLanguagesAsync()).Subtitle, code =>
+            {
+                _viewModel.SelectLanguage(false, code);
                 Drawer.TryCloseCurrent();
             }));
             Drawer.Open((Panel)Content, "Library controls", "Filters", body);
