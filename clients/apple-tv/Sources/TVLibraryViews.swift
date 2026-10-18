@@ -151,7 +151,7 @@ struct TVHomeView: View {
     }
 
     /// The web TV Home (`.tv-home`), interactive: the hero on the left follows the focused card; the server's shelves
-    /// stack on the right (`.tv-home-rails`, from x 881.6) and the focused rail scrolls up to the first rail's line.
+    /// stack on the right (`.tv-home-rails`, from x 783.4, web #1557) and the focused rail scrolls up to the first rail's line.
     /// Geometry is the web's at 1920x1080 in screen points; the stage starts after the nav column, hence `- nav`.
     private func productionHomeLoaded(_ viewModel: TVHomeViewModel) -> some View {
         let rails = Self.productionRails(viewModel)
@@ -187,9 +187,9 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: .top) }
                 }
             }
-            // The first rail heading sits at y 402; rails above the focused one slide up past it, as on the web.
-            .padding(.top, 402 - origin.y)
-            .padding(.leading, 881.6 - origin.x - Self.cardBleed)
+            // The first rail heading sits at y 162; rails above the focused one slide up past it, as on the web.
+            .padding(.top, 162 - origin.y)
+            .padding(.leading, 783.4 - origin.x - Self.cardBleed)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }

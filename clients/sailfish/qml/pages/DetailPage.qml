@@ -127,6 +127,7 @@ PlayarrPage {
                     y: -Tokens.safeTop; width: parent.width; height: parent.height + Tokens.safeTop
                     clip: true
                     HeroArt { y: 0; work: page.work }
+                    Rectangle { width: parent.width; height: Tokens.safeTop + 68 * Tokens.u; color: Tokens.bg }   // web: the picture starts below the header row
                     Item {
                         y: Tokens.safeTop; width: parent.width; height: 298 * Tokens.u
                         PageTitle {
@@ -281,11 +282,11 @@ PlayarrPage {
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
                     wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11.7 * Tokens.u; lineHeight: 0.94
+                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11.7 * Tokens.u; lineHeight: 0.97
                 }
                 // The web lays the actions over a faded slice of the series backdrop.
                 Item {
-                    width: parent.width; height: 68 * Tokens.u
+                    width: parent.width; height: 67 * Tokens.u
                     z: -1   // the slice starts above the row, under the overview text
                     // The web's key art is pinned to the top of the screen (sticky); only the part below the copy shows.
                     Item {
@@ -300,7 +301,7 @@ PlayarrPage {
                         }
                     }
                     Row {
-                        y: 2.5 * Tokens.u
+                        y: 2 * Tokens.u
                         x: Tokens.pad
                         spacing: 8 * Tokens.u
                         PillButton {
