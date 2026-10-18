@@ -2,6 +2,7 @@ import QtQuick 2.6
 import Sailfish.Silica 1.0
 import QtGraphicalEffects 1.0
 import "../components"
+import "../components/Library.js" as Library
 
 // Title detail: hero, facts, Play/Resume, and the episode or track lists.
 PlayarrPage {
@@ -36,6 +37,8 @@ PlayarrPage {
         }
         return lead || part || unwatched || first   // the server's resume plan leads, as on the web
     }
+    // Series with a next-up episode: the web leads with that episode (S01 \u00B7 E01 eyebrow, its title, meta, overview, then the actions).
+    readonly property bool epMode: work.kind === "series" && !!target && !!target.episode
     property var plan: null                 // series: GET /catalog/{id}/resume-plan
     readonly property var targetProgress: target && progress[target.id] && progress[target.id].state === "part_watched" ? progress[target.id] : null
 
@@ -63,6 +66,45 @@ PlayarrPage {
             Api.request("GET", "/api/v1/catalog/" + work.id + "/resume-plan", null, function (st, p) { if (st === 200 && p) plan = p })
         })
     }
+    // The static server returns [] for chapters and similar; the web then shows one "Chapter 1" (or even markers) and
+    // genre-ranked library titles, so this does too.
+    property var chapters: []
+    property bool chaptersFromServer: false
+    property var similar: []
+    function generatedChapters(ms) {
+        if (!ms) return []
+        var steps = [5, 10, 15, 20, 30], iv = 30 * 60000
+        for (var i = 0; i < steps.length; ++i) if (steps[i] * 60000 >= ms / 10) { iv = steps[i] * 60000; break }
+        var n = Math.max(1, Math.ceil(ms / iv)), out = []
+        for (var k = 0; k < n; ++k) out.push({ index: k, start_ms: k * iv, title: qsTr("Chapter %1").arg(k + 1) })
+        return out
+    }
+    function loadChapters() {
+        if (work.kind !== "movie" || !detail || !detail.media_file_id) return
+        Api.request("GET", "/api/v1/media/" + detail.media_file_id + "/chapters", null, function (st, d) {
+            var found = st === 200 && d && d.length ? d : null
+            chaptersFromServer = !!found
+            chapters = found || generatedChapters(detail.runtime_ms)
+        })
+    }
+    function loadSimilar() {
+        if (work.kind === "artist") return
+        Api.request("GET", "/api/v1/catalog/" + work.id + "/similar?limit=13", null, function (st, d) {
+            if (st === 200 && d && d.length) { similar = d; return }
+            Api.request("GET", "/api/v1/catalog?kind=" + work.kind + "&available_only=true&limit=200&sort=title&order=asc", null, function (st2, c) {
+                if (st2 !== 200 || !c) return
+                var mine = work.genres || [], ranked = []
+                Library.order(c.items, "title", "asc").forEach(function (w, i) {
+                    if (w.id === work.id) return
+                    var shared = (w.genres || []).filter(function (g) { return mine.indexOf(g) >= 0 }).length
+                    if (shared > 0) ranked.push({ w: w, shared: shared, i: i })
+                })
+                ranked.sort(function (a, b) { return b.shared - a.shared || a.i - b.i })
+                similar = ranked.slice(0, 13).map(function (r) { return r.w })
+            })
+        })
+    }
+    function scrollTop() { flick.contentY = 0 }   // smoke and capture scripts: the pages are captured at their top
     function load() {
         if (work.kind === "series")
             Api.request("GET", "/api/v1/catalog/" + work.id + "/resume-plan", null, function (st, p) { if (st === 200 && p) plan = p })
@@ -76,7 +118,7 @@ PlayarrPage {
             progress = m
         })
     }
-    onDetailChanged: if (detail) { work = detail.work; resolveWatchlist(); focusEp.restart() }
+    onDetailChanged: if (detail) { work = detail.work; resolveWatchlist(); focusEp.restart(); loadChapters(); loadSimilar() }
     onStatusChanged: if (status === PageStatus.Active && detail) load() // refresh resume state after playback
     Component.onCompleted: load()
 
@@ -146,7 +188,8 @@ PlayarrPage {
             }
             Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
-                text: work.genres && work.genres.length ? work.genres[0].toUpperCase() : ""
+                text: epMode ? "S" + ("0" + target.season.season_number).slice(-2) + " \u00B7 E" + ("0" + target.episode.episode.episode_number).slice(-2)
+                    : work.genres && work.genres.length ? work.genres[0].toUpperCase() : ""
                 visible: text !== ""
                 height: implicitHeight - 6.5 * Tokens.u
                 color: Tokens.brandInk
@@ -156,20 +199,21 @@ PlayarrPage {
             }
             Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
-                width: parent.width - 2 * Tokens.pad
+                width: Math.min(parent.width - 2 * Tokens.pad, 255 * Tokens.u)   // web: the title wraps before the full width
                 text: work.title
                 wrapMode: Text.Wrap
                 color: Tokens.ink
                 font.family: Tokens.family580   // web .tv-detail-title: weight 560, letter-spacing -0.072em
                 font.letterSpacing: -2.8 * Tokens.u
                 font.pixelSize: 38.8 * Tokens.u   // web: clamp(2rem, 10vw, 3.5rem) at 384 px
-                lineHeight: 0.92
+                lineHeight: lineCount > 1 ? 0.70 : 0.92   // web: 0.95 of the font size between wrapped lines
                 topPadding: -3 * Tokens.u   // the taller web title sits 6 px higher in its box
                 height: implicitHeight - 2.6 * Tokens.u
             }
             Row {
                 x: Tokens.pad
                 spacing: 11.5 * Tokens.u
+                visible: !epMode
                 height: implicitHeight - 1.5 * Tokens.u
                 Label { renderType: Text.NativeRendering; text: work.kind === "movie" ? qsTr("Movie") : work.kind === "series" ? qsTr("Series") : qsTr("Music"); font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                 Label { renderType: Text.NativeRendering; visible: !!detail && !!detail.runtime_ms; text: detail ? hm(detail.runtime_ms) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
@@ -183,7 +227,7 @@ PlayarrPage {
             Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
                 width: parent.width - 2 * Tokens.pad
-                visible: !!work.overview
+                visible: !!work.overview && !epMode
                 text: work.overview || ""
                 wrapMode: Text.Wrap
                 maximumLineCount: 3
@@ -197,7 +241,7 @@ PlayarrPage {
             Row {
                 x: Tokens.pad
                 spacing: 8 * Tokens.u
-                visible: !!page.target
+                visible: !!page.target && !epMode
                 // Web: Download is as wide as its content; Playback and Play share the rest equally.
                 readonly property real fillW: (col.width - 2 * Tokens.pad - (dlBtn.visible ? dlBtn.width + spacing : 0) - spacing) / 2
                 PillButton {
@@ -235,7 +279,7 @@ PlayarrPage {
             Row {
                 x: Tokens.pad
                 spacing: 8 * Tokens.u
-                visible: !!page.detail
+                visible: !!page.detail && !epMode
                 PillButton {
                     lift: true
                     icon: page.inWatchlist ? "\u2713" : "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
@@ -253,7 +297,7 @@ PlayarrPage {
                     onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
                 }
             }
-            BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; size: BusyIndicatorSize.Medium; running: !detail && !failed }
+            BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; size: BusyIndicatorSize.Medium; visible: !epMode; running: !detail && !failed }
             Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
                 visible: failed
@@ -265,6 +309,7 @@ PlayarrPage {
             // Series: the next-up episode panel, then every season as a two-column grid of episode cards (web).
             Column {
                 id: epPanel
+                topPadding: 5 * Tokens.u
                 width: parent.width
                 spacing: 11.5 * Tokens.u
                 visible: seasons.length > 0 && !!page.target && !!page.target.episode
@@ -294,6 +339,7 @@ PlayarrPage {
                     wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
                     color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11.7 * Tokens.u; lineHeight: 0.97
                 }
+                Item { width: 1; height: 21.5 * Tokens.u }   // web: the actions sit lower under the episode copy
                 // The web lays the actions over a faded slice of the series backdrop.
                 Item {
                     width: parent.width; height: 67 * Tokens.u
@@ -502,6 +548,62 @@ PlayarrPage {
                                             EdgeFade { target: epList; horizontal: true; size: 38 * Tokens.u }   // web: --page-edge-fade-size
                     }
                 }
+            }
+
+            // Chapters (films) and Similar Titles, on the web's lighter track band.
+            Item {
+                width: parent.width; height: tracks.height - 42 * Tokens.u   // the band starts 28 px under the actions
+                visible: chapters.length > 0 || similar.length > 0
+                Item {   // Qt 5.6 has no horizontal Gradient: turn a vertical one on its side
+                    y: -50 * Tokens.u; width: parent.width; height: tracks.height; clip: true
+                    Rectangle {
+                        anchors.centerIn: parent; width: parent.height; height: parent.width; rotation: -90
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: Tokens.bg }
+                            GradientStop { position: 0.35; color: Tokens.dark ? "#282328" : "#fbfaf9" }
+                        }
+                    }
+                }
+            Column {
+                id: tracks
+                y: -50 * Tokens.u
+                width: parent.width
+                spacing: 18 * Tokens.u
+                bottomPadding: 28 * Tokens.u
+                Column {
+                    width: parent.width; visible: chapters.length > 0; spacing: 6 * Tokens.u
+                    topPadding: 23 * Tokens.u
+                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("Chapters"); color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: chaptersFromServer ? qsTr("%1 chapters").arg(chapters.length) : qsTr("%1 scene markers").arg(chapters.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10.6 * Tokens.u }
+                    Item { width: 1; height: 6 * Tokens.u }
+                    ListView {
+                        width: col.width; height: 132 * Tokens.u
+                        orientation: ListView.Horizontal; spacing: 12 * Tokens.u
+                        leftMargin: Tokens.pad; rightMargin: Tokens.pad; clip: true
+                        model: chapters
+                        delegate: Item {
+                            width: 181 * Tokens.u; height: 132 * Tokens.u
+                            Rectangle {
+                                id: chThumb
+                                width: parent.width; height: 101.8 * Tokens.u; radius: 8 * Tokens.u; color: Tokens.surfaceSoft; clip: true
+                                Image {
+                                    anchors.fill: parent; fillMode: Image.PreserveAspectCrop; asynchronous: true
+                                    source: detail && detail.media_file_id ? Api.url("/api/v1/media/" + detail.media_file_id + "/thumbnail?position_ms=" + modelData.start_ms) : ""
+                                }
+                                Label { renderType: Text.NativeRendering; anchors { right: parent.right; bottom: parent.bottom; rightMargin: 10 * Tokens.u; bottomMargin: 9 * Tokens.u }
+                                        text: ("0" + (index + 1)).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: 12.8 * Tokens.u }
+                            }
+                            Row {
+                                anchors { top: chThumb.bottom; topMargin: 12 * Tokens.u }
+                                spacing: 9 * Tokens.u
+                                Label { renderType: Text.NativeRendering; text: mmss(modelData.start_ms); color: Tokens.inkMuted; font.weight: Font.Bold; font.family: Tokens.family; font.pixelSize: 9.9 * Tokens.u }
+                                Label { renderType: Text.NativeRendering; text: modelData.title || qsTr("Chapter %1").arg(index + 1); color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 12.5 * Tokens.u }
+                            }
+                        }
+                    }
+                }
+                Rail { title: qsTr("Similar Titles"); items: similar; showUnwatched: false; onOpened: pageStack.push(Qt.resolvedUrl("DetailPage.qml"), { work: work }) }
+            }
             }
 
             // Music: albums with tracks

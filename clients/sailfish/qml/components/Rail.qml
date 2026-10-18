@@ -15,8 +15,8 @@ Column {
     width: parent ? parent.width : 0
     spacing: Math.round(19.5 * Tokens.u)
     visible: items.length > 0
-    // The same card as the library grid (web #924): (viewport - 16 gutter - 52 rail pad - 12 gap) / 2.
-    readonly property real cardW: Math.round((width - Tokens.px(16 + 52 + 12)) / 2)
+    // Static-seed web refs (2026-10-19): two cards and a peek, (viewport - 16 gutter - 16 gutter - 12 gap) / 2 = 170 px at 384.
+    readonly property real cardW: Math.round((width - Tokens.px(16 + 16 + 12)) / 2)
 
     Label { renderType: Text.NativeRendering;
         x: Tokens.pad
