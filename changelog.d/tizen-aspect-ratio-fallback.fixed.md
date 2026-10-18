@@ -1,1 +1,0 @@
-- Add an aspect-ratio fallback for Tizen 6.5 TVs (Chromium 85) to the Tizen package.

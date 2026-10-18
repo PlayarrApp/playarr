@@ -1,1 +1,0 @@
-- Make the Samsung Tizen package render on Tizen 6.5 TVs (Chromium 85): selector and inset fallbacks for `:is()`, `:where()`, `:focus-visible`, `inset`, the logical padding and margin shorthands and `overflow: clip`.

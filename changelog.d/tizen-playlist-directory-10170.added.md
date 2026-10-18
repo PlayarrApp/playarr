@@ -1,1 +1,0 @@
-- Add a native Tizen playlist directory with filters and a Create drawer for personal playlists.

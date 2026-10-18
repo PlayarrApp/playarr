@@ -1,1 +1,0 @@
-- Match the iPad Filters and Actions drawer width to the web tablet layout.
