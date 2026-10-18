@@ -3544,8 +3544,8 @@ internal fun ExperienceMediaRail(
                     // Web: Home cards are THE poster card, the Library grid card (owner request 2026-10-10): `--card-w`
                     // 327.2 dp and `--card-w-cover` 191.3 dp at 1920 x 1080.
                     width = when (homeView) {
-                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else phonePosterCardWidth()
-                        PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else phonePosterCardWidth()
+                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else phonePosterCardWidth(letterRail = LocalStageScale.current != 1f)
+                        PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else phonePosterCardWidth(letterRail = LocalStageScale.current != 1f)
                     },
                     homeView = homeView,
                     webPhone = !isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail,
@@ -4058,10 +4058,11 @@ private fun LibraryCoverCard(
  * into as many columns as a 110 dp minimum card and the 12 dp gap allow (1 below 300 dp, 2 from 300, 3 from 540).
  */
 @Composable
-internal fun phonePosterCardWidth(): Dp {
+internal fun phonePosterCardWidth(letterRail: Boolean = true): Dp {
     val viewport = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     val columns = phonePosterColumns(LocalPlayarrDisplayPreferences.current.artworkSize, viewport)
-    return ((viewport - 16 - 52 - (columns - 1) * 12f) / columns).dp
+    // Web Home rails have no A to Z strip, so only the 16 dp gutters are taken off (173 dp cards at 390 dp, not 155).
+    return ((viewport - 16 - (if (letterRail) 52 else 16) - (columns - 1) * 12f) / columns).dp
 }
 
 /** Web phone `--card-cols`: 1 below 300 dp, 2 from 300, 3 from 540, shifted by the artwork size (small +1, large -1; never below 1). */
@@ -6610,11 +6611,20 @@ private fun PhoneVideoDetailBody(
                 Spacer(Modifier.height(10.dp))
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
                 // the box to the font height, so pin the height and lift the text the way CSS centres it.
-                Box(Modifier.height(36.66.dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
+                // Web phone `.tv-detail-title`: max-width 12ch, so a long title wraps to a second 36.66 px line (the stage-scaled tablet keeps one line).
+                // shortcut: no `text-wrap: balance`, so a three-word title may break unevenly; add a balancing pass if one shows up in the refs.
+                val phoneTitle = LocalStageScale.current == 1f
+                val titleStyle = WebTextStyle.merge(androidx.compose.ui.text.TextStyle(fontSize = 39.sp, fontWeight = FontWeight(560)))
+                val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+                val density = LocalDensity.current
+                val titleMax = with(density) { (measurer.measure("0", titleStyle).size.width * 12).toDp() }
+                var titleLines by remember(work.title) { mutableStateOf(1) }
+                Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
                     Text(
                         work.title, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
-                        style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -10.4.dp.toPx() },
+                        style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { titleLines = it.lineCount },
+                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() },
                     )
                 }
                 if (episode != null) {

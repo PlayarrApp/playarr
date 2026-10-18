@@ -756,13 +756,17 @@ else:
                     # check can see art that is still above the fold while the cards the frame will show are grey (light, 2026-10-15).
                     while clean < 2 and time.time() < art_end:
                         time.sleep(5)
-                        clean = clean + 1 if phone_flat_card_rows(png()) == 0 else 0
+                        clean = clean + 1 if phone_flat_card_rows(png(), top_px=700, bottom_px=260) == 0 else 0
                         if clean == 0 and time.time() >= next_reopen:
                             route("home", 6); route("detail:" + work_id, 8)
                             next_reopen = time.time() + 30
                     if clean < 2:
                         debug(name + "-placeholder-art")
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
+                # the web refs are taken at page top; the app scrolls to the next-up episode, so drag back up before the frame
+                for _ in range(3):
+                    get("/swipe", x1=540, y1=500, x2=540, y2=2200, steps=12, ms=300); time.sleep(1.5)
+                time.sleep(2)
                 snap(name, folder, 100000)
                 if kind == "series":  # the saved frame itself must show art (the page may have moved since the last check)
                     saved = os.path.join(folder, name + ".png")

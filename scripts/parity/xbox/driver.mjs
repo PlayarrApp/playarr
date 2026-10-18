@@ -147,7 +147,10 @@ export async function createDriver() {
   };
 
   return {
-    endCrops: true, cropIds: ["filters-list", "filters-language"], // Filters List view and the open language flyout
+    endCrops: true, cropIds: ["filters-language", "filters-list"], // the open language flyout, then the List view (it persists, so it goes last)
+    // The drawer's focus starts on List (web: the Close button). Picking a view reloads the page, so the List crop reopens the drawer.
+    cropKeys: { "filters-language": ["down*3", "select"], "filters-list": ["select"] },
+    async afterCropKeys(id) { if (id === "filters-list") { await sleep(9000); await click(1877, 187, 3); } },
     async start() { run("write", "parity.on", "1"); },
     async setTheme(t) {
       if ((t === "light" || t === "dark") && themeCaptureAllowed(trace(), t)) { theme = t; return; }
@@ -213,6 +216,14 @@ export async function createDriver() {
           playerTrace = trace();
         }
         throw new Error(`timed out waiting for the direct-play fixture at the canonical capture position (${playerCaptureSummary(playerTrace)})`);
+      }
+      // The pinned film and series the web refs open: the app opens the id itself (never the first card of a grid).
+      const pinned = /^\/(movies|series)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(base);
+      if (pinned) {
+        await requireTestAccount(); run("write", "parity.open", pinned[2]);
+        await until((t) => t.screen === "detail", 30, "the pinned detail page");
+        await sleep(8000);
+        return;
       }
       const lib = base.split("/").slice(0, 2).join("/");
       if (!RAIL[lib]) throw new Error(`no route for ${path}`);
