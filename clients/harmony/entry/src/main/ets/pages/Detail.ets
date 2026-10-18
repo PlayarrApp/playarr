@@ -202,7 +202,9 @@ const PLAY_BUTTON_HEIGHT_TV: number = 56;
 const PLAY_BUTTON_HEIGHT_TOUCH: number = 48;
 const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
-const HERO_TOUCH_HEIGHT: number = 340;
+const HERO_TOUCH_HEIGHT: number = 452; // web: 58 vh of the 780 vp phone
+const HERO_ART_HEIGHT: number = 249; // 55% of the box
+const HERO_WASH_HEIGHT: number = 562; // web stage wash: 72 vh
 // Web phone season rows (measured on the 360 vp reference): 187 vp cards, heading to cards 23, season to season 237.
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
@@ -2520,24 +2522,36 @@ struct Detail {
       // web: the art, Back row and text are one page, so they scroll away together
       Scroll(this.touchScroller) {
        Stack({ alignContent: Alignment.TopStart }) {
+      // web mobile `.tv-detail > .tv-key-art`: a 58 vh box (452 vp on the 780 vp reference); the art is 55% of it, greyscale at 0.42
+      // opacity, under `linear-gradient(0deg, surface 46%, transparent 74%)` and the 72 vh stage wash `(0deg, surface 34%, transparent 68%)`
       if (this.heroArtwork !== undefined) {
         Image(this.heroArtwork)
           .width('100%')
-          .height(HERO_TOUCH_HEIGHT)
+          .height(HERO_ART_HEIGHT)
           .objectFit(ImageFit.Cover)
+          .grayscale(1)
+          .contrast(resolvedThemeMode() === 'dark' ? 0.82 : 0.88)
+          .brightness(resolvedThemeMode() === 'dark' ? 0.6 : 1.1)
+          .opacity(0.42)
           .draggable(false)
           .focusable(false)
       } else {
-        Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_TOUCH_HEIGHT, radius: 0 })
+        Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_ART_HEIGHT, radius: 0 })
       }
       Column()
         .width('100%')
         .height(HERO_TOUCH_HEIGHT)
         .linearGradient({
           direction: GradientDirection.Bottom,
-          colors: [[toResourceColorWithAlpha(activeColors().surface, 0.78), 0.0], [toResourceColorWithAlpha(activeColors().surface, 0.9), 0.55], [toResourceColor(activeColors().surface), 1.0]],
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0), 0.26], [toResourceColor(activeColors().surface), 0.54]],
         })
-
+      Column()
+        .width('100%')
+        .height(HERO_WASH_HEIGHT)
+        .linearGradient({
+          direction: GradientDirection.Bottom,
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0), 0.32], [toResourceColor(activeColors().surface), 0.66]],
+        })
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column() {
             Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunito(900))
