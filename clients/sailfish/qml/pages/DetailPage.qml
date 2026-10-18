@@ -127,6 +127,7 @@ PlayarrPage {
                     y: -Tokens.safeTop; width: parent.width; height: parent.height + Tokens.safeTop
                     clip: true
                     HeroArt { y: 0; work: page.work }
+                    Rectangle { width: parent.width; height: Tokens.safeTop + 68 * Tokens.u; color: Tokens.bg }   // web: the picture starts below the header row
                     Item {
                         y: Tokens.safeTop; width: parent.width; height: 298 * Tokens.u
                         PageTitle {

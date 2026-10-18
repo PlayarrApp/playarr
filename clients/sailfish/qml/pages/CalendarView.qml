@@ -28,6 +28,7 @@ Item {
             busy = false
             if (status !== 200 || !data) { failed = true; groups = []; return }
             groups = Calendar.groupByDate(data.entries)
+            if (mode === "week") todayScroll.restart()
         })
     }
     function entriesOn(iso) {
@@ -207,8 +208,8 @@ Item {
                             height: Math.max(75.7 * Tokens.u, info.height + 18 * Tokens.u)   // web: the 60 px poster plus the padding is the floor
                             onClicked: root.openEntry(modelData)
                             // Left border: we have it (playable, green) or not, never which library; the card sits over it so it curves with the corners.
-                            Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: card.pressed ? 0.6 : 1 }
-                            Rectangle { x: 4 * Tokens.u; width: parent.width - 4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: Tokens.dark ? "#4d494c" : "#c7c2c1"; opacity: card.pressed ? 0.6 : 1 }
+                            Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: (card.pressed ? 0.6 : 1) * (dayCol.wk ? 0.32 : 1) }   // week refs: the border accent is a third strong
+                            Rectangle { x: 4 * Tokens.u; width: parent.width - 4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: dayCol.wk ? (Tokens.dark ? "#363136" : "#e3dfdf") : (Tokens.dark ? "#4d494c" : "#c7c2c1"); opacity: card.pressed ? 0.6 : 1 }
                             Artwork {
                                 id: poster
                                 x: Math.round(15.7 * Tokens.u)   // whole pixels, as web snaps image rects
@@ -247,6 +248,12 @@ Item {
                     }
                 }
     }
+    // The web scrolls the week strip so today's column starts at the page padding.
+    Timer { id: todayScroll; interval: 100; onTriggered: {
+        var today = Calendar.todayIso()
+        for (var i = 0; i < root.groups.length; ++i) if (root.groups[i].date === today) {
+            weekFlick.contentX = Math.min(i * 340 * Tokens.u, Math.max(0, weekFlick.contentWidth - weekFlick.width)); return }
+        weekFlick.contentX = 0 } }
     // Week: one column per day side by side, scrolled sideways, as the web lays it out.
     SilicaFlickable {
         id: weekFlick
