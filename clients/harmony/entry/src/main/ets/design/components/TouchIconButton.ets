@@ -17,7 +17,7 @@ export struct TouchIconButton {
       .padding(12)
       .width(43)
       .height(43)
-      .margin({ bottom: 4.6 }) // web sits this button 2.3 vp above the Back circle's centre
+      .offset({ y: -2.3 }) // web sits this button 2.3 vp above the Back circle centre (an offset keeps the header height)
       .borderRadius(13)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
