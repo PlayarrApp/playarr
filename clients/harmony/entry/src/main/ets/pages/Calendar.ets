@@ -10,6 +10,8 @@
  */
 
 import { LengthMetrics } from '@kit.ArkUI';
+import { image } from '@kit.ImageKit';
+import { fetchWorkArtwork } from '../data/ArtworkRepository';
 import { t } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -123,7 +125,7 @@ const PHONE_CARD_NO_MAX: number = 10000;
 // Web line boxes inside a phone entry: 1.5 times the 16 / 16 / 14 vp type.
 const PHONE_LINE_TITLE: number = 24;
 const PHONE_LINE_META: number = 21;
-const PHONE_AGENDA_BLEED: number = 16;
+const PHONE_AGENDA_BLEED: number = 0; // the static-server web ref keeps the cards inside the page padding
 const PHONE_AGENDA_CARD_MIN_WIDTH: number = 390;
 const PHONE_CONTROL_FONT: number = 11.2;
 // Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
@@ -243,6 +245,8 @@ export struct ReleaseCalendar {
   @State private watchlistBusy: boolean = false;
   @State private loading: boolean = true;
   @State private errorMessage: string = '';
+  /** Poster pixel maps by work id: the entries' poster_url is not fetchable without the session, so the artwork route loads them. */
+  @State private posters: Map<string, image.PixelMap> = new Map<string, image.PixelMap>();
 
   aboutToAppear(): void {
     this.load();
@@ -257,6 +261,7 @@ export struct ReleaseCalendar {
       this.entries = result.value.entries;
       this.regroup();
       this.errorMessage = '';
+      this.loadPosters();
     } else {
       this.entries = [];
       this.groups = [];
@@ -264,6 +269,30 @@ export struct ReleaseCalendar {
       this.errorMessage = 'Could not load the calendar.';
     }
     this.loading = false;
+  }
+
+  private async loadPosters(): Promise<void> {
+    for (const entry of this.entries) {
+      const workId = entry.work_id;
+      if (workId === undefined || workId === null || this.posters.has(workId)) {
+        continue;
+      }
+      const result = await fetchWorkArtwork(workId, 'poster');
+      if (result.kind === 'ok') {
+        const next = new Map<string, image.PixelMap>(this.posters);
+        next.set(workId, result.value);
+        this.posters = next;
+      }
+    }
+  }
+
+  private posterSource(entry: CalendarEntry): image.PixelMap | string {
+    const workId = entry.work_id;
+    const loaded = workId !== undefined && workId !== null ? this.posters.get(workId) : undefined;
+    if (loaded !== undefined) {
+      return loaded;
+    }
+    return entry.poster_url !== undefined && entry.poster_url !== null ? entry.poster_url : '';
   }
 
   /** Filters the loaded window into day groups and selects the first item, as web on a filter change. */
@@ -392,7 +421,7 @@ export struct ReleaseCalendar {
   @Builder
   private entryCard(item: CalendarItem, width: number, phoneMinWidth: number = 0, phoneTextGap: number = 0): void {
     Row({ space: tv(POSTER_GAP) }) {
-      Image(item.entries[0].poster_url !== undefined && item.entries[0].poster_url !== null ? item.entries[0].poster_url : '')
+      Image(this.posterSource(item.entries[0]))
         .width(tv(POSTER_WIDTH))
         .height(tv(POSTER_HEIGHT))
         .borderRadius(tv(POSTER_RADIUS))
@@ -411,6 +440,7 @@ export struct ReleaseCalendar {
             .fontColor(toResourceColor(activeColors().inkSoft))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
           Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
@@ -458,7 +488,7 @@ export struct ReleaseCalendar {
     .scrollable(ScrollDirection.Horizontal)
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
-    .width(`calc(100% + ${PHONE_AGENDA_BLEED}vp)`) // web: the agenda cards run to the screen edge
+    .width(`calc(100% + ${PHONE_AGENDA_BLEED}vp)`) // web: the agenda cards end at the page padding
   }
 
   @Builder
@@ -534,13 +564,32 @@ export struct ReleaseCalendar {
       Row({ space: tv(WEEK_COLUMN_GAP) }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) }) {
-            Text(dayHeading(cell.day)).fontFamily(nunito(500))
-              .fontSize(tv(DAY_HEADING_SIZE))
-              .fontWeight(FontWeight.Medium)
-              .fontColor(toResourceColor(activeColors().ink))
-              .height(tv(WEEK_HEADING_HEIGHT))
+            Row({ space: tv(10) }) {
+              Text(dayHeading(cell.day)).fontFamily(nunito(500))
+                .fontSize(tv(DAY_HEADING_SIZE))
+                .fontWeight(FontWeight.Medium)
+                .fontColor(toResourceColor(activeColors().ink))
+              if (cell.isToday) {
+                Text(t('pages.calendar.today', 'Today')).fontFamily(nunito(500))
+                  .fontSize(tv(TODAY_TAG_SIZE))
+                  .fontWeight(FontWeight.Medium)
+                  .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
+                  .textCase(TextCase.UpperCase)
+                  .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+                  .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
+                  .borderRadius(tv(11))
+                  .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
+              }
+            }
+            .height(tv(WEEK_HEADING_HEIGHT))
+            .alignItems(VerticalAlign.Center)
             Scroll() {
               Column({ space: tv(ENTRY_GAP + 1) }) {
+                if (cell.entries.length === 0) {
+                  Text(t('pages.calendar.dayEmpty', 'Nothing scheduled')).fontFamily(nunito(400))
+                    .fontSize(tv(ENTRY_TITLE_SIZE))
+                    .fontColor(toResourceColor(activeColors().inkSoft))
+                }
                 ForEach(groupSeriesEpisodes(cell.entries), (item: CalendarItem) => {
                   this.entryCard(item, WEEK_COLUMN_WIDTH)
                 }, (item: CalendarItem): string => item.key)
@@ -833,7 +882,7 @@ export struct ReleaseCalendar {
       .textAlign(TextAlign.Center)
       .height(tv(HEADER_CONTROL_SIZE))
       .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
-      .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20) })
+      .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(8) : 0 }) // the arrow glyph sat 4 px above the web's
       .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
       .backgroundColor(toResourceColor(activeColors().bg))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -881,6 +930,7 @@ export struct ReleaseCalendar {
       icon: $r('app.media.action_filters'),
       label: t('pages.search.filters', 'Filters'),
       slot: 1,
+      ringed: isTvMetrics() && this.view !== 'agenda', // web: after a view switch focus is back on Filters (week, month)
       onActivate: (): void => {
         this.filtersOpen = true;
       },
@@ -1059,7 +1109,7 @@ export struct ReleaseCalendar {
   @Builder
   private phoneCard(item: CalendarItem, minWidth: number, wrap: boolean, fixedHeight: number): void {
     Row({ space: tv(POSTER_GAP) }) {
-      Image(item.entries[0].poster_url !== undefined && item.entries[0].poster_url !== null ? item.entries[0].poster_url : '')
+      Image(this.posterSource(item.entries[0]))
         .width(tv(POSTER_WIDTH))
         .height(tv(POSTER_HEIGHT))
         .borderRadius(tv(POSTER_RADIUS))
