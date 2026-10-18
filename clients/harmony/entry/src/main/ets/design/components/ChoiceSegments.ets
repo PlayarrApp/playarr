@@ -69,10 +69,12 @@ export struct ChoiceSegments {
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
+          .margin({ bottom: this.description === '' ? tv(5) : 0 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
           Text(this.description).fontFamily(nunito(400))
             .fontSize(tv(DESCRIPTION_SIZE))
             .fontColor(toResourceColor(activeColors().inkSoft))
+            .margin({ top: tv(-5), bottom: tv(1) })
         }
       } else {
         Text(this.heading).fontFamily(nunito(700))
