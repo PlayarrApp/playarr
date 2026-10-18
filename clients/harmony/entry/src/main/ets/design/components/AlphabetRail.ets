@@ -15,6 +15,7 @@ const RAIL_HEIGHT: number = 810;
 const RAIL_PADDING_TOP: number = 8;
 const BUTTON_SIZE: number = 44;
 const LETTER_SIZE: number = 9.216;
+const TV_DISC: number = 24;
 // Phone (web `.tv-directory .tv-alphabet` under 760 px): fixed on the right edge, 52 wide, from 88 below the top to 82 above the bottom
 // (clear of the floating nav bar); the letters share that height, each 44 wide, 8.96 px bold.
 const TOUCH_RAIL_WIDTH: number = 52;
@@ -81,18 +82,25 @@ export struct AlphabetRail {
     Scroll() {
       Column() {
         ForEach(this.letters, (letter: string) => {
-          Text(letter).fontFamily(nunito(400))
-            .width(tv(BUTTON_SIZE))
-            .height(tv(BUTTON_SIZE))
-            .textAlign(TextAlign.Center)
-            .fontSize(tv(LETTER_SIZE))
-            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
-            .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().ink) : Color.Transparent)
-            .borderRadius(tv(BUTTON_SIZE / 2))
-            .focusable(true)
-            .onClick(() => {
-              this.onJump(letter);
-            })
+          Column() {
+            // Web's current letter is a 24 px disc in ink-soft (not the 44 px hit area), the letters sit ~1.5 px high.
+            Text(letter).fontFamily(nunito(400))
+              .width(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
+              .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
+              .textAlign(TextAlign.Center)
+              .fontSize(tv(LETTER_SIZE))
+              .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
+              .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().inkSoft) : Color.Transparent)
+              .borderRadius(tv(TV_DISC / 2))
+              .translate({ y: -tv(1.5) })
+          }
+          .width(tv(BUTTON_SIZE))
+          .height(tv(BUTTON_SIZE))
+          .justifyContent(FlexAlign.Center)
+          .focusable(true)
+          .onClick(() => {
+            this.onJump(letter);
+          })
         }, (letter: string): string => letter)
       }
       .padding({ top: tv(RAIL_PADDING_TOP) })
