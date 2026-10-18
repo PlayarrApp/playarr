@@ -43,7 +43,7 @@ Item {
                 if (rect.x + rect.width <= clipRect.x || rect.y + rect.height <= clipRect.y || rect.x >= clipRect.x + clipRect.width || rect.y >= clipRect.y + clipRect.height) return false
             }
         }
-        return item.navigationFocusable === true || item.objectName.indexOf("parity-nav-") === 0 || item.activeFocus
+        return item.navigationFocusable === true || item.objectName.indexOf("parity-nav-") === 0 || (item.activeFocus && item === actualFocus())   // not a Loader or scope that only holds focus for its content
     }
     function itemRectInPage(item) {
         var a = item.mapToItem(page, 0, 0)
@@ -88,6 +88,14 @@ Item {
             if (score < bestScore) { best = item; bestScore = score }
         }
         return best
+    }
+    // Web D-pad: Up from the floating nav lands on the page's own Up-from-nav control (Search: the field), not the nearest header button.
+    function navUpTarget(current) {
+        if (!current || current.objectName.indexOf("parity-nav-") !== 0) return null
+        var all = []
+        candidates(page, all)
+        for (var i = 0; i < all.length; ++i) if (all[i].navigationNavUp === true) return all[i]
+        return null
     }
     function scrollFor(current, dx, dy) {
         if (!current) return false
@@ -329,7 +337,8 @@ Item {
             keyboardNavigationActive = true
             if (moveWithinGrid(focus, dx, dy)) { moved = true; event.accepted = true; return }
             if (scrollAtEdge(focus, dx, dy)) { moved = true; event.accepted = true; return }
-            var target = nextTarget(focus, dx, dy)
+            var target = dy < 0 ? navUpTarget(focus) : null
+            if (!target) target = nextTarget(focus, dx, dy)
             if (!target && scrollFor(focus, dx, dy)) { moved = true; event.accepted = true; return }
             if (target) {
                 target.forceActiveFocus()
