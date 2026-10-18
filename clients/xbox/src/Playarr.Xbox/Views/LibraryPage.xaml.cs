@@ -29,7 +29,7 @@ namespace Playarr.Xbox.Views
     public sealed partial class LibraryPage : Page
     {
         private readonly LibraryViewModel _viewModel;
-        private bool _focusFirst;
+        private bool _initialClaimActive;
         private readonly LibraryInitialFocusState _initialFocus = new LibraryInitialFocusState();
         private Guid? _restoreId;
         private Guid? _lastFocusedWorkId;
@@ -89,7 +89,7 @@ namespace Playarr.Xbox.Views
             Window.Current.CoreWindow.PointerPressed += CoreWindow_PointerPressed;
             Window.Current.Content.GotFocus -= WindowContent_GotFocus;
             Window.Current.Content.GotFocus += WindowContent_GotFocus;
-            _focusFirst = true;
+            _initialClaimActive = false;
             _initialFocus.Begin();
             // Back from a title lands on the card that was focused, as the web does.
             _restoreId = e.NavigationMode == NavigationMode.Back ? FocusClaim.Recall(MemoryKey()) : null;
@@ -127,7 +127,6 @@ namespace Playarr.Xbox.Views
                 _refreshUserInput = false;
                 _refreshFocusClaimStarted = false;
                 _refreshFocusId = FocusedWorkId() ?? _lastFocusedWorkId;
-                _focusFirst = false;
                 FocusClaim.Cancel(WorksGridView);
             }
 
@@ -196,24 +195,26 @@ namespace Playarr.Xbox.Views
                 }
             }
 
-            if (_focusFirst && !_refreshFocusPending && !isLoading && !hasError && _viewModel.Works.Count > 0)
+            // Every render re-checks: a render that found no data yet, or a claim that stopped early, must not leave the first claim unstarted.
+            if (!_initialClaimActive && _initialFocus.ShouldStartClaim && !_refreshFocusPending && !isLoading && !hasError && _viewModel.Works.Count > 0)
             {
-                _focusFirst = false;
-                if (_initialFocus.ShouldStartClaim)
-                {
-                    StartInitialClaim();
-                }
+                StartInitialClaim();
             }
 
             RenderLetterRail();
         }
 
         /// <summary>A claim that runs out before focus sticks (a slow first layout) must not report the grid ready while focus is still on the nav rail: claim again until it lands, the user moves, or the page is left.</summary>
-        private void StartInitialClaim() => CardFocus.FocusWhenReady(WorksGridView, RestoreOrFirst, () =>
+        private void StartInitialClaim()
         {
-            if (_initialFocus.ShouldStartClaim && !IsFocusWithin(WorksGridView)) StartInitialClaim();
-            else _initialFocus.Settle();
-        });
+            _initialClaimActive = true;
+            CardFocus.FocusWhenReady(WorksGridView, RestoreOrFirst, () =>
+            {
+                _initialClaimActive = false;
+                if (_initialFocus.ShouldStartClaim && !IsFocusWithin(WorksGridView)) StartInitialClaim();
+                else _initialFocus.Settle();
+            });
+        }
 
         private string MemoryKey() => "library:" + _viewModel.SelectedKind;
 
