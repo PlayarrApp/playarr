@@ -626,8 +626,6 @@ struct WorkDetailView: View {
         }
     }
 
-    /// Chapters then Cast with round headshots, at the web's tablet positions.
-    @ViewBuilder
     /// The web's "Similar Titles" rail: 16:9 art cards with the title underneath.
     @ViewBuilder
     private func tabletSimilarRail(tabletScale: CGFloat) -> some View {
@@ -672,6 +670,8 @@ struct WorkDetailView: View {
         }
     }
 
+    /// Chapters then Cast with round headshots, at the web's tablet positions.
+    @ViewBuilder
     private func tabletMovieRails(_ detail: WorkDetail, tabletScale: CGFloat) -> some View {
         if let model = tabletMovieModel, !model.chapters.isEmpty, let mediaFileID = detail.mediaFileID {
             VStack(alignment: .leading, spacing: 0) {
