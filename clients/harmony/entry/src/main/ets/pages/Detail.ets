@@ -2539,7 +2539,7 @@ struct Detail {
       Column()
         .width('100%')
         .height(HERO_ART_HEIGHT)
-        .backgroundColor(toResourceColorWithAlpha(activeColors().surface, 0.58))
+        .backgroundColor(toResourceColorWithAlpha(activeColors().surface, resolvedThemeMode() === 'dark' ? 0.28 : 0.76)) // web: art opacity 0.72 dark, 0.24 light (measured)
       Column()
         .width('100%')
         .height(HERO_TOUCH_HEIGHT)
