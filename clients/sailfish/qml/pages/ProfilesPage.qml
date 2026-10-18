@@ -30,8 +30,8 @@ PlayarrPage {
         else pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"), { section: "settings" })
     }
     Image {
-        x: 30 * Tokens.u; y: 14 * Tokens.u
-        width: 36 * Tokens.u; height: width
+        x: 21 * Tokens.u; y: 18 * Tokens.u
+        width: 31 * Tokens.u; height: width
         source: "file:///usr/share/icons/hicolor/86x86/apps/harbour-playarr.png"
         smooth: true
     }
@@ -125,7 +125,7 @@ PlayarrPage {
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink
                         font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
                 Label { anchors { top: av.bottom; topMargin: 34.2 * Tokens.u; left: parent.left; right: parent.right }
-                        horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.inkSoft
+                        horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.inkMuted
                         font.family: Tokens.family; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
             }
         }
@@ -147,13 +147,21 @@ PlayarrPage {
                     GradientStop { position: 1; color: Tokens.dark ? "#962a4e" : "#b84b6b" }
                 }
                 border.width: 1; border.color: Qt.rgba(1, 1, 1, Tokens.dark ? 0.2 : 0.4)
+                RadialGradient {   // web: a soft light spot up and left of centre
+                    x: 0.30 * parent.width - width / 2; y: 0.26 * parent.width - height / 2
+                    width: 0.5 * parent.width; height: width; horizontalRadius: width / 2; verticalRadius: height / 2
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, Tokens.dark ? 0.22 : 0.18) }
+                        GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0) }
+                    }
+                }
                 Label { anchors.centerIn: parent; text: "+"; color: Tokens.dark ? Qt.rgba(1, 1, 1, 0.7) : Qt.rgba(0.2, 0.15, 0.15, 0.8); font.pixelSize: 40 * Tokens.u }
             }
             Label { anchors { top: plus.bottom; topMargin: 9.8 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("Sign in"); color: Tokens.inkSoft
                     font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
             Label { anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
-                    horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.inkSoft
+                    horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.inkMuted
                     font.family: Tokens.family; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
         }
     }
