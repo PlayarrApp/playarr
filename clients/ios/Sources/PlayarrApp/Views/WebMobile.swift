@@ -422,12 +422,22 @@ struct WMKeyArt: View {
     var webMask = false
     /// Replaces the two-point vertical fade with these (y, how much of the page colour covers) stops.
     var fadeStops: [(y: CGFloat, cover: Double)]?
+    /// Pages that only know a work id (calendar rows) draw its backdrop from the artwork route instead.
+    var backdropWorkID: UUID?
     @Environment(\.colorScheme) private var scheme
+
+    @ViewBuilder private var art: some View {
+        if let work {
+            PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+        } else if let id = backdropWorkID {
+            WMRemoteImage(apiClient: apiClient, sources: [WMRemoteImage.Source(path: "/api/v1/artwork/work/\(id.uuidString)/backdrop")])
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            if let work {
-                PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+            if work != nil || backdropWorkID != nil {
+                art
                     .saturation(0)
                     .opacity(scheme == .dark ? 0.085 : lightOpacity)
                     .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
