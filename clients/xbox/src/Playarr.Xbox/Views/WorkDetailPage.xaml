@@ -22,7 +22,7 @@
         with the title as subtitle, then genre eyebrow, large title, meta row, synopsis and the action pills. Seasons and
         episodes sit in the right column from x=881, where the web shows its rails.
     -->
-    <Grid>
+    <Grid x:Name="Root">
         <Grid x:Name="BackdropLayer" Width="998.4" Height="1144.8" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.5,0.5">
             <Grid.RenderTransform>
                 <ScaleTransform ScaleX="1.04" ScaleY="1.04" />
@@ -41,32 +41,6 @@
         <Rectangle x:Name="BackdropVerticalFade" Width="1920" Height="1080" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
         <Rectangle x:Name="BackdropStageWashRight" Width="1920" Height="1080" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
         <Rectangle x:Name="BackdropStageWashLeft" Width="1920" Height="1080" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" />
-
-        <Button
-            x:Name="BackButton"
-            Width="50"
-            Height="50"
-            CornerRadius="25"
-            Margin="154,56,0,0"
-            Padding="0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            Background="Transparent"
-            BorderBrush="{StaticResource PlayarrLineStrong}"
-            BorderThickness="1"
-            Click="BackButton_Click">
-            <FontIcon Glyph="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
-        </Button>
-        <StackPanel x:Name="HeaderTitles" Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <TextBlock x:Name="LibraryText" Style="{StaticResource PlayarrPageTitle}" />
-            <TextBlock
-                x:Name="SubtitleText"
-                FontSize="11"
-                FontWeight="Bold"
-                CharacterSpacing="120"
-                Foreground="{StaticResource PlayarrBrandInk}"
-                Margin="0,6,0,0" />
-        </StackPanel>
 
         <StackPanel Width="700" Margin="154,258,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <TextBlock

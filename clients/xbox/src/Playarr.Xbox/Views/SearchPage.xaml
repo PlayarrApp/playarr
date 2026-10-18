@@ -18,24 +18,7 @@
         no Binding anywhere in this project" (see SearchPage.xaml.cs).
     -->
     <!-- Web TV search (1920x1080): header, 595x80 pill field, helper text, empty state centred in the right half. -->
-    <Grid>
-        <Button
-            x:Name="BackButton"
-            Width="50"
-            Height="50"
-            CornerRadius="25"
-            Margin="154,56,0,0"
-            Padding="0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            Background="Transparent"
-            BorderBrush="{StaticResource PlayarrLineStrong}"
-            BorderThickness="1"
-            Click="BackButton_Click">
-            <FontIcon Glyph="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
-        </Button>
-        <TextBlock Text="Search" Style="{StaticResource PlayarrPageTitle}" Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
-
+    <Grid x:Name="Root">
         <Grid
             Width="595"
             Height="84"
