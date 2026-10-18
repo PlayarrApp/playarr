@@ -467,7 +467,7 @@ impl Cal {
         let sec = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .spacing(13)
-            .margin_bottom(19)
+            .margin_bottom(if week { 19 } else { 31 })
             .build();
         head.set_margin_bottom(0);
         sec.append(&head);
