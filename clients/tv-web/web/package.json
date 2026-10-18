@@ -39,6 +39,7 @@
     "smoke:search-input-entry": "node scripts/search-input-entry-e2e.mjs",
     "smoke:search-contain": "node scripts/search-contain-e2e.mjs",
     "smoke:alphabet-rail": "node scripts/alphabet-rail-e2e.mjs",
+    "smoke:no-marketing": "node scripts/no-marketing-e2e.mjs",
     "smoke:relay-port": "node scripts/relay-port-e2e.mjs",
     "smoke:drawer-close": "node scripts/drawer-close.mjs",
     "storybook": "storybook dev -p 6006",
