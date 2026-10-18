@@ -202,7 +202,9 @@ const PLAY_BUTTON_HEIGHT_TV: number = 56;
 const PLAY_BUTTON_HEIGHT_TOUCH: number = 48;
 const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
-const HERO_TOUCH_HEIGHT: number = 340;
+const HERO_TOUCH_HEIGHT: number = 452; // web: 58 vh of the 780 vp phone
+const HERO_ART_HEIGHT: number = 249; // 55% of the box
+const HERO_WASH_HEIGHT: number = 562; // web stage wash: 72 vh
 // Web phone season rows (measured on the 360 vp reference): 187 vp cards, heading to cards 23, season to season 237.
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
@@ -247,6 +249,7 @@ const RIGHT_COLUMN_X: number = 882;
 const RIGHT_COLUMN_Y: number = 543;
 const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
+const RIGHT_COLUMN_FADE: number = 50;
 const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 543; // static-server refs: the first season heading rests with the other details' right column (was 361, the scrolled old ref)
 const SERIES_COLUMN_BLEED: number = 12;
@@ -2255,6 +2258,19 @@ struct Detail {
         .scrollBar(BarState.Off)
         .position({ x: tv(RIGHT_COLUMN_X), y: tv(RIGHT_COLUMN_Y) })
       }
+      // web: the right column's scroll box fades out over its last 50 px
+      Row()
+        .width(tv(RIGHT_COLUMN_WIDTH))
+        .height(tv(RIGHT_COLUMN_FADE))
+        .linearGradient({
+          angle: 180,
+          colors: [
+            [toResourceColorWithAlpha(activeColors().surface, 0), 0],
+            [toResourceColor(activeColors().surface), 1],
+          ],
+        })
+        .hitTestBehavior(HitTestMode.None)
+        .position({ x: tv(RIGHT_COLUMN_X), y: tv(1080 - RIGHT_COLUMN_FADE) })
     }
     .width('100%')
     .height('100%')
@@ -2403,12 +2419,21 @@ struct Detail {
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
   private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = '', share: boolean = false): void {
-    Text(glyph.length > 0 ? glyph + '  ' + label : label).fontFamily(nunito(500))
-      .fontSize(size)
-      .fontWeight(FontWeight.Medium)
-      .fontColor(toResourceColor(activeColors().inkSoft))
+    Row({ space: 6 }) {
+      if (glyph.length > 0) {
+        // web: the pill glyphs are the brand pink (accent in light)
+        Text(glyph).fontFamily(nunito(500))
+          .fontSize(size)
+          .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
+      }
+      Text(label).fontFamily(nunito(500))
+        .fontSize(size)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .maxLines(1)
+    }
       .height(44)
-      .textAlign(TextAlign.Center)
+      .justifyContent(FlexAlign.Center)
       .padding({ left: 16, right: 16 })
       .borderRadius(22)
       .layoutWeight(share ? 1 : 0)
@@ -2520,24 +2545,38 @@ struct Detail {
       // web: the art, Back row and text are one page, so they scroll away together
       Scroll(this.touchScroller) {
        Stack({ alignContent: Alignment.TopStart }) {
+      // web mobile `.tv-detail > .tv-key-art`: a 58 vh box (452 vp on the 780 vp reference); the art is 55% of it, greyscale at 0.42
+      // opacity, under `linear-gradient(0deg, surface 46%, transparent 74%)` and the 72 vh stage wash `(0deg, surface 34%, transparent 68%)`
       if (this.heroArtwork !== undefined) {
         Image(this.heroArtwork)
           .width('100%')
-          .height(HERO_TOUCH_HEIGHT)
+          .height(HERO_ART_HEIGHT)
           .objectFit(ImageFit.Cover)
+          .grayscale(1)
           .draggable(false)
           .focusable(false)
       } else {
-        Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_TOUCH_HEIGHT, radius: 0 })
+        Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_ART_HEIGHT, radius: 0 })
       }
+      // opacity 0.42 as a surface veil over the art (ArkUI's Image opacity/brightness did not match the web in the Previewer)
+      Column()
+        .width('100%')
+        .height(HERO_ART_HEIGHT)
+        .backgroundColor(toResourceColorWithAlpha(activeColors().surface, resolvedThemeMode() === 'dark' ? 0.6 : 0.76)) // measured against the static refs (web art opacity 0.72 dark with brightness 0.6, 0.24 light)
       Column()
         .width('100%')
         .height(HERO_TOUCH_HEIGHT)
         .linearGradient({
           direction: GradientDirection.Bottom,
-          colors: [[toResourceColorWithAlpha(activeColors().surface, 0.78), 0.0], [toResourceColorWithAlpha(activeColors().surface, 0.9), 0.55], [toResourceColor(activeColors().surface), 1.0]],
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0), 0.26], [toResourceColor(activeColors().surface), 0.54]],
         })
-
+      Column()
+        .width('100%')
+        .height(HERO_WASH_HEIGHT)
+        .linearGradient({
+          direction: GradientDirection.Bottom,
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0), 0.32], [toResourceColor(activeColors().surface), 0.66]],
+        })
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column() {
             Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunito(900))
@@ -2546,7 +2585,7 @@ struct Detail {
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
-              .fontColor(toResourceColor(BRAND_PINK_SOFT))
+              .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
               .margin({ bottom: 10 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
               .fontSize(36)

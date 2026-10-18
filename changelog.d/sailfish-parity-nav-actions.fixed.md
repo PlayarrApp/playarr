@@ -1,0 +1,1 @@
+- Sailfish: nav icons 21 px as on the web, Actions page rows use the web's weight, glyphs and title position.
