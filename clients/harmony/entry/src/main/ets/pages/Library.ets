@@ -1039,7 +1039,7 @@ export struct Library {
           // Web scrolls the grid under the translucent nav bar: the shell reserves no spacer, the grid pads its own end.
           .height('100%')
           .width('100%')
-          .backgroundColor('#FF00FF') // DIAGNOSTIC: shows the Grid frame
+          .backgroundColor('#33FF00FF') // DIAGNOSTIC: shows the Grid frame
         }
     }
     .width('100%')
