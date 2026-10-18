@@ -405,6 +405,27 @@ jobs:
           REF: ${{ inputs.ref || github.event.repository.default_branch }}
         run: bash "$TRUSTED/scripts/apple-wall/wall.sh" capture "$DEVICE"
 
+      # The server no longer hosts the web app: the web reference loads this build (served locally by drivers/web.mjs) against the server API.
+      - name: Set up Node for the web build
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up pnpm for the web build
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Build the web client
+        if: env.DEVICE == 'tvos' || (env.DEVICE == 'macos' && inputs.suite_args != '')
+        working-directory: trusted/clients/tv-web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @playarr-tv/web... run build
+
       # Fresh web reference in the same minute (real sign-in through the UI, dark and light), for the pixel diff and the D-pad
       # expectations. Written to $RUNNER_TEMP/web, where the suite looks for expected.json.
       - name: Web reference (fresh sign-in)
@@ -481,6 +502,10 @@ jobs:
         env:
           STREAM_BIND: 127.0.0.1
           PLAYARR_VNC_PASSWORD: ${{ secrets[format('PLAYARR_VNC_{0}_PASSWORD', matrix.vnc)] || 'selftest1' }}
+          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
         run: |
           export DEADLINE=$(( $(date +%s) + 90 ))
           bash "$TRUSTED/scripts/apple-wall/wall.sh" stream "$DEVICE" &

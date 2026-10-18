@@ -6,6 +6,8 @@
 // Documents/parity-state.json (signedIn, identity, readiness and playback state). Suite route ids can be ambiguous,
 // so screenshot() maps the suite screen id to its native route and pinned fixture.
 import { execFileSync } from "node:child_process";
+import { hasApprovedDeviceTestIdentity } from "../device-test-identity.mjs";
+import { captureStableFrame } from "../apple/capture-stability.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, readlinkSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
@@ -18,7 +20,7 @@ const run = (cmd, args, options = {}) => execFileSync(cmd, args, { encoding: "ut
 
 export function assertCaptureState(state, expectedUsername, { player = false, deterministic = false, fixedNow = null } = {}) {
   if (state.failure) throw new Error(`iOS parity app failed: ${String(state.failure)}`);
-  if (state.signedIn !== true || state.identityVerified !== true) throw new Error("iOS parity app has not verified the signed-in test profile");
+  if (state.signedIn !== true || state.identityVerified !== true || state.deviceTestIdentityVerified !== true) throw new Error("iOS parity app has not verified the signed-in test profile");
   if (!expectedUsername || String(state.authenticatedUsername ?? "").toLocaleLowerCase() !== expectedUsername.toLocaleLowerCase()) {
     throw new Error("iOS parity app authenticated username does not match DEVICE_TEST_USERNAME");
   }
@@ -69,21 +71,29 @@ function readState(work) {
 }
 
 // Watch progress on the shared account changes Home and detail: put the pinned files back to unwatched.
-async function resetProgressOnce(files) {
-  const e = process.env, server = e.SERVER_URL.replace(/\/$/, "");
-  const post = (path, method, body, token) => fetch(server + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+export async function resetProgressOnce(files, { env = process.env, fetchImpl = fetch } = {}) {
+  const e = env, server = e.SERVER_URL?.replace(/\/$/, "");
+  if (!server || !e.TEST_USERNAME || !e.TEST_PASSWORD || !hasApprovedDeviceTestIdentity(e, e.TEST_USERNAME)) throw new Error("iOS progress reset requires the approved test account configuration");
+  const post = async (path, method, body, token) => {
+    try { return await fetchImpl(server + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000), redirect: "error" }); }
+    catch { throw new Error("iOS progress reset request failed due to a network error"); }
+  };
   const login = await post("/api/v1/auth/login", "POST", { client_platform: "web", client_version: "parity", device_id: randomUUID(), device_name: "parity-reset", username: e.TEST_USERNAME, password: e.TEST_PASSWORD });
-  if (!login.ok) throw new Error(`progress reset login failed (${login.status})`);
-  const session = await login.json();
+  if (!login.ok) throw new Error(`iOS progress reset login failed with status ${login.status}`);
+  let session;
+  try { session = await login.json(); } catch { throw new Error("iOS progress reset login returned an invalid response"); }
   const token = session.access_token;
-  if (!token) throw new Error("progress reset login omitted access token");
-  const profilesResponse = await fetch(`${server}/api/v1/users/profiles`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30000) });
-  if (!profilesResponse.ok) throw new Error(`progress reset profile verification failed (${profilesResponse.status})`);
-  assertResetProfile(await profilesResponse.json(), session.user_id, e.DEVICE_TEST_USERNAME);
+  if (typeof token !== "string" || !token) throw new Error("iOS progress reset login returned no access token");
+  let profilesResponse;
+  try { profilesResponse = await fetchImpl(`${server}/api/v1/users/profiles`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30000), redirect: "error" }); }
+  catch { throw new Error("iOS progress reset request failed due to a network error"); }
+  if (!profilesResponse.ok) throw new Error(`iOS progress reset profile verification failed with status ${profilesResponse.status}`);
+  let profiles;
+  try { profiles = await profilesResponse.json(); } catch { throw new Error("iOS progress reset profile verification returned an invalid response"); }
+  assertResetProfile(profiles, session.user_id, e.DEVICE_TEST_USERNAME);
   for (const f of files) {
     const r = await post(`/api/v1/playback/${f}/progress`, "PUT", { position_ms: 0, duration_ms: 6454000, completed: false }, token);
-    if (!r.ok) throw new Error(`progress reset ${f.slice(0, 8)} failed (${r.status})`);
-    console.log(`  progress reset ${f.slice(0, 8)}: ${r.status}`);
+    if (!r.ok) throw new Error(`iOS progress reset failed with status ${r.status}`);
   }
 }
 
@@ -94,9 +104,14 @@ export async function createDriver() {
   if (!udid || !bundle) throw new Error("no simulator in WORK/state.env: run wall.sh up first");
   const e = process.env;
   const expectedUsername = e.DEVICE_TEST_USERNAME;
-  if (!expectedUsername) throw new Error("DEVICE_TEST_USERNAME is required for guarded iOS parity captures");
+  if (!hasApprovedDeviceTestIdentity(e, e.TEST_USERNAME) || !expectedUsername || e.TEST_USERNAME.toLocaleLowerCase() !== expectedUsername.toLocaleLowerCase()) throw new Error("apple-ios driver: launch account is not the approved Device Test account");
   let theme = "dark", wanted = "/";
-  let deterministicCapture = e.PARITY_CAPTURE_DETERMINISTIC === "1", fixedNow = e.PARITY_FIXED_NOW ?? null;
+  const fixtureNow = run("node", [join(dirname(fileURLToPath(import.meta.url)), "../apple/fixture-clock.mjs")]).trim();
+  let captureNow = device === "ipad" ? (e.PARITY_CAPTURE_NOW || fixtureNow) : (e.PARITY_FIXED_NOW || e.PARITY_CAPTURE_NOW || fixtureNow);
+  const captureTimezone = e.PARITY_CAPTURE_TIMEZONE || "UTC";
+  let deterministicCapture = e.PARITY_CAPTURE_DETERMINISTIC === "1", fixedNow = captureNow;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(captureNow) || !Number.isFinite(Date.parse(captureNow)) || new Date(captureNow).toISOString() !== (captureNow.includes(".") ? captureNow : `${captureNow.slice(0, -1)}.000Z`)) throw new Error("PARITY_CAPTURE_NOW must be a valid UTC timestamp");
+  try { new Intl.DateTimeFormat("en", { timeZone: captureTimezone }); } catch { throw new Error("PARITY_CAPTURE_TIMEZONE must be a valid time zone"); }
   if (deterministicCapture && (!fixedNow || Number.isNaN(Date.parse(fixedNow)))) throw new Error("PARITY_CAPTURE_DETERMINISTIC requires a valid PARITY_FIXED_NOW instant");
   const dataContainer = run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim();
   if (!dataContainer) throw new Error("simulator did not return the iOS app data container");
@@ -126,7 +141,7 @@ export async function createDriver() {
     delete launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS;
     if (device === "ipad" && enableLayoutDiagnostics) launchEnv.SIMCTL_CHILD_PLAYARR_LAYOUT_DIAGNOSTICS = "1";
     run("xcrun", ["simctl", "launch", udid, bundle, "-PlayarrMuted", "--playarr-parity-route", route, "--playarr-parity-theme", theme,
-      ...(fixedNow ? ["--playarr-parity-now", fixedNow] : []),
+      "--playarr-parity-now", captureNow, "--playarr-parity-timezone", captureTimezone,
       ...(device === "ipad" ? ["--playarr-parity-landscape"] : []), ...(process.env.PARITY_FOCUS ? ["--playarr-parity-focus", process.env.PARITY_FOCUS] : []),
       ...(process.env.PARITY_MOTION === "1" ? ["--playarr-parity-motion"] : []), ...(process.env.PARITY_COVERS === "1" ? ["--playarr-parity-covers"] : []), ...(process.env.PARITY_SIZE ? ["--playarr-parity-size", process.env.PARITY_SIZE] : []), ...extra], { env: launchEnv });
     for (let i = 0; i < 60; i += 1) {
@@ -171,7 +186,7 @@ export async function createDriver() {
       if (disableAnimations !== true) throw new Error("iOS deterministic capture requires disableAnimations: true");
       if (!now || Number.isNaN(Date.parse(now))) throw new Error("iOS deterministic capture requires a valid fixedNow instant");
       deterministicCapture = true;
-      fixedNow = now;
+      captureNow = fixedNow = now;
     },
     async captureBuildIdentity() {
       const app = run("xcrun", ["simctl", "get_app_container", udid, bundle, "app"]).trim();
@@ -204,7 +219,10 @@ export async function createDriver() {
     async cleanupDownloads() { for (const file of touched) { try { cmd("cancel", { file }); await sleep(1500); } catch { /* app gone */ } } },
     async download(c, expect) {
       const m = c.media;
-      if (!state().signedIn) await launch("home");
+      const current = state();
+      if (current.signedIn !== true || current.identityVerified !== true || current.deviceTestIdentityVerified !== true
+        || String(current.authenticatedUsername ?? "").toLocaleLowerCase() !== expectedUsername.toLocaleLowerCase()) await launch("home");
+      assertCaptureState(state(), expectedUsername, { deterministic: deterministicCapture, fixedNow });
       const within = expect.withinSeconds;
       const start = async () => { cmd("start", m); return until(m, (d) => !!d, 60); };
       const done = (d) => d?.state === "completed";
@@ -247,7 +265,7 @@ export async function createDriver() {
     },
     async start() {
       run("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100", "--cellularMode", "active", "--cellularBars", "4", "--wifiBars", "3"]);
-      await resetProgressOnce([...new Set([...(suite.performance ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]);
+      if (device !== "ipad") await resetProgressOnce([...new Set([...(suite.performance ?? []).map((p) => p.file), ...Object.values(suite.downloadMedia ?? {}).map((m) => m.file)])]);
       await launch("home");
     },
     async stop() {},
@@ -294,17 +312,11 @@ export async function createDriver() {
         if (!state().motionDone) throw new Error("iOS scripted Home motion timed out before completion");
       }
       const raw = device === "ipad" ? `${file}.raw.png` : file;
-      // A slow first paint can leave the "Opening ..." splash on screen: take frames one second apart until
-      // two consecutive frames are byte-identical (at most 8 tries), so the capture is the settled screen, never a transition.
-      let previous = null, settled = false;
-      for (let attempt = 0; attempt < 8; attempt += 1) {
+      // Wait for two byte-identical frames so the capture contains the settled screen.
+      await captureStableFrame(async () => {
         run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
-        const frame = readFileSync(raw);
-        if (previous && frame.equals(previous)) { settled = true; break; }
-        previous = frame;
-        if (attempt < 7) await sleep(1000);
-      }
-      if (!settled) throw new Error(`iOS screen did not settle to two identical frames: ${id}`);
+        return readFileSync(raw);
+      }, { attempts: 8, intervalMs: 4000, wait: sleep });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       assertScreenshotFile(file);
       if (layoutDiagnostics) {

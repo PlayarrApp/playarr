@@ -60,14 +60,18 @@ internal sealed class SearchScreen : IPage
     private FiltersDrawer? _filters;
     private bool _removed;
     private SearchFocusState? _restoreFocus;
+    private bool _focusResultsAfterEnter;
+    private bool _enterReleased = true;
+    private string _renderedQuery = "";
+    private string _renderedMediaType = "all";
 
     public View Root => _root;
+    internal bool IsQueryEditing => !_removed && _filters is null && _focus < 0 && _field.EnableEditing;
     public object? SaveState() => new SearchFocusState(_focus, _scroll);
     public void RestoreState(object state)
     {
         if (state is SearchFocusState focus) _restoreFocus = focus;
     }
-
     public string Route
     {
         get
@@ -151,11 +155,11 @@ internal sealed class SearchScreen : IPage
     private void BuildEmpty()
     {
         _empty.Add(Ui.Text("Find any available movie, series, artist or playlist.", 153.6f, 302.8f, 13.824f, 400, _t.InkMuted, 272, 21.43f, multiline: true, maxLines: 3));
-        var art = Ui.Box(1163.4f, 311.8f, 132, 132, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 66);
+        var art = Ui.Box(1125f, 311.8f, 132, 132, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 66);
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
-        art.Add(Ui.Icon("search", 39, 39, 54, _t.InkMuted));
+        art.Add(Ui.Icon("search-empty", 37.6f, 47f, 57.6f, 38.4f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
         _empty.Add(art);
-        _empty.Add(Ui.Text("Start typing to search.", 1337.4f, 365.1f, 16.896f, 700, _t.Ink, 400, 25.344f, spacing: -0.34f));
+        _empty.Add(Ui.Text("Start typing to search.", 1299f, 365.1f, 16.896f, 700, _t.Ink, 400, 25.344f, spacing: -0.34f));
     }
 
     private void BuildSide()
@@ -264,8 +268,29 @@ internal sealed class SearchScreen : IPage
         if (on) FocusManager.Instance.SetCurrentFocusView(_field);
     }
 
+    internal void BeginQueryEnter()
+    {
+        _enterReleased = false;
+        _focusResultsAfterEnter = _query.Length > 0;
+    }
+
+    internal void HandleQueryEnterRelease()
+    {
+        _enterReleased = true;
+        FocusFirstResultAfterEnterIfReady();
+    }
+
+    private void FocusFirstResultAfterEnterIfReady()
+    {
+        if (!_focusResultsAfterEnter || !_enterReleased || !IsQueryEditing) return;
+        if (_renderedQuery != _query || _renderedMediaType != _mediaType) return;
+        _focusResultsAfterEnter = false;
+        if (_items.Count > 0) SetFocus(0);
+    }
+
     private void OnText(string text)
     {
+        _focusResultsAfterEnter = false;
         _query = text.Trim();
         _search?.Cancel();
         _notice.Show(false);
@@ -334,6 +359,7 @@ internal sealed class SearchScreen : IPage
                 SynchronizationContextHolder.Post(() =>
                 {
                     if (cts.IsCancellationRequested) return;
+                    _focusResultsAfterEnter = false;
                     _notice.Text = "Search is unavailable right now.";
                     _notice.Show(true);
                 });
@@ -371,6 +397,8 @@ internal sealed class SearchScreen : IPage
 
     private void RenderResults()
     {
+        _renderedQuery = _query;
+        _renderedMediaType = _mediaType;
         foreach (var c in _cards) { _results.Remove(c.Box); c.Box.Dispose(); }
         _cards.Clear(); _items.Clear(); _targets.Clear(); _focus = -1; _scroll = 0; _results.PositionY = 0;
         if (_extras is not null) { _results.Remove(_extras.Root); _extras.Root.Dispose(); _extras = null; }
@@ -406,6 +434,7 @@ internal sealed class SearchScreen : IPage
             _scroll = restore.ScrollOffset;
             SetFocus(restore.ResolveResultIndex(_items.Count));
         }
+        FocusFirstResultAfterEnterIfReady();
     }
 
     /// <summary>Web DiscoveryExtras: titles beyond the library, under the results (All, Movies and Series searches only).</summary>

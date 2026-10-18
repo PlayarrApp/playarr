@@ -39,6 +39,11 @@ export function explainedDisabledActions(actions: readonly TitleAction[]): Title
   );
 }
 
+/** Providers append the backend task number to unavailable reasons; users must not see it. */
+export function providerReasonText(reason: string): string {
+  return reason.replace(/\s*\(task\s+\d+\)\s*$/i, "").trim();
+}
+
 /**
  * A server that predates discovery answers these routes with its web app's HTML,
  * which fails JSON parsing, or with a 404/405.

@@ -10,6 +10,7 @@ import {
   discoveryUnsupportedByServer,
   extraTitles,
   libraryDetailRoute,
+  providerReasonText,
   snapshotFromTitle,
   sourceChipKey,
   uniqueSourceKinds,
@@ -93,7 +94,7 @@ export function DiscoveryExtras({
       <h2>{gamesOnly ? t("discovery.extras.gamesTitle") : t("discovery.extras.title")}</h2>
       {notices.map((provider) => (
         <p key={provider.provider} className="tv-discovery-note" role="status">
-          {provider.reason}
+          {providerReasonText(provider.reason ?? "")}
         </p>
       ))}
       {titles.length === 0 && notices.length === 0 ? (
