@@ -137,8 +137,8 @@ struct CalendarView: View {
             }
             .padding(.leading, 120)
             .padding(.trailing, 86 * scale)
-            .padding(.top, 168 * proxy.size.height / 1024)
-            .padding(.bottom, 24)
+            .padding(.top, 171 * proxy.size.height / 1024)
+            .padding(.bottom, 136 * proxy.size.height / 1024)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
 
             PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
@@ -155,7 +155,7 @@ struct CalendarView: View {
                         Text("Month").tag(CalendarViewMode.month)
                     }
                 } label: {
-                    WMText(phoneRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                    WMText(tabletRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
@@ -179,7 +179,7 @@ struct CalendarView: View {
                 PlayarrHeaderPill(label: "Calendar link", systemImage: "bell") { showingSubscription = true }
                 PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", count: viewModel.filters.activeCount) { showingFilters = true }
             }
-            .frame(width: proxy.size.width - 16 * scale, alignment: .trailing)
+            .frame(width: proxy.size.width - 3 * scale, alignment: .trailing)
             .offset(y: min(max(116, proxy.size.height * 0.14), 164))
         }
     }
@@ -220,6 +220,23 @@ struct CalendarView: View {
         }
         formatter.dateFormat = "d MMM yyyy"
         return "\(first) \u{2013} \(formatter.string(from: end))"
+    }
+
+    /// The web tablet range pill folds a one-month week to "12 \u{2013} 18 Oct".
+    private var tabletRangeLabel: String {
+        let window = viewModel.window
+        guard viewModel.mode != .month, let start = CalendarDays.displayDate(window.start), let end = CalendarDays.displayDate(window.end) else {
+            return phoneRangeLabel
+        }
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC") ?? .current
+        guard utc.component(.month, from: start) == utc.component(.month, from: end),
+              utc.component(.year, from: start) == utc.component(.year, from: end) else { return phoneRangeLabel }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.timeZone = utc.timeZone
+        formatter.dateFormat = "MMM"
+        return "\(utc.component(.day, from: start)) \u{2013} \(utc.component(.day, from: end)) \(formatter.string(from: end))"
     }
 
     private func roundButton(_ glyph: String, label: String, action: @escaping () -> Void) -> some View {
