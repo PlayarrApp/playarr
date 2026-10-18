@@ -108,7 +108,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan, clearResumeChoices } from '../data/CatalogRepository';
 import { resumeButtonLabel, resumeKicker, resumeTargetFile } from '../core/ResumePlan';
 import { atLeast } from '../core/SafeInsets';
-import { hasSeriesResumeTarget, metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
+import { generatedChapters, hasSeriesResumeTarget, metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
 import {
   EpisodeFocusGate,
   hasPositiveEpisodeAreaSample,
@@ -1067,15 +1067,19 @@ struct Detail {
     if (!this.artworkStore.isCurrentGeneration(generation)) {
       return;
     }
-    if (result.kind !== 'ok' || result.value.length === 0) {
+    // web: the server's list can be empty; the rail then shows generated chapters (one "Chapter 01" at 0:00 for a short clip)
+    const chapters: MediaChapter[] = result.kind === 'ok' && result.value.length > 0
+      ? result.value
+      : generatedChapters(this.detail !== null && this.detail.runtime_ms !== null ? this.detail.runtime_ms : 0);
+    if (chapters.length === 0) {
       return;
     }
     const rows: DetailRow[] = [];
-    for (const chapter of result.value) {
+    for (const chapter of chapters) {
       rows.push(chapterRow(chapter, mediaFileId));
     }
     this.chaptersRail = { id: 'chapters', heading: t('pages.workDetail.chaptersHeading', 'Chapters'), items: rows };
-    for (const chapter of result.value) {
+    for (const chapter of chapters) {
       const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
         return;

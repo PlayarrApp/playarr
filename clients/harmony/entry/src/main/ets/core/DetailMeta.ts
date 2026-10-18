@@ -2,6 +2,7 @@
 
 import type { WorkDetail, EpisodeDetail, SeasonDetail, WorkChildrenSeries } from './Types/WorkDetail';
 import type { ResumePlan } from './Types/ResumePlan';
+import type { MediaChapter } from './Types/Media';
 
 /** A series' seasons, [] for any other kind (`children` is the bare string "Movie" or a single-key object). */
 function seasonsOf(detail: WorkDetail): SeasonDetail[] {
@@ -135,4 +136,25 @@ export function planSynopsis(detail: WorkDetail, plan: ResumePlan | null): strin
     }
   }
   return detail.work.overview !== null ? detail.work.overview : '';
+}
+
+/** Web `generatedMovieChapters`: a movie whose file has no chapters still shows evenly spaced ones (5 to 30 min apart, about ten), so a 60 s clip has one. */
+export function generatedChapters(runtimeMs: number): MediaChapter[] {
+  if (runtimeMs <= 0) {
+    return [];
+  }
+  const target = runtimeMs / 10;
+  let interval = 30 * 60000;
+  for (const minutes of [5, 10, 15, 20, 30]) {
+    if (minutes * 60000 >= target) {
+      interval = minutes * 60000;
+      break;
+    }
+  }
+  const count = Math.max(1, Math.ceil(runtimeMs / interval));
+  const chapters: MediaChapter[] = [];
+  for (let index = 0; index < count; index++) {
+    chapters.push({ index: index, title: null, start_ms: index * interval, end_ms: Math.min(runtimeMs, (index + 1) * interval) });
+  }
+  return chapters;
 }
