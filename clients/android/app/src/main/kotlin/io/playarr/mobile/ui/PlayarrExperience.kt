@@ -3496,6 +3496,8 @@ internal fun ExperienceMediaRail(
         val phoneFocusBottomHeadroom = with(density) { phoneFocusBottomHeadroomPx.toDp() }
         val trackModifier = if (isTelevision) {
             Modifier.fillMaxWidth().extendStart(trackGutter).padding(top = tvOuterTopPadding)
+                // Tablet static refs (1280 x 800): the cards sit 6.4 css px higher than the 1080 tuning gives.
+                .then(if (LocalStageScale.current != 1f) Modifier.offset(y = -(6.4f * cssDp).dp) else Modifier)
         } else {
             Modifier.fillMaxWidth().padding(end = 5.dp).layout { measurable, constraints ->
                 // Web `.tv-media-track-scroll` adds 24px above and 80px below the card for focus shadows, then uses
