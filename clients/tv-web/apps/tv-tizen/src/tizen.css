@@ -110,3 +110,9 @@ html[data-platform="tv-tizen"]
 html[data-platform="tv-tizen"] .tv-alphabet button::before {
   height: clamp(18px, calc(1.35 * var(--vw)), 24px);
 }
+
+/* Same for the Home hero's ambient circle: 78% wide, square. Percentage padding is relative to the containing block's width. */
+html[data-platform="tv-tizen"] .home-feature-art::before {
+  height: 0;
+  padding-bottom: 78%;
+}

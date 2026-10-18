@@ -107,8 +107,9 @@ internal fun groupCalendarEntries(
     window: CalendarWindow,
     fillEmptyDays: Boolean,
 ): List<CalendarDayGroup> {
-    val byDay = entries.filter { it.matches(kinds) }.groupBy { it.date }
-    val days = if (fillEmptyDays) (window.days + byDay.keys).toSortedSet() else byDay.keys.toSortedSet()
+    val visibleEntries = entries.filter { it.matches(kinds) && (!fillEmptyDays || it.date in window) }
+    val byDay = visibleEntries.groupBy { it.date }
+    val days = if (fillEmptyDays) window.days else byDay.keys.toSortedSet()
     return days.map { day -> CalendarDayGroup(day, byDay[day].orEmpty().sortedWith(calendarEntryOrder)) }
 }
 

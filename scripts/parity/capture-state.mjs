@@ -115,11 +115,25 @@ export async function readAndroidDeviceSession(env = process.env, persistToken =
   } catch { throw new Error("Android device session unavailable for account guard"); }
 }
 
-export async function guardAndroidDeviceAccount(env = process.env) {
+/** Opens the app once so it refreshes its saved access token the way it does on any launch. */
+async function launchAndroidApp(env) {
+  const adb = env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb";
+  const pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
+  await execFileAsync(adb, ["shell", "monkey", "-p", pkg, "-c", "android.intent.category.LEANBACK_LAUNCHER", "-c", "android.intent.category.LAUNCHER", "1"], { env, timeout: 30_000 }).catch(() => {});
+  await new Promise((resolve) => setTimeout(resolve, 25_000));
+}
+
+/** An expired saved token fails only the identity fetch; launch the app once to refresh it, then check again. Other mismatches still fail at once. */
+export async function guardAndroidDeviceAccount(env = process.env, { read = readAndroidDeviceSession, assert = assertAndroidDeviceAccount, launch = launchAndroidApp } = {}) {
   if (env.PARITY_DEVICE_ACCOUNT_GUARD !== "android") return;
   if (env.PARITY_USE_DEVICE_TEST_DPAD !== "1") throw new Error("Android device account guard requires the explicit D-pad account alias");
-  const session = await readAndroidDeviceSession(env);
-  await assertAndroidDeviceAccount({ session, expectedUsername: env.PLAYARR_USERNAME, expectedServerUrl: env.PLAYARR_SERVER_URL });
+  const check = async () => assert({ session: await read(env), expectedUsername: env.PLAYARR_USERNAME, expectedServerUrl: env.PLAYARR_SERVER_URL });
+  try { await check(); }
+  catch (error) {
+    if (!/identity check failed|session unavailable/.test(String(error?.message))) throw error;
+    await launch(env);
+    await check();
+  }
 }
 
 /** Resolve one explicitly selected isolated account without falling back to the shared device-test user. */

@@ -5,14 +5,15 @@
 // Movies, Series and Music, at 1920x1080 and 1280x720, in both themes, driven by the keyboard.
 import { dirname, join } from "node:path";
 import { mkdirSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { startServer } from "./nav-perf/server.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const { chromium } = await import(pathToFileURL(join(root, "../../../scripts/parity/node_modules/playwright-core/index.mjs")).href);
+const { chromium } = await import("playwright-core");
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : d; };
 const OUT = opt("out", "");
+const ONLY = opt("only", ""); // --only active: just the active/focus/jump section (the older sections are slow)
 if (OUT) mkdirSync(OUT, { recursive: true });
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 let failed = 0;
@@ -66,7 +67,7 @@ const step = async (page, key, before) => {
   return s;
 };
 
-for (const [w, h] of [[1920, 1080], [1280, 720]]) {
+for (const [w, h] of ONLY ? [] : [[1920, 1080], [1280, 720]]) {
   for (const theme of ["dark", "light"]) {
     for (const route of ["movies", "series", "music"]) {
       const tag = `${w}x${h} ${theme} /${route}`;
@@ -151,7 +152,7 @@ for (const [w, h] of [[1920, 1080], [1280, 720]]) {
 }
 // Phones (owner 2026-10-11): the rail stays on the right edge, between the header and the bottom nav, never covering a
 // card, and a tap on a letter jumps the grid there.
-for (const theme of ["dark", "light"]) {
+for (const theme of ONLY && ONLY !== "phone" ? [] : ["dark", "light"]) {
   for (const route of ["movies", "series"]) {
     const tag = `390x845 ${theme} /${route}`;
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -199,9 +200,95 @@ for (const theme of ["dark", "light"]) {
       await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
       await page.waitForTimeout(2500);
       const scrubbed = await page.evaluate(() => ({ top: document.querySelector(".tv-title-grid").scrollTop, active: document.querySelector(".tv-alphabet button.is-active")?.textContent }));
-      check(`${tag}: dragging down the column scrubs the grid to the letters it crosses (A to T)`, scrubbed.top > 0 && scrubbed.active >= "R" && scrubbed.active <= "T", JSON.stringify(scrubbed));
+      check(`${tag}: dragging down the column scrubs the grid to the letters it crosses (A to T; the fixture has no T, so the circle lands on the next letter with titles)`, scrubbed.top > 0 && scrubbed.active >= "R", JSON.stringify(scrubbed));
       if (OUT && theme === "light") await page.screenshot({ path: join(OUT, "alphabet-phone-390x845.png") });
     }
+    await context.close();
+  }
+}
+
+// Owner 2026-10-18: active circle (follows the grid, moves at once on a jump), focus ring (distinct, combinable), no
+// reflow, a jump never moves focus, and only Right enters the grid. 390 touch, 1280 pointer/keyboard, 1920 TV keyboard.
+const lum = (hex) => {
+  const c = hex.replace("#", "").match(/../g).map((h) => parseInt(h, 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+};
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+// Layout boxes (offset metrics ignore the hover scale transform): they must not change when the circle or ring appears.
+const railBoxes = () => [...document.querySelectorAll(".tv-alphabet button")].map((b) => [b.offsetLeft, b.offsetTop, b.offsetWidth, b.offsetHeight].join(",")).join("|");
+const activeLetter = () => document.querySelector(".tv-alphabet button.is-active")?.textContent ?? null;
+const settle = async (page) => { let prev = -1; for (let k = 0; k < 40; k += 1) { await page.waitForTimeout(150); const t = await page.evaluate(() => document.querySelector(".tv-title-grid").scrollTop); if (t === prev) return; prev = t; } };
+for (const [w, h, touch] of ONLY === "phone" ? [] : [[390, 844, true], [1280, 720, false], [1920, 1080, false]]) {
+  for (const theme of ["dark", "light"]) {
+    const tag = `${w}x${h} ${theme} active/focus`;
+    const context = await browser.newContext({ viewport: { width: w, height: h }, ...(touch ? { hasTouch: true, isMobile: true } : {}) });
+    await context.addInitScript(({ base, userId, theme }) => {
+      localStorage.setItem("playarr:apiBaseUrl", base);
+      const session = { accessToken: "t", refreshToken: "r", tokenType: "Bearer", expiresAt: Date.now() + 86_400_000 };
+      localStorage.setItem("playarr.profileSessions.v4", JSON.stringify([{ profileKey: "nav-perf", apiBaseUrl: base, userId, name: "Perf", deviceId: "d", session }]));
+      localStorage.setItem("playarr.activeProfile.v1", JSON.stringify({ profileKey: "nav-perf", apiBaseUrl: base, userId }));
+      localStorage.setItem("playarr-theme", theme);
+      document.addEventListener("DOMContentLoaded", () => { document.documentElement.dataset.theme = theme; });
+    }, { base, userId: USER_ID, theme });
+    const page = await context.newPage();
+    await page.goto(`${base}/movies`);
+    await page.waitForSelector(".tv-alphabet button", { timeout: 10000 });
+    await page.waitForTimeout(1200);
+    const boxes0 = await page.evaluate(railBoxes);
+    const first = await page.evaluate(activeLetter);
+    const colours = await page.evaluate(() => { const s = getComputedStyle(document.documentElement); const a = document.querySelector(".tv-alphabet button.is-active"); return { brand: s.getPropertyValue("--brand").trim(), bg: s.getPropertyValue("--bg").trim(), ink: s.getPropertyValue("--ink").trim(), shadow: a ? getComputedStyle(a, "::before").boxShadow : "" }; });
+    check(`${tag}: the active letter has the ring (brand box-shadow on its circle)`, first !== null && colours.shadow.includes("0px 0px 0px 4px"), JSON.stringify(colours));
+    console.log(`INFO  ${tag}: ring ${colours.brand} on ${colours.bg} = ${ratio(colours.brand, colours.bg).toFixed(2)}:1, letter ${colours.bg} on ${colours.ink} = ${ratio(colours.bg, colours.ink).toFixed(2)}:1`);
+    check(`${tag}: ring contrast >= 3:1 and letter contrast >= 4.5:1`, ratio(colours.brand, colours.bg) >= 3 && ratio(colours.bg, colours.ink) >= 4.5);
+    // Scrolling the grid moves the circle.
+    await page.evaluate(() => { const g = document.querySelector(".tv-title-grid"); g.scrollTop = g.scrollHeight * 0.4; });
+    await settle(page);
+    for (let k = 0; k < 20 && (await page.evaluate(activeLetter)) === first; k += 1) await page.waitForTimeout(150);
+    const scrolled = await page.evaluate(activeLetter);
+    check(`${tag}: scrolling the grid moves the active letter`, scrolled !== null && scrolled !== first, `${first} -> ${scrolled}`);
+    // A jump: focus stays on the letter, the grid leads with the section's first card, the circle stays after settling.
+    const letter = scrolled === "M" ? "P" : "M";
+    const btn = page.locator(".tv-alphabet button", { hasText: new RegExp(`^${letter}$`) });
+    if (touch) await btn.tap(); else if (w === 1280) await btn.click(); else { await btn.focus(); await page.keyboard.press("Enter"); }
+    await page.waitForFunction(() => ![...document.querySelectorAll('.tv-alphabet button')].some((b) => b.textContent === '·'), null, { timeout: 15000 });
+    await settle(page);
+    await page.waitForTimeout(600);
+    const jumped = await page.evaluate(() => {
+      const g = document.querySelector(".tv-title-grid");
+      const a = document.activeElement;
+      const lead = g.querySelector(`[data-library-index="${Math.min(...[...g.querySelectorAll("[data-library-index]")].filter((c) => c.dataset.libraryLetter === document.querySelector(".tv-alphabet button.is-active")?.textContent).map((c) => Number(c.dataset.libraryIndex)))}"]`);
+      return { focused: a?.closest(".tv-alphabet") ? a.textContent : (a?.className ?? ""), active: document.querySelector(".tv-alphabet button.is-active")?.textContent, leadTop: lead ? lead.getBoundingClientRect().top - g.getBoundingClientRect().top : null, leadLetter: lead?.dataset.libraryLetter };
+    });
+    check(`${tag}: after clicking ${letter}, focus is still on that letter`, jumped.focused === letter, JSON.stringify(jumped));
+    check(`${tag}: the circle is on ${letter} once the scroll settled`, jumped.active === letter, JSON.stringify(jumped));
+    check(`${tag}: the section's first card is at the top of the grid`, jumped.leadTop !== null && jumped.leadTop >= -2 && jumped.leadTop < 40 && jumped.leadLetter === letter, JSON.stringify(jumped));
+    check(`${tag}: no layout shift of the letters (active moved, boxes unchanged)`, (await page.evaluate(railBoxes)) === boxes0);
+    // Keyboard focus ring: distinct from the active circle, combined when both apply.
+    if (!touch) {
+      const ring = await page.evaluate(() => { const a = document.activeElement; const c = getComputedStyle(a); return { style: c.outlineStyle, width: c.outlineWidth, active: a.classList.contains("is-active"), shadow: getComputedStyle(a, "::before").boxShadow }; });
+      if (w === 1280) { await page.keyboard.press("ArrowDown"); await page.waitForTimeout(400); } // pointer click shows no ring; a key does
+      const keyed = await page.evaluate(() => { const a = document.activeElement; const c = getComputedStyle(a); return { style: c.outlineStyle, width: c.outlineWidth, active: a.classList.contains("is-active"), shadow: getComputedStyle(a, "::before").boxShadow }; });
+      check(`${tag}: a keyboard-focused letter has the standard focus ring, without the active circle`, keyed.style === "solid" && parseFloat(keyed.width) >= 2 && (w !== 1280 || (!keyed.active && keyed.shadow === "none")), JSON.stringify(keyed));
+      if (w === 1280) { await page.keyboard.press("ArrowUp"); await page.waitForTimeout(200); }
+      const both = await page.evaluate(() => { const a = document.activeElement; return { style: getComputedStyle(a).outlineStyle, active: a.classList.contains("is-active"), shadow: getComputedStyle(a, "::before").boxShadow }; });
+      check(`${tag}: focused and active together show the ring and the circle`, both.style === "solid" && both.active && both.shadow !== "none", JSON.stringify(both));
+      check(`${tag}: no layout shift when focus moves in the rail`, (await page.evaluate(railBoxes)) === boxes0);
+    }
+    if (OUT) await page.screenshot({ path: join(OUT, `alphabet-active-${w}-${theme}.png`) });
+    // Only the key pointing toward the grid enters it (side from layout: rail rect vs grid rect); the away key does nothing.
+    const wanted = await page.evaluate(activeLetter);
+    if (touch) { await context.close(); continue; }
+    const railLeft = await page.evaluate(() => document.querySelector(".tv-alphabet").getBoundingClientRect().left < document.querySelector(".tv-title-grid").getBoundingClientRect().left);
+    const [toward, away] = railLeft ? ["ArrowRight", "ArrowLeft"] : ["ArrowLeft", "ArrowRight"];
+    await page.evaluate((L) => [...document.querySelectorAll(".tv-alphabet button")].find((b) => b.textContent === L)?.focus(), wanted);
+    await page.keyboard.press(away);
+    await page.waitForTimeout(800);
+    const stayed = await page.evaluate(() => { const a = document.activeElement; return a?.closest(".tv-alphabet") ? a.textContent : (a?.className ?? ""); });
+    check(`${tag}: ${away} (away from the grid, rail ${railLeft ? "left" : "right"} of it) keeps focus on the letter`, stayed === wanted, `${wanted} -> ${stayed}`);
+    await page.keyboard.press(toward);
+    await page.waitForTimeout(800);
+    const entered = await page.evaluate(() => { const a = document.activeElement; const g = document.querySelector(".tv-title-grid"); const L = a?.dataset?.libraryLetter; const firstIdx = Math.min(...[...g.querySelectorAll("[data-library-index]")].filter((c) => c.dataset.libraryLetter === L).map((c) => Number(c.dataset.libraryIndex))); return { card: !!a?.closest(".tv-title-card, [data-library-index]"), letter: L, idx: Number(a?.dataset?.libraryIndex), firstIdx }; });
+    check(`${tag}: ${toward} (toward the grid) focuses the first card of the active section`, entered.card && entered.letter === wanted && entered.idx === entered.firstIdx, `${wanted} ${JSON.stringify(entered)}`);
     await context.close();
   }
 }

@@ -4079,9 +4079,11 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   color: var(--ink);
 }
 
+/* Artwork can carry a baked-in title, so it starts at the nav clearance (owner rule 2026-10-18: nothing under the nav).
+   The fade and wash below run from that edge rightward; phones, where the nav is a bottom bar, keep the full width. */
 .tv-key-art {
   position: absolute;
-  inset: 0;
+  inset: 0 0 0 var(--tv-nav-clearance);
   z-index: 0;
   overflow: hidden;
   animation: tv-key-art-in 760ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
@@ -4097,7 +4099,7 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
 }
 
 .tv-key-art img {
-  width: 52%;
+  width: calc(52 * var(--vw) - var(--tv-nav-clearance));
   height: 106%;
   margin-left: 0;
   object-fit: cover;
@@ -4107,6 +4109,7 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 72%, transparent 100%);
   mask-image: linear-gradient(90deg, #000 0%, #000 72%, transparent 100%);
   transform: scale(1.04);
+  transform-origin: left center;
 }
 
 :root[data-theme="dark"] .tv-key-art img {
@@ -4420,14 +4423,18 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
 }
 
 .tv-alphabet button.is-active {
-  outline: 0;
+  /* The standard focus ring (:focus-visible) still shows on the active letter: ring outside, filled circle inside. */
   color: var(--bg);
   transform: none;
 }
 
 .tv-alphabet button.is-active::before {
   width: clamp(18px, calc(1.35 * var(--vw)), 24px);
-  background: color-mix(in srgb, var(--ink) 78%, transparent);
+  background: var(--ink);
+  /* Active ring: a --brand ring with a --bg gap, drawn as box-shadow so nothing reflows (>= 3:1 on both themes). */
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--brand);
 }
 
 .tv-alphabet button:hover {
@@ -5216,7 +5223,6 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
 
 .tv-library-preview {
   z-index: 7;
-  animation: tv-preview-expand 520ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .tv-home-feature h2,
@@ -5696,9 +5702,10 @@ body[data-input-mode="remote"] .tv-search-result[data-remote-active] .tv-search-
   color: var(--ink);
 }
 
+/* No own entry animation on the hero copy (home feature, library preview): the route transition (page-layout.css) fades
+   the whole body once. A second keyframe here restarted when the route token expired: visible, hidden, animate in. */
 .tv-home-feature {
   z-index: 8;
-  animation: tv-copy-in 520ms 80ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .tv-playlists .tv-media-track-heading {
@@ -6355,9 +6362,9 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   white-space: nowrap;
 }
 
+/* No own entry animation (see .tv-home-feature): the route transition fades the page body once. */
 .tv-detail-copy {
   z-index: 12;
-  animation: tv-copy-in 520ms 80ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 /* The nav rail (z 90) would crop the focus ring of the first action on the left: lift the column above it while one of its controls has keyboard focus. */
@@ -8711,6 +8718,10 @@ html.is-native-scroll-root .profile-auth-scroll {
     min-height: 0;
   }
 
+  .tv-key-art {
+    left: 0;
+  }
+
   .tv-key-art img,
   .tv-home .tv-key-art img,
   .tv-directory .tv-key-art img,
@@ -9729,8 +9740,7 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .tv-key-art {
   animation: android-tv-stage-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .home-feature-art,
-html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .tv-library-preview {
+html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .home-feature-art {
   animation: android-tv-rise-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -9832,6 +9842,12 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
   transform: scale(1.06);
 }
 
+/* The pink icon (--brand-ink) has no contrast on the ink fill: it takes the on-fill colour (--bg, 7:1 or more) while the fill shows. */
+.tv-detail-playback-settings:is(:hover, :focus-visible, [aria-expanded="true"]) > span:first-child,
+.tv-detail-download:is(:hover, :focus-visible, [aria-expanded="true"]) > span:first-child {
+  color: inherit;
+}
+
 .download-quality-drawer-field {
   display: grid;
   gap: 0.4rem;
@@ -9883,8 +9899,8 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
   width: calc(var(--stage-rail-width) + var(--list-glow-room));
   padding: var(--panel-pad);
   padding-left: 0;
-  /* Clear the shell action column (Filters, Notifications): the same reserve the Library grid keeps (page-layout.css). */
-  padding-right: var(--library-rail-right);
+  /* Clear the shell action column (Filters, Notifications) only: Downloads has no letter rail to reserve room for. */
+  padding-right: calc(var(--directory-controls-edge) + var(--directory-controls-width) + var(--directory-controls-gap));
 }
 
 /* On a phone the Downloads panel and the state panels are the whole page (they keep Home's 62% column on larger

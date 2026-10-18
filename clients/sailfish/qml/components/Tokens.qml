@@ -38,9 +38,11 @@ QtObject {
     readonly property string family: nunito.name
     property FontLoader nunito: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-wght-web.ttf") }
     // Static weights the web phone layout uses (Qt 5.6 cannot pick weights from a variable font).
+    property FontLoader nunito400: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-400.ttf") }
     property FontLoader nunito580: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-580.ttf") }
     property FontLoader nunito610: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-610.ttf") }
     property FontLoader nunito820: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-820.ttf") }
+    readonly property string family400: nunito400.name
     readonly property string family580: nunito580.name
     readonly property string family610: nunito610.name
     readonly property string family820: nunito820.name

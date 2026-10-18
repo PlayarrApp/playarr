@@ -53,8 +53,8 @@ PlayarrPage {
         anchors { fill: parent; bottomMargin: 106 * Tokens.u }
         contentHeight: body.y + body.height + 24 * Tokens.u
         clip: true
-        Label { x: page.gut; y: 19 * Tokens.u; text: qsTr("CALENDAR"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 1 * Tokens.u }
-        Label { x: page.gut; y: 35.5 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 21.5 * Tokens.u; font.letterSpacing: -1 * Tokens.u }
+        Label { renderType: Text.NativeRendering; x: page.gut; y: 19 * Tokens.u; text: qsTr("CALENDAR"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 1 * Tokens.u }
+        Label { renderType: Text.NativeRendering; x: page.gut; y: 35.5 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 21.5 * Tokens.u; font.letterSpacing: -1 * Tokens.u }
         MouseArea {
             property bool navigationFocusable: true
             property string parityLabel: qsTr("Close")
@@ -66,19 +66,19 @@ PlayarrPage {
             width: 43.7 * Tokens.u; height: width
             onClicked: pageStack.pop()
             Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.dark ? Tokens.surfaceStrong : "#e6e4e5"; border.width: 1; border.color: Tokens.lineStrong }
-            Label { anchors.centerIn: parent; text: "✕"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10 * Tokens.u }
+            Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "✕"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 10 * Tokens.u }
         }
         Column {
             id: body
             x: page.gut; y: 92 * Tokens.u
             width: flick.width - 2 * page.gut
             spacing: 11 * Tokens.u
-            Label {
+            Label { renderType: Text.NativeRendering;
                 width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.0
                 text: qsTr("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u; bottomPadding: 2.5 * Tokens.u
             }
-            Label {
+            Label { renderType: Text.NativeRendering;
                 visible: page.failure !== ""; width: parent.width; wrapMode: Text.Wrap
                 text: page.failure; color: Tokens.danger; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u
             }
@@ -86,14 +86,14 @@ PlayarrPage {
                 visible: page.failure !== ""; text: qsTr("Try again"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u
                 parityIndex: 1; navigationActivate: function() { page.open() }; implicitHeight: 36 * Tokens.u; onClicked: page.open()
             }
-            Label {
+            Label { renderType: Text.NativeRendering;
                 visible: page.busy && page.url === ""; text: qsTr("Getting your link…")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u
             }
             Item {
                 visible: page.url !== ""; width: parent.width; height: 43 * Tokens.u
                 Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.dark ? "#1e1b1e" : Tokens.surface; border.width: 1; border.color: Tokens.lineStrong }
-                Label {
+                Label { renderType: Text.NativeRendering;
                     x: 13 * Tokens.u; width: parent.width - 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter
                     text: page.url; clip: true; wrapMode: Text.NoWrap
                     color: Tokens.ink; font.family: "monospace"; font.pixelSize: 14.2 * Tokens.u
@@ -129,10 +129,10 @@ PlayarrPage {
                 }
               }
             }
-            Label { visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
+            Label { renderType: Text.NativeRendering; visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Your link was created on another device and is not stored here. Reset it to get a new link to copy.")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-            Label { text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 1 * Tokens.u; topPadding: 0; bottomPadding: 2 * Tokens.u }
+            Label { renderType: Text.NativeRendering; text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 1 * Tokens.u; topPadding: 0; bottomPadding: 2 * Tokens.u }
             Column {
               spacing: 8.25 * Tokens.u
               Repeater {
@@ -141,12 +141,12 @@ PlayarrPage {
                          qsTr("Outlook: Add calendar > Subscribe from web, then paste the link.") ]
                 Row {
                     spacing: 11 * Tokens.u; x: 4 * Tokens.u; width: body.width - 4 * Tokens.u   // web list indent
-                    Label { text: "•"; color: Tokens.ink; font.pixelSize: 10 * Tokens.u }
-                    Label { width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; text: "•"; color: Tokens.ink; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                 }
               }
             }
-            Label {
+            Label { renderType: Text.NativeRendering;
                 visible: page.confirming; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Resetting makes a new link and the current link stops working straight away. Calendars using it will need the new link.")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u

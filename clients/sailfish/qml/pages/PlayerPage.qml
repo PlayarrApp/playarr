@@ -247,7 +247,7 @@ Page {
         size: BusyIndicatorSize.Large
         running: !page.error && (!page.info || player.status === MediaPlayer.Loading || player.status === MediaPlayer.Stalled || player.status === MediaPlayer.Buffering)
     }
-    Label {
+    Label { renderType: Text.NativeRendering;
         anchors { centerIn: parent; margins: Theme.paddingLarge }
         width: parent.width - 2 * Theme.paddingLarge
         horizontalAlignment: Text.AlignHCenter
@@ -257,13 +257,13 @@ Page {
         color: "white"
     }
 
-    Label {
+    Label { renderType: Text.NativeRendering;
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.verticalCenter; topMargin: 70 * Tokens.u }
         visible: page.notice !== ""
         text: page.notice
         color: "white"
     }
-    Label {
+    Label { renderType: Text.NativeRendering;
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: (page.controls ? 130 * Tokens.u : 48 * Tokens.u) + Tokens.safeBottom; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
         visible: text !== ""
         text: page.cueText
@@ -307,7 +307,7 @@ Page {
             visible: !!page.info
             onClicked: page.menuOpen = !page.menuOpen
         }
-        Label {
+        Label { renderType: Text.NativeRendering;
             anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 80 * Tokens.u; rightMargin: 80 * Tokens.u; topMargin: Theme.paddingLarge + Tokens.safeTop }
             text: page.title
             elide: Text.ElideRight
@@ -330,7 +330,7 @@ Page {
         Row {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: Theme.paddingLarge + Tokens.safeBottom; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
             spacing: 8 * Tokens.u
-            Label {
+            Label { renderType: Text.NativeRendering;
                 id: posLabel
                 width: 56 * Tokens.u
                 anchors.verticalCenter: parent.verticalCenter
@@ -355,7 +355,7 @@ Page {
                 onReleased: page.seekTo(sliderValue)
             }
             Binding { target: seek; property: "value"; value: page.positionMs; when: !seek.pressed }
-            Label {
+            Label { renderType: Text.NativeRendering;
                 width: 56 * Tokens.u
                 anchors.verticalCenter: parent.verticalCenter
                 horizontalAlignment: Text.AlignRight
@@ -394,7 +394,7 @@ Page {
                 id: menuCol
                 width: parent.width
                 spacing: 4 * Tokens.u
-                Label { text: qsTr("Audio"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; visible: !!page.info && page.info.audio_tracks.length > 1 }
+                Label { renderType: Text.NativeRendering; text: qsTr("Audio"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; visible: !!page.info && page.info.audio_tracks.length > 1 }
                 Repeater {
                     model: page.info && page.info.audio_tracks.length > 1 ? page.info.audio_tracks : []
                     MenuRow {
@@ -408,7 +408,7 @@ Page {
                         onClicked: page.switchAudio(modelData)
                     }
                 }
-                Label { text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
                 MenuRow {
                     objectName: page.info && page.info.audio_tracks.length > 1 ? "parity-player-menu-off" : "parity-player-menu-first"
                     navigationInitialFocus: !page.info || page.info.audio_tracks.length <= 1
@@ -430,7 +430,7 @@ Page {
                         onClicked: { page.chooseSubtitle(modelData.id); page.menuOpen = false }
                     }
                 }
-                Label { text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
                 MenuRow {
                     parityRail: 1
                     parityIndex: 1000

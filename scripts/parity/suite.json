@@ -564,8 +564,8 @@
   "performance": [
     {
       "id": "a",
-      "file": "b9a68b2c-8382-4c34-a6f0-c4dd58f55093",
-      "label": "normal 1080p",
+      "file": "f057244e-e512-4eda-a0e1-2c0a847357ef",
+      "label": "direct-play H.264/AAC MP4 (the iOS capture jobs pin this case, so it must negotiate direct play)",
       "expect": {
         "state": "playing",
         "startWithinSeconds": 30,

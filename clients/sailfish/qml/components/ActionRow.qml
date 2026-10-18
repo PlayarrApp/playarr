@@ -27,7 +27,7 @@ MouseArea {
         anchors { fill: parent; margins: -4 * Tokens.u }
         radius: 14 * Tokens.u + 4 * Tokens.u; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.dark ? "#ffffff" : Tokens.ink
     }
-    Label { id: g; x: 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: root.glyph; color: Tokens.brandPink; font.pixelSize: 20 * Tokens.u; width: 28 * Tokens.u }
-    Label { id: label; anchors { left: g.right; leftMargin: 14 * Tokens.u; right: parent.right; verticalCenter: parent.verticalCenter }
+    Label { renderType: Text.NativeRendering; id: g; x: 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: root.glyph; color: Tokens.brandPink; font.pixelSize: 20 * Tokens.u; width: 28 * Tokens.u }
+    Label { renderType: Text.NativeRendering; id: label; anchors { left: g.right; leftMargin: 14 * Tokens.u; right: parent.right; verticalCenter: parent.verticalCenter }
             elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.5 * Tokens.u }
 }
