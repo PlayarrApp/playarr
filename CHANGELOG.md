@@ -842,6 +842,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Helm chart `playarr-dev`: regional instances accept `strategy` and `exposure.mode: externalIP` (a public ClusterIP Service with `externalIPs` and `externalTrafficPolicy: Local`). `RollingUpdate` is rejected with `hostPort` and, until the server supports two processes on one volume, without an explicit `allowConcurrentPods` opt-in. Defaults render unchanged.
 - The iPad capture workflow now reports sanitized Xcode runtime download errors and package inventory when the pinned iOS 18.5 runtime cannot be acquired.
 - HarmonyOS: Requests in the navigation uses web's plus-in-circle icon.
 - iOS: one Back button (a 44 pt circle) and one Filters tile on every page, following the shared page anatomy.
