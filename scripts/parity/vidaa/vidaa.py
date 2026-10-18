@@ -44,6 +44,9 @@ from pathlib import Path
 
 import paho.mqtt.client as mqtt
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # -I drops the script dir from sys.path
+import broker  # noqa: E402
+
 PORT = 36669
 PATTERN = "38D65DC30F45109A369A86FCE866A85B"
 SUFFIX_MODERN = "h!i@s#$v%i^d&a*a"
@@ -331,17 +334,39 @@ def foreground_ok(tv):
 
 
 # ---------- commands ----------
+# Each op_* runs on an open Tv session and returns the text to print. The keepalive broker runs them on its one
+# long-lived session; the CLI runs them on a direct session only when no broker is listening (see via_broker).
+MIN_KEY_GAP = 0.15  # seconds between key sends to the TV (the CLI/driver delays are usually longer)
+_last_key = 0.0
+
+
+def via_broker(op, direct, **args):
+    r = broker.call({"op": op, **args})
+    if r is None:  # no broker: one direct session for this command
+        tv = connect()
+        try:
+            return direct(tv, **args)
+        finally:
+            tv.close()
+    if not r["ok"]:
+        sys.exit(r["error"])
+    return r["result"]
+
+
+def op_state(tv):
+    return redact(tv.state())
+
+
+def op_apps(tv):
+    return json.dumps(tv.apps(), indent=1)
+
+
 def cmd_state(a):
-    tv = connect()
-    print(redact(tv.state()))
-    tv.close()
+    print(via_broker("state", op_state))
 
 
 def cmd_apps(a):
-    tv = connect()
-    apps = tv.apps()
-    print(json.dumps(apps, indent=1))
-    tv.close()
+    print(via_broker("apps", op_apps))
 
 
 def cmd_volume(a):
@@ -359,48 +384,52 @@ def cmd_volume(a):
 LAUNCHER_KEYS = {"KEY_UP", "KEY_DOWN", "KEY_LEFT", "KEY_RIGHT", "KEY_OK", "KEY_ENTER", "KEY_BACK", "KEY_RETURN", "KEY_HOME"}
 
 
-def cmd_key(a):
-    tv = connect()
-    for k in a.keys:
-        k = k.upper()
+def op_key(tv, keys, allow_any=False, delay=0.6):
+    global _last_key
+    out = []
+    for k in keys:
+        k = str(k).upper()
         if k in BLOCKED_KEYS:
-            tv.close()
-            sys.exit(f"refused: {k} is blocked by policy")
-        if not a.allow_any:
+            sys.exit("\n".join(out + [f"refused: {k} is blocked by policy"]))
+        if not allow_any:
             ok, st = foreground_ok(tv)
             if not ok and st and st.get("statetype") == "remote_launcher" and k in LAUNCHER_KEYS:
                 ok = True
             if not ok:
-                tv.close()
-                sys.exit(f"abort: foreground is not Playarr (state={json.dumps(st)})")
+                sys.exit("\n".join(out + [f"abort: foreground is not Playarr (state={json.dumps(st)})"]))
         # Check the authenticated server identity immediately before every remote action.
         require_device_test_account()
+        time.sleep(max(0.0, _last_key + MIN_KEY_GAP - time.time()))
         tv.pub("remote_service", "sendkey", k)
-        print("sent", k)
-        time.sleep(a.delay)
-    tv.close()
+        _last_key = time.time()
+        out.append(f"sent {k}")
+        time.sleep(delay)
+    return "\n".join(out)
 
 
-def cmd_launch(a):
-    tv = connect()
+def cmd_key(a):
+    print(via_broker("key", op_key, keys=a.keys, allow_any=a.allow_any, delay=a.delay))
+
+
+def op_launch(tv, app, allow_any=False):
     apps = tv.apps() or []
-    want = a.app.lower()
+    want = app.lower()
     hit = None
     for x in apps if isinstance(apps, list) else []:
         if want in (str(x.get("name", "")).lower(), str(x.get("appId", "")).lower()) or want in str(x.get("name", "")).lower():
             hit = x
             break
     if not hit:
-        tv.close()
         sys.exit("app not found; run `apps`")
-    if not a.allow_any:
-        tv.close()
+    if not allow_any:
         sys.exit("launch needs --allow-any (only for starting Playarr)")
     tv.pub("ui_service", "launchapp", {k: hit[k] for k in hit if k != "httpIcon"})
-    print("launch requested:", hit.get("name"))
     time.sleep(3)
-    print(redact(tv.state()))
-    tv.close()
+    return f"launch requested: {hit.get('name')}\n{redact(tv.state())}"
+
+
+def cmd_launch(a):
+    print(via_broker("launch", op_launch, app=a.app, allow_any=a.allow_any))
 
 
 def debug_url(path="/"):
@@ -410,33 +439,31 @@ def debug_url(path="/"):
     return f"{mirror_base()}{path}{sep}platform=tv-vidaa&mirrorToken={mirror_token()}&r={int(time.time())}"  # r: forces a reload
 
 
+def op_open_debug(tv, variant="app", path="/", wait=5):
+    apps = tv.apps() or []
+    base = next((x for x in apps if x.get("appId") == "playarr-tv"), None)
+    if not base:
+        sys.exit("Playarr app entry not found; run `apps`")
+    payload = {k: base[k] for k in base if k != "httpIcon"}
+    if variant == "app":          # the installed Playarr entry, url swapped for our debug page
+        payload["url"] = debug_url(path)
+    elif variant == "webapp":     # a fresh entry, no appId
+        payload = {"name": "Playarr Debug", "urlType": 37, "storeType": 98, "url": debug_url(path)}
+    elif variant == "noid":       # Playarr entry minus appId
+        payload.pop("appId", None)
+        payload["url"] = debug_url(path)
+    tv.pub("ui_service", "launchapp", payload)
+    time.sleep(wait)
+    return f"open-debug requested, variant: {variant}\n{redact(tv.state())}"
+
+
 def cmd_open_debug(a):
     """Open OUR OWN debug-mirror page on the TV (allowed under the guard: it never targets other pages)."""
-    import urllib.error
     try:
         urllib.request.urlopen(f"{mirror_base()}/", timeout=4).read(64)
     except Exception as e:
         sys.exit(f"receiver not reachable at the mirror base: {e}")
-    tv = connect()
-    apps = tv.apps() or []
-    base = next((x for x in apps if x.get("appId") == "playarr-tv"), None)
-    if not base:
-        tv.close()
-        sys.exit("Playarr app entry not found; run `apps`")
-    payload = {k: base[k] for k in base if k != "httpIcon"}
-    variant = a.variant
-    if variant == "app":          # the installed Playarr entry, url swapped for our debug page
-        payload["url"] = debug_url(a.path)
-    elif variant == "webapp":     # a fresh entry, no appId
-        payload = {"name": "Playarr Debug", "urlType": 37, "storeType": 98, "url": debug_url(a.path)}
-    elif variant == "noid":       # Playarr entry minus appId
-        payload.pop("appId", None)
-        payload["url"] = debug_url(a.path)
-    tv.pub("ui_service", "launchapp", payload)
-    print("open-debug requested, variant:", variant)
-    time.sleep(a.wait)
-    print(redact(tv.state()))
-    tv.close()
+    print(via_broker("open_debug", op_open_debug, variant=a.variant, path=a.path, wait=a.wait))
 
 
 def _latest(suffix):
