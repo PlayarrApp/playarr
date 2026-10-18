@@ -72,9 +72,9 @@ def transform(s):
         reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration,
           'rail-list-area', 0, Number(area.width), Number(area.height));
       })""", 1)
-    builder = "            ListItem() {\n              // Phone (overflowItems): the top inset lives in the item so the focus ring is inside the List's content box, not clipped by it.\n              Column() {\n                this.itemBuilder(item, index, this.activeRailFactor)\n              }\n              .padding({ top: this.overflowItems ? this.clipInsetTop : 0 })\n            }"
+    builder = "            ListItem() {\n              this.itemBuilder(item, index, this.activeRailFactor)\n            }"
     assert builder in s
-    s = s.replace(builder, "            ListItem() {\n              // Phone (overflowItems): the top inset lives in the item so the focus ring is inside the List's content box, not clipped by it.\n              Column() {\n                this.itemBuilder(item, index, this.activeRailFactor)\n              }\n              .padding({ top: this.overflowItems ? this.clipInsetTop : 0 })\n            }\n            .onAppear(() => {\n              reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'rail-item-appear', 1, -1, -1);\n            })", 1)
+    s = s.replace(builder, "            ListItem() {\n              this.itemBuilder(item, index, this.activeRailFactor)\n            }\n            .onAppear(() => {\n              reportDetailLayoutStageForScope(this.previewRoute, this.previewWorkId, this.previewGeneration, 'rail-item-appear', 1, -1, -1);\n            })", 1)
     list_on_appear = """      .onAppear(() => {
         this.listHasAppeared = true;
         this.onListOffsetChange(this.listScroller.currentOffset().xOffset);

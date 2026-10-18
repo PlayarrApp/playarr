@@ -424,11 +424,7 @@ export struct MediaRail {
           this.items,
           (item: MediaRailItem, index: number) => {
             ListItem() {
-              // Phone (overflowItems): the top inset lives in the item so the focus ring is inside the List's content box, not clipped by it.
-              Column() {
-                this.itemBuilder(item, index, this.activeRailFactor)
-              }
-              .padding({ top: this.overflowItems ? this.clipInsetTop : 0 })
+              this.itemBuilder(item, index, this.activeRailFactor)
             }
             .attributeModifier(new ItemOverflowModifier(this.overflowItems))
             .onAreaChange((_oldArea: Area, area: Area) => {
@@ -447,8 +443,7 @@ export struct MediaRail {
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
       .attributeModifier(new FocusedOverflowModifier(this.allowFocusedOverflow))
-      .contentStartOffset(this.overflowItems ? this.clipInsetStart : 0)
-      .padding({ left: this.overflowItems ? 0 : this.clipInsetStart, top: this.overflowItems ? 0 : this.clipInsetTop, bottom: RAIL_CLIP_INSET_BOTTOM })
+      .padding({ left: this.clipInsetStart, top: this.clipInsetTop, bottom: RAIL_CLIP_INSET_BOTTOM })
       .margin({ left: -this.clipInsetStart, top: -this.clipInsetTop, bottom: -RAIL_CLIP_INSET_BOTTOM })
       .focusScopeId(this.railId, true, true)
       .id(this.measurementId.length > 0 ? this.measurementId : this.railId + '-list')
