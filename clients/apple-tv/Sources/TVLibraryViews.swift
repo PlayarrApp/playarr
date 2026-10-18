@@ -189,6 +189,10 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
+            #if os(macOS)
+            // Web `[data-fade-axis="y"][data-fade-end]` on `.tv-home-rails`: the last visible row dims to the floor at the page edge.
+            .macEdgeFade(axis: .vertical, endFloor: 0.3)
+            #endif
             // Web `.tv-home-rails.is-vertical-tracks`: the first rail opens at the Library grid's first row (clamp(128, 15vh, 174)).
             .padding(.top, Self.railTopY - origin.y)
             // Web `.tv-home-rails` starts where the Library grid panel starts (100% - 62%), cards at its left padding.
@@ -1050,15 +1054,6 @@ struct TVCardFocusGlow: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius + ringOffset, style: .continuous)
                     .stroke(DesignTokens.Stage.cardGlow, lineWidth: 3)
                     .padding(-ringOffset)
-                    #if os(macOS)
-                    // Web `0 0 20px 4px` glow at 45%: the 4 px spread is a wider faint stroke under the blur.
-                    .background(
-                        RoundedRectangle(cornerRadius: cornerRadius + 7, style: .continuous)
-                            .stroke(DesignTokens.Stage.cardGlow.opacity(0.3), lineWidth: 6)
-                            .padding(-6)
-                            .blur(radius: 10)
-                    )
-                    #else
                     // Web `0 0 20px 4px` at 45 %: a 4 px spread (the wider stroke) blurred by half the 20 px.
                     .background(
                         RoundedRectangle(cornerRadius: cornerRadius + 3, style: .continuous)
@@ -1066,7 +1061,6 @@ struct TVCardFocusGlow: ViewModifier {
                             .padding(-3)
                             .blur(radius: 10)
                     )
-                    #endif
             }
         }
     }
