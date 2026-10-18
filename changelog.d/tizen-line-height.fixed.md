@@ -1,1 +1,0 @@
-- Tizen 6.5 TVs (Chromium 85): single-line text boxes keep their fractional line height, so Music, Series, Movies, Calendar and Settings rows line up with the web.
