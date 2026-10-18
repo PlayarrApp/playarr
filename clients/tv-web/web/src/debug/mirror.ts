@@ -12,6 +12,7 @@ import {
   mirrorFramePayload,
   realNow,
   MIRROR_ACTIVE_PROFILE_KEY,
+  LIVE_SESSION_KEY,
   MIRROR_PROFILE_SESSIONS_KEY,
   readMirrorIdentity,
   readSelectedSession,
@@ -239,7 +240,7 @@ export function startDebugMirror(): void {
   const nativeSetItem = Storage.prototype.setItem;
   Storage.prototype.setItem = function (this: Storage, key: string, value: string): void {
     nativeSetItem.call(this, key, value);
-    if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY)) syncCredentials();
+    if (this === window.localStorage && (key === MIRROR_PROFILE_SESSIONS_KEY || key === MIRROR_ACTIVE_PROFILE_KEY || key === LIVE_SESSION_KEY)) syncCredentials();
   };
   syncCredentials();
   let verifying = false;

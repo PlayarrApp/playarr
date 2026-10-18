@@ -227,6 +227,8 @@ class H(BaseHTTPRequestHandler):
                 "sessionsRawChanged": data.get("sessionsRawChanged") is True,
                 "selectedIdentityChanged": data.get("selectedIdentityChanged") is True,
                 "selectedCredentialsChanged": data.get("selectedCredentialsChanged") is True,
+                "profileHttpStatus": data.get("profileHttpStatus") if isinstance(data.get("profileHttpStatus"), int) else None,
+                "tokenExpiresInS": data.get("tokenExpiresInS") if isinstance(data.get("tokenExpiresInS"), int) else None,
             }
             global IDENTITY_STATUS
             IDENTITY_STATUS = summary

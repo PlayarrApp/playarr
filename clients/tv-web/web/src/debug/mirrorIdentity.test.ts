@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  LIVE_SESSION_KEY,
   MIRROR_ACTIVE_PROFILE_KEY,
   MIRROR_PROFILE_SESSIONS_KEY,
   mirrorFramePayload,
@@ -202,5 +203,17 @@ describe("readSelectedSession", () => {
     expect(readSelectedSession(storage)?.auth).toBe("Bearer new-token");
     values.delete(MIRROR_ACTIVE_PROFILE_KEY);
     expect(readSelectedSession(storage)).toBeNull();
+  });
+
+  it("prefers the app's live session when it belongs to the selected user (the saved copy goes stale after a refresh)", () => {
+    const jwt = (sub: string) => `h.${btoa(JSON.stringify({ sub })).replace(/=+$/, "")}.s`;
+    const values = new Map([[MIRROR_ACTIVE_PROFILE_KEY, marker], [MIRROR_PROFILE_SESSIONS_KEY, session("stale-token")]]);
+    const storage = { getItem: (key: string) => values.get(key) ?? null };
+    values.set(LIVE_SESSION_KEY, JSON.stringify({ accessToken: jwt("user-a"), refreshToken: "r", tokenType: "Bearer", expiresAt: 1 }));
+    expect(readSelectedSession(storage)?.auth).toBe(`Bearer ${jwt("user-a")}`);
+    values.set(LIVE_SESSION_KEY, JSON.stringify({ accessToken: jwt("someone-else"), refreshToken: "r", tokenType: "Bearer", expiresAt: 1 }));
+    expect(readSelectedSession(storage)?.auth).toBe("Bearer stale-token");
+    values.set(LIVE_SESSION_KEY, "not json");
+    expect(readSelectedSession(storage)?.auth).toBe("Bearer stale-token");
   });
 });
