@@ -601,7 +601,7 @@ struct CalendarView: View {
         case .agenda:
             agenda(phone: phone)
         case .week:
-            if phone { weekTrack } else { dayList(groups: viewModel.dayGroups, phone: false) }
+            weekTrack(phone: phone)
         case .month:
             monthView(phone: phone)
         }
@@ -656,9 +656,10 @@ struct CalendarView: View {
         }
     }
 
-    private var weekTrack: some View {
+    private func weekTrack(phone: Bool) -> some View {
         GeometryReader { proxy in
-            let laneWidth = max(300, screenWidth * 0.82)
+            // The web tablet lane is a fixed 324 pt column (measured on the 1366 pt iPad capture).
+            let laneWidth: CGFloat = phone ? max(300, screenWidth * 0.82) : 324
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(viewModel.dayGroups) { group in
