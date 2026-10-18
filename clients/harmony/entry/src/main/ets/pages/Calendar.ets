@@ -9,6 +9,7 @@
  * panel's actions and the Calendar link tile.
  */
 
+import { LengthMetrics } from '@kit.ArkUI';
 import { nunito } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { ActionTile } from '../design/components/ActionTile';
@@ -108,10 +109,27 @@ const PHONE_ENTRY_HEIGHT_NO_SUBTITLE: number = 77;
 const PHONE_PILL_SIZE: number = 11.2;
 const PHONE_PILL_HEIGHT: number = 22.5;
 const PHONE_DAY_HEADING_SIZE: number = 14.4;
-const PHONE_ENTRY_GAP: number = 15;
-const PHONE_ENTRY_TEXT_GAP: number = 3;
+const PHONE_ENTRY_GAP: number = 13.7;
+// Web phone week (`.calendar-week-scroll`): day columns 82vw wide (295.2 on the 360 vp reference), 1.25rem apart, snapping to the column
+// start; the page opens on today's column. Cards wrap their text: min-height 64, 8 vp above and below, 2.4 between lines.
+const PHONE_WEEK_COLUMN: number = 295.2;
+const PHONE_WEEK_GAP: number = 20;
+const PHONE_WEEK_CARD_MIN_HEIGHT: number = 64;
+const PHONE_WEEK_TEXT_GAP: number = 2.4;
+const PHONE_WEEK_META_ROW_GAP: number = 3.2;
+const PHONE_WEEK_MAX_LINES: number = 4;
+const PHONE_CARD_NO_MAX: number = 10000;
+// Web line boxes inside a phone entry: 1.5 times the 16 / 16 / 14 vp type.
+const PHONE_LINE_TITLE: number = 24;
+const PHONE_LINE_META: number = 21;
+const PHONE_AGENDA_BLEED: number = 16;
 const PHONE_AGENDA_CARD_MIN_WIDTH: number = 390;
 const PHONE_CONTROL_FONT: number = 11.2;
+// Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
+const PHONE_CONTROL_GAP: number = 9.6;
+const PHONE_CONTROL_RIGHT: number = 16.7;
+const PHONE_TODAY_WIDTH: number = 72.7;
+const PHONE_RING_OUTSET: number = 5.3;
 const ENTRY_META_GAP: number = 12;
 // Web `.status-pill`: 13.44/750, tone at 14% over the surface with a 60% tone border.
 const PILL_SIZE: number = 13.44;
@@ -210,7 +228,8 @@ export struct ReleaseCalendar {
   @State private filtersOpen: boolean = false;
   @State private linkOpen: boolean = false;
   @State private periodOpen: boolean = false;
-  @State private groups: DayGroup[] = [];
+  @State @Watch('syncWeekScroll') private groups: DayGroup[] = [];
+  private weekScroller: Scroller = new Scroller();
   /** The loaded window before filtering; `regroup` applies the filters (web filters on the client). */
   private entries: CalendarEntry[] = [];
   @State private filters: CalendarFilters = { types: [], statuses: [], monitoredOnly: false };
@@ -314,6 +333,23 @@ export struct ReleaseCalendar {
     pushRoute(getNavStack(), ROUTES.Detail, params);
   }
 
+  /** Phone week: scroll the day columns so today's column starts at the gutter (web's snap), else the first column. */
+  private syncWeekScroll(): void {
+    if (isTvMetrics() || this.view !== 'week') {
+      return;
+    }
+    const days: CalendarCell[] = buildWeekDays(this.anchor, this.groups, this.today);
+    let index = 0;
+    for (let i = 0; i < days.length; i++) {
+      if (days[i].day === this.today) {
+        index = i;
+      }
+    }
+    setTimeout((): void => {
+      this.weekScroller.scrollTo({ xOffset: index * (PHONE_WEEK_COLUMN + PHONE_WEEK_GAP), yOffset: 0, animation: false });
+    }, 60);
+  }
+
   private page(direction: number): void {
     this.anchor = direction === 0 ? this.today : shiftAnchor(this.view, this.anchor, direction);
     this.load();
@@ -414,12 +450,12 @@ export struct ReleaseCalendar {
   @Builder
   private phoneAgendaCard(item: CalendarItem): void {
     Scroll() {
-      this.entryCard(item, 0, PHONE_AGENDA_CARD_MIN_WIDTH, PHONE_ENTRY_TEXT_GAP)
+      this.phoneCard(item, PHONE_AGENDA_CARD_MIN_WIDTH, false, itemSubtitle(item).length > 0 ? PHONE_ENTRY_HEIGHT : PHONE_ENTRY_HEIGHT_NO_SUBTITLE)
     }
     .scrollable(ScrollDirection.Horizontal)
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
-    .width('100%')
+    .width(`calc(100% + ${PHONE_AGENDA_BLEED}vp)`) // web: the agenda cards run to the screen edge
   }
 
   @Builder
@@ -917,13 +953,13 @@ export struct ReleaseCalendar {
   /** Phone: the range, back, Today and forward controls above the view. */
   @Builder
   private touchControls(): void {
-    Row({ space: 8 }) {
+    Row({ space: PHONE_CONTROL_GAP }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunito(700))
         .fontSize(PHONE_CONTROL_FONT)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(44)
-        .padding({ left: 18, right: 18 })
+        .padding({ left: 20, right: 20 })
         .borderRadius(22)
         .backgroundColor(toResourceColor(activeColors().bg))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -933,7 +969,7 @@ export struct ReleaseCalendar {
       this.touchControl('←', 44, (): void => {
         this.page(-1);
       })
-      this.touchControl('Today', 80, (): void => {
+      this.touchControl('Today', PHONE_TODAY_WIDTH, (): void => {
         this.page(0);
       })
       this.touchControl('→', 44, (): void => {
@@ -941,26 +977,39 @@ export struct ReleaseCalendar {
       })
     }
     .width('100%')
-    .justifyContent(FlexAlign.Center)
-    .padding({ top: this.view === 'month' ? 14 : 0, bottom: 12 })
+    .justifyContent(FlexAlign.End)
+    .padding({ top: this.view === 'month' ? 14 : 0, bottom: this.view === 'month' ? 12 : 19, right: PHONE_CONTROL_RIGHT })
+    .margin({ top: this.view === 'month' ? 0 : -4 })
   }
 
   @Builder
   private touchControl(label: string, width: number, onTap: () => void): void {
-    Text(label).fontFamily(nunito(700))
-      .fontSize(PHONE_CONTROL_FONT)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(toResourceColor(activeColors().inkSoft))
-      .textAlign(TextAlign.Center)
-      .width(width)
-      .height(44)
-      .borderRadius(22)
-      .backgroundColor(toResourceColor(activeColors().bg))
-      // web opens the page with Today focused (the Previewer reports no focus): the ring is drawn from the state
-      .border(label === 'Today' ? { width: 3, color: toResourceColor(activeColors().ink) } : { width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-      .onClick(() => {
-        onTap();
-      })
+    Stack() {
+      Text(label).fontFamily(nunito(700))
+        .fontSize(PHONE_CONTROL_FONT)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .textAlign(TextAlign.Center)
+        .width(width)
+        .height(44)
+        .borderRadius(22)
+        .backgroundColor(toResourceColor(activeColors().bg))
+        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+      if (label === 'Today') {
+        // web opens the page with Today focused (the Previewer reports no focus): the 3 vp ring sits outside the pill, 2.3 vp clear of it
+        Column()
+          .width(width + PHONE_RING_OUTSET * 2)
+          .height(44 + PHONE_RING_OUTSET * 2)
+          .borderRadius(22 + PHONE_RING_OUTSET)
+          .border({ width: 3, color: toResourceColor(activeColors().ink) })
+          .hitTestBehavior(HitTestMode.None)
+      }
+    }
+    .width(width)
+    .height(44)
+    .onClick(() => {
+      onTap();
+    })
   }
 
   @Builder
@@ -999,10 +1048,76 @@ export struct ReleaseCalendar {
     }
   }
 
+  /** Phone agenda and week card (web `.calendar-entry`, 24 / 24 / 21 vp lines): the meta line and the pill wrap together. The week's text wraps
+   * too and its card grows with it; the agenda's text stays on one line in a card of `fixedHeight`. */
+  @Builder
+  private phoneCard(item: CalendarItem, minWidth: number, wrap: boolean, fixedHeight: number): void {
+    Row({ space: tv(POSTER_GAP) }) {
+      Image(item.entries[0].poster_url !== undefined && item.entries[0].poster_url !== null ? item.entries[0].poster_url : '')
+        .width(tv(POSTER_WIDTH))
+        .height(tv(POSTER_HEIGHT))
+        .borderRadius(tv(POSTER_RADIUS))
+        .objectFit(ImageFit.Cover)
+        .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+      Column({ space: PHONE_WEEK_TEXT_GAP }) {
+        Text(item.title).fontFamily(nunito(500))
+          .fontSize(PHONE_ENTRY_TITLE_SIZE)
+          .fontWeight(FontWeight.Medium)
+          .lineHeight(PHONE_LINE_TITLE)
+          .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
+          .fontColor(toResourceColor(activeColors().ink))
+        if (itemSubtitle(item).length > 0) {
+          Text(itemSubtitle(item)).fontFamily(nunito(400))
+            .fontSize(PHONE_ENTRY_TITLE_SIZE)
+            .lineHeight(PHONE_LINE_TITLE)
+            .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
+            .fontColor(toResourceColor(activeColors().inkSoft))
+        }
+        Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(ENTRY_META_GAP), cross: LengthMetrics.vp(PHONE_WEEK_META_ROW_GAP) } }) {
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkSoft))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkSoft))
+          if (!item.grouped) {
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkSoft))
+          }
+          this.statusPill(itemPillTone(item, this.today))
+        }
+        .width('100%')
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+    }
+    .width('100%')
+    .constraintSize({
+      minWidth: minWidth,
+      minHeight: fixedHeight > 0 ? fixedHeight : PHONE_WEEK_CARD_MIN_HEIGHT,
+      maxHeight: fixedHeight > 0 ? fixedHeight : PHONE_CARD_NO_MAX,
+    })
+    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: 8, bottom: 8 })
+    .borderRadius(tv(ENTRY_RADIUS))
+    .backgroundColor(toResourceColor(activeColors().surfaceStrong))
+    .border({
+      width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
+      color: {
+        left: toResourceColor(itemAvailable(item) ? activeColors().success : activeColors().inkMuted),
+        top: toResourceColorWithAlpha(activeColors().ink, 0.08),
+        right: toResourceColorWithAlpha(activeColors().ink, 0.08),
+        bottom: toResourceColorWithAlpha(activeColors().ink, 0.08),
+      },
+    })
+    .focusable(true)
+    .onFocus(() => {
+      this.select(item);
+    })
+    .onClick(() => {
+      this.select(item);
+      this.openEntry(item.entries[0]);
+    })
+  }
+
   @Builder
   private touchWeek(): void {
-    Scroll() {
-      Row({ space: 12 }) {
+    Scroll(this.weekScroller) {
+      Row({ space: PHONE_WEEK_GAP }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) }) {
             Text(dayHeading(cell.day)).fontFamily(nunito(500))
@@ -1013,7 +1128,7 @@ export struct ReleaseCalendar {
             Scroll() {
               Column({ space: tv(ENTRY_GAP + 1) }) {
                 ForEach(groupSeriesEpisodes(cell.entries), (item: CalendarItem) => {
-                  this.entryCard(item, 0)
+                  this.phoneCard(item, 0, true, 0)
                 }, (item: CalendarItem): string => item.key)
               }
             }
@@ -1022,7 +1137,7 @@ export struct ReleaseCalendar {
             .scrollBar(BarState.Off)
             .edgeEffect(EdgeEffect.None)
           }
-          .width(300)
+          .width(PHONE_WEEK_COLUMN)
           .height('100%')
           .alignItems(HorizontalAlign.Start)
         }, (cell: CalendarCell): string => cellKey(cell))
