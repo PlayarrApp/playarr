@@ -185,10 +185,15 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>
-        /// The web's language select: a tinted box showing the current choice and a chevron; Enter lists "Any language" and
-        /// the languages <paramref name="load"/> returns in a flyout.
+        /// The web's language multi-select: a tinted box showing the current choice and a chevron; Enter lists "Any language"
+        /// and the languages <paramref name="load"/> returns, each with a check when selected, in a flyout. The drawer stays open.
         /// </summary>
-        public static StackPanel Dropdown(string label, string current, Func<System.Threading.Tasks.Task<System.Collections.Generic.IList<Playarr.Core.Models.LanguageFacet>>> load, Action<string?> onSelect)
+        public static StackPanel Dropdown(
+            string label,
+            Func<string> currentText,
+            Func<System.Collections.Generic.IReadOnlyCollection<string>> selected,
+            Func<System.Threading.Tasks.Task<System.Collections.Generic.IList<Playarr.Core.Models.LanguageFacet>>> load,
+            Action<string?> toggle)
         {
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
             var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
@@ -197,7 +202,9 @@ namespace Playarr.Xbox.Views
             var content = new Grid();
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            content.Children.Add(Ui.Text(current, 10.5, FontWeights.SemiBold, "PlayarrInk"));
+            var text = Ui.Text(currentText(), 10.5, FontWeights.SemiBold, "PlayarrInk");
+            text.TextTrimming = TextTrimming.CharacterEllipsis;
+            content.Children.Add(text);
             var chevron = new FontIcon { Glyph = "\uE70D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 8, Foreground = Ui.Res("PlayarrInkSoft") };
             Grid.SetColumn(chevron, 1);
             content.Children.Add(chevron);
@@ -219,16 +226,25 @@ namespace Playarr.Xbox.Views
             button.Click += async (s, e) =>
             {
                 var flyout = new MenuFlyout();
-                var any = new MenuFlyoutItem { Text = "Any language" };
-                any.Click += (a, b) => onSelect(null);
+                var any = new ToggleMenuFlyoutItem { Text = "Any language", IsChecked = selected().Count == 0 };
+                any.Click += (a, b) =>
+                {
+                    toggle(null);
+                    text.Text = currentText();
+                };
                 flyout.Items.Add(any);
                 try
                 {
+                    var chosen = selected();
                     foreach (var facet in await load())
                     {
                         var code = facet.Code;
-                        var item = new MenuFlyoutItem { Text = string.IsNullOrEmpty(facet.Name) ? code : facet.Name };
-                        item.Click += (a, b) => onSelect(code);
+                        var item = new ToggleMenuFlyoutItem { Text = Playarr.Xbox.ViewModels.LibraryViewModel.LanguageName(code, facet.Name), IsChecked = System.Linq.Enumerable.Contains(chosen, code) };
+                        item.Click += (a, b) =>
+                        {
+                            toggle(code);
+                            text.Text = currentText();
+                        };
                         flyout.Items.Add(item);
                     }
                 }

@@ -457,7 +457,7 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private static string LanguageName(string? code) => string.IsNullOrEmpty(code) ? "Any language" : code!;
+        private readonly Dictionary<string, string> _languageNames = new Dictionary<string, string>();
 
         private void OpenFilters()
         {
@@ -480,16 +480,27 @@ namespace Playarr.Xbox.Views
                 _viewModel.SelectOrder(i == 1);
                 Drawer.TryCloseCurrent();
             }));
-            body.Children.Add(Drawer.Dropdown("Audio language", LanguageName(_viewModel.AudioLang), async () => (await _viewModel.LoadLanguagesAsync()).Audio, code =>
+            foreach (var (label, audio) in new[] { ("Audio language", true), ("Subtitle language", false) })
             {
-                _viewModel.SelectLanguage(true, code);
-                Drawer.TryCloseCurrent();
-            }));
-            body.Children.Add(Drawer.Dropdown("Subtitle language", LanguageName(_viewModel.SubtitleLang), async () => (await _viewModel.LoadLanguagesAsync()).Subtitle, code =>
-            {
-                _viewModel.SelectLanguage(false, code);
-                Drawer.TryCloseCurrent();
-            }));
+                var codes = audio ? _viewModel.AudioLangs : _viewModel.SubtitleLangs;
+                body.Children.Add(Drawer.Dropdown(
+                    label,
+                    () => codes.Count == 0 ? "Any language" : string.Join(", ", codes.Select(code => _languageNames.TryGetValue(code, out var name) ? name : LibraryViewModel.LanguageName(code, null))),
+                    () => codes.ToList(),
+                    async () =>
+                    {
+                        var facets = await _viewModel.LoadLanguagesAsync();
+                        var list = audio ? facets.Audio : facets.Subtitle;
+                        foreach (var facet in list)
+                        {
+                            _languageNames[facet.Code] = LibraryViewModel.LanguageName(facet.Code, facet.Name);
+                        }
+
+                        return list;
+                    },
+                    code => _viewModel.SelectLanguage(audio, code)));
+            }
+
             Drawer.Open((Panel)Content, "Library controls", "Filters", body);
         }
 

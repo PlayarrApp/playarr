@@ -46,7 +46,7 @@ namespace Playarr.Xbox.ViewModels
         private static readonly Dictionary<string, (IReadOnlyList<Work> Works, long? Total)> Snapshots = new Dictionary<string, (IReadOnlyList<Work>, long?)>();
         private static IReadOnlyList<WorkKind>? _kindsSnapshot;
 
-        private string SnapshotKey() => $"{SelectedKind}|{SelectedSort}|{Reversed}|{AudioLang}|{SubtitleLang}";
+        private string SnapshotKey() => $"{SelectedKind}|{SelectedSort}|{Reversed}|{string.Join(",", AudioLangs)}|{string.Join(",", SubtitleLangs)}";
 
         private IReadOnlyList<WorkKind> _kinds = Array.Empty<WorkKind>();
         private WorkKind? _selectedKind;
@@ -158,25 +158,27 @@ namespace Playarr.Xbox.ViewModels
             _ = LoadWorksAsync();
         }
 
-        /// <summary>Web Filters "Audio language" and "Subtitle language" (one code each; <c>null</c> is "Any language").</summary>
-        public string? AudioLang { get; private set; }
+        /// <summary>Web Filters "Audio language" and "Subtitle language": any number of codes each (none is "Any language").</summary>
+        public List<string> AudioLangs { get; } = new List<string>();
 
-        public string? SubtitleLang { get; private set; }
+        public List<string> SubtitleLangs { get; } = new List<string>();
 
+        /// <summary>Toggles <paramref name="code"/> in the audio or subtitle filter; <c>null</c> clears that filter (web <c>toggleLanguage</c>).</summary>
         public void SelectLanguage(bool audio, string? code)
         {
-            if ((audio ? AudioLang : SubtitleLang) == code)
+            var list = audio ? AudioLangs : SubtitleLangs;
+            if (code == null)
             {
-                return;
-            }
+                if (list.Count == 0)
+                {
+                    return;
+                }
 
-            if (audio)
-            {
-                AudioLang = code;
+                list.Clear();
             }
-            else
+            else if (!list.Remove(code))
             {
-                SubtitleLang = code;
+                list.Add(code);
             }
 
             _ = LoadWorksAsync();
@@ -184,7 +186,33 @@ namespace Playarr.Xbox.ViewModels
 
         /// <summary>The languages still offered for the current kind and filters (web <c>catalogLanguages</c>).</summary>
         public Task<LanguageFacets> LoadLanguagesAsync() =>
-            _environment.ApiClient.GetCatalogLanguagesAsync(SelectedKind, true, AudioLang, SubtitleLang);
+            _environment.ApiClient.GetCatalogLanguagesAsync(
+                SelectedKind,
+                true,
+                AudioLangs.Count == 0 ? null : string.Join(",", AudioLangs),
+                SubtitleLangs.Count == 0 ? null : string.Join(",", SubtitleLangs));
+
+        /// <summary>The web's <c>languageDisplayName</c>: the culture's English name for a two-letter code, else the server's name, else the upper-case code.</summary>
+        public static string LanguageName(string code, string? serverName)
+        {
+            try
+            {
+                if (code.Length == 2)
+                {
+                    var name = System.Globalization.CultureInfo.GetCultureInfo(code).EnglishName;
+                    if (!string.IsNullOrEmpty(name) && !string.Equals(name, code, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return name;
+                    }
+                }
+            }
+            catch (System.Globalization.CultureNotFoundException)
+            {
+                // Falls through to the server's name.
+            }
+
+            return string.IsNullOrEmpty(serverName) ? code.ToUpperInvariant() : serverName!;
+        }
 
         /// <summary>Retries a failed load. Wired to LibraryPage's retry button.</summary>
         public void Retry() => _ = LoadWorksAsync();
@@ -244,8 +272,8 @@ namespace Playarr.Xbox.ViewModels
                     limit: PageLimit,
                     availableOnly: true,
                     order: byTitle != Reversed ? "asc" : "desc",
-                    audioLang: AudioLang,
-                    subtitleLang: SubtitleLang);
+                    audioLang: AudioLangs.Count == 0 ? null : string.Join(",", AudioLangs),
+                    subtitleLang: SubtitleLangs.Count == 0 ? null : string.Join(",", SubtitleLangs));
                 Total = page.Total;
                 var works = new List<Work>(page.Items);
                 if (byTitle)

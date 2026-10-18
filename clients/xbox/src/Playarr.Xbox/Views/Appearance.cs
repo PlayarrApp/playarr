@@ -30,8 +30,29 @@ namespace Playarr.Xbox.Views
         /// <summary>The library's View choice (web Filters > View): "list", "screen" (landscape art) or "cover" (2:3 posters).</summary>
         public static string LibraryView
         {
-            get => Read("playarr-library-view", "screen");
+            get => ParityView() ?? Read("playarr-library-view", "screen");
             set => ApplicationData.Current.LocalSettings.Values["playarr-library-view"] = value;
+        }
+
+        /// <summary>A parity capture's <c>parity.view</c> file ("list", "screen" or "cover") overrides the saved view, so a capture never changes the user's setting.</summary>
+        private static string? ParityView()
+        {
+            try
+            {
+                var folder = ApplicationData.Current.LocalFolder.Path;
+                if (!System.IO.File.Exists(System.IO.Path.Combine(folder, "parity.on")))
+                {
+                    return null;
+                }
+
+                var file = System.IO.Path.Combine(folder, "parity.view");
+                var value = System.IO.File.Exists(file) ? System.IO.File.ReadAllText(file).Trim() : string.Empty;
+                return value == "list" || value == "screen" || value == "cover" ? value : null;
+            }
+            catch (System.Exception)
+            {
+                return null;
+            }
         }
 
         public static bool LibraryCover => LibraryView == "cover";
