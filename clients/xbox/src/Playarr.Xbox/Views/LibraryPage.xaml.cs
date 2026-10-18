@@ -53,6 +53,7 @@ namespace Playarr.Xbox.Views
         public LibraryPage()
         {
             InitializeComponent();
+            Background = Theme.PageStage();
             _header = Ui.PageHeader(Root, "Library", null, () => App.Navigation.GoBack());
             Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 152, OpenFilters));
             _viewModel = new LibraryViewModel(App.Environment);
