@@ -92,9 +92,8 @@ export const ARTISTS = Array.from({ length: 6 }, (_, i) => ({
 }));
 
 /** Profiles of the parity account's household. The first is the account the captures sign in as. */
-// The main profile is named "Device Test": the device guards (apple-wall/login.py, the TV drivers) look for exactly that profile.
 export const PROFILES = [
-  { key: "main", suffix: "", display: "Device Test", avatar: "astronaut" },
+  { key: "main", suffix: "", display: "Parity", avatar: "astronaut" },
   { key: "kids", suffix: "-kids", display: "Parity Kids", avatar: "robot" },
   { key: "guest", suffix: "-guest", display: "Parity Guest", avatar: "cat" },
 ];
