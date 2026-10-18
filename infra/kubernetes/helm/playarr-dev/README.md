@@ -104,6 +104,18 @@ Only the `http` container port is published; metrics (9090) stays pod-local.
 Deployments use the `Recreate` strategy, so the old Pod releases the host port
 before the new one starts. The node firewall must allow the port.
 
+Why not a surge rollout (`RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0`):
+the consumers of this port are browsers, native clients and the `playarr.app`
+relay Worker, which connect straight to the node's public IP on 8484 (the
+relay registers that IP, `PLAYARR_PUBLIC_IPV4`). There is no load balancer and
+the chart's Service is `ClusterIP`, so a Service cannot replace the host port.
+A surge Pod would be scheduled on the same pinned node and stay `Pending`
+because a node can bind a host port for only one Pod. The readiness probe
+(`/readyz`) is already rendered, so the change to surge becomes possible once
+the public address is served by something other than `hostPort` (for example
+a load balancer or a Service with a dedicated public address); until then the
+brief gap on each rollout is accepted.
+
 ## HTTPS (`tls`)
 
 Each instance can set `tls: {hostnames: [...], issuer: letsencrypt-prod}`:
