@@ -2,7 +2,15 @@
 //   HARMONY_CTL=40017 (the bridge's control port; 40117 for the phone profile)
 // Keys go through the Previewer's command channel; the route and the focused item come from the preview-only parity state the patched
 // app reports to the bridge (scripts/harmony-wall/patch_state.py). Run it against a signed-in Previewer (scripts/harmony-wall/capture.py).
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync } from "node:fs";
+
+let dbgN = 0;
+// Diagnostics for the focus checks: one line of state and a frame per call, kept under suite/dark (uploaded with the captures).
+const dbgShot = async (tag) => {
+  const s = await (await get("/state")).json();
+  console.log(`  harmony ${tag}: ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-3) })}`);
+  try { mkdirSync("suite/dark", { recursive: true }); writeFileSync(`suite/dark/dbg-${String(++dbgN).padStart(2, "0")}-${tag}.png`, Buffer.from(await (await get("/shot.png")).arrayBuffer())); } catch {}
+};
 
 const CTL = `http://127.0.0.1:${process.env.HARMONY_CTL ?? "40017"}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -58,6 +66,7 @@ export async function createDriver() {
         await sleep(6000);
       }
       await sleep(1500);
+      await dbgShot("home-ready");
     },
     async location() {
       const s = await state();
@@ -77,6 +86,7 @@ export async function createDriver() {
     async focused() {
       const s = await state();
       if (!s.focused) console.log(`  harmony focused: none, state ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-4) })}`);
+      await dbgShot("focused");
       return s.focused;
     },
     async screenshot(file) {
