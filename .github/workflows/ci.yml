@@ -945,7 +945,9 @@ jobs:
           cache-dependency-path: scripts/parity/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg  # the Roku pixel-sampling test shells out to ffmpeg
+          npm ci --no-audit --no-fund
 
       - name: Test (test:suite plus driver and Sailfish tests)
         run: |
