@@ -1,0 +1,1 @@
+- Android tablet: a series detail with few tracks centres its first season like the web, and Similar Titles use the web's wider 16:9 cards.
