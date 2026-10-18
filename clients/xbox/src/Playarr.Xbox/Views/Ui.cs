@@ -16,12 +16,36 @@ namespace Playarr.Xbox.Views
             new TextBlock { Text = text, FontSize = size, FontWeight = weight, Foreground = Res(brushKey), Margin = margin };
 
         /// <summary>The web page header: round Back button, title and an optional pink count line, at the shell content edge.</summary>
-        public static void PageHeader(Panel host, string title, string? subtitle, Action back)
+        public static PageHeaderParts PageHeader(Panel host, string title, string? subtitle, Action back)
         {
-            host.Children.Add(BackButton(back));
+            var backButton = BackButton(back);
+            host.Children.Add(backButton);
             var titles = new StackPanel { Margin = new Thickness(228, 57, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            LayoutHeader(titles, new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] }, new TextBlock { Text = subtitle ?? string.Empty });
+            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] };
+            var subtitleText = new TextBlock { Text = subtitle ?? string.Empty };
+            LayoutHeader(titles, titleText, subtitleText);
             host.Children.Add(titles);
+            return new PageHeaderParts(backButton, titles, titleText, subtitleText);
+        }
+
+        /// <summary>The header's live parts: pages that change the title or subtitle later call <see cref="LayoutHeader"/> again.</summary>
+        internal sealed class PageHeaderParts
+        {
+            public PageHeaderParts(Button back, StackPanel titles, TextBlock title, TextBlock subtitle)
+            {
+                Back = back;
+                Titles = titles;
+                Title = title;
+                Subtitle = subtitle;
+            }
+
+            public Button Back { get; }
+
+            public StackPanel Titles { get; }
+
+            public TextBlock Title { get; }
+
+            public TextBlock Subtitle { get; }
         }
 
         /// <summary>

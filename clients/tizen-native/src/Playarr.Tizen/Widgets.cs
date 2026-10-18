@@ -335,8 +335,8 @@ internal sealed class MediaCard
     public static MediaCard PlaylistDetail(AppEnv env, WorkCard card, float x, float y, CardLayout? cardLayout = null)
     {
         var l = cardLayout ?? CardLayout.Library(false, "medium");
-        var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
-            blur: 52, shadowY: 26, shadowAlpha: 0.32f, boxHeight: l.CardHeight, boxLift: -6f, focusHeight: l.CardHeight, showRing: false, artW: l.Width, artH: l.ArtHeight);
+        var media = new MediaCard(env, env.Theme, card, x, y, showSub: true, titleInset: 1.9f, scale: 1.025f, lift: 0,
+            blur: 52, shadowY: 26, shadowAlpha: 0.32f, boxHeight: l.CardHeight, boxLift: -6f, focusHeight: l.CardHeight, showRing: true, artW: l.Width, artH: l.ArtHeight);
         if (card.Kind == WorkKind.Unknown) AddPlaylistKind(media, env, card);
         return media;
     }
@@ -388,11 +388,10 @@ internal sealed class KeyArt
                 if (_path != wanted) return; // focus moved on
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
-                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f);
-                img.Opacity = dark ? 0.07f : 0.035f; // web (measured at 1920x1080): the art is only a ghost in both themes
+                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
+                img.Opacity = dark ? 0.07f : 0.035f; // retain the current low-opacity TV treatment
                 Root.Add(img);
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
-                Root.Add(Ui.Gradient(-20 + 1038.3f * 0.72f, 0, 1038.3f * 0.28f, 1080, true, (0, clear), (1, s)));
                 Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, s), (0.22f, clear), (1, clear)));
                 Root.Add(Ui.Gradient(0, 0, 1920, 1080, false, (0, s), (0.18f, clear), (0.82f, clear), (1, s)));
             });
@@ -404,19 +403,29 @@ internal sealed class KeyArt
 internal sealed class DetailsPanel
 {
     public View Root { get; } = new();
+    public float ContentBottom { get; private set; }
     private readonly AppEnv _env;
     private readonly bool _library;
     private readonly bool _flow;
+    private readonly bool _includeRuntime;
+    private readonly bool _useWebNoMetaOverviewGap;
     private Guid _showing;
     private static readonly Dictionary<Guid, long?> RuntimeCache = new();
 
-    public DetailsPanel(AppEnv env, bool library, bool flow = false) { _env = env; _library = library || flow; _flow = flow; }
+    public DetailsPanel(AppEnv env, bool library, bool flow = false, bool includeRuntime = true, bool useWebNoMetaOverviewGap = false)
+    {
+        _env = env;
+        _library = library || flow;
+        _flow = flow;
+        _includeRuntime = includeRuntime;
+        _useWebNoMetaOverviewGap = useWebNoMetaOverviewGap;
+    }
 
     public void Show(WorkCard card, string? kickerOverride = null, string? metaLead = null)
     {
         _showing = card.WorkId;
-        Render(card, kickerOverride, metaLead, RuntimeCache.TryGetValue(card.WorkId, out var rt) ? rt : null);
-        if (!RuntimeCache.ContainsKey(card.WorkId))
+        Render(card, kickerOverride, metaLead, _includeRuntime && RuntimeCache.TryGetValue(card.WorkId, out var rt) ? rt : null);
+        if (_includeRuntime && !RuntimeCache.ContainsKey(card.WorkId))
             _env.Images.Track(() => FetchRuntimeAsync(card, kickerOverride, metaLead));
     }
 
@@ -457,10 +466,14 @@ internal sealed class DetailsPanel
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
         if (meta.Length > 0) Root.Add(Ui.Text(meta, 153.6f, metaY, metaSize, 600, Soft(t), 455, _library ? 19.584f : 18, spacing: 0));
-        var oy = metaY + (_library ? 41.2f : 40.9f);
+        var noMetaGap = Math.Clamp(TizenClient.DesignHeight * 0.02f, 16f, 28f); // web .tv-home-feature overview margin: clamp(16px, 2vh, 28px)
+        var oy = meta.Length == 0 && _useWebNoMetaOverviewGap
+            ? ty + tlh * lines + noMetaGap
+            : metaY + (_library ? 41.2f : 40.9f);
         var ovLine = _library ? 21.842f : 20.325f; var ovSize = _library ? 13.824f : 12.864f;
         var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 322, ovLine, 0, 5); // web clamps the preview overview at 5 lines on every page
         var top = ky; var bottom = oy + ovLines * ovLine;
+        ContentBottom = bottom;
         var scrim = Ui.PanelScrim(t, 153.6f, top, 455, bottom - top);
         Root.Add(scrim); scrim.LowerToBottom();
     }

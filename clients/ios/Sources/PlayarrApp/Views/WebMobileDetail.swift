@@ -147,7 +147,7 @@ final class WMDetailModel {
 
 // MARK: - Page
 
-private enum WMFormat {
+enum WMFormat {
     static func clock(_ ms: Int64) -> String {
         let total = Int(ms / 1000)
         let hours = total / 3600, minutes = (total % 3600) / 60, seconds = total % 60
@@ -267,11 +267,11 @@ struct WMDetailPage: View {
         if let runtimeMs, runtimeMs > 0 { items.append((WMFormat.runtime(runtimeMs), false)) }
         if let year = WMFormat.yearRange(releaseDate: work.releaseDate, endDate: work.endDate) { items.append((year, false)) }
         if isSeries, let aired = WMFormat.date(selectedEpisode?.detail.episode.airDate) {
-            items.append(("Aired  \(aired)", false))
+            items.append(("Aired \(aired)", false))
         } else if let released = WMFormat.date(work.releaseDate) {
-            items.append(("\(isSeries ? "Premiered" : "Released")  \(released)", false))
+            items.append(("\(isSeries ? "Premiered" : "Released") \(released)", false))
         }
-        if !work.genres.isEmpty { items.append((work.genres.joined(separator: ", "), false)) }
+        for genre in work.genres { items.append((genre, false)) }  // one item per genre, spaced like the web
         return items
     }
 
@@ -397,6 +397,8 @@ struct WMDetailPage: View {
                     .font(WM.font(11.52))
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
+                    // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
+                    .lineSpacing(1.57)
                     .frame(width: 347, alignment: .topLeading)
                     .padding(.top, isSeries ? 10.6 : 12.04)
             }
@@ -501,7 +503,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 126, height: 47, fill: WM.pink, glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 126, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 9.52,
                     glyphColor: .white, label: "Play", labelSize: 11.2, labelColor: .white, gap: 11
                 )
             }

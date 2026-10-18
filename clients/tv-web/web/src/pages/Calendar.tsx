@@ -227,7 +227,8 @@ export function formatRangeButtonLabel(view: CalendarView, anchor: Day, firstDay
   }
   const range = visibleRange(view, anchor, firstDay);
   const formatted = utcFormatter(locale, { day: "numeric", month: "short" }).formatRange(parseDay(range.start), parseDay(range.end));
-  if (locale.startsWith("en") && lacksNames(formatted)) return englishShortRange(parseDay(range.start), parseDay(range.end));
+  // Older ICU (webOS Chromium 132) joins same-month ranges with a bare hyphen; the web shows a spaced en dash.
+  if (locale.startsWith("en") && (lacksNames(formatted) || !formatted.includes("\u2013"))) return englishShortRange(parseDay(range.start), parseDay(range.end));
   return formatted;
 }
 

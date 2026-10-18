@@ -131,9 +131,12 @@ button.pa-pill.selected { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-overview { font-size: 12.5px; color: @pa_ink_soft; }
 button.pa-action { background: alpha(@pa_surface_strong, 0.7); border: none; border-radius: 999px; min-height: 44px; padding: 0 8px; box-shadow: none; }
 button.pa-action.primary { background: @pa_ink; }
+/* The web film Play pill is crimson in both themes. */
+button.pa-action.primary.crimson { background: #a52745; box-shadow: 0 14px 38px rgba(165, 39, 69, 0.3); }
 button.pa-action:focus-visible { outline: 2px solid @pa_ring; outline-offset: 3px; }
 .pa-action-label { font-size: 11px; font-weight: 700; color: @pa_ink; }
 button.pa-action.primary .pa-action-label { color: @pa_bg; }
+button.pa-action.primary.crimson .pa-action-label { color: #ffffff; }
 .pa-season-title { font-size: 19px; font-weight: 610; color: @pa_ink; }
 .pa-ep-badge { font-size: 15px; font-weight: 500; color: #ffffff; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
 .pa-ep-code { font-size: 9px; font-weight: 700; color: @pa_ink_soft; }

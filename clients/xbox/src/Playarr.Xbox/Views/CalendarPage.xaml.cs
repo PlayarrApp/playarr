@@ -44,15 +44,7 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             _root = RootGrid;
             _root.Children.Add(_content);
-            _root.Children.Add(Ui.BackButton(() => App.Navigation.GoBack()));
-            _root.Children.Add(new TextBlock
-            {
-                Text = "Calendar",
-                Style = (Style)Application.Current.Resources["PlayarrPageTitle"],
-                Margin = new Thickness(228, 57, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
-            });
+            Ui.PageHeader(_root, "Calendar", null, () => App.Navigation.GoBack());
 
             var controls = new StackPanel
             {

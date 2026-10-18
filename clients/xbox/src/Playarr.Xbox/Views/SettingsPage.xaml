@@ -20,27 +20,7 @@
         section list on the left (x 154-634, 92 px rows) and the open section's controls on the right from x=774.
         Only sections this client implements are listed, keeping the web's numbers.
     -->
-    <Grid>
-        <Button
-            x:Name="BackButton"
-            Width="50"
-            Height="50"
-            CornerRadius="25"
-            Margin="154,56,0,0"
-            Padding="0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            Background="Transparent"
-            BorderBrush="{StaticResource PlayarrLineStrong}"
-            BorderThickness="1"
-            Click="BackButton_Click">
-            <FontIcon Glyph="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
-        </Button>
-        <StackPanel x:Name="HeaderTitles" Margin="228,57,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <TextBlock x:Name="PageTitleText" Text="Preferences" Style="{StaticResource PlayarrPageTitle}" />
-            <TextBlock x:Name="SectionText" Text="APPEARANCE" />
-        </StackPanel>
-
+    <Grid x:Name="Root">
         <ScrollViewer
             x:Name="TabsScroll"
             Width="480"
