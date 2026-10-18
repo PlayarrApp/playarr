@@ -1425,6 +1425,13 @@ internal fun CalendarMonth(
         if (wide) {
             // Web `.calendar-month`: chips inside the day cells, filling the space below the header.
             // Web TV month grid: 1662 px wide (clear of the right action column), header at y 179, cells 151.2 tall and ending at y 961.
+            if (isTelevision && LocalStageScale.current != 1f) {
+                // Tablet web at 1280 x 800 draws the month grid in css px (12.48 px lines, 106 px rows): grid at x 131 to 1167, y 134 to 691.
+                UnstagedForWebCssPx {
+                    CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().padding(top = 53.25.dp, end = 35.dp, bottom = 26.dp), true, tabletCss = true)
+                }
+                return@BoxWithConstraints
+            }
             CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().then(if (isTelevision) Modifier.padding(top = 59.dp, end = 32.dp, bottom = 23.dp) else Modifier.padding(top = 8.dp)), isTelevision)
             return@BoxWithConstraints
         }
@@ -1535,6 +1542,8 @@ private fun CalendarMonthChips(
     isTelevision: Boolean = false,
     /** The phone's scrolling strip: web draws three lines per cell there, with the header row 8 dp deeper. */
     phoneStrip: Boolean = false,
+    /** Tablet web at 1280 x 800: the TV cell with 7.5 px more above the lines and 14 px more under them. */
+    tabletCss: Boolean = false,
 ) {
     val rows = remember(state.window) { calendarGridRows(state.window) }
     val cells = remember(rows) { rows.flatten() }
@@ -1543,7 +1552,7 @@ private fun CalendarMonthChips(
         entries.groupBy { it.date }.mapValues { (_, day) -> groupSeriesEpisodes(day.sortedBy { it.releaseAt }, zone) }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val headerHeight = if (phoneStrip) 34.dp else 26.dp
+        val headerHeight = if (phoneStrip) 34.dp else if (tabletCss) 29.75.dp else 26.dp
         val cellHeight = (maxHeight - headerHeight) / rows.size
         // Web: chips that fit = (cell height - 52) / 26, between 1 and 5; when more exist the last slot is "+N more".
         // Web TV text lines: 25 dp lines above a footer with the day number and "+N more", so the count never takes a line.
@@ -1586,7 +1595,7 @@ private fun CalendarMonthChips(
                                     .background(if (inMonth) Color.Transparent else WebSurfaceSoft.copy(alpha = 0.4f))
                                     .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.11f, 0.13f))
                                     .then(if (day == today) Modifier.border(2.dp, WebInk) else Modifier)
-                                    .padding(horizontal = 4.8.dp, vertical = 0.8.dp),
+                                    .padding(start = 4.8.dp, end = 4.8.dp, top = 0.8.dp + (if (tabletCss) 7.5.dp else 0.dp), bottom = 0.8.dp + (if (tabletCss) 14.dp else 0.dp)),
                             ) {
                                 Column(Modifier.weight(1f).padding(top = 1.dp)) {
                                     shown.forEachIndexed { slot, item ->
