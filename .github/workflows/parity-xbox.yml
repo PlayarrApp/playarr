@@ -21,6 +21,10 @@ on:
         description: Also run the legacy playback performance job, separate from the player-controls parity screen
         type: boolean
         default: false
+      extras:
+        description: Also capture the Library List view (movies-list.png, with a web reference) and the open Audio language flyout (filters-languages.png)
+        type: boolean
+        default: false
       screens:
         description: Comma-separated Xbox screens; player-controls is opt-in and requires the configured direct-play fixture secret
         type: string
@@ -35,6 +39,12 @@ permissions:
 
 # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
 env:
+  # Captures run against the static seeded parity server (a named tunnel to the lab host), never the live server.
+  # These three repo secrets are the one place that switches every hosted parity workflow.
+  PARITY_SERVER_URL: ${{ secrets.PARITY_STATIC_URL }}
+  PARITY_USERNAME: ${{ secrets.PARITY_STATIC_USERNAME }}
+  PARITY_PASSWORD: ${{ secrets.PARITY_STATIC_PASSWORD }}
+  PARITY_STATIC_SERVER: "1" # the static server's deck is canonical: no live-fixture seeding or pins
   PARITY_STABLE: "0"
 
 jobs:
@@ -121,22 +131,23 @@ jobs:
           "$XBOX_IO" restart
       - name: Sign in as Device Test
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
           TEST_ACCOUNT_KEY: PLAYARR_DEVICE_TEST_USERNAME
-          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
         run: python scripts/xbox-wall/pair.py
       - name: Run the suite part
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          PLAYARR_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
           PART: ${{ matrix.part }}
+          EXTRAS: ${{ inputs.extras }}
           SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters' }}
           PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID: ${{ secrets.PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID }}
           XBOX_DEBUG_DIR: ${{ github.workspace }}/out/debug
@@ -153,7 +164,16 @@ jobs:
               fi
               node suite-run.mjs --driver ./xbox/driver.mjs --only screens --screens "$SCREENS" --themes "$T" --via route --out "$OUT/run" --expected "$OUT/none.json"
               mkdir -p "$OUT/dev/light"
-              if [ "$T" = light ]; then cp "$OUT"/run/light/*.png "$OUT/dev/light/"; else cp "$OUT"/run/dark/*.png "$OUT/dev/"; fi ;;
+              if [ "$T" = light ]; then cp "$OUT"/run/light/*.png "$OUT/dev/light/"; else cp "$OUT"/run/dark/*.png "$OUT/dev/"; fi
+              if [ "$EXTRAS" = true ]; then
+                # The suite's screen list is fixed, so the extras reuse movies and filters with an env switch on each driver.
+                D="$OUT/dev"; [ "$T" = light ] && D="$OUT/dev/light"
+                PARITY_ROUTE_QUERY=view=list node suite-run.mjs --driver ./drivers/web.mjs --reference --only screens --screens movies --themes "$T" --via route --out "$OUT/web-home/list" --expected "$OUT/web-home/list/expected.json"
+                XBOX_LIBRARY_VIEW=list node suite-run.mjs --driver ./xbox/driver.mjs --only screens --screens movies --themes "$T" --via route --out "$OUT/run-list" --expected "$OUT/none.json"
+                cp "$OUT/run-list/$T/movies.png" "$D/movies-list.png"
+                XBOX_FILTERS_AUDIO=1 node suite-run.mjs --driver ./xbox/driver.mjs --only screens --screens filters --themes "$T" --via route --out "$OUT/run-lang" --expected "$OUT/none.json"
+                cp "$OUT/run-lang/$T/filters.png" "$D/filters-languages.png"
+              fi ;;
             dpad)
               node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --out "$OUT/web"
               node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"

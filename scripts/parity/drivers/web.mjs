@@ -723,7 +723,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     async panelOpen() { await guard(); const value = await page.evaluate(() => [...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)); await guard(); return value; },
     async route(r, { requireHeroAction = false } = {}) {
       await guard();
-      await page.goto(web + r, { waitUntil: "load" });
+      // Opt-in: PARITY_ROUTE_QUERY (for example view=list) is added to a plain /movies route (Xbox extra captures).
+      await page.goto(web + r + (env.PARITY_ROUTE_QUERY && r === "/movies" ? `?${env.PARITY_ROUTE_QUERY}` : ""), { waitUntil: "load" });
       await guard();
       detailActionRequired = requireHeroAction && /^\/(?:movies|series)\/[^/]+\/?(?:\?.*)?$/.test(r);
       await waitForDetailReady({ requireHeroAction: detailActionRequired });

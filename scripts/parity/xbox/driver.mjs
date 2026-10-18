@@ -216,6 +216,8 @@ export async function createDriver() {
       const lib = base.split("/").slice(0, 2).join("/");
       if (!RAIL[lib]) throw new Error(`no route for ${path}`);
       const kind = expectedLibraryKind(lib);
+      // The saved Library view stays untouched: parity.view overrides it for the capture. XBOX_LIBRARY_VIEW=list takes the List view.
+      run("write", "parity.view", process.env.XBOX_LIBRARY_VIEW === "list" ? "list" : "screen");
       await click(...RAIL[lib], 25);
       if (kind) {
         const focusDeadline = Date.now() + 30000;
@@ -230,7 +232,11 @@ export async function createDriver() {
       }
       if (/^\/(movies|series)\/[^/]+\/?$/.test(base) || base.endsWith("/:id")) await click(...FIRST_CARD, 8);
       else if (base.startsWith("/player")) throw new Error("player-controls requires the guarded direct-play route");
-      else if (query?.includes("panel=filters")) await click(1877, 187, 3);
+      else if (query?.includes("panel=filters")) {
+        await click(1877, 187, 3);
+        // XBOX_FILTERS_AUDIO=1: open the Audio language select (below View, Sort by and Order) to capture its flyout.
+        if (process.env.XBOX_FILTERS_AUDIO === "1") await click(1700, 523, 3);
+      }
     },
     async key(name, { long } = {}) {
       await requireTestAccount();
