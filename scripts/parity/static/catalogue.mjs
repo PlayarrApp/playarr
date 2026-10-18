@@ -43,7 +43,7 @@ export const MOVIES = Array.from({ length: MOVIE_COUNT }, (_, i) => ({
   key: `movie:${i}`,
   workId: PINNED[`movie:${i}`]?.work ?? uid(`movie:${i}`),
   fileId: PINNED[`movie:${i}`]?.file ?? uid(`movie:${i}:file`),
-  title: `${name(i, 1)} ${i + 1}`,
+  title: `${i === MOVIE_COUNT - 1 ? "7 " : ""}${name(i, 1)} ${i + 1}`, // one digit-led title keeps the library alphabet rail's # entry active, as on a real library
   year: 1998 + ((i * 5) % 28),
   tmdbId: 810000 + i,
   certification: RATINGS[i % RATINGS.length],
@@ -59,7 +59,7 @@ export const SERIES = Array.from({ length: SERIES_COUNT }, (_, i) => {
   return {
     key: `series:${i}`,
     workId,
-    title: `${name(i, 4)} ${i + 1}`,
+    title: `${i === SERIES_COUNT - 1 ? "7 " : ""}${name(i, 4)} ${i + 1}`,
     year: 2004 + ((i * 3) % 22),
     tvdbId: 910000 + i,
     certification: TV_RATINGS[i % TV_RATINGS.length],
