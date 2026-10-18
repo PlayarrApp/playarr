@@ -2365,7 +2365,7 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
           .fontSize(10.24)
@@ -2528,6 +2528,8 @@ struct Detail {
               .letterSpacing(-1.6)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
+              // web phone: a series title wraps at about 250 vp (measured on the static fixture: "Golden / Cathedral 1")
+              .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 250 : '100%' })
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunito(500))
                 .fontSize(14.4)
@@ -2543,6 +2545,8 @@ struct Detail {
               .lineHeight(16.7)
               .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 11.7 : 10) : 12 })
               .maxLines(3)
+              // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
+              .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
               this.touchActionRows()
