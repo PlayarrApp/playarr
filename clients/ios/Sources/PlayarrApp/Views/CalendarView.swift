@@ -660,6 +660,7 @@ struct CalendarView: View {
     private var weekTrack: some View {
         GeometryReader { proxy in
             let laneWidth = max(300, screenWidth * 0.82)
+            ScrollViewReader { reader in
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(viewModel.dayGroups) { group in
@@ -690,6 +691,16 @@ struct CalendarView: View {
             }
             .scrollTargetBehavior(.viewAligned)
             .scrollIndicators(.hidden)
+            // The web week track opens on the today lane when the range holds it.
+            .onAppear { scrollToToday(reader) }
+            .onChange(of: viewModel.dayGroups.first?.id) { _, _ in scrollToToday(reader) }
+            }
+        }
+    }
+
+    private func scrollToToday(_ reader: ScrollViewProxy) {
+        if let today = viewModel.dayGroups.first(where: { $0.day == viewModel.today }) {
+            reader.scrollTo(today.id, anchor: .leading)
         }
     }
 
