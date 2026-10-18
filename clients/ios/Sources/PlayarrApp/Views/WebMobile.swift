@@ -14,6 +14,8 @@ enum WM {
     static let inkSoft = PlayarrStyle.inkSoft
     static let muted = PlayarrStyle.muted
     static let detailMuted = adaptive(light: (77, 66, 72), dark: (194, 181, 187))
+    /// Detail-page subtitle and bold meta ink, measured from the web (darker than the shared soft ink).
+    static let detailInkSoft = adaptive(light: (68, 58, 64), dark: (205, 193, 198))
     static let pink = PlayarrStyle.pink
     static let brandInk = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
     static let cardGlowColor = adaptive(light: (165, 39, 69), dark: (234, 166, 182))
