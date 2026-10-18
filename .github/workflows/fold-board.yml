@@ -1,5 +1,5 @@
 # Post-merge fold: this folds the tasks.d/ and changelog.d/ fragments that are pending after any
-# push to main, as Thomas McFarlane with a `Merge-Train: yes` trailer, pushing with the
+# push to main, as Thomas McFarlane with a `Board-Fold: yes` trailer, pushing with the
 # TRAIN_DEPLOY_KEY deploy key when it exists (so CI and deploys fire natively) and GITHUB_TOKEN otherwise. main is not
 # protected, so a direct push is allowed; Actions cannot open pull requests here. See scripts/fold-main.sh.
 name: Fold board
