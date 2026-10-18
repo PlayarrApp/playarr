@@ -52,17 +52,7 @@ struct CalendarView: View {
             if phone {
                 phoneBody
             } else {
-            VStack(alignment: .leading, spacing: 12) {
-                header(phone: phone)
-                controls(phone: phone)
-                if !viewModel.unhealthySources.isEmpty { sourceBanner }
-                content(phone: phone)
-            }
-            .padding(.leading, phone ? 16 : 120)
-            .padding(.trailing, phone ? 16 : 40)
-            .padding(.top, phone ? 56 : 40)
-            .padding(.bottom, phone ? 84 : 24)
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+                tabletBody(proxy: proxy)
             }
         }
         .background(PlayarrStyle.background.ignoresSafeArea())
@@ -132,6 +122,65 @@ struct CalendarView: View {
                 }
             }
             .presentationDetents([.medium, .large])
+        }
+    }
+
+    /// Web tablet calendar (measured at 1366 x 1024 pt): back circle and title like the Library header, the range pill with
+    /// round previous and next controls top right, the Calendar link and Filters tiles in the right column, and the
+    /// day lanes starting 168 pt down.
+    private func tabletBody(proxy: GeometryProxy) -> some View {
+        let scale = proxy.size.width / 1366
+        return ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 12) {
+                if !viewModel.unhealthySources.isEmpty { sourceBanner }
+                content(phone: false)
+            }
+            .padding(.leading, 120)
+            .padding(.trailing, 86 * scale)
+            .padding(.top, 168 * proxy.size.height / 1024)
+            .padding(.bottom, 24)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+
+            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            WMText("Calendar", max(19.2, 24 * scale), 520, lh: 36, ls: -1)
+                .offset(x: 182 * scale, y: 57 * scale)
+            HStack(spacing: 8) {
+                Menu {
+                    Picker("View", selection: Binding(
+                        get: { viewModel.mode },
+                        set: { newMode in Task { await viewModel.setMode(newMode) } }
+                    )) {
+                        Text("Agenda").tag(CalendarViewMode.agenda)
+                        Text("Week").tag(CalendarViewMode.week)
+                        Text("Month").tag(CalendarViewMode.month)
+                    }
+                } label: {
+                    WMText(phoneRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                        .fixedSize()
+                        .padding(.horizontal, 20.5)
+                        .frame(height: 44)
+                        .background(WM.page, in: Capsule())
+                        .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
+                }
+                roundButton("\u{2190}", label: "Previous period") { Task { await viewModel.step(-1) } }
+                Button { Task { await viewModel.goToToday() } } label: {
+                    WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                        .frame(width: 74, height: 44)
+                        .background(WM.page, in: Capsule())
+                        .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                roundButton("\u{2192}", label: "Next period") { Task { await viewModel.step(1) } }
+            }
+            .frame(width: proxy.size.width - 55 * scale, alignment: .trailing)
+            .offset(y: 53 * scale)
+
+            VStack(spacing: 19) {
+                PlayarrHeaderPill(label: "Calendar link", systemImage: "bell") { showingSubscription = true }
+                PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", count: viewModel.filters.activeCount) { showingFilters = true }
+            }
+            .frame(width: proxy.size.width - 16 * scale, alignment: .trailing)
+            .offset(y: min(max(116, proxy.size.height * 0.14), 164))
         }
     }
 
@@ -518,47 +567,6 @@ struct CalendarView: View {
 
     // MARK: Header and controls
 
-    private func header(phone: Bool) -> some View {
-        PlayarrPageHeader(
-            title: "Calendar",
-            detail: viewModel.windowTitle,
-            phone: phone,
-            filterCount: viewModel.filters.activeCount,
-            onFilters: { showingFilters = true }
-        ) {
-            PlayarrHeaderPill(label: "Calendar link", systemImage: "bell", iconOnly: phone) {
-                showingSubscription = true
-            }
-        }
-        // Keep clear of the profile button the shell floats at the top right on phones.
-        .padding(.trailing, phone ? 52 : 0)
-    }
-
-    private func controls(phone: Bool) -> some View {
-        HStack(spacing: 10) {
-            Picker("View", selection: Binding(
-                get: { viewModel.mode },
-                set: { newMode in Task { await viewModel.setMode(newMode) } }
-            )) {
-                Text("Agenda").tag(CalendarViewMode.agenda)
-                Text("Week").tag(CalendarViewMode.week)
-                Text("Month").tag(CalendarViewMode.month)
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 280)
-
-            Spacer(minLength: 0)
-
-            Button { Task { await viewModel.step(-1) } } label: { Image(systemName: "chevron.left") }
-                .accessibilityLabel("Previous period")
-            Button("Today") { Task { await viewModel.goToToday() } }
-            Button { Task { await viewModel.step(1) } } label: { Image(systemName: "chevron.right") }
-                .accessibilityLabel("Next period")
-        }
-        .buttonStyle(.bordered)
-        .tint(PlayarrStyle.inkSoft)
-    }
-
     private var sourceBanner: some View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(viewModel.unhealthySources) { source in
@@ -602,7 +610,7 @@ struct CalendarView: View {
         case .agenda:
             agenda(phone: phone)
         case .week:
-            if phone { weekTrack } else { dayList(groups: viewModel.dayGroups, phone: false) }
+            weekTrack(phone: phone)
         case .month:
             monthView(phone: phone)
         }
@@ -657,9 +665,10 @@ struct CalendarView: View {
         }
     }
 
-    private var weekTrack: some View {
+    private func weekTrack(phone: Bool) -> some View {
         GeometryReader { proxy in
-            let laneWidth = max(300, screenWidth * 0.82)
+            // The web tablet lane is a fixed 324 pt column (measured on the 1366 pt iPad capture).
+            let laneWidth: CGFloat = phone ? max(300, screenWidth * 0.82) : 324
             ScrollViewReader { reader in
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 20) {

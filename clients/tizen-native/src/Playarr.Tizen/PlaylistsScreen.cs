@@ -85,6 +85,7 @@ internal sealed class PlaylistsScreen : IPage
     public bool IsReady => _ready;
     public string? FocusedLabel => _management?.FocusedLabel ?? _createDrawer?.FocusedLabel ?? _filters?.FocusedLabel ?? (_actionFocus >= 0 ? _actionControls[_actionFocus].Target.Label : _focus.Item?.Label);
     internal bool IsPlaylistNameEditing => _createDrawer?.IsNameEditing == true;
+    internal void SetCreateName(string value) => _createDrawer?.SetName(value);
     internal void SubmitCreateFromName() => _createDrawer?.SubmitFromTextInput();
     public float FocusCentreY => _management is not null || _createDrawer is not null || _filters is not null ? 79 : _actionFocus >= 0 ? _actionControls[_actionFocus].Target.Rect().CentreY : _focus.CurrentRect is { Height: > 0 } rect ? rect.CentreY : 210.8f;
 
@@ -112,7 +113,7 @@ internal sealed class PlaylistsScreen : IPage
         _count = new PageSubtitle(env, _root, "Playlists");
         _eyebrow = Ui.Text("YOUR COLLECTION", 153.6f, 259.2f, 12.288f, 800, _theme.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f);
         _root.Add(_eyebrow);
-        _featureTitle = Ui.Text("Playlists", 153.6f, FeatureTitleY, FeatureTitleSize, 600, _theme.Ink, 455, FeatureTitleSize * 0.9f, spacing: FeatureTitleSize * -0.072f, maxLines: 3);
+        _featureTitle = Ui.Text("Playlists", 153.6f, FeatureTitleY, FeatureTitleSize, 600, _theme.Ink, 455, FeatureTitleSize * 0.9f, spacing: FeatureTitleSize * -0.072f, multiline: true, maxLines: 3);
         _root.Add(_featureTitle);
         _featureCopy = Ui.Text("Choose a playlist to view its contents.", 153.6f, FeatureCopyDefaultY, 13.824f, 500, _theme.InkMuted, 336, 110, multiline: true, maxLines: 5);
         _root.Add(_featureCopy);
@@ -237,8 +238,8 @@ internal sealed class PlaylistsScreen : IPage
         _directorySelection = entry.Playlist.Id;
         var mediaType = entry.Playlist.MediaType.Equals("audio", StringComparison.OrdinalIgnoreCase) ? "AUDIO" : "VIDEO";
         _eyebrow.Text = $"{mediaType} · {(entry.Playlist.IsSystem ? "SHARED PLAYLIST" : "YOUR PLAYLIST")}";
-        _featureTitle.Text = entry.Playlist.Name;
-        _featureCopy.PositionY = FeatureTitleY + FeatureTitleSize * 0.9f + Math.Clamp(TizenClient.DesignHeight * 0.02f, 16f, 28f);
+        var titleLines = SetFeatureTitle(entry.Playlist.Name);
+        _featureCopy.PositionY = FeatureTitleY + titleLines * FeatureTitleSize * 0.9f + Math.Clamp(TizenClient.DesignHeight * 0.02f, 16f, 28f);
         _featureCopy.Text = _directoryItemCounts.TryGetValue(entry.Playlist.Id, out var count)
             ? TitleCount(count)
             : "Loading playlist…";
@@ -246,6 +247,14 @@ internal sealed class PlaylistsScreen : IPage
         _keyArt.Set(first is null
             ? null
             : ArtworkPaths.Path(first, ImageKind.Backdrop) ?? ArtworkPaths.Path(first, ImageKind.Poster));
+    }
+
+    /// <summary>Wraps like the web hero (up to three lines, the last ellipsised) and returns the line count so the copy below can follow.</summary>
+    private int SetFeatureTitle(string title)
+    {
+        var lines = Ui.WrapLines(title, FeatureTitleSize, 600, FeatureTitleSize * -0.072f, 455, maxLines: 3);
+        _featureTitle.Text = string.Join('\n', lines);
+        return Math.Max(1, lines.Count);
     }
 
     private static string TitleCount(int count) => $"{count} {(count == 1 ? "title" : "titles")}";
@@ -374,7 +383,7 @@ internal sealed class PlaylistsScreen : IPage
         _directorySelection = rootId;
         _title.Text = current.Playlist.Name;
         var tracks = PlaylistDirectoryModel.DetailTracks(_entries, rootId);
-        _count.Set($"{MediaTypeLabel(current.Playlist.MediaType)} · {tracks.Count} {(tracks.Count == 1 ? "TRACK" : "TRACKS")}", _title.Text);
+        _count.Set($"{MediaTypeLabel(current.Playlist.MediaType)} · {tracks.Count} {(tracks.Count == 1 ? "TRACK" : "TRACKS")}", _title.Text, wrapped: true);
         _eyebrow.Show(false);
         _featureTitle.Show(false);
         _featureCopy.Show(false);
@@ -1061,7 +1070,6 @@ internal sealed class PlaylistsScreen : IPage
         _focus.Item?.Style(false);
         FocusManager.Instance.ClearFocus();
         _root.Add(_createDrawer.Root);
-        _createDrawer.FocusNameInput();
     }
 
     private void CloseCreate()
