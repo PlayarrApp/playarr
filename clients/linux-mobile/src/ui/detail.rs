@@ -190,7 +190,15 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Center)
         .build();
-    let tone = if primary { Tone::White } else { Tone::Brand };
+    // The web's film Play pill is crimson; the other primary pills (Start, Resume) keep the ink fill.
+    let crimson = primary && label == "Play";
+    let tone = if crimson {
+        Tone::White
+    } else if primary {
+        Tone::OnAccent
+    } else {
+        Tone::Brand
+    };
     row.append(&icons::image(icon, if small { 9 } else { 12 }, tone));
     let class = if small { "pa-action-label-s" } else { "pa-action-label" };
     // The large pills wrap ("Resume / from 0:23") as the web's do; the small ones fit on one line.
@@ -204,7 +212,9 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     );
     let b = gtk4::Button::builder()
         .child(&row)
-        .css_classes(if primary {
+        .css_classes(if crimson {
+            vec!["pa-action", "primary", "crimson"]
+        } else if primary {
             vec!["pa-action", "primary"]
         } else {
             vec!["pa-action"]
