@@ -62,18 +62,6 @@
   --card-cols-cover: calc(5 + var(--card-size-step));
   --card-grid-gap: clamp(14px, calc(1.35 * var(--vw)), 28px);
   --card-grid-gap-cover: clamp(12px, calc(1 * var(--vw)), 20px);
-  --card-w: calc(
-    (
-      var(--card-rail-vw) * var(--vw) - var(--card-pad-left) - var(--card-pad-right) -
-        (var(--card-cols) - 1) * var(--card-grid-gap)
-    ) / var(--card-cols)
-  );
-  --card-w-cover: calc(
-    (
-      var(--card-rail-vw) * var(--vw) - var(--card-pad-left) - var(--card-pad-right) -
-        (var(--card-cols-cover) - 1) * var(--card-grid-gap-cover)
-    ) / var(--card-cols-cover)
-  );
   --card-art-ratio: 16 / 9;
   --card-art-ratio-cover: 2 / 3;
   --card-radius: clamp(8px, calc(0.65 * var(--vw)), 13px);
@@ -110,6 +98,23 @@
   --page-edge-fade-floor: 0.3;
 }
 
+/* The one definition of the card size. It is evaluated on the root and again on a phone grid beside a letter rail, whose --card-pad-right is wider. */
+:root,
+[data-page-id]:has(.tv-alphabet) .tv-library-grid-panel {
+  --card-w: calc(
+    (
+      var(--card-rail-vw) * var(--vw) - var(--card-pad-left) - var(--card-pad-right) -
+        (var(--card-cols) - 1) * var(--card-grid-gap)
+    ) / var(--card-cols)
+  );
+  --card-w-cover: calc(
+    (
+      var(--card-rail-vw) * var(--vw) - var(--card-pad-left) - var(--card-pad-right) -
+        (var(--card-cols-cover) - 1) * var(--card-grid-gap-cover)
+    ) / var(--card-cols-cover)
+  );
+}
+
 :root[data-artwork-size="small"] {
   --card-size-step: 1;
 }
@@ -131,17 +136,19 @@
   :root {
     --card-rail-vw: 100;
     --card-pad-left: var(--mobile-page-gutter);
-    /* Clears the library letter rail; the poster card is one size everywhere, so every phone card takes this width. */
-    --card-pad-right: calc(var(--mobile-alpha-rail) + var(--safe-right));
+    /* Pages without a letter rail run to the page gutter; only the library grid reserves the rail (below). */
+    --card-pad-right: var(--mobile-page-gutter);
     --card-cols: calc(2 + var(--card-size-step));
     --card-cols-cover: calc(2 + var(--card-size-step));
     --card-grid-gap: 12px;
     --card-grid-gap-cover: 12px;
   }
 
-  /* The Library grid also clears the letter rail (--mobile-alpha-rail) on its right; other pages keep the gutter. */
-  .tv-library-grid-panel {
+  /* A grid beside a letter rail (the page mounts .tv-alphabet) clears it on its right (--mobile-alpha-rail); every other page keeps the gutter. */
+  [data-page-id]:has(.tv-alphabet) .tv-library-grid-panel {
     --directory-rail-pad: var(--mobile-alpha-rail);
+    /* The letter rail is here only: the grid's cards are sized for the space beside it (--card-w below is recomputed on this panel). */
+    --card-pad-right: calc(var(--mobile-alpha-rail) + var(--safe-right));
   }
 }
 

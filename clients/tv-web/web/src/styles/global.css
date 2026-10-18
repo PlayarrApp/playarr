@@ -6359,9 +6359,9 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   white-space: nowrap;
 }
 
+/* No own entry animation (see .tv-home-feature): the route transition fades the page body once. */
 .tv-detail-copy {
   z-index: 12;
-  animation: tv-copy-in 520ms 80ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 /* The nav rail (z 90) would crop the focus ring of the first action on the left: lift the column above it while one of its controls has keyboard focus. */
@@ -9892,8 +9892,8 @@ html:is([data-platform="android-tv"], [data-platform="tv-vidaa"]) .player-qualit
   width: calc(var(--stage-rail-width) + var(--list-glow-room));
   padding: var(--panel-pad);
   padding-left: 0;
-  /* Clear the shell action column (Filters, Notifications): the same reserve the Library grid keeps (page-layout.css). */
-  padding-right: var(--library-rail-right);
+  /* Clear the shell action column (Filters, Notifications) only: Downloads has no letter rail to reserve room for. */
+  padding-right: calc(var(--directory-controls-edge) + var(--directory-controls-width) + var(--directory-controls-gap));
 }
 
 /* On a phone the Downloads panel and the state panels are the whole page (they keep Home's 62% column on larger

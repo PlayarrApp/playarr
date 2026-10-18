@@ -11,7 +11,7 @@ const report = process.argv.includes("--report");
 const sampler = () => {
   const s = (window.__hero = { frames: [], ids: new WeakMap(), n: 0, anims: new WeakSet(), starts: {} });
   const tick = () => {
-    const el = [...document.querySelectorAll(".tv-home-feature, .tv-library-preview")].at(-1);
+    const el = [...document.querySelectorAll(".tv-home-feature, .tv-library-preview, .tv-detail-copy")].at(-1);
     let frame = null;
     if (el) {
       if (!s.ids.has(el)) s.ids.set(el, (s.n += 1));
@@ -31,14 +31,19 @@ const sampler = () => {
 
 // The previous page stays drawn until the new route mounts, so only the block of the page navigated to is judged:
 // its opacity may only rise, and exactly one animation (the route entry) may start on it.
-const steps = [["/movies", "Movies"], ["/series", "Series"], ["/", "Home"], ["/movies", "Movies"]];
+// Film and series detail copy (`.tv-detail-copy`) follow the same rule: one entrance with the page, then stay.
+const steps = [
+  ['a[href="/movies"]', "Movies"], ['a[href^="/movies/"]', "Film detail"],
+  ['a[href="/series"]', "Series"], ['a[href^="/series/"]', "Series detail"],
+  ['a[href="/"]', "Home"], ['a[href="/movies"]', "Movies"],
+];
 for (const [width, height] of [[1920, 1080], [1280, 720], [390, 844]]) {
   const { page } = await open("/", { width, height, init: sampler });
-  for (const [href, name] of steps) {
+  for (const [css, name] of steps) {
     await page.evaluate(() => { const s = window.__hero; s.frames.length = 0; s.starts = {}; s.anims = new WeakSet(); });
-    const link = page.locator(`a[href="${href}"]`).first();
-    if (!(await link.count()) || !(await link.isVisible())) { console.log(`SKIP  ${width}: no visible link to ${name}`); continue; }
-    await link.click();
+    const link = page.locator(css).first();
+    if (!(await link.count()) || (!css.includes('^=') && !(await link.isVisible()))) { console.log(`SKIP  ${width}: no visible link to ${name}`); continue; }
+    if (css.includes('^=')) await link.evaluate((a) => a.click()); else await link.click();
     await page.waitForTimeout(800);
     const { frames, starts } = await page.evaluate(() => ({ frames: window.__hero.frames, starts: window.__hero.starts }));
     const label = `${width}px to ${name}`;
