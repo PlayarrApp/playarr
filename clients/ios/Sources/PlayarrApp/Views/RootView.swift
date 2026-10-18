@@ -426,12 +426,6 @@ private struct AuthenticatedPlayarrShell: View {
         .background(PlayarrStyle.background.ignoresSafeArea())
         .environment(visibleDetailRoutes)
         #if DEBUG
-        .overlay(alignment: .bottomLeading) { // TEMPORARY (diagnostic run): the trace in the captured frame
-            TimelineView(.periodic(from: .now, by: 0.5)) { _ in
-                Text(ParityLaunch.traceLines.suffix(14).joined(separator: "\n"))
-                    .font(.system(size: 7, design: .monospaced)).foregroundStyle(.red).allowsHitTesting(false)
-            }
-        }
         .overlay(alignment: .topLeading) {
             if ParityLaunch.isActive {
                 VStack {

@@ -94,9 +94,7 @@ enum ParityLaunch {
         state["trace"] = lines
         if let data = try? JSONSerialization.data(withJSONObject: state) { try? data.write(to: url, options: .atomic) }
         NSLog("PLAYARR_PARITY_TRACE %@", message)
-        traceLines = lines
     }
-    @MainActor static var traceLines: [String] = []
     private static let traceStart = Date()
     @MainActor static func recordedBool(_ key: String) -> Bool? {
         let url = acceptanceStateURL
