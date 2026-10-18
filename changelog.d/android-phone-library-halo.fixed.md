@@ -1,0 +1,1 @@
+- Android phone library: the unwatched dot keeps its crimson halo and shadow as on the web, and the A to Z index strip sits 1 px lower (17.530).

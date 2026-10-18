@@ -1,1 +1,0 @@
-- Sailfish: week calendar cards are one pixel taller and wrap long titles and subtitles as the web (week dark 94.67 to 95.64, light 93.50 to 94.91).

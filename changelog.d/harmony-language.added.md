@@ -1,1 +1,0 @@
-- HarmonyOS: a string layer from the web's English, Thai and Japanese tables and Settings > Language; navigation labels and Settings text follow it.

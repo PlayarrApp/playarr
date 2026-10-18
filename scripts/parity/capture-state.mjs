@@ -25,7 +25,7 @@ function clientEnvironment(client, env, secrets) {
     ? { username: secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME ?? env.PLAYARR_DEVICE_TEST_DPAD_USERNAME, password: secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD ?? env.PLAYARR_DEVICE_TEST_DPAD_PASSWORD }
     : parityCredentials({ ...env, PARITY_CLIENT: client }, secrets);
   if (!credentials.username || !credentials.password) throw new Error("missing explicitly selected parity account credentials");
-  const serverUrl = env.PLAYARR_TEST_SERVER_URL ?? env.PLAYARR_SERVER_URL ?? env.PLAYARR_DEVICE_TEST_SERVER_URL ?? secrets.PLAYARR_TEST_SERVER_URL ?? secrets.PLAYARR_SERVER_URL ?? secrets.PLAYARR_DEVICE_TEST_SERVER_URL;
+  const serverUrl = env.PARITY_SERVER_URL ?? env.PLAYARR_TEST_SERVER_URL ?? env.PLAYARR_SERVER_URL ?? env.PLAYARR_DEVICE_TEST_SERVER_URL ?? secrets.PLAYARR_TEST_SERVER_URL ?? secrets.PLAYARR_SERVER_URL ?? secrets.PLAYARR_DEVICE_TEST_SERVER_URL;
   if (!serverUrl) throw new Error("PLAYARR_SERVER_URL or PLAYARR_DEVICE_TEST_SERVER_URL is required");
   return { ...env, PARITY_CLIENT: client, PARITY_ACCOUNT: client, PLAYARR_SERVER_URL: serverUrl.replace(/\/$/, ""), PLAYARR_USERNAME: credentials.username, PLAYARR_PASSWORD: credentials.password, PARITY_USERNAME_KEY: dpadOptIn ? "PLAYARR_DEVICE_TEST_DPAD_USERNAME" : keys.username, PARITY_PASSWORD_KEY: dpadOptIn ? "PLAYARR_DEVICE_TEST_DPAD_PASSWORD" : keys.password };
 }

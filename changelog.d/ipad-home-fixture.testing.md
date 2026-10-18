@@ -1,1 +1,0 @@
-- iPad Home parity captures now fail closed when the Device Test account has unexpected playback progress or the canonical Home deck row changes during capture.

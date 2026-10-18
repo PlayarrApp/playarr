@@ -1,1 +1,0 @@
-- Apple TV: parity focus trace reports the focused item's frame when it has no label.

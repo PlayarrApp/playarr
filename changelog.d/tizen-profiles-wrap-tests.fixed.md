@@ -1,1 +1,0 @@
-- Tizen native profile picker matches the web more closely: the Sign in circle carries the brand wash, the settings and Sign out pills have their icons and position, the Theme select shows a sun and a chevron icon, and the name and caption sit 3 px higher. Word wrapping now lives in a testable `TextWrap` with unit tests.

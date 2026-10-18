@@ -365,8 +365,8 @@ struct WMDetailPage: View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(kicker, 10.56, 820, color: WM.brandInk, lh: 15.84, ls: 0.8448)
             Text(work.title)
-                .font(WM.font(39, 560))
-                .tracking(-2.808)
+                .font(WM.font(39.3, 560))
+                .tracking(-2.8296)
                 .foregroundStyle(WM.ink)
                 .lineLimit(1)
                 .frame(width: 358, height: 36.66, alignment: .leading)
@@ -467,7 +467,7 @@ struct WMDetailPage: View {
                     .offset(x: 0, y: 2)
                     Button { showingPlayback = true } label: {
                         pill(
-                            width: 121.1, fill: WM.chip.opacity(0.72), glyph: "☷", glyphSize: 12.88,
+                            width: 120.5, fill: WM.chip.opacity(0.72), glyph: "☷", glyphSize: 12.88,
                             glyphColor: WM.pink, label: "Playback", labelSize: 11.2, labelColor: WM.ink, gap: 8
                         )
                     }
@@ -476,7 +476,7 @@ struct WMDetailPage: View {
                     .disabled(playMediaFileID == nil)
                     .offset(x: 112, y: 2)
                     playLink
-                        .offset(x: 237.6, y: 0)
+                        .offset(x: 236.9, y: 0)
                 }
                 .frame(width: 358, height: 47, alignment: .topLeading)
                 .padding(.top, 13.3)
@@ -503,7 +503,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 128.1, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 127.7, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 9.52,
                     glyphColor: .white, label: "Play", labelSize: 11.2, labelColor: .white, gap: 11
                 )
             }
