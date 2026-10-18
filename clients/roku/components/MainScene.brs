@@ -84,6 +84,7 @@ sub init()
     m.homeGroup = m.top.findNode("homeGroup")
     m.homeStage = m.top.findNode("homeStage")
     m.homeStage.findNode("homeRailFrostLayer").visible = true
+    m.top.findNode("browseScrims").frost = true
     m.homeHeroDetailTimer = m.top.findNode("homeHeroDetailTimer")
     m.homeHeroFocusedWorkId = ""
     m.homeHeroPendingWorkId = ""
@@ -135,6 +136,7 @@ sub init()
     m.browsePreviewTitle = m.top.findNode("browsePreviewTitle")
     m.browsePreviewMeta = m.top.findNode("browsePreviewMeta")
     m.browsePreviewMeta2 = m.top.findNode("browsePreviewMeta2")
+    m.browsePreviewMeta3 = m.top.findNode("browsePreviewMeta3")
     m.browsePreviewOverview = m.top.findNode("browsePreviewOverview")
     m.browseAlphabet = m.top.findNode("browseAlphabet")
     buildAlphabetStrip()
@@ -179,6 +181,7 @@ sub init()
     m.detailGroup = m.top.findNode("detailGroup")
     m.detailStage = m.top.findNode("detailStage")
     m.detailContent = m.detailStage.contentTarget
+    m.detailStage.findNode("scrimLayer").frost = true
     m.detailOverview = m.top.findNode("detailOverview")
     m.detailActions = m.top.findNode("detailActions")
     m.detailEpisodes = m.top.findNode("detailEpisodes")
@@ -198,7 +201,7 @@ sub init()
     m.detailContent.AppendChild(m.detailSimilar)
     ' Rail headings (web .tv-media-track h2 and its count line) live beside the rails, inside the scrolling content panel.
     m.detailHeads = []
-    for headIndex = 0 to 2
+    for headIndex = 0 to 3
         head = CreateObject("roSGNode", "TrackedText")
         creditLine = CreateObject("roSGNode", "TrackedText")
         m.detailContent.AppendChild(head)
@@ -669,7 +672,7 @@ sub flushPendingApiRequests()
     if m.pendingHomeHeroRequest <> invalid
         req = m.pendingHomeHeroRequest
         m.pendingHomeHeroRequest = invalid
-        if m.top.screenState = "home" and req.workId = m.homeHeroFocusedWorkId and m.homeHeroRuntimeById.Lookup(req.workId) = invalid
+        if (m.top.screenState = "home" or m.top.screenState = "browse") and req.workId = m.homeHeroFocusedWorkId and m.homeHeroRuntimeById.Lookup(req.workId) = invalid
             startApiRequest(req)
         end if
     end if
@@ -2680,20 +2683,40 @@ end function
 sub buildAlphabetStrip()
     letters = alphabetLetterList()
     m.alphabetLabels = []
+    ' Web .tv-alphabet: 44 px letter buttons; the active letter is a filled 24 px ink circle inside a 2 px brand ring (32 px).
+    m.alphabetRing = CreateObject("roSGNode", "Poster")
+    m.alphabetRing.uri = "pkg:/images/round-ring-r16.9.png"
+    m.alphabetRing.width = 32
+    m.alphabetRing.height = 32
+    m.alphabetRing.blendColor = ThemeColor("brand")
+    ThemeSetRole(m.alphabetRing, "brand")
+    m.alphabetDot = CreateObject("roSGNode", "Poster")
+    m.alphabetDot.uri = "pkg:/images/round-r12.9.png"
+    m.alphabetDot.width = 24
+    m.alphabetDot.height = 24
+    m.alphabetDot.blendColor = ThemeColor("ink")
+    ThemeSetRole(m.alphabetDot, "ink")
+    m.browseAlphabet.AppendChild(m.alphabetRing)
+    m.browseAlphabet.AppendChild(m.alphabetDot)
     y = 0
     for each letter in letters
         label = CreateObject("roSGNode", "Label")
         label.translation = [0, y]
-        label.width = 40
-        label.height = 24
+        label.width = 44
+        label.height = 44
         label.text = letter
         label.horizAlign = "center"
-        label.color = ThemeColor("inkSoft")
+        label.vertAlign = "center"
+        label.color = ThemeColor("inkMuted")
         label.font = PlayarrMakeFont(400, 9)
         m.browseAlphabet.AppendChild(label)
         m.alphabetLabels.Push(label)
-        y += 25.6
+        y += 44
     end for
+    m.browseLetterIndex = 0
+    m.alphabetDot.translation = [10, 10]
+    m.alphabetRing.translation = [6, 6]
+    m.alphabetLabels[0].color = ThemeColor("bg")
 end sub
 
 sub enterBrowseAlphabet(preserveCurrent as Boolean)
@@ -2719,13 +2742,18 @@ function moveBrowseAlphabetFocus(delta as Integer) as Boolean
 end function
 
 sub renderBrowseAlphabetFocus()
+    active = m.browseLetterIndex
+    if m.browseAlphabetMode then active = m.browseAlphabetIndex
+    if active = invalid or active < 0 then active = 0
     for i = 0 to m.alphabetLabels.Count() - 1
-        if m.browseAlphabetMode and i = m.browseAlphabetIndex
-            m.alphabetLabels[i].color = ThemeColor("brand")
+        if i = active
+            m.alphabetLabels[i].color = ThemeColor("bg")
         else
-            m.alphabetLabels[i].color = ThemeColor("inkSoft")
+            m.alphabetLabels[i].color = ThemeColor("inkMuted")
         end if
     end for
+    m.alphabetDot.translation = [10, active * 44 + 10]
+    m.alphabetRing.translation = [6, active * 44 + 6]
 end sub
 
 sub selectBrowseAlphabetLetter()
@@ -2875,12 +2903,8 @@ sub updateBrowsePreview(work as Object)
     m.browsePreviewKind.spec = { text: kicker, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true }
     m.browsePreviewTitle.spec = { text: work.title, size: 69, weight: 560, tracking: -4.977, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
     year = ""
-    ' Web uses added_at year, not release_date.
-    if work.added_at <> invalid and work.added_at.Len() >= 4
-        year = work.added_at.Left(4)
-    else if work.release_date <> invalid and work.release_date.Len() >= 4
-        year = work.release_date.Left(4)
-    end if
+    ' Web LibraryPreview: release year only (never the added date).
+    if work.release_date <> invalid and work.release_date.Len() >= 4 then year = work.release_date.Left(4)
     genreLine = ""
     if work.genres <> invalid and work.genres.Count() > 0
         genreLine = joinStrings(work.genres, " · ")
@@ -2891,13 +2915,19 @@ sub updateBrowsePreview(work as Object)
     if titleLines < 1 then titleLines = 1
     metaY = 303.5 + 62.208 * titleLines + 27
     m.browsePreviewMeta.translation = [153.6, metaY]
-    m.browsePreviewMeta.spec = { text: year, size: 12, weight: 400, tracking: 0, role: "inkSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
-    m.browsePreviewMeta2.translation = [194.4, metaY]
-    m.browsePreviewMeta2.spec = { text: genreLine, size: 12, weight: 400, tracking: 0, role: "inkMuted", width: 300, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta.spec = { text: year, size: 13.2, weight: 400, tracking: 0, role: "inkSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
+    metaX = 153.6
+    if year <> "" then metaX = 153.6 + m.browsePreviewMeta.textWidth + 14.4
+    m.browsePreviewMeta2.translation = [metaX, metaY]
+    m.browsePreviewMeta2.spec = { text: genreLine, size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 300, lineHeight: 18.144, maxLines: 1 }
+    m.browseMetaY = metaY
+    m.browseMetaGenreLine = genreLine
+    m.homeHeroFocusedWorkId = work.id
+    showBrowsePreviewRuntime(work.id)
     overview = work.overview
     if overview = invalid or overview = "" then overview = "No synopsis available."
     m.browsePreviewOverview.translation = [153.6, metaY + 39.8]
-    m.browsePreviewOverview.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 5 }
+    m.browsePreviewOverview.spec = { text: overview, size: 15.4, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 23, maxLines: 5 }
     ' Defer key-art download so acceptBrowseCatalog paints the grid first.
     ' Home hero uses sync GetToFile successfully; here it must not block paint.
     if m.browseKeyArt <> invalid
@@ -3075,6 +3105,8 @@ sub onBrowseItemFocused(event as Object)
     if itemIndex = invalid then return
     if itemIndex >= 0 and itemIndex < m.browseItems.Count()
         updateBrowsePreview(m.browseItems[itemIndex])
+        m.browseLetterIndex = browseAlphabetIndexForItem(m.browseItems[itemIndex])
+        renderBrowseAlphabetFocus()
         parityEmit("focus", "open " + m.browseItems[itemIndex].title)
     end if
     browseFadesUpdate(itemIndex)
@@ -4468,11 +4500,34 @@ sub updateHeroFromWork(work as Object)
     setStageKeyArt(m.homeStage, heroArtworkUrl(work))
 end sub
 
+' Web LibraryPreview third span: the focused work's runtime, filled in once its detail is known (same cache and request as the Home hero).
+sub showBrowsePreviewRuntime(workId as String)
+    m.browsePreviewMeta3.spec = { text: "", size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
+    if workId = "" or m.homeHeroDetailTimer = invalid then return
+    runtimeMs = m.homeHeroRuntimeById.Lookup(workId)
+    if runtimeMs <> invalid
+        placeBrowsePreviewRuntime(runtimeMs)
+        return
+    end if
+    m.homeHeroPendingWorkId = workId
+    m.homeHeroDetailTimer.control = "stop"
+    m.homeHeroDetailTimer.duration = 0.35
+    m.homeHeroDetailTimer.control = "start"
+end sub
+
+sub placeBrowsePreviewRuntime(runtimeMs as Dynamic)
+    label = formatRuntime(runtimeMs)
+    x = m.browsePreviewMeta2.translation[0] + 13.6
+    if m.browseMetaGenreLine <> invalid and m.browseMetaGenreLine <> "" then x = x + m.browsePreviewMeta2.textWidth
+    m.browsePreviewMeta3.translation = [x, m.browseMetaY]
+    m.browsePreviewMeta3.spec = { text: label, size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
+end sub
+
 sub onHomeHeroDetailTimer()
     if m.homeHeroDetailTimer <> invalid then m.homeHeroDetailTimer.control = "stop"
     workId = m.homeHeroPendingWorkId
     m.homeHeroPendingWorkId = ""
-    if workId = "" or m.top.screenState <> "home" or workId <> m.homeHeroFocusedWorkId then return
+    if workId = "" or (m.top.screenState <> "home" and m.top.screenState <> "browse") or workId <> m.homeHeroFocusedWorkId then return
     if m.homeHeroRuntimeById.Lookup(workId) <> invalid then return
     request = {
         action: "homeHeroDetail"
@@ -4502,6 +4557,8 @@ sub acceptHomeHeroDetail(workId as Dynamic, data as Dynamic)
     m.homeHeroRuntimeById[workId] = runtimeMs
     if m.top.screenState = "home" and m.homeHeroFocusedWorkId = workId
         m.homeStage.stageMeta = formatRuntime(runtimeMs)
+    else if m.top.screenState = "browse" and m.homeHeroFocusedWorkId = workId
+        placeBrowsePreviewRuntime(runtimeMs)
     end if
 end sub
 
@@ -5161,6 +5218,8 @@ sub showDetail(detail as Object)
     ' concurrently the way tv-web's own two independent effects do.
     m.detailChapters.visible = false
     m.detailSimilar.visible = false
+    ' The entrance animation ends at contentBase: a series page rests 52 px higher than the movie page, also when no resume plan re-seats it.
+    m.detailStage.contentBase = [881.6, detailContentTop()]
     m.detailContent.translation = [881.6, detailContentTop()]
     m.detailEpisodeActive = false
     layoutDetailRails()
@@ -5361,8 +5420,17 @@ sub layoutDetailRails()
             m.detailChapters.translation = [-8, y + 65.7]
             slot = slot + 1
             y = y + 314.3
+            if m.detailCastList = invalid or m.detailCastList.Count() = 0 then y = y + 36
         end if
-        if m.detailSimilar.visible
+        if m.detailSimilar.visible and (m.detailCastList = invalid or m.detailCastList.Count() = 0)
+            ' Similar Titles (web grid-sized cards): heading 350 px under Chapters', cards 67 px below it.
+            n = 0
+            if m.similarWorks <> invalid then n = m.similarWorks.Count()
+            titles = n.ToStr() + " titles"
+            if n = 1 then titles = "1 title"
+            setDetailRailHead(slot, y, "Similar Titles", titles)
+            m.detailSimilar.translation = [-8, y + 66.7]
+        else if m.detailSimilar.visible
             n = 0
             if m.detailCastList <> invalid then n = m.detailCastList.Count()
             people = n.ToStr() + " people"
@@ -5387,7 +5455,20 @@ sub layoutDetailRails()
         y += 350
     end if
     if m.detailSimilar.visible
-        m.detailSimilar.translation = [-8, y - 15]
+        if m.detailGroupKind = "series"
+            ' Web series page: Similar Titles heading at 722, grid-sized cards (327 px) from 790; the 3-season stack above pushes it down.
+            n = 0
+            if m.similarWorks <> invalid then n = m.similarWorks.Count()
+            titles = n.ToStr() + " titles"
+            if n = 1 then titles = "1 title"
+            seasonRows = m.detailSeasons.Count()
+            if seasonRows > 3 then seasonRows = 3
+            if seasonRows < 1 then seasonRows = 1
+            setDetailRailHead(seasonRows, 339 + (seasonRows - 1) * 315, "Similar Titles", titles)
+            m.detailSimilar.translation = [-8, 404 + (seasonRows - 1) * 315]
+        else
+            m.detailSimilar.translation = [-8, y - 15]
+        end if
     end if
 end sub
 
@@ -5472,7 +5553,9 @@ sub acceptDetailCredits(data as Dynamic)
     m.detailCastList = []
     if data <> invalid and data.cast <> invalid then m.detailCastList = data.cast
     if m.detailCastList.Count() = 0
+        ' Web shows Similar Titles after the cast track, and alone when the title has no cast.
         m.detailSimilar.visible = false
+        loadSimilarTitles(m.selectedDetail.work)
     else
         buildDetailCastRail(false)
         m.detailSimilar.visible = true
@@ -5580,15 +5663,18 @@ end sub
 ' See buildDetailChaptersRail's comment for why moveDetailFocus (below)
 ' needs to rebuild this rail's content on every focus transition too.
 sub buildDetailSimilarRail(isActive as Boolean)
-    m.detailSimilar.rowItemSize = [[284, 220]]
-    m.detailSimilar.rowItemSpacing = [[9, 0]]
-    buildRailContent(m.detailSimilar, m.similarWorks, isActive, 268.0 / 220.0)
+    m.detailSimilar.rowItemSize = [[327.2, 270]]
+    m.detailSimilar.rowItemSpacing = [[24.8, 0]]
+    buildRailContent(m.detailSimilar, m.similarWorks, isActive, 327.2 / 220.0)
     row = m.detailSimilar.content.GetChild(0)
     if row <> invalid
         row.title = "Similar Titles"
         ' Reserve the lift, ring and glow overflow inside the rail's clip, as the episode rails do.
         for i = 0 to row.GetChildCount() - 1
             row.GetChild(i).focusRingOutsideArt = true
+            ' Web SimilarTitlesTrack captions with the kind alone (no year).
+            row.GetChild(i).year = ""
+            row.GetChild(i).watchState = ""
         end for
     end if
 end sub
@@ -6422,11 +6508,14 @@ end function
 ' hours+minutes precision to match.
 function formatRuntime(runtimeMs as Dynamic) as String
     if runtimeMs = invalid or runtimeMs <= 0 then return ""
-    totalMinutes = Int(runtimeMs / 60000)
+    ' Web runtimeLabel: rounded minutes (at least 1), "N min", "Xh Ym" or "Xh".
+    totalMinutes = Int(runtimeMs / 60000 + 0.5)
+    if totalMinutes < 1 then totalMinutes = 1
     hours = totalMinutes \ 60
     minutes = totalMinutes mod 60
-    if hours > 0 then return hours.ToStr() + "h " + minutes.ToStr() + "m"
-    return minutes.ToStr() + "m"
+    if hours > 0 and minutes > 0 then return hours.ToStr() + "h " + minutes.ToStr() + "m"
+    if hours > 0 then return hours.ToStr() + "h"
+    return minutes.ToStr() + " min"
 end function
 
 ' Shows the control bar and (re)arms the 5 s auto-hide countdown. Called on
@@ -7524,7 +7613,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if overview = "" then overview = "No description is available."
     m.detailSynopsis.translation = [153.6, metaY + 37.5]
     m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
-    m.detailActionsTop = metaY + 37.5 + 20.33 * m.detailSynopsis.lineCount + 58
+    m.detailActionsTop = metaY + 37.5 + 20.33 * m.detailSynopsis.lineCount + 38
 end sub
 
 function formatReleaseDate(iso as String) as String
