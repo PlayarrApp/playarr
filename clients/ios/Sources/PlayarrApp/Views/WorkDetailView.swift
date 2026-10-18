@@ -219,11 +219,20 @@ struct WorkDetailView: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .opacity(scheme == .dark ? (detail.work.kind == .movie || detail.work.kind == .series ? 0.06 : 0.3) : 0.07)
                     .overlay {
-                        LinearGradient(
-                            colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        if detail.work.kind == .movie || detail.work.kind == .series {
+                            // Web: the page colour fades out over the left 40 %, the art tints only the copy side.
+                            LinearGradient(
+                                stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.4)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        } else {
+                            LinearGradient(
+                                colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        }
                     }
 
                 detailCopy(
@@ -255,11 +264,13 @@ struct WorkDetailView: View {
                     }
                     .frame(width: proxy.size.width * 0.62, height: proxy.size.height)
                     .background {
-                        LinearGradient(
-                            colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        if detail.work.kind != .movie && detail.work.kind != .series {
+                            LinearGradient(
+                                colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        }
                     }
                     .scrollIndicators(.hidden)
                     .webEdgeFade(.vertical)
