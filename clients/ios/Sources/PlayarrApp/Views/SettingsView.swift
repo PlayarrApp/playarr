@@ -102,7 +102,7 @@ struct SettingsView: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             ZStack {
-                if phone && selected == nil { WM.page.ignoresSafeArea() } else { settingsBackground.ignoresSafeArea() }
+                if !phone || selected == nil { WM.page.ignoresSafeArea() } else { settingsBackground.ignoresSafeArea() }
                 if phone { phoneLayout(safeTop: WM.safeTop) }
                 else { wideLayout(proxy: proxy) }
             }
@@ -218,13 +218,14 @@ struct SettingsView: View {
             WMText(current.title.uppercased(), 7.2, 700, color: WM.muted, lh: 11, ls: 1).offset(x: 182 * scale, y: 111 * scale)
             ScrollView {
                 VStack(spacing: 0) {
-                    ForEach(Section.allCases) { section in
+                    // The web hides Request latency from non-admins; the numbering keeps its gap.
+                    ForEach(Section.allCases.filter { $0 != .requestLatency }) { section in
                         Button { selected = section } label: {
                             ZStack(alignment: .topLeading) {
                                 if section == current {
                                     RoundedRectangle(cornerRadius: 6, style: .continuous).fill(PlayarrStyle.ink.opacity(0.07))
                                 }
-                                WMText(section.number, 8.96, 760, color: WM.muted, lh: 13.44).offset(x: 13, y: 22)
+                                WMText(section.number, 10, 760, color: WM.muted, lh: 13.44).offset(x: 13, y: 22)
                                 WMText(section.title, 21, 400, lh: 26, ls: -0.5).offset(x: 67, y: 31)
                                 WMText("\u{2192}", 20.8, 400, color: section == current ? WM.ink : WM.muted, lh: 26).offset(x: 261, y: 31)
                             }
@@ -246,8 +247,8 @@ struct SettingsView: View {
                 }
             }
             .scrollIndicators(.hidden)
-            .frame(width: 727 * scale, height: proxy.size.height - 190 * vScale, alignment: .topLeading)
-            .offset(x: 557 * scale, y: 190 * vScale)
+            .frame(width: 727 * scale, height: proxy.size.height - 198 * vScale, alignment: .topLeading)
+            .offset(x: 557 * scale, y: 198 * vScale)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -283,7 +284,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(title, 16, 400, lh: 24, ls: -0.3)
             if let description {
-                WMText(description, 9.5, 400, color: WM.muted, lh: 14).padding(.top, 9)
+                WMText(description, 10.4, 400, color: WM.muted, lh: 14).padding(.top, 9)
             }
             HStack(spacing: 9) {
                 ForEach(options, id: \.1) { option in
