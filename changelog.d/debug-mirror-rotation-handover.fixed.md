@@ -1,0 +1,1 @@
+- Treat a token rotation as a credential hand-over in the debug-mirror identity heartbeat instead of an identity failure.
