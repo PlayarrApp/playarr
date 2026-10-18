@@ -407,7 +407,7 @@ struct WMDetailPage: View {
                     .frame(width: 347, alignment: .topLeading)
                     // A series synopsis keeps three lines of room (web `.is-episodic`), so the buttons never move.
                     .frame(minHeight: isSeries ? 50.2 : nil, alignment: .topLeading)
-                    .padding(.top, isSeries ? 10.6 : 11.2)
+                    .padding(.top, isSeries ? 10.6 : 11.9)
             }
         }
         .padding(.leading, 16)
@@ -731,7 +731,7 @@ struct WMDetailPage: View {
                 "Chapters",
                 model.chaptersFromServer ? "\(model.chapters.count) chapters" : "\(model.chapters.count) scene markers"
             )
-            .padding(.top, 22.7)
+            .padding(.top, 24.4)
             WMFadingRail {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(model.chapters) { chapter in
