@@ -40,7 +40,7 @@ export struct ActionList {
           Text(action.glyph).fontFamily(nunito(400))
             .width(tv(GLYPH_COLUMN))
             .fontSize(tv(GLYPH_SIZE))
-            .fontColor(toResourceColor(isTvMetrics() ? BRAND_PINK : activeColors().accent))
+            .fontColor(toResourceColor(BRAND_PINK))
           Text(action.label).fontFamily(nunito(700))
             .fontSize(tv(LABEL_SIZE))
             .fontWeight(FontWeight.Bold)
@@ -51,7 +51,7 @@ export struct ActionList {
         .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
         .borderRadius(tv(ROW_RADIUS))
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-        .outline(action.id === this.actions[0].id ? { width: tv(3), color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) } : { width: 0 }) // web: the first action starts focused
+        .outline(action.id === this.actions[0].id ? { width: isTvMetrics() ? tv(3) : 2, color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) } : { width: 0 }) // web: the first action starts focused
         .opacity(this.busyId.length > 0 && this.busyId !== action.id ? 0.5 : 1)
         .focusable(this.busyId.length === 0)
         .defaultFocus(action.id === this.actions[0].id)

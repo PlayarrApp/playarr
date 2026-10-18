@@ -26,7 +26,7 @@ const CLOSE_GLYPH_SIZE: number = 26.88;
 // Phone (web phone drawer): the full page width, 20 padding, a 24 px title, a 43 round close button.
 const TOUCH_PADDING_H: number = 20;
 const TOUCH_HEADER_TOP: number = 20.7;
-const TOUCH_BODY_GAP: number = 30;
+const TOUCH_BODY_GAP: number = 29;
 // Web phone: the kicker sits 7.3 above the title; the close button's 3 vp ring is outside it, 2.3 vp clear, and the button 1.4 higher.
 const TOUCH_KICKER_GAP: number = 7.3;
 const TOUCH_CLOSE_RING_OUTSET: number = 5.3;
