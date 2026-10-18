@@ -2438,6 +2438,7 @@ struct Detail {
       .borderRadius(22)
       .layoutWeight(share ? 1 : 0)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+      .shadow(this.pillShadow(false))
       .border({ width: 1, color: Color.Transparent })
       .onClick(() => {
         this.cancelInitialEpisodeFocus();
@@ -2463,6 +2464,7 @@ struct Detail {
     .justifyContent(FlexAlign.Center)
     .borderRadius(22)
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    .shadow(this.pillShadow(false))
     .border({ width: 1, color: Color.Transparent })
     .onClick(() => {
       this.cancelInitialEpisodeFocus();
