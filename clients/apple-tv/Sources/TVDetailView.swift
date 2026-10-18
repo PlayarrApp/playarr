@@ -186,7 +186,7 @@ struct TVWorkDetailView: View {
                     .placed(x: 153.6, y: synopsisY, w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
             }
             actionPill("Download", glyph: "\u{21E9}", x: 153.6, y: buttonsY, width: 142) { showDownloadNote = true }
-            actionPill("Playback", symbol: "square.grid.2x2.fill", x: 311.6, y: buttonsY, width: 142)
+            actionPill("Playback", glyph: "\u{2637}", x: 311.6, y: buttonsY, width: 142)
             moviePlay(detail, x: 469.6, y: buttonsY)
             actionPill("Add to watchlist", glyph: "+", x: 153.6, y: buttonsY + 76, width: 142)
             actionPill("Add to Playlist", glyph: "+", x: 311.6, y: buttonsY + 76, width: 142)
