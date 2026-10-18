@@ -709,7 +709,7 @@ private struct AuthenticatedPlayarrShell: View {
             .offset(x: navEdge, y: 110 * proxy.size.height / 1024 + 2)
 
             profileTile
-                .offset(x: navEdge, y: proxy.size.height - 121 * proxy.size.height / 1024)
+                .offset(x: navEdge, y: proxy.size.height - 121 * proxy.size.height / 1024 + 26) // +26: the iPad stage is inset by the status bar and home indicator, measured against the web 1366x1024 capture
         }
     }
 
