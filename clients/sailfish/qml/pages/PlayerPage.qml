@@ -2,10 +2,13 @@ import QtQuick 2.6
 import QtMultimedia 5.6
 import Sailfish.Silica 1.0
 import "../components"
+import QtQuick.Window 2.2
 
 // Fullscreen player: server-negotiated playback (direct or HLS) with resume and progress reporting.
 Page {
     id: page
+    objectName: "player"
+    property alias navigation: navigation
     property string mediaFileId
     property string title
     property int startMs: 0
@@ -33,11 +36,28 @@ Page {
     readonly property int durationMs: info && info.duration_ms > 0 ? info.duration_ms : player.duration
     readonly property int positionMs: offsetMs + player.position
 
+    onInfoChanged: if (info && !navigation.moved) navigation.focusFirst()
+
+    function logParityPlayerState() {
+        console.log("PARITY|player|" + player.playbackState + "|" + Math.floor(positionMs / 1000)
+                    + "|" + (menuOpen ? 1 : 0) + "|" + (controls ? 1 : 0))
+    }
+
+    onMenuOpenChanged: logParityPlayerState()
+    onControlsChanged: logParityPlayerState()
+
     allowedOrientations: Orientation.All
     palette.colorScheme: Theme.LightOnDark
     background: Component { Rectangle { color: "black" } }
     showNavigationIndicator: false
     backNavigation: false
+
+    DpadNavigation { id: navigation; page: page }
+    Keys.priority: Keys.BeforeItem
+    Keys.onPressed: {
+        if (!navigation.handleBack(event)) navigation.handlePressed(event)
+    }
+    Keys.onReleased: navigation.handleReleased(event)
 
     function mmss(ms) {
         var s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60
@@ -114,6 +134,12 @@ Page {
     function audioSelected(t) {
         return audioIndex >= 0 ? t.stream_index === audioIndex : t.id === info.selected_audio_track_id
     }
+    function audioInitialFocus(track, index) {
+        if (!info || !info.audio_tracks) return false
+        if (audioSelected(track)) return true
+        for (var i = 0; i < info.audio_tracks.length; ++i) if (audioSelected(info.audio_tracks[i])) return false
+        return index === 0
+    }
     // Audio and quality switch server-side: renegotiate at the current position.
     function switchAudio(track) {
         audioIndex = track.stream_index
@@ -156,6 +182,7 @@ Page {
     }
 
     Component.onCompleted: {
+        logParityPlayerState()
         if (workId !== "") Api.fetchToCache(Api.artworkOf(workId, "poster"), "now-playing.jpg", function (st, u) { if (st === 200) nowPlayingArt = u })
         if (localPath === "") { open(startMs); return }
         info = { mode: "local", duration_ms: 0, session_id: "", audio_tracks: [], subtitle_tracks: [], quality_options: [] }
@@ -177,9 +204,18 @@ Page {
             }
         }
         onError: page.error = errorString || qsTr("The player could not play this title.")
-        onPlaybackStateChanged: if (page.info) page.event(playbackState === MediaPlayer.PausedState
-                                                           ? { kind: "pause", position_ms: page.positionMs }
-                                                           : playbackState === MediaPlayer.PlayingState ? { kind: "resume", position_ms: page.positionMs } : null)
+        onPlaybackStateChanged: {
+            page.logParityPlayerState()
+            if (page.info) page.event(playbackState === MediaPlayer.PausedState
+                                      ? { kind: "pause", position_ms: page.positionMs }
+                                      : playbackState === MediaPlayer.PlayingState ? { kind: "resume", position_ms: page.positionMs } : null)
+        }
+    }
+    Timer {
+        interval: 1000
+        repeat: true
+        running: true
+        onTriggered: page.logParityPlayerState()
     }
     Timer {
         interval: 10000
@@ -254,12 +290,18 @@ Page {
             height: 150 * Tokens.u
             gradient: Gradient { GradientStop { position: 0; color: "transparent" } GradientStop { position: 1; color: "#cc000000" } }
         }
-        IconButton {
+        ParityIconButton {
+            objectName: "parity-player-back"
+            parityIndex: 0
+            navigationActivate: function() { page.menuOpen ? page.menuOpen = false : page.close(false) }
             anchors { left: parent.left; top: parent.top; margins: Theme.paddingMedium; topMargin: Theme.paddingMedium + Tokens.safeTop }
             icon.source: "image://theme/icon-m-back"
             onClicked: page.menuOpen ? page.menuOpen = false : page.close(false)
         }
-        IconButton {
+        ParityIconButton {
+            objectName: "parity-player-menu"
+            parityIndex: 1
+            navigationActivate: function() { page.menuOpen = !page.menuOpen }
             anchors { right: parent.right; top: parent.top; margins: Theme.paddingMedium; topMargin: Theme.paddingMedium + Tokens.safeTop }
             icon.source: "image://theme/icon-m-menu"
             visible: !!page.info
@@ -273,7 +315,11 @@ Page {
             font.family: Tokens.family
             font.pixelSize: 17 * Tokens.u
         }
-        IconButton {
+        ParityIconButton {
+            objectName: "parity-player-play"
+            navigationInitialFocus: true
+            parityIndex: 2
+            navigationActivate: function() { player.playbackState === MediaPlayer.PlayingState ? player.pause() : player.play() }
             anchors.centerIn: parent
             width: 96 * Tokens.u
             height: width
@@ -294,6 +340,13 @@ Page {
             }
             Slider {
                 id: seek
+                objectName: "parity-player-seek"
+                property bool navigationFocusable: true
+                property int parityRail: 1
+                property int parityIndex: 0
+                Keys.priority: Keys.BeforeItem
+                Keys.onPressed: page.navigation.observeNativeKey(event, true)
+                Keys.onReleased: page.navigation.observeNativeKey(event, false)
                 width: parent.width - 2 * 56 * Tokens.u - 2 * parent.spacing
                 anchors.verticalCenter: parent.verticalCenter
                 minimumValue: 0
@@ -325,6 +378,7 @@ Page {
     // Audio / subtitles / quality sheet.
     Rectangle {
         id: sheet
+        objectName: "parity-player-sheet"
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: Math.min(parent.height * 0.7, menuCol.height + 2 * Tokens.pad)
         color: Tokens.surfaceStrong
@@ -344,6 +398,11 @@ Page {
                 Repeater {
                     model: page.info && page.info.audio_tracks.length > 1 ? page.info.audio_tracks : []
                     MenuRow {
+                        objectName: page.audioInitialFocus(modelData, index) ? "parity-player-menu-first" : ""
+                        navigationInitialFocus: page.audioInitialFocus(modelData, index)
+                        parityRail: 1
+                        parityIndex: index
+                        navigationActivate: function() { page.switchAudio(modelData) }
                         text: modelData.label
                         selected: page.audioSelected(modelData)
                         onClicked: page.switchAudio(modelData)
@@ -351,6 +410,11 @@ Page {
                 }
                 Label { text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
                 MenuRow {
+                    objectName: page.info && page.info.audio_tracks.length > 1 ? "parity-player-menu-off" : "parity-player-menu-first"
+                    navigationInitialFocus: !page.info || page.info.audio_tracks.length <= 1
+                    parityRail: 1
+                    parityIndex: page.info && page.info.audio_tracks.length > 1 ? page.info.audio_tracks.length : 0
+                    navigationActivate: function() { page.chooseSubtitle(""); page.menuOpen = false }
                     text: qsTr("Off")
                     selected: page.subtitleId === ""
                     onClicked: { page.chooseSubtitle(""); page.menuOpen = false }
@@ -358,6 +422,9 @@ Page {
                 Repeater {
                     model: page.info ? page.info.subtitle_tracks.filter(function (t) { return !!t.url }) : []
                     MenuRow {
+                        parityRail: 1
+                        parityIndex: (page.info && page.info.audio_tracks.length > 1 ? page.info.audio_tracks.length : 0) + 1 + index
+                        navigationActivate: function() { page.chooseSubtitle(modelData.id); page.menuOpen = false }
                         text: modelData.label
                         selected: page.subtitleId === modelData.id
                         onClicked: { page.chooseSubtitle(modelData.id); page.menuOpen = false }
@@ -365,6 +432,9 @@ Page {
                 }
                 Label { text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
                 MenuRow {
+                    parityRail: 1
+                    parityIndex: 1000
+                    navigationActivate: function() { page.switchQuality(null) }
                     text: qsTr("Original")
                     selected: !page.forceTranscode
                     onClicked: page.switchQuality(null)
@@ -372,6 +442,9 @@ Page {
                 Repeater {
                     model: page.info ? page.info.quality_options.filter(function (o) { return !!o.profile }) : []
                     MenuRow {
+                        parityRail: 1
+                        parityIndex: 1001 + index
+                        navigationActivate: function() { page.switchQuality(modelData) }
                         text: modelData.label
                         selected: page.forceTranscode && page.profile === modelData.profile
                         onClicked: page.switchQuality(modelData)

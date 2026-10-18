@@ -1345,10 +1345,21 @@ const JUMP_WAIT_MS: number = 100;
 const JUMP_SCROLL_DELAY_MS: number = 50;
 
 
+/** Web `yearRangeLabel`: "2011", or "2011–2019" for an ended series that closed in a later year. */
+function yearRangeOf(work: Work): string {
+  const start = releaseYearOf(work);
+  const raw = work.end_date;
+  if (start.length === 0 || raw === undefined || raw === null || raw.length < 4) {
+    return start;
+  }
+  const end = raw.slice(0, 4);
+  return end > start ? start + '\u2013' + end : start;
+}
+
 /** Web library hero meta: "2003  Action · Crime" (year, then genres). */
 function heroMetaLines(work: Work): string[] {
   const parts: string[] = [];
-  const year = releaseYearOf(work);
+  const year = yearRangeOf(work);
   if (year.length > 0) {
     parts.push(year);
   }

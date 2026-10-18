@@ -6,11 +6,17 @@ import Sailfish.Silica 1.0
 MouseArea {
     id: root
     property var work
+    property bool navigationFocusable: true
+    property bool navigationInitialFocus: false
+    property int parityRail: -1
+    property int parityIndex: -1
     signal opened(var work)
     signal held(var work)
     height: 76 * Tokens.u
     onClicked: opened(work)
     onPressAndHold: held(work)
+    function navigationActivate() { opened(work) }
+    function navigationLongPress() { held(work) }
     Artwork {
         id: art
         work: root.work

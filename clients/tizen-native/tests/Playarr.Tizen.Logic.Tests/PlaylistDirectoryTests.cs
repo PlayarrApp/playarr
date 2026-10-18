@@ -1,5 +1,6 @@
 using Playarr.Core.Models;
 using Playarr.Tizen.Logic;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Playarr.Tizen.Logic.Tests;
@@ -48,6 +49,122 @@ public sealed class PlaylistDirectoryTests
         var roots = PlaylistDirectoryModel.Roots(entries);
 
         Assert.Equal(new[] { "Mix 2", "mix 10", "orphan", "root" }, roots.Select(entry => entry.Playlist.Name));
+    }
+
+    [Fact]
+    public void DirectoryFiltersSelectVisibilityAndCanonicalizeOrdering()
+    {
+        var personal = Entry("Personal 2", null) with { Playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = "Personal 2", MediaType = "video" } };
+        var personal10 = Entry("Personal 10", null) with { Playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = "Personal 10", MediaType = "video" } };
+        var shared = new PlaylistTreeEntry(new PlaylistInfo { Id = Guid.NewGuid(), Name = "Shared", IsSystem = true, MediaType = "video" }, null);
+        var entries = new[] { personal10, shared, personal };
+
+        Assert.Equal(new[] { "Personal 2", "Personal 10", "Shared" }, PlaylistDirectoryModel.DirectoryRoots(entries, PlaylistVisibility.All, PlaylistOrder.Ascending).Select(entry => entry.Playlist.Name));
+        Assert.Equal(new[] { "Personal 10", "Personal 2" }, PlaylistDirectoryModel.DirectoryRoots(entries, PlaylistVisibility.Personal, PlaylistOrder.Descending).Select(entry => entry.Playlist.Name));
+        Assert.Equal(new[] { "Shared" }, PlaylistDirectoryModel.DirectoryRoots(entries, PlaylistVisibility.Shared, PlaylistOrder.Ascending).Select(entry => entry.Playlist.Name));
+    }
+
+    [Fact]
+    public void PlaylistRouteParsesAndOmitsCanonicalFilterDefaults()
+    {
+        var filtered = PlaylistRouteState.Parse("/playlists?visibility=personal&order=desc&panel=filters");
+        Assert.Equal(PlaylistVisibility.Personal, filtered.Visibility);
+        Assert.Equal(PlaylistOrder.Descending, filtered.Order);
+        Assert.Equal("filters", filtered.Panel);
+        Assert.Equal("/playlists?visibility=personal&order=desc&panel=filters", filtered.ToRoute());
+
+        var defaults = PlaylistRouteState.Parse("/playlists?visibility=all&order=asc&panel=create");
+        Assert.Equal("/playlists?panel=create", defaults.ToRoute());
+        Assert.Equal("/playlists", new PlaylistRouteState().ToRoute());
+        Assert.Equal(PlaylistRouteState.Parse("/playlists?panel=filters"), PlaylistRouteState.Parse("/playlists?visibility=invalid&order=invalid&panel=filters"));
+    }
+
+    [Fact]
+    public void EligibleParentsArePersonalSameTypeRootsAndExcludeSelectedSubtree()
+    {
+        var keep = Entry("Keep", null) with { Playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = "Keep", MediaType = "video" } };
+        var excluded = Entry("Excluded", null) with { Playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = "Excluded", MediaType = "video" } };
+        var descendant = Entry("Descendant", excluded.Playlist.Id) with { Playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = "Descendant", MediaType = "video" } };
+        var system = new PlaylistTreeEntry(new PlaylistInfo { Id = Guid.NewGuid(), Name = "System", IsSystem = true, MediaType = "video" }, null);
+        var audio = Entry("Audio", null) with { Playlist = new PlaylistInfo { Id = Guid.NewGuid(), Name = "Audio", MediaType = "audio" } };
+
+        var parents = PlaylistDirectoryModel.EligibleParents(new[] { keep, excluded, descendant, system, audio }, "video", excluded.Playlist.Id);
+
+        Assert.Equal(new[] { keep.Playlist.Id }, parents.Select(entry => entry.Playlist.Id));
+    }
+
+    [Fact]
+    public void ParentIndexCyclingIncludesNoneAndStaysWithinBounds()
+    {
+        Assert.Equal(-1, PlaylistDirectoryModel.CycleParentIndex(-1, 0, 1));
+        Assert.Equal(-1, PlaylistDirectoryModel.CycleParentIndex(0, 0, -1));
+
+        Assert.Equal(0, PlaylistDirectoryModel.CycleParentIndex(-1, 1, 1));
+        Assert.Equal(-1, PlaylistDirectoryModel.CycleParentIndex(0, 1, 1));
+        Assert.Equal(0, PlaylistDirectoryModel.CycleParentIndex(-1, 1, -1));
+        Assert.Equal(-1, PlaylistDirectoryModel.CycleParentIndex(0, 1, -1));
+
+        Assert.Equal(0, PlaylistDirectoryModel.CycleParentIndex(-1, 3, 1));
+        Assert.Equal(1, PlaylistDirectoryModel.CycleParentIndex(0, 3, 1));
+        Assert.Equal(2, PlaylistDirectoryModel.CycleParentIndex(1, 3, 1));
+        Assert.Equal(-1, PlaylistDirectoryModel.CycleParentIndex(2, 3, 1));
+        Assert.Equal(2, PlaylistDirectoryModel.CycleParentIndex(-1, 3, -1));
+        Assert.Equal(1, PlaylistDirectoryModel.CycleParentIndex(2, 3, -1));
+        Assert.Equal(-1, PlaylistDirectoryModel.CycleParentIndex(0, 3, -1));
+
+        Assert.Equal(0, PlaylistDirectoryModel.CycleParentIndex(-2, 3, 1));
+        Assert.Equal(2, PlaylistDirectoryModel.CycleParentIndex(3, 3, -1));
+        Assert.InRange(PlaylistDirectoryModel.CycleParentIndex(int.MaxValue, 3, 1), -1, 2);
+    }
+
+    [Fact]
+    public void ActionColumnNeighborsPairCreateAndFiltersAndLeaveOtherMovesGeometric()
+    {
+        Assert.Equal<int?>(PlaylistDirectoryModel.FiltersActionIndex,
+            PlaylistDirectoryModel.ActionColumnNeighbor(PlaylistDirectoryModel.CreateActionIndex, moveDown: true));
+        Assert.Equal<int?>(PlaylistDirectoryModel.CreateActionIndex,
+            PlaylistDirectoryModel.ActionColumnNeighbor(PlaylistDirectoryModel.FiltersActionIndex, moveDown: false));
+
+        Assert.Null(PlaylistDirectoryModel.ActionColumnNeighbor(PlaylistDirectoryModel.CreateActionIndex, moveDown: false));
+        Assert.Null(PlaylistDirectoryModel.ActionColumnNeighbor(PlaylistDirectoryModel.FiltersActionIndex, moveDown: true));
+        Assert.Null(PlaylistDirectoryModel.ActionColumnNeighbor(-1, moveDown: true));
+        Assert.Null(PlaylistDirectoryModel.ActionColumnNeighbor(2, moveDown: false));
+    }
+
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(1, 0)]
+    [InlineData(3, 2)]
+    [InlineData(4, 2)]
+    public void NearestDirectoryCardUsesEdgeDistanceAtInitialScroll(int cardCount, int? expectedIndex)
+    {
+        var cards = Enumerable.Range(0, cardCount).Select(index => DirectoryCardFocusBox(index, scroll: 0)).ToList();
+        Assert.Equal(expectedIndex, PlaylistDirectoryModel.NearestDirectoryCardIndex(FiltersActionBox, cards));
+    }
+
+    [Fact]
+    public void NearestDirectoryCardUsesCurrentScrollOffset()
+    {
+        var initialCards = Enumerable.Range(0, 9).Select(index => DirectoryCardFocusBox(index, scroll: 0)).ToList();
+        var cards = Enumerable.Range(0, 9).Select(index => DirectoryCardFocusBox(index, scroll: 500)).ToList();
+
+        Assert.Equal<int?>(2, PlaylistDirectoryModel.NearestDirectoryCardIndex(FiltersActionBox, initialCards));
+        Assert.Equal<int?>(8, PlaylistDirectoryModel.NearestDirectoryCardIndex(FiltersActionBox, cards));
+    }
+
+    [Fact]
+    public void CreatePlaylistRequestSerializesAllRequiredFieldsIncludingNullParent()
+    {
+        var parentId = Guid.NewGuid();
+        var root = JObject.Parse(PlaylistDirectoryApi.CreateRequestJson("New list", null, "video"));
+        Assert.Equal("New list", (string?)root["name"]);
+        Assert.Equal(JTokenType.Null, root["parent_playlist_id"]?.Type);
+        Assert.False((bool)root["is_system"]!);
+        Assert.Equal("video", (string?)root["media_type"]);
+
+        var child = JObject.Parse(PlaylistDirectoryApi.CreateRequestJson("Child", parentId, "audio"));
+        Assert.Equal(parentId.ToString("D"), (string?)child["parent_playlist_id"]);
+        Assert.Equal("audio", (string?)child["media_type"]);
     }
 
     [Fact]
@@ -157,6 +274,18 @@ public sealed class PlaylistDirectoryTests
     }
 
     [Fact]
+    public void NormalizeRoutePreservesVisibilityOrderAndPanel()
+    {
+        var root = Entry("Root", null);
+        var route = PlaylistDirectoryModel.NormalizeRoute(new[] { root }, new PlaylistRouteState(
+            root.Playlist.Id, Visibility: PlaylistVisibility.Shared, Order: PlaylistOrder.Descending, Panel: "filters"));
+
+        Assert.Equal(PlaylistVisibility.Shared, route.Visibility);
+        Assert.Equal(PlaylistOrder.Descending, route.Order);
+        Assert.Equal("filters", route.Panel);
+    }
+
+    [Fact]
     public void CyclicParentsDoNotLoopAndRouteRemainsParseable()
     {
         var first = Entry("First", Guid.NewGuid());
@@ -216,6 +345,22 @@ public sealed class PlaylistDirectoryTests
 
     private static PlaylistTreeEntry Entry(string name, Guid? parent, string mediaType = "video", bool isSystem = false) =>
         new(new PlaylistInfo { Id = Guid.NewGuid(), Name = name, MediaType = mediaType, IsSystem = isSystem }, parent);
+
+    private static readonly Box FiltersActionBox = new(1845.5f, 236.2f, 62, 72);
+
+    private static Box DirectoryCardFocusBox(int index, float scroll)
+    {
+        const float width = 327.2f, height = 213.4f, scale = 1.015f, lift = -5f;
+        var x = new[] { 783.36f, 1136.46f, 1489.56f }[index % 3];
+        var y = 162f + index / 3 * 251.2f - scroll;
+        var scaledWidth = width * scale;
+        var scaledHeight = height * scale;
+        return new Box(
+            x + (width - scaledWidth) / 2f,
+            y + lift + (height - scaledHeight) / 2f,
+            scaledWidth,
+            scaledHeight);
+    }
 
     private static Work CoverWork(ImageKind kind)
     {

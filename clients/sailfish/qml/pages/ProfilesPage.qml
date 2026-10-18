@@ -7,6 +7,12 @@ import "../components/NavIcons.js" as NavIcons
 // "Who's watching?": the profiles signed in on this device, add-another, settings and sign out.
 PlayarrPage {
     id: page
+    objectName: "profiles"
+    readonly property bool hasActiveProfile: {
+        var profiles = Api.profiles
+        for (var i = 0; i < profiles.length; ++i) if (profiles[i].active) return true
+        return false
+    }
     // The web profiles page sits on the darker shell colour with a faint brand glow behind the profiles.
     background: Component { Rectangle { color: Tokens.dark ? "#141214" : "#f5f3f2" } }
     RadialGradient {
@@ -24,8 +30,8 @@ PlayarrPage {
         else pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"), { section: "settings" })
     }
     Image {
-        x: 30 * Tokens.u; y: 14 * Tokens.u
-        width: 36 * Tokens.u; height: width
+        x: 21 * Tokens.u; y: 18 * Tokens.u
+        width: 31 * Tokens.u; height: width
         source: "file:///usr/share/icons/hicolor/86x86/apps/harbour-playarr.png"
         smooth: true
     }
@@ -33,10 +39,15 @@ PlayarrPage {
     Repeater {
         model: 2
         MouseArea {
+            property bool navigationFocusable: true
+            property string parityLabel: index === 0 ? qsTr("Theme: ") + (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Language: Auto")
+            property int parityRail: 1
+            property int parityIndex: index
+            function navigationActivate() { if (index === 0) Api.themeMode = Api.themeMode === "system" ? "dark" : Api.themeMode === "dark" ? "light" : "system" }
             x: (index === 0 ? 144.2 : 264.1) * Tokens.u
             y: 14.2 * Tokens.u
             width: 111.7 * Tokens.u; height: 47.2 * Tokens.u
-            onClicked: if (index === 0) Api.themeMode = Api.themeMode === "system" ? "dark" : Api.themeMode === "dark" ? "light" : "system"
+            onClicked: navigationActivate()
             Rectangle { anchors.fill: parent; color: Tokens.dark ? "#161416" : "#f4f2f1"; border.width: 1; border.color: Tokens.lineStrong }
             Row {
                 anchors.centerIn: parent
@@ -67,12 +78,19 @@ PlayarrPage {
         Repeater {
             model: Api.profiles
             MouseArea {
+                property bool navigationFocusable: true
+                property string parityLabel: modelData.name
+                // Prefer the signed-in profile, falling back when the saved active id is stale.
+                property bool navigationInitialFocus: modelData.active || (!page.hasActiveProfile && index === 0)
+                property int parityRail: 0
+                property int parityIndex: index
                 width: 177 * Tokens.u; height: 232 * Tokens.u
-                onClicked: {
+                function navigationActivate() {
                     if (modelData.pinLocked && !modelData.active) { pageStack.push(Qt.resolvedUrl("PinPage.qml"), { profile: modelData }); return }
                     Api.selectProfile(modelData.userId)
                     pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"))
                 }
+                onClicked: navigationActivate()
                 onPressAndHold: remorse.execute(qsTr("Removing profile"), function () { Api.removeProfile(modelData.userId) })
                 // Dark ring colour as WorkCard (web captures measure 197,138,151); light keeps the brand ink.
                 readonly property color ringColor: Tokens.dark ? Qt.rgba(197 / 255, 138 / 255, 151 / 255, 1) : Tokens.brandInk
@@ -107,13 +125,19 @@ PlayarrPage {
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink
                         font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
                 Label { anchors { top: av.bottom; topMargin: 34.2 * Tokens.u; left: parent.left; right: parent.right }
-                        horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.inkSoft
+                        horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.inkMuted
                         font.family: Tokens.family; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
             }
         }
         MouseArea {
+            property bool navigationFocusable: true
+            property string parityLabel: qsTr("Add another profile")
+            property bool navigationInitialFocus: Api.profiles.length === 0
+            property int parityRail: 0
+            property int parityIndex: Api.profiles.length
             width: 155.4 * Tokens.u; height: 232 * Tokens.u
-            onClicked: pageStack.push(Qt.resolvedUrl("LinkPage.qml"), { adding: true })
+            function navigationActivate() { pageStack.push(Qt.resolvedUrl("LinkPage.qml"), { adding: true }) }
+            onClicked: navigationActivate()
             Rectangle {
                 id: plus
                 width: parent.width; height: width; radius: width / 2
@@ -123,13 +147,21 @@ PlayarrPage {
                     GradientStop { position: 1; color: Tokens.dark ? "#962a4e" : "#b84b6b" }
                 }
                 border.width: 1; border.color: Qt.rgba(1, 1, 1, Tokens.dark ? 0.2 : 0.4)
+                RadialGradient {   // web: a soft light spot up and left of centre
+                    x: 0.30 * parent.width - width / 2; y: 0.26 * parent.width - height / 2
+                    width: 0.5 * parent.width; height: width; horizontalRadius: width / 2; verticalRadius: height / 2
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, Tokens.dark ? 0.22 : 0.18) }
+                        GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0) }
+                    }
+                }
                 Label { anchors.centerIn: parent; text: "+"; color: Tokens.dark ? Qt.rgba(1, 1, 1, 0.7) : Qt.rgba(0.2, 0.15, 0.15, 0.8); font.pixelSize: 40 * Tokens.u }
             }
             Label { anchors { top: plus.bottom; topMargin: 9.8 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("Sign in"); color: Tokens.inkSoft
                     font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
             Label { anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
-                    horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.inkSoft
+                    horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.inkMuted
                     font.family: Tokens.family; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
         }
     }
@@ -137,17 +169,25 @@ PlayarrPage {
         x: 35.5 * Tokens.u; y: 405.3 * Tokens.u
         spacing: 8.8 * Tokens.u
         MouseArea {
+            property bool navigationFocusable: true
+            property string parityLabel: qsTr("Settings")
+            property int parityRail: 1
+            property int parityIndex: 0
             width: 43.7 * Tokens.u; height: width
-            onClicked: page.openSettings()
+            function navigationActivate() { page.openSettings() }
+            onClicked: navigationActivate()
             Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.dark ? "#1a181a" : "#fdfcfc"; border.width: 1; border.color: Tokens.lineStrong }
             Image { anchors.centerIn: parent; width: 16 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("settings", Tokens.brandPink) }
         }
         PillButton {
+            parityRail: 1
+            parityIndex: 1
+            navigationActivate: function() { remorse.execute(qsTr("Signing out"), function () { Api.signOut() }) }
             iconImage: NavIcons.url("logout", Tokens.ink); iconSize: 14 * Tokens.u; labelFamily: Tokens.family610
             text: qsTr("Sign out")
             fontSize: 8.8 * Tokens.u
             implicitHeight: 43.7 * Tokens.u
-            onClicked: remorse.execute(qsTr("Signing out"), function () { Api.signOut() })
+            onClicked: navigationActivate()
         }
     }
     // The web profiles page pins a Clients link 22 px from the bottom right corner.
