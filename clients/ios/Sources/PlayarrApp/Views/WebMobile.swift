@@ -421,6 +421,8 @@ struct WMKeyArt: View {
     var artScale: CGFloat = 1
     /// How strong the grey artwork is in the light theme; the web shows it differently per page.
     var lightOpacity: Double = 0.22
+    /// Dark-theme strength; the web detail art is opacity 0.42 under brightness 0.6, about 0.22 net.
+    var darkOpacity: Double = 0.085
     /// The web's horizontal treatment in the light theme: the artwork fades out over its last 28% (mask)
     /// and a page-coloured wash covers its left edge at 54%.
     var webMask = false
@@ -443,7 +445,7 @@ struct WMKeyArt: View {
             if work != nil || backdropWorkID != nil {
                 art
                     .saturation(0)
-                    .opacity(scheme == .dark ? 0.085 : lightOpacity)
+                    .opacity(scheme == .dark ? darkOpacity : lightOpacity)
                     .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
@@ -694,12 +696,13 @@ struct WMHeaderCircleButton: View {
     let width: CGFloat
     let height: CGFloat
     let glyph: String
+    var weight: Int = 720
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Text(glyph)
-                .font(WM.font(12.8, 720))
+                .font(WM.font(12.8, weight))
                 .foregroundStyle(WM.inkSoft)
                 .frame(width: width, height: height)
                 .background(WM.chip.opacity(0.66), in: Ellipse())
