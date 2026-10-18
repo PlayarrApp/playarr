@@ -147,7 +147,10 @@ export async function createDriver() {
   };
 
   return {
-    endCrops: true, cropIds: ["filters-list", "filters-language"], // Filters List view and the open language flyout
+    endCrops: true, cropIds: ["filters-language", "filters-list"], // the open language flyout, then the List view (it persists, so it goes last)
+    // The drawer's focus starts on List (web: the Close button). Picking a view reloads the page, so the List crop reopens the drawer.
+    cropKeys: { "filters-language": ["down*3", "select"], "filters-list": ["select"] },
+    async afterCropKeys(id) { if (id === "filters-list") { await sleep(9000); await click(1877, 187, 3); } },
     async start() { run("write", "parity.on", "1"); },
     async setTheme(t) {
       if ((t === "light" || t === "dark") && themeCaptureAllowed(trace(), t)) { theme = t; return; }
