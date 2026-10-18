@@ -176,7 +176,7 @@ const TOUCH_ROW_GAP: number = 26.4;
 const TOUCH_GRID_TOP: number = 12;
 /** Web phone card caption (the poster card's title size at 360 vp). */
 // web --card-title-size at 360 vp: clamp(0.55rem, 0.62vw, 0.78rem) = 8.8, weight 610
-const TOUCH_LIBRARY_TITLE_SIZE: number = 8.4;
+const TOUCH_LIBRARY_TITLE_SIZE: number = 8.5;
 /** The TV card caption size (`PosterCard`'s own default), passed through unchanged. */
 const TV_LIBRARY_TITLE_SIZE: number = 11.904;
 
