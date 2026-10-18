@@ -126,7 +126,7 @@ class CaptureDiagnosticsTests(unittest.TestCase):
         namespace["get"].side_effect = [b"ok", b"ok", b'{"focus_ack":"ok:42,96"}']
         self.assertIsNone(namespace["focus_first_card"]())
 
-        namespace["get"].side_effect = [b"ok", b"ok"] + [b'{"focus_ack":null}'] * 10
+        namespace["get"].side_effect = ([b"ok", b"ok"] + [b'{"focus_ack":null}'] * 10) * 2  # both attempts
         with self.assertRaisesRegex(SystemExit, "no live card acknowledged focus"):
             namespace["focus_first_card"]()
 

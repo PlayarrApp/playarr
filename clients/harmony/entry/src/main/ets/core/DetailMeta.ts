@@ -67,21 +67,6 @@ export function hasSeriesResumeTarget(detail: WorkDetail, plan: ResumePlan | nul
   return detail.work.kind === 'series' && planEpisode(detail, plan) !== undefined;
 }
 
-/** The last year a series has an episode air, to write "2011–2017"; '' when none is known. */
-function lastAiredYear(detail: WorkDetail): string {
-  const seasons: SeasonDetail[] = seasonsOf(detail);
-  let latest = '';
-  for (const season of seasons) {
-    for (const item of season.episodes) {
-      const air = item.episode.air_date;
-      if (air !== undefined && air !== null && air.length >= 4 && air.substring(0, 4) > latest) {
-        latest = air.substring(0, 4);
-      }
-    }
-  }
-  return latest;
-}
-
 /** The chips, in web's order. A film: Movie, runtime, year, "Released d Mon yyyy", genres. A series with a plan target: "Season n", "S01 · E01", runtime, "2011–2017", "Aired d Mon yyyy", genres. */
 export function metaChips(detail: WorkDetail, plan: ResumePlan | null): string[] {
   const work = detail.work;
@@ -99,9 +84,10 @@ export function metaChips(detail: WorkDetail, plan: ResumePlan | null): string[]
         chips.push(runtime);
       }
     }
-    const last = lastAiredYear(detail);
+    // web `yearRangeLabel`: the range runs to the work's end_date, not the last aired episode
+    const last = work.end_date !== undefined && work.end_date !== null && work.end_date.length >= 4 ? work.end_date.substring(0, 4) : '';
     if (year.length > 0) {
-      chips.push(last.length > 0 && last !== year ? year + '–' + last : year);
+      chips.push(last.length > 0 && last > year ? year + '–' + last : year);
     }
     if (target !== undefined) {
       const aired = formatDayMonthYear(target.episode.air_date);

@@ -147,6 +147,7 @@ export async function createDriver() {
   };
 
   return {
+    endCrops: true, cropIds: ["filters-list", "filters-language"], // Filters List view and the open language flyout
     async start() { run("write", "parity.on", "1"); },
     async setTheme(t) {
       if ((t === "light" || t === "dark") && themeCaptureAllowed(trace(), t)) { theme = t; return; }

@@ -274,7 +274,7 @@ if (only.includes("screens") && !only.includes("dpad") && driver.endCrops) {
     assertNotInterrupted();
     await driver.setTheme(theme);
     mkdirSync(join(out, theme, "crops"), { recursive: true });
-    for (const c of suite.crops ?? []) {
+    for (const c of (suite.crops ?? []).filter((x) => !driver.cropIds || driver.cropIds.includes(x.id))) { // cropIds: a driver may take only some crops
       assertNotInterrupted();
       try {
         await driver.setLaunchArgs?.(c.launchArgs ?? []); // e.g. Home artwork = Covers

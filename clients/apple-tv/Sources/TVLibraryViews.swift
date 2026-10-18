@@ -996,8 +996,9 @@ struct TVWebHomeCard: View {
                 if progress == nil {
                     Circle()
                         .fill(DesignTokens.Color.brandPrimary)
-                        .frame(width: 13, height: 13)
-                        .padding(10.6)
+                        .frame(width: 11.6, height: 11.6)
+                        .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
+                        .padding(11.5)
                 }
             }
             .background(
@@ -1035,12 +1036,20 @@ struct TVCardFocusGlow: ViewModifier {
     let focused: Bool
     let cornerRadius: CGFloat
 
+    #if os(macOS)
+    // A 3 px stroke is centred on its path, so the path sits 1.5 px out for the ring to touch the art (the web's box-shadow
+    // ring); 3 left a 1.5 px gap that showed as a pale line between art and ring.
+    private let ringOffset: CGFloat = 1.5
+    #else
+    private let ringOffset: CGFloat = 3
+    #endif
+
     func body(content: Content) -> some View {
         content.overlay {
             if focused {
-                RoundedRectangle(cornerRadius: cornerRadius + 3, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius + ringOffset, style: .continuous)
                     .stroke(DesignTokens.Stage.cardGlow, lineWidth: 3)
-                    .padding(-3)
+                    .padding(-ringOffset)
                     #if os(macOS)
                     // Web `0 0 20px 4px` glow at 45%: the 4 px spread is a wider faint stroke under the blur.
                     .background(
@@ -1834,12 +1843,14 @@ struct TVLibraryKindView: View {
                 .padding(.top, 26)
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
-                    .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
+                    // Web `.details-panel .tv-preview-overview`: 0.72vw (13.8 px) at weight 600, line-height 1.58 (21.8 px pitch),
+                    // measured on the light refs of series and music (lines wrap at about 348 px).
+                    .font(TVTheme.font(size: 13.8, css: 600))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
-                    .lineSpacing(3.25)
+                    .lineSpacing(3)
                     .padding(.top, 24)
-                    .frame(maxWidth: 340, alignment: .leading)
+                    .frame(maxWidth: 348, alignment: .leading)
             }
         }
         .frame(maxWidth: DesignTokens.Shell.titlePanelWidth, alignment: .leading)
@@ -2408,6 +2419,8 @@ struct TVActionsDrawer: View {
                     TVActionRow(glyph: "\u{2190}", label: "Back") { self.playlists = nil }
                 } else {
                     TVActionRow(glyph: "\u{25B6}\u{FE0E}", label: "Play", preferred: true) { Task { await play() } }
+                    // Web lists Download here too; this client keeps no offline copies, so the row only explains that.
+                    TVActionRow(glyph: "\u{2193}", label: "Download") { message = "Downloads are not available on this device." }
                     TVActionRow(glyph: "\u{FF0B}", label: "Add to Playlist") {
                         Task { playlists = (try? await environment.apiClient.listPlaylists()) ?? [] }
                     }

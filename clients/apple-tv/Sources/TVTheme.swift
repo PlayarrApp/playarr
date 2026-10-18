@@ -966,6 +966,7 @@ struct TVFloatingNav: View {
         }
         .padding(.vertical, DesignTokens.Shell.navGroupPadding)
         .padding(.horizontal, DesignTokens.Shell.navGroupPadding)
+        .modifier(TVNavPanelShadow())
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
                 .fill(DesignTokens.Color.backgroundElevated.opacity(0.56))
@@ -994,6 +995,7 @@ struct TVFloatingNav: View {
             .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
             .padding(DesignTokens.Shell.navGroupPadding)
+            .modifier(TVNavPanelShadow())
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
                     .fill(DesignTokens.Color.backgroundElevated.opacity(0.56))
@@ -1038,8 +1040,13 @@ struct TVFloatingNav: View {
             VStack(spacing: 5) {
                 TVNavVectorIcon(tab: tab)
                 Text(tab.title)
+                    #if os(macOS)
+                    .font(TVTheme.font(size: 8.832, css: 680)) // web .app-nav-label: .46vw / 680 / .035em
+                    .tracking(0.31)
+                    #else
                     .font(TVTheme.font(size: 9, weight: .semibold))
                     .tracking(0.3)
+                    #endif
                     .lineLimit(1)
             }
             .foregroundStyle(
@@ -1059,6 +1066,10 @@ struct TVFloatingNav: View {
                             : Color.clear
                     )
             )
+            #if os(macOS)
+            // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content).
+            .scaleEffect(isActive || isFocused ? 1.05 : 1)
+            #endif
             // Web TV nav: focus looks like the active tab (filled tile, ink text); no ring, no scale.
         }
         // Card-like style stays focusable; .plain can drop remote hand-off.
@@ -1139,6 +1150,23 @@ struct TVNavProfile {
 }
 
 /// A row or nav item's focus: the selected fill (web TV), driven by the system focus; no ring, no platter.
+/// Web `.app-nav-group { box-shadow: 0 14px 42px rgba(56, 38, 33, .1) }`. Mac only: the shadow sits on an opaque page-coloured
+/// plate under the translucent panel fill, so it does not darken the panel through the fill.
+struct TVNavPanelShadow: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.background(
+            RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
+                .fill(DesignTokens.Stage.bg)
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.1), radius: 42,
+                        y: 14)
+        )
+        #else
+        content
+        #endif
+    }
+}
+
 struct TVNavItemFocusFill: ViewModifier {
     var fill: Color = DesignTokens.Color.textPrimary.opacity(0.09)
     var cornerRadius: CGFloat = 16

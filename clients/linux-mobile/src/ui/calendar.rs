@@ -137,6 +137,8 @@ struct Cal {
     range_label: gtk4::Label,
     /// The period controls; the web sits them 18 px lower on week and month than on the agenda.
     controls: gtk4::Box,
+    /// Carries the agenda's backdrop wash.
+    page: gtk4::Box,
     body: gtk4::Box,
     days_view: gtk4::ScrolledWindow,
     fades: [gtk4::Box; 2],
@@ -606,7 +608,7 @@ impl Cal {
                 }
                 let shown = items.len().min(chips);
                 for (_, e, n) in items.iter().take(shown) {
-                    let row = gtk4::Box::builder().spacing(9).css_classes(["pa-mline"]).build();
+                    let row = gtk4::Box::builder().spacing(7).css_classes(["pa-mline"]).build();
                     let tone = match status_chip(e, today_date).1 {
                         "ok" => "have",
                         "soon" => "soon",
@@ -662,7 +664,8 @@ impl Cal {
 
     fn set_view(self: &Rc<Self>, v: View) {
         self.view.set(v);
-        self.controls.set_margin_top(if v == View::Agenda { 5 } else { 21 });
+        self.controls.set_margin_top(if v == View::Agenda { 3 } else { 21 });
+        self.days_view.set_margin_top(if v == View::Agenda { 8 } else { 6 });
         let t = today();
         self.anchor.set(match v {
             View::Agenda => t,
@@ -680,6 +683,11 @@ impl Cal {
         self.days_view.set_kinetic_scrolling(week);
         // The web agenda's entries run off the page's right edge; the other views stop at the 16 px gutter.
         self.days_view.set_margin_end(if v == View::Agenda { 0 } else { 16 });
+        if v == View::Agenda {
+            self.page.add_css_class("pa-agenda-bg");
+        } else {
+            self.page.remove_css_class("pa-agenda-bg");
+        }
         for f in &self.fades {
             f.set_visible(week);
         }
@@ -765,7 +773,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let controls = gtk4::Box::builder()
         .spacing(8)
         .halign(gtk4::Align::End)
-        .margin_top(5)
+        .margin_top(3)
         .margin_end(16)
         .css_classes(["pa-cal-controls"])
         .build();
@@ -834,6 +842,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         selected: Cell::new(None),
         range_label,
         controls: controls.clone(),
+        page: page.clone(),
         body,
         days_view,
         fades,

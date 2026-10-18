@@ -9,7 +9,7 @@
 import { nunito } from '../Typography';
 import { activeColors, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
-import { tv } from '../Metrics';
+import { isTvMetrics, tv } from '../Metrics';
 import type { Choice } from './ChoiceSegments';
 import { t } from '../../core/Language';
 
@@ -72,11 +72,13 @@ export struct SelectField {
 
   build() {
     Column({ space: tv(STACK_GAP) }) {
-      Row({ space: tv(GAP) }) {
+      // Phone: a tighter row gap (the lead's margin keeps the label start), so a 112 vp select fits "Light" and "Auto" on one line.
+      Row({ space: isTvMetrics() ? tv(GAP) : 8 }) {
         if (this.lead.length > 0) {
           Image(this.lead === 'sun' ? $r('app.media.select_sun') : $r('app.media.select_globe'))
             .width(this.labelSize * 1.5)
             .height(this.labelSize * 1.5)
+            .margin({ right: isTvMetrics() ? 0 : 3.52 })
             .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
         }
         Text(this.labelOf(this.value)).fontFamily(nunito(this.labelWeight))
@@ -84,10 +86,19 @@ export struct SelectField {
           .fontWeight(this.labelWeight >= 700 ? FontWeight.Bold : FontWeight.Medium)
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .layoutWeight(1)
-        Text('⌄').fontFamily(nunito(400))
-          .fontSize(tv(FONT))
-          .fontColor(this.textColor(this.highlighted === '#trigger'))
-          .rotate({ angle: this.open ? 180 : 0 })
+        if (isTvMetrics()) {
+          Text('⌄').fontFamily(nunito(400))
+            .fontSize(tv(FONT))
+            .fontColor(this.textColor(this.highlighted === '#trigger'))
+            .rotate({ angle: this.open ? 180 : 0 })
+        } else {
+          // Phone: web's thin stroked chevron; the text glyph sits low and heavy in Nunito.
+          Image($r('app.media.select_chevron'))
+            .width(this.labelSize * 1.2)
+            .height(this.labelSize * 1.2)
+            .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
+            .rotate({ angle: this.open ? 180 : 0 })
+        }
       }
       .width(tv(this.selectWidth))
       .constraintSize({ minHeight: tv(this.minHeight) })

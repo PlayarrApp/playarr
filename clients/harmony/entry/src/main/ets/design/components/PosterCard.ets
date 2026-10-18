@@ -375,6 +375,16 @@ export struct PosterCard {
           .backgroundColor(toResourceColor(activeColors().surfaceSoft))
           .scale({ x: this.artworkScale(), y: this.artworkScale() })
           .shadow(this.secondShadowLayer())
+        // Web's 20 vp ring glow. ArkUI draws no shadow for a transparent box, so like the layer above this is an opaque underlay behind the art.
+        Column()
+          .width(this.cardWidth)
+          .height(this.cardHeight)
+          .borderRadius(this.resolvedArtworkRadius())
+          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+          .opacity(this.visualFocus())
+          .scale({ x: this.artworkScale(), y: this.artworkScale() })
+          .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
+          .hitTestBehavior(HitTestMode.None)
       }
       Stack({ alignContent: Alignment.Bottom }) {
         if (this.artwork !== undefined) {
@@ -432,14 +442,16 @@ export struct PosterCard {
       .shadow(this.shadowLayer())
       .outline({ width: tv(FOCUS_RING_WIDTH), color: this.focusRingColor(this.visualFocus()), radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
       // Web's 3 vp outer ring and 20 vp glow (45%): the outline stays outside the art without shifting layout.
-      Column()
-        .width(this.cardWidth)
-        .height(this.cardHeight)
-        .borderRadius(this.resolvedArtworkRadius())
-        .opacity(this.visualFocus())
-        .scale({ x: this.artworkScale(), y: this.artworkScale() })
-        .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
-        .hitTestBehavior(HitTestMode.None)
+      if (isTvMetrics()) {
+        Column()
+          .width(this.cardWidth)
+          .height(this.cardHeight)
+          .borderRadius(this.resolvedArtworkRadius())
+          .opacity(this.visualFocus())
+          .scale({ x: this.artworkScale(), y: this.artworkScale() })
+          .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
+          .hitTestBehavior(HitTestMode.None)
+      }
       }
       .width(this.cardWidth)
       .height(this.cardHeight)

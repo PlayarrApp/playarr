@@ -483,7 +483,8 @@ export struct ReleaseCalendar {
     .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(toResourceColor(activeColors().bg))
+    // The TV's agenda sits on an opaque list; the phone's headings sit straight on the page like web's.
+    .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent)
   }
 
   @Builder
@@ -824,9 +825,10 @@ export struct ReleaseCalendar {
 
   @Builder
   private headerControl(label: string, round: boolean, onTap: () => void): void {
-    Text(label).fontFamily(nunito(700))
-      .fontSize(tv(HEADER_CONTROL_FONT))
-      .fontWeight(FontWeight.Bold)
+    // web: the round arrow buttons hold a small regular-weight glyph, the Today pill a bold label
+    Text(label).fontFamily(nunito(round ? 400 : 700))
+      .fontSize(tv(round ? HEADER_CONTROL_FONT * 0.75 : HEADER_CONTROL_FONT))
+      .fontWeight(round ? FontWeight.Normal : FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .textAlign(TextAlign.Center)
       .height(tv(HEADER_CONTROL_SIZE))
@@ -1030,7 +1032,7 @@ export struct ReleaseCalendar {
         .width('100%')
         .layoutWeight(1)
     } else {
-      List({ space: 16 }) {
+      List({ space: 32 }) {
         ForEach(this.groups, (group: DayGroup) => {
           ListItem() {
             Column({ space: PHONE_ENTRY_GAP }) {
@@ -1089,6 +1091,7 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
+      .margin({ bottom: 5 }) // web's text block sits 2.5 vp higher in the card than the centred one
     }
     .width('100%')
     .constraintSize({
