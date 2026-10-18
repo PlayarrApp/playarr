@@ -11,6 +11,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 clock=${PARITY_CLOCK:-$(sed -n 's/.*FIXTURE_CLOCK = "\([^"]*\)".*/\1/p' "$here/../../fixtures/catalog.mjs")}
 case $theme in light) pref=Light ;; dark) pref=Dark ;; *) echo "theme must be light or dark" >&2; exit 2 ;; esac
 mkdir -p "$out"
+# A player screen leaves the app playing, which keeps writing watch progress to the shared account.
+trap 'adb shell am force-stop io.playarr.mobile' EXIT
 for screen in "$@"; do
   [ -n "${PLAYARR_FIXTURE_DB:-}" ] && sqlite3 "$PLAYARR_FIXTURE_DB" "delete from watch_progress"
   adb shell am force-stop io.playarr.mobile

@@ -564,7 +564,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val fill = WebSurfaceStrong
     Surface(
         // Material's clickable Surface paints a focus state layer (a fill); web's focus state is the ring alone.
-        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().height((if (LocalCalendarWrapTitles.current) 87f else m.entryHeight).dp).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
+        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (LocalCalendarWrapTitles.current) Modifier.heightIn(min = 89.dp) else Modifier.height(m.entryHeight.dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
@@ -611,7 +611,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
                     Text(rowSubtitle, color = WebInkSoft, fontSize = m.entryTitle.sp, lineHeight = m.entryTitleLine.sp, style = WebTextStyle, maxLines = if (LocalCalendarWrapTitles.current) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(2.4.dp))
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                val metaRow: @Composable () -> Unit = {
                     Text(time, color = WebInkMuted, fontSize = m.entryMeta.sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
                     Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = m.entryMeta.sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
                     Text(
@@ -620,6 +620,12 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
                     )
                     if (m === TvCalendarMetrics) CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone))
                     else CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone), phone = true)
+                }
+                // Web wraps the badge onto its own line when the column is too narrow for it (tablet week), growing the card.
+                if (LocalCalendarWrapTitles.current) {
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) { metaRow() }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) { metaRow() }
                 }
             }
         }
