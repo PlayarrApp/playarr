@@ -116,7 +116,7 @@ const ARROW_LEFT: number = 432;
 const ARROW_SIZE: number = 20.8;
 // Web `.settings-section-content`: the panel copy starts at (774, 210), 1042 wide.
 const PANEL_LEFT: number = 774;
-const PANEL_TOP: number = 210;
+const PANEL_TOP: number = 216;
 const PANEL_WIDTH: number = 1042;
 const PANEL_TEXT_SIZE: number = 13.824;
 /** Phone: the panel is the page width less 16 each side (the 360 vp web phone width). */
@@ -360,7 +360,7 @@ export struct SettingsScreen {
       .width(tv(this.panelWidth()))
       .strokeWidth(1)
       .color(toResourceColorWithAlpha(activeColors().ink, 0.083))
-      .margin({ bottom: tv(49) })
+      .margin({ bottom: tv(34) }) // web: 41 px from the rule to the next heading
   }
 
   @Builder

@@ -16,7 +16,7 @@ const DRAWER_BACKDROP_BLUR: number = 38;
 const PADDING_H: number = 46;
 const HEADER_TOP: number = 54;
 // Web body starts at y=163: 34 below the 75 high header block.
-const BODY_GAP: number = 34;
+const BODY_GAP: number = 42;
 const KICKER_SIZE: number = 9.6;
 const KICKER_LETTER_SPACING: number = 0.672;
 const TITLE_SIZE: number = 38.4;
@@ -59,7 +59,7 @@ export struct Drawer {
   build() {
     Column() {
       Row() {
-        Column({ space: isTvMetrics() ? tv(4) : TOUCH_KICKER_GAP }) {
+        Column({ space: isTvMetrics() ? tv(12) : TOUCH_KICKER_GAP }) {
           Text(this.kicker).fontFamily(nunito(700))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
@@ -90,6 +90,15 @@ export struct Drawer {
             .onClick(() => {
               this.onClose();
             })
+          if (isTvMetrics()) {
+            // web opens the drawer with its close button focused (ring 5 px out, 3 px wide); the Previewer reports no focus
+            Column()
+              .width(tv(CLOSE_SIZE + 10))
+              .height(tv(CLOSE_SIZE + 10))
+              .borderRadius(tv(CLOSE_SIZE / 2 + 5))
+              .border({ width: tv(3), color: toResourceColor(activeColors().ink) })
+              .hitTestBehavior(HitTestMode.None)
+          }
           if (!isTvMetrics()) {
             // web opens the drawer with its close button focused: on the phone the ring is drawn from the state (the Previewer reports no focus)
             Column()
