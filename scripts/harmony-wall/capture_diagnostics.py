@@ -685,7 +685,7 @@ def phone_flat_card_rows(image, *, min_run_px=500, min_rows=100, top_px=0, botto
             extrema = rgb.crop((x, y, x + 400, y + 200)).getextrema()
             if any(high - low > 24 for low, high in extrema):
                 continue
-            if any(abs((low + high) // 2 - page[i]) > 6 for i, (low, high) in enumerate(extrema)):
+            if any(abs((low + high) // 2 - page[i]) > 12 for i, (low, high) in enumerate(extrema)):  # 12: a card glow or rail fade is near the page colour, a placeholder is far from it
                 cells.add((x // 560, y // 340))
     return blocks + len(cells)
 
