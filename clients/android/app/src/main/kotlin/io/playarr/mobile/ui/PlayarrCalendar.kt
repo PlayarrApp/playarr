@@ -1074,12 +1074,21 @@ private fun CalendarWeekBody(
         onDispose { if (firstEntry.requester === offered) firstEntry.requester = null }
     }
     val track = rememberScrollState()
+    // Web phone week opens with today's column at the start of the track.
+    if (!isTelevision && webColumn == null) {
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        androidx.compose.runtime.LaunchedEffect(groups.firstOrNull()?.date, loading) {
+            val index = groups.indexOfFirst { it.date == today }
+            if (!loading && index >= 0) track.scrollTo(with(density) { ((columnWidth + 20.dp) * index).roundToPx() })
+        }
+    }
     val columnScroll = remember(groups.size) { List(groups.size) { ScrollState(0) } }
     androidx.compose.runtime.CompositionLocalProvider(
         LocalCalendarMetrics provides if (isTelevision) TvCalendarMetrics else LocalCalendarMetrics.current,
         LocalCalendarToday provides today,
     ) {
-    Box(modifier.calendarEdgeFades(track.horizontalEdges())) {
+    // Phone web: the start scrim only dims the first letters of the heading, not the card stripe.
+    Box(modifier.calendarEdgeFades(track.horizontalEdges(), startBand = if (!isTelevision && webColumn == null) 30.dp else null)) {
         Row(
             // Phone: web's week columns end 726.8 css px down (118 dp above the screen bottom) and fade out there, above the nav bar.
             Modifier.fillMaxSize().horizontalScroll(track).padding(end = 24.dp, bottom = if (isTelevision || webColumn != null) 0.dp else PHONE_WEEK_BOTTOM_DP.dp),
