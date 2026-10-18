@@ -173,7 +173,9 @@ function calendarArtworkUrl(entry as Object) as String
     if entry = invalid then return ""
     if entry.poster_url <> invalid and entry.poster_url <> ""
         posterUrl = entry.poster_url
-        if posterUrl.Left(7) = "http://" or posterUrl.Left(8) = "https://"
+        ' A loopback art URL (the static server's art host) only works from the server's own machine: the stick uses the server proxy.
+        loopback = Instr(1, posterUrl, "//127.0.0.1") > 0 or Instr(1, posterUrl, "//localhost") > 0
+        if (posterUrl.Left(7) = "http://" or posterUrl.Left(8) = "https://") and not loopback
             return calendarSizedPosterUrl(posterUrl)
         end if
     end if
