@@ -1,0 +1,1 @@
+- Judge a long OK press from the key events' timestamps as well as the hold timer, so a hold on a busy TV (Tizen 6.5) still opens the title and playlist actions instead of being read as a short press.
