@@ -59,6 +59,26 @@ public final class WorkDetailViewModel {
         return (first.0, first.1)
     }
 
+    /// Up to three genres, each browsed once, ranked by shared genres, same kind and release-year proximity, top 20.
+    private func genreFallback(for work: Work?) async -> [Work] {
+        guard let work else { return [] }
+        var candidates: [UUID: Work] = [:]
+        for genre in work.genres.prefix(3) {
+            let page = try? await apiClient.browseCatalog(kind: nil, genre: genre, tag: nil, sort: nil, limit: 100, offset: nil)
+            for item in page?.items ?? [] where item.id != work.id && (item.kind == .movie || item.kind == .series) {
+                candidates[item.id] = item
+            }
+        }
+        func year(_ w: Work) -> Double? { w.releaseDate.flatMap { Double($0.prefix(4)) } }
+        func score(_ c: Work) -> Double {
+            let mine = Set(work.genres.map { $0.trimmingCharacters(in: .whitespaces).lowercased() })
+            let shared = c.genres.filter { mine.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) }.count
+            let proximity = year(work).flatMap { a in year(c).map { max(0, 5 - abs(a - $0) / 5) } } ?? 0
+            return Double(shared) * 100 + (c.kind == work.kind ? 10 : 0) + proximity
+        }
+        return Array(candidates.values.sorted { score($0) != score($1) ? score($0) > score($1) : $0.sortTitle < $1.sortTitle }.prefix(20))
+    }
+
     public func load() async {
         loadState = .loading
         do {
@@ -68,7 +88,9 @@ public final class WorkDetailViewModel {
             detail = try await fetchedDetail
             loadState = .loaded
             credits = (try? await fetchedCredits) ?? WorkCredits(cast: [], crew: [])
-            similarWorks = (try? await fetchedSimilar) ?? []
+            let found = ((try? await fetchedSimilar) ?? []).filter { $0.id != workID && ($0.kind == .movie || $0.kind == .series) }
+            // Web fallback (WorkDetail.tsx `loadGenreFallback`): a catalogue without embeddings ranks library titles by genre.
+            similarWorks = found.isEmpty ? await genreFallback(for: detail?.work) : found
         } catch let error as APIError {
             loadState = .failed(error.displayMessage)
         } catch {
