@@ -2121,7 +2121,7 @@ struct Detail {
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
               allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
-              overflowItems: !isTvMetrics(),
+              overflowItems: true, // TV too: the focused card shadow was cut to a visible band behind the first episode row (parity)
               items: rail.items,
               listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : PHONE_SEASON_LIST_HEIGHT,
               initialItemIndex: this.initialEpisodeIndex(rail),
