@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Capture the Android phone parity screens in one theme.
 #   capture.sh <out-dir> <light|dark> <screen-id>...
-# Needs: adb on PATH (ANDROID_SERIAL picks the device), the sideload debug APK installed and signed in as fx-viewer on an
-# emulator at 1170x2532, 480 dpi. PLAYARR_FIXTURE_DB (optional) is the fixture server's SQLite file: its watch_progress is
-# cleared before each screen so Home has no on-deck entry and the film detail offers Play, as in the web references.
+# Needs: adb on PATH (ANDROID_SERIAL picks the device), the sideload debug APK installed and signed in as the static parity
+# server's account (PARITY_ACCOUNT_NAME, server PARITY_SERVER_URL; see PARITY_TESTING.md, "Static parity server") on an
+# emulator at 1170x2532, 480 dpi. PLAYARR_FIXTURE_DB (optional, fixture server only): its watch_progress is cleared before each
+# screen; the static server needs no such reset because every start discards writes.
 set -euo pipefail
 out=$1; theme=$2; shift 2
 here=$(cd "$(dirname "$0")" && pwd)
 # The web references freeze the clock at the fixture instant; the app clock must match or Calendar and dates differ.
-clock=${PARITY_CLOCK:-$(sed -n 's/.*FIXTURE_CLOCK = "\([^"]*\)".*/\1/p' "$here/../../fixtures/catalog.mjs")}
+clock=${PARITY_CLOCK:-$(sed -n 's/.*"clock": *"\([^"]*\)".*/\1/p' "$here/../screens.json" | head -1)}
 case $theme in light) pref=Light ;; dark) pref=Dark ;; *) echo "theme must be light or dark" >&2; exit 2 ;; esac
 mkdir -p "$out"
 for screen in "$@"; do

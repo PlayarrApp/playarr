@@ -336,15 +336,17 @@ def configured_player_route():
 def focus_first_card(click_xy=None):
     """Web's reference frames are taken with the first card of the page focused (lifted, with the glow ring). The Previewer never delivers
     a focus event, so the preview patch turns PosterCard's state-driven focused look (ringOn) on for the first card on screen."""
-    get("/state", resetfocused="1")
-    get("/setroute", name="focus:pcard")
-    assert_preview_telemetry_clean()
-    for _ in range(10):
-        time.sleep(1)
+    for _attempt in range(2):  # a second request: the first can land before the page behind a route-opened detail has built its cards
+        get("/state", resetfocused="1")
+        get("/setroute", name="focus:pcard")
         assert_preview_telemetry_clean()
-        if preview_focus_confirmed(json.loads(get("/state"))):
-            time.sleep(2)
-            return
+        for _ in range(10):
+            time.sleep(1)
+            assert_preview_telemetry_clean()
+            if preview_focus_confirmed(json.loads(get("/state"))):
+                time.sleep(2)
+                return
+        time.sleep(5)
     raise SystemExit("focus_first_card: no live card acknowledged focus")
 
 
@@ -403,6 +405,26 @@ def poster_walk(folder):
     choose(1032, 500)  # Thumbnails
 
 
+def open_detail(kind, xy, wait):
+    """Open the title the web references show: the pinned suite item on the static server (its library order differs from the web's
+    pick), otherwise the first card."""
+    if os.environ.get("PARITY_STATIC_SERVER") == "1":
+        suite = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
+        want = "film-detail" if kind == "movies" else "series-detail"
+        work_id = next(x["open"] for x in suite if x.get("id") == want).rsplit("/", 1)[1]
+        route("detail:" + work_id, wait)
+    else:
+        click(*xy); time.sleep(wait)
+
+
+def leave_detail():
+    """A detail opened through the route mailbox has no list page under it: leave through Home, as the pinned-detail path does."""
+    if os.environ.get("PARITY_STATIC_SERVER") == "1":
+        route("home", 15)
+    else:
+        key("back"); time.sleep(3); key("back"); time.sleep(4)
+
+
 def walk(folder, suffix):
     """The route-based screen walk (captures as <id><suffix>.png). Clicks only inside pages."""
     n = lambda s: s + suffix
@@ -414,9 +436,12 @@ def walk(folder, suffix):
                           for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
     route("library:movie", 15); focus_first_card((946, 254)); snap(n("movies"), folder, 150000)
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
-    click(946, 254); time.sleep(12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
+    static = os.environ.get("PARITY_STATIC_SERVER") == "1"  # pinned details open through the route mailbox, last: later library pages lose their focus ack after one
+    if not static:
+        open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); leave_detail()
     route("library:series", 15); focus_first_card((946, 254)); snap(n("series"), folder, 150000)
-    click(946, 254); time.sleep(12); focus_first_card(); snap(n("series-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
+    if not static:
+        open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); leave_detail()
     route("library:artist", 15); focus_first_card((946, 254)); snap(n("music"), folder, 150000)
     route("calendar", 18); snap(n("calendar-agenda"), folder)
     click(1877, 272); time.sleep(4); click(1740, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-week"), folder)
@@ -427,6 +452,9 @@ def walk(folder, suffix):
         # web's reference has the theme chosen explicitly (the colour theme row shows Dark or Light selected); the Previewer starts on System
         click(394, 207); time.sleep(3); click(1645 if folder.endswith("dark") else 1295, 285); time.sleep(4)
     snap(n("settings"), folder)
+    if static:
+        open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); leave_detail()
+        open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); leave_detail()
     extra_screens(folder)
     if os.environ.get("MOTION") == "true" and device == "tv":
         motion_walk(os.path.join(out, "motion", "dark" if folder.endswith("dark") else "light"))
@@ -728,13 +756,17 @@ else:
                     # check can see art that is still above the fold while the cards the frame will show are grey (light, 2026-10-15).
                     while clean < 2 and time.time() < art_end:
                         time.sleep(5)
-                        clean = clean + 1 if phone_flat_card_rows(png()) == 0 else 0
+                        clean = clean + 1 if phone_flat_card_rows(png(), top_px=700, bottom_px=260) == 0 else 0
                         if clean == 0 and time.time() >= next_reopen:
                             route("home", 6); route("detail:" + work_id, 8)
                             next_reopen = time.time() + 30
                     if clean < 2:
                         debug(name + "-placeholder-art")
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
+                # the web refs are taken at page top; the app scrolls to the next-up episode, so drag back up before the frame
+                for _ in range(3):
+                    get("/swipe", x1=540, y1=500, x2=540, y2=2200, steps=12, ms=300); time.sleep(1.5)
+                time.sleep(2)
                 snap(name, folder, 100000)
                 if kind == "series":  # the saved frame itself must show art (the page may have moved since the last check)
                     saved = os.path.join(folder, name + ".png")

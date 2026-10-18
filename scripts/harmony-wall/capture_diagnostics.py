@@ -648,7 +648,7 @@ def write_detail_summary(out_dir, *, theme, accepted, failure, frame_path, stage
     return summary
 
 
-def phone_flat_card_rows(image, *, min_run_px=500, min_rows=100):
+def phone_flat_card_rows(image, *, min_run_px=500, min_rows=100, top_px=0, bottom_px=0):
     """Phone episode cards drawn as grey placeholders: a flat, single-colour block as wide as a card (167 vp or more) and
     tall as one (about 33 vp or more per 100 px rows), in a colour other than the page. Real art never has 500 identical pixels in a
     row for 100 rows; buttons are narrower and carry text. Returns the number of such blocks found (0 means art is drawn)."""
@@ -657,7 +657,8 @@ def phone_flat_card_rows(image, *, min_run_px=500, min_rows=100):
     px = rgb.load()
     page = px[min(20, width - 1), height // 2]
     blocks, run_rows = 0, {}
-    for y in range(0, height):
+    # rows above top_px hold the hero's flat fade, rows below height - bottom_px the floating nav bar: never the episode cards
+    for y in range(min(top_px, height), height - bottom_px):
         row_hits = set()
         x = 0
         while x < width:
@@ -684,7 +685,7 @@ def phone_flat_card_rows(image, *, min_run_px=500, min_rows=100):
             extrema = rgb.crop((x, y, x + 400, y + 200)).getextrema()
             if any(high - low > 24 for low, high in extrema):
                 continue
-            if any(abs((low + high) // 2 - page[i]) > 6 for i, (low, high) in enumerate(extrema)):
+            if any(abs((low + high) // 2 - page[i]) > 12 for i, (low, high) in enumerate(extrema)):  # 12: a card glow or rail fade is near the page colour, a placeholder is far from it
                 cells.add((x // 560, y // 340))
     return blocks + len(cells)
 

@@ -218,6 +218,7 @@ const PHONE_HEADER_FADE: number = 28;
 const PHONE_SEASON_ROW_GAP: number = 35.65;
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
+const PILL_GLYPH_DARK: string = '#ba8492'; // sampled from the dark static-server ref (anti-aliased thin glyph; refine if the colour reads off)
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
 const TOUCH_SETTLE_ATTEMPTS: number = 12;
 /** Web phone series detail, next-up episode in the middle: the page scrolled by about this much (measured on the 360 vp reference). */
@@ -245,9 +246,9 @@ const RIGHT_COLUMN_Y: number = 543;
 const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
 const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
-const SERIES_COLUMN_TOP: number = 361;
+const SERIES_COLUMN_TOP: number = 543; // static-server refs: the first season heading rests with the other details' right column (was 361, the scrolled old ref)
 const SERIES_COLUMN_BLEED: number = 12;
-const SERIES_COLUMN_HEIGHT: number = 719;
+const SERIES_COLUMN_HEIGHT: number = 537;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
 const CAST_CIRCLE: number = 104;
@@ -824,7 +825,8 @@ struct Detail {
   /** Web's unseen dot on episode cards: the viewer's progress rows by media file, once loaded. */
   @State private episodeProgress: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private episodeProgressLoaded: boolean = false;
-  @State private playFocused: boolean = !isTvMetrics();
+  // true from the start on both: web opens a film with Play focused (the Previewer never reports focus); only the TV film Play pill and the phone Play read it
+  @State private playFocused: boolean = true;
   @State private optionsOpen: boolean = false;
   /** On this profile's watchlist: null until the server has answered. */
   @State private listed: boolean | null = null;
@@ -1822,12 +1824,17 @@ struct Detail {
 
   /** Web's series pills carry a soft drop shadow (light theme; the dark pills are flat). */
   private pillShadow(primary: boolean): ShadowOptions {
-    if (!this.isSeriesPage() || resolvedThemeMode() === 'dark') {
+    if (resolvedThemeMode() === 'dark') {  // the film page's light pills take the series page's white fill and shadow (static-server refs)
       return { radius: 0, color: Color.Transparent };
     }
     return primary
       ? { radius: tv(22), offsetY: tv(10), color: 'rgba(56, 38, 33, 0.28)' }
       : { radius: tv(22), offsetY: tv(8), color: 'rgba(56, 38, 33, 0.08)' };
+  }
+
+  /** The TV film Play pill in web's focused look (accent fill, ring): web opens a film with Play focused. */
+  private filmPlayFocused(primary: boolean): boolean {
+    return primary && isTvMetrics() && !this.isSeriesPage() && this.playFocused;
   }
 
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
@@ -1836,11 +1843,11 @@ struct Detail {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
       Text(glyph).fontFamily(nunito(400))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
-        .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().accent))
+        .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
       Text(label).fontFamily(nunito(700))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
         .fontWeight(FontWeight.Bold)
-        .fontColor(primary ? toResourceColor(activeColors().bg) : toResourceColor(activeColors().ink))
+        .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
         .maxLines(1)
     }
     .height(tv(PILL_HEIGHT))
@@ -1849,11 +1856,23 @@ struct Detail {
     .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(primary ? toResourceColor(activeColors().ink) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .backgroundColor(primary ? (this.filmPlayFocused(primary) ? PLAY_FOCUS_FILL : toResourceColor(activeColors().ink)) : resolvedThemeMode() === 'dark' ? (this.isSeriesPage() ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA)) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
     .shadow(this.pillShadow(primary))
+    .border(this.filmPlayFocused(primary) ? { width: tv(3), color: resolvedThemeMode() === 'dark' ? '#ffffff' : toResourceColor(activeColors().ink) } : { width: 0 })
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
-    .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
+    .defaultFocus(enabled && primary && !this.isSeriesPage())
+    .onFocus((): void => {
+      if (primary) {
+        this.playFocused = true;
+      }
+      this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration)();
+    })
+    .onBlur((): void => {
+      if (primary) {
+        this.playFocused = false;
+      }
+    })
     .onClick(() => {
       this.cancelInitialEpisodeFocus();
       onPress();
@@ -2121,7 +2140,7 @@ struct Detail {
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
               allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
-              overflowItems: !isTvMetrics(),
+              overflowItems: true, // TV too: the focused card shadow was cut to a visible band behind the first episode row (parity)
               items: rail.items,
               listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : PHONE_SEASON_LIST_HEIGHT,
               initialItemIndex: this.initialEpisodeIndex(rail),
@@ -2346,7 +2365,7 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
           .fontSize(10.24)
@@ -2509,6 +2528,8 @@ struct Detail {
               .letterSpacing(-1.6)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
+              // web phone: a series title wraps at about 250 vp (measured on the static fixture: "Golden / Cathedral 1")
+              .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 250 : '100%' })
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunito(500))
                 .fontSize(14.4)
@@ -2524,6 +2545,8 @@ struct Detail {
               .lineHeight(16.7)
               .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 11.7 : 10) : 12 })
               .maxLines(3)
+              // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
+              .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
               this.touchActionRows()

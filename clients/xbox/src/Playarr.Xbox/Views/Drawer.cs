@@ -184,11 +184,30 @@ namespace Playarr.Xbox.Views
             return group;
         }
 
+        /// <summary>The language's name as the web shows it (<c>languageDisplayName</c>): the culture's display name, else the server's name, else the upper-cased code.</summary>
+        public static string LanguageLabel(string code, string? fallbackName = null)
+        {
+            try
+            {
+                var name = new System.Globalization.CultureInfo(code).DisplayName;
+                if (!string.IsNullOrEmpty(name) && !string.Equals(name, code, StringComparison.OrdinalIgnoreCase))
+                {
+                    return name;
+                }
+            }
+            catch (System.Globalization.CultureNotFoundException)
+            {
+            }
+
+            return string.IsNullOrEmpty(fallbackName) ? code.ToUpperInvariant() : fallbackName!;
+        }
+
         /// <summary>
         /// The web's language select: a tinted box showing the current choice and a chevron; Enter lists "Any language" and
-        /// the languages <paramref name="load"/> returns in a flyout.
+        /// the languages <paramref name="load"/> returns in a flyout. Each language toggles in <paramref name="onSelect"/>
+        /// (several per type, as on the web); the ones in <paramref name="selected"/> are ticked.
         /// </summary>
-        public static StackPanel Dropdown(string label, string current, Func<System.Threading.Tasks.Task<System.Collections.Generic.IList<Playarr.Core.Models.LanguageFacet>>> load, Action<string?> onSelect)
+        public static StackPanel Dropdown(string label, string current, Func<System.Threading.Tasks.Task<System.Collections.Generic.IList<Playarr.Core.Models.LanguageFacet>>> load, Action<string?> onSelect, System.Collections.Generic.ICollection<string> selected)
         {
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
             var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
@@ -227,7 +246,7 @@ namespace Playarr.Xbox.Views
                     foreach (var facet in await load())
                     {
                         var code = facet.Code;
-                        var item = new MenuFlyoutItem { Text = string.IsNullOrEmpty(facet.Name) ? code : facet.Name };
+                        var item = new ToggleMenuFlyoutItem { Text = LanguageLabel(code, facet.Name), IsChecked = selected.Contains(code) };
                         item.Click += (a, b) => onSelect(code);
                         flyout.Items.Add(item);
                     }

@@ -77,7 +77,7 @@ internal sealed class DetailScreen : IPage
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
         _content.Add(back);
         _content.Add(Ui.Text("Movies", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
-        new PageSubtitle(_env, _content, "Movies").Set(w.Title);
+        new PageSubtitle(_env, _content, "Movies").Set(w.Title, wrapIfClockBlocks: true);
     }
 
     private void BuildCopy(Work w, WorkDetail d)
@@ -88,6 +88,7 @@ internal sealed class DetailScreen : IPage
         var meta = new List<string> { "Movie" };
         if (d.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(d.RuntimeMs.Value));
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
+        if (w.ReleaseDate is { Length: > 0 } rel && DateTime.TryParse(rel, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var released)) meta.Add("Released " + released.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(3));
         _content.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 27, 10.56f, 400, _t.InkMuted, 700, 15.84f));
         var ovLines = Ui.Paragraph(_content, w.Overview ?? "", 153.6f, bas + 64.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
@@ -210,10 +211,12 @@ internal sealed class DetailScreen : IPage
         }
         catch (Exception e) { Dbg.Log("CAST failed: " + e.Message); }
 
-        if (content is null) return;
-        var cast = Credits.ParseCast(content);
-        if (cast.Count == 0 || _stack is null) return;
-        await AuthImage.OnUiAsync(() => new PeopleRail(_env, _stack, cast, 891f, _focus, () => _stackY, r => SetStackY(-(r.HeadingY - 540f))));
+        var cast = content is null ? [] : Credits.ParseCast(content);
+        var nextY = 891f; // web: the cast rail, else Similar Titles, sits 351 px below the chapters heading; Similar follows the cast at the same pitch
+        if (_stack is null) return;
+        if (cast.Count > 0) { await AuthImage.OnUiAsync(() => new PeopleRail(_env, _stack, cast, nextY, _focus, () => _stackY, r => SetStackY(-(r.HeadingY - 540f)))); nextY += 351f; }
+        var similar = await SimilarRail.LoadAsync(_env, d.Work);
+        if (similar.Count > 0) await AuthImage.OnUiAsync(() => new SimilarRail(_env, _stack, similar, nextY, _focus, () => _stackY, r => SetStackY(-(r.HeadingY - 540f))));
     }
 
     private void SetThumbAsync(View art, Guid file, long positionMs)
