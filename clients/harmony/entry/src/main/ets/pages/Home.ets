@@ -202,7 +202,7 @@ const TOUCH_CARD_CAPTION_HEIGHT: number = 63;
  * 2 + artwork-size-step columns 12 vp apart. Landscape cards are 16:9, Covers 2:3; the Home screen artwork setting picks which. */
 const TOUCH_GUTTER: number = 16;
 const TOUCH_CARD_GAP: number = 12;
-const TOUCH_RAIL_HEADING_SIZE: number = 16;
+const TOUCH_RAIL_HEADING_SIZE: number = 15.6; // web heading 2.6% narrower than 16 vp
 const TOUCH_RAIL_HEADING_GAP: number = 22;
 
 /** Extra bottom clearance under the touch rails column so the last rail's
