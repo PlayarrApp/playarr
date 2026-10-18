@@ -295,13 +295,20 @@ function pgArtwork(parent as Object, x as Float, y as Float, w as Float, h as Fl
     poster.loadDisplayMode = "scaleToZoom"
     trackCalendarArtworkPoster(poster, url)
     if url <> ""
-        agent = CreateObject("roHttpAgent")
-        agent.SetCertificatesFile("common:/certs/ca-bundle.crt")
-        agent.InitClientCertificates()
         headers = {}
         g = GetGlobalAA()
         if g.playarrArtHeaders <> invalid then headers = artworkHeaders(url, g.playarrArtHeaders)
-        if headers.Count() > 0 then agent.SetHeaders(headers)
+        ' One agent per header set: creating and initialising one per poster made a full agenda redraw hit the execution timeout.
+        if m.pgAgents = invalid then m.pgAgents = {}
+        agentKey = FormatJson(headers)
+        agent = m.pgAgents[agentKey]
+        if agent = invalid
+            agent = CreateObject("roHttpAgent")
+            agent.SetCertificatesFile("common:/certs/ca-bundle.crt")
+            agent.InitClientCertificates()
+            if headers.Count() > 0 then agent.SetHeaders(headers)
+            m.pgAgents[agentKey] = agent
+        end if
         poster.SetHttpAgent(agent)
         poster.uri = url
     end if
@@ -433,10 +440,13 @@ sub pageFocusRender()
         top = item.y + m.pageScrollY
         bottom = item.y + item.h + m.pageScrollY
         if bottom > 1030 then m.pageScrollY = m.pageScrollY - (bottom - 1030)
-        if top < 140 and m.pageScrollY < 0 then m.pageScrollY = m.pageScrollY + (140 - top)
+        topLimit = 140
+        if m.pageKind = "calendar" and m.calendarView = "agenda" then topLimit = 238
+        if top < topLimit and m.pageScrollY < 0 then m.pageScrollY = m.pageScrollY + (topLimit - top)
         if m.pageScrollY > 0 then m.pageScrollY = 0
         m.pageBody.translation = [0, m.pageScrollY]
     end if
+    if m.pageKind = "calendar" then calendarAgendaPin()
     ox = 0
     if item.sx = true
         ' Week view: scroll the columns sideways so the focused card stays on screen.
@@ -1919,6 +1929,7 @@ sub renderCalendarBody()
 end sub
 
 sub renderCalendarAgenda(entries as Object)
+    m.agendaDays = []
     if entries.Count() = 0
         pgLabel(m.pageBody, 153.6, 240, 1200, 30, "No releases in this range.", 19, 400, "inkSoft")
         return
@@ -1984,18 +1995,35 @@ sub renderCalendarAgenda(entries as Object)
     ay = 162.0
     lastDay = ""
     today = calendarTodayString()
+    m.agendaDays = []
+    ' The list scrolls under the header band (web: the panel clips at its top); the cover sits first in pageHead, below the header controls.
+    cover = CreateObject("roSGNode", "Rectangle")
+    cover.translation = [775, 0]
+    cover.width = 1060
+    cover.height = 162
+    cover.color = ThemeColor("surface")
+    ThemeSetRole(cover, "surface")
+    m.pageHead.InsertChild(cover, 0)
     for each entry in entries
         edt = calendarEntryDate(entry)
         day = entry.date
         if day <> lastDay
             ' Days sit 2rem apart (web .calendar-days gap), the cards 14.6 px.
-            if lastDay <> "" then ay = ay + 17.4
-            headLabel = pgLabel(m.pageBody, 783.4, ay, 0, 44, calendarDayHeading(edt, false), 18, 600, "ink", { vertAlign: "center" })
+            if lastDay <> ""
+                m.agendaDays.Peek().endY = ay - 14.6
+                ay = ay + 17.4
+            end if
+            ' The heading is pinned (web: sticky), so it lives in pageHead and calendarAgendaPin() moves it while the list scrolls.
+            hg = CreateObject("roSGNode", "Group")
+            m.pageHead.AppendChild(hg)
+            pgRect(hg, 775, ay, 1060, 58, "surface")
+            headLabel = pgLabel(hg, 783.4, ay, 0, 44, calendarDayHeading(edt, false), 18, 600, "ink", { vertAlign: "center" })
             if day = today
                 hx = 783.4 + headLabel.boundingRect().width + 10
-                pgRound(m.pageBody, hx, ay + 11, 61, 22, 11, "lineStrong", -1, true)
-                pgLabel(m.pageBody, hx, ay + 11, 61, 22, "TODAY", 11, 700, "ink", { horizAlign: "center", vertAlign: "center" })
+                pgRound(hg, hx, ay + 11, 61, 22, 11, "lineStrong", -1, true)
+                pgLabel(hg, hx, ay + 11, 61, 22, "TODAY", 11, 700, "ink", { horizAlign: "center", vertAlign: "center" })
             end if
+            m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
             lastDay = day
         end if
@@ -2013,6 +2041,22 @@ sub renderCalendarAgenda(entries as Object)
         calendarMetaRow(m.pageBody, 853.4, ay + 70, entry, 13)
         pgFocusable(783.4, ay, 1034, 106, 14, "entry", entry.id, true)
         ay = ay + 120.6
+    end for
+    if m.agendaDays.Count() > 0 then m.agendaDays.Peek().endY = ay - 14.6
+end sub
+
+' Web's sticky day heading: stays at y 162 while its day scrolls, is pushed up by the next day's heading, and hides once it is clear of the header.
+sub calendarAgendaPin()
+    if m.agendaDays = invalid or m.calendarView <> "agenda" then return
+    oy = m.pageScrollY
+    if oy = invalid then oy = 0
+    for each d in m.agendaDays
+        y = d.y + oy
+        if y < 162 then y = 162
+        limit = d.endY + oy - 44
+        if y > limit then y = limit
+        d.group.translation = [0, y - d.y]
+        d.group.visible = y > 118
     end for
 end sub
 
@@ -2104,6 +2148,14 @@ end sub
 
 sub renderCalendarWeek(entries as Object)
     r = calendarViewRange()
+    ' Web's week list ends at the action column (x 1817): the fourth day column is cut there, not drawn under the tiles.
+    cover = CreateObject("roSGNode", "Rectangle")
+    cover.translation = [1817, 120]
+    cover.width = 103
+    cover.height = 960
+    cover.color = ThemeColor("surface")
+    ThemeSetRole(cover, "surface")
+    m.pageHead.InsertChild(cover, 0)
     byDay = {}
     for each entry in entries
         if entry.date <> invalid
