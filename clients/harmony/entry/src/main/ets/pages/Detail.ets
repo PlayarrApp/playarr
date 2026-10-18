@@ -108,7 +108,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 import { getWorkDetail, getSimilarWorks, getWorkCredits, getResumePlan, clearResumeChoices } from '../data/CatalogRepository';
 import { resumeButtonLabel, resumeKicker, resumeTargetFile } from '../core/ResumePlan';
 import { atLeast } from '../core/SafeInsets';
-import { hasSeriesResumeTarget, metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
+import { generatedChapters, hasSeriesResumeTarget, metaChips, planEpisodeTitle, planSynopsis } from '../core/DetailMeta';
 import {
   EpisodeFocusGate,
   hasPositiveEpisodeAreaSample,
@@ -147,6 +147,7 @@ import {
   fetchMediaThumbnail,
   HERO_ARTWORK_PRIORITY,
   COVER_ARTWORK_PRIORITY,
+  LANDSCAPE_ARTWORK_PRIORITY,
 } from '../data/ArtworkRepository';
 
 import type {
@@ -207,7 +208,8 @@ const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
 const PHONE_SEASON_LIST_HEIGHT: number = 165;
 const PHONE_SEASON_HEADER_CARD_GAP: number = 21.18;
-const PHONE_DETAIL_RAIL_CLIP_START: number = 16;
+// 24 > the card's 20 vp ring glow, so the glow is not cut at the rail's left edge
+const PHONE_DETAIL_RAIL_CLIP_START: number = 24;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
 // Web phone detail header (#175): the 44 vp Back button 16 vp from the top, an 8 vp gap, then the 28 vp edge fade of the pinned scrim.
 const PHONE_BACK_SIZE: number = 44;
@@ -251,6 +253,8 @@ const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 537;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
+/** Room under a landscape Similar card for its caption and the focus shadow. */
+const SIMILAR_LIST_EXTRA: number = 70;
 const CAST_CIRCLE: number = 104;
 /** Web's first circle starts 24 vp in from the rail edge (the item is wider than ours); ours sat at 10. */
 const CAST_LEFT_INSET: number = 14;
@@ -795,6 +799,8 @@ struct Detail {
   @State private similarRail: DetailRail | null = null;
   @State private primaryMediaFileId: string | null = null;
   @State private chaptersRail: DetailRail | null = null;
+  /** Web: generated chapters (the server listed none) are counted as "scene markers". */
+  private chaptersGenerated: boolean = false;
   /** A series' resume plan (null for a film, or until the server answers): its target is what the primary button plays. */
   @State private resumePlan: ResumePlan | null = null;
   @State private episodeFocusSuppressed: boolean = false;
@@ -850,6 +856,7 @@ struct Detail {
     this.similarRail = null;
     this.primaryMediaFileId = null;
     this.chaptersRail = null;
+    this.chaptersGenerated = false;
     this.resumePlan = null;
     this.episodeFocusSuppressed = false;
     this.episodeFocusGate = new EpisodeFocusGate();
@@ -1066,15 +1073,20 @@ struct Detail {
     if (!this.artworkStore.isCurrentGeneration(generation)) {
       return;
     }
-    if (result.kind !== 'ok' || result.value.length === 0) {
+    // web: the server's list can be empty; the rail then shows generated chapters (one "Chapter 01" at 0:00 for a short clip)
+    const chapters: MediaChapter[] = result.kind === 'ok' && result.value.length > 0
+      ? result.value
+      : generatedChapters(this.detail !== null && this.detail.runtime_ms !== null ? this.detail.runtime_ms : 0);
+    if (chapters.length === 0) {
       return;
     }
+    this.chaptersGenerated = !(result.kind === 'ok' && result.value.length > 0);
     const rows: DetailRow[] = [];
-    for (const chapter of result.value) {
+    for (const chapter of chapters) {
       rows.push(chapterRow(chapter, mediaFileId));
     }
     this.chaptersRail = { id: 'chapters', heading: t('pages.workDetail.chaptersHeading', 'Chapters'), items: rows };
-    for (const chapter of result.value) {
+    for (const chapter of chapters) {
       const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
         return;
@@ -1117,7 +1129,7 @@ struct Detail {
       if (item.similarWorkId === null) {
         continue;
       }
-      const result = await fetchWorkArtworkByPriority(item.similarWorkId, COVER_ARTWORK_PRIORITY);
+      const result = await fetchWorkArtworkByPriority(item.similarWorkId, isTvMetrics() ? LANDSCAPE_ARTWORK_PRIORITY : COVER_ARTWORK_PRIORITY);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
         return;
       }
@@ -1668,8 +1680,8 @@ struct Detail {
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        cardWidth: tv(TvGeometry.homeRailCardWidthCover),
-        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthCover) * 3) / 2),
+        cardWidth: tv(TvGeometry.homeRailCardWidthLandscape),
+        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthLandscape) * 9) / 16),
         artworkRadius: Radii.homeCardArtworkTv,
         activeRailFactor: activeRailFactor,
         onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
@@ -2071,7 +2083,7 @@ struct Detail {
       }
       if (this.chaptersRail !== null) {
         Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
+          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), this.chaptersGenerated ? tf('pages.workDetail.sceneMarkersCount', '{{count}} scene markers', { count: this.chaptersRail.items.length.toString() }) : tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
           MediaRail({
             railId: 'chapters',
             headingGap: 0,
@@ -2102,15 +2114,21 @@ struct Detail {
         .alignItems(HorizontalAlign.Start)
       }
       if (this.similarRail !== null) {
-        MediaRail({
-          railId: this.similarRail.id,
-          heading: this.similarRail.heading,
-          headingSize: tv(TvGeometry.railHeadingSize),
-          items: this.similarRail.items,
-          itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
-            this.similarItem(item, index, activeRailFactor);
-          },
-        })
+        // web: landscape cards (the Library's size) under a heading with the title count
+        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
+          this.railHeading(this.similarRail.heading, tf(this.similarRail.items.length === 1 ? 'pages.workDetail.titlesCountOne' : 'pages.workDetail.titlesCountOther', this.similarRail.items.length === 1 ? '{{count}} title' : '{{count}} titles', { count: this.similarRail.items.length.toString() }))
+          MediaRail({
+            railId: this.similarRail.id,
+            headingGap: 0,
+            listHeight: tv(Math.round(TvGeometry.homeRailCardWidthLandscape * 9 / 16) + SIMILAR_LIST_EXTRA),
+            itemGap: tv(TvGeometry.railItemGapHome),
+            items: this.similarRail.items,
+            itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
+              this.similarItem(item, index, activeRailFactor);
+            },
+          })
+        }
+        .alignItems(HorizontalAlign.Start)
       }
     }
     .alignItems(HorizontalAlign.Start)
@@ -2379,7 +2397,7 @@ struct Detail {
 
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
-  private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = ''): void {
+  private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = '', share: boolean = false): void {
     Text(glyph.length > 0 ? glyph + '  ' + label : label).fontFamily(nunito(500))
       .fontSize(size)
       .fontWeight(FontWeight.Medium)
@@ -2388,6 +2406,7 @@ struct Detail {
       .textAlign(TextAlign.Center)
       .padding({ left: 16, right: 16 })
       .borderRadius(22)
+      .layoutWeight(share ? 1 : 0)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       .border({ width: 1, color: Color.Transparent })
       .onClick(() => {
@@ -2468,12 +2487,14 @@ struct Detail {
     Row({ space: 8 }) {
       this.touchActionButton(t('components.mediaContextMenu.download', 'Download'), (): void => {
         this.touchActionsOpen = true;
-      }, 8, '\u21E9')
+      }, 8, '\u21E9', true)
       this.touchActionButton(t('pages.workDetail.playbackButtonLabel', 'Playback'), (): void => {
         this.touchActionsOpen = true;
-      }, 11, '\u2637')
+      }, 11, '\u2637', true)
       this.playButton(this.primaryMediaFileId !== null, PLAY_BUTTON_HEIGHT_TOUCH)
     }
+    // web phone film: the three pills share the row width (104 / 104 / 110 vp)
+    .width('100%')
     Row({ space: 8 }) {
       this.touchActionButton(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();

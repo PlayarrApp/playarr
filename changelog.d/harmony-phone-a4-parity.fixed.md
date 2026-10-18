@@ -1,0 +1,1 @@
+- HarmonyOS phone: film action pills share the row width, episode ring glow is no longer cut at the rail edge, Library filter language selects use web's smaller regular label, the preview build pins the parity clock (Calendar agenda), the preview contract test follows the static-server workflow env.

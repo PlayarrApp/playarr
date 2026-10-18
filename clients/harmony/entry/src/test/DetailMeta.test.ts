@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { hasSeriesResumeTarget, planEpisode, planSynopsis } from '../main/ets/core/DetailMeta';
+import { generatedChapters, hasSeriesResumeTarget, planEpisode, planSynopsis } from '../main/ets/core/DetailMeta';
 import type { ResumePlan } from '../main/ets/core/Types/ResumePlan';
 import type { EpisodeDetail, SeasonDetail, WorkDetail } from '../main/ets/core/Types/WorkDetail';
 
@@ -126,5 +126,17 @@ describe('series resume detail copy', () => {
 
     const withoutAnyOverview = detail('series', null, null, null);
     assert.equal(planSynopsis(withoutAnyOverview, plan()), '');
+  });
+});
+
+describe('generatedChapters', () => {
+  it('gives a 60 s clip one chapter at 0:00, and no chapters for an unknown runtime', () => {
+    const chapters = generatedChapters(60000);
+    assert.equal(chapters.length, 1);
+    assert.equal(chapters[0].start_ms, 0);
+    assert.equal(generatedChapters(0).length, 0);
+  });
+  it('spaces a 2 hour film every 15 minutes', () => {
+    assert.equal(generatedChapters(7200000).length, 8);
   });
 });
