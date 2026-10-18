@@ -1,5 +1,6 @@
 // Suite driver (docs/parity/SUITE.md) for the Samsung Tizen emulator and the LG webOS simulator.
 //   DEVICE=tizen|webos  [TIZEN_DISPLAY=:25] [WEBOS_DISPLAY=:26] [WEBOS_CDP=9226] [PARITY_NETLOG=<dir>]
+//   PARITY_PIN_CLOCK=2026-10-07T12:00:00Z  [webos only] pins Date, zone and locale from the inspector without stable mode
 // webOS: Chrome DevTools Protocol (keys and eval). Tizen: X key events to the emulator window plus the debug build's
 // netlog.js eval channel (a debug build with scripts/parity/tizen-webos/netlog.js; the host side is logserver.py <dir>/log.txt). Both then drive the same page functions.
 import { execFileSync } from "node:child_process";
@@ -73,7 +74,12 @@ export async function createDriver() {
   const cdpPort = process.env.WEBOS_CDP ?? "9226";
   let playerStarted = false;
   let tizenPinScript = null; // base64 of the page script that pins Date, zone and locale: stored for netlog.js to run before the app renders
-  let pin = null; // { fixedNow, timeZone, locale } from setDeterministicCapture, re-applied on every CDP connection
+  // PARITY_PIN_CLOCK=<ISO instant> pins the clock without the isolated-account stable mode (the real TV stays on the shared Device Test account), so Calendar renders the web refs' date.
+  let pin = null; // { fixedNow, timeZone, locale } from setDeterministicCapture or PARITY_PIN_CLOCK, re-applied on every CDP connection
+  if (process.env.PARITY_PIN_CLOCK && device === "webos") {
+    if (!Number.isFinite(Date.parse(process.env.PARITY_PIN_CLOCK))) throw new Error("PARITY_PIN_CLOCK must be an ISO instant");
+    pin = { fixedNow: process.env.PARITY_PIN_CLOCK, timeZone: "UTC", locale: "en-GB" };
+  }
   let ws, seq = 0, pending = new Map(), evalSeq = 0, theme, loadedTheme;
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env: process.env, client: process.env.PARITY_CLIENT });
   const trustedServerUrl = loadTrustedDeviceTestServerUrl();
@@ -426,6 +432,18 @@ export async function createDriver() {
           finally { await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...c }); }
         }
       }
+      // Hosted debug page only: a router link's click does not navigate there (it does in the packaged app), so run the link's own handler.
+      if (TIZEN_MIRROR && k === "select" && !long) {
+        await sleep(600);
+        await ev(`(() => {
+          const a = document.activeElement;
+          if (!(a instanceof HTMLAnchorElement) || !a.getAttribute("href")?.startsWith("#/") || a.getAttribute("href") === location.hash) return false;
+          const props = a[Object.keys(a).find((key) => key.startsWith("__reactProps"))];
+          if (!props?.onClick) return false;
+          props.onClick({ button: 0, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, currentTarget: a, target: a, defaultPrevented: false, preventDefault() {}, stopPropagation() {}, persist() {} });
+          return true;
+        })()`);
+      }
       // Real TV: the app applies a directional key on the next animation frame and a busy main thread can delay it by seconds; two frames flush the queue.
       if (REAL_TV) await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
       await sleep(device === "webos" ? 1000 : 350);
@@ -456,6 +474,11 @@ export async function createDriver() {
         await guard();
         if (TIZEN_MIRROR) {
           const q = (name) => `${mirrorLocal()}/__mirror/${name}?t=${encodeURIComponent(mirrorToken())}`;
+          // A focused text field opens the TV's keyboard, which shrinks the page to the strip above it (Search: 1920x568): blur it first.
+          if (Number(await ev("innerHeight")) < 1000) {
+            await ev("(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)");
+            if (!(await until("innerHeight >= 1070", 15000))) throw new Error("the TV keyboard did not close before capture");
+          }
           await ev("window.__mirrorPause = false");
           const since = Date.now() / 1000;
           let frame;
