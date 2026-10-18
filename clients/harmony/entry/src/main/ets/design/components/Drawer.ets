@@ -33,6 +33,7 @@ const TOUCH_CLOSE_RING_OUTSET: number = 5.3;
 const TOUCH_CLOSE_LIFT: number = 1.4;
 const TOUCH_TITLE_SIZE: number = 24;
 const TOUCH_TITLE_LETTER_SPACING: number = -0.8;
+const TOUCH_BODY_RING_ROOM: number = 6;
 const TOUCH_CLOSE_SIZE: number = 43;
 const TOUCH_CLOSE_GLYPH_SIZE: number = 20;
 const SHADOW_COLOR: string = 'rgba(40, 26, 24, 0.24)';
@@ -126,12 +127,14 @@ export struct Drawer {
         .width('100%')
         .alignItems(HorizontalAlign.Start)
       }
-      .width('100%')
+      .width(isTvMetrics() ? '100%' : `calc(100% + ${TOUCH_BODY_RING_ROOM * 2}vp)`)
       .layoutWeight(1)
       .align(Alignment.Top)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
-      .margin({ top: isTvMetrics() ? tv(BODY_GAP) : TOUCH_BODY_GAP })
+      // phone: room around the body inside the scroll's clip for a focus ring (padding in, the same margin out)
+      .padding(isTvMetrics() ? {} : { left: TOUCH_BODY_RING_ROOM, right: TOUCH_BODY_RING_ROOM, top: TOUCH_BODY_RING_ROOM, bottom: TOUCH_BODY_RING_ROOM })
+      .margin(isTvMetrics() ? { top: tv(BODY_GAP) } : { top: TOUCH_BODY_GAP - TOUCH_BODY_RING_ROOM, left: -TOUCH_BODY_RING_ROOM, right: -TOUCH_BODY_RING_ROOM })
     }
     .width(isTvMetrics() ? tv(DRAWER_WIDTH) : '100%')
     .height('100%')
