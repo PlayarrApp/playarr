@@ -6485,6 +6485,7 @@ private fun ExperienceVideoDetailContent(
                     onPlay = onPlay,
                     onOpenWork = onOpenWork,
                     playFocus = playFocus,
+                    generatedChapters = movieChapters.isEmpty(),
                     modifier = Modifier
                         .width(1038.4.dp)
                         .fillMaxHeight()
@@ -7550,38 +7551,8 @@ internal fun SeriesEpisodeBrowser(
                 if (similarWorks.isNotEmpty()) {
                     item {
                         Box(Modifier.padding(top = if (credits.cast.isEmpty()) 43.dp * tabletDetail else 0.dp)) {
-                            // Web `.tv-media-track`: the same 268 dp episode cards as the season rails (tablet only; TV keeps its rail until its worker verifies it).
-                            if (tabletDetail == 0f) SimilarWorksRail(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail) else WebMediaTrack(
-                                title = playarrString(PlayarrString.DetailSimilarTitles),
-                                count = playarrString(
-                                    if (similarWorks.size == 1) PlayarrString.DetailTitlesCountOne else PlayarrString.DetailTitlesCountOther,
-                                    "count" to similarWorks.size,
-                                ),
-                                state = tvRails.rowState(similarRail),
-                                tabletStartInset = 0.dp,
-                            ) {
-                                itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
-                                    // Measured on the 1280 x 800 web: similar cards are 320 x 180 (16:9), wider than the episode cards.
-                                    WebEpisodeCard(
-                                        cardWidth = 320.dp,
-                                        artHeight = 180.dp,
-                                        modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
-                                        onClick = { onOpenWork(work.id) },
-                                        lead = null,
-                                        title = work.title,
-                                        badge = null,
-                                    ) {
-                                        AuthenticatedArtwork(
-                                            work = work,
-                                            kinds = listOf(ImageKind.Backdrop, ImageKind.Poster),
-                                            serverUrl = serverUrl,
-                                            accessToken = accessToken,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
-                                    }
-                                }
-                            }
+                            if (tabletDetail == 0f) SimilarWorksRail(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail)
+                            else WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, true)
                         }
                     }
                 }
@@ -7811,6 +7782,7 @@ internal fun MovieDetailBrowser(
     onOpenWork: (String) -> Unit,
     modifier: Modifier = Modifier,
     playFocus: FocusRequester? = null,
+    generatedChapters: Boolean = false,
 ) {
     if (chapters.isEmpty() && credits.cast.isEmpty() && similarWorks.isEmpty()) return
     // Web tracks: chapters then similar titles (the cast row has nothing to focus); UP/DOWN land on the closest tile by x,
@@ -7832,7 +7804,7 @@ internal fun MovieDetailBrowser(
             if (chapters.isNotEmpty()) {
                 WebMediaTrack(
                     title = playarrString(PlayarrString.DetailChapters),
-                    count = playarrString(PlayarrString.DetailChaptersCount, "count" to chapters.size),
+                    count = playarrString(if (generatedChapters) PlayarrString.DetailSceneMarkersCount else PlayarrString.DetailChaptersCount, "count" to chapters.size),
                     state = tvRails.rowState(chaptersRail),
                 ) {
                     itemsIndexed(chapters, key = { _, it -> it.index }) { chapterIndex, chapter ->
@@ -7858,35 +7830,7 @@ internal fun MovieDetailBrowser(
                 }
             }
             if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast, television = true)
-            if (similarWorks.isNotEmpty()) {
-                WebMediaTrack(
-                    title = playarrString(PlayarrString.DetailSimilarTitles),
-                    count = playarrString(
-                        if (similarWorks.size == 1) PlayarrString.DetailTitlesCountOne else PlayarrString.DetailTitlesCountOther,
-                        "count" to similarWorks.size,
-                    ),
-                    state = tvRails.rowState(similarRail),
-                ) {
-                    itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
-                        WebEpisodeCard(
-                            modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
-                            onClick = { onOpenWork(work.id) },
-                            lead = null,
-                            title = work.title,
-                            badge = null,
-                        ) {
-                            AuthenticatedArtwork(
-                                work = work,
-                                kinds = listOf(ImageKind.Backdrop, ImageKind.Poster),
-                                serverUrl = serverUrl,
-                                accessToken = accessToken,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                }
-            }
+            if (similarWorks.isNotEmpty()) WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, LocalStageScale.current != 1f)
         }
         return
     }
@@ -7983,6 +7927,49 @@ private fun WebMediaTrack(
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             content = cards,
         )
+    }
+}
+
+/** Web similar-titles track: the library cards are 320 x 180 on the tablet's 1280 x 800 web, and its track starts at the TV inset. */
+@Composable
+private fun WebSimilarTrack(
+    similarWorks: List<Work>,
+    serverUrl: String,
+    accessToken: String?,
+    onOpenWork: (String) -> Unit,
+    tvRails: TvRails,
+    similarRail: Int,
+    tablet: Boolean,
+) {
+    WebMediaTrack(
+        title = playarrString(PlayarrString.DetailSimilarTitles),
+        count = playarrString(
+            if (similarWorks.size == 1) PlayarrString.DetailTitlesCountOne else PlayarrString.DetailTitlesCountOther,
+            "count" to similarWorks.size,
+        ),
+        state = tvRails.rowState(similarRail),
+        tabletStartInset = 0.dp,
+    ) {
+        itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
+            WebEpisodeCard(
+                cardWidth = if (tablet) 320.dp else 268.dp,
+                artHeight = if (tablet) 180.dp else 150.8.dp,
+                modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
+                onClick = { onOpenWork(work.id) },
+                lead = null,
+                title = work.title,
+                badge = null,
+            ) {
+                AuthenticatedArtwork(
+                    work = work,
+                    kinds = listOf(ImageKind.Backdrop, ImageKind.Poster),
+                    serverUrl = serverUrl,
+                    accessToken = accessToken,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
     }
 }
 
