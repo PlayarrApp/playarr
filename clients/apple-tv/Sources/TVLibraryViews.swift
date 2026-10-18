@@ -1902,16 +1902,14 @@ struct TVLibraryKindView: View {
         // the frame widens by the same amount so the cards stay at the web x.
         #if os(macOS)
         let padL: CGFloat = 48 // the 48 px focused-card shadow blur also stays inside the scroll view, so no hard edge shows at x 759
-        // The Mac snaps the first column to x 784 where the web draws x 783 (refs 2026-10-18); 0.9 pt more width lands it on 783.
-        let gridX: CGFloat = 784.3
-        // Row pitch: the web's rows are 240.4 apart; the Mac's caption is 0.4 pt shorter, so the row gap is 27.4.
-        let rowGap: CGFloat = 27.4
+        // Row pitch: the web's rows are 240.4 apart (tops 162, 402, 643, 883); a 2026-10-18 hosted run with a 27.4 gap gave
+        // tops 401, 640, 879, so the Mac's caption is about 1 pt shorter than the web's and the gap makes up the rest.
+        let rowGap: CGFloat = 28.5
         #else
         let padL: CGFloat = 0
-        let gridX: CGFloat = 783.4
         let rowGap: CGFloat = 27
         #endif
-        let gridWidth = size.width - gridX + padL
+        let gridWidth = size.width - 783.4 + padL
         let padR: CGFloat = 0
         // Web: screen cards use `--card-w` (3 + step columns, 25.92 apart); cover cards `--card-w-cover`
         // (5 + step columns, 19.2 apart, 2:3); list rows are one column.
@@ -2054,9 +2052,9 @@ struct TVLibraryKindView: View {
                     if showsUnwatchedDisc(work), !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
                         Circle()
                             .fill(DesignTokens.Color.brandPrimary)
-                            .frame(width: 13, height: 13)
+                            .frame(width: 11.6, height: 11.6)
                             .overlay(Circle().stroke(Color.white, lineWidth: 1.6))
-                            .padding(10.8)
+                            .padding(11.5) // same centre as the 13 pt disc; the stroke adds 1.6 pt, so the drawn disc is 13.2 pt like the web's
                     }
                 }
                 if showTitle {
