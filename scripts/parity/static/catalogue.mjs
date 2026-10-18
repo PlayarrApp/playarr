@@ -43,7 +43,7 @@ export const MOVIES = Array.from({ length: MOVIE_COUNT }, (_, i) => ({
   key: `movie:${i}`,
   workId: PINNED[`movie:${i}`]?.work ?? uid(`movie:${i}`),
   fileId: PINNED[`movie:${i}`]?.file ?? uid(`movie:${i}:file`),
-  title: `${name(i, 1)} ${i + 1}`,
+  title: `${i === MOVIE_COUNT - 1 ? "7 " : ""}${name(i, 1)} ${i + 1}`, // one digit-led title keeps the library alphabet rail's # entry active, as on a real library
   year: 1998 + ((i * 5) % 28),
   tmdbId: 810000 + i,
   certification: RATINGS[i % RATINGS.length],
@@ -59,7 +59,7 @@ export const SERIES = Array.from({ length: SERIES_COUNT }, (_, i) => {
   return {
     key: `series:${i}`,
     workId,
-    title: `${name(i, 4)} ${i + 1}`,
+    title: `${i === SERIES_COUNT - 1 ? "7 " : ""}${name(i, 4)} ${i + 1}`,
     year: 2004 + ((i * 3) % 22),
     tvdbId: 910000 + i,
     certification: TV_RATINGS[i % TV_RATINGS.length],
@@ -92,8 +92,9 @@ export const ARTISTS = Array.from({ length: 6 }, (_, i) => ({
 }));
 
 /** Profiles of the parity account's household. The first is the account the captures sign in as. */
+// The main profile is named "Device Test": the device guards (apple-wall/login.py, the TV drivers) look for exactly that profile.
 export const PROFILES = [
-  { key: "main", suffix: "", display: "Parity", avatar: "astronaut" },
+  { key: "main", suffix: "", display: "Device Test", avatar: "astronaut" },
   { key: "kids", suffix: "-kids", display: "Parity Kids", avatar: "robot" },
   { key: "guest", suffix: "-guest", display: "Parity Guest", avatar: "cat" },
 ];

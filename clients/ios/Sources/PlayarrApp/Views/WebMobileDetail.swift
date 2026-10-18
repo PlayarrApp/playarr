@@ -310,7 +310,7 @@ struct WMDetailPage: View {
                         actions
                         tracks
                     }
-                    .padding(.top, 368.5)
+                    .padding(.top, 368)
                 }
                 .frame(width: 390, alignment: .topLeading)
                 .padding(.bottom, 140)
@@ -341,7 +341,7 @@ struct WMDetailPage: View {
     private func artBackdrop(width: CGFloat) -> some View {
         WMKeyArt(
             work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5, artScale: 1.01,
-            lightOpacity: 0.41, webMask: true,
+            lightOpacity: 0.41, darkOpacity: 0.22, webMask: true,
             fadeStops: [(0, 0), (120, 0), (160, 0.25), (200, 0.47), (240, isSeries ? 0.83 : 0.9), (270, 1)]
         )
             .frame(width: width, height: 608, alignment: .topLeading)
@@ -355,7 +355,7 @@ struct WMDetailPage: View {
                 .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             // The web hides the header subtitle on phones (#1299), so only the page title shows here.
             WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
-            .offset(x: 68, y: WM.topInset + 2)
+            .offset(x: 70, y: WM.topInset + 2)
         }
     }
 
@@ -364,13 +364,18 @@ struct WMDetailPage: View {
     private var copy: some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(kicker, 10.56, 820, color: WM.brandInk, lh: 15.84, ls: 0.8448)
-            Text(work.title)
-                .font(WM.font(39.3, 560))
-                .tracking(-2.8296)
-                .foregroundStyle(WM.ink)
-                .lineLimit(1)
-                .frame(width: 358, height: 36.66, alignment: .leading)
-                .padding(.top, 9.16)
+            // Web title box: max-width 12ch with balanced wrapping, so a long title takes two even lines.
+            ViewThatFits(in: .horizontal) {
+                titleText(work.title).fixedSize()
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(balancedTitleLines(work.title).enumerated()), id: \.offset) { _, line in
+                        titleText(line).fixedSize()
+                    }
+                }
+            }
+            .frame(width: 270, alignment: .leading)
+            .frame(width: 358, alignment: .leading)
+            .padding(.top, 9.16)
             if isSeries, let episode = selectedEpisode?.detail.episode {
                 WMText(
                     episode.title ?? "Episode \(episode.episodeNumber)",
@@ -398,12 +403,34 @@ struct WMDetailPage: View {
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
                     // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
-                    .lineSpacing(1.57)
+                    .lineSpacing(1.2)
                     .frame(width: 347, alignment: .topLeading)
-                    .padding(.top, isSeries ? 10.6 : 12.04)
+                    // A series synopsis keeps three lines of room (web `.is-episodic`), so the buttons never move.
+                    .frame(minHeight: isSeries ? 50.2 : nil, alignment: .topLeading)
+                    .padding(.top, isSeries ? 10.6 : 11.2)
             }
         }
         .padding(.leading, 16)
+    }
+
+    private func titleText(_ text: String) -> some View {
+        Text(text)
+            .font(WM.font(39.3, 560))
+            .tracking(-2.8296)
+            .foregroundStyle(WM.ink)
+            .lineLimit(1)
+            .frame(height: 36.66, alignment: .leading)
+    }
+
+    /// The word split with the most even line lengths (the web's `text-wrap: balance` for two lines).
+    private func balancedTitleLines(_ title: String) -> [String] {
+        let words = title.split(separator: " ").map(String.init)
+        guard words.count > 1 else { return [title] }
+        let best = (1..<words.count).min { a, b in
+            abs(words[..<a].joined(separator: " ").count - words[a...].joined(separator: " ").count)
+                < abs(words[..<b].joined(separator: " ").count - words[b...].joined(separator: " ").count)
+        } ?? 1
+        return [words[..<best].joined(separator: " "), words[best...].joined(separator: " ")]
     }
 
     // MARK: Actions
@@ -503,7 +530,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 127.7, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 127.7, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 8.6,
                     glyphColor: .white, label: "Play", labelSize: 11.2, labelColor: .white, gap: 11
                 )
             }
@@ -531,7 +558,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 133.1, fill: WM.ink, glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 133.1, fill: WM.ink, glyph: "▶\u{FE0E}", glyphSize: 8.6,
                     glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
                 )
             }
@@ -539,7 +566,7 @@ struct WMDetailPage: View {
             .wmKeyFocus(Capsule())
         } else {
             pill(
-                width: 133.1, fill: WM.ink.opacity(0.4), glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                width: 133.1, fill: WM.ink.opacity(0.4), glyph: "▶\u{FE0E}", glyphSize: 8.6,
                 glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
             )
         }
@@ -635,6 +662,7 @@ struct WMDetailPage: View {
             ZStack(alignment: .bottomTrailing) {
                 WMRemoteImage(apiClient: apiClient, sources: episodeSources(episode, season: season))
                     .frame(width: 181, height: 101.8)
+                    .wmEpisodeArtTreatment()
                     .background(WM.artFill)
                 WMText(String(format: "%02d", episode.episode.episodeNumber), 12.8, 560, color: .white, lh: 19.2)
                     .padding(.trailing, 10).padding(.bottom, 9)
@@ -656,9 +684,9 @@ struct WMDetailPage: View {
                 WMText(title, 12.48, 610, color: WM.ink, lh: 18.72, ls: -0.1872)
             }
             .frame(width: 181, alignment: .leading)
-            .padding(.top, 7)
+            .padding(.top, 11.8)
         }
-        .frame(width: 181, height: 127, alignment: .topLeading)
+        .frame(width: 181, height: 131.8, alignment: .topLeading)
 
         return Group {
             if let mediaFileID = episode.mediaFileID {
@@ -738,7 +766,7 @@ struct WMDetailPage: View {
                         )]
                     )
                     .frame(width: 181, height: 101.8)
-                    .opacity(0.67)
+                    .wmEpisodeArtTreatment()
                     .background(WM.artFill)
                     WMText(String(format: "%02d", chapter.index + 1), 12.8, 560, color: .white, lh: 19.2)
                         .padding(.trailing, 10).padding(.bottom, 9)
@@ -877,5 +905,14 @@ struct PlaybackSettingsSheet: View {
         } catch {
             message = "Playback settings could not be saved"
         }
+    }
+}
+
+extension View {
+    /// Web `.tv-episode-art`: grayscale(0.25) image under a 135deg black 5% to 48% wash.
+    func wmEpisodeArtTreatment() -> some View {
+        saturation(0.75).overlay(
+            LinearGradient(colors: [.black.opacity(0.05), .black.opacity(0.48)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
     }
 }

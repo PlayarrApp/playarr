@@ -595,13 +595,13 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
 
     let rail = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .homogeneous(true)
         .halign(gtk4::Align::End)
         .valign(gtk4::Align::Fill)
         .width_request(44)
         .margin_end(4)
         .margin_top(88)
         .margin_bottom(82)
+        .overflow(gtk4::Overflow::Hidden) // the web clips the active ring of "#" at the rail's top edge
         .build();
     let lib = Rc::new(Lib {
         scroll: scroll.clone(),
@@ -645,11 +645,23 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
             }
         });
     }
-    for c in ALPHABET.chars() {
+    // The web spreads the letters 18.64 css px apart; whole css px give 18 or 19. Tops of A..Z measured at 2x, in css px from A.
+    const LETTER_TOP: [i32; 26] = [
+        0, 19, 38, 56, 75, 94, 112, 131, 150, 168, 187, 205, 224, 243, 261, 280, 299, 317, 336, 354, 373, 392, 410,
+        429, 448, 466,
+    ];
+    for (i, c) in ALPHABET.chars().enumerate() {
+        let gap = match i {
+            0 => 1,
+            1 => 0,
+            _ => LETTER_TOP[i - 1] - LETTER_TOP[i - 2] - 18,
+        };
         let b = gtk4::Button::builder()
             .label(c.to_string())
             .css_classes(["pa-letter"])
             .halign(gtk4::Align::Center)
+            .height_request(18)
+            .margin_top(gap)
             .build();
         let lib = lib.clone();
         b.connect_clicked(move |_| lib.jump(c));

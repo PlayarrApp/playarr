@@ -53,7 +53,7 @@ def _fixtures():
     return detail_routes, match.group(1)
 
 
-def check_fixtures(server, username, password, *, requester=request):
+def check_fixtures(server, username, password, *, requester=request, static=False):
     result = {"ready": False, "identity": "unverified", "fixtures": {}, "failure": None}
     try:
         parsed = urllib.parse.urlsplit(server.strip())
@@ -107,10 +107,12 @@ def check_fixtures(server, username, password, *, requester=request):
         result["fixtures"][label] = fixture_status
         fixtures_ok = fixtures_ok and present
 
-    encoded_seed = urllib.parse.quote(seed_id, safe="-")
-    seed_status, _ = requester(server, "/api/v1/playback/" + encoded_seed + "/progress", token=token)
-    result["fixtures"]["seed-progress"] = seed_status
-    fixtures_ok = fixtures_ok and seed_status == 200
+    # The static parity server already holds the canonical On deck; the pinned live item is absent there by design.
+    if not static:
+        encoded_seed = urllib.parse.quote(seed_id, safe="-")
+        seed_status, _ = requester(server, "/api/v1/playback/" + encoded_seed + "/progress", token=token)
+        result["fixtures"]["seed-progress"] = seed_status
+        fixtures_ok = fixtures_ok and seed_status == 200
     result["ready"] = fixtures_ok
     if not fixtures_ok:
         result["failure"] = "pinned-fixture-unavailable"
@@ -122,7 +124,8 @@ def main(argv=None):
     parser.add_argument("--output")
     args = parser.parse_args(argv)
     result = check_fixtures(os.environ.get("SERVER_URL", ""), os.environ.get("TEST_USERNAME", ""),
-                            os.environ.get("TEST_PASSWORD", ""))
+                            os.environ.get("TEST_PASSWORD", ""),
+                            static=os.environ.get("PARITY_STATIC_SERVER") == "1")
     rendered = json.dumps(result, separators=(",", ":"))
     if args.output:
         try:

@@ -88,7 +88,7 @@
                 FocusVisualSecondaryThickness="0"
                 Click="PrimaryPlay_Click">
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                    <FontIcon Glyph="&#xE102;" FontFamily="Segoe MDL2 Assets" FontSize="9" Foreground="{StaticResource PlayarrSurfaceStrong}" />
+                    <FontIcon x:Name="PlayIcon" Glyph="&#xE102;" FontFamily="Segoe MDL2 Assets" FontSize="9" Foreground="{StaticResource PlayarrSurfaceStrong}" />
                     <TextBlock x:Name="PlayLabel" Text="Play" FontSize="11.5" FontWeight="Bold" Foreground="{StaticResource PlayarrSurfaceStrong}" />
                 </StackPanel>
             </Button>

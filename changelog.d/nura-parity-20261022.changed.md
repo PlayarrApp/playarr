@@ -1,1 +1,0 @@
-- Nura: the light film detail art sits under the page's top cover, the light Profiles page and its dropdowns use the web's flat grey, and the month grid shades the previous month's cells, aligns the day numbers and starts chips 5 px lower.

@@ -46,7 +46,7 @@ namespace Playarr.Xbox.ViewModels
         private static readonly Dictionary<string, (IReadOnlyList<Work> Works, long? Total)> Snapshots = new Dictionary<string, (IReadOnlyList<Work>, long?)>();
         private static IReadOnlyList<WorkKind>? _kindsSnapshot;
 
-        private string SnapshotKey() => $"{SelectedKind}|{SelectedSort}|{Reversed}";
+        private string SnapshotKey() => $"{SelectedKind}|{SelectedSort}|{Reversed}|{AudioLang}|{SubtitleLang}";
 
         private IReadOnlyList<WorkKind> _kinds = Array.Empty<WorkKind>();
         private WorkKind? _selectedKind;
@@ -158,6 +158,57 @@ namespace Playarr.Xbox.ViewModels
             _ = LoadWorksAsync();
         }
 
+        /// <summary>Web Filters "Audio language" and "Subtitle language" (comma-separated codes; <c>null</c> is "Any language").</summary>
+        public string? AudioLang { get; private set; }
+
+        public string? SubtitleLang { get; private set; }
+
+        public void SelectLanguage(bool audio, string? code)
+        {
+            if ((audio ? AudioLang : SubtitleLang) == code)
+            {
+                return;
+            }
+
+            if (audio)
+            {
+                AudioLang = code;
+            }
+            else
+            {
+                SubtitleLang = code;
+            }
+
+            _ = LoadWorksAsync();
+        }
+
+        /// <summary>The codes selected for one type (the parameter is comma-separated, as on the web).</summary>
+        public List<string> LanguageCodes(bool audio)
+        {
+            var raw = audio ? AudioLang : SubtitleLang;
+            return string.IsNullOrEmpty(raw) ? new List<string>() : raw!.Split(',').ToList();
+        }
+
+        /// <summary>Adds or removes one language for a type; <c>null</c> clears the type ("Any language").</summary>
+        public void ToggleLanguage(bool audio, string? code)
+        {
+            var codes = LanguageCodes(audio);
+            if (code == null)
+            {
+                codes.Clear();
+            }
+            else if (!codes.Remove(code))
+            {
+                codes.Add(code);
+            }
+
+            SelectLanguage(audio, codes.Count == 0 ? null : string.Join(",", codes));
+        }
+
+        /// <summary>The languages still offered for the current kind and filters (web <c>catalogLanguages</c>).</summary>
+        public Task<LanguageFacets> LoadLanguagesAsync() =>
+            _environment.ApiClient.GetCatalogLanguagesAsync(SelectedKind, true, AudioLang, SubtitleLang);
+
         /// <summary>Retries a failed load. Wired to LibraryPage's retry button.</summary>
         public void Retry() => _ = LoadWorksAsync();
 
@@ -215,7 +266,9 @@ namespace Playarr.Xbox.ViewModels
                     sort: byTitle ? "title" : "date_added",
                     limit: PageLimit,
                     availableOnly: true,
-                    order: byTitle != Reversed ? "asc" : "desc");
+                    order: byTitle != Reversed ? "asc" : "desc",
+                    audioLang: AudioLang,
+                    subtitleLang: SubtitleLang);
                 Total = page.Total;
                 var works = new List<Work>(page.Items);
                 if (byTitle)

@@ -645,6 +645,7 @@ private struct AuthenticatedPlayarrShell: View {
                                     icon: destination.webIcon,
                                     color: phoneSelectedDestination == destination ? WM.shell : WM.inkSoft
                                 )
+                                .offset(x: 0.33, y: 0.5) // measured: web glyphs sit 1 px right and 1.5 px lower (3x)
                                 .frame(width: 44, height: 46)
                                 .background(
                                     phoneSelectedDestination == destination ? WM.ink : .clear,

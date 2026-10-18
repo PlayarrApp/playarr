@@ -3544,8 +3544,8 @@ internal fun ExperienceMediaRail(
                     // Web: Home cards are THE poster card, the Library grid card (owner request 2026-10-10): `--card-w`
                     // 327.2 dp and `--card-w-cover` 191.3 dp at 1920 x 1080.
                     width = when (homeView) {
-                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else phonePosterCardWidth()
-                        PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else phonePosterCardWidth()
+                        PlayarrHomeViewPreference.Thumbnail -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = false) else phonePosterCardWidth(letterRail = LocalStageScale.current != 1f)
+                        PlayarrHomeViewPreference.Cover -> if (isTelevision) tvPosterCardWidthHere(LocalPlayarrDisplayPreferences.current.artworkSize, cover = true) else phonePosterCardWidth(letterRail = LocalStageScale.current != 1f)
                     },
                     homeView = homeView,
                     webPhone = !isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail,
@@ -4059,10 +4059,11 @@ private fun LibraryCoverCard(
  * into as many columns as a 110 dp minimum card and the 12 dp gap allow (1 below 300 dp, 2 from 300, 3 from 540).
  */
 @Composable
-internal fun phonePosterCardWidth(): Dp {
+internal fun phonePosterCardWidth(letterRail: Boolean = true): Dp {
     val viewport = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     val columns = phonePosterColumns(LocalPlayarrDisplayPreferences.current.artworkSize, viewport)
-    return ((viewport - 16 - 52 - (columns - 1) * 12f) / columns).dp
+    // Web Home rails have no A to Z strip, so only the 16 dp gutters are taken off (173 dp cards at 390 dp, not 155).
+    return ((viewport - 16 - (if (letterRail) 52 else 16) - (columns - 1) * 12f) / columns).dp
 }
 
 /** Web phone `--card-cols`: 1 below 300 dp, 2 from 300, 3 from 540, shifted by the artwork size (small +1, large -1; never below 1). */
@@ -6485,6 +6486,7 @@ private fun ExperienceVideoDetailContent(
                     onPlay = onPlay,
                     onOpenWork = onOpenWork,
                     playFocus = playFocus,
+                    generatedChapters = movieChapters.isEmpty(),
                     modifier = Modifier
                         .width(1038.4.dp)
                         .fillMaxHeight()
@@ -6611,11 +6613,20 @@ private fun PhoneVideoDetailBody(
                 Spacer(Modifier.height(10.dp))
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
                 // the box to the font height, so pin the height and lift the text the way CSS centres it.
-                Box(Modifier.height(36.66.dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
+                // Web phone `.tv-detail-title`: max-width 12ch, so a long title wraps to a second 36.66 px line (the stage-scaled tablet keeps one line).
+                // shortcut: no `text-wrap: balance`, so a three-word title may break unevenly; add a balancing pass if one shows up in the refs.
+                val phoneTitle = LocalStageScale.current == 1f
+                val titleStyle = WebTextStyle.merge(androidx.compose.ui.text.TextStyle(fontSize = 39.sp, fontWeight = FontWeight(560)))
+                val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+                val density = LocalDensity.current
+                val titleMax = with(density) { (measurer.measure("0", titleStyle).size.width * 12).toDp() }
+                var titleLines by remember(work.title) { mutableStateOf(1) }
+                Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
                     Text(
                         work.title, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
-                        style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -10.4.dp.toPx() },
+                        style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { titleLines = it.lineCount },
+                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() },
                     )
                 }
                 if (episode != null) {
@@ -7456,7 +7467,8 @@ internal fun SeriesEpisodeBrowser(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp + 22.5.dp * tabletDetail)
+                    // shortcut: the web centres the first track in its scroll box, so a short stack (static seed) sits 222 dp lower than a tall one; only the short case is matched, upgrade with a clamped initial scroll.
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp + 244.5.dp * tabletDetail)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
@@ -7508,7 +7520,7 @@ internal fun SeriesEpisodeBrowser(
                 // The viewport reaches 40 dp left of the heading line so a focused first tile's ring, corner and glow are not clipped (web's track left gutter).
                 modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 13.85.dp * tabletDetail).extendStart(40.dp) else Modifier,
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp - 1.dp * tabletDetail else 12.dp),
-                contentPadding = if (isTelevision) PaddingValues(start = 40.dp - 3.dp * tabletDetail, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
+                contentPadding = if (isTelevision) PaddingValues(start = 40.dp + 1.dp * tabletDetail, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
             ) {
                 itemsIndexed(season.episodes, key = { _, it -> it.episode.id }) { episodeIndex, episode ->
                     EpisodeDetailCard(
@@ -7535,10 +7547,15 @@ internal fun SeriesEpisodeBrowser(
             LazyColumn(Modifier.weight(1f), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
                 items(seasons, key = { it.season.id }) { content(it) }
                 if (credits.cast.isNotEmpty()) {
-                    item { DetailCreditsRail(credits.cast) }
+                    item { Box(Modifier.padding(top = 55.dp * tabletDetail)) { DetailCreditsRail(credits.cast) } }
                 }
                 if (similarWorks.isNotEmpty()) {
-                    item { Box(Modifier.padding(top = if (LocalStageScale.current != 1f) 0.dp else webVu(62f, 8.4f, 108f) - webVu(38f, 5f, 64f))) { TvSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail) } }
+                    item {
+                        // TV: the web section gap (8.4 vu) sits above Similar titles, 36.7 dp more than the related-track gap between seasons.
+                        Box(Modifier.padding(top = if (tabletDetail == 0f) webVu(62f, 8.4f, 108f) - webVu(38f, 5f, 64f) else if (credits.cast.isEmpty()) 43.dp else 0.dp)) {
+                            WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, tabletDetail != 0f)
+                        }
+                    }
                 }
             }
         } else {
@@ -7766,6 +7783,7 @@ internal fun MovieDetailBrowser(
     onOpenWork: (String) -> Unit,
     modifier: Modifier = Modifier,
     playFocus: FocusRequester? = null,
+    generatedChapters: Boolean = false,
 ) {
     if (chapters.isEmpty() && credits.cast.isEmpty() && similarWorks.isEmpty()) return
     // Web tracks: chapters then similar titles (the cast row has nothing to focus); UP/DOWN land on the closest tile by x,
@@ -7788,7 +7806,7 @@ internal fun MovieDetailBrowser(
             if (chapters.isNotEmpty()) {
                 WebMediaTrack(
                     title = playarrString(PlayarrString.DetailChapters),
-                    count = playarrString(PlayarrString.DetailChaptersCount, "count" to chapters.size),
+                    count = playarrString(if (generatedChapters) PlayarrString.DetailSceneMarkersCount else PlayarrString.DetailChaptersCount, "count" to chapters.size),
                     state = tvRails.rowState(chaptersRail),
                 ) {
                     itemsIndexed(chapters, key = { _, it -> it.index }) { chapterIndex, chapter ->
@@ -7814,7 +7832,7 @@ internal fun MovieDetailBrowser(
                 }
             }
             if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast, television = true)
-            if (similarWorks.isNotEmpty()) TvSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail)
+            if (similarWorks.isNotEmpty()) WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, LocalStageScale.current != 1f)
         }
         return
     }
@@ -7893,6 +7911,7 @@ private fun WebMediaTrack(
     title: String,
     count: String,
     state: androidx.compose.foundation.lazy.LazyListState? = null,
+    tabletStartInset: Dp = 4.dp,
     cards: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     val tabletTrack = if (LocalStageScale.current != 1f) 1f else 0f
@@ -7905,10 +7924,73 @@ private fun WebMediaTrack(
             state = state ?: androidx.compose.foundation.lazy.rememberLazyListState(),
             // Measured against web at 1280 x 800: 10 css px more under the heading; the viewport reaches left so a focused first tile is not clipped.
             modifier = Modifier.padding(top = 17.2.dp + 15.dp * tabletTrack).extendStart(40.dp),
-            contentPadding = PaddingValues(start = 40.dp, top = 18.dp, end = tabletTrackEnd(24.dp)),
+            // Tablet tracks start 4 dp further in than the TV ones (measured on the 1280 x 800 web).
+            contentPadding = PaddingValues(start = 40.dp + tabletStartInset * tabletTrack, top = 18.dp, end = tabletTrackEnd(24.dp)),
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             content = cards,
         )
+    }
+}
+
+/** Web similar-titles track: the library cards are 320 x 180 on the tablet's 1280 x 800 web, and its track starts at the TV inset. */
+@Composable
+private fun WebSimilarTrack(
+    similarWorks: List<Work>,
+    serverUrl: String,
+    accessToken: String?,
+    onOpenWork: (String) -> Unit,
+    tvRails: TvRails,
+    similarRail: Int,
+    tablet: Boolean,
+) {
+    WebMediaTrack(
+        title = playarrString(PlayarrString.DetailSimilarTitles),
+        count = playarrString(
+            if (similarWorks.size == 1) PlayarrString.DetailTitlesCountOne else PlayarrString.DetailTitlesCountOther,
+            "count" to similarWorks.size,
+        ),
+        state = tvRails.rowState(similarRail),
+        tabletStartInset = 0.dp,
+    ) {
+        itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
+            if (!tablet) {
+                // TV web `.tv-title-card` (the library card, 327 dp) with its kind line.
+                Column {
+                    ExperienceLandscapeCard(
+                        modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
+                        work = work,
+                        serverUrl = serverUrl,
+                        accessToken = accessToken,
+                        width = 327.dp,
+                        selected = false,
+                        onSelected = {},
+                        onClick = { onOpenWork(work.id) },
+                        webTvStyle = true,
+                        webTvLibrary = true,
+                    )
+                    Text(work.kind.playarrSingularLabel(), color = WebInkMuted, fontSize = 8.64.sp, lineHeight = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 2.6.dp))
+                }
+                return@itemsIndexed
+            }
+            WebEpisodeCard(
+                cardWidth = if (tablet) 320.dp else 268.dp,
+                artHeight = if (tablet) 180.dp else 150.8.dp,
+                modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
+                onClick = { onOpenWork(work.id) },
+                lead = null,
+                title = work.title,
+                badge = null,
+            ) {
+                AuthenticatedArtwork(
+                    work = work,
+                    kinds = listOf(ImageKind.Backdrop, ImageKind.Poster),
+                    serverUrl = serverUrl,
+                    accessToken = accessToken,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
     }
 }
 
@@ -7920,12 +8002,14 @@ private fun WebEpisodeCard(
     title: String,
     badge: String?,
     modifier: Modifier = Modifier,
+    cardWidth: Dp = 268.dp,
+    artHeight: Dp = 150.8.dp,
     art: @Composable () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
     Box(
         modifier
-            .width(268.dp)
+            .width(cardWidth)
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick),
     ) {
@@ -7934,7 +8018,7 @@ private fun WebEpisodeCard(
             shadows = if (focused) webCardFocusShadows else webCardRestShadows,
             shape = RoundedCornerShape(13.44.dp),
             focusGlow = focused,
-            modifier = Modifier.fillMaxWidth().height(150.8.dp),
+            modifier = Modifier.fillMaxWidth().height(artHeight),
             innerModifier = Modifier.background(WebSurfaceSoft),
         ) {
             WebEpisodeArt { art() }
@@ -8018,45 +8102,6 @@ private fun DetailCreditCard(credit: CreditResponse, width: androidx.compose.ui.
         )
         credit.character?.let {
             Text(it, color = WebInkMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
-/** Television "Similar Titles": the web `.tv-media-track` of episode-style cards, shared by the film and series detail pages. */
-@Composable
-private fun TvSimilarTrack(
-    similarWorks: List<Work>,
-    serverUrl: String,
-    accessToken: String?,
-    onOpenWork: (String) -> Unit,
-    tvRails: TvRails,
-    similarRail: Int,
-) {
-    WebMediaTrack(
-        title = playarrString(PlayarrString.DetailSimilarTitles),
-        count = playarrString(
-            if (similarWorks.size == 1) PlayarrString.DetailTitlesCountOne else PlayarrString.DetailTitlesCountOther,
-            "count" to similarWorks.size,
-        ),
-        state = tvRails.rowState(similarRail),
-    ) {
-        itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
-            // Web `.tv-title-card` (the library card) with its kind line, in the track.
-            Column {
-                ExperienceLandscapeCard(
-                    modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
-                    work = work,
-                    serverUrl = serverUrl,
-                    accessToken = accessToken,
-                    width = 327.dp,
-                    selected = false,
-                    onSelected = {},
-                    onClick = { onOpenWork(work.id) },
-                    webTvStyle = true,
-                    webTvLibrary = true,
-                )
-                Text(work.kind.playarrSingularLabel(), color = WebInkMuted, fontSize = 8.64.sp, lineHeight = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 2.6.dp))
-            }
         }
     }
 }

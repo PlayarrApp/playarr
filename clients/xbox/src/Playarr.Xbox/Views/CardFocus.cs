@@ -15,12 +15,12 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal static class CardFocus
     {
-        private const double Lift = -7;
-        private const double LibraryLift = -5; // measured: the web library card sits 2 px lower than Home cards when focused
+        public const double Lift = -7;
+        public const double LibraryLift = -5; // measured: the web library card sits 2 px lower than Home cards when focused
         private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(260);
 
         /// <param name="halo">False for a rail whose container has no room for the soft glow and the art scale (reserve it with <see cref="ReserveFocusRoom"/> instead).</param>
-        public static void Attach(ListViewBase list, bool halo = true, double ringOutset = 0)
+        public static void Attach(ListViewBase list, bool halo = true, double ringOutset = 0, double lift = Lift)
         {
             // No selection, hover, press or focus fill: the web card shows only the lift, the scale and the glow ring.
             list.ContainerContentChanging += (s, e) =>
@@ -31,8 +31,8 @@ namespace Playarr.Xbox.Views
                     ClearFill(container);
                 }
             };
-            list.GotFocus += (s, e) => Apply(e.OriginalSource, true, halo, ringOutset);
-            list.LostFocus += (s, e) => Apply(e.OriginalSource, false, halo, ringOutset);
+            list.GotFocus += (s, e) => Apply(e.OriginalSource, true, halo, ringOutset, lift);
+            list.LostFocus += (s, e) => Apply(e.OriginalSource, false, halo, ringOutset, lift);
         }
 
         /// <summary>
@@ -240,7 +240,7 @@ namespace Playarr.Xbox.Views
 
         }
 
-        private static void Apply(object source, bool focused, bool halo, double ringOutset)
+        private static void Apply(object source, bool focused, bool halo, double ringOutset, double lift)
         {
             if (!(source is SelectorItem { ContentTemplateRoot: Panel card }))
             {
@@ -305,7 +305,7 @@ namespace Playarr.Xbox.Views
             var animation = new DoubleAnimationUsingKeyFrames();
             animation.KeyFrames.Add(new SplineDoubleKeyFrame
             {
-                Value = focused ? (ringOutset > 0 ? LibraryLift : Lift) : 0,
+                Value = focused ? lift : 0,
                 KeyTime = KeyTime.FromTimeSpan(Duration),
                 KeySpline = new KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.2, 0.8), ControlPoint2 = new Windows.Foundation.Point(0.2, 1) },
             });

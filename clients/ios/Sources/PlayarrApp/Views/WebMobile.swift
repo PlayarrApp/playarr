@@ -19,6 +19,8 @@ enum WM {
     static let pink = PlayarrStyle.pink
     static let brandInk = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
     static let cardGlowColor = adaptive(light: (165, 39, 69), dark: (234, 166, 182))
+    /// The web's 3 pt card ring renders about 11% darker than its glow colour (measured 208,147,160 dark and 148,37,62 light).
+    static let cardRingColor = adaptive(light: (148, 37, 62), dark: (208, 147, 160))
     static let artFill = adaptive(light: (223, 220, 221), dark: (49, 42, 48))
     static let chip = PlayarrStyle.surfaceStrong
     static let line = adaptive(light: (56, 38, 33), dark: (223, 220, 221))
@@ -419,6 +421,8 @@ struct WMKeyArt: View {
     var artScale: CGFloat = 1
     /// How strong the grey artwork is in the light theme; the web shows it differently per page.
     var lightOpacity: Double = 0.22
+    /// Dark-theme strength; the web detail art is opacity 0.42 under brightness 0.6, about 0.22 net.
+    var darkOpacity: Double = 0.085
     /// The web's horizontal treatment in the light theme: the artwork fades out over its last 28% (mask)
     /// and a page-coloured wash covers its left edge at 54%.
     var webMask = false
@@ -441,7 +445,7 @@ struct WMKeyArt: View {
             if work != nil || backdropWorkID != nil {
                 art
                     .saturation(0)
-                    .opacity(scheme == .dark ? 0.085 : lightOpacity)
+                    .opacity(scheme == .dark ? darkOpacity : lightOpacity)
                     .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
@@ -552,7 +556,13 @@ enum WMArtwork {
         let n = CGFloat(columns)
         return (UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n // web --card-w has no minimum or rounding (156.5 at 393); columns come from --card-cols
     }
+    /// Home rails run to the page gutter: no letter-rail pad (web page-layout.css, --card-pad-right is the gutter off the Library).
+    static var railCardWidth: CGFloat {
+        let n = CGFloat(columns)
+        return (UIScreen.main.bounds.width - 16 - 16 - 12 * (n - 1)) / n
+    }
     static func artHeight(cover: Bool) -> CGFloat { cardWidth * (cover ? 3 / 2 : 9 / 16) }
+    static func railArtHeight(cover: Bool) -> CGFloat { railCardWidth * (cover ? 3 / 2 : 9 / 16) }
 }
 
 /// Home rail card (`tv-home-card`): since web #924 the phone cards share one width with the library grid,
@@ -565,14 +575,26 @@ struct WMRailCard: View {
     var cover = false
     @AppStorage(WMArtwork.sizeKey) private var sizeSetting = "medium"
 
-    static func height(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 46 }
+    /// Resume fraction of a part-watched title: the web's 3 pt `tv-watch-progress` bar along the art's foot.
+    var progress: Double?
+
+    static func height(cover: Bool) -> CGFloat { WMArtwork.railArtHeight(cover: cover) + 46 }
 
     var body: some View {
-        let width = WMArtwork.cardWidth, art = WMArtwork.artHeight(cover: cover)
+        let width = WMArtwork.railCardWidth, art = WMArtwork.railArtHeight(cover: cover)
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
                 .background(WM.artFill)
+                .overlay(alignment: .bottomLeading) {
+                    if let progress {
+                        ZStack(alignment: .leading) {
+                            Rectangle().fill(Color.white.opacity(0.2))
+                            Rectangle().fill(WM.pink).frame(width: max(3, width * progress))
+                        }
+                        .frame(height: 3)
+                    }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
@@ -624,7 +646,7 @@ struct WMFocusRing: View {
                         .compositingGroup()
                 }
             RoundedRectangle(cornerRadius: cornerRadius + 1.5, style: .continuous)
-                .stroke(WM.cardGlowColor, lineWidth: 3)
+                .stroke(WM.cardRingColor, lineWidth: 3)
                 .frame(width: width + 3, height: height + 3)
         }
         .allowsHitTesting(false)
@@ -692,12 +714,13 @@ struct WMHeaderCircleButton: View {
     let width: CGFloat
     let height: CGFloat
     let glyph: String
+    var weight: Int = 720
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Text(glyph)
-                .font(WM.font(12.8, 720))
+                .font(WM.font(12.8, weight))
                 .foregroundStyle(WM.inkSoft)
                 .frame(width: width, height: height)
                 .background(WM.chip.opacity(0.66), in: Ellipse())

@@ -473,10 +473,10 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("raise Skip(\"backend-preflight-\" + str(preflight[\"failure\"]))", detail_capture)
         self.assertLess(detail_capture.index("raise Skip(\"backend-preflight-"), detail_capture.index("route(\"detail:"))
 
-        workflow = (HERE.parents[1] / ".github/workflows/harmony-wall.yml").read_text(encoding="utf-8")
+        workflow = (HERE.parents[1] / ".github/workflows/parity-harmony.yml").read_text(encoding="utf-8")
         render_step = workflow.split("- name: Start the bridge and the Previewer, sign in and capture", 1)[1].split(
             "- name: Upload the captures", 1)[0]
-        self.assertIn("SERVER_URL: ${{ secrets.PLAYARR_HARMONY_TEST_SERVER_URL || secrets.PLAYARR_TEST_SERVER_URL || secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}", render_step)
+        self.assertIn("SERVER_URL: ${{ env.PARITY_SERVER_URL }}", render_step)
         self.assertLess(render_step.index("backend_preflight.py --output backend-preflight.json"),
                         render_step.index("fixture_preflight.py --output fixture-preflight.json"))
         self.assertLess(render_step.index("fixture_preflight.py --output fixture-preflight.json"),

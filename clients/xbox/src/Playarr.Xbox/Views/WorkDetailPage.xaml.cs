@@ -55,8 +55,20 @@ namespace Playarr.Xbox.Views
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
             BackdropStageWashRight.Fill = Theme.KeyArtStageWashRight();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
-            PlaybackButton = Ui.Filled(Ui.Pill("\u2637  Playback", OpenPlaybackDrawer, 142));
+            PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
             PlaybackButton.Height = 64;
+            // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
+            PlayButton.GotFocus += (s, e) => PaintPlay(true);
+            PlayButton.LostFocus += (s, e) => PaintPlay(false);
+        }
+
+        private void PaintPlay(bool focused)
+        {
+            var resources = Application.Current.Resources;
+            PlayButton.Background = (Windows.UI.Xaml.Media.Brush)resources[focused ? "PlayarrBrand" : "PlayarrInk"];
+            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrSurfaceStrong"];
+            PlayLabel.Foreground = ink;
+            PlayIcon.Foreground = ink;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -148,7 +160,8 @@ namespace Playarr.Xbox.Views
             {
                 if (showPlayback)
                 {
-                    PrimaryRow.Children.Insert(0, PlaybackButton);
+                    // After Download, which the web keeps first.
+                    PrimaryRow.Children.Insert(_downloadPill != null && PrimaryRow.Children.Contains(_downloadPill) ? 1 : 0, PlaybackButton);
                 }
                 else
                 {
@@ -185,6 +198,7 @@ namespace Playarr.Xbox.Views
             if (work != null && !_viewModel.IsLoading)
             {
                 EnsureCast(work);
+                EnsureSimilar(work);
                 if (_viewModel.IsSeries)
                 {
                     EnsurePlan(work);
@@ -374,7 +388,7 @@ namespace Playarr.Xbox.Views
 
                 CardFocus.Attach(list);
                 var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 44 : 60, 0, 0) };
-                section.Children.Add(new TextBlock { Text = "Cast", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+                section.Children.Add(DetailRailTitle("Cast"));
                 section.Children.Add(new TextBlock
                 {
                     Text = credits.Cast.Count == 1 ? "1 person" : $"{credits.Cast.Count} people",
@@ -400,6 +414,119 @@ namespace Playarr.Xbox.Views
             {
                 SeriesPanel.Visibility = Visibility.Visible;
                 SeriesPanel.Children.Add(_castSection);
+            }
+
+            if (_similarSection != null)
+            {
+                // Always last, whichever of Cast and Similar Titles arrived first.
+                SeriesPanel.Visibility = Visibility.Visible;
+                SeriesPanel.Children.Remove(_similarSection);
+                SeriesPanel.Children.Add(_similarSection);
+            }
+        }
+
+        private Guid? _similarFor;
+        private StackPanel? _similarSection;
+
+        private static int ReleaseYear(Work work) =>
+            work.ReleaseDate is { Length: >= 4 } d && int.TryParse(d.Substring(0, 4), out var y) ? y : int.MinValue;
+
+        /// <summary>The web's relatedWorkScore: shared genres 100 each, same kind 10, up to 5 for a close year.</summary>
+        private static double RelatedScore(Work target, Work candidate)
+        {
+            var genres = new System.Collections.Generic.HashSet<string>(target.Genres.Select(g => g.Trim().ToLowerInvariant()));
+            var shared = candidate.Genres.Count(g => genres.Contains(g.Trim().ToLowerInvariant()));
+            var ty = ReleaseYear(target);
+            var cy = ReleaseYear(candidate);
+            var proximity = ty != int.MinValue && cy != int.MinValue ? Math.Max(0, 5 - Math.Abs(ty - cy) / 5.0) : 0;
+            return shared * 100 + (target.Kind == candidate.Kind ? 10 : 0) + proximity;
+        }
+
+        /// <summary>
+        /// The web's Similar Titles rail: the server's similar works, else (as the web does when that list is empty) library
+        /// titles ranked by shared genres, at most 20.
+        /// </summary>
+        private async void EnsureSimilar(Work work)
+        {
+            if (_similarFor == work.Id)
+            {
+                return;
+            }
+
+            _similarFor = work.Id;
+            try
+            {
+                var api = App.Environment.ApiClient;
+                bool Visible(Work w) => w.Id != work.Id && (w.Kind == WorkKind.Movie || w.Kind == WorkKind.Series);
+                var works = new System.Collections.Generic.List<Work>();
+                try
+                {
+                    works = (await api.GetSimilarWorksAsync(work.Id, 20)).Where(Visible).ToList();
+                }
+                catch (Exception)
+                {
+                    // A catalogue without embeddings answers 404; the genre ranking below covers it.
+                }
+
+                if (works.Count == 0)
+                {
+                    var genres = work.Genres.Take(3).ToList();
+                    var pages = genres.Count > 0
+                        ? await System.Threading.Tasks.Task.WhenAll(genres.Select(g => api.BrowseCatalogAsync(genre: g, limit: 100, availableOnly: true)))
+                        : new[] { await api.BrowseCatalogAsync(kind: work.Kind, sort: "date_added", order: "desc", limit: 100, availableOnly: true) };
+                    works = pages.SelectMany(p => p.Items).Where(Visible).GroupBy(w => w.Id).Select(g => g.First())
+                        .OrderByDescending(w => RelatedScore(work, w)).ThenBy(w => w.SortTitle, StringComparer.CurrentCultureIgnoreCase).Take(20).ToList();
+                }
+
+                if (works.Count == 0 || _similarFor != work.Id)
+                {
+                    return;
+                }
+
+                var list = new ListView
+                {
+                    SelectionMode = ListViewSelectionMode.None,
+                    IsItemClickEnabled = true,
+                    Height = 250,
+                    ItemContainerStyle = CatalogTileFactory.HomeCardContainerStyle,
+                };
+                CardFocus.ReserveFocusRoom(list);
+                ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
+                ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
+                ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);
+                list.ItemsPanel = (ItemsPanelTemplate)Windows.UI.Xaml.Markup.XamlReader.Load(
+                    "<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
+                    "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
+                foreach (var similar in works)
+                {
+                    list.Items.Add(CatalogTileFactory.CreateLandscapeCard(similar));
+                }
+
+                list.ItemClick += (s, e) =>
+                {
+                    if (e.ClickedItem is FrameworkElement { Tag: Guid id })
+                    {
+                        App.Navigation.Navigate(typeof(WorkDetailPage), id);
+                    }
+                };
+                CardFocus.Attach(list);
+                var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 48 : 60, 0, 0) };
+                section.Children.Add(DetailRailTitle("Similar Titles"));
+                section.Children.Add(new TextBlock
+                {
+                    Text = works.Count == 1 ? "1 title" : $"{works.Count} titles",
+                    FontSize = 10,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
+                    Margin = new Thickness(0, 6, 0, 36),
+                });
+                section.Children.Add(list);
+                _similarSection = section;
+                AppendCast();
+            }
+            catch (Exception)
+            {
+                // No Similar Titles rail when the library cannot be read.
             }
         }
 
@@ -513,7 +640,7 @@ namespace Playarr.Xbox.Views
             };
             CardFocus.Attach(list);
             var section = new StackPanel { Margin = new Thickness(0, 195, 0, 0) };
-            section.Children.Add(new TextBlock { Text = "Chapters", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+            section.Children.Add(DetailRailTitle("Chapters"));
             section.Children.Add(new TextBlock
             {
                 Text = real ? $"{chapters.Count} chapters" : $"{chapters.Count} scene markers",
@@ -659,7 +786,7 @@ namespace Playarr.Xbox.Views
                 ActionRow.Children.Add(ask);
             }
 
-            var download = Ui.Filled(Ui.Pill("Download", null));
+            var download = Ui.WithIcon(Ui.Filled(Ui.Pill("Download", null)), "\u21e9");
             download.Click += async (s, e) =>
             {
                 var template = _viewModel.DownloadTemplate();
@@ -811,7 +938,8 @@ namespace Playarr.Xbox.Views
                         PlayButton_Click(this, new RoutedEventArgs());
                     }
                 };
-                CardFocus.Attach(list);
+                // The web's episode ring sits 2.5 px outside the art (measured 280 x 160 on a 268 x 151 card).
+                CardFocus.Attach(list, true, 2.5);
                 list.GotFocus += (s, e) =>
                 {
                     if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: EpisodeDetail episode } })
@@ -820,15 +948,16 @@ namespace Playarr.Xbox.Views
                     }
                 };
 
-                var section = new StackPanel { Margin = new Thickness(0, 13, 0, 11) };
-                section.Children.Add(new TextBlock { Text = SeasonLabel(season), Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+                // The first rail starts at the same page-top line as a film's Chapters (web title at y 553); later seasons follow it.
+                var section = new StackPanel { Margin = new Thickness(0, SeriesPanel.Children.Count == 0 ? 195 : 13, 0, 11) };
+                section.Children.Add(DetailRailTitle(SeasonLabel(season)));
                 section.Children.Add(new TextBlock
                 {
                     Text = $"{season.Episodes.Count} episodes",
                     FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 1, 0, 40),
+                    Margin = new Thickness(0, 3.5, 0, 37.5),
                 });
                 section.Children.Add(list);
                 SeriesPanel.Children.Add(section);
@@ -836,6 +965,16 @@ namespace Playarr.Xbox.Views
 
             AppendCast();
         }
+
+        /// <summary>The detail page's rail title: the web draws it at 16.5 px (Home's rail titles are 19), in the same 26 px line.</summary>
+        private static TextBlock DetailRailTitle(string text) => new TextBlock
+        {
+            Text = text,
+            Style = (Style)Application.Current.Resources["PlayarrRailTitle"],
+            FontSize = 16.5,
+            LineHeight = 26,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+        };
 
         private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail, (double? Percent, bool Unwatched) watch)
         {

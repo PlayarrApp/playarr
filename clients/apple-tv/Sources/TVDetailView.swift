@@ -186,7 +186,7 @@ struct TVWorkDetailView: View {
                     .placed(x: 153.6, y: synopsisY, w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
             }
             actionPill("Download", glyph: "\u{21E9}", x: 153.6, y: buttonsY, width: 142) { showDownloadNote = true }
-            actionPill("Playback", symbol: "square.grid.2x2.fill", x: 311.6, y: buttonsY, width: 142)
+            actionPill("Playback", glyph: "\u{2637}", x: 311.6, y: buttonsY, width: 142)
             moviePlay(detail, x: 469.6, y: buttonsY)
             actionPill("Add to watchlist", glyph: "+", x: 153.6, y: buttonsY + 76, width: 142)
             actionPill("Add to Playlist", glyph: "+", x: 311.6, y: buttonsY + 76, width: 142)
@@ -435,7 +435,7 @@ struct TVWorkDetailView: View {
                         }
                         .overlay(alignment: .bottomTrailing) {
                             Text(String(format: "%02d", chapter.index + 1))
-                                .font(TVTheme.font(size: 19.2, weight: .semibold))
+                                .font(TVTheme.font(size: 19.2, css: 560))
                                 .foregroundStyle(Color.white)
                                 .padding(.trailing, 11.6)
                                 .padding(.bottom, 8.8)
@@ -445,7 +445,7 @@ struct TVWorkDetailView: View {
                             .foregroundStyle(DesignTokens.Color.textDisabled)
                             .placed(x: 0, y: 165.3, w: 28, h: 13.2)
                         Text("Chapter \(chapter.index + 1)")
-                            .font(TVTheme.font(size: 11.52, weight: .semibold))
+                            .font(TVTheme.font(size: 11.52, css: 610))
                             .tracking(-0.17)
                             .foregroundStyle(DesignTokens.Color.textPrimary)
                             .placed(x: 28.9, y: 162.3, w: 239.2, h: 17.3)

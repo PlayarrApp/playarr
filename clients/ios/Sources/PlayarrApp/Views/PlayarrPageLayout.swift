@@ -21,6 +21,7 @@ struct PlayarrBackButton: View {
             width: PlayarrPageTokens.controlHeight,
             height: PlayarrPageTokens.controlHeight,
             glyph: "\u{2190}",
+            weight: 400, // the web Back arrow is a plain button glyph, not 720
             action: action
         )
         .accessibilityLabel("Back")

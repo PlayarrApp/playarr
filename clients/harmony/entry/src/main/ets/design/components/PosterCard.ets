@@ -106,7 +106,9 @@ import { Skeleton } from './Skeleton';
 
 /** Which brief-5.8 focus delta, brief-5.6 shadow pair and interaction
  * duration this card uses. See this file's header comment. */
-export type PosterCardVariant = 'home' | 'titleEpisode';
+/** `'grid'` is the TV Library grid card: the title/episode shadows and timing, with web's `.tv-title-grid` lift (translateY -5, card
+ * 1.015 over the art's 1.025). */
+export type PosterCardVariant = 'home' | 'titleEpisode' | 'grid';
 
 /** One CSS `box-shadow` layer, copied as `{offsetY, radius, alpha}` rather
  * than a pre-built colour string so rest/focused values can be linearly
@@ -127,6 +129,11 @@ const FOCUS_RING_WIDTH: number = 3;
 const HOME_SHADOW_REST: ShadowLayerSpec[] = [
   { offsetY: 10, radius: 22, alpha: 0.16 },
   { offsetY: 3, radius: 9, alpha: 0.1 },
+];
+// Phone only: ArkUI's blur draws lighter than CSS's, so the wide layer is stronger and wider (measured on the light static refs).
+const PHONE_HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
+  { offsetY: 26, radius: 68, alpha: 0.55 },
+  { offsetY: 11, radius: 22, alpha: 0.22 },
 ];
 const HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
   { offsetY: 26, radius: 52, alpha: 0.32 },
@@ -206,6 +213,8 @@ export struct PosterCard {
   @Prop episodeCaption: string = '';
   /** Optional episode number rendered over the lower-right of the artwork. */
   @Prop episodeNumberOverlay: string = '';
+  /** Dark wash over the artwork (0 for none): web dims video frames on the chapter cards. */
+  @Prop artWash: number = 0;
 
   @Prop titleFontSize: number = CARD_TITLE_FONT_SIZE_TV;
   @Prop subtitleFontSize: number = CARD_SUBTITLE_FONT_SIZE_TV;
@@ -245,7 +254,7 @@ export struct PosterCard {
   @State private focusPercent: number = 0;
 
   private isTitleEpisode(): boolean {
-    return this.variant === 'titleEpisode';
+    return this.variant === 'titleEpisode' || this.variant === 'grid';
   }
 
   private resolvedArtworkRadius(): number {
@@ -256,6 +265,9 @@ export struct PosterCard {
   }
 
   private focusDelta(): FocusLiftDelta {
+    if (this.variant === 'grid') {
+      return { translateY: FOCUS_LIFT.gridCard.translateY, scale: FOCUS_LIFT.titleEpisodeCard.scale * FOCUS_LIFT.gridCard.scale };
+    }
     return this.isTitleEpisode() ? FOCUS_LIFT.titleEpisodeCard : FOCUS_LIFT.homeCard;
   }
 
@@ -313,7 +325,7 @@ export struct PosterCard {
 
   private shadowAt(layer: number): ShadowOptions {
     const rest = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_REST : HOME_SHADOW_REST;
-    const focused = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_FOCUSED : HOME_SHADOW_FOCUSED;
+    const focused = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_FOCUSED : (isTvMetrics() ? HOME_SHADOW_FOCUSED : PHONE_HOME_SHADOW_FOCUSED);
     const t = this.visualFocus();
     // Every lerp result is read into a local first, then referenced by
     // name inside the object literals below -- see `setFocused()`'s
@@ -370,6 +382,16 @@ export struct PosterCard {
           .backgroundColor(toResourceColor(activeColors().surfaceSoft))
           .scale({ x: this.artworkScale(), y: this.artworkScale() })
           .shadow(this.secondShadowLayer())
+        // Web's 20 vp ring glow. ArkUI draws no shadow for a transparent box, so like the layer above this is an opaque underlay behind the art.
+        Column()
+          .width(this.cardWidth)
+          .height(this.cardHeight)
+          .borderRadius(this.resolvedArtworkRadius())
+          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+          .opacity(this.visualFocus())
+          .scale({ x: this.artworkScale(), y: this.artworkScale() })
+          .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
+          .hitTestBehavior(HitTestMode.None)
       }
       Stack({ alignContent: Alignment.Bottom }) {
         if (this.artwork !== undefined) {
@@ -382,6 +404,14 @@ export struct PosterCard {
             .onAreaChange((_oldArea: Area, _area: Area) => { this.onArtworkAreaChanged(); })
         } else {
           Skeleton({ blockWidth: this.cardWidth, blockHeight: this.cardHeight, radius: this.resolvedArtworkRadius() })
+        }
+
+        if (this.artWash > 0 && this.artwork !== undefined) {
+          Column()
+            .width('100%')
+            .height('100%')
+            .backgroundColor(`rgba(30, 30, 30, ${this.artWash})`)
+            .hitTestBehavior(HitTestMode.None)
         }
 
         if (this.progress >= 0) {
@@ -427,14 +457,16 @@ export struct PosterCard {
       .shadow(this.shadowLayer())
       .outline({ width: tv(FOCUS_RING_WIDTH), color: this.focusRingColor(this.visualFocus()), radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
       // Web's 3 vp outer ring and 20 vp glow (45%): the outline stays outside the art without shifting layout.
-      Column()
-        .width(this.cardWidth)
-        .height(this.cardHeight)
-        .borderRadius(this.resolvedArtworkRadius())
-        .opacity(this.visualFocus())
-        .scale({ x: this.artworkScale(), y: this.artworkScale() })
-        .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
-        .hitTestBehavior(HitTestMode.None)
+      if (isTvMetrics()) {
+        Column()
+          .width(this.cardWidth)
+          .height(this.cardHeight)
+          .borderRadius(this.resolvedArtworkRadius())
+          .opacity(this.visualFocus())
+          .scale({ x: this.artworkScale(), y: this.artworkScale() })
+          .shadow({ radius: 20, color: this.focusRingColor(0.45), offsetY: 0 })
+          .hitTestBehavior(HitTestMode.None)
+      }
       }
       .width(this.cardWidth)
       .height(this.cardHeight)

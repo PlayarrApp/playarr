@@ -37,7 +37,8 @@ def check_backend(server_url: str, *, timeout: float = 2.0, retries: int = 1, op
     except (TypeError, ValueError):
         bounded_timeout = 2.0
     attempts = 2 if retries > 0 else 1
-    request = urllib.request.Request(server_url.rstrip("/") + "/api/system/version", method="GET")
+    request = urllib.request.Request(server_url.rstrip("/") + "/api/system/version", method="GET",
+                                     headers={"user-agent": "playarr-harmony-wall-preflight"})  # Cloudflare 403s the default Python-urllib agent
     open_url = opener or urllib.request.urlopen
     last_failure = "connection-error"
 

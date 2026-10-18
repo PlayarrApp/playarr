@@ -27,12 +27,16 @@ namespace Playarr.Xbox.Views
             set => ApplicationData.Current.LocalSettings.Values[HomeViewKey] = value ? "cover" : "thumbnail";
         }
 
-        /// <summary>The library's View choice (web Filters > View): false is Screen (landscape art), true is Cover (2:3 posters).</summary>
-        public static bool LibraryCover
+        /// <summary>The library's View choice (web Filters > View): "list", "screen" (landscape art) or "cover" (2:3 posters).</summary>
+        public static string LibraryView
         {
-            get => Read("playarr-library-view", "screen") == "cover";
-            set => ApplicationData.Current.LocalSettings.Values["playarr-library-view"] = value ? "cover" : "screen";
+            get => Read("playarr-library-view", "screen");
+            set => ApplicationData.Current.LocalSettings.Values["playarr-library-view"] = value;
         }
+
+        public static bool LibraryCover => LibraryView == "cover";
+
+        public static bool LibraryList => LibraryView == "list";
 
         /// <summary>0 small, 1 medium (default), 2 large.</summary>
         public static int SizeIndex

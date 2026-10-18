@@ -35,6 +35,8 @@ pub fn show(app: &Rc<App>, work: &Work) {
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 14);
     col.set_margin_start(16);
     col.set_margin_end(16);
+    // The web's rows start 2 px lower under the heading.
+    col.set_margin_top(2);
     col.set_margin_bottom(24);
 
     let play = row("play", "Play", Tone::Brand);

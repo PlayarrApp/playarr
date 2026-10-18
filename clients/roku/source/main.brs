@@ -5,7 +5,14 @@ sub Main(args as Dynamic)
 
     parityArtEnabled = false
     if type(args) = "roAssociativeArray" and args.parityArtReady = "1" then parityArtEnabled = true
-    screen.getGlobalNode().addFields({ themeMode: ResolvePairingTheme(LoadPairingThemePreference()), cardFocusOff: false, parityArtEnabled: parityArtEnabled })
+    ' Parity-only frozen clock (launch with parityNow=<ISO 8601 UTC> and parityArtReady=1): the clock, Today and entry times then read as UTC.
+    parityNowSeconds = 0
+    if parityArtEnabled and args.parityNow <> invalid and args.parityNow <> ""
+        pin = CreateObject("roDateTime")
+        pin.FromISO8601String(args.parityNow)
+        parityNowSeconds = pin.AsSeconds()
+    end if
+    screen.getGlobalNode().addFields({ themeMode: ResolvePairingTheme(LoadPairingThemePreference()), cardFocusOff: false, parityArtEnabled: parityArtEnabled, parityNowSeconds: parityNowSeconds })
     scene = screen.CreateScene("MainScene")
     ' ECP deep link (launch with contentId=<media file id>): signed-in devices play that file as soon as the profile is known.
     if type(args) = "roAssociativeArray" and args.contentId <> invalid and args.contentId <> "" then scene.deepLink = args.contentId
