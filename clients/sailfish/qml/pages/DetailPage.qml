@@ -127,8 +127,12 @@ PlayarrPage {
                 Item {   // the picture bleeds up behind a cutout; the copy below stays inside the safe area
                     y: -Tokens.safeTop; width: parent.width; height: parent.height + Tokens.safeTop
                     clip: true
-                    HeroArt { y: 0; work: page.work }
+                    HeroArt { y: 0; work: page.work; artOpacity: Tokens.dark ? 0.65 : 0.42 }
                     Rectangle { width: parent.width; height: Tokens.safeTop + 68 * Tokens.u; color: Tokens.bg }   // web: the picture starts below the header row
+                    Rectangle {   // web: the picture fades in over its first 78 px instead of starting hard
+                        y: Tokens.safeTop + 68 * Tokens.u; width: parent.width; height: 39 * Tokens.u
+                        gradient: Gradient { GradientStop { position: 0.0; color: Tokens.bg } GradientStop { position: 1.0; color: "transparent" } }
+                    }
                     Item {
                         y: Tokens.safeTop; width: parent.width; height: 298 * Tokens.u
                         PageTitle {

@@ -1,5 +1,6 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import QtGraphicalEffects 1.0
 import "../components"
 import "../components/NavIcons.js" as NavIcons
 
@@ -395,6 +396,27 @@ Item {
         }
     }
     EdgeFade { target: weekFlick; horizontal: true }
+    // Web dark agenda: a faint ghost-art wash. Measured on the refs: a flat tint (39,34,39) over the first ~600 px that fades out by ~720,
+    // plus a brighter left edge (about +15 at x=0) easing out over ~70 px down to ~340 px.
+    Rectangle {
+        z: -1; visible: Tokens.dark && root.mode === "agenda"
+        anchors { left: parent.left; right: parent.right; top: parent.top }
+        height: 360 * Tokens.u
+        gradient: Gradient {
+            GradientStop { position: 0; color: "#272227" }
+            GradientStop { position: 0.83; color: "#272227" }
+            GradientStop { position: 1; color: Tokens.bg }
+        }
+    }
+    LinearGradient {
+        z: -1; visible: Tokens.dark && root.mode === "agenda"
+        width: 40 * Tokens.u; height: 170 * Tokens.u
+        start: Qt.point(0, 0); end: Qt.point(width, 0)
+        gradient: Gradient {
+            GradientStop { position: 0; color: "#12ffffff" }
+            GradientStop { position: 1; color: "#00ffffff" }
+        }
+    }
     SilicaFlickable {
         id: flick
         visible: root.mode === "agenda"
