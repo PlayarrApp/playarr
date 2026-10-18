@@ -820,7 +820,7 @@ namespace Playarr.Xbox.Views
                     }
                 };
 
-                var section = new StackPanel { Margin = new Thickness(0, 14, 0, 11) };
+                var section = new StackPanel { Margin = new Thickness(0, 13, 0, 11) };
                 section.Children.Add(new TextBlock { Text = SeasonLabel(season), Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
                 section.Children.Add(new TextBlock
                 {
@@ -828,7 +828,7 @@ namespace Playarr.Xbox.Views
                     FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 3, 0, 36),
+                    Margin = new Thickness(0, 1, 0, 40),
                 });
                 section.Children.Add(list);
                 SeriesPanel.Children.Add(section);

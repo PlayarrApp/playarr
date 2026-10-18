@@ -1,1 +1,0 @@
-- Sailfish profiles top bar and pills use the web sun, globe, chevron, settings and logout icons.

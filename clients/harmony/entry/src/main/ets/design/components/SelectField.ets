@@ -14,11 +14,13 @@ import type { Choice } from './ChoiceSegments';
 import { t } from '../../core/Language';
 
 /** The colour theme choices, shared by Settings > Appearance and the profile picker's theme select. */
-export const THEME_CHOICES: Choice[] = [
-  { value: 'system', label: t('components.themeDropdown.optionSystem', 'System') },
-  { value: 'light', label: t('components.themeDropdown.optionLight', 'Light') },
-  { value: 'dark', label: t('components.themeDropdown.optionDark', 'Dark') },
-];
+export function themeChoices(): Choice[] {
+  return [
+    { value: 'system', label: t('components.themeDropdown.optionSystem', 'System') },
+    { value: 'light', label: t('components.themeDropdown.optionLight', 'Light') },
+    { value: 'dark', label: t('components.themeDropdown.optionDark', 'Dark') },
+  ];
+}
 
 const MIN_HEIGHT: number = 56;
 const GAP: number = 11.52;

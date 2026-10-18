@@ -633,7 +633,7 @@ impl Cal {
                     cell.append(&row);
                 }
                 let foot = gtk4::Box::builder()
-                    .spacing(12)
+                    .spacing(6)
                     .valign(gtk4::Align::End)
                     .vexpand(true)
                     .css_classes(["pa-mfoot"])
@@ -642,6 +642,7 @@ impl Cal {
                     &gtk4::Label::builder()
                         .label(d.d.to_string())
                         .css_classes(["pa-mdaynum"])
+                        .xalign(0.0)
                         .build(),
                 );
                 if items.len() > shown {
@@ -677,6 +678,8 @@ impl Cal {
             gtk4::PolicyType::Never
         });
         self.days_view.set_kinetic_scrolling(week);
+        // The web agenda's entries run off the page's right edge; the other views stop at the 16 px gutter.
+        self.days_view.set_margin_end(if v == View::Agenda { 0 } else { 16 });
         for f in &self.fades {
             f.set_visible(week);
         }
@@ -757,13 +760,13 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
 
     let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     content.set_margin_start(16);
-    content.set_margin_end(16);
     page.append(&content);
 
     let controls = gtk4::Box::builder()
         .spacing(8)
         .halign(gtk4::Align::End)
         .margin_top(5)
+        .margin_end(16)
         .css_classes(["pa-cal-controls"])
         .build();
     let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();

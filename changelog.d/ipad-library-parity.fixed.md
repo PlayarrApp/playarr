@@ -1,1 +1,0 @@
-- Align the iPad library preview, synopsis, focused-work selection, and Filters control with the tablet layout.

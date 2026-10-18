@@ -1,1 +1,0 @@
-- Tizen native Playlists: a long playlist name wraps to two or three hero lines with the copy below it, the playlist detail header puts its count under the title as the web does, and the create drawer name field shows its text (it was invisible).

@@ -32,6 +32,12 @@ describe("shouldUpgradeFallbackFocus", () => {
     expect(shouldUpgradeFallbackFocus({ autoKind: "content", bestKind: "explicit", userInteracted: false })).toBe(true);
   });
 
+  it("follows an explicit default that moves to another control, until the user acts", () => {
+    expect(shouldUpgradeFallbackFocus({ autoKind: "explicit", bestKind: "explicit", userInteracted: false, defaultMoved: true })).toBe(true);
+    expect(shouldUpgradeFallbackFocus({ autoKind: "explicit", bestKind: "explicit", userInteracted: true, defaultMoved: true })).toBe(false);
+    expect(shouldUpgradeFallbackFocus({ autoKind: "explicit", bestKind: "explicit", userInteracted: false, defaultMoved: false })).toBe(false);
+  });
+
   it("never moves once the user has acted, sideways, or when focus was not auto-placed", () => {
     expect(shouldUpgradeFallbackFocus({ autoKind: "back", bestKind: "content", userInteracted: true })).toBe(false);
     expect(shouldUpgradeFallbackFocus({ autoKind: "back", bestKind: "back", userInteracted: false })).toBe(false);

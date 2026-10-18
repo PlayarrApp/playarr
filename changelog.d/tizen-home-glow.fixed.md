@@ -1,1 +1,0 @@
-- Size the Home hero ambient circle on Tizen 6.5 TVs (Chromium 85), where its aspect-ratio collapsed it to nothing.

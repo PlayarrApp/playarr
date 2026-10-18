@@ -28,13 +28,16 @@ import { playlistsForKind } from '../../core/Playlists';
 import type { PlaylistResponse } from '../../core/Types/Playlists';
 import { t } from '../../core/Language';
 
-const TITLE_ACTIONS: ActionItem[] = [
-  { id: 'play', glyph: '▶\uFE0E', label: t('pages.workDetail.play', 'Play') },
-  { id: 'download', glyph: '⇩', label: t('settings.yourData.exportDownload', 'Download') },
-  { id: 'playlist', glyph: '＋', label: t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist') },
-  { id: 'watched', glyph: '✓', label: 'Mark as watched' },
-  { id: 'unwatched', glyph: '○', label: 'Mark as unwatched' },
-];
+// A function so t() runs on every build and the labels follow a live language switch.
+function titleActions(): ActionItem[] {
+  return [
+    { id: 'play', glyph: '▶\uFE0E', label: t('pages.workDetail.play', 'Play') },
+    { id: 'download', glyph: '⇩', label: t('settings.yourData.exportDownload', 'Download') },
+    { id: 'playlist', glyph: '＋', label: t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist') },
+    { id: 'watched', glyph: '✓', label: t('components.mediaContextMenu.markAsWatched', 'Mark as watched') },
+    { id: 'unwatched', glyph: '○', label: t('components.mediaContextMenu.markAsUnwatched', 'Mark as unwatched') },
+  ];
+}
 
 const SECTION_WIDTH: number = 268;
 const TEXT_SIZE: number = 13.44;
@@ -243,7 +246,7 @@ export struct TitleActionsDrawer {
         })
       } else {
         ActionList({
-          actions: TITLE_ACTIONS,
+          actions: titleActions(),
           busyId: this.busyId,
           onChoose: (id: string): void => {
             this.choose(id);

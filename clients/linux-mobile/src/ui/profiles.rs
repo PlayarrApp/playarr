@@ -394,9 +394,8 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
     col.append(
         &gtk4::Label::builder()
             .label("Sign in")
-            .css_classes(["pa-profile-name"])
+            .css_classes(["pa-profile-name", "pa-add-label"])
             .margin_top(1)
-            .opacity(0.8)
             .build(),
     );
     col.append(
