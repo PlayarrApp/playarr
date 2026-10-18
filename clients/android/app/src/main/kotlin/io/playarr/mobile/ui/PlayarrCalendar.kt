@@ -1400,7 +1400,8 @@ internal fun CalendarMonth(
         }
         if (wide) {
             // Web `.calendar-month`: chips inside the day cells, filling the space below the header.
-            CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().padding(top = 8.dp), isTelevision)
+            // Web TV month grid: 1662 px wide (clear of the right action column), header at y 179, cells 151.2 tall and ending at y 961.
+            CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().then(if (isTelevision) Modifier.padding(top = 59.dp, end = 32.dp, bottom = 23.dp) else Modifier.padding(top = 8.dp)), isTelevision)
             return@BoxWithConstraints
         }
         val grid: @Composable (Modifier) -> Unit = { gridModifier ->
