@@ -240,6 +240,7 @@ const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
 const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 361;
+const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 719;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
@@ -2108,7 +2109,7 @@ struct Detail {
               heading: '',
               headingGap: 0,
               itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle) : PHONE_EPISODE_RAIL_GAP,
-              clipInsetStart: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_START,
+              clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
               allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
@@ -2178,14 +2179,19 @@ struct Detail {
 
       if (this.detail !== null && this.detail.work.kind === 'series') {
         Scroll(this.seriesStackScroller) {
-          this.tvRightColumn()
+          Column() {
+            this.tvRightColumn()
+          }
+          .width('100%')
+          .padding({ left: tv(SERIES_COLUMN_BLEED) })
         }
         .id(this.seriesMeasurementId('page', this.workId, this.seriesFocusGeneration, ''))
         .align(Alignment.Top)
-        .width(tv(RIGHT_COLUMN_WIDTH))
+        .width(tv(RIGHT_COLUMN_WIDTH + SERIES_COLUMN_BLEED))
         .height(tv(SERIES_COLUMN_HEIGHT))
         .scrollBar(BarState.Off)
-        .position({ x: tv(RIGHT_COLUMN_X), y: tv(SERIES_COLUMN_TOP) })
+        // The scroll box starts BLEED left of the column so the first card's focus ring (and lift) is not cut at the box edge.
+        .position({ x: tv(RIGHT_COLUMN_X - SERIES_COLUMN_BLEED), y: tv(SERIES_COLUMN_TOP) })
         .onAreaChange(this.seriesPageAreaReporter(this.workId, this.seriesFocusGeneration))
         .onScroll(this.seriesPageScrollReporter(this.workId, this.seriesFocusGeneration))
       } else {
