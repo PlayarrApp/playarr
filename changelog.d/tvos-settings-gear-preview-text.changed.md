@@ -1,1 +1,1 @@
-- Apple TV: Down from the profile avatar lands on the Settings gear, and the Series and Movies preview text matches the web weight and colour.
+- Apple TV: Down from the profile avatar lands on the Settings gear.
