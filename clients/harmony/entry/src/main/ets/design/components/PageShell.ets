@@ -260,7 +260,8 @@ export struct PageShell {
         }
       }
       .width('100%')
-      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(17, this.safeTop), bottom: 12 })
+      // Back is 44 vp but web's header row is 43: take the extra vp off the bottom padding
+      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(17, this.safeTop), bottom: 11 })
       .alignItems(VerticalAlign.Center)
       // Web phone hides the header subtitle (web #1299): no count or section line under the title.
       Column() {
