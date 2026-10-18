@@ -164,6 +164,7 @@ import type {
 } from '../core/Types/WorkDetail';
 import type { Credit } from '../core/Types/WorkDetail';
 import type { MediaChapter } from '../core/Types/Media';
+import { generatedMovieChapters } from '../core/GeneratedChapters';
 import type { Work, Availability } from '../core/Types/Work';
 import type { WorkKind } from '../core/Types/Catalog';
 
@@ -795,6 +796,7 @@ struct Detail {
   @State private similarRail: DetailRail | null = null;
   @State private primaryMediaFileId: string | null = null;
   @State private chaptersRail: DetailRail | null = null;
+  @State private chaptersGenerated: boolean = false;
   /** A series' resume plan (null for a film, or until the server answers): its target is what the primary button plays. */
   @State private resumePlan: ResumePlan | null = null;
   @State private episodeFocusSuppressed: boolean = false;
@@ -850,6 +852,7 @@ struct Detail {
     this.similarRail = null;
     this.primaryMediaFileId = null;
     this.chaptersRail = null;
+    this.chaptersGenerated = false;
     this.resumePlan = null;
     this.episodeFocusSuppressed = false;
     this.episodeFocusGate = new EpisodeFocusGate();
@@ -1066,15 +1069,19 @@ struct Detail {
     if (!this.artworkStore.isCurrentGeneration(generation)) {
       return;
     }
-    if (result.kind !== 'ok' || result.value.length === 0) {
+    // web: a film without real chapters shows generated scene markers (a 60 s clip: one at 0:00)
+    const real = result.kind === 'ok' ? result.value : [];
+    const chapters = real.length > 0 ? real : generatedMovieChapters(this.detail !== null && this.detail.runtime_ms !== null ? this.detail.runtime_ms : 0);
+    if (chapters.length === 0) {
       return;
     }
+    this.chaptersGenerated = real.length === 0;
     const rows: DetailRow[] = [];
-    for (const chapter of result.value) {
+    for (const chapter of chapters) {
       rows.push(chapterRow(chapter, mediaFileId));
     }
     this.chaptersRail = { id: 'chapters', heading: t('pages.workDetail.chaptersHeading', 'Chapters'), items: rows };
-    for (const chapter of result.value) {
+    for (const chapter of chapters) {
       const thumb = await fetchMediaThumbnail(mediaFileId, chapter.start_ms);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
         return;
@@ -2071,7 +2078,7 @@ struct Detail {
       }
       if (this.chaptersRail !== null) {
         Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
+          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), this.chaptersGenerated ? tf('pages.workDetail.sceneMarkersCount', '{{count}} scene markers', { count: this.chaptersRail.items.length.toString() }) : tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
           MediaRail({
             railId: 'chapters',
             headingGap: 0,
