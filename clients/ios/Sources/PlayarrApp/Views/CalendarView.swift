@@ -272,8 +272,8 @@ struct CalendarView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             if case .loaded = viewModel.loadState, !viewModel.dayGroups.isEmpty, viewModel.mode == .agenda {
-                // The web agenda sits on the first release's backdrop, like the other pages.
-                WMKeyArt(work: nil, apiClient: apiClient, backdropWorkID: viewModel.dayGroups.first?.items.first?.entries.first?.workID)
+                // The web agenda sits on the first release's backdrop in the dark theme only.
+                WMKeyArt(work: nil, apiClient: apiClient, lightOpacity: 0, backdropWorkID: viewModel.dayGroups.first?.items.first?.entries.first?.workID)
                 phoneAgenda(groups: viewModel.dayGroups)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
