@@ -2,7 +2,7 @@
 
 One suite, every device. `scripts/parity/suite.json` lists what each platform must be scored on; web
 (`clients/tv-web`) is the source of truth, so its run writes the expected results and every other client is compared
-against them. Validate the file with `node --test scripts/parity/suite.test.mjs` (in `scripts/parity`).
+against them. Validate the file from `scripts/parity` with `npm ci` once, then `PLAYARR_PARITY_TEST_OUT=<task .data scratch dir> npm run test:suite` (a bare `node --test` fails by design: the tests refuse to write outside a scratch directory and need the npm dependencies). Driver and Sailfish tests run separately: `node --test drivers/*.test.mjs sailfish/*.test.mjs`. CI runs both when `scripts/parity` changes.
 
 Devices and how each is run: [DEVICES.md](DEVICES.md).
 
