@@ -1,0 +1,1 @@
+- Fire TV (Vega): the Search grid starts at the web's x (777 px), the detail page kicker takes the web's theme colours (dark rose, light maroon) and the Calendar month grid is as wide as the web's (1663 px, with the right-hand action column).
