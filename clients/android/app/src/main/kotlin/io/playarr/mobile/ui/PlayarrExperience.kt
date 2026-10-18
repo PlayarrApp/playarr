@@ -3212,6 +3212,7 @@ internal fun WebClampedText(
     style: androidx.compose.ui.text.TextStyle,
     maxLines: Int,
     modifier: Modifier = Modifier,
+    minLines: Int = 1,
 ) {
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     val resolved = androidx.compose.material3.LocalTextStyle.current.merge(style)
@@ -3232,7 +3233,7 @@ internal fun WebClampedText(
             }
             words.take(lo).joinToString(" ") + "\u2026"
         }
-        Text(shown, color = color, fontSize = fontSize, lineHeight = lineHeight, fontWeight = fontWeight, style = style, maxLines = maxLines)
+        Text(shown, color = color, fontSize = fontSize, lineHeight = lineHeight, fontWeight = fontWeight, style = style, maxLines = maxLines, minLines = minLines)
     }
 }
 
@@ -6643,7 +6644,7 @@ private fun PhoneVideoDetailBody(
                 } else {
                     Spacer(Modifier.height(10.dp))
                 }
-                Text(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1, overflow = TextOverflow.Ellipsis)
+                WebClampedText(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, fontWeight = FontWeight.Normal, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1)
                 Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,
@@ -6857,7 +6858,7 @@ private fun PhoneDetailActions(
             WatchlistToggleButton(work, webPhone = true)
             PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor) {
                 Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(7.6.dp))
                 Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
             }
         }
@@ -6893,7 +6894,7 @@ private fun PhoneDetailActions(
             WatchlistToggleButton(work, webPhone = true)
             PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor) {
                 Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(7.6.dp))
                 Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
             }
         }
