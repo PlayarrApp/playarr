@@ -1,2 +1,0 @@
-- Apple TV: Select on a sidebar item opens the page and puts focus on its first item, as on the web.
-- Apple TV: Down from Calendar's Today button goes to Filters, and the profile gear opens Settings.

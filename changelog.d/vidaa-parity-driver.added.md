@@ -1,1 +1,0 @@
-- Add a VIDAA parity driver and a debug-mirror `mirrorTheme` launch flag for the TV parity suite.

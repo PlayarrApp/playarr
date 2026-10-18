@@ -1,1 +1,0 @@
-- Nura calendar: date-only releases show "All day", sort first and stay on their day outside UTC, as the web; capture helper runs the app in UTC.

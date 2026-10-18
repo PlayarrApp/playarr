@@ -1,1 +1,0 @@
-- Validate the configured fixture server and Device Test profile before the Apple iOS wall builds or captures.

@@ -1,1 +1,0 @@
-- Draw the Library alphabet letter circle on Tizen 6.5 TVs (Chromium 85), where its aspect-ratio collapsed it to a flat pill.
