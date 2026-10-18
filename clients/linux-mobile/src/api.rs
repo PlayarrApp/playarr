@@ -384,6 +384,58 @@ impl Client {
     pub fn work(&self, id: &str) -> Result<WorkDetail> {
         self.get(&format!("/api/v1/catalog/{id}"))
     }
+    /// Titles related to `work`, as the web falls back to when `/catalog/{id}/similar` is empty: library titles ranked by
+    /// shared genres (100 each), same kind (10) and release-year proximity, best 20.
+    pub fn similar_works(&self, work: &crate::model::Work) -> Vec<crate::model::Work> {
+        if let Ok(v) = self.get::<Vec<crate::model::Work>>(&format!("/api/v1/catalog/{}/similar", work.id)) {
+            let v: Vec<_> = v.into_iter().filter(|w| w.id != work.id).collect();
+            if !v.is_empty() {
+                return v;
+            }
+        }
+        let genres: Vec<&String> = work.genres.iter().take(3).collect();
+        let paths: Vec<String> = if genres.is_empty() {
+            vec![format!(
+                "/api/v1/catalog?kind={}&available_only=true&sort=date_added&order=desc&limit=100",
+                work.kind
+            )]
+        } else {
+            genres
+                .iter()
+                .map(|g| format!("/api/v1/catalog?genre={}&available_only=true&limit=100", urlenc(g)))
+                .collect()
+        };
+        let mut seen = std::collections::HashSet::new();
+        let mut found = Vec::new();
+        for p in paths {
+            for w in self.get::<CatalogPage>(&p).map(|p| p.items).unwrap_or_default() {
+                if w.id != work.id && (w.kind == "movie" || w.kind == "series") && seen.insert(w.id.clone()) {
+                    found.push(w);
+                }
+            }
+        }
+        let score = |w: &crate::model::Work| -> f64 {
+            let shared = w
+                .genres
+                .iter()
+                .filter(|g| work.genres.iter().any(|t| t.trim().eq_ignore_ascii_case(g.trim())))
+                .count() as f64;
+            let year = |w: &crate::model::Work| w.year().and_then(|y| y.parse::<f64>().ok());
+            let near = match (year(work), year(w)) {
+                (Some(a), Some(b)) => (5.0 - (a - b).abs() / 5.0).max(0.0),
+                _ => 0.0,
+            };
+            shared * 100.0 + if w.kind == work.kind { 10.0 } else { 0.0 } + near
+        };
+        found.sort_by(|a, b| {
+            score(b)
+                .partial_cmp(&score(a))
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
+        });
+        found.truncate(20);
+        found
+    }
     pub fn resume_plans(&self) -> Result<Vec<ResumePlan>> {
         self.get("/api/v1/playback/resume-plans")
     }

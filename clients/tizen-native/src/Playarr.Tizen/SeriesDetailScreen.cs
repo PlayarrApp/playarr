@@ -9,7 +9,7 @@ namespace Playarr.Tizen;
 /// <summary>Series detail (web WorkDetail for a series): lead episode copy and actions on the left, one episode rail per season on the right.</summary>
 internal sealed class SeriesDetailScreen : IPage
 {
-    private const float RailX = 881.6f, CardPitch = 292.95f, FocusedHeadingY = 358f, RailPitch = 314.3f, ClipX = 729.6f;
+    private const float RailX = 881.6f, CardPitch = 292.95f, FocusedHeadingY = 540f, RailPitch = 314.3f, ClipX = 729.6f;
 
     private sealed class Rail { public View Row = new(); public float Scroll; public List<int> Items = new(); }
 
