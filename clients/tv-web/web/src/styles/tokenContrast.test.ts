@@ -78,3 +78,21 @@ describe("design tokens meet WCAG AAA contrast (1.4.6, 7:1)", () => {
     }
   });
 });
+
+describe("detail action buttons keep icon and label visible on the hover/focus fill", () => {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const fill = (theme: typeof light) => theme["--ink"] as string; // the fill is --ink at 88%, so --ink is the worst-case bound
+  for (const [theme, tokens] of [["light", light], ["dark", dark]] as const) {
+    it(`${theme}: --bg label and icon on the --ink fill reach 4.5:1`, () => {
+      expect(contrast(tokens["--bg"] as string, fill(tokens))).toBeGreaterThanOrEqual(4.5);
+    });
+    it(`${theme}: the pink --brand-ink icon would fail 3:1 on that fill (why it is overridden)`, () => {
+      expect(contrast(tokens["--brand-ink"] as string, fill(tokens))).toBeLessThan(3);
+    });
+  }
+  for (const cls of ["tv-detail-download", "tv-detail-playback-settings"]) {
+    it(`.${cls} icon inherits the label colour while the fill shows`, () => {
+      expect(stripped).toMatch(new RegExp(`\\.${cls}:is\\(:hover, :focus-visible, \\[aria-expanded="true"\\]\\) > span:first-child[,\\s][^{]*\\{\\s*color: inherit;`));
+    });
+  }
+});

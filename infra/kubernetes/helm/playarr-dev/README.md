@@ -104,6 +104,18 @@ Only the `http` container port is published; metrics (9090) stays pod-local.
 Deployments use the `Recreate` strategy, so the old Pod releases the host port
 before the new one starts. The node firewall must allow the port.
 
+Why not a surge rollout (`RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0`):
+the consumers of this port are browsers, native clients and the `playarr.app`
+relay Worker, which connect straight to the node's public IP on 8484 (the
+relay registers that IP, `PLAYARR_PUBLIC_IPV4`). There is no load balancer and
+the chart's Service is `ClusterIP`, so a Service cannot replace the host port.
+A surge Pod would be scheduled on the same pinned node and stay `Pending`
+because a node can bind a host port for only one Pod. The readiness probe
+(`/readyz`) is already rendered, so the change to surge becomes possible once
+the public address is served by something other than `hostPort` (for example
+a load balancer or a Service with a dedicated public address); until then the
+brief gap on each rollout is accepted.
+
 ## HTTPS (`tls`)
 
 Each instance can set `tls: {hostnames: [...], issuer: letsencrypt-prod}`:
@@ -170,8 +182,8 @@ The chart sets `PLAYARR_WEB_ASSETS_DIR=/app/web`, overriding the legacy
 ### Publishing an image
 
 The workflow `.github/workflows/regional-image.yml` builds and pushes
-`playarr:<first 8 characters of the commit SHA>` on every push to
-`main` that touches the backend, the Admin UI or the Dockerfile, and fails if
+`playarr:<first 8 characters of the commit SHA>` for a release or a manual
+run, and fails if
 `ffprobe` or `playarr-server --version` does not run inside the image. It
 pushes to the registry named by the repository variable `REGIONAL_IMAGE_REGISTRY`
 (the job is skipped when it is unset). To build
@@ -190,8 +202,7 @@ docker push $REGISTRY/playarr:$SHA
 Image pins are deployment values, so a rollout is a change in the GitOps
 repository, never in this chart:
 
-1. Wait for the `regional-image` workflow to publish the image of the `main`
-   commit you want (or build and push it by hand as above).
+1. Wait for the `regional-image` workflow to publish the image of the commit you want (a release or manual run) (or build and push it by hand as above).
 2. Set `regionalImage` to that tag in the deployment values and merge; every
    instance rolls to it, so verify each one in turn. Never move a pin to an
    older image.

@@ -37,7 +37,7 @@ studio franchise anywhere in it**: not in code, tests, fixtures, comments, docs,
 Likewise never commit real posters, backdrops, stills, album art, cast photos, video clips or screenshots that show
 real titles or artwork; generate placeholders instead (solid colours, gradients, procedural art). Openly licensed
 demo media that the product genuinely needs is the only exception and must be justified where it is used.
-That exception covers the public screenshots (README, `site/`, Play listing): they show the openly licensed
+That exception covers the public screenshots (README, Play listing): they show the openly licensed
 open-movie demo library with attribution, never the parity fixture. Produce them only with `scripts/showcase`
 (see `clients/android/fastlane/README.md`); `scripts/ci/check-public-screenshots.sh` enforces it. Keep the film
 names out of code, tests, fragments, commits and PR text, except for the attribution in the README
@@ -71,8 +71,7 @@ Do not keep a list of forbidden titles in the repository: such a list would itse
 - Kubernetes manifests and Helm charts here are generic templates with neutral defaults
   (`infra/kubernetes/helm/playarr-dev` renders nothing on its own; its README lists the values).
   Deployment of the server (values, image pins, rollouts) is out of scope of this repository.
-- The `regional-image` workflow publishes `ghcr.io/<owner>/playarr:<sha8>` for each
-  `main` commit. Consumers pin an image tag in their own deployment configuration; never move a
+- The `regional-image` workflow (release and manual runs only) publishes `ghcr.io/<owner>/playarr:<sha8>`. Consumers pin an image tag in their own deployment configuration; never move a
   pin to an older image.
 
 ## Runners

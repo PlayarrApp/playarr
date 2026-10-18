@@ -45,7 +45,7 @@ jobs:
     concurrency:
       group: deploy-web-prod
       cancel-in-progress: false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
       deployed: ${{ steps.deploy.outputs.deployed || 'false' }}
@@ -71,6 +71,11 @@ jobs:
           node-version: '22'
           cache: pnpm
           cache-dependency-path: clients/tv-web/pnpm-lock.yaml
+
+      # When the guard skips the install (a dry run or a newer commit already live) the pnpm store is never
+      # created and setup-node's post-job cache save fails on the missing path. An empty store is harmless.
+      - name: Create the pnpm store directory
+        run: mkdir -p "$(pnpm store path --silent)"
 
       - name: Deploy guard (guard_early)
         id: guard_early

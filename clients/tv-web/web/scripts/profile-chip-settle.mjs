@@ -75,7 +75,6 @@ for (const layout of ["desktop", "tv"]) {
     await page.waitForTimeout(1500);
     const tag = `${layout}/${theme}`;
     await settle(page, `${tag} chip`, reqs, () => page.click(".app-user-identity", { timeout: 8000 }), "/profiles");
-    await settle(page, `${tag} clients`, reqs, () => page.click('a[href="/clients"]', { timeout: 8000 }), "/clients");
     await context.close();
   }
 }

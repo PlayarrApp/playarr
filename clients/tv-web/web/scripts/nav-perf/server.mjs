@@ -62,7 +62,8 @@ export async function startServer({ distDir, port = 0, movies = 1746, series = 9
     )) {
       return void setTimeout(() => handleApi(url, req, res, true), listDelayMs);
     }
-    if (p === "/api/v1/auth/login") {
+    // Refresh answers like login: the harnesses seed an opaque stored token, and a refused refresh now ends the session.
+    if (p === "/api/v1/auth/login" || p === "/api/v1/auth/refresh") {
       return json(res, { access_token: "nav-perf-token", refresh_token: "nav-perf-refresh", expires_in: 86400, token_type: "Bearer", user_id: userId });
     }
     if (p === "/api/v1/peer-groups/self/members") {

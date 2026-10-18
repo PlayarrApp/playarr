@@ -77,4 +77,10 @@ describe("page layout CSS", () => {
     }
     expect(offenders).toEqual([]);
   });
+  it("keeps the Downloads panel's right padding clear of the shell action column (content never overlaps the bar)", () => {
+    // Overlap at runtime is covered by scripts/action-bar-overlap-e2e.mjs; this pins the reserve the Library grid uses too.
+    const css = readFileSync(join(src, "styles/global.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const rule = css.match(/\n\.tv-downloads-panel\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(rule).toMatch(/padding-right:\s*calc\(var\(--directory-controls-edge\) \+ var\(--directory-controls-width\) \+ var\(--directory-controls-gap\)\)/);
+  });
 });

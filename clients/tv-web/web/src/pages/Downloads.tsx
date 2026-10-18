@@ -746,6 +746,22 @@ export function DownloadsPage() {
         title: t("pages.downloads.title"),
         back: { label: t("pages.downloads.backToHome"), to: "/" },
         actions: [
+          ...(notifications.supported
+            ? [
+                {
+                  kind: "panel" as const,
+                  id: "notifications",
+                  label: notifications.permission === "denied" ? t("pages.downloads.notificationsBlocked") : t("pages.downloads.notifications"),
+                  icon: notifications.permission === "denied" ? ("bellOff" as const) : ("bell" as const),
+                  open: notifications.enabled,
+                  buttonProps: notifications.permission === "denied" ? { "data-notifications-blocked": true } : undefined,
+                  onToggle: () => (notifications.enabled ? notifications.disable() : void notifications.enable()),
+                },
+              ]
+            : []),
+          ...(notifications.blockedHint
+            ? [{ kind: "status" as const, id: "notifications-hint", label: t("pages.downloads.notificationsBlockedHint") }]
+            : []),
           ...(online ? [] : [{ kind: "status" as const, id: "offline", label: t("pages.downloads.offline") }]),
           {
             kind: "filters" as const,
@@ -830,14 +846,6 @@ export function DownloadsPage() {
                 <span className="tv-download-progress-fill" style={{ width: `${storagePercent}%` }} />
               </div>
             ) : null}
-          </div>
-        ) : null}
-        {notifications.supported && notifications.permission !== "denied" ? (
-          <div className="tv-downloads-notify">
-            <span>{notifications.enabled ? t("pages.downloads.notificationsOn") : t("pages.downloads.notificationsOff")}</span>
-            <button type="button" onClick={() => (notifications.enabled ? notifications.disable() : void notifications.enable())}>
-              {notifications.enabled ? t("pages.downloads.notificationsTurnOff") : t("pages.downloads.notificationsTurnOn")}
-            </button>
           </div>
         ) : null}
         <ScrollArea axis="vertical" scrollKey="downloads:list" className="tv-downloads-content" refreshKey={`${downloads.length}:${visible.length}:${expandedKeys.size}`}>

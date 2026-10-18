@@ -33,7 +33,8 @@ export type PageAction =
       icon: ActionIcon;
       open: boolean;
       onToggle: () => void;
-      controls: string;
+      /** Omit for a pressed toggle that opens nothing (Downloads notifications). */
+      controls?: string;
       buttonRef?: Ref<HTMLButtonElement>;
       buttonProps?: DataAttributes;
     }
@@ -110,7 +111,7 @@ function renderAction(action: PageAction): ReactNode {
       return <ActionPill key={action.id} kind="link" icon={action.icon} label={action.label} to={action.to} buttonProps={action.buttonProps} />;
     case "status":
       return (
-        <span key={action.id} className="page-actions-status" role="status" data-action-kind="status">
+        <span key={action.id} className="page-actions-status" role="status" data-action-kind="status" data-action-id={action.id}>
           {action.label}
         </span>
       );

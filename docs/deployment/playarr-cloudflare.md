@@ -9,8 +9,36 @@ Cloudflare hosts only the client app (the web UI, release downloads and relay DN
 stores Playarr server data: backups, media, databases and logs stay on the self-hoster's own infrastructure and are
 never sent to or routed through Cloudflare.
 
-The public Clients hub is served at `/clients`; `/download` and `/install`
-redirect there, and `/vidaa-store/` publishes the fixed Playarr-only VIDAA custom
+The marketing site (home page, Clients hub, docs and legal pages) is a separate Worker, `playarr-site`, built from
+<https://github.com/PlayarrApp/playarr-site>. `playarr-web` reaches it through the service binding `SITE` and
+routes paths as follows (`run_worker_first` in `clients/tv-web/web/wrangler.jsonc`, mirrored in
+`scripts/deploy-cloudflare-api.mjs`):
+
+| Path | Served by |
+|---|---|
+| `/` for a browser visitor with no app signal | `playarr-site` (via `SITE`) |
+| `/` with an app signal: a `?platform=<client>` query, the `playarr_signed_in=1` or `playarr_app=1` cookie, or an app user agent (VIDAA, Hisense, Xbox, `PlayarrAndroidMobile/`, `PlayarrAndroidTV/`) | the app (static assets) |
+| `/docs`, `/docs/*`, `/legal`, `/legal/*`, `/features`, `/features/*`, `/faq`, `/faq/*`, `/apps`, `/apps/*`, `/integrations`, `/integrations/*`, `/clients`, `/clients/*`, `/_site/*`, `/robots.txt`, `/sitemap-*` | `playarr-site` (via `SITE`) |
+| `/download`, `/install` | 301 redirect to `/clients` |
+| `/api/*`, `/cast/*`, `/downloads/*`, `/storybook/*` | `playarr-web` Worker code |
+| everything else (`/library`, `/login` and so on) | the app (single-page fallback) |
+
+Installed apps never show the marketing site, signed in or not (`clients/tv-web/web/appSignal.js` decides). The
+hosted VIDAA app is registered as `https://playarr.app/?platform=tv-vidaa`. The app sets `playarr_app=1` when it runs
+as anything but plain web, its sign-out and Back full loads go to `/login?platform=<client>` instead of `/`, the PWA
+`start_url` is `/?platform=web`, and the Profiles page hides its public Clients link.
+
+The response for `/` always carries `Vary: Cookie, User-Agent` and `Cache-Control: no-cache`. The app sets the
+`playarr_signed_in=1` cookie (`Path=/`, one year, `SameSite=Lax`, `Secure`) whenever at least one profile session is
+saved, re-asserts it on boot, and expires it when none remain. It is a routing hint only, never a credential. If the
+`SITE` binding is absent (local development) the Worker serves the app for every path. Self-hosted servers serve the
+same bundle but never see the marketing site, so in-app links to the Clients and legal pages are absolute
+`https://playarr.app/...` URLs.
+
+**Deploy order:** deploy `playarr-site` first, then `playarr-web`. A service binding to a Worker that does not exist
+fails the `playarr-web` deploy.
+
+`/vidaa-store/` publishes the fixed Playarr-only VIDAA custom
 store assets. Playarr does not operate a public VIDAA DNS resolver. Viewers choose
 and control a compatible DNS, proxy, or self-hosted interception method themselves.
 
@@ -32,7 +60,7 @@ them to release assets (looked up through the GitHub Releases API and cached for
 | `/downloads/tizen/playarr-tizen.wgt` | `playarr-tizen-<version>.wgt` of the newest `v*` release (none yet: a `.wgt` needs the owner's Samsung certificate profile, so releases carry the unsigned package root) |
 
 The small JSON manifests (`/downloads/android/playarr-android.json`, `/downloads/server/latest.json`) are
-proxied so the native television self-update action and the Clients hub read them same-origin. A path
+proxied so the native television self-update action and the Clients hub on the marketing site read them same-origin. A path
 whose asset is in no release (or when GitHub cannot be reached) returns 404 "not published yet". No
 release workflow uploads to object storage. See [Releasing Playarr](releases.md) and
 [Playarr Server releases](server-releases.md).

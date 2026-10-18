@@ -13,6 +13,25 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web: hero, detail and library-preview artwork starts at the nav clearance, so artwork with a baked-in title never renders under the left nav (the nav-overlap e2e no longer exempts it).
+- Installed apps (the hosted VIDAA app, Xbox, Android) never show the marketing site: playarr.app now serves the app at `/` for any `?platform=` marker, app user agent or app cookie, sign-out goes to the login route in installed apps, the PWA starts at `/?platform=web`, and the shell precache no longer stores the marketing page.
+- Web: browser Back restores a library scroll position even when the list mounts after the route (and again after Forward then Back).
+- Web: the film and series detail copy no longer shows, hides and animates in again on navigation; it fades in once with the page.
+- Web: no page content sits under the left nav at any width (a new all-routes e2e guards it), and pages without the library letter rail no longer reserve a gutter for it on phones (Search, Watchlist, Requests, Playlists, Downloads).
+- Web: the Calendar week view on phones now swipes left and right between day columns (columns no longer block the horizontal swipe) and opens on today's column.
+- Web: on phones the series, film and music detail header (Back and title) stays fixed at the top while the content scrolls, fading out beneath it.
+- Web: the Download, Watchlist, Playlist and Playback buttons on film and series pages now switch their icon to the label colour while focused or hovered, so the icon stays visible on the filled button.
+- Web: the Library alphabet rail now draws a ring around the active letter that follows the grid, keeps the standard focus ring on a focused letter (also when it is the active one), and a letter jump leaves focus on the letter (only Right enters the grid, on the first card of the section).
+- Web: the Home and library hero copy no longer shows, hides and animates in again on navigation; it now fades in once with the page.
+- Web: navigating to another page now starts every scroll container at the top on the first frame, and library pages no longer carry the alphabet letter across routes.
+- Web: filter and view panels stay mounted when an option changes (Calendar no longer remounts its panel when switching to or from Agenda), and the page behind an open panel no longer scrolls.
+- Web: on the Library alphabet rail only the key pointing toward the grid (Left when the rail is right of the grid, Right when it is left of it) enters the grid; the key pointing away does nothing, so Right on the TV rail no longer wraps back into the grid. The side comes from the rail and grid rects.
+- Web: Requests now has its own plus-in-circle nav icon instead of sharing the Watchlist bookmark.
+- The hosted iOS parity workflow passes its pinned clock to the app as text, so iPhone captures confirm the fixed clock.
+- A release dry run no longer fails in the web deploy job's post-job cache save when the deploy steps are skipped.
+- The release collects the Xbox package under its real `.msix` name and picks the HarmonyOS HAP by name, failing the release if the HAP is missing, so `clients.json` no longer lists Xbox as pending.
+- The Samsung TV install page now says Tizen 6.5 and 2022-or-newer TVs, matching the app's real floor (English, Japanese and Thai).
+- Web: the Downloads notifications toggle moves into the page action column and the Downloads panel keeps clear of the action bar, so nothing overlaps.
 - HarmonyOS TV Home opens aligned with the Library grid like web: rails and cards start 53 vp inside the rail column and the first heading sits at the Library first-row top; a focused later rail still centres.
 - The Nura capture helper clicks the display's left margin before each screenshot, so a sheet or drawer that opened after a long idle wait is no longer missed.
 - Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
@@ -539,6 +558,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Web: the Settings approval-notifications button also shows "Notifications blocked" when the browser blocks notifications, asks again on click and explains how to unblock.
+- Web: when browser notifications are blocked, the Downloads notifications button shows a blocked bell; clicking it asks again and, if the browser still refuses, explains how to unblock in the address bar.
+- Releases now build the Samsung Tizen native tpk, name every package after its client variant (for example `playarr-lg-webos-<version>.ipk`, `playarr-android-<version>.apk`) and attach a `clients.json` that lists every variant with its minimum OS and download route. Older asset names stay beside the new ones.
 - On iPad, Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) settings. Covers draws Home rails as portrait posters at the Library cover card width, and the size changes the Library column count and the Home card width.
 - macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.
 - Xbox: the library Filters drawer has a View choice, Screen or Cover, and Cover shows portrait posters as the web.
@@ -764,6 +786,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The marketing site moved to its own repository and Worker (`PlayarrApp/playarr-site`). `playarr.app` now serves it on `/`
+  for signed-out visitors and on the Clients, docs and legal routes through a `SITE` service binding; the web app, the
+  duplicate React legal and Clients pages and `site/` are gone from this repository. The app sets a `playarr_signed_in`
+  routing-hint cookie so signed-in users keep landing in the app. Deploy `playarr-site` before `playarr-web`.
 - Nura library grids space their rows at the web phone's pitch (24.35 css px), so the third and later rows line up with the web's.
 - Let the Apple iOS wall take the pinned capture instant as an input, and print compiler errors when the Apple parity iOS build fails; the iPhone calendar parity captures now use the clock the web references show (Agenda dark 90.75 to 93.90).
 - Nura player controls follow the web phone player: a flat seek bar, a centred time, and two rows of icon buttons (previous, play or pause, next, mute, audio, subtitles, queue; then quality, health, play on and full screen), with a bordered close button. Previous, next, mute and full screen work; the rest show disabled until the player supports them.
@@ -3223,6 +3249,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Web: the nav-overlap e2e also covers tall and near-square desktop windows (1600x1164 at 1x and 2x and with a classic scrollbar, 1440x1080, 1280x1024, 1024x1024, 1366x1366, 1080x1920) and checks the hero title's leftmost glyph against the nav rail on Home, the library pages and film, series and artist detail.
 - Add opt-in stable native capture readiness checks for Android TV Movies, Series and Music; other routes retain their existing screenshot path and fail closed when stable capture readiness is requested.
 - Harmony capture runs now validate the signed-in device-test profile and pinned detail and progress fixtures before starting the Previewer.
 - Allow an explicit Harmony phone core diagnostic capture to skip player-controls and record the omission, while the default core capture still requires all 15 screens.
