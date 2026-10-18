@@ -201,3 +201,36 @@ describe("stage geometry patches", () => {
     expect(stageClientX(640)).toBe(640);
   });
 });
+
+describe("installTvStageScale with the on-screen keyboard", () => {
+  it("keeps the stage size and transform when the viewport height shrinks under a focused input", async () => {
+    const b = await fakeBrowser(1280, 720);
+    let h = 720;
+    Object.defineProperty(b.win, "innerHeight", { configurable: true, get: () => h });
+    const resize: (() => void)[] = [];
+    Object.assign(b.win, {
+      addEventListener: (t: string, f: () => void) => { if (t === "resize") resize.push(f); },
+    });
+    const doc = b.doc as unknown as { documentElement: unknown; activeElement: unknown };
+    doc.documentElement = b.root;
+    doc.activeElement = { tagName: "BODY" };
+    const { installTvStageScale } = await import("./tvStageScale");
+    installTvStageScale(b.win, "transform");
+    const style = (b.root as unknown as { style: { setProperty(k: string, v: string): void } }).style;
+    const seen = new Map<string, string>();
+    const set = style.setProperty;
+    style.setProperty = (k, v) => { seen.set(k, v); set(k, v); };
+    const before = b.win.innerHeight;
+    // IME opens: a text input is focused and the viewport loses 300 px of height
+    doc.activeElement = { tagName: "INPUT", type: "text" };
+    h = 420;
+    resize.forEach((f) => f());
+    expect(seen.size).toBe(0); // no style was rewritten: zoom, transform, width, height stay as they were
+    expect(before).toBe(1080); // stage space, unchanged
+    // keyboard closed (focus gone) and a real resolution change to 960x540: the stage is recomputed
+    doc.activeElement = { tagName: "BODY" };
+    h = 540;
+    resize.forEach((f) => f());
+    expect(seen.get("transform")).toBe("scale(0.5)");
+  });
+});
