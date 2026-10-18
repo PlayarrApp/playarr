@@ -1,1 +1,0 @@
-- Android TV nav tile labels sit 2.5 dp closer to their icons and the version label 3 dp closer to the profile tile, as web.

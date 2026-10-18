@@ -1,0 +1,1 @@
+- Tizen 6.5 TVs: the calendar status pill keeps its fractional line height, so week cards no longer drift against the web.

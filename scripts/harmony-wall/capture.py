@@ -804,7 +804,7 @@ else:
 
     guarded("search-results", search_results)
     guarded("calendar-period", period_picker)
-    for nm, yy in (("settings-appearance", 300), ("settings-player", 510), ("settings-server", 720)):
+    for nm, yy in (("settings-appearance", 347), ("settings-player", 1139), ("settings-server", 1403)):
         guarded(nm, lambda nm=nm, yy=yy: settings_panel(nm, yy))
 
     # Round 3 poster mode: Settings > Appearance > Home screen artwork = Covers, then each artwork size, and Home in each (the setting

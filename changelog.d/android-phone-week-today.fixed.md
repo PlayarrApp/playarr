@@ -1,1 +1,0 @@
-- Android phone Calendar Week opens with today's column at the start of the track and a short start-edge scrim, as the web phone week does.

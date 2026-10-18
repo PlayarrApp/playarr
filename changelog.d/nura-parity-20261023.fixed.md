@@ -1,0 +1,1 @@
+- Nura: the Agenda runs entries to the page's right edge, uses the web's card height, chip size and chip colours, and the capture tooling rejects frames with a green display artefact.

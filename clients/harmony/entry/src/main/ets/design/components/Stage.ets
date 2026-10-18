@@ -75,6 +75,7 @@ import {
   ENTRY_RAILS_DELAY_MS,
 } from '../Motion';
 import { FeatureCopy } from './FeatureCopy';
+import { railFrostColors } from './KeyArtBackdrop';
 
 /** Gradient angles (brief 5.9), ArkUI's `linearGradient({angle})` uses the
  * same 0=up/clockwise convention as the source CSS `linear-gradient()`
@@ -139,6 +140,7 @@ export struct Stage {
   @Prop railFrostWidthPct: number = 62;
   @Prop metaGapAdjust: number = 0;
   @Prop synopsisGapAdjust: number = 0;
+  @Prop libraryCopy: boolean = false;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -320,11 +322,7 @@ export struct Stage {
         .hitTestBehavior(HitTestMode.Transparent)
         .linearGradient({
           angle: HORIZONTAL_ANGLE,
-          colors: resolvedThemeMode() === 'dark' ?
-            [['rgba(40, 35, 40, 0)', 0], ['rgba(40, 35, 40, 0.72)', 0.12], ['rgba(40, 35, 40, 0.9)', 0.34],
-              ['rgba(40, 35, 40, 0.97)', 0.62], ['rgba(40, 35, 40, 1)', 1]] :
-            [['rgba(240, 238, 239, 0)', 0], ['rgba(240, 238, 239, 0.68)', 0.12], ['rgba(240, 238, 239, 0.88)', 0.34],
-              ['rgba(240, 238, 239, 0.96)', 0.62], ['rgba(240, 238, 239, 1)', 1]],
+          colors: railFrostColors(),
         })
     }
   }
@@ -339,6 +337,7 @@ export struct Stage {
         synopsis: this.synopsis,
         metaGapAdjust: this.metaGapAdjust,
         synopsisGapAdjust: this.synopsisGapAdjust,
+        libraryCopy: this.libraryCopy,
       })
       this.heroExtraSlot()
     }

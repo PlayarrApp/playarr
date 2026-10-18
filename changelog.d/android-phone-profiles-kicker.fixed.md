@@ -1,1 +1,0 @@
-- Android phone Profiles: the "PROFILES" kicker uses the web brand-ink colour (light rose in dark, deep rose in light) instead of the accent rose.

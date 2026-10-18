@@ -1,1 +1,0 @@
-- Add a fail-closed Android tablet capture preflight that confirms the active test account and server before screenshots.
