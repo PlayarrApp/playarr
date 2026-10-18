@@ -1,1 +1,0 @@
-- Android phone calendar month: the period button reads "Oct 2026" and the weekday row sits 7 dp lower in the strip header, as on the web phone.

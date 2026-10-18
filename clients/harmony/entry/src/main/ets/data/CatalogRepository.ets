@@ -92,6 +92,9 @@ const MAX_SIMILAR_FALLBACK_GENRE_QUERIES: number = 3;
 /** Candidates fetched per genre query by the similar-titles fallback (web: 100). */
 const SIMILAR_FALLBACK_PAGE_LIMIT: number = 100;
 
+/** Most titles the fallback keeps: the web's Similar rail shows 10 (coordinator, static-server refs). */
+const SIMILAR_FALLBACK_CAP: number = 10;
+
 /**
  * Up to this many `part_watched` rows are hydrated for the Home screen's
  * continue-watching rail (brief 4.8: "hydrating up to 10 part_watched
@@ -366,7 +369,7 @@ async function getSimilarByGenreFallback(target: Work, limit: number): Promise<A
 
   const merged = mergeGenreCandidates(target, pages);
   const ranked = rankSimilarCandidates(target, merged);
-  const sliced = ranked.slice(0, limit);
+  const sliced = ranked.slice(0, Math.min(limit, SIMILAR_FALLBACK_CAP));
   const ok: ApiOk<Work[]> = { kind: 'ok', status: 200, value: sliced };
   return ok;
 }

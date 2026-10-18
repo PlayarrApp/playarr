@@ -26,3 +26,9 @@ test("parseEnvFile skips comments and strips quotes", () => {
   assert.deepEqual(parseEnvFile("# c\nA=1\nB='x y'\n"), { A: "1", B: "x y" });
   assert.equal(deriveConfig({ PARITY_SERVER_HOST: "h", PARITY_SERVER_URL: "http://h:1" }).PLAYARR_WEB_URL, "http://h:1/tv");
 });
+
+test("every key of parity.env can be overridden from the environment (second instance on other ports)", () => {
+  const cfg = loadParityConfig({ PARITY_SERVER_HOST: "192.0.2.10", PARITY_SERVER_PORT: "18510", PARITY_ART_PORT: "18515", PARITY_BUILD_PORT: "18511" });
+  assert.deepEqual([cfg.PARITY_SERVER_PORT, cfg.PARITY_ART_PORT, cfg.PARITY_BUILD_PORT], ["18510", "18515", "18511"]);
+  assert.equal(cfg.PARITY_SERVER_URL, "http://192.0.2.10:18510");
+});

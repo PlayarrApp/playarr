@@ -2546,7 +2546,7 @@ struct Detail {
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
-              .fontColor(toResourceColor(BRAND_PINK_SOFT))
+              .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
               .margin({ bottom: 10 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
               .fontSize(36)
