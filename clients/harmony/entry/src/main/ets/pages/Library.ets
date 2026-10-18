@@ -125,6 +125,7 @@ import { artworkStep, cardGeometry, normaliseArtworkSize } from '../core/Artwork
 import type { ArtworkSizeName, CardGeometry } from '../core/ArtworkSize';
 import { PageShell } from '../design/components/PageShell';
 import { TouchIconButton } from '../design/components/TouchIconButton';
+import { touchNavBarBox } from '../design/components/TouchNavBar';
 import { atLeast } from '../core/SafeInsets';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
@@ -1020,7 +1021,7 @@ export struct Library {
           .columnsGap(TOUCH_CARD_GAP)
           .rowsGap(TOUCH_ROW_GAP)
           .edgeEffect(EdgeEffect.Spring)
-          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg })
+          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg + touchNavBarBox(this.safeBottom) })
           .onAreaChange((_oldValue: Area, newValue: Area) => {
             this.measuredWidthVp = lengthToVp(newValue.width);
           })
@@ -1033,7 +1034,8 @@ export struct Library {
           .onReachEnd(() => {
             this.maybeLoadMore(this.items.length - 1);
           })
-          .layoutWeight(1)
+          // Web scrolls the grid under the translucent nav bar: run it over the shell's nav spacer (a Column does not clip its children).
+          .height(`calc(100% + ${touchNavBarBox(this.safeBottom)}vp)`)
           .width('100%')
         }
     }

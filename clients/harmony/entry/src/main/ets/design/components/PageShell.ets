@@ -272,7 +272,7 @@ export struct PageShell {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(activeColors().bg))
+    .backgroundColor(toResourceColor(activeColors().surface))
   }
 
   build() {
