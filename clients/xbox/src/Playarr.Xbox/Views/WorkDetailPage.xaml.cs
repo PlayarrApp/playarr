@@ -123,7 +123,7 @@ namespace Playarr.Xbox.Views
 
                 if (work.Kind != WorkKind.Series && DateTimeOffset.TryParse(work.ReleaseDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var released))
                 {
-                    meta.Add("Released " + released.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+                    meta.Add("Released " + Ui.GbDate(released));
                 }
 
                 meta.AddRange(work.Genres);
@@ -277,7 +277,7 @@ namespace Playarr.Xbox.Views
                 text.Children.Add(Ui.Text(string.IsNullOrEmpty(picked.Title) ? picked.Label : picked.Label + " \u00b7 " + picked.Title, 14, FontWeights.SemiBold, "PlayarrInk"));
                 if (DateTimeOffset.TryParse(picked.LastWatchedAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var watched))
                 {
-                    text.Children.Add(Ui.Text("Last watched " + watched.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")), 10, FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 4, 0, 0)));
+                    text.Children.Add(Ui.Text("Last watched " + Ui.GbDate(watched), 10, FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 4, 0, 0)));
                 }
 
                 if (picked.Kind == "unfinished")
@@ -994,7 +994,7 @@ namespace Playarr.Xbox.Views
 
             if (DateTimeOffset.TryParse(episode.AirDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var aired))
             {
-                meta.Add("Aired " + aired.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+                meta.Add("Aired " + Ui.GbDate(aired));
             }
 
             meta.AddRange(work.Genres);

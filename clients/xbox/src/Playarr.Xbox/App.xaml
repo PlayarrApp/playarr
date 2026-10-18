@@ -19,6 +19,8 @@
             <SolidColorBrush x:Key="PlayarrSurface" Color="#1B181B" />
             <SolidColorBrush x:Key="PlayarrSurfaceStrong" Color="#211D21" />
             <SolidColorBrush x:Key="PlayarrSurfaceSoft" Color="#312A30" />
+            <SolidColorBrush x:Key="PlayarrRailFill" Color="#1E1A1E" />
+            <SolidColorBrush x:Key="PlayarrRailLine" Color="#282428" />
             <SolidColorBrush x:Key="PlayarrInk" Color="#F4F0F1" />
             <SolidColorBrush x:Key="PlayarrInkSoft" Color="#CDC1C6" />
             <SolidColorBrush x:Key="PlayarrInkMuted" Color="#C2B5BB" />
