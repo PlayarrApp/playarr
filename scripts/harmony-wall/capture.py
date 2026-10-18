@@ -403,6 +403,18 @@ def poster_walk(folder):
     choose(1032, 500)  # Thumbnails
 
 
+def open_detail(kind, xy, wait):
+    """Open the title the web references show: the pinned suite item on the static server (its library order differs from the web's
+    pick), otherwise the first card."""
+    if os.environ.get("PARITY_STATIC_SERVER") == "1":
+        suite = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
+        want = "film-detail" if kind == "movies" else "series-detail"
+        work_id = next(x["open"] for x in suite if x.get("id") == want).rsplit("/", 1)[1]
+        route("detail:" + work_id, wait)
+    else:
+        click(*xy); time.sleep(wait)
+
+
 def walk(folder, suffix):
     """The route-based screen walk (captures as <id><suffix>.png). Clicks only inside pages."""
     n = lambda s: s + suffix
@@ -414,9 +426,9 @@ def walk(folder, suffix):
                           for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
     route("library:movie", 15); focus_first_card((946, 254)); snap(n("movies"), folder, 150000)
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
-    click(946, 254); time.sleep(12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
+    open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
     route("library:series", 15); focus_first_card((946, 254)); snap(n("series"), folder, 150000)
-    click(946, 254); time.sleep(12); focus_first_card(); snap(n("series-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
+    open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); key("back"); time.sleep(3); key("back"); time.sleep(4)
     route("library:artist", 15); focus_first_card((946, 254)); snap(n("music"), folder, 150000)
     route("calendar", 18); snap(n("calendar-agenda"), folder)
     click(1877, 272); time.sleep(4); click(1740, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-week"), folder)
