@@ -53,7 +53,7 @@ import {
   shiftAnchor,
   startOfMonth,
   visibleRange,
-  WEEKDAY_SHORT,
+  weekdayShort,
   groupSeriesEpisodes,
   itemAvailable,
   itemLineText,
@@ -629,7 +629,7 @@ export struct ReleaseCalendar {
   private monthView(): void {
     Column() {
       Row() {
-        ForEach(WEEKDAY_SHORT, (name: string) => {
+        ForEach(weekdayShort(), (name: string) => {
           Text(name).fontFamily(nunito(400))
             .fontSize(tv(MONTH_WEEKDAY_SIZE))
             .letterSpacing(tv(0.96))
@@ -1161,7 +1161,7 @@ export struct ReleaseCalendar {
     Scroll() {
       Column() {
         Row() {
-          ForEach(WEEKDAY_SHORT, (name: string) => {
+          ForEach(weekdayShort(), (name: string) => {
             Text(name).fontFamily(nunito(400))
               .fontSize(tv(MONTH_WEEKDAY_SIZE))
               .letterSpacing(tv(0.96))
