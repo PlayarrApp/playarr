@@ -597,9 +597,17 @@ impl Cal {
         }
         let today_date = today();
         // The web's body fills the page; on the phone five rows come to about 82 px each.
-        let cell_h = 410 / weeks as i32;
-        let chips = ((cell_h - 2 - 44 - 2) / 22).max(0) as usize;
+        // The web's five rows are 160, 164, 164, 164 and 162 device px apart.
+        let row_h = |w: i64| {
+            if weeks == 5 {
+                [81, 82, 82, 82, 81][w as usize]
+            } else {
+                410 / weeks as i32
+            }
+        };
         for w in 0..weeks {
+            let cell_h = row_h(w);
+            let chips = ((cell_h - 2 - 44 - 2) / 22).max(0) as usize;
             for c in 0..7 {
                 let d = add_days(start, w * 7 + c);
                 let cell = gtk4::Box::builder()
@@ -716,9 +724,14 @@ impl Cal {
         } else {
             self.page.remove_css_class("pa-agenda-bg");
         }
-        for f in &self.fades {
-            f.set_visible(week);
+        // The web fades the month's right edge as well; only the week list also fades its bottom.
+        for (i, f) in self.fades.iter().enumerate() {
+            f.set_visible(week || (i == 1 && v == View::Month));
         }
+        // On the month the fade sits over the last 19 px of the grid, inside the 16 px gutter.
+        let month = v == View::Month;
+        self.fades[1].set_margin_end(if month { 16 } else { 0 });
+        self.fades[1].set_size_request(if month { 19 } else { 38 }, -1);
         self.refresh();
     }
 
