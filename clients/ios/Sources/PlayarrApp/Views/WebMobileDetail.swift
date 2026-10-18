@@ -310,7 +310,7 @@ struct WMDetailPage: View {
                         actions
                         tracks
                     }
-                    .padding(.top, 368.5)
+                    .padding(.top, 368)
                 }
                 .frame(width: 390, alignment: .topLeading)
                 .padding(.bottom, 140)
@@ -341,7 +341,7 @@ struct WMDetailPage: View {
     private func artBackdrop(width: CGFloat) -> some View {
         WMKeyArt(
             work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5, artScale: 1.01,
-            lightOpacity: 0.41, webMask: true,
+            lightOpacity: 0.41, darkOpacity: 0.22, webMask: true,
             fadeStops: [(0, 0), (120, 0), (160, 0.25), (200, 0.47), (240, isSeries ? 0.83 : 0.9), (270, 1)]
         )
             .frame(width: width, height: 608, alignment: .topLeading)
@@ -355,7 +355,7 @@ struct WMDetailPage: View {
                 .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             // The web hides the header subtitle on phones (#1299), so only the page title shows here.
             WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
-            .offset(x: 68, y: WM.topInset + 2)
+            .offset(x: 70, y: WM.topInset + 2)
         }
     }
 
@@ -398,9 +398,9 @@ struct WMDetailPage: View {
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
                     // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
-                    .lineSpacing(1.57)
+                    .lineSpacing(1.2)
                     .frame(width: 347, alignment: .topLeading)
-                    .padding(.top, isSeries ? 10.6 : 12.04)
+                    .padding(.top, isSeries ? 10.6 : 11.2)
             }
         }
         .padding(.leading, 16)
@@ -503,7 +503,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 127.7, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 127.7, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 8.6,
                     glyphColor: .white, label: "Play", labelSize: 11.2, labelColor: .white, gap: 11
                 )
             }
@@ -531,7 +531,7 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 133.1, fill: WM.ink, glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                    width: 133.1, fill: WM.ink, glyph: "▶\u{FE0E}", glyphSize: 8.6,
                     glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
                 )
             }
@@ -539,7 +539,7 @@ struct WMDetailPage: View {
             .wmKeyFocus(Capsule())
         } else {
             pill(
-                width: 133.1, fill: WM.ink.opacity(0.4), glyph: "▶\u{FE0E}", glyphSize: 9.52,
+                width: 133.1, fill: WM.ink.opacity(0.4), glyph: "▶\u{FE0E}", glyphSize: 8.6,
                 glyphColor: WM.shell, label: "Start", labelSize: 11.2, labelColor: WM.shell, gap: 10
             )
         }
