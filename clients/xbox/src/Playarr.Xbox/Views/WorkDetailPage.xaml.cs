@@ -198,6 +198,7 @@ namespace Playarr.Xbox.Views
             if (work != null && !_viewModel.IsLoading)
             {
                 EnsureCast(work);
+                EnsureSimilar(work);
                 if (_viewModel.IsSeries)
                 {
                     EnsurePlan(work);
@@ -413,6 +414,119 @@ namespace Playarr.Xbox.Views
             {
                 SeriesPanel.Visibility = Visibility.Visible;
                 SeriesPanel.Children.Add(_castSection);
+            }
+
+            if (_similarSection != null)
+            {
+                // Always last, whichever of Cast and Similar Titles arrived first.
+                SeriesPanel.Visibility = Visibility.Visible;
+                SeriesPanel.Children.Remove(_similarSection);
+                SeriesPanel.Children.Add(_similarSection);
+            }
+        }
+
+        private Guid? _similarFor;
+        private StackPanel? _similarSection;
+
+        private static int ReleaseYear(Work work) =>
+            work.ReleaseDate is { Length: >= 4 } d && int.TryParse(d.Substring(0, 4), out var y) ? y : int.MinValue;
+
+        /// <summary>The web's relatedWorkScore: shared genres 100 each, same kind 10, up to 5 for a close year.</summary>
+        private static double RelatedScore(Work target, Work candidate)
+        {
+            var genres = new System.Collections.Generic.HashSet<string>(target.Genres.Select(g => g.Trim().ToLowerInvariant()));
+            var shared = candidate.Genres.Count(g => genres.Contains(g.Trim().ToLowerInvariant()));
+            var ty = ReleaseYear(target);
+            var cy = ReleaseYear(candidate);
+            var proximity = ty != int.MinValue && cy != int.MinValue ? Math.Max(0, 5 - Math.Abs(ty - cy) / 5.0) : 0;
+            return shared * 100 + (target.Kind == candidate.Kind ? 10 : 0) + proximity;
+        }
+
+        /// <summary>
+        /// The web's Similar Titles rail: the server's similar works, else (as the web does when that list is empty) library
+        /// titles ranked by shared genres, at most 20.
+        /// </summary>
+        private async void EnsureSimilar(Work work)
+        {
+            if (_similarFor == work.Id)
+            {
+                return;
+            }
+
+            _similarFor = work.Id;
+            try
+            {
+                var api = App.Environment.ApiClient;
+                bool Visible(Work w) => w.Id != work.Id && (w.Kind == WorkKind.Movie || w.Kind == WorkKind.Series);
+                var works = new System.Collections.Generic.List<Work>();
+                try
+                {
+                    works = (await api.GetSimilarWorksAsync(work.Id, 20)).Where(Visible).ToList();
+                }
+                catch (Exception)
+                {
+                    // A catalogue without embeddings answers 404; the genre ranking below covers it.
+                }
+
+                if (works.Count == 0)
+                {
+                    var genres = work.Genres.Take(3).ToList();
+                    var pages = genres.Count > 0
+                        ? await System.Threading.Tasks.Task.WhenAll(genres.Select(g => api.BrowseCatalogAsync(genre: g, limit: 100, availableOnly: true)))
+                        : new[] { await api.BrowseCatalogAsync(kind: work.Kind, sort: "date_added", order: "desc", limit: 100, availableOnly: true) };
+                    works = pages.SelectMany(p => p.Items).Where(Visible).GroupBy(w => w.Id).Select(g => g.First())
+                        .OrderByDescending(w => RelatedScore(work, w)).ThenBy(w => w.SortTitle, StringComparer.CurrentCultureIgnoreCase).Take(20).ToList();
+                }
+
+                if (works.Count == 0 || _similarFor != work.Id)
+                {
+                    return;
+                }
+
+                var list = new ListView
+                {
+                    SelectionMode = ListViewSelectionMode.None,
+                    IsItemClickEnabled = true,
+                    Height = 250,
+                    ItemContainerStyle = CatalogTileFactory.HomeCardContainerStyle,
+                };
+                CardFocus.ReserveFocusRoom(list);
+                ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
+                ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
+                ScrollViewer.SetVerticalScrollMode(list, ScrollMode.Disabled);
+                list.ItemsPanel = (ItemsPanelTemplate)Windows.UI.Xaml.Markup.XamlReader.Load(
+                    "<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
+                    "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
+                foreach (var similar in works)
+                {
+                    list.Items.Add(CatalogTileFactory.CreateLandscapeCard(similar));
+                }
+
+                list.ItemClick += (s, e) =>
+                {
+                    if (e.ClickedItem is FrameworkElement { Tag: Guid id })
+                    {
+                        App.Navigation.Navigate(typeof(WorkDetailPage), id);
+                    }
+                };
+                CardFocus.Attach(list);
+                var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 44 : 60, 0, 0) };
+                section.Children.Add(DetailRailTitle("Similar Titles"));
+                section.Children.Add(new TextBlock
+                {
+                    Text = works.Count == 1 ? "1 title" : $"{works.Count} titles",
+                    FontSize = 10,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
+                    Margin = new Thickness(0, 6, 0, 36),
+                });
+                section.Children.Add(list);
+                _similarSection = section;
+                AppendCast();
+            }
+            catch (Exception)
+            {
+                // No Similar Titles rail when the library cannot be read.
             }
         }
 

@@ -390,10 +390,10 @@ export async function getSimilarWorks(target: Work, limit?: number): Promise<Api
   const path = catalogSimilarUrl(target.id) + queryStringFromParts(parts);
 
   const result = await getPlayarrClient().getJson<Work[]>(path);
-  // web also falls back on an empty answer (the static parity server returns [] for every title), not only on a 404
   if (result.kind === 'ok' && result.value.length > 0) {
     return result;
   }
+  // web: an empty list (no embeddings, as on the static parity server) fills from the library by genre, like a 404
   if (result.kind === 'ok' || (result.kind === 'http_failure' && result.status === 404)) {
     return getSimilarByGenreFallback(target, effectiveLimit);
   }
