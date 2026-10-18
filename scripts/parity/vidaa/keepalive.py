@@ -8,16 +8,19 @@ exponential backoff (15 s .. 300 s) and logs RECOVERED. Recovery is non-destruct
 KEY_POWER or volume (the vidaa CLI blocks both), and the remote protocol offers no standby wake.
 rc=4 (bad credentials after a TV reboot) logs RE-PAIR NEEDED; only the owner can re-pair.
 
-While another run holds the vidaa-busy lock the client is closed (same MQTT client id as the CLI, so two
-sessions would kick each other) and Playarr is not relaunched. Otherwise Playarr is kept in the foreground
-(launch at most once per LAUNCH_EVERY seconds).
+The same session is the broker: it listens on a Unix socket (<PLAYARR_DATA_DIR>/vidaa.sock) and runs the CLI's
+state, apps, key, launch and open-debug commands on it (see broker.py), so a capture never opens its own
+connection (the TV leaks sessions on connection churn and then stops answering the TLS handshake). Health checks
+run every INTERVAL seconds even while a capture holds the vidaa-busy lock; Playarr is only relaunched when the
+lock is free.
 
-Env: PLAYARR_DATA_DIR (required), VIDAA_DIR (dir holding vidaa.py), VIDAA_HOST, KEEPALIVE_LOG, KEEPALIVE_INTERVAL, VIDAA_BUSY_LOCK.
+Env: PLAYARR_DATA_DIR (required), VIDAA_DIR (dir holding vidaa.py), VIDAA_HOST, KEEPALIVE_LOG, KEEPALIVE_INTERVAL, VIDAA_BUSY_LOCK, VIDAA_SOCK.
 """
 import fcntl
 import os
 import signal
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -51,36 +54,61 @@ def busy():
         os.close(fd)  # releases our probe lock
 
 
+class Session:
+    """The one TV session, shared by the health loop and the socket handlers (one TV command at a time)."""
+    tv = None
+    lock = threading.RLock()
+
+
+def make_handler(vidaa, session):
+    ops = {"state": lambda tv, r: vidaa.op_state(tv),
+           "apps": lambda tv, r: vidaa.op_apps(tv),
+           "key": lambda tv, r: vidaa.op_key(tv, [str(k) for k in r["keys"]], bool(r.get("allow_any")), min(max(float(r.get("delay", 0.6)), 0.0), 30.0)),
+           "launch": lambda tv, r: vidaa.op_launch(tv, str(r["app"]), bool(r.get("allow_any"))),
+           "open_debug": lambda tv, r: vidaa.op_open_debug(tv, str(r.get("variant", "app")), str(r.get("path", "/")), min(max(float(r.get("wait", 5)), 0.0), 60.0))}
+
+    def handle(req):
+        op = ops.get(req.get("op"))
+        if not op:
+            raise SystemExit(f"unknown op {req.get('op')!r}")
+        with session.lock:
+            if session.tv is None:
+                raise SystemExit("broker has no TV session (remote service wedged or re-pair needed); see keepalive.log")
+            return op(session.tv, req)
+
+    return handle
+
+
 def main():
     sys.path.insert(0, VIDAA_DIR)
+    import broker  # noqa: E402
     import vidaa  # noqa: E402  (needs VIDAA_HOST in env; paho from the venv)
 
     stop = []
     signal.signal(signal.SIGTERM, lambda *_: stop.append(1))
     signal.signal(signal.SIGINT, lambda *_: stop.append(1))
-    tv, wedged, backoff, retry_at, misses, last_launch = None, False, 0, 0.0, 0, 0.0
+    wedged, backoff, retry_at, misses, last_launch = False, 0, 0.0, 0, 0.0
+    S = Session
 
     def drop(why):
-        nonlocal tv
-        if tv:
-            try:
-                tv.close()
-            except Exception:
-                pass
-            tv = None
+        with S.lock:
+            if S.tv:
+                try:
+                    S.tv.close()
+                except Exception:
+                    pass
+                S.tv = None
         log(f"closed client ({why})")
 
-    log(f"start interval={INTERVAL}s host={os.environ.get('VIDAA_HOST')}")
+    server = broker.serve(broker.sock_path(), make_handler(vidaa, S))
+    log(f"start interval={INTERVAL}s host={os.environ.get('VIDAA_HOST')} socket={broker.sock_path()}")
     while not stop:
         try:
-            if busy():
-                if tv:
-                    drop("busy lock held")
-                else:
-                    log("skip: busy lock held")
-            elif tv is None and time.time() >= retry_at:
+            if S.tv is None and time.time() >= retry_at:
                 try:
-                    tv = vidaa.connect()
+                    new = vidaa.connect()
+                    with S.lock:
+                        S.tv = new
                     if wedged:
                         log("RECOVERED: remote service answers again")
                     wedged, backoff, misses = False, 0, 0
@@ -100,8 +128,9 @@ def main():
                         backoff = next_backoff(backoff)
                         retry_at = time.time() + backoff
                         log(f"connect failed: {msg}; retry in {backoff}s")
-            elif tv is not None:
-                fg, st = vidaa.foreground_ok(tv)
+            elif S.tv is not None:
+                with S.lock:
+                    fg, st = vidaa.foreground_ok(S.tv)
                 if st is None:
                     misses += 1
                     log(f"state query got no reply ({misses})")
@@ -112,12 +141,14 @@ def main():
                 else:
                     misses = 0
                     log(f"ok: {vidaa.redact(st)[:200]} foreground={fg}")
-                    if not fg and time.time() - last_launch >= LAUNCH_EVERY:
+                    if not fg and not busy() and time.time() - last_launch >= LAUNCH_EVERY:
                         last_launch = time.time()
-                        apps = tv.apps() or []
+                        with S.lock:
+                            apps = S.tv.apps() or []
                         hit = next((a for a in apps if "playarr" in str(a.get("name", "")).lower()), None)
                         if hit:
-                            tv.pub("ui_service", "launchapp", {k: hit[k] for k in hit if k != "httpIcon"})
+                            with S.lock:
+                                S.tv.pub("ui_service", "launchapp", {k: hit[k] for k in hit if k != "httpIcon"})
                             log("launched Playarr (was not foreground)")
                         else:
                             log("Playarr not in app list")
@@ -128,6 +159,8 @@ def main():
         end = time.time() + INTERVAL
         while not stop and time.time() < end:
             time.sleep(0.5)
+    server.shutdown()
+    os.unlink(broker.sock_path())
     drop("stopping")
 
 
