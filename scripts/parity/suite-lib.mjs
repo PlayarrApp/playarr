@@ -40,6 +40,17 @@ export function routeMatches(pattern, url) {
   return !pq || [...new URLSearchParams(pq)].every(([k, v]) => u.searchParams.get(k) === v);
 }
 
+// D-pad checks that observe the route need a non-empty label even for Home.
+// Keep the root route explicit instead of collapsing it to an empty string.
+export function routeStateLabel(route) {
+  if (typeof route !== "string" || !route.startsWith("/")) {
+    throw new Error("driver reported no valid route for state observation");
+  }
+  const pathname = route.split("?")[0];
+  if (pathname === "/") return "home";
+  return pathname.split("/").filter(Boolean).map((part, index) => index ? ":id" : part).join("/");
+}
+
 // D-pad labels share semantic roles across platforms. The action-list Play entry and play/pause
 // control represent different checks: one names the action, while the toggle preserves exact state.
 export function focusForCheck(f, checkId) {

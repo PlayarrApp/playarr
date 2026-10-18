@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import {
-  APP_ARGV, APP_EXE, cleanupAppProcessScript, newProcessMarker,
+  APP_ARGV, APP_EXE, appIdentityReceipt, cleanupAppProcessScript, newProcessMarker,
   parseAppProcesses, requireSingleAppProcess, scanAppProcessesScript,
 } from "./process.mjs";
 
@@ -39,6 +39,23 @@ test("cleanup rechecks PID, start time, executable, app argv, and marker before 
   assert.ok(script.indexOf("kill -KILL") > script.indexOf("still_owned || exit 0", script.indexOf("kill -TERM")));
   assert.ok(script.lastIndexOf("still_owned || exit 0") > script.indexOf("kill -KILL"), "ownership is polled after KILL");
   assert.throws(() => cleanupAppProcessScript({ pid: 0, starttime: "1", marker }), /invalid Sailfish process identity/);
+});
+
+test("identity receipt contains only the successful app identity and capture time", () => {
+  assert.deepEqual(appIdentityReceipt({ pid: 321, starttime: "998877", marker, markerPresent: true }, new Date("2026-10-16T05:00:00.000Z")), {
+    pid: 321,
+    start_ticks: "998877",
+    marker,
+    capturedAt: "2026-10-16T05:00:00.000Z",
+  });
+  assert.deepEqual(appIdentityReceipt({ pid: 322, starttime: "998878", marker, markerPresent: false }, new Date("2026-10-16T05:00:00.000Z")), {
+    pid: 322,
+    start_ticks: "998878",
+    marker: "none",
+    capturedAt: "2026-10-16T05:00:00.000Z",
+  });
+  assert.throws(() => appIdentityReceipt({ pid: 0, starttime: "1", marker }), /invalid Sailfish process identity/);
+  assert.throws(() => appIdentityReceipt({ pid: 321, starttime: "998877", marker: "--pc=invalid", markerPresent: true }), /invalid Sailfish process marker/);
 });
 
 test("generated remote process scripts have valid POSIX shell syntax", () => {

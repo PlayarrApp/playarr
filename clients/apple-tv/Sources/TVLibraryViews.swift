@@ -151,7 +151,7 @@ struct TVHomeView: View {
     }
 
     /// The web TV Home (`.tv-home`), interactive: the hero on the left follows the focused card; the server's shelves
-    /// stack on the right (`.tv-home-rails`, from x 782.6) and the focused rail scrolls up to the first rail's line.
+    /// stack on the right (`.tv-home-rails`, from x 783.4, web #1557) and the focused rail scrolls up to the first rail's line.
     /// Geometry is the web's at 1920x1080 in screen points; the stage starts after the nav column, hence `- nav`.
     private func productionHomeLoaded(_ viewModel: TVHomeViewModel) -> some View {
         let rails = Self.productionRails(viewModel)
@@ -192,7 +192,7 @@ struct TVHomeView: View {
             // Web `.tv-home-rails.is-vertical-tracks`: the first rail opens at the Library grid's first row (clamp(128, 15vh, 174)).
             .padding(.top, Self.railTopY - origin.y)
             // Web `.tv-home-rails` starts where the Library grid panel starts (100% - 62%), cards at its left padding.
-            .padding(.leading, 782.6 - origin.x - Self.cardBleed)
+            .padding(.leading, 783.4 - origin.x - Self.cardBleed)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
@@ -1579,6 +1579,8 @@ struct TVLibraryKindView: View {
     @FocusState private var selectedID: UUID?
     #endif
     @State private var didLoad = false
+    /// The viewer's strongest watch state per work (web `indexWatchProgressByWork`); nil until the request answers or if it fails.
+    @State private var watchStates: [UUID: WatchState]?
     /// The server's count for the header ("1,754 titles"); nil when it skipped the count.
     @State private var total: Int?
 
@@ -1735,6 +1737,27 @@ struct TVLibraryKindView: View {
         .task(id: "\(workKind?.rawValue ?? "all")-\(sort)-\(order)-\(audioLangs)-\(subtitleLangs)-\(environment.serverURL.absoluteString)") {
             await loadItems()
         }
+        .task(id: environment.serverURL.absoluteString) {
+            await loadWatchStates()
+        }
+    }
+
+    private func loadWatchStates() async {
+        guard let rows = try? await environment.apiClient.listWatchProgress() else { return }
+        func priority(_ state: WatchState) -> Int { state == .partWatched ? 2 : state == .watched ? 1 : 0 }
+        var states: [UUID: WatchState] = [:]
+        for row in rows where states[row.workID].map({ priority(row.state) > priority($0) }) ?? true {
+            states[row.workID] = row.state
+        }
+        watchStates = states
+    }
+
+    /// Web `WatchStateOverlay`: the pink disc marks a work the viewer has not started. Until the progress is known the Mac keeps
+    /// the old rule (a disc on every card except artists and series).
+    private func showsUnwatchedDisc(_ work: Work) -> Bool {
+        guard let watchStates else { return workKind != .artist && workKind != .series }
+        let state = watchStates[work.id]
+        return state == nil || state == .unseen
     }
 
     private var libraryHeading: some View {
@@ -1884,10 +1907,16 @@ struct TVLibraryKindView: View {
         // the frame widens by the same amount so the cards stay at the web x.
         #if os(macOS)
         let padL: CGFloat = 48 // the 48 px focused-card shadow blur also stays inside the scroll view, so no hard edge shows at x 759
+        // The Mac snaps the first column to x 784 where the web draws x 783 (refs 2026-10-18); 0.9 pt more width lands it on 783.
+        let gridX: CGFloat = 784.3
+        // Row pitch: the web's rows are 240.4 apart; the Mac's caption is 0.4 pt shorter, so the row gap is 27.4.
+        let rowGap: CGFloat = 27.4
         #else
         let padL: CGFloat = 0
+        let gridX: CGFloat = 783.4
+        let rowGap: CGFloat = 27
         #endif
-        let gridWidth = size.width - 783.4 + padL
+        let gridWidth = size.width - gridX + padL
         let padR: CGFloat = 0
         // Web: screen cards use `--card-w` (3 + step columns, 25.92 apart); cover cards `--card-w-cover`
         // (5 + step columns, 19.2 apart, 2:3); list rows are one column.
@@ -1903,7 +1932,7 @@ struct TVLibraryKindView: View {
                     count: cols
                 ),
                 alignment: .leading,
-                spacing: 27
+                spacing: rowGap
             ) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, work in
                     if view == "list" {
@@ -2026,8 +2055,8 @@ struct TVLibraryKindView: View {
                         radius: isSelected ? 20 : 8,
                         y: isSelected ? 10 : 3
                     )
-                    // SPA fixture crops already include the pink unwatched disc. The web Music grid has no watch state: no disc.
-                    if workKind != .artist, workKind != .series, !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
+                    // SPA fixture crops already include the pink unwatched disc; real art gets one from the viewer's watch state.
+                    if showsUnwatchedDisc(work), !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
                         Circle()
                             .fill(DesignTokens.Color.brandPrimary)
                             .frame(width: 13, height: 13)
