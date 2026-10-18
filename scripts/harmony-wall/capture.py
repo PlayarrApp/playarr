@@ -436,9 +436,12 @@ def walk(folder, suffix):
                           for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
     route("library:movie", 15); focus_first_card((946, 254)); snap(n("movies"), folder, 150000)
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
-    open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); leave_detail()
+    static = os.environ.get("PARITY_STATIC_SERVER") == "1"  # pinned details open through the route mailbox, last: later library pages lose their focus ack after one
+    if not static:
+        open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); leave_detail()
     route("library:series", 15); focus_first_card((946, 254)); snap(n("series"), folder, 150000)
-    open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); leave_detail()
+    if not static:
+        open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); leave_detail()
     route("library:artist", 15); focus_first_card((946, 254)); snap(n("music"), folder, 150000)
     route("calendar", 18); snap(n("calendar-agenda"), folder)
     click(1877, 272); time.sleep(4); click(1740, 218); time.sleep(12); click(1850, 78); time.sleep(3); snap(n("calendar-week"), folder)
@@ -449,6 +452,9 @@ def walk(folder, suffix):
         # web's reference has the theme chosen explicitly (the colour theme row shows Dark or Light selected); the Previewer starts on System
         click(394, 207); time.sleep(3); click(1645 if folder.endswith("dark") else 1295, 285); time.sleep(4)
     snap(n("settings"), folder)
+    if static:
+        open_detail("movies", (946, 254), 12); snap(n("film-detail"), folder); leave_detail()
+        open_detail("series", (946, 254), 12); focus_first_card(); snap(n("series-detail"), folder); leave_detail()
     extra_screens(folder)
     if os.environ.get("MOTION") == "true" and device == "tv":
         motion_walk(os.path.join(out, "motion", "dark" if folder.endswith("dark") else "light"))
