@@ -242,6 +242,9 @@ struct WorkDetailView: View {
                             children(for: detail.children, tabletScale: proxy.size.width / 1366)
                             if detail.work.kind == .movie {
                                 tabletMovieRails(detail, tabletScale: proxy.size.width / 1366)
+                            }
+                            if detail.work.kind == .movie || detail.work.kind == .series {
+                                tabletSimilarRail(tabletScale: proxy.size.width / 1366)
                             } else {
                                 discoveryContent
                             }
@@ -614,6 +617,50 @@ struct WorkDetailView: View {
 
     /// Chapters then Cast with round headshots, at the web's tablet positions.
     @ViewBuilder
+    /// The web's "Similar Titles" rail: 16:9 art cards with the title underneath.
+    @ViewBuilder
+    private func tabletSimilarRail(tabletScale: CGFloat) -> some View {
+        if !viewModel.similarWorks.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Similar Titles")
+                    .font(DesignFont.font(12.567 * tabletScale, 610))
+                    .foregroundStyle(PlayarrStyle.ink)
+                Text("\(viewModel.similarWorks.count) titles")
+                    .font(DesignFont.font(7.36 * tabletScale, 400))
+                    .foregroundStyle(PlayarrStyle.muted)
+                    .padding(.top, 4 * tabletScale)
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: 9 * tabletScale) {
+                        ForEach(viewModel.similarWorks) { other in
+                            NavigationLink {
+                                WorkDetailView(
+                                    viewModel: WorkDetailViewModel(apiClient: apiClient, workID: other.id),
+                                    apiClient: apiClient,
+                                    downloadRepository: downloadRepository
+                                )
+                            } label: {
+                                VStack(alignment: .leading, spacing: 6 * tabletScale) {
+                                    PlayarrArtwork(work: other, kind: .backdrop, apiClient: apiClient)
+                                        .frame(width: 114.4 * tabletScale, height: 64.35 * tabletScale)
+                                        .clipShape(RoundedRectangle(cornerRadius: 5 * tabletScale, style: .continuous))
+                                    Text(other.title)
+                                        .font(DesignFont.font(7.36 * tabletScale, 400))
+                                        .foregroundStyle(PlayarrStyle.muted)
+                                        .lineLimit(1)
+                                        .frame(width: 114.4 * tabletScale, alignment: .leading)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 14 * tabletScale)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .padding(.top, 9 * tabletScale)
+        }
+    }
+
     private func tabletMovieRails(_ detail: WorkDetail, tabletScale: CGFloat) -> some View {
         if let model = tabletMovieModel, !model.chapters.isEmpty, let mediaFileID = detail.mediaFileID {
             VStack(alignment: .leading, spacing: 0) {
@@ -1015,6 +1062,10 @@ struct WorkDetailView: View {
     }
 
     private func centreTabletEpisode(_ proxy: ScrollViewProxy, seasons: [SeasonDetail]) {
+        #if DEBUG
+        // Parity captures stay at page top, as the web refs do.
+        if ParityLaunch.route != nil { return }
+        #endif
         guard let id = selectedTabletEpisodeID,
               let season = seasons.first(where: { $0.episodes.contains { $0.id == id } }) else {
             if let first = seasons.first {
