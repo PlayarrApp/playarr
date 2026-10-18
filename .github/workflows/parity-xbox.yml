@@ -159,7 +159,9 @@ jobs:
               fi
               node suite-run.mjs --driver ./xbox/driver.mjs --only screens --screens "$SCREENS" --themes "$T" --via route --out "$OUT/run" --expected "$OUT/none.json"
               mkdir -p "$OUT/dev/light"
-              if [ "$T" = light ]; then cp "$OUT"/run/light/*.png "$OUT/dev/light/"; else cp "$OUT"/run/dark/*.png "$OUT/dev/"; fi ;;
+              if [ "$T" = light ]; then cp "$OUT"/run/light/*.png "$OUT/dev/light/"; else cp "$OUT"/run/dark/*.png "$OUT/dev/"; fi
+              # Filters List view and language flyout (suite crops, paired with the web crops in out/web-home).
+              mkdir -p "$OUT/dev/crops/$T"; cp "$OUT"/run/"$T"/crops/*.png "$OUT/dev/crops/$T/" || true ;;
             dpad)
               node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --out "$OUT/web"
               node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"
