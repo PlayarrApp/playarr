@@ -194,7 +194,11 @@ internal fun Modifier.calendarEdgeFades(edges: CalendarEdges, startBand: android
                 val h = horizontal.toPx()
                 if (edges.top) drawVerticalFade(top = true, v)
                 if (edges.bottom) drawVerticalFade(top = false, v)
-                if (edges.start) drawHorizontalFade(start = true, h)
+                if (edges.start) {
+                    // Phone Week: light web draws the same short page-background scrim as dark, not the radial shade.
+                    if (startBand != null) drawScrim(Offset(0f, 0f), Offset(startBand.toPx(), 0f), startBand.toPx().coerceAtMost(size.width), horizontalBand = false)
+                    else drawHorizontalFade(start = true, h)
+                }
                 if (edges.end) drawHorizontalFade(start = false, h)
             }
         }
