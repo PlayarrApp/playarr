@@ -394,8 +394,10 @@ struct LibraryView: View {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
                         if letter == activeLetter {
-                            Circle().fill(WM.ink.opacity(0.78)).frame(width: 22, height: 22)
-                            Circle().stroke(WM.pink, lineWidth: 2).frame(width: 26, height: 26)  // the web focus ring on the focused tile's letter
+                            // The web focus ring on the focused tile's letter (measured at 3x): 22 pt ink disc, 2 pt page-colour gap, 2.2 pt pink ring, centre 1 pt lower than the letter.
+                            Circle().fill(WM.ink).frame(width: 22, height: 22).offset(y: 1)
+                            Circle().stroke(PlayarrStyle.background, lineWidth: 2).frame(width: 24, height: 24).offset(y: 1)
+                            Circle().stroke(WM.pink, lineWidth: 2.2).frame(width: 28, height: 28).offset(y: 1)
                         }
                         Text(letter).font(WM.font(9.5, 700)).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
