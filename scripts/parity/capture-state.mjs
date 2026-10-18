@@ -140,7 +140,8 @@ async function acquireLock(client, env) {
       await mkdir(dir, { mode: 0o700 });
       try { await writeFile(join(dir, "owner.json"), JSON.stringify({ client, pid: process.pid, host: hostname(), acquired_at: new Date().toISOString() }), { mode: 0o600, flag: "wx" }); }
       catch (error) { await rmdir(dir).catch(() => {}); throw error; }
-      return async () => { await rm(join(dir, "owner.json"), { force: true }); await rmdir(dir); };
+      // A lock directory already gone (reclaimed or moved aside by hand) must not fail a run whose state was restored.
+      return async () => { await rm(join(dir, "owner.json"), { force: true }); await rmdir(dir).catch((error) => { if (error.code !== "ENOENT") throw error; }); };
     } catch (error) {
       if (error.code !== "EEXIST" && error.code !== "ENOTEMPTY") throw error;
       let recoverySnapshot = false;

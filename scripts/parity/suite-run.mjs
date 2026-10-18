@@ -183,9 +183,10 @@ if (deterministic) {
 const readiness = readinessMode(driver, deterministic);
 strict = readiness === "strict";
 console.log(`capture state pinned=${deterministic} readiness=${readiness}`);
-const buildBeforeCapture = strict ? await driver.captureBuildIdentity() : null;
-assertNotInterrupted();
+// Start first: a web driver's build identity runs its account guard, which needs the signed-in page.
 await driver.start?.({ theme: themes[0] });
+assertNotInterrupted();
+const buildBeforeCapture = strict ? await driver.captureBuildIdentity() : null;
 assertNotInterrupted();
 await waitReady("home", "route");
 const referenceBuildBeforeCapture = reference && !deterministic ? await driver.captureBuildIdentity?.() : null;
