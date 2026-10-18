@@ -200,6 +200,7 @@ struct HomeView: View {
                                 work: work,
                                 apiClient: apiClient,
                                 unseen: viewModel.progressByWorkID[work.id] == nil,
+                                progress: viewModel.progressByWorkID[work.id].flatMap { $0.state == .partWatched && $0.durationMS > 0 ? Double($0.positionMS) / Double($0.durationMS) : nil },
                                 focused: keyFocus.map { $0.rail == railIndex && $0.card == index } ?? (focusedWork.map { $0 == work.id } ?? phoneRailFocused(first: first, index: index, count: rail.works.count)),
                                 cover: homeView == "cover"
                             )

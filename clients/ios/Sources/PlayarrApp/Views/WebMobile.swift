@@ -554,7 +554,13 @@ enum WMArtwork {
         let n = CGFloat(columns)
         return (UIScreen.main.bounds.width - 16 - 52 - 12 * (n - 1)) / n // web --card-w has no minimum or rounding (156.5 at 393); columns come from --card-cols
     }
+    /// Home rails run to the page gutter: no letter-rail pad (web page-layout.css, --card-pad-right is the gutter off the Library).
+    static var railCardWidth: CGFloat {
+        let n = CGFloat(columns)
+        return (UIScreen.main.bounds.width - 16 - 16 - 12 * (n - 1)) / n
+    }
     static func artHeight(cover: Bool) -> CGFloat { cardWidth * (cover ? 3 / 2 : 9 / 16) }
+    static func railArtHeight(cover: Bool) -> CGFloat { railCardWidth * (cover ? 3 / 2 : 9 / 16) }
 }
 
 /// Home rail card (`tv-home-card`): since web #924 the phone cards share one width with the library grid,
@@ -567,14 +573,26 @@ struct WMRailCard: View {
     var cover = false
     @AppStorage(WMArtwork.sizeKey) private var sizeSetting = "medium"
 
-    static func height(cover: Bool) -> CGFloat { WMArtwork.artHeight(cover: cover) + 46 }
+    /// Resume fraction of a part-watched title: the web's 3 pt `tv-watch-progress` bar along the art's foot.
+    var progress: Double?
+
+    static func height(cover: Bool) -> CGFloat { WMArtwork.railArtHeight(cover: cover) + 46 }
 
     var body: some View {
-        let width = WMArtwork.cardWidth, art = WMArtwork.artHeight(cover: cover)
+        let width = WMArtwork.railCardWidth, art = WMArtwork.railArtHeight(cover: cover)
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
                 .background(WM.artFill)
+                .overlay(alignment: .bottomLeading) {
+                    if let progress {
+                        ZStack(alignment: .leading) {
+                            Rectangle().fill(Color.white.opacity(0.2))
+                            Rectangle().fill(WM.pink).frame(width: max(3, width * progress))
+                        }
+                        .frame(height: 3)
+                    }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
