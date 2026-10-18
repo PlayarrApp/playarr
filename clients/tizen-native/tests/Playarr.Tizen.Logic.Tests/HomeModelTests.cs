@@ -96,6 +96,10 @@ public class SessionStoreTests
             Assert.Equal("access", back!.AccessToken.ExposeSecret());
             Assert.Equal("refresh", back.RefreshToken.ExposeSecret());
             Assert.Equal(store.DeviceId(), new FileSessionStore(dir).DeviceId());
+            var previousDeviceId = store.DeviceId();
+            var nextDeviceId = store.RotateDeviceId();
+            Assert.NotEqual(previousDeviceId, nextDeviceId);
+            Assert.Equal(nextDeviceId, new FileSessionStore(dir).DeviceId());
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
     }

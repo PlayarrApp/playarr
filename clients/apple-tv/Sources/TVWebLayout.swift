@@ -123,6 +123,13 @@ struct TVPageHeader: View {
     /// Web `--line-strong`: rgba(223, 220, 221, .23) in dark, rgba(56, 38, 33, .28) in light.
     private var lineStrong: Color { scheme == .dark ? Color(red: 223 / 255, green: 220 / 255, blue: 221 / 255).opacity(0.23) : Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.28) }
 
+    /// Gap round the hairline: the Mac's title ink runs 2 pt wider than the web's, so its gaps are 2 pt tighter.
+    #if os(macOS)
+    private let headerSpacing: CGFloat = 22
+    #else
+    private let headerSpacing: CGFloat = 24
+    #endif
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             let size: CGFloat = backFocused ? 58 : 50
@@ -157,7 +164,7 @@ struct TVPageHeader: View {
                     .fixedSize()
             }
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 24) {
+                HStack(alignment: .center, spacing: headerSpacing) {
                     titleText
                     if let subtitle {
                         Rectangle().fill(lineStrong).frame(width: 1, height: 17)

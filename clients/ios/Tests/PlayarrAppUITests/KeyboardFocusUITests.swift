@@ -1,8 +1,19 @@
 import XCTest
 
-/// Verifies identity and route readiness before captures, then checks keyboard focus movement across each phone route,
-/// panel scrolling, selector presentation, and direct-play controls. Captures are attached for visual parity review.
+/// Verifies identity and route readiness before keyboard focus, panel scrolling, selector and (during an explicit
+/// exclusive fixture window) direct-play captures. Frames are attached for visual parity review.
 final class KeyboardFocusUITests: XCTestCase {
+    private func hasExclusiveFixtureWindow(_ environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
+        environment["PLAYARR_KEYBOARD_EXCLUSIVE_FIXTURE_WINDOW"] == "1"
+    }
+
+    func testPlayerFixtureWindowRequiresExplicitOptIn() {
+        XCTAssertFalse(hasExclusiveFixtureWindow([:]))
+        XCTAssertFalse(hasExclusiveFixtureWindow(["PLAYARR_KEYBOARD_EXCLUSIVE_FIXTURE_WINDOW": "true"]))
+        XCTAssertFalse(hasExclusiveFixtureWindow(["PLAYARR_KEYBOARD_EXCLUSIVE_FIXTURE_WINDOW": "0"]))
+        XCTAssertTrue(hasExclusiveFixtureWindow(["PLAYARR_KEYBOARD_EXCLUSIVE_FIXTURE_WINDOW": "1"]))
+    }
+
     private func credentials() throws -> (String, String, String, String, String) {
         let e = ProcessInfo.processInfo.environment
         guard e["PLAYARR_KEYBOARD_FOCUS"] == "1" else { throw XCTSkip("Runs only in the keyboard focus workflow.") }
@@ -18,7 +29,7 @@ final class KeyboardFocusUITests: XCTestCase {
         return (server, user, pass, expected, file)
     }
 
-    @MainActor private func launch(_ route: String, _ c: (String, String, String, String, String), arguments: [String] = []) throws -> XCUIApplication {
+    private func launch(_ route: String, _ c: (String, String, String, String, String), arguments: [String] = []) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = arguments + ["--playarr-parity-now", "2026-10-14T12:00:00Z"]
         app.launchEnvironment = ["PLAYARR_PARITY_SERVER": c.0, "PLAYARR_PARITY_USER": c.1, "PLAYARR_PARITY_PASSWORD": c.2, "PLAYARR_PARITY_EXPECTED_USERNAME": c.3, "PLAYARR_PARITY_PLAY_FILE": c.4, "PLAYARR_PARITY_DISABLE_ANIMATIONS": "1", "PLAYARR_PARITY_ROUTE": route]
@@ -39,14 +50,15 @@ final class KeyboardFocusUITests: XCTestCase {
         return app
     }
 
-    @MainActor private func shot(_ app: XCUIApplication, _ name: String, expected: String) throws {
+    @MainActor
+    private func shot(_ app: XCUIApplication, _ name: String, expected: String) throws {
         try requireParityCaptureReady(app, expectedUsername: expected)
         let a = XCTAttachment(screenshot: app.screenshot())
         a.name = name; a.lifetime = .keepAlways
         add(a)
     }
 
-    @MainActor private func requireIdentity(_ app: XCUIApplication, expected: String) throws {
+    private func requireIdentity(_ app: XCUIApplication, expected: String) throws {
         let profile = app.descendants(matching: .any)["parity.identityVerified"]
         guard profile.exists,
               (profile.value as? String)?.caseInsensitiveCompare(expected) == .orderedSame else {
@@ -55,7 +67,7 @@ final class KeyboardFocusUITests: XCTestCase {
         }
     }
 
-    @MainActor private func focusedSignature(_ app: XCUIApplication) -> String? {
+    private func focusedSignature(_ app: XCUIApplication) -> String? {
         let focused = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
         guard focused.exists else { return nil }
         return "\(focused.identifier)|\(focused.label)|\(focused.frame.origin.x),\(focused.frame.origin.y)"
@@ -150,6 +162,9 @@ final class KeyboardFocusUITests: XCTestCase {
     /// along the seek bar, Tab and Return.
     @MainActor
     func testPlayerControlsShowAndHide() throws {
+        guard hasExclusiveFixtureWindow() else {
+            throw XCTSkip("Playback mutates shared fixture progress and requires an explicit exclusive window.")
+        }
         let c = try credentials()
         let file = c.4
         guard UUID(uuidString: file) != nil else { throw NSError(domain: "PlayarrKeyboardFocus", code: 5, userInfo: [NSLocalizedDescriptionKey: "The configured direct-play fixture ID is invalid."]) }
@@ -187,16 +202,17 @@ final class KeyboardFocusUITests: XCTestCase {
 
 @MainActor
 func requireParityCaptureReady(_ app: XCUIApplication, expectedUsername: String) throws {
+    // Sign-in and first load are slow when several capture jobs share the test server: allow two minutes each.
     let identity = app.descendants(matching: .any)["parity.identityVerified"]
     let identityPredicate = NSPredicate(format: "value ==[c] %@", expectedUsername)
     let identityReady = XCTNSPredicateExpectation(predicate: identityPredicate, object: identity)
-    guard XCTWaiter.wait(for: [identityReady], timeout: 45) == .completed else {
+    guard XCTWaiter.wait(for: [identityReady], timeout: 120) == .completed else {
         app.terminate()
         throw NSError(domain: "PlayarrKeyboardFocus", code: 20, userInfo: [NSLocalizedDescriptionKey: "The authenticated account did not match the configured identity."])
     }
     let screen = app.descendants(matching: .any)["parity.screenContentReady"]
     let screenReady = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "true"), object: screen)
-    guard XCTWaiter.wait(for: [screenReady], timeout: 45) == .completed else {
+    guard XCTWaiter.wait(for: [screenReady], timeout: 120) == .completed else {
         app.terminate()
         throw NSError(domain: "PlayarrKeyboardFocus", code: 21, userInfo: [NSLocalizedDescriptionKey: "The requested route did not finish loading."])
     }

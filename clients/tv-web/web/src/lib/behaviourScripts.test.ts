@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * Every Playwright script that runs against the built bundle and the mock API is part of the PR gate (CI job
- * `web behaviour`, scripts/web-behaviour.mjs and web-behaviour.config.json). A new script cannot be added to scripts/ and forgotten: it has to be listed
+ * Every Playwright script that runs against the built bundle and the mock API is part of the local behaviour run (not CI:
+ * docs/testing/local-device-tests.md, scripts/web-behaviour.mjs and web-behaviour.config.json). A new script cannot be added to scripts/ and forgotten: it has to be listed
  * there, or excluded with a reason.
  */
 const scripts = join(dirname(fileURLToPath(import.meta.url)), "../../scripts");

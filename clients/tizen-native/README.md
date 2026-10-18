@@ -33,8 +33,9 @@ the server's artwork route (`/api/v1/artwork/...`), like web.
 
 ## Parity driver
 
-Build with `-p:PlayarrDebug=true` (never in CI or release): the app then starts a control server on port 8765 (`/state`, `/key`,
-`/route`, `/theme`, `/text`). `scripts/parity/drivers/tizen-native.mjs` drives the shared suite through `sdb forward` and
+Build with `-p:PlayarrDebug=true` (non-production only): the app then starts a control server on port 8765 (`/state`, `/identity`, `/build`, `/key`,
+`/route`, `/theme`, `/text`, `/capture-clock`, `/capture-signout`). The sign-out endpoint rotates the test device identity and uses the normal
+sign-out path without removing app data. `scripts/parity/drivers/tizen-native.mjs` drives the shared suite through `sdb forward` and
 screenshots the emulator display (`docs/parity/DEVICES.md`).
 
 ## Downloads, and what the platform does not do

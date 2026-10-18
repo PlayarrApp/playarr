@@ -83,6 +83,7 @@ export function ActionPill({
       onClick={onClick}
       aria-expanded={controls ? Boolean(active) : undefined}
       aria-controls={controls}
+      aria-pressed={!controls && active !== undefined ? active : undefined}
       ref={buttonRef}
       {...common}
     >

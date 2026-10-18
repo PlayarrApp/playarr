@@ -4,6 +4,11 @@ import Sailfish.Silica 1.0
 
 // One selectable row of a sheet (check mark column + text).
 MouseArea {
+    property bool navigationFocusable: true
+    property bool navigationInitialFocus: false
+    property int parityRail: -1
+    property int parityIndex: -1
+    property var navigationActivate: null
     property string text
     property bool selected: false
     width: parent ? parent.width : 0

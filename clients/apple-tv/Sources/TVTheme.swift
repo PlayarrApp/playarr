@@ -663,7 +663,6 @@ struct TVNavIconVector {
     }
 }
 
-#if os(tvOS)
 private struct TVNavVectorIcon: View {
     let tab: TVNavTab
 
@@ -688,7 +687,6 @@ private struct TVNavVectorIcon: View {
         }
     }
 }
-#endif
 
 /// Focus identity shared between floating nav and main stage.
 enum TVShellFocus: Hashable {
@@ -1028,20 +1026,17 @@ struct TVFloatingNav: View {
             selection = tab
             externalFocus.wrappedValue = .nav(tab)
             // Web: Select on a tab opens the page and puts focus on its first item (the page loads a moment later).
-            // Debug parity runs only (-PlayarrSelectEntersPage): the screens' key sequences were written for the old behaviour.
+            // On Apple TV this is the default (the parity key paths are written for it); elsewhere only with -PlayarrSelectEntersPage.
             Task { @MainActor in
+                #if !os(tvOS)
                 guard ProcessInfo.processInfo.arguments.contains("-PlayarrSelectEntersPage") else { return }
-                try? await Task.sleep(for: .milliseconds(700))
+                #endif
+                try? await Task.sleep(for: .milliseconds(300))
                 if case .nav(tab) = externalFocus.wrappedValue { externalFocus.wrappedValue = .stage }
             }
         } label: {
             VStack(spacing: 5) {
-                #if os(tvOS)
                 TVNavVectorIcon(tab: tab)
-                #else
-                Image(systemName: tab.systemImage)
-                    .font(.system(size: 20, weight: .medium))
-                #endif
                 Text(tab.title)
                     .font(TVTheme.font(size: 9, weight: .semibold))
                     .tracking(0.3)
@@ -1159,8 +1154,13 @@ struct TVNavItemFocusFill: ViewModifier {
 struct TVShellHeader: View {
     /// Frozen clock for parity suite (matches Android mask strategy).
     var frozenClock: Bool = false
-    /// Web `.app-clock`: x 476.1 on every TV page (live web, 2026-10-11).
+    /// Web `.app-clock`: x 476.1 on every TV page (live web, 2026-10-11). The web right-aligns it (ink 483 to 632 on the
+    /// 2026-10-18 refs); the Mac's font metrics put the same text 4.5 pt left, so the Mac starts 4.5 pt further right.
+    #if os(macOS)
+    var clockLeading: CGFloat = 480.6
+    #else
     var clockLeading: CGFloat = 476.1
+    #endif
 
     var body: some View {
         ZStack(alignment: .topLeading) {

@@ -48,9 +48,13 @@ namespace Playarr.Xbox.Views
         internal bool InitialFocusPending => _initialFocus.IsPending;
         private readonly Dictionary<Guid, Work> _worksById = new Dictionary<Guid, Work>();
 
+        private readonly Ui.PageHeaderParts _header;
+
         public LibraryPage()
         {
             InitializeComponent();
+            _header = Ui.PageHeader(Root, "Library", null, () => App.Navigation.GoBack());
+            Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 152, OpenFilters));
             _viewModel = new LibraryViewModel(App.Environment);
             WorksGridView.ItemContainerStyle = Appearance.LibraryCover ? CatalogTileFactory.CoverGridCardContainerStyle : CatalogTileFactory.GridCardContainerStyle;
             WorksGridView.GotFocus += WorksGridView_GotFocus;
@@ -127,11 +131,11 @@ namespace Playarr.Xbox.Views
             WorksGridView.Visibility = isLoading || hasError ? Visibility.Collapsed : Visibility.Visible;
 
             var kind = _viewModel.SelectedKind;
-            TitleText.Text = kind is { } k ? DisplayNameFor(k) : "Library";
-            CountText.Text = _viewModel.Total is { } total
+            _header.Title.Text = kind is { } k ? DisplayNameFor(k) : "Library";
+            _header.Subtitle.Text = _viewModel.Total is { } total
                 ? $"{total.ToString("N0", CultureInfo.CurrentCulture)} {(kind == WorkKind.Artist ? "ARTISTS" : "TITLES")}"
                 : string.Empty;
-            Ui.LayoutHeader(HeaderTitles, TitleText, CountText);
+            Ui.LayoutHeader(_header.Titles, _header.Title, _header.Subtitle);
 
             // Rebuild only for a new result: a rebuild drops focus back to the nav rail.
             if (resultsChanged)
@@ -445,7 +449,7 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        private void FiltersButton_Click(object sender, RoutedEventArgs e)
+        private void OpenFilters()
         {
             var body = new StackPanel();
             // shortcut: the web also has List and Cover flow; Xbox has Screen and Cover.
@@ -468,7 +472,6 @@ namespace Playarr.Xbox.Views
             Drawer.Open((Panel)Content, "Library controls", "Filters", body);
         }
 
-        private void BackButton_Click(object sender, RoutedEventArgs e) => App.Navigation.GoBack();
 
         private void WorksGridView_ItemClick(object sender, ItemClickEventArgs e)
         {

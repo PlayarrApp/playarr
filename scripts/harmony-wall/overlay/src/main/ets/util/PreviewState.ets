@@ -415,18 +415,34 @@ export function reportDetailEpisodeCardAreaForScope(route: string, workId: strin
 }
 
 export function reportDetailEpisodeCardAreaForMeasurement(uiContext: UIContext, route: string, workId: string,
-  rowId: string, generation: number, railId: string, occurrence: number, componentId: string): void {
-  if (route !== 'Detail' || workId.length === 0 || rowId.length === 0 ||
-      componentId !== seriesDetailMeasurementId('card', workId, generation,
-        railId, rowId, occurrence)) {
+  rowId: string, generation: number, railId: string, occurrence: number, componentId: string, area: Area): void {
+  if (route !== 'Detail' || workId.length === 0 || rowId.length === 0) {
+    return;
+  }
+  // The Image's component ID carries Detail's focus generation, which is not the preview route generation: read it from the ID, then
+  // require the whole ID to be exactly this card's.
+  const prefix: string = 'detail-measure-Detail-' + encodeURIComponent(workId) + '-';
+  const measuredGeneration: number = componentId.startsWith(prefix) ?
+    Number(componentId.substring(prefix.length).split('-')[0]) : NaN;
+  if (!Number.isInteger(measuredGeneration) || componentId !== seriesDetailMeasurementId('image', workId,
+      measuredGeneration, railId, rowId, occurrence)) {
     return;
   }
   const rect = episodeFocusRectForComponent(uiContext, componentId);
-  if (rect === null) {
+  if (rect !== null) {
+    reportDetailEpisodeCardAreaForScope(route, workId, rowId, generation,
+      rect.left, rect.top, rect.width, rect.height, uiContext.vp2px(1));
     return;
   }
-  reportDetailEpisodeCardAreaForScope(route, workId, rowId, generation,
-    rect.left, rect.top, rect.width, rect.height, uiContext.vp2px(1));
+  // The Previewer has no component lookup by ID: the Image's own Area is already in vp and relative to the window.
+  const x = areaLengthNumber(area.globalPosition.x);
+  const y = areaLengthNumber(area.globalPosition.y);
+  const width = areaLengthNumber(area.width);
+  const height = areaLengthNumber(area.height);
+  if (x === null || y === null || width === null || height === null) {
+    return;
+  }
+  reportDetailEpisodeCardAreaForScope(route, workId, rowId, generation, x, y, width, height, uiContext.vp2px(1));
 }
 
 export function reportDetailRowImageComplete(context: DetailRowImageContext): void {

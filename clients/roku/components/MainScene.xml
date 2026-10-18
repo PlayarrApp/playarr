@@ -3,6 +3,7 @@
   <interface>
     <field id="screenState" type="string" value="starting" />
     <field id="deepLink" type="string" value="" onChange="onDeepLink" alwaysNotify="true" />
+    <field id="deepRoute" type="string" value="" onChange="onDeepRoute" alwaysNotify="true" />
   </interface>
   <children>
     <!-- Playarr dark bg #151315 warm charcoal (not cool navy 070B14). -->
@@ -269,15 +270,14 @@
       <TrackedText id="browsePreviewMeta" translation="[153.6,454.9]" />
       <TrackedText id="browsePreviewMeta2" translation="[194.4,454.9]" />
       <TrackedText id="browsePreviewOverview" translation="[153.6,494.7]" />
-      <MarkupGrid id="browseGrid" translation="[775.4,139]" itemComponentName="PosterCard"
+      <BrowseGrid id="browseGrid" translation="[775.4,139]" itemComponentName="PosterCard"
         numColumns="3" numRows="4" itemSize="[353.5,240.5]" itemSpacing="[0,0]"
         focusBitmapBlendColor="0x00000000" vertFocusAnimationStyle="floatingFocus" />
       <Label id="browseHint" translation="[200,1020]" width="1700" height="40" text="" scale="[0.62,0.62]" color="0xA9B7C9FF" />
       <!-- Alphabet jump strip (from: .tv-alphabet, confirmed live: "#" then
-           A-Z, right edge, entered from the grid via Right at its last
-           column, matching this app's established "bubble at the boundary"
-           navigation pattern everywhere else RowList/MarkupGrid meets a
-           hand-focused sibling list). See MainScene.brs's
+           A-Z, right edge). Movies enters at the active letter from the
+           grid boundary (initially "#"); Options remains the explicit entry
+           route for other browse kinds. See MainScene.brs's
            enterBrowseAlphabet/jumpToBrowseLetter for the real jump
            behaviour (paginates further if the target letter isn't loaded
            yet, not just a decorative strip). -->
@@ -342,11 +342,12 @@
       <!-- Native Search shell only. No web-freeze crop Posters (those painted
            solid dark/blue panel slabs over the UI). -->
       <Label id="searchTitle" translation="[220,95]" width="900" height="60" text="Search" scale="[1.35,1.35]" color="0xFFFFFFFF" />
-      <Rectangle id="searchFieldRing" translation="[200,188]" width="720" height="68" color="0xCF3157AA" />
-      <Rectangle id="searchFieldBg" translation="[203,191]" width="714" height="62" color="0x1B181BFF" />
-      <Label id="searchFieldLabel" translation="[250,206]" width="640" height="40" text="Search your libraries and playlists" scale="[0.58,0.58]" color="0x887A82FF" />
+      <!-- Web's search field is a rounded pill with a focus ring in the theme's focus colour (not square, not burgundy). -->
+      <Poster id="searchFieldBg" translation="[153.6,170]" width="596" height="84" uri="pkg:/images/round-r25.9.png" loadDisplayMode="scaleToFill" />
+      <Poster id="searchFieldRing" translation="[153.6,170]" width="596" height="84" uri="pkg:/images/round-outline-r25.9.png" loadDisplayMode="scaleToFill" />
+      <Label id="searchFieldLabel" translation="[215.5,203]" width="620" height="40" text="Search your libraries and playlists" scale="[0.58,0.58]" color="0x887A82FF" />
       <!-- Filters chip as plain labels (no crop Poster). -->
-      <Label id="searchFiltersChip" translation="[200,285]" width="220" height="36" text="Filters  ·  All libraries" scale="[0.5,0.5]" color="0xA9B7C9FF" />
+      <Label id="searchFiltersChip" translation="[153.6,290]" width="800" height="36" text="Filters  ·  All libraries" scale="[0.5,0.5]" color="0xA9B7C9FF" />
       <Group id="searchFilters" visible="false">
         <Label id="searchFilterAll" translation="[200,290]" width="140" height="36" text="All" horizAlign="center" scale="[0.5,0.5]" scaleRotateCenter="[70,18]" color="0xCF3157FF" />
         <Label id="searchFilterMovie" translation="[340,290]" width="140" height="36" text="Movies" horizAlign="center" scale="[0.5,0.5]" scaleRotateCenter="[70,18]" color="0xA9B7C9FF" />
@@ -354,7 +355,7 @@
         <Label id="searchFilterArtist" translation="[620,290]" width="140" height="36" text="Music" horizAlign="center" scale="[0.5,0.5]" scaleRotateCenter="[70,18]" color="0xA9B7C9FF" />
         <Label id="searchFilterPlaylists" translation="[760,290]" width="140" height="36" text="Playlists" horizAlign="center" scale="[0.5,0.5]" scaleRotateCenter="[70,18]" color="0xA9B7C9FF" />
       </Group>
-      <Label id="searchEmptyHint" translation="[200,360]" width="500" height="80" wrap="true" text="Find any available movie, series, artist or playlist." scale="[0.55,0.55]" color="0x887A82FF" />
+      <Label id="searchEmptyHint" translation="[153.6,360]" width="1200" height="80" wrap="true" text="Find any available movie, series, artist or playlist." scale="[0.55,0.55]" color="0x887A82FF" />
       <Group id="searchEmptyState">
         <Poster id="searchEmptyIcon" translation="[1080,430]" width="120" height="120"
           uri="pkg:/images/search-empty-icon.png" loadDisplayMode="scaleToFit" />

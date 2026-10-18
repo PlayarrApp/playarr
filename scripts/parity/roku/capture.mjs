@@ -96,11 +96,11 @@ const screens = {
   music: async () => { await toHome(); await press("Left", 0.8); await presses(Array(12).fill("Down"), 0.35); await presses(Array(5).fill("Up"), 0.6); await press("Select", 12); },
   // Title actions: long-press Select on the first library card (web: the context menu of the same card).
   actions: async () => { await toHome(); await dock(3, 14); await ecp("keydown/Select"); await sleep(1.2); await ecp("keyup/Select"); await sleep(3); },
-  // The calendar opens on the month view; the range switcher (header, left of Previous) chooses Month, Week or Agenda. The calendar opens focused on today's cell, so six Ups
-  // (the grid has at most six rows) reach the range switcher whichever week today falls in.
+  // The calendar opens on the month view; the range switcher (header, left of Previous) chooses Month, Week or Agenda. The month grid's Up
+  // from the Sunday cell of the first week reaches Today, then Left twice the range switcher.
   "calendar-month": async () => { await toHome(); await dock(7, 16); },
-  "calendar-week": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Up", "Up", "Up", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
-  "calendar-agenda": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Up", "Up", "Up", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
+  "calendar-week": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Right", "Right", "Right", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
+  "calendar-agenda": async () => { await toHome(); await dock(7, 16); await presses(["Up", "Up", "Right", "Right", "Right", "Up", "Select"], 0.8); await sleep(3); await presses(["Down", "Down", "Select"], 1); await sleep(14); await presses(["Right", "Right"], 1); },
   // Library: the Info (*) key enters the alphabet strip, Up from its first letter reaches Filters, Select opens the panel.
   filters: async () => { await toHome(); await dock(3, 14); await presses(["Info", "Up"], 1); await press("Select", 3); },
   watchlist: async () => { await toHome(); await dock(5, 6); },
@@ -151,6 +151,40 @@ async function setTheme() {
   await presses(Array(theme === "light" ? 1 : 2).fill("Down"), 1.2);
   await press("Select", 3);
 }
+// Home artwork preference (Preferences > Appearance > Home screen artwork). The reference is Thumbnails; a sideload or an earlier run can leave
+// Covers, which swaps Home and Library for portrait art. Read the button state from a screenshot, set Thumbnails when it is not selected, and
+// fail rather than capture the wrong mode.
+const grayAt = (jpg, x, y) => {
+  const r = spawnSync("ffmpeg", ["-v", "error", "-i", jpg, "-vf", `crop=2:2:${x}:${y},format=gray`, "-frames:v", "1", "-f", "rawvideo", "-"], { encoding: "buffer" });
+  if (r.status !== 0 || r.stdout.length < 1) throw new Error("could not read the Appearance panel");
+  return r.stdout[0];
+};
+async function thumbnailsSelected() {
+  const jpg = join(dest, "prefs-check.jpg");
+  const dig = ["--digest", "-u", `rokudev:${password}`, "--silent", "--show-error"];
+  execFileSync("curl", [...dig, "-F", "mysubmit=Screenshot", "-F", "passwd=", `http://${target}/plugin_inspect`], { stdio: "ignore" });
+  execFileSync("curl", [...dig, "-o", jpg, `http://${target}/pkgs/dev.jpg?time=${Date.now()}`]);
+  // Theme-independent: the selected segment is filled unlike its siblings in either theme. Compare each artwork button with the
+  // Artwork size row, whose Medium segment is the selected one and Small is not (all sampled away from the labels, at y 505 / 680).
+  const thumbs = grayAt(jpg, 1100, 505), covers = grayAt(jpg, 1700, 505), selected = grayAt(jpg, 1150, 680), plain = grayAt(jpg, 800, 680);
+  rmSync(jpg, { force: true });
+  if (Math.abs(selected - plain) < 40) throw new Error("the Appearance panel is not on screen (Home artwork buttons unreadable); check the channel and re-run");
+  const on = (v) => Math.abs(v - selected) < Math.abs(v - plain);
+  if (on(thumbs) !== on(covers)) return on(thumbs);
+  throw new Error("Home artwork buttons are ambiguous; check the Appearance panel and re-run");
+}
+async function ensureThumbnails() {
+  await coldStart();
+  await presses(["Down", "Left", "Select"], 2);  // the gear opens Preferences on Appearance
+  await sleep(4);
+  if (await thumbnailsSelected()) return;
+  console.log("Home artwork is Covers: setting Thumbnails");
+  await presses(["Right", "Down"], 2);    // into the panel (first stop on the colour row), down to the artwork row
+  await press("Select", 2);
+  await sleep(4);
+  if (!(await thumbnailsSelected())) throw new Error("Home artwork is still Covers after setting Thumbnails; fix the key path and re-run");
+}
+if (process.env.ROKU_SKIP_PREFS !== "1") await ensureThumbnails();
 // ROKU_SKIP_THEME=1: the channel already has the theme (the picker dropdown shows it), so a re-run skips the dialog.
 if (process.env.ROKU_SKIP_THEME !== "1") await setTheme();
 

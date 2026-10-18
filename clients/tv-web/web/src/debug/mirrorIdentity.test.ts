@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  LIVE_SESSION_KEY,
   MIRROR_ACTIVE_PROFILE_KEY,
   MIRROR_PROFILE_SESSIONS_KEY,
   mirrorFramePayload,
   readMirrorIdentity,
+  readSelectedSession,
   revalidateMirrorIdentity,
   reportMirrorIdentityStatus,
   type MirrorIdentityDependencies,
@@ -189,5 +191,52 @@ describe("debug mirror identity guard", () => {
     expect(result.status).toBe("identity_unavailable");
     expect(result.serverMatched).toBe(true);
     expect(f.requests).toHaveLength(2);
+  });
+});
+
+describe("readSelectedSession", () => {
+  it("returns the selected server, user and authorisation, and follows a token rotation", () => {
+    const values = new Map([[MIRROR_ACTIVE_PROFILE_KEY, marker], [MIRROR_PROFILE_SESSIONS_KEY, session("old-token")]]);
+    const storage = { getItem: (key: string) => values.get(key) ?? null };
+    expect(readSelectedSession(storage)).toEqual({ userId: "user-a", serverUrl: "https://server.example", auth: "Bearer old-token" });
+    values.set(MIRROR_PROFILE_SESSIONS_KEY, session("new-token"));
+    expect(readSelectedSession(storage)?.auth).toBe("Bearer new-token");
+    values.delete(MIRROR_ACTIVE_PROFILE_KEY);
+    expect(readSelectedSession(storage)).toBeNull();
+  });
+
+  it("prefers the app's live session when it belongs to the selected user (the saved copy goes stale after a refresh)", () => {
+    const jwt = (sub: string) => `h.${btoa(JSON.stringify({ sub })).replace(/=+$/, "")}.s`;
+    const values = new Map([[MIRROR_ACTIVE_PROFILE_KEY, marker], [MIRROR_PROFILE_SESSIONS_KEY, session("stale-token")]]);
+    const storage = { getItem: (key: string) => values.get(key) ?? null };
+    values.set(LIVE_SESSION_KEY, JSON.stringify({ accessToken: jwt("user-a"), refreshToken: "r", tokenType: "Bearer", expiresAt: 1 }));
+    expect(readSelectedSession(storage)?.auth).toBe(`Bearer ${jwt("user-a")}`);
+    values.set(LIVE_SESSION_KEY, JSON.stringify({ accessToken: jwt("someone-else"), refreshToken: "r", tokenType: "Bearer", expiresAt: 1 }));
+    expect(readSelectedSession(storage)?.auth).toBe("Bearer stale-token");
+    values.set(LIVE_SESSION_KEY, "not json");
+    expect(readSelectedSession(storage)?.auth).toBe("Bearer stale-token");
+  });
+});
+
+describe("expired access token on an idle app", () => {
+  const jwt = (exp: number) => `h.${btoa(JSON.stringify({ sub: "user-a", exp })).replace(/=+$/, "")}.s`;
+
+  it("keeps the verdict verified for the same token once it has expired, and fails for an unverified one", async () => {
+    const sessionFor = (access: string) => (key: string) => key === MIRROR_ACTIVE_PROFILE_KEY ? marker : session(access, "r-idle");
+    const valid = fixture({ getItem: sessionFor(jwt(200)), now: () => 100_000 });
+    expect((await readMirrorIdentity("receiver-token", valid.dependencies)).status).toBe("ok");
+
+    const expired = fixture({ getItem: sessionFor(jwt(200)), now: () => 400_000 });
+    const rejecting = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).endsWith("/users/profiles") ? new Response("{}", { status: 401 }) : expired.dependencies.fetch(input, init)) as unknown as typeof fetch;
+    const again = await readMirrorIdentity("receiver-token", { ...expired.dependencies, fetch: rejecting });
+    expect(again.status).toBe("ok");
+    expect(again.username).toBe("qa-user");
+    expect(again.checkedAt).toBe(400_000);
+
+    const other = fixture({ getItem: sessionFor(jwt(199)), now: () => 400_000 });
+    const refused = await readMirrorIdentity("receiver-token", { ...other.dependencies, fetch: rejecting });
+    expect(refused.status).toBe("trusted_server_unavailable");
+    expect(refused.profileHttpStatus).toBe(401);
   });
 });

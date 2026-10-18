@@ -8,7 +8,7 @@ from capture_diagnostics import (MAX_IMAGE_PAYLOAD_BYTES, analyze_episode_art_fr
                                  decoded_art_is_accepted, episode_art_events_ready, image_payload_metrics,
                                  save_rejected_frame, summarize_detail_events,
                                  summarize_detail_image_payload_events, summarize_detail_layout_events,
-                                 series_focus_failure, write_detail_summary, confirm_detail_route_source,
+                                 series_focus_failure, previewer_focus_unavailable, write_detail_summary, confirm_detail_route_source,
                                  summarize_detail_load_events, phone_flat_card_rows, preview_focus_confirmed,
                                  home_recent_flat, posters_stalled, tv_flat_card_blocks)
 from PIL import Image, ImageDraw
@@ -573,6 +573,10 @@ class CaptureDiagnosticsTests(unittest.TestCase):
         self.assertIsNone(series_focus_failure(complete, episode_metrics))
         already_focused = {**complete, "series-focus-request-issued": {"last_value": 0, "count": 1}}
         self.assertIsNone(series_focus_failure(already_focused, episode_metrics))
+        threw = {"series-focus-request-count": {"value": {"min": 1, "max": 3}}, "series-focus-request-issued": {"last_value": 0, "value": {"min": 0, "max": 0}}}
+        self.assertTrue(previewer_focus_unavailable(threw))
+        self.assertFalse(previewer_focus_unavailable(already_focused))
+        self.assertFalse(previewer_focus_unavailable({**threw, "series-focus-request-issued": {"last_value": 1, "value": {"min": 0, "max": 1}}}))
         self.assertEqual(series_focus_failure({**complete, "series-focused-row-is-target": {
             "last_value": 0, "count": 2,
         }}, episode_metrics), "focus-not-target")

@@ -41,8 +41,14 @@ internal sealed class MediaCard
     private const float StackDrop = 10f;
     private View? _playlistIcon;
     private bool _playlistCollage;
+    private bool _playlistHasCovers;
+    private View? _playlistFocusGlow;
+    private View? _playlistFocusRing;
     private bool _playlistCoverSet;
     private bool _focused;
+    private TextLabel? _playlistMetadata;
+    private string _playlistMediaType = "video";
+    private bool _playlistShared;
 
     private float SearchPlaylistFocusRingExtent => SearchPlaylistFocusRingWidth / (_boxScale * _scale);
 
@@ -92,11 +98,15 @@ internal sealed class MediaCard
         var drop = card.StackOptions > 1 ? StackDrop : 0;
         Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 700, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
-        if (showSub) Box.Add(Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f));
+        _titleY = Title.PositionY; _subY = H + 31.9f + drop;
+        if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
     }
 
-    private View? _stackNear, _stackFar, _shadow2;
+    private View? _stackNear, _stackFar, _shadow2, _sub;
+    private float _titleY, _subY;
+    /// <summary>Web Home: the focused card's caption rises 8 px with the card (the art's own lift is part of that).</summary>
+    public float FocusCaptionLift { get; init; }
     private readonly float _restBlur;
 
     /// <summary>
@@ -134,6 +144,7 @@ internal sealed class MediaCard
         Box.PositionY = _boxY + (focused ? _boxLift : 0);
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
         Art.PositionY = _artDy + (focused ? _lift : 0);
+        if (FocusCaptionLift != 0) { var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d; }
         Art.BoxShadow = _searchPlaylistFocusGlow is not null
             ? focused
                 ? new Shadow(52, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.28f), new Vector2(0, 22), new Vector2(0, 0))
@@ -147,6 +158,11 @@ internal sealed class MediaCard
             _shadow2.BoxShadow = focused ? new Shadow(_blur * 0.42f, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha * 0.68f), new Vector2(0, _shadowY * 0.42f), new Vector2(0, 0))
                 : new Shadow(_restBlur * 0.4f, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.10f), new Vector2(0, 3), new Vector2(0, 0));
         }
+        if (_playlistCollage)
+        {
+            SetPlaylistGroupShadow();
+            SetPlaylistFocusGlow(focused);
+        }
         if (_searchPlaylistFocusGlow is not null)
         {
             var glowColor = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
@@ -159,9 +175,10 @@ internal sealed class MediaCard
                 ? new Shadow(20, new Color(glowColor.R, glowColor.G, glowColor.B, 0.45f), new Vector2(0, 0), new Vector2(0, 0))
                 : null;
         }
+        if (_playlistCollage && _playlistHasCovers) SetPlaylistFocusRing(focused);
         if (_ring is not null)
         {
-            var showRing = focused && _searchPlaylistFocusGlow is null;
+            var showRing = focused && !(_playlistCollage && _playlistHasCovers) && _searchPlaylistFocusGlow is null;
             _ring.Show(showRing);
             if (showRing) _ring.RaiseToTop(); // the poster loads later and would otherwise sit on top of the ring
         }
@@ -173,6 +190,15 @@ internal sealed class MediaCard
         var width = W * _boxScale;
         var height = _focusHeight * _boxScale;
         return new Box(x + (W - width) / 2, y + _boxLift + (_focusHeight - height) / 2, width, height);
+    }
+
+    public void SetPlaylistItemCount(int count)
+    {
+        if (_playlistMetadata is null) return;
+        var mediaType = _playlistMediaType.Equals("audio", StringComparison.OrdinalIgnoreCase) ? "Audio" : "Video";
+        var ownership = _playlistShared ? "Shared" : "Personal";
+        _playlistMetadata.Text = $"{mediaType} · {ownership} · {count} {(count == 1 ? "title" : "titles")}";
+        _playlistMetadata.Show(true);
     }
 
     /// <summary>Replaces the directory placeholder with the web's poster-first, backdrop-fallback cover stack.</summary>
@@ -207,6 +233,9 @@ internal sealed class MediaCard
 
         Art.BackgroundColor = new Color(0, 0, 0, 0);
         Art.ClippingMode = default;
+        _playlistHasCovers = true;
+        EnsurePlaylistFocusGlow();
+        _ring?.Show(false);
         // Add back-to-front. The first selected work stays on top, matching the web z-index order.
         for (var index = covers.Count - 1; index >= 0; index--)
         {
@@ -228,20 +257,98 @@ internal sealed class MediaCard
                 BorderlineWidth = 1,
                 BorderlineColor = Ui.C(new Rgba(_t.LineStrong.R, _t.LineStrong.G, _t.LineStrong.B, _t.LineStrong.A * 0.76f)),
                 Orientation = new Rotation(new Radian((float)((index - (covers.Count - 1) / 2.0) * -1.5 * Math.PI / 180)), new Vector3(0, 0, 1)),
-                BoxShadow = new Shadow(28, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.18f), new Vector2(0, 10), new Vector2(0, 0)),
             };
             Art.Add(layer);
             var path = ArtworkPaths.Path(work, ImageKind.Poster) ?? ArtworkPaths.Path(work, ImageKind.Backdrop);
             env.Images.Apply(layer, path, width, height, 12.48f);
         }
-        if (_focused) _ring?.RaiseToTop();
+        _ring?.Show(false);
+        SetPlaylistGroupShadow();
+        SetPlaylistFocusGlow(_focused);
+        SetPlaylistFocusRing(_focused);
+    }
+
+    private void EnsurePlaylistFocusGlow()
+    {
+        if (_playlistFocusGlow is not null) return;
+        _playlistFocusGlow = new View
+        {
+            PositionX = Art.PositionX,
+            PositionY = Art.PositionY,
+            Size = Art.Size,
+            CornerRadius = Art.CornerRadius,
+            BackgroundColor = new Color(0, 0, 0, 0),
+        };
+        Box.Add(_playlistFocusGlow);
+        _playlistFocusGlow.LowerToBottom();
+    }
+
+    private void SetPlaylistFocusGlow(bool focused)
+    {
+        if (_playlistFocusGlow is null) return;
+        _playlistFocusGlow.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        _playlistFocusGlow.PositionY = _artDy + (focused ? _lift : 0);
+        if (!focused)
+        {
+            _playlistFocusGlow.BoxShadow = null;
+            return;
+        }
+
+        // Web adds a separate 20 px, 4 px spread glow to the playlist card ring. Keep this layer independent of the
+        // brown cover-stack shadow above; the glow token is brand-ink in dark and brand-strong in light.
+        var glow = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
+        _playlistFocusGlow.BoxShadow = new Shadow(20, new Color(glow.R, glow.G, glow.B, 0.45f), new Vector2(0, 0), new Vector2(4, 4));
+    }
+
+    private void SetPlaylistGroupShadow()
+    {
+        if (!_playlistHasCovers)
+        {
+            Art.BoxShadow = null;
+            return;
+        }
+
+        // BoxShadow follows this rounded rectangle, not the stacked images' alpha. The front cover fills this frame,
+        // so its outer silhouette stays close; one NUI shadow approximates the web's two measured focus shadows.
+        var opacity = _focused ? 0.44f : 0.14f;
+        var blur = _focused ? 10f : 5f;
+        var offsetY = _focused ? 9.2f : 5f;
+        Art.BoxShadow = new Shadow(blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, opacity), new Vector2(0, offsetY), new Vector2(0, 0));
+    }
+
+    private void SetPlaylistFocusRing(bool focused)
+    {
+        if (_playlistFocusRing is null)
+        {
+            const float spread = 3f;
+            var ring = new View
+            {
+                PositionX = Art.PositionX - spread,
+                PositionY = Art.PositionY - spread,
+                Size = new Size(Art.Size.Width + spread * 2, Art.Size.Height + spread * 2),
+                CornerRadius = Art.CornerRadius + spread,
+                BorderlineWidth = spread,
+                BorderlineOffset = -1,
+                BorderlineColor = _t.Name == "dark"
+                    ? new Color(_t.BrandInk.R, _t.BrandInk.G, _t.BrandInk.B, 0.95f)
+                    : new Color(0.647f, 0.153f, 0.271f, 1),
+                BackgroundColor = new Color(0, 0, 0, 0),
+            };
+            Box.Add(ring);
+            _playlistFocusRing = ring;
+        }
+
+        _playlistFocusRing.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        _playlistFocusRing.PositionY = _artDy + (focused ? _lift : 0) - 3f;
+        _playlistFocusRing.Show(focused);
+        if (focused) _playlistFocusRing.RaiseToTop();
     }
 
     public static MediaCard Home(AppEnv env, WorkCard card, float x, float y, CardLayout? layout = null)
     {
         var l = layout ?? CardLayout.From("thumbnail", "medium");
-        return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 0, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight);
+        return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 1.9f, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { FocusCaptionLift = -8f };
     }
 
     /// <summary>Web cover view: the poster is the art (poster first, backdrop as the fallback); an On deck episode keeps its frame.</summary>
@@ -322,7 +429,7 @@ internal sealed class MediaCard
         var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
             blur: 52, shadowY: 24, shadowAlpha: 0.30f, boxHeight: l.CardHeight, boxScale: 1.015f, boxLift: -5f, focusHeight: l.CardHeight, artW: l.Width, artH: l.ArtHeight);
         media._playlistCollage = true;
-        AddPlaylistKind(media, env, card);
+        AddPlaylistKind(media, env, card, directory: true);
         return media;
     }
 
@@ -330,13 +437,13 @@ internal sealed class MediaCard
     public static MediaCard PlaylistDetail(AppEnv env, WorkCard card, float x, float y, CardLayout? cardLayout = null)
     {
         var l = cardLayout ?? CardLayout.Library(false, "medium");
-        var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
-            blur: 52, shadowY: 26, shadowAlpha: 0.32f, boxHeight: l.CardHeight, boxLift: -6f, focusHeight: l.CardHeight, showRing: false, artW: l.Width, artH: l.ArtHeight);
+        var media = new MediaCard(env, env.Theme, card, x, y, showSub: true, titleInset: 1.9f, scale: 1.025f, lift: 0,
+            blur: 52, shadowY: 26, shadowAlpha: 0.32f, boxHeight: l.CardHeight, boxLift: -6f, focusHeight: l.CardHeight, showRing: true, artW: l.Width, artH: l.ArtHeight);
         if (card.Kind == WorkKind.Unknown) AddPlaylistKind(media, env, card);
         return media;
     }
 
-    private static void AddPlaylistKind(MediaCard media, AppEnv env, WorkCard card)
+    private static void AddPlaylistKind(MediaCard media, AppEnv env, WorkCard card, bool directory = false)
     {
         if (card.Kind == WorkKind.Unknown)
         {
@@ -344,7 +451,18 @@ internal sealed class MediaCard
             media._playlistIcon = icon;
             media.Art.Add(icon);
         }
-        media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, media.H + 14.5f, 8.448f, 700, env.Theme.InkMuted, media.W, 12.672f, HorizontalAlignment.End));
+        if (directory)
+        {
+            media._playlistMediaType = card.Kicker;
+            media._playlistShared = card.Sub.Equals("Shared", StringComparison.OrdinalIgnoreCase);
+            media._playlistMetadata = Ui.Text("", 1.9f, media.H + 31.9f, 8.832f, 400, env.Theme.InkMuted, media.W - 3.8f, 13.248f);
+            media._playlistMetadata.Show(false);
+            media.Box.Add(media._playlistMetadata);
+        }
+        else
+        {
+            media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, media.H + 14.5f, 8.448f, 700, env.Theme.InkMuted, media.W, 12.672f, HorizontalAlignment.End));
+        }
     }
 }
 
@@ -374,20 +492,19 @@ internal sealed class KeyArt
         foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
         if (artworkPath is null) return;
         var wanted = artworkPath;
-        _ = Task.Run(async () =>
+        _env.Images.Track(async () =>
         {
             var file = await _env.Images.GetAsync(wanted).ConfigureAwait(false);
             if (file is null) return;
-            SynchronizationContextHolder.Post(() =>
+            await AuthImage.OnUiAsync(() =>
             {
                 if (_path != wanted) return; // focus moved on
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
-                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f);
-                img.Opacity = dark ? 0.07f : 0.035f; // web (measured at 1920x1080): the art is only a ghost in both themes
+                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
+                img.Opacity = dark ? 0.07f : 0.035f; // retain the current low-opacity TV treatment
                 Root.Add(img);
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
-                Root.Add(Ui.Gradient(-20 + 1038.3f * 0.72f, 0, 1038.3f * 0.28f, 1080, true, (0, clear), (1, s)));
                 Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, s), (0.22f, clear), (1, clear)));
                 Root.Add(Ui.Gradient(0, 0, 1920, 1080, false, (0, s), (0.18f, clear), (0.82f, clear), (1, s)));
             });
@@ -399,20 +516,30 @@ internal sealed class KeyArt
 internal sealed class DetailsPanel
 {
     public View Root { get; } = new();
+    public float ContentBottom { get; private set; }
     private readonly AppEnv _env;
     private readonly bool _library;
     private readonly bool _flow;
+    private readonly bool _includeRuntime;
+    private readonly bool _useWebNoMetaOverviewGap;
     private Guid _showing;
     private static readonly Dictionary<Guid, long?> RuntimeCache = new();
 
-    public DetailsPanel(AppEnv env, bool library, bool flow = false) { _env = env; _library = library || flow; _flow = flow; }
+    public DetailsPanel(AppEnv env, bool library, bool flow = false, bool includeRuntime = true, bool useWebNoMetaOverviewGap = false)
+    {
+        _env = env;
+        _library = library || flow;
+        _flow = flow;
+        _includeRuntime = includeRuntime;
+        _useWebNoMetaOverviewGap = useWebNoMetaOverviewGap;
+    }
 
     public void Show(WorkCard card, string? kickerOverride = null, string? metaLead = null)
     {
         _showing = card.WorkId;
-        Render(card, kickerOverride, metaLead, RuntimeCache.TryGetValue(card.WorkId, out var rt) ? rt : null);
-        if (!RuntimeCache.ContainsKey(card.WorkId))
-            _ = FetchRuntimeAsync(card, kickerOverride, metaLead);
+        Render(card, kickerOverride, metaLead, _includeRuntime && RuntimeCache.TryGetValue(card.WorkId, out var rt) ? rt : null);
+        if (_includeRuntime && !RuntimeCache.ContainsKey(card.WorkId))
+            _env.Images.Track(() => FetchRuntimeAsync(card, kickerOverride, metaLead));
     }
 
     public void ShowPlaylistPreview(SearchPlaylistPreview preview)
@@ -428,12 +555,17 @@ internal sealed class DetailsPanel
         try
         {
             await Task.Delay(140); // as web: focus must rest before the page-level selection follows it
-            if (_showing != card.WorkId) return;
+            var stillShowing = false;
+            await AuthImage.OnUiAsync(() => stillShowing = _showing == card.WorkId);
+            if (!stillShowing) return;
             var detail = await _env.Api.GetWorkAsync(card.WorkId);
-            RuntimeCache[card.WorkId] = detail.RuntimeMs;
-            SynchronizationContextHolder.Post(() => { if (_showing == card.WorkId) Render(card, kicker, lead, detail.RuntimeMs); });
+            await AuthImage.OnUiAsync(() =>
+            {
+                RuntimeCache[card.WorkId] = detail.RuntimeMs;
+                if (_showing == card.WorkId) Render(card, kicker, lead, detail.RuntimeMs);
+            });
         }
-        catch (Exception) { RuntimeCache[card.WorkId] = null; }
+        catch (Exception) { await AuthImage.OnUiAsync(() => RuntimeCache[card.WorkId] = null); }
     }
 
     private void Render(WorkCard card, string? kicker, string? lead, long? runtimeMs, int titleMaxLines = 5)
@@ -447,10 +579,14 @@ internal sealed class DetailsPanel
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
         if (meta.Length > 0) Root.Add(Ui.Text(meta, 153.6f, metaY, metaSize, 600, Soft(t), 455, _library ? 19.584f : 18, spacing: 0));
-        var oy = metaY + (_library ? 41.2f : 40.9f);
+        var noMetaGap = Math.Clamp(TizenClient.DesignHeight * 0.02f, 16f, 28f); // web .tv-home-feature overview margin: clamp(16px, 2vh, 28px)
+        var oy = meta.Length == 0 && _useWebNoMetaOverviewGap
+            ? ty + tlh * lines + noMetaGap
+            : metaY + (_library ? 41.2f : 40.9f);
         var ovLine = _library ? 21.842f : 20.325f; var ovSize = _library ? 13.824f : 12.864f;
-        var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 336, ovLine, 0, 5); // web clamps the preview overview at 5 lines on every page
+        var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 322, ovLine, 0, 5); // web clamps the preview overview at 5 lines on every page
         var top = ky; var bottom = oy + ovLines * ovLine;
+        ContentBottom = bottom;
         var scrim = Ui.PanelScrim(t, 153.6f, top, 455, bottom - top);
         Root.Add(scrim); scrim.LowerToBottom();
     }

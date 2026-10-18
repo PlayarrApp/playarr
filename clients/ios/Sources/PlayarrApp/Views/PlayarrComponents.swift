@@ -263,14 +263,33 @@ struct PlayarrMediaCard: View {
     var width: CGFloat = 178
     /// The web tablet library shows the title only; Home keeps the "Movie · 2016" line.
     var showsSubtitle = true
+    /// Library focus expands the art while the owning card applies its own lift and scale.
+    var focused = false
+    /// The web grid derives title metrics from its viewport width.
+    var screenGridViewportWidth: CGFloat? = nil
+
+    private var matchesWebScreenGrid: Bool { screenGridViewportWidth != nil }
+    private var screenGridTitleSize: CGFloat {
+        guard let screenGridViewportWidth else { return 9.6 }
+        return min(max(8.8, screenGridViewportWidth * 0.0062), 12.48)
+    }
+    private var screenGridTitleLineHeight: CGFloat {
+        matchesWebScreenGrid ? screenGridTitleSize * 1.5 : 15
+    }
+    private var screenGridTitleTracking: CGFloat {
+        matchesWebScreenGrid ? -0.015 * screenGridTitleSize : -0.1
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: matchesWebScreenGrid ? 0 : 7) {
             PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .frame(width: width)
                 .clipShape(RoundedRectangle(cornerRadius: min(13, max(8, width * 0.058)), style: .continuous))
+                .scaleEffect(focused ? LibraryFocusMetrics.tabletArtworkScale : 1)
                 .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 17, y: 6)
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.3 : 0), radius: focused ? 24 : 0, y: focused ? 12 : 0)
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.2 : 0), radius: focused ? 10 : 0, y: focused ? 5 : 0)
                 .overlay(alignment: .bottom) {
                     if let progress, progress.durationMS > 0 {
                         GeometryReader { proxy in
@@ -287,16 +306,32 @@ struct PlayarrMediaCard: View {
                     }
                 }
 
-            if showsSubtitle {
+            if showsSubtitle && !matchesWebScreenGrid {
                 Text(work.title)
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 12.5 : 11).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.ink)
                     .lineLimit(1)
-                Text(work.kindYearLabel)
+                Text(work.singularKindYearLabel)
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 10 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted)
             } else {
-                WMText(work.title, 9.6, 600, lh: 15, ls: -0.1).padding(.top, 1)
+                WMText(
+                    work.title,
+                    screenGridTitleSize,
+                    matchesWebScreenGrid ? 610 : 600,
+                    lh: screenGridTitleLineHeight,
+                    ls: screenGridTitleTracking
+                )
+                    .padding(.top, matchesWebScreenGrid ? 11.52 : 1)
+                    .padding(.horizontal, matchesWebScreenGrid ? 1.92 : 0)
+                // Web tv-home-card: the detail line hangs below the card (1.3em tall, 0.16rem gap, no layout height).
+                if showsSubtitle, matchesWebScreenGrid {
+                    let metaSize = min(max(6.88, (screenGridViewportWidth ?? 0) * 0.0046), 8.96)
+                    WMText(work.singularKindYearLabel, metaSize, 700, color: PlayarrStyle.muted, lh: metaSize * 1.3, ls: 0)
+                        .padding(.top, 2.56)
+                        .padding(.horizontal, 1.92)
+                        .padding(.bottom, -(metaSize * 1.3 + 2.56))
+                }
             }
         }
         .frame(width: width, alignment: .leading)

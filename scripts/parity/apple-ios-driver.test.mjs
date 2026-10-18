@@ -7,6 +7,7 @@ import { assertCaptureState, assertResetProfile, assertScreenshotFile } from "./
 const ready = {
   signedIn: true,
   identityVerified: true,
+  deviceTestIdentityVerified: true,
   authenticatedUsername: "device-test",
   directPlay: true,
   screenContentReady: true,
@@ -16,7 +17,7 @@ const ready = {
 
 test("iOS capture gates require verified identity, loaded content and direct-play evidence", () => {
   assert.doesNotThrow(() => assertCaptureState(ready, "Device-Test", { player: true, deterministic: true, fixedNow: "2026-10-14T12:00:00Z" }));
-  for (const [key, value] of [["signedIn", false], ["identityVerified", false], ["screenContentReady", false], ["directPlay", false], ["animationsDisabled", false]]) {
+  for (const [key, value] of [["signedIn", false], ["identityVerified", false], ["deviceTestIdentityVerified", false], ["screenContentReady", false], ["directPlay", false], ["animationsDisabled", false]]) {
     assert.throws(() => assertCaptureState({ ...ready, [key]: value }, "device-test", { player: key === "directPlay", deterministic: key === "animationsDisabled", fixedNow: "2026-10-14T12:00:00Z" }));
   }
   assert.throws(() => assertCaptureState({ ...ready, frozenNow: "2026-10-13T12:00:00Z" }, "device-test", { deterministic: true, fixedNow: "2026-10-14T12:00:00Z" }), /fixed capture clock/);

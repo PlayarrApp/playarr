@@ -413,6 +413,8 @@ struct WMKeyArt: View {
     /// Draw the whole picture at the page width (no crop) instead of filling the frame.
     var contain = false
     var imageTop: CGFloat = -9
+    /// Scales the picture about its top-left corner (the web detail art measures 1% larger than its nominal box).
+    var artScale: CGFloat = 1
     /// How strong the grey artwork is in the light theme; the web shows it differently per page.
     var lightOpacity: Double = 0.22
     /// The web's horizontal treatment in the light theme: the artwork fades out over its last 28% (mask)
@@ -428,7 +430,7 @@ struct WMKeyArt: View {
                 PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
                     .saturation(0)
                     .opacity(scheme == .dark ? 0.085 : lightOpacity)
-                    .frame(width: 406, height: contain ? 406 * 9 / 16 : imageHeight)
+                    .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
                             LinearGradient(
@@ -517,7 +519,7 @@ extension Work {
         case .artist: singular = "Artist"
         case .author: singular = "Author"
         }
-        guard let year = releaseDate?.prefix(4), year.count == 4, Int(year) != nil else { return singular }
+        guard let year = WMFormat.yearRange(releaseDate: releaseDate, endDate: kind == .series ? endDate : nil) else { return singular }
         return "\(singular) · \(year)"
     }
 }
@@ -566,7 +568,7 @@ struct WMRailCard: View {
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
-            WMText(work.singularKindYearLabel, 7.3, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
+            WMText(work.singularKindYearLabel, 7.3, 400, color: WM.ink, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
     }
@@ -703,22 +705,14 @@ struct WMLibraryHeader: View {
     var body: some View {
         let top = WM.topInset + 2
         ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: onBack)
-                .offset(x: 17, y: top)
+            PlayarrBackButton(action: onBack)
+                .offset(x: PlayarrPageTokens.gutter, y: top)
             WMText(title, 22, 520, lh: 33, ls: -1)
                 .offset(x: 71, y: top + 5)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
                 Spacer()
-                Button(action: onFilters) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(WM.inkSoft)
-                        .frame(width: 44, height: 44)
-                        .background(WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
+                PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", iconOnly: true, action: onFilters)
             }
             .padding(.trailing, 16)
             .offset(y: top - 2)
