@@ -10,6 +10,8 @@
  */
 
 import { LengthMetrics } from '@kit.ArkUI';
+import { image } from '@kit.ImageKit';
+import { fetchWorkArtwork } from '../data/ArtworkRepository';
 import { t } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -243,6 +245,8 @@ export struct ReleaseCalendar {
   @State private watchlistBusy: boolean = false;
   @State private loading: boolean = true;
   @State private errorMessage: string = '';
+  /** Poster pixel maps by work id: the entries' poster_url is not fetchable without the session, so the artwork route loads them. */
+  @State private posters: Map<string, image.PixelMap> = new Map<string, image.PixelMap>();
 
   aboutToAppear(): void {
     this.load();
@@ -257,6 +261,7 @@ export struct ReleaseCalendar {
       this.entries = result.value.entries;
       this.regroup();
       this.errorMessage = '';
+      this.loadPosters();
     } else {
       this.entries = [];
       this.groups = [];
@@ -264,6 +269,30 @@ export struct ReleaseCalendar {
       this.errorMessage = 'Could not load the calendar.';
     }
     this.loading = false;
+  }
+
+  private async loadPosters(): Promise<void> {
+    for (const entry of this.entries) {
+      const workId = entry.work_id;
+      if (workId === undefined || workId === null || this.posters.has(workId)) {
+        continue;
+      }
+      const result = await fetchWorkArtwork(workId, 'poster');
+      if (result.kind === 'ok') {
+        const next = new Map<string, image.PixelMap>(this.posters);
+        next.set(workId, result.value);
+        this.posters = next;
+      }
+    }
+  }
+
+  private posterSource(entry: CalendarEntry): image.PixelMap | string {
+    const workId = entry.work_id;
+    const loaded = workId !== undefined && workId !== null ? this.posters.get(workId) : undefined;
+    if (loaded !== undefined) {
+      return loaded;
+    }
+    return entry.poster_url !== undefined && entry.poster_url !== null ? entry.poster_url : '';
   }
 
   /** Filters the loaded window into day groups and selects the first item, as web on a filter change. */
@@ -392,7 +421,7 @@ export struct ReleaseCalendar {
   @Builder
   private entryCard(item: CalendarItem, width: number, phoneMinWidth: number = 0, phoneTextGap: number = 0): void {
     Row({ space: tv(POSTER_GAP) }) {
-      Image(item.entries[0].poster_url !== undefined && item.entries[0].poster_url !== null ? item.entries[0].poster_url : '')
+      Image(this.posterSource(item.entries[0]))
         .width(tv(POSTER_WIDTH))
         .height(tv(POSTER_HEIGHT))
         .borderRadius(tv(POSTER_RADIUS))
@@ -534,13 +563,32 @@ export struct ReleaseCalendar {
       Row({ space: tv(WEEK_COLUMN_GAP) }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) }) {
-            Text(dayHeading(cell.day)).fontFamily(nunito(500))
-              .fontSize(tv(DAY_HEADING_SIZE))
-              .fontWeight(FontWeight.Medium)
-              .fontColor(toResourceColor(activeColors().ink))
-              .height(tv(WEEK_HEADING_HEIGHT))
+            Row({ space: tv(10) }) {
+              Text(dayHeading(cell.day)).fontFamily(nunito(500))
+                .fontSize(tv(DAY_HEADING_SIZE))
+                .fontWeight(FontWeight.Medium)
+                .fontColor(toResourceColor(activeColors().ink))
+              if (cell.isToday) {
+                Text(t('pages.calendar.today', 'Today')).fontFamily(nunito(500))
+                  .fontSize(tv(TODAY_TAG_SIZE))
+                  .fontWeight(FontWeight.Medium)
+                  .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
+                  .textCase(TextCase.UpperCase)
+                  .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+                  .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
+                  .borderRadius(tv(11))
+                  .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
+              }
+            }
+            .height(tv(WEEK_HEADING_HEIGHT))
+            .alignItems(VerticalAlign.Center)
             Scroll() {
               Column({ space: tv(ENTRY_GAP + 1) }) {
+                if (cell.entries.length === 0) {
+                  Text(t('pages.calendar.dayEmpty', 'Nothing scheduled')).fontFamily(nunito(400))
+                    .fontSize(tv(ENTRY_TITLE_SIZE))
+                    .fontColor(toResourceColor(activeColors().inkSoft))
+                }
                 ForEach(groupSeriesEpisodes(cell.entries), (item: CalendarItem) => {
                   this.entryCard(item, WEEK_COLUMN_WIDTH)
                 }, (item: CalendarItem): string => item.key)
@@ -881,6 +929,7 @@ export struct ReleaseCalendar {
       icon: $r('app.media.action_filters'),
       label: t('pages.search.filters', 'Filters'),
       slot: 1,
+      ringed: isTvMetrics() && this.view !== 'agenda', // web: after a view switch focus is back on Filters (week, month)
       onActivate: (): void => {
         this.filtersOpen = true;
       },
@@ -1059,7 +1108,7 @@ export struct ReleaseCalendar {
   @Builder
   private phoneCard(item: CalendarItem, minWidth: number, wrap: boolean, fixedHeight: number): void {
     Row({ space: tv(POSTER_GAP) }) {
-      Image(item.entries[0].poster_url !== undefined && item.entries[0].poster_url !== null ? item.entries[0].poster_url : '')
+      Image(this.posterSource(item.entries[0]))
         .width(tv(POSTER_WIDTH))
         .height(tv(POSTER_HEIGHT))
         .borderRadius(tv(POSTER_RADIUS))

@@ -147,6 +147,7 @@ import {
   fetchMediaThumbnail,
   HERO_ARTWORK_PRIORITY,
   COVER_ARTWORK_PRIORITY,
+  LANDSCAPE_ARTWORK_PRIORITY,
 } from '../data/ArtworkRepository';
 
 import type {
@@ -252,6 +253,8 @@ const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 537;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
+/** Room under a landscape Similar card for its caption and the focus shadow. */
+const SIMILAR_LIST_EXTRA: number = 70;
 const CAST_CIRCLE: number = 104;
 /** Web's first circle starts 24 vp in from the rail edge (the item is wider than ours); ours sat at 10. */
 const CAST_LEFT_INSET: number = 14;
@@ -1124,7 +1127,7 @@ struct Detail {
       if (item.similarWorkId === null) {
         continue;
       }
-      const result = await fetchWorkArtworkByPriority(item.similarWorkId, COVER_ARTWORK_PRIORITY);
+      const result = await fetchWorkArtworkByPriority(item.similarWorkId, isTvMetrics() ? LANDSCAPE_ARTWORK_PRIORITY : COVER_ARTWORK_PRIORITY);
       if (!this.artworkStore.isCurrentGeneration(generation)) {
         return;
       }
@@ -1675,8 +1678,8 @@ struct Detail {
         variant: 'home',
         title: (item as DetailRow).title,
         subtitle: (item as DetailRow).subtitle,
-        cardWidth: tv(TvGeometry.homeRailCardWidthCover),
-        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthCover) * 3) / 2),
+        cardWidth: tv(TvGeometry.homeRailCardWidthLandscape),
+        cardHeight: Math.round((tv(TvGeometry.homeRailCardWidthLandscape) * 9) / 16),
         artworkRadius: Radii.homeCardArtworkTv,
         activeRailFactor: activeRailFactor,
         onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
@@ -2109,15 +2112,21 @@ struct Detail {
         .alignItems(HorizontalAlign.Start)
       }
       if (this.similarRail !== null) {
-        MediaRail({
-          railId: this.similarRail.id,
-          heading: this.similarRail.heading,
-          headingSize: tv(TvGeometry.railHeadingSize),
-          items: this.similarRail.items,
-          itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
-            this.similarItem(item, index, activeRailFactor);
-          },
-        })
+        // web: landscape cards (the Library's size) under a heading with the title count
+        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
+          this.railHeading(this.similarRail.heading, tf(this.similarRail.items.length === 1 ? 'pages.workDetail.titlesCountOne' : 'pages.workDetail.titlesCountOther', this.similarRail.items.length === 1 ? '{{count}} title' : '{{count}} titles', { count: this.similarRail.items.length.toString() }))
+          MediaRail({
+            railId: this.similarRail.id,
+            headingGap: 0,
+            listHeight: tv(Math.round(TvGeometry.homeRailCardWidthLandscape * 9 / 16) + SIMILAR_LIST_EXTRA),
+            itemGap: tv(TvGeometry.railItemGapHome),
+            items: this.similarRail.items,
+            itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
+              this.similarItem(item, index, activeRailFactor);
+            },
+          })
+        }
+        .alignItems(HorizontalAlign.Start)
       }
     }
     .alignItems(HorizontalAlign.Start)
