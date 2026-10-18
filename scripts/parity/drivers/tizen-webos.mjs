@@ -468,6 +468,8 @@ export async function createDriver() {
       if (REAL_TV) {
         // Real TV: no X display. The inspector's Page.captureScreenshot shows the app only (no system menus, keyboard or video plane).
         if (await ev(BAD)) throw new Error("signed out or error page");
+        // The web refs are taken at the top of a detail page (web driver does the same): the focus-scroll to the first episode card must not show in the capture.
+        await ev(`(/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash) && ([document.scrollingElement, ...document.querySelectorAll("*")].forEach((e) => { if (e && e.scrollTop > 0) e.scrollTop = 0; }), true))`);
         await settleVisibleImages();
         await guard();
         if (TIZEN_MIRROR) {
