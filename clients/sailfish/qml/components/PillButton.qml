@@ -33,7 +33,7 @@ MouseArea {
         anchors.fill: parent
         radius: height / 2
         color: root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
-        border.width: root.primary || root.fill.a > 0 ? 0 : 1
+        border.width: root.primary || root.fill.a > 0 || root.lift ? 0 : 1
         border.color: Tokens.line
         opacity: root.pressed ? 0.7 : 1
     }
