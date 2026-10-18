@@ -113,7 +113,7 @@ calendar and the avatar drifted between runs. The static parity server serves on
     scripts/parity/static-server.sh            # builds what is missing, then serves until Ctrl-C
     scripts/parity/static-server.sh --build    # build only
 
-- **URL and account:** `scripts/parity/parity.env` (`PARITY_SERVER_URL`, this host's LAN address and port, so real TVs and
+- **URL and account:** `scripts/parity/parity.env` (`PARITY_SERVER_URL`, built from this host's LAN address (detected, never committed) and a fixed port, so real TVs and
   phones reach it; `PARITY_ACCOUNT_NAME`). The password is `PLAYARR_PARITY_STATIC_PASSWORD` in `~/.secrets`, never in the
   repo. The web client is served at `<url>/tv`. The clock is `screens.json` `determinism.clock`, exported as `PARITY_CLOCK`.
 - **Content:** built from scratch by `scripts/parity/static/build-db.mjs` from `static/catalogue.mjs`: 30 films, 20 series with
