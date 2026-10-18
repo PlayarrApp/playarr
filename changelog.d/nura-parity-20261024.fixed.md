@@ -1,0 +1,1 @@
+- Nura: the Agenda has the web's backdrop wash and control spacing, the month dots are the web size, the title actions rows sit 2 px lower like the web, Week keeps its own chip colours, and the capture guard also rejects black display tiles.

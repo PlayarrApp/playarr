@@ -103,11 +103,11 @@ pub fn css(dark: bool) -> String {
             "grayscale(1) contrast(0.88) brightness(1.1)"
         }
     );
-    // Light agenda availability is the web's dark green (dark keeps the mint of style.css).
+    // Light agenda availability is the web's dark green (dark keeps the mint of style.css); the light agenda has no backdrop wash.
     let have = if dark {
         ""
     } else {
-        "button.pa-entry.have { border-left-color: #224c3a; }\n.pa-dot.have { background: #224c3a; }\n.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#224c3a, 0.65); background: alpha(#224c3a, 0.16); }\n"
+        "button.pa-entry.have { border-left-color: #224c3a; }\n.pa-dot.have { background: #224c3a; }\n.pa-chip-status.ok { color: @pa_ink; border-color: alpha(#224c3a, 0.65); background: alpha(#224c3a, 0.16); }\n.pa-agenda-bg { background: none; }\n"
     };
     defs + &hero + include_str!("../data/style.css") + have + &cover
 }
