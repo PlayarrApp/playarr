@@ -2405,12 +2405,21 @@ struct Detail {
   /** Phone: web's action rows. Download, Playback and Add to Playlist open the title actions drawer; Play is the primary pill. */
   @Builder
   private touchActionButton(label: string, onTap: () => void, size: number = 8, glyph: string = '', share: boolean = false): void {
-    Text(glyph.length > 0 ? glyph + '  ' + label : label).fontFamily(nunito(500))
-      .fontSize(size)
-      .fontWeight(FontWeight.Medium)
-      .fontColor(toResourceColor(activeColors().inkSoft))
+    Row({ space: 6 }) {
+      if (glyph.length > 0) {
+        // web: the pill glyphs are the brand pink (accent in light)
+        Text(glyph).fontFamily(nunito(500))
+          .fontSize(size)
+          .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
+      }
+      Text(label).fontFamily(nunito(500))
+        .fontSize(size)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .maxLines(1)
+    }
       .height(44)
-      .textAlign(TextAlign.Center)
+      .justifyContent(FlexAlign.Center)
       .padding({ left: 16, right: 16 })
       .borderRadius(22)
       .layoutWeight(share ? 1 : 0)
