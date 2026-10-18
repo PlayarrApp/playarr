@@ -1823,7 +1823,7 @@ struct Detail {
 
   /** Web's series pills carry a soft drop shadow (light theme; the dark pills are flat). */
   private pillShadow(primary: boolean): ShadowOptions {
-    if (!this.isSeriesPage() || resolvedThemeMode() === 'dark') {
+    if (resolvedThemeMode() === 'dark') {  // the film page's light pills take the series page's white fill and shadow (static-server refs)
       return { radius: 0, color: Color.Transparent };
     }
     return primary
@@ -1855,7 +1855,7 @@ struct Detail {
     .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(primary ? (this.filmPlayFocused(primary) ? toResourceColor(activeColors().accent) : toResourceColor(activeColors().ink)) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .backgroundColor(primary ? (this.filmPlayFocused(primary) ? PLAY_FOCUS_FILL : toResourceColor(activeColors().ink)) : resolvedThemeMode() === 'dark' ? (this.isSeriesPage() ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA)) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
     .shadow(this.pillShadow(primary))
     .border(this.filmPlayFocused(primary) ? { width: tv(3), color: resolvedThemeMode() === 'dark' ? '#ffffff' : toResourceColor(activeColors().ink) } : { width: 0 })
     .opacity(enabled ? 1 : 0.5)
