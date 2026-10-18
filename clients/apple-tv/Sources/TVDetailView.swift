@@ -501,7 +501,7 @@ struct TVWorkDetailView: View {
     }
 
     /// Web "S01 · E01"; the tvOS client keeps its spaced "S 01 · E 01".
-    private func episodeCode(season: Int, episode: Int) -> String {
+    private func episodeCode(season: Int32, episode: Int32) -> String {
         let s = String(format: "%02d", season), e = String(format: "%02d", episode)
         return macDetail("S\(s) \u{00B7} E\(e)", "S \(s) \u{00B7} E \(e)")
     }
