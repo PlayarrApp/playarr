@@ -317,6 +317,7 @@ Steps only the repository owner can perform.
 | ID | Task | Status | Owner | Branch | Depends | ETA | Notes |
 |---|---|---|---|---|---|---|---|
 | 9101 | VIDAA: sign-in link code half off screen; every TV screen must fit the reported viewport | blocked_on_owner | parity-vidaa | | | | PR 237 merged; tv-viewport check is green across ten viewports. 2026-10-17: the real TV answers the remote (state call returns the foreground debug page) but the screen can only be judged by eye. Blocked by: owner (Thomas): eye check of the sign-in link code on the real VIDAA screen (1280x720 viewport, stage zoom 0.667). |
+| 10774 | Tizen: opening the on-screen keyboard must not resize or move the app shell | in_review | claude | web-tizen-ime-shell-20261019 | | 2026-10-20 12:00 ICT | PR open: #364. Cause: installTvStageScale recomputed zoom from the shrunken innerHeight on resize. Fix ignores height-only shrinks while a text field is focused. Tizen emulator check still to schedule. |
 
 ## 12. Player progress and resume (2026-10-07)
 
