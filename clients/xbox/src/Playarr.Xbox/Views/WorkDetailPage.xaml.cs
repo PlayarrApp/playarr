@@ -510,7 +510,7 @@ namespace Playarr.Xbox.Views
                     }
                 };
                 CardFocus.Attach(list);
-                var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 44 : 60, 0, 0) };
+                var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 48 : 60, 0, 0) };
                 section.Children.Add(DetailRailTitle("Similar Titles"));
                 section.Children.Add(new TextBlock
                 {
@@ -948,7 +948,8 @@ namespace Playarr.Xbox.Views
                     }
                 };
 
-                var section = new StackPanel { Margin = new Thickness(0, 13, 0, 11) };
+                // The first rail starts at the same page-top line as a film's Chapters (web title at y 553); later seasons follow it.
+                var section = new StackPanel { Margin = new Thickness(0, SeriesPanel.Children.Count == 0 ? 195 : 13, 0, 11) };
                 section.Children.Add(DetailRailTitle(SeasonLabel(season)));
                 section.Children.Add(new TextBlock
                 {
