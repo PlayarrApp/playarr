@@ -17,7 +17,7 @@ const PADDING_H: number = 46;
 const HEADER_TOP: number = 54;
 // Web body starts at y=163: 34 below the 75 high header block.
 const BODY_GAP: number = 35;
-// TV: the body's focus rings are drawn outside their rows; the scroll box is widened by this much and the content padded back so the Scroll clip keeps them.
+// TV: the body's focus rings are drawn outside their rows; the drawer's side padding gives this much to the scroll box and takes it back from the header and the content.
 const RING_ROOM: number = 4;
 const KICKER_SIZE: number = 9.6;
 const KICKER_LETTER_SPACING: number = 0.672;
@@ -120,6 +120,7 @@ export struct Drawer {
       }
       .width('100%')
       .alignItems(VerticalAlign.Top)
+      .padding({ left: isTvMetrics() ? tv(RING_ROOM) : 0, right: isTvMetrics() ? tv(RING_ROOM) : 0 })
       .margin({ top: isTvMetrics() ? tv(HEADER_TOP) : atLeast(TOUCH_HEADER_TOP, this.safeTop) })
       Scroll() {
         Column() {
@@ -129,19 +130,18 @@ export struct Drawer {
         .padding(isTvMetrics() ? tv(RING_ROOM) : 0)
         .alignItems(HorizontalAlign.Start)
       }
-      .width(isTvMetrics() ? tv(DRAWER_WIDTH - 2 * PADDING_H + 2 * RING_ROOM) : '100%')
+      .width('100%')
       .layoutWeight(1)
       .align(Alignment.Top)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
-      .margin(isTvMetrics() ? { top: tv(BODY_GAP - RING_ROOM), left: -tv(RING_ROOM) } : { top: TOUCH_BODY_GAP })
+      .margin(isTvMetrics() ? { top: tv(BODY_GAP - RING_ROOM) } : { top: TOUCH_BODY_GAP })
     }
     .width(isTvMetrics() ? tv(DRAWER_WIDTH) : '100%')
-    .alignItems(HorizontalAlign.Start) // the TV scroll box is wider than the content box (ring room), so no centring
     .height('100%')
     .padding({
-      left: isTvMetrics() ? tv(PADDING_H) : atLeast(TOUCH_PADDING_H, this.safeLeft),
-      right: isTvMetrics() ? tv(PADDING_H) : atLeast(TOUCH_PADDING_H, this.safeRight),
+      left: isTvMetrics() ? tv(PADDING_H - RING_ROOM) : atLeast(TOUCH_PADDING_H, this.safeLeft),
+      right: isTvMetrics() ? tv(PADDING_H - RING_ROOM) : atLeast(TOUCH_PADDING_H, this.safeRight),
       bottom: isTvMetrics() ? 0 : 24 + this.safeBottom,
     })
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, isTvMetrics() ? DRAWER_BG_ALPHA : 1))
