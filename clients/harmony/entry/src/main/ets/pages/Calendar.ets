@@ -123,7 +123,7 @@ const PHONE_CARD_NO_MAX: number = 10000;
 // Web line boxes inside a phone entry: 1.5 times the 16 / 16 / 14 vp type.
 const PHONE_LINE_TITLE: number = 24;
 const PHONE_LINE_META: number = 21;
-const PHONE_AGENDA_BLEED: number = 16;
+const PHONE_AGENDA_BLEED: number = 0; // the static-server web ref keeps the cards inside the page padding
 const PHONE_AGENDA_CARD_MIN_WIDTH: number = 390;
 const PHONE_CONTROL_FONT: number = 11.2;
 // Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
@@ -458,7 +458,7 @@ export struct ReleaseCalendar {
     .scrollable(ScrollDirection.Horizontal)
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
-    .width(`calc(100% + ${PHONE_AGENDA_BLEED}vp)`) // web: the agenda cards run to the screen edge
+    .width(`calc(100% + ${PHONE_AGENDA_BLEED}vp)`) // web: the agenda cards end at the page padding
   }
 
   @Builder
