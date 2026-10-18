@@ -136,21 +136,6 @@ class FocusedOverflowModifier implements AttributeModifier<ListAttribute> {
   }
 }
 
-/** Lets a card's focus ring draw past its list cell (only when asked; other rails keep the platform default). */
-class ItemOverflowModifier implements AttributeModifier<ListItemAttribute> {
-  private overflow: boolean;
-
-  constructor(overflow: boolean) {
-    this.overflow = overflow;
-  }
-
-  applyNormalAttribute(instance: ListItemAttribute): void {
-    if (this.overflow) {
-      instance.clip(false);
-    }
-  }
-}
-
 /** Web's `--page-edge-fade-size` on a phone. */
 const RAIL_END_FADE_SIZE: number = 38;
 /** Web TV `--page-edge-fade-size` (5.5 x the 10.8 vp viewport unit, 59.4 at 1920) and `--page-edge-fade-floor`. */
@@ -248,8 +233,8 @@ export struct MediaRail {
   @Prop listHeight: number = 0;
   /** Phone: how far the card row runs on past the page padding at its end (web's rails clip at the screen edge, dimmed by the end fade). */
   @Prop bleedEnd: number = 0;
-  /** Phone detail: draw a card's focus ring past its list cell (the ring is clipped to the cell otherwise). */
-  @Prop overflowItems: boolean = false;
+  /** Phone detail: room around each card inside its list cell for the focus ring and glow (the list clips to its content box, which starts at the first card). The list padding, margin and item gap give the same room back, so the cards do not move. */
+  @Prop itemInset: number = 0;
   /** Allow scaled focus decoration into the List's padding when the parent layout has reserved clip inset. */
   @Prop allowFocusedOverflow: boolean = false;
   /** Optional larger phone clip allowance for focused artwork rings. */
@@ -419,14 +404,14 @@ export struct MediaRail {
           .scale({ x: (1 + (FOCUS_LIFT.railHeading.scale - 1) * this.headingEffective()), y: (1 + (FOCUS_LIFT.railHeading.scale - 1) * this.headingEffective()), centerX: 0, centerY: '50%' })
       }
 
-      List({ space: this.itemGap, scroller: this.listScroller }) {
+      List({ space: this.itemGap - this.itemInset, scroller: this.listScroller }) {
         ForEach(
           this.items,
           (item: MediaRailItem, index: number) => {
             ListItem() {
               this.itemBuilder(item, index, this.activeRailFactor)
             }
-            .attributeModifier(new ItemOverflowModifier(this.overflowItems))
+            .padding({ left: this.itemInset, top: this.itemInset })
             .onAreaChange((_oldArea: Area, area: Area) => {
               this.onItemAreaChange(item.id, index, area, this.listScroller.currentOffset().xOffset);
               this.updateFade();
@@ -436,15 +421,15 @@ export struct MediaRail {
         )
       }
       .listDirection(Axis.Horizontal)
-      .width(this.bleedEnd > 0 ? `calc(100% + ${this.bleedEnd}vp)` : '100%')
+      .width(this.bleedEnd + this.itemInset > 0 ? `calc(100% + ${this.bleedEnd + this.itemInset}vp)` : '100%')
       .overlay(isTvMetrics() ? this.tvEdgeMask() : this.endFade(), isTvMetrics() ? { align: Alignment.TopStart } : { align: Alignment.End })
       .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
-      .height(this.listHeight > 0 ? this.listHeight + this.clipInsetTop : '100%')
+      .height(this.listHeight > 0 ? this.listHeight + this.clipInsetTop + this.itemInset : '100%')
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
       .attributeModifier(new FocusedOverflowModifier(this.allowFocusedOverflow))
       .padding({ left: this.clipInsetStart, top: this.clipInsetTop, bottom: RAIL_CLIP_INSET_BOTTOM })
-      .margin({ left: -this.clipInsetStart, top: -this.clipInsetTop, bottom: -RAIL_CLIP_INSET_BOTTOM })
+      .margin({ left: -(this.clipInsetStart + this.itemInset), top: -(this.clipInsetTop + this.itemInset), bottom: -RAIL_CLIP_INSET_BOTTOM })
       .focusScopeId(this.railId, true, true)
       .id(this.measurementId.length > 0 ? this.measurementId : this.railId + '-list')
       .onFocus(() => {

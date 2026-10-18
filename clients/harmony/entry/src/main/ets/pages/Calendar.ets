@@ -118,6 +118,10 @@ const PHONE_WEEK_CARD_MIN_HEIGHT: number = 64;
 const PHONE_WEEK_TEXT_GAP: number = 2.4;
 const PHONE_WEEK_META_ROW_GAP: number = 3.2;
 const PHONE_WEEK_MAX_LINES: number = 4;
+const PHONE_WEEK_HEADING_GAP: number = 8.3;
+// Web phone entry padding (0.35rem); the agenda card is a fixed 92 vp with its text block top-aligned like the web's.
+const PHONE_CARD_PAD: number = 5.6;
+const PHONE_AGENDA_PAD_BOTTOM: number = 9.1;
 const PHONE_CARD_NO_MAX: number = 10000;
 // Web line boxes inside a phone entry: 1.5 times the 16 / 16 / 14 vp type.
 const PHONE_LINE_TITLE: number = 24;
@@ -127,6 +131,7 @@ const PHONE_AGENDA_CARD_MIN_WIDTH: number = 390;
 const PHONE_CONTROL_FONT: number = 11.2;
 // Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
 const PHONE_CONTROL_GAP: number = 9.6;
+const PHONE_ARROW_FONT: number = 9;
 const PHONE_CONTROL_RIGHT: number = 16.7;
 const PHONE_TODAY_WIDTH: number = 72.7;
 const PHONE_RING_OUTSET: number = 5.3;
@@ -978,16 +983,16 @@ export struct ReleaseCalendar {
     }
     .width('100%')
     .justifyContent(FlexAlign.End)
-    .padding({ top: this.view === 'month' ? 14 : 0, bottom: this.view === 'month' ? 12 : 19, right: PHONE_CONTROL_RIGHT })
-    .margin({ top: this.view === 'month' ? 0 : -4 })
+    .padding({ top: this.view === 'month' ? 14 : 0, bottom: this.view === 'month' ? 12 : (this.view === 'week' ? 9.7 : 19), right: PHONE_CONTROL_RIGHT })
+    .margin({ top: this.view === 'month' ? 0 : (this.view === 'week' ? 12.7 : -4) }) // web's week view sits 16.7 vp lower than the agenda's
   }
 
   @Builder
   private touchControl(label: string, width: number, onTap: () => void): void {
     Stack() {
-      Text(label).fontFamily(nunito(700))
-        .fontSize(PHONE_CONTROL_FONT)
-        .fontWeight(FontWeight.Bold)
+      Text(label).fontFamily(nunito(label.length === 1 ? 400 : 700))
+        .fontSize(label.length === 1 ? PHONE_ARROW_FONT : PHONE_CONTROL_FONT)
+        .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .textAlign(TextAlign.Center)
         .width(width)
@@ -1092,7 +1097,7 @@ export struct ReleaseCalendar {
       minHeight: fixedHeight > 0 ? fixedHeight : PHONE_WEEK_CARD_MIN_HEIGHT,
       maxHeight: fixedHeight > 0 ? fixedHeight : PHONE_CARD_NO_MAX,
     })
-    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: 8, bottom: 8 })
+    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: PHONE_CARD_PAD, bottom: fixedHeight > 0 ? PHONE_AGENDA_PAD_BOTTOM : PHONE_CARD_PAD })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
     .border({
@@ -1119,12 +1124,8 @@ export struct ReleaseCalendar {
     Scroll(this.weekScroller) {
       Row({ space: PHONE_WEEK_GAP }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
-          Column({ space: tv(WEEK_HEADING_GAP) }) {
-            Text(dayHeading(cell.day)).fontFamily(nunito(500))
-              .fontSize(tv(DAY_HEADING_SIZE))
-              .fontWeight(FontWeight.Medium)
-              .fontColor(toResourceColor(activeColors().ink))
-              .height(tv(WEEK_HEADING_HEIGHT))
+          Column({ space: PHONE_WEEK_HEADING_GAP }) {
+            this.dayHeader(cell.day)
             Scroll() {
               Column({ space: tv(ENTRY_GAP + 1) }) {
                 ForEach(groupSeriesEpisodes(cell.entries), (item: CalendarItem) => {
