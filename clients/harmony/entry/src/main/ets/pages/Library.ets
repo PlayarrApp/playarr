@@ -1386,6 +1386,8 @@ export struct Library {
         this.setLanguages(true, values);
       },
     })
+      // web phone: 26 vp between the sections, as under the segment rows
+      .margin({ bottom: isTvMetrics() ? 0 : 22 })
     MultiSelect({
       heading: t('pages.library.subtitleLanguage', 'Subtitle language'),
       options: this.languageChoices(this.subtitleFacets, this.subtitleLangs),
@@ -1396,6 +1398,8 @@ export struct Library {
         this.setLanguages(false, values);
       },
     })
+      // web phone: 26 vp between the sections, as under the segment rows
+      .margin({ bottom: isTvMetrics() ? 0 : 22 })
   }
 }
 

@@ -515,7 +515,7 @@ export function createDriver({ out, args = [] } = {}) {
   const ecp = `http://${target}:8060`;
   const keyDelay = Math.max(300, Number(env.ROKU_PARITY_KEY_DELAY_MS ?? 850));
   const selectDelay = Math.max(1000, Number(env.ROKU_PARITY_SELECT_DELAY_MS ?? 2600));
-  const artEnabled = env.ROKU_ART_READINESS === "1";
+  const artEnabled = env.ROKU_ART_READINESS !== "0";
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const parityState = createParityState();
   let socket;
@@ -705,8 +705,8 @@ export function createDriver({ out, args = [] } = {}) {
       await sleep(650);
     }
     await waitFor(() => focusSeq > beforeFocusSeq && focusSeq > focusFloorAtScreen && focusScreenSeq === screenSeq, "fresh profile focus", 5000);
-    if (!hasFreshScreenFocus({ screen, screenSeq, focus, focusSeq, focusScreenSeq }, "profiles", "Device Test", beforeScreenSeq, beforeFocusSeq)) {
-      throw new Error("Roku did not report fresh Device Test profile focus; refusing to select another profile");
+    if (!hasFreshScreenFocus({ screen, screenSeq, focus, focusSeq, focusScreenSeq }, "profiles", process.env.ROKU_PROFILE_NAME ?? "Device Test", beforeScreenSeq, beforeFocusSeq)) {
+      throw new Error(`Roku did not report fresh ${process.env.ROKU_PROFILE_NAME ?? "Device Test"} profile focus; refusing to select another profile`);
     }
   };
 

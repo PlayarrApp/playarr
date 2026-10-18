@@ -2,7 +2,7 @@
 """Drive the Android phone client through the parity screens and screencap each one.
 
 Prerequisites (see docs/parity/android-mobile/README.md): an emulator at 1170x2532, 480 dpi
-(390x844 dp), the sideload debug APK installed, signed in as fx-viewer and launched by capture.sh (which sets the theme
+(390x844 dp), the sideload debug APK installed, signed in as the static parity account and launched by capture.sh (which sets the theme
 and the debug launch extras), `adb` on PATH (ANDROID_SERIAL selects the device).
 Usage: capture.py <out-dir> <screen-id>...
 Screen ids follow scripts/parity/screens.json. Taps use uiautomator content descriptions

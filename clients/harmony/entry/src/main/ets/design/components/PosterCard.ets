@@ -208,6 +208,8 @@ export struct PosterCard {
   @Prop episodeCaption: string = '';
   /** Optional episode number rendered over the lower-right of the artwork. */
   @Prop episodeNumberOverlay: string = '';
+  /** Dark wash over the artwork (0 for none): web dims video frames on the chapter cards. */
+  @Prop artWash: number = 0;
 
   @Prop titleFontSize: number = CARD_TITLE_FONT_SIZE_TV;
   @Prop subtitleFontSize: number = CARD_SUBTITLE_FONT_SIZE_TV;
@@ -397,6 +399,14 @@ export struct PosterCard {
             .onAreaChange((_oldArea: Area, _area: Area) => { this.onArtworkAreaChanged(); })
         } else {
           Skeleton({ blockWidth: this.cardWidth, blockHeight: this.cardHeight, radius: this.resolvedArtworkRadius() })
+        }
+
+        if (this.artWash > 0 && this.artwork !== undefined) {
+          Column()
+            .width('100%')
+            .height('100%')
+            .backgroundColor(`rgba(30, 30, 30, ${this.artWash})`)
+            .hitTestBehavior(HitTestMode.None)
         }
 
         if (this.progress >= 0) {

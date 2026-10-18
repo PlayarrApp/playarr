@@ -238,8 +238,8 @@ export struct PageShell {
             .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .textAlign(TextAlign.Center)
-            .width(43)
-            .height(43)
+            .width(44)
+            .height(44)
             .borderRadius(22)
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
@@ -260,7 +260,8 @@ export struct PageShell {
         }
       }
       .width('100%')
-      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(17, this.safeTop), bottom: 12 })
+      // Back is 44 vp but web's header row is 43: take the extra vp off the bottom padding
+      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(17, this.safeTop), bottom: 11 })
       .alignItems(VerticalAlign.Center)
       // Web phone hides the header subtitle (web #1299): no count or section line under the title.
       Column() {

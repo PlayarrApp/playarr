@@ -72,11 +72,13 @@ export struct SelectField {
 
   build() {
     Column({ space: tv(STACK_GAP) }) {
-      Row({ space: tv(GAP) }) {
+      // Phone: a tighter row gap (the lead's margin keeps the label start), so a 112 vp select fits "Light" and "Auto" on one line.
+      Row({ space: isTvMetrics() ? tv(GAP) : 8 }) {
         if (this.lead.length > 0) {
           Image(this.lead === 'sun' ? $r('app.media.select_sun') : $r('app.media.select_globe'))
             .width(this.labelSize * 1.5)
             .height(this.labelSize * 1.5)
+            .margin({ right: isTvMetrics() ? 0 : 3.52 })
             .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
         }
         Text(this.labelOf(this.value)).fontFamily(nunito(this.labelWeight))

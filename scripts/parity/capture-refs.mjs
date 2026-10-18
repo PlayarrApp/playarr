@@ -25,6 +25,7 @@ import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { PNG } from "pngjs";
 import { verifyDir } from "./verify-refs.mjs";
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const here = dirname(fileURLToPath(import.meta.url));
 const manifest = JSON.parse(readFileSync(join(here, "web-refs.json"), "utf8"));
 const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
@@ -128,18 +129,28 @@ for (const name of groups) {
       mkdirSync(join(work, name, theme), { recursive: true });
       for (const s of screens) {
         try {
-          await driver.home();
-          if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
-          else if (s.open) await driver.route(s.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(s.open) });
-          else if (!g.mobile && s.keys) for (const { key, long } of expandKeys(s.keys)) await driver.key(key, { long });
-          else await driver.route(s.route);
-          await driver.waitReady({ screen: s.id, phase: "route" });
-          await driver.waitReady({ screen: s.id, phase: "capture" });
-          const imagePath = join(work, name, theme, `${s.id}.png`);
-          await driver.screenshot(imagePath);
-          captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, sha256: createHash("sha256").update(readFileSync(imagePath)).digest("hex"), build: webBuild.sha, checked_at: new Date().toISOString() });
-          facts[`${theme}/${s.id}`] = await driver.inspect();
-          console.log(`ok ${name} ${theme} ${s.id}`);
+          // A screen is retaken (up to 3 times) when its facts show a race that verify-refs would reject: a panel still closing,
+          // a poster still loading after the readiness wait.
+          for (let attempt = 1; ; attempt++) {
+            await driver.home();
+            if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
+            else if (s.open) await driver.route(s.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(s.open) });
+            else if (!g.mobile && s.keys) for (const { key, long } of expandKeys(s.keys)) { await driver.key(key, { long }); await sleep(250); } // let the route or panel the key opened settle before the next key
+            else await driver.route(s.route);
+            await driver.waitReady({ screen: s.id, phase: "route" });
+            await driver.waitReady({ screen: s.id, phase: "capture" });
+            await sleep(600); // posters swap to their final source shortly after the first load
+            await driver.waitReady({ screen: s.id, phase: "capture" });
+            const imagePath = join(work, name, theme, `${s.id}.png`);
+            await driver.screenshot(imagePath);
+            const f = await driver.inspect();
+            const settled = !f.placeholderCards && !f.skeletons && !f.brokenSrc?.length && !!f.dialogs === manifest.dialogScreens.includes(s.id);
+            if (!settled && attempt < 3) { console.log(`retake ${name} ${theme} ${s.id} (attempt ${attempt}: dialogs ${f.dialogs}, placeholder cards ${f.placeholderCards}, skeletons ${f.skeletons})`); continue; }
+            captureRows.push({ id: s.id, theme, path: `${theme}/${s.id}.png`, sha256: createHash("sha256").update(readFileSync(imagePath)).digest("hex"), build: webBuild.sha, checked_at: new Date().toISOString() });
+            facts[`${theme}/${s.id}`] = f;
+            console.log(`ok ${name} ${theme} ${s.id}`);
+            break;
+          }
         } catch (e) { console.log(`FAIL ${name} ${theme} ${s.id}: ${e.message.split("\n")[0]}`); throw e; }
       }
     }
