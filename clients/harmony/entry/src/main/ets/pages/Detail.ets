@@ -205,7 +205,7 @@ const HERO_TOUCH_HEIGHT: number = 340;
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
 const PHONE_SEASON_LIST_HEIGHT: number = 165;
-const PHONE_SEASON_HEADER_CARD_GAP: number = 19.85;
+const PHONE_SEASON_HEADER_CARD_GAP: number = 21.18;
 const PHONE_DETAIL_RAIL_CLIP_START: number = 16;
 const PHONE_DETAIL_RAIL_CLIP_TOP: number = 36;
 // Web phone detail header (#175): the 44 vp Back button 16 vp from the top, an 8 vp gap, then the 28 vp edge fade of the pinned scrim.
