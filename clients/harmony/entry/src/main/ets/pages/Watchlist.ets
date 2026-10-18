@@ -23,6 +23,7 @@ import { WATCHLIST_NAV_ID } from '../navigation/NavItems';
 import { ROUTES } from '../navigation/Routes';
 import type { DetailRouteParams } from '../navigation/Routes';
 import { getNavStack, pushRoute } from '../navigation/NavStack';
+import { t } from '../core/Language';
 
 // Rows start where Search's results do: (826, 173), 1042 wide.
 const LIST_LEFT: number = 826;
@@ -138,7 +139,7 @@ export struct WatchlistScreen {
             }
           })
         }
-        this.pill('Remove from watchlist', (): void => {
+        this.pill(t('discovery.watchlist.remove', 'Remove from watchlist'), (): void => {
           this.remove(entry);
         })
       }
@@ -159,7 +160,7 @@ export struct WatchlistScreen {
       AsyncState({
         kind: AsyncStateKind.Error,
         message: "Couldn't load your watchlist",
-        retryLabel: 'Try again',
+        retryLabel: t('components.states.retry', 'Try again'),
         retry: (): void => {
           this.load();
         },
@@ -204,7 +205,7 @@ export struct WatchlistScreen {
   build() {
     NavDestination() {
       PageShell({
-        title: 'Watchlist',
+        title: t('pages.watchlist.title', 'Watchlist'),
         selectedId: WATCHLIST_NAV_ID,
         content: (): void => {
           this.pageContent();
