@@ -64,10 +64,11 @@ export async function createDriver() {
       if (!(await state()).focused) {
         // Focus requests do not take in the Previewer until a touch has activated focus: click the first card (opens its detail), come back.
         console.log(`  harmony home: no focus, dbg ${JSON.stringify((await state()).dbglog?.slice(-4))}; touch-activating`);
-        await get("/click?x=1044&y=544");
+        await get("/click?x=950&y=320"); // the On deck card (783..1115 x 224..405 at 1920x1080); a miss leaves Back to pop Home off the stack
         await sleep(8000);
         await get("/key/back");
         await sleep(6000);
+        if ((await state()).route !== "Home") { await get("/setroute?name=home"); await sleep(8000); await get("/setroute?name=focus:pcard"); await sleep(3000); }
       }
       await sleep(1500);
       await dbgShot("home-ready");
