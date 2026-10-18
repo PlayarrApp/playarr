@@ -2,13 +2,15 @@
 //   HARMONY_CTL=40017 (the bridge's control port; 40117 for the phone profile)
 // Keys go through the Previewer's command channel; the route and the focused item come from the preview-only parity state the patched
 // app reports to the bridge (scripts/harmony-wall/patch_state.py). Run it against a signed-in Previewer (scripts/harmony-wall/capture.py).
-import { writeFileSync, readFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync, appendFileSync } from "node:fs";
 
 let dbgN = 0;
 // Diagnostics for the focus checks: one line of state and a frame per call, kept under suite/dark (uploaded with the captures).
 const dbgShot = async (tag) => {
   const s = await (await get("/state")).json();
-  console.log(`  harmony ${tag}: ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-3) })}`);
+  const line = `  harmony ${tag}: ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-3) })} ${(await (await get("/health")).text()).trim().slice(0, 100)}`;
+  console.log(line);
+  mkdirSync("suite/dark", { recursive: true }); appendFileSync("suite/dark/dbg.log", line + "\n");
   try { mkdirSync("suite/dark", { recursive: true }); writeFileSync(`suite/dark/dbg-${String(++dbgN).padStart(2, "0")}-${tag}.png`, Buffer.from(await (await get("/shot.png")).arrayBuffer())); } catch {}
 };
 
@@ -42,6 +44,7 @@ export async function createDriver() {
       if (!name) throw new Error(`no preview route for ${path}`);
       const want = detail ? { route: "Detail", work_id: detail } : name.startsWith("library:") ? { route: "Library", lib_kind: name.slice(8) } : null;
       await get(`/setroute?name=${encodeURIComponent(name)}`);
+      await dbgShot(`route-${name.replace(/\W/g, "_")}-set`);
       const t0 = Date.now();
       for (;;) {
         await sleep(2000);
@@ -50,6 +53,7 @@ export async function createDriver() {
         if (Date.now() - t0 > 45000) { console.log(`  harmony route ${path}: state ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-4) })}`); break; }
       }
       await sleep(6000);
+      await dbgShot(`route-${name.replace(/\W/g, "_")}-done`);
     },
     async home() {
       await this.route("/");
