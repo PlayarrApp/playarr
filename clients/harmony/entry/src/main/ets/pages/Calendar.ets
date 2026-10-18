@@ -825,9 +825,10 @@ export struct ReleaseCalendar {
 
   @Builder
   private headerControl(label: string, round: boolean, onTap: () => void): void {
-    Text(label).fontFamily(nunito(700))
-      .fontSize(tv(HEADER_CONTROL_FONT))
-      .fontWeight(FontWeight.Bold)
+    // web: the round arrow buttons hold a small regular-weight glyph, the Today pill a bold label
+    Text(label).fontFamily(nunito(round ? 400 : 700))
+      .fontSize(tv(round ? HEADER_CONTROL_FONT * 0.75 : HEADER_CONTROL_FONT))
+      .fontWeight(round ? FontWeight.Normal : FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .textAlign(TextAlign.Center)
       .height(tv(HEADER_CONTROL_SIZE))

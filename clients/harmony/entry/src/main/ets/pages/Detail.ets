@@ -218,6 +218,7 @@ const PHONE_HEADER_FADE: number = 28;
 const PHONE_SEASON_ROW_GAP: number = 35.65;
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
+const PILL_GLYPH_DARK: string = '#ba8492'; // sampled from the dark static-server ref (anti-aliased thin glyph; refine if the colour reads off)
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
 const TOUCH_SETTLE_ATTEMPTS: number = 12;
 /** Web phone series detail, next-up episode in the middle: the page scrolled by about this much (measured on the 360 vp reference). */
@@ -1842,7 +1843,7 @@ struct Detail {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
       Text(glyph).fontFamily(nunito(400))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
-        .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().accent))
+        .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
       Text(label).fontFamily(nunito(700))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
         .fontWeight(FontWeight.Bold)
