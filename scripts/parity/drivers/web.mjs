@@ -233,6 +233,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const distDir = env.PLAYARR_WEB_DIST ?? join(dirname(fileURLToPath(import.meta.url)), "../../../clients/tv-web/web/dist");
   const localWeb = !env.PLAYARR_WEB_URL && (env.PLAYARR_WEB_DIST || existsSync(join(distDir, "index.html"))) ? await serveWebDist(distDir, env) : null;
   const web = (env.PLAYARR_WEB_URL ?? localWeb?.url ?? "https://playarr.app").replace(/\/$/, "");
+  // The static parity server hosts the web client under /tv: route checks below compare the path inside the app.
+  const webBase = new URL(web).pathname.replace(/\/$/, "");
+  const appPath = (url) => { const p = new URL(url).pathname; return webBase && (p === webBase || p.startsWith(`${webBase}/`)) ? p.slice(webBase.length) || "/" : p; };
   const configuredSecrets = secrets ?? (env.PLAYARR_DEVICE_TEST_SERVER_URL ? {
     PLAYARR_DEVICE_TEST_SERVER_URL: env.PLAYARR_DEVICE_TEST_SERVER_URL,
     PLAYARR_DEVICE_TEST_USERNAME: env.PLAYARR_DEVICE_TEST_USERNAME,
@@ -265,7 +268,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const ownedDownloads = new Map(); // media files started by this run, keyed to their media metadata
   const detailReadyTimeoutMs = 30000;
   const waitForDetailReady = async ({ requireHeroAction = false } = {}) => {
-    const path = new URL(page.url()).pathname;
+    const path = appPath(page.url());
     const match = /^\/(movies|series)\/([^/]+)\/?$/.exec(path);
     if (!match) return;
     const [kind, workId] = [match[1] === "movies" ? "movie" : "series", match[2]];
@@ -454,7 +457,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     await guard();
     await drainApiErrors();
     assertWebReady(page.url(), apiErrors);
-    const path = new URL(page.url()).pathname;
+    const path = appPath(page.url());
     // /profiles sits outside the nav shell, so it has no nav links to wait for.
     if (path === "/profiles") await page.waitForSelector(".profile-choice", { timeout: 30000 });
     else if (!path.startsWith("/player/")) await page.waitForSelector(".app-nav-link", { timeout: 30000 });
@@ -741,21 +744,21 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       // The app applies directional keys once per animation frame: let two frames pass before anything reads focus.
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     },
-    async location() { await guard(); const u = new URL(page.url()); await guard(); return u.pathname + u.search; },
+    async location() { await guard(); const u = new URL(page.url()); await guard(); return appPath(page.url()) + u.search; },
     // { label, position } of the focused item, or null when the page body has focus (a check then fails).
     // position: { rail, index } = Home rail number and card number in it, or { rail: "nav", index } for a nav item; null elsewhere.
     async focused() { await guard(); return stableFocus(); },
     async screenshot(file) {
       await guard();
       await page.mouse.move(-1, -1); // a pointer left over a control (the "#" alphabet-rail hover disc) draws a state no device can match
-      await waitReady({ screen: new URL(page.url()).pathname.split("/")[1] || "home", phase: "capture" });
+      await waitReady({ screen: appPath(page.url()).split("/")[1] || "home", phase: "capture" });
       // Every card on screen shows its poster: a card-art without a loaded img is a placeholder (fallback title on grey). Fatal in a stable capture.
       await labelled("every card shows its poster", () => page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 }));
       // Loading placeholders (skeletons, spinners) must be gone: a half-loaded screen is not a capture.
       await page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader"), null, { timeout: 20000 });
-      if (new URL(page.url()).pathname.startsWith("/login") || (await page.getByText("API request failed").count())) throw new Error(`signed out or error page (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"})`);
+      if (appPath(page.url()).startsWith("/login") || (await page.getByText("API request failed").count())) throw new Error(`signed out or error page (API errors: ${apiErrors.slice(-4).join(", ") || "none seen"})`);
       await guard();
-      const detailRoute = /^\/(movies|series)\/[^/]+\/?$/.test(new URL(page.url()).pathname);
+      const detailRoute = /^\/(movies|series)\/[^/]+\/?$/.test(appPath(page.url()));
       if (detailRoute) {
         try {
           await page.waitForFunction(() => {
@@ -769,6 +772,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         }
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       }
+      // A detail page opens at its top. On a phone the focus-scroll to the first episode card can land late and leave the page scrolled
+      // (a different frame per run), so the capture returns every scrolled box to the top first.
+      if (detailRoute) await page.evaluate(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; });
       if (disableAnimations) {
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await guard();
@@ -805,7 +811,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // Phone layout: long-press on a card is a context-menu event; opens the title-actions drawer of the first library card.
     async openActions() {
       await guard();
-      await page.locator("a[href^='/movies/']").first().dispatchEvent("contextmenu");
+      await page.locator(`a[href^='${webBase}/movies/']`).first().dispatchEvent("contextmenu");
       await guard();
       await page.waitForSelector(".media-context-drawer", { timeout: 10000 });
       await guard();
