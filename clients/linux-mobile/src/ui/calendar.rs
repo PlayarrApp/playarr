@@ -633,7 +633,7 @@ impl Cal {
                     cell.append(&row);
                 }
                 let foot = gtk4::Box::builder()
-                    .spacing(12)
+                    .spacing(6)
                     .valign(gtk4::Align::End)
                     .vexpand(true)
                     .css_classes(["pa-mfoot"])
@@ -642,6 +642,7 @@ impl Cal {
                     &gtk4::Label::builder()
                         .label(d.d.to_string())
                         .css_classes(["pa-mdaynum"])
+                        .xalign(0.0)
                         .build(),
                 );
                 if items.len() > shown {

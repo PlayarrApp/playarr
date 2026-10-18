@@ -137,8 +137,8 @@ struct CalendarView: View {
             }
             .padding(.leading, 120)
             .padding(.trailing, 86 * scale)
-            .padding(.top, 168 * proxy.size.height / 1024)
-            .padding(.bottom, 24)
+            .padding(.top, 171 * proxy.size.height / 1024)
+            .padding(.bottom, 136 * proxy.size.height / 1024)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
 
             PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
@@ -179,7 +179,7 @@ struct CalendarView: View {
                 PlayarrHeaderPill(label: "Calendar link", systemImage: "bell") { showingSubscription = true }
                 PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3", count: viewModel.filters.activeCount) { showingFilters = true }
             }
-            .frame(width: proxy.size.width - 16 * scale, alignment: .trailing)
+            .frame(width: proxy.size.width - 3 * scale, alignment: .trailing)
             .offset(y: min(max(116, proxy.size.height * 0.14), 164))
         }
     }
@@ -697,9 +697,9 @@ struct CalendarView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             ScrollView {
-                                LazyVStack(spacing: 13.6) {
+                                LazyVStack(spacing: phone ? 13.6 : 15.6) {
                                     ForEach(group.items) { item in
-                                        weekItemCard(item, width: laneWidth)
+                                        weekItemCard(item, width: laneWidth, tablet: !phone)
                                     }
                                     if group.items.isEmpty {
                                         Text("Nothing scheduled")
@@ -732,7 +732,7 @@ struct CalendarView: View {
         }
     }
 
-    private func weekItemCard(_ item: CalendarItem, width: CGFloat) -> some View {
+    private func weekItemCard(_ item: CalendarItem, width: CGFloat, tablet: Bool) -> some View {
         let entry = item.entries.first
         return Button {
             viewModel.select(item)
@@ -776,15 +776,22 @@ struct CalendarView: View {
                     }
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, tablet ? 8.5 : 8)
             .padding(.horizontal, 12)
             .frame(width: width, alignment: .leading)
             .frame(minHeight: 64, alignment: .leading)
             .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            // The web's 4 pt leading edge, flush with the card and cut by its corners (green once in the library).
             .overlay(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? Color(red: 0.12, green: 0.33, blue: 0.25) : WM.ink)
-                    .frame(width: 4).padding(.vertical, 8)
+                if tablet {
+                    Rectangle().fill(entry?.hasFile == true ? Color(red: 138 / 255, green: 197 / 255, blue: 165 / 255) : PlayarrStyle.ink)
+                        .frame(width: 4)
+                } else {
+                    RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? Color(red: 0.12, green: 0.33, blue: 0.25) : WM.ink)
+                        .frame(width: 4).padding(.vertical, 8)
+                }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
         .buttonStyle(.plain)
