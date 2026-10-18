@@ -1870,7 +1870,9 @@ struct Detail {
     .alignItems(VerticalAlign.Center)
     .backgroundColor(primary ? (this.filmPlayFocused(primary) ? PLAY_FOCUS_FILL : toResourceColor(activeColors().ink)) : resolvedThemeMode() === 'dark' ? (this.isSeriesPage() ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA)) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
     .shadow(this.pillShadow(primary))
-    .border(this.filmPlayFocused(primary) ? { width: tv(3), color: resolvedThemeMode() === 'dark' ? '#ffffff' : toResourceColor(activeColors().ink) } : { width: 0 })
+    .border(this.filmPlayFocused(primary) ? { width: tv(2), color: resolvedThemeMode() === 'dark' ? toResourceColor(activeColors().bg) : '#ffffff' } : { width: 0 })
+    .outline(this.filmPlayFocused(primary) ? { width: tv(3), color: resolvedThemeMode() === 'dark' ? '#ffffff' : toResourceColor(activeColors().ink), radius: tv(PILL_HEIGHT / 2) } : { width: 0 })
+    .scale(this.filmPlayFocused(primary) ? { x: 1.06, y: 1.06 } : { x: 1, y: 1 }) // web: the focused Play grows and carries a ring with a light inner line
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
     .defaultFocus(enabled && primary && !this.isSeriesPage())
