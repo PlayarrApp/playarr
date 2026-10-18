@@ -28,11 +28,8 @@ export function shouldUpgradeFallbackFocus(options: {
   autoKind: ViewDefaultKind | null;
   bestKind: ViewDefaultKind | null;
   userInteracted: boolean;
-  /** The page now marks another control as its default (Home's late On Deck result reorders its first rail). */
-  defaultMoved?: boolean;
 }): boolean {
   if (options.userInteracted || options.autoKind === null || options.bestKind === null) return false;
-  if (options.defaultMoved && options.bestKind === options.autoKind) return true;
   return RANK[options.bestKind] > RANK[options.autoKind];
 }
 

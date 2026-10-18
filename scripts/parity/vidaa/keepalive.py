@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 DATA = Path("/home/Storage/Projects/repositories/.data/PlayarrApp/playarr")
-VIDAA_DIR = os.environ.get("VIDAA_DIR", str(DATA / "scripts/vidaa"))
+VIDAA_DIR = os.environ.get("VIDAA_DIR", str(Path(__file__).resolve().parent))  # vidaa.py sits next to this file
 LOG = Path(os.environ.get("KEEPALIVE_LOG", DATA / "scratch/20261017-parity-vidaa/keepalive.log"))
 LOCK = os.environ.get("VIDAA_BUSY_LOCK", "/run/user/1000/vidaa-busy.lock")
 INTERVAL = float(os.environ.get("KEEPALIVE_INTERVAL", "45"))

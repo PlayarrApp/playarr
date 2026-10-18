@@ -11,6 +11,7 @@ import { BRAND_PINK } from '../../core/Tokens';
 import { AVATAR_PRESET_LIST, resolveAvatarPreset } from '../../core/AvatarPreset';
 import { saveAvatarPreset } from '../../data/ProfileRepository';
 import { ProfileAvatar } from './ProfileAvatar';
+import { t } from '../../core/Language';
 
 const GRID_WIDTH: number = 720;
 const GRID_GAP: number = 22;
@@ -38,7 +39,7 @@ export struct ProfileAvatarPanel {
     this.saving = true;
     this.note = '';
     const saved = await saveAvatarPreset(preset);
-    this.note = saved ? 'Profile avatar saved to your profile.' : 'The profile avatar could not be saved to your profile.';
+    this.note = saved ? t('settings.profileAvatar.presetSaved', 'Profile avatar saved to your profile.') : t('settings.profileAvatar.saveFailed', 'The profile avatar could not be saved to your profile.');
     this.saving = false;
   }
 

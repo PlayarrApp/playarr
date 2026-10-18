@@ -8,7 +8,7 @@ Log: `.data/PlayarrApp/playarr/scratch/20261017-parity-vidaa/keepalive.log`.
 
 ## Install (as the owner user)
 
-1. Copy `keepalive.py` to `.data/PlayarrApp/playarr/scripts/vidaa/` (next to `vidaa.py`, which it imports; the unit runs it from there).
+1. Copy `keepalive.py` and `vidaa.py` together to `.data/PlayarrApp/playarr/scripts/vidaa/` (the unit runs that copy; keepalive imports the `vidaa.py` beside it). Re-copy both after any change here.
 2. `systemctl --user disable --now playarr-vidaa-watchdog.timer`
 3. `cp playarr-vidaa-keepalive.service ~/.config/systemd/user/ && systemctl --user daemon-reload`
 4. `systemctl --user enable --now playarr-vidaa-keepalive.service`

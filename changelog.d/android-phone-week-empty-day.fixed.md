@@ -1,0 +1,1 @@
+- Android Calendar Week: an empty day reads "Nothing scheduled" (web `pages.calendar.dayEmpty`) at 16 px on phones; the phone capture driver can capture the Week view.

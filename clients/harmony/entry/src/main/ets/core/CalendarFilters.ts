@@ -1,6 +1,7 @@
 // core/CalendarFilters.ts: web lib/calendarFilters.ts (type, status and monitoring filters of the calendar).
 import type { CalendarEntry, CalendarMediaKind } from "./Types/Calendar";
 import { entryLocalDay } from "./CalendarAgenda";
+import { t } from "./Language";
 
 export type CalendarTypeParam = "tv" | "movie" | "music" | "book";
 export type CalendarStatus = "aired" | "upcoming" | "downloaded" | "missing";
@@ -11,22 +12,22 @@ export const CALENDAR_STATUSES: CalendarStatus[] = ["aired", "upcoming", "downlo
 /** Web's option labels (`pages.calendar.type*` / `status*`). */
 export function calendarTypeLabel(type: string): string {
   if (type === "tv") {
-    return "TV";
+    return t("pages.calendar.typeTv", "TV");
   }
   if (type === "movie") {
-    return "Movies";
+    return t("pages.calendar.typeMovies", "Movies");
   }
-  return type === "music" ? "Music" : "Books";
+  return type === "music" ? t("pages.calendar.typeMusic", "Music") : t("pages.calendar.typeBooks", "Books");
 }
 
 export function calendarStatusLabel(status: string): string {
   if (status === "aired") {
-    return "Aired";
+    return t("pages.calendar.statusAired", "Aired");
   }
   if (status === "upcoming") {
-    return "Upcoming";
+    return t("pages.calendar.statusUpcoming", "Upcoming");
   }
-  return status === "downloaded" ? "Downloaded" : "Missing";
+  return status === "downloaded" ? t("pages.calendar.statusDownloaded", "Downloaded") : t("pages.calendar.statusMissing", "Missing");
 }
 
 export function typeForKind(kind: CalendarMediaKind): CalendarTypeParam {

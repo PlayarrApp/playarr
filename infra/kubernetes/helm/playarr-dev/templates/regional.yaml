@@ -7,29 +7,9 @@
 {{- $httpsOn := or $tlsOn $acmeOn }}
 {{- $backup := $instance.backup | default dict }}
 {{- $backupOn := $backup.enabled | default false }}
-{{- $exposure := $instance.exposure | default dict }}
-{{- $externalIP := eq ($exposure.mode | default "hostPort") "externalIP" }}
-{{- $strategy := $instance.strategy | default dict }}
-{{- $rolling := eq ($strategy.type | default "Recreate") "RollingUpdate" }}
-{{- if $externalIP }}
-{{- if $instance.hostExposure }}
-{{- fail (printf "regionalInstances.%s: exposure.mode externalIP replaces hostExposure; remove hostExposure" $name) }}
+{{- if and $acmeOn (not $instance.hostExposure) }}
+{{- fail (printf "regionalInstances.%s.acme.enabled requires hostExposure (the relay registers its public address)" $name) }}
 {{- end }}
-{{- if empty $exposure.externalIPs }}
-{{- fail (printf "regionalInstances.%s: exposure.mode externalIP requires exposure.externalIPs (the node public IPv4)" $name) }}
-{{- end }}
-{{- end }}
-{{- if and $rolling (not $externalIP) }}
-{{- fail (printf "regionalInstances.%s: strategy.type RollingUpdate cannot be combined with hostPort exposure (a node can bind a host port in only one Pod, so the surge Pod stays Pending); set exposure.mode to externalIP or use Recreate" $name) }}
-{{- end }}
-{{- if and $rolling (not $strategy.allowConcurrentPods) }}
-{{- fail (printf "regionalInstances.%s: strategy.type RollingUpdate runs the old and new server Pods on the same SQLite volume at once, which the server does not support (no cross-process lock, in-process leadership, startup migrations); see README \"Surge rollouts and data safety\" and set strategy.allowConcurrentPods only after that setup" $name) }}
-{{- end }}
-{{- if and $acmeOn (not $instance.hostExposure) (not $externalIP) }}
-{{- fail (printf "regionalInstances.%s.acme.enabled requires hostExposure or exposure.mode externalIP (the relay registers its public address)" $name) }}
-{{- end }}
-{{- $publicIP := "" }}
-{{- if $externalIP }}{{ $publicIP = first $exposure.externalIPs }}{{ else if $instance.hostExposure }}{{ $publicIP = $instance.hostExposure.hostIP }}{{ end }}
 {{- if $tlsOn }}
 ---
 # cert-manager issues the certificate (DNS-01) into a Secret that the pod
@@ -101,14 +81,7 @@ spec:
       app.kubernetes.io/name: playarr-standalone
       app.kubernetes.io/instance: {{ $name }}
   strategy:
-    {{- if $rolling }}
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: {{ $strategy.maxSurge | default 1 }}
-      maxUnavailable: {{ $strategy.maxUnavailable | default 0 }}
-    {{- else }}
     type: Recreate # Recreate: public clients and the relay Worker reach the node's public IP:8484 directly via hostPort, and one node cannot bind that port in two Pods
-    {{- end }}
   template:
     metadata:
       labels:
@@ -289,7 +262,7 @@ spec:
             - name: PLAYARR_RELAY_REGISTER
               value: "true"
             - name: PLAYARR_PUBLIC_IPV4
-              value: {{ $publicIP | quote }}
+              value: {{ $instance.hostExposure.hostIP | quote }}
             {{- end }}
           envFrom:
             - secretRef:
@@ -298,10 +271,8 @@ spec:
             - name: http
               containerPort: 8484
               {{- with $instance.hostExposure }}
-              {{- if not $externalIP }}
               hostIP: {{ .hostIP | quote }}
               hostPort: {{ .hostPort }}
-              {{- end }}
               {{- end }}
               protocol: TCP
             - name: metrics
@@ -408,33 +379,6 @@ spec:
       port: 9090
       targetPort: metrics
       protocol: TCP
-{{- if $externalIP }}
----
-# Public entry for the node's public IPv4. A separate Service so externalIPs
-# covers only port 8484 (not the ingress or metrics ports). Local keeps the
-# client source address and routes only to ready Pods on this node.
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ $name }}-public
-  labels:
-    {{- include "playarr-dev.regionalLabels" (dict "context" $ "name" $name) | nindent 4 }}
-spec:
-  type: ClusterIP
-  externalTrafficPolicy: Local
-  externalIPs:
-    {{- range $exposure.externalIPs }}
-    - {{ . | quote }}
-    {{- end }}
-  selector:
-    app.kubernetes.io/name: playarr-standalone
-    app.kubernetes.io/instance: {{ $name }}
-  ports:
-    - name: http
-      port: 8484
-      targetPort: http
-      protocol: TCP
-{{- end }}
 ---
 apiVersion: getambassador.io/v2
 kind: Mapping

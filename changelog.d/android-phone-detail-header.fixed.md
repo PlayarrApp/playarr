@@ -1,0 +1,1 @@
+- Android phone film and series detail: the header shows the back pill and the kind title only, as the web phone header does; the work title stays a TV subtitle.

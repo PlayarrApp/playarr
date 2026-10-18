@@ -31,8 +31,8 @@ import { Drawer } from "./shell";
 import { Button } from "./ui";
 import { TvEmptyState } from "./tv/TvEmptyState";
 import { isBackKey } from "../lib/backKey";
-import { isLongHold, LONG_PRESS_MS } from "../lib/longPress";
 
+const LONG_PRESS_MS = 650;
 /** How long an armed "swallow the origin's Enter release" waits for that release before standing down. */
 const ORIGIN_RELEASE_WINDOW_MS = 1_500;
 /** A fetched work detail is reused this long inside the menu; the cache is also emptied on every open and close. */
@@ -302,7 +302,6 @@ export function useMediaContextMenu({
   const playlistBackRef = useRef<HTMLButtonElement>(null);
   const longPressTimerRef = useRef<number | undefined>(undefined);
   const longPressTriggeredRef = useRef(false);
-  const pressedAtRef = useRef<number | undefined>(undefined);
   // The card whose Enter keydown is still held. A release that lands on another card (the page changed under
   // the key: a cached page mounts and takes focus within the press) belongs to what was pressed, not to this card.
   const pressedRef = useRef<EventTarget | null>(null);
@@ -971,7 +970,6 @@ export function useMediaContextMenu({
         longPressTriggeredRef.current = false;
         const origin = event.currentTarget;
         pressedRef.current = origin;
-        pressedAtRef.current = event.timeStamp;
         longPressTimerRef.current = window.setTimeout(() => {
           longPressTriggeredRef.current = true;
           open(item, origin, true);
@@ -995,10 +993,6 @@ export function useMediaContextMenu({
         const pressedHere = pressedRef.current === event.currentTarget;
         pressedRef.current = null;
         if (!pressedHere) return;
-        if (!longPressTriggeredRef.current && isLongHold(pressedAtRef.current, event.timeStamp)) {
-          longPressTriggeredRef.current = true;
-          open(item, event.currentTarget, true);
-        }
         if (!longPressTriggeredRef.current) {
           event.currentTarget.click();
         } else {

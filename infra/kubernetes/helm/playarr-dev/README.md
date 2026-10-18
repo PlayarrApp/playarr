@@ -74,7 +74,7 @@ unused so every instance runs one version), `mediaMountPath` (container path for
 `mediaPath` so the paths reported by the media managers resolve unchanged),
 `peerInternalRoutes`, `sourceInstanceUrls`, `dubarrApiKeySecret`,
 `requestIntegrations`, `ombiApiKeySecret`, `seerrApiKeySecret`, `backup`,
-`hostExposure`, `exposure`, `strategy`, `tls` and `acme`, each described below. `values.schema.json`
+`hostExposure`, `tls` and `acme`, each described below. `values.schema.json`
 is the authoritative contract.
 
 ### Development workload (`workloads.<name>`)
@@ -104,81 +104,17 @@ Only the `http` container port is published; metrics (9090) stays pod-local.
 Deployments use the `Recreate` strategy, so the old Pod releases the host port
 before the new one starts. The node firewall must allow the port.
 
-Why `hostPort` cannot surge: the consumers of this port are browsers, native
-clients and the `playarr.app` relay Worker, which connect straight to the
-node's public IP on 8484 (the relay registers that IP, `PLAYARR_PUBLIC_IPV4`).
+Why not a surge rollout (`RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0`):
+the consumers of this port are browsers, native clients and the `playarr.app`
+relay Worker, which connect straight to the node's public IP on 8484 (the
+relay registers that IP, `PLAYARR_PUBLIC_IPV4`). There is no load balancer and
+the chart's Service is `ClusterIP`, so a Service cannot replace the host port.
 A surge Pod would be scheduled on the same pinned node and stay `Pending`
-because a node can bind a host port for only one Pod. The chart therefore
-rejects `RollingUpdate` in `hostPort` mode. The alternative is the
-`externalIP` mode below.
-
-## Service-based exposure (`exposure`) and rollout strategy (`strategy`)
-
-`exposure.mode` is `hostPort` (default, uses `hostExposure` as above) or
-`externalIP`. `externalIP` renders no `hostPort` on the Pod and adds one
-`<instance>-public` ClusterIP Service per instance with
-`externalIPs: exposure.externalIPs`, `externalTrafficPolicy: Local` and port
-8484 only (a separate Service, so the public address never carries the
-ingress or metrics ports). Its selector matches only that instance's Pods,
-and the `nodeSelector` pinning is unchanged. Set `exposure.externalIPs` to the
-node's public IPv4; remove `hostExposure` (setting both fails). The relay
-registers `exposure.externalIPs[0]` as `PLAYARR_PUBLIC_IPV4`. The cluster must
-route the external IP to the node and allow the port in the node firewall;
-ServiceLB, MetalLB and Cilium LB-IPAM are not used and `hostNetwork` is never
-set.
-
-`strategy` is `{type, maxSurge, maxUnavailable, allowConcurrentPods}`. The
-default `Recreate` renders exactly as before. `RollingUpdate` (defaults
-`maxSurge: 1`, `maxUnavailable: 0`) fails to render unless
-`exposure.mode` is `externalIP` and `allowConcurrentPods` is `true`.
-
-### Surge rollouts and data safety
-
-During a surge the old and the new Pod run at once on the same node and the
-same state volume (`/data`). Findings from the server code (`backend/`):
-
-- The state is one SQLite database in WAL mode with a 30 s busy timeout
-  (`backend/crates/playarr-db/src/pool.rs:15`, `:89`), plus the `-wal` and
-  `-shm` files, the artwork cache under the database directory
-  (`backend/crates/playarr-artwork/src/lib.rs:211`), the ACME account and
-  certificate cache (`backend/src/acme_cache.rs:115`) and the backup
-  directory. SQLite file locking itself is safe between two processes on one
-  host, so the database file is not corrupted by the overlap.
-- The server is written as one process per database: the coordinator is
-  in-process, "always-leader, in-process locks"
-  (`backend/src/main.rs:758-762`, `backend/crates/playarr-coordination/src/lib.rs:94-135`),
-  the cache and pub/sub are in-memory (`backend/src/main.rs:753-755`), and
-  there is no file or database lock that keeps a second process out. Both
-  Pods therefore believe they lead every role and both run the pollers, the
-  scheduled backup (`backend/src/main.rs:589`), peer sync, the relay
-  registration and ACME issuance against the same files.
-- Migrations run at every start (`backend/src/main.rs:745-748`,
-  `backend/crates/playarr-db/src/pool.rs:157`). The new Pod migrates the
-  schema while the old Pod still runs the previous code against it, and a
-  rollback to the old image after a migration is not supported.
-
-Conclusion: two Pods on one volume are not safe today. The chart fails
-`RollingUpdate` unless `strategy.allowConcurrentPods: true`. Set it only after
-the server gains a cross-process guard (a lock file or lease on the state
-volume that makes the old Pod stop leader work before the new one starts) and
-migrations are backward compatible for one release. No such setup exists yet,
-so the supported rollout remains `Recreate`.
-
-Worked example for one region (placeholder address):
-
-```yaml
-regionalInstances:
-  playarr-a:
-    # hostExposure: removed
-    exposure:
-      mode: externalIP
-      externalIPs: [203.0.113.10]
-    strategy:
-      type: RollingUpdate
-      maxSurge: 1
-      maxUnavailable: 0
-      allowConcurrentPods: true # only after the safe setup above exists
-```
+because a node can bind a host port for only one Pod. The readiness probe
+(`/readyz`) is already rendered, so the change to surge becomes possible once
+the public address is served by something other than `hostPort` (for example
+a load balancer or a Service with a dedicated public address); until then the
+brief gap on each rollout is accepted.
 
 ## HTTPS (`tls`)
 

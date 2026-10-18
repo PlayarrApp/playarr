@@ -1,0 +1,1 @@
+- iPhone calendar entries show Play, Resume, Open and the watchlist chip exactly as the server computes them, instead of guessing from whether a file exists.
