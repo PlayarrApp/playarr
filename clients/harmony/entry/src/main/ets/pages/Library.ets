@@ -449,6 +449,7 @@ struct LibraryGridCell {
       cardWidth: this.cardWidth,
       cardHeight: this.cardHeight,
       artworkRadius: this.cardRadius,
+      variant: isTvMetrics() ? 'grid' : 'home',
       title: this.work.title,
       // web's phone cards carry the title only, in Covers too; the TV's cover cards keep the year
       subtitle: this.landscape || !isTvMetrics() ? '' : releaseYearOf(this.work),
