@@ -67,7 +67,7 @@ Rectangle {
                 }
                 Image {
                     anchors.centerIn: parent
-                    width: 18.4 * Tokens.u; height: width
+                    width: 21 * Tokens.u; height: width
                     sourceSize: Qt.size(48, 48)
                     smooth: true
                     opacity: root.section === modelData || !Tokens.dark ? 1 : 0.72
