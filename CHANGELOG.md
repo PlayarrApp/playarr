@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Installed apps (the hosted VIDAA app, Xbox, Android) never show the marketing site: playarr.app now serves the app at `/` for any `?platform=` marker, app user agent or app cookie, sign-out goes to the login route in installed apps, the PWA starts at `/?platform=web`, and the shell precache no longer stores the marketing page.
 - Web: browser Back restores a library scroll position even when the list mounts after the route (and again after Forward then Back).
 - Web: the film and series detail copy no longer shows, hides and animates in again on navigation; it fades in once with the page.
 - Web: no page content sits under the left nav at any width (a new all-routes e2e guards it), and pages without the library letter rail no longer reserve a gutter for it on phones (Search, Watchlist, Requests, Playlists, Downloads).
