@@ -140,6 +140,7 @@ export struct Stage {
   @Prop railFrostWidthPct: number = 62;
   @Prop metaGapAdjust: number = 0;
   @Prop synopsisGapAdjust: number = 0;
+  @Prop libraryCopy: boolean = false;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -336,6 +337,7 @@ export struct Stage {
         synopsis: this.synopsis,
         metaGapAdjust: this.metaGapAdjust,
         synopsisGapAdjust: this.synopsisGapAdjust,
+        libraryCopy: this.libraryCopy,
       })
       this.heroExtraSlot()
     }

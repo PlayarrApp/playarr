@@ -512,6 +512,8 @@ export struct Library {
   @State private watchIndex: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private watchLoaded: boolean = false;
   private gridScroller: Scroller = new Scroller();
+  @State private gridFadeTop: boolean = false;
+  @State private gridFadeBottom: boolean = false;
   /** The list view's own scroller (the A to Z rail jumps in whichever view is showing). */
   private listScroller: Scroller = new Scroller();
 
@@ -1070,6 +1072,36 @@ export struct Library {
     }
   }
 
+  /** Web's `--page-edge-fade-size` (59.4) on the grid panel: it fades at the top once scrolled and at the bottom while more rows follow (same mask as Stage's scrolling rails). */
+  @Builder
+  private gridEdgeMask(): void {
+    Column() {
+      Column()
+        .width('100%')
+        .height(this.gridFadeTop ? 59.4 : 0)
+        .linearGradient({ angle: 180, colors: [['rgba(0, 0, 0, 0.3)', 0], ['rgba(0, 0, 0, 0.409)', 0.25], ['rgba(0, 0, 0, 0.65)', 0.5],
+          ['rgba(0, 0, 0, 0.891)', 0.75], ['rgba(0, 0, 0, 1)', 1]] })
+      Column()
+        .width('100%')
+        .layoutWeight(1)
+        .backgroundColor('rgba(0, 0, 0, 1)')
+      Column()
+        .width('100%')
+        .height(this.gridFadeBottom ? 59.4 : 0)
+        .linearGradient({ angle: 180, colors: [['rgba(0, 0, 0, 1)', 0], ['rgba(0, 0, 0, 0.891)', 0.25], ['rgba(0, 0, 0, 0.65)', 0.5],
+          ['rgba(0, 0, 0, 0.409)', 0.75], ['rgba(0, 0, 0, 0.3)', 1]] })
+    }
+    .width('100%')
+    .height(tv(1080)) // the panel is the full stage height; '100%' resolved to a shorter box and faded row 3
+    .blendMode(BlendMode.DST_IN)
+    .hitTestBehavior(HitTestMode.None)
+  }
+
+  private updateGridFade(): void {
+    this.gridFadeTop = this.gridScroller.currentOffset().yOffset > 2;
+    this.gridFadeBottom = !this.gridScroller.isAtEnd();
+  }
+
   @Builder
   private coverWall(): void {
     Grid(this.gridScroller) {
@@ -1109,7 +1141,16 @@ export struct Library {
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
+    .overlay(this.gridEdgeMask(), { align: Alignment.TopStart })
+    .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
+    .onScroll((_x: number, _y: number) => {
+      this.updateGridFade();
+    })
+    .onAreaChange((_oldArea: Area, _area: Area) => {
+      this.updateGridFade();
+    })
     .onScrollIndex((_first: number, last: number) => {
+      this.updateGridFade();
       this.maybeLoadMore(last);
     })
     .onReachEnd(() => {
@@ -1211,7 +1252,16 @@ export struct Library {
     .margin({ left: tv(TvGeometry.libraryGridInsetLeft - LIBRARY_GLOW_ROOM) })
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
+    .overlay(this.gridEdgeMask(), { align: Alignment.TopStart })
+    .blendMode(BlendMode.SRC_OVER, BlendApplyType.OFFSCREEN)
+    .onScroll((_x: number, _y: number) => {
+      this.updateGridFade();
+    })
+    .onAreaChange((_oldArea: Area, _area: Area) => {
+      this.updateGridFade();
+    })
     .onScrollIndex((_first: number, last: number) => {
+      this.updateGridFade();
       this.maybeLoadMore(last);
     })
     .onReachEnd(() => {
@@ -1232,6 +1282,7 @@ export struct Library {
       scrollRails: false,
       railFrost: true,
       railFrostWidthPct: 65,
+      libraryCopy: true,
       railsSlot: (): void => {
         this.tvGrid();
       },

@@ -225,7 +225,7 @@ export struct PageShell {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(activeColors().bg))
+    .backgroundColor(toResourceColor(this.railFrostWidthPct >= 0 && isTvMetrics() ? activeColors().surface : activeColors().bg))
   }
 
   @Builder
@@ -272,7 +272,7 @@ export struct PageShell {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(this.railFrostWidthPct >= 0 && isTvMetrics() ? activeColors().surface : activeColors().bg))
+    .backgroundColor(toResourceColor(activeColors().bg))
   }
 
   build() {
