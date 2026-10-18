@@ -201,7 +201,7 @@ const PLAY_BUTTON_HEIGHT_TV: number = 56;
 const PLAY_BUTTON_HEIGHT_TOUCH: number = 48;
 const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
-const HERO_TOUCH_HEIGHT: number = 340;
+const HERO_TOUCH_HEIGHT: number = 255; // web phone (static refs): the backdrop is 255 vp tall
 // Web phone season rows (measured on the 360 vp reference): 187 vp cards, heading to cards 23, season to season 237.
 const PHONE_EPISODE_CARD_WIDTH: number = 187;
 const PHONE_EPISODE_RAIL_GAP: number = 11;
@@ -2510,6 +2510,7 @@ struct Detail {
           .width('100%')
           .height(HERO_TOUCH_HEIGHT)
           .objectFit(ImageFit.Cover)
+          .blur(14) // web phone: the backdrop is blurred
           .draggable(false)
           .focusable(false)
       } else {
