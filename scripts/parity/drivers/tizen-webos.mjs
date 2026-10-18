@@ -25,7 +25,8 @@ const CDP_HOST = process.env.CDP_HOST ?? "127.0.0.1";
 const TIZEN_MIRROR = TIZEN_REAL ? process.env.TIZEN_MIRROR?.replace(/\/$/, "") : undefined;
 const mirrorToken = () => process.env.PLAYARR_VIDAA_MIRROR_TOKEN ?? "";
 const mirrorLocal = () => (process.env.TIZEN_MIRROR_LOCAL ?? TIZEN_MIRROR ?? "").replace(/\/$/, "");
-const mirrorEntry = (route = "/") => `${TIZEN_MIRROR}/?mirrorPng=1&mirrorPointer=1&mirrorWidth=1920&mirrorToken=${encodeURIComponent(mirrorToken())}#${route}`;
+// The TV keeps the debug page in its cache between runs: a fresh query makes every run load the build the receiver serves now.
+const mirrorEntry = (route = "/") => `${TIZEN_MIRROR}/?mirrorPng=1&mirrorPointer=1&mirrorWidth=1920&r=${Date.now()}&mirrorToken=${encodeURIComponent(mirrorToken())}#${route}`;
 const KEYCODE = { up: 38, down: 40, left: 37, right: 39, select: 13, back: 27 };
 const KEYNAME = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };
 const XKEY = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
