@@ -459,7 +459,7 @@ struct TVWorkDetailView: View {
             if !viewModel.cast.isEmpty {
                 castRail(viewModel.cast)
             } else {
-                similarRail(y: 854.3)
+                similarRail(y: macDetail(889.5, 854.3))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -496,7 +496,7 @@ struct TVWorkDetailView: View {
                 .padding(.trailing, 80)
             }
             .frame(width: 1038.4, height: macDetail(210, 190), alignment: .topLeading)
-            .placed(x: 881.6, y: y + macDetail(117.7, 80.7), w: 1038.4, h: macDetail(210, 190), alignment: .topLeading)
+            .placed(x: 881.6, y: y + macDetail(82.5, 80.7), w: 1038.4, h: macDetail(210, 190), alignment: .topLeading)
         }
     }
 
@@ -618,7 +618,7 @@ struct TVWorkDetailView: View {
                             .placed(x: 881.6 + CGFloat(index) * 293, y: top + 80.7, w: 268, h: 190, alignment: .topLeading)
                     }
                 }
-                if macDetail(true, false) { similarRail(y: base + CGFloat(ordered.count) * 314.3) }
+                if macDetail(true, false) { similarRail(y: base + CGFloat(ordered.count - 1) * 314.3 + 349.5) }
             }
             .offset(y: -shift)
             .animation(.easeOut(duration: 0.25), value: shift)
