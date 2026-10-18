@@ -5217,7 +5217,7 @@ sub showDetail(detail as Object)
     ' concurrently the way tv-web's own two independent effects do.
     m.detailChapters.visible = false
     m.detailSimilar.visible = false
-    ' The entrance animation ends at contentBase: a series page rests 52 px higher than the movie page, also when no resume plan re-seats it.
+    ' The entrance animation ends at contentBase: a series page rests at its own top, also when no resume plan re-seats it.
     m.detailStage.contentBase = [881.6, detailContentTop()]
     m.detailContent.translation = [881.6, detailContentTop()]
     m.detailEpisodeActive = false
@@ -5386,9 +5386,9 @@ end function
 ' episodes (one ~315px row per season, two visible), then Chapters, then
 ' Similar Titles, each ~330px, 20px apart. Called whenever a rail's
 ' visibility or size changes.
-' Web's series page starts its season rails 52 px higher than the movie page's Chapters rail.
+' Web series page at the page top: the season rail heading sits at y 552, level with the movie page's Chapters heading.
 function detailContentTop() as Float
-    if m.detailGroupKind = "series" then return 370.9
+    if m.detailGroupKind = "series" then return 552.4
     return 422.9
 end function
 
@@ -6001,7 +6001,7 @@ sub updateSeriesEpisodeHeader()
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: -0.3, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7602,7 +7602,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: -0.3, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else

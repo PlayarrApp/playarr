@@ -2320,7 +2320,7 @@ private fun TvNavTile(
     val navScale = rememberPlayarrFocusScale(
         focused = focused,
         focusedScale = if (tabletNav) 1.1f else FocusMotion.navFocusScale,
-        unfocusedScale = if (selected) FocusMotion.navSelectedScale else FocusMotion.restScale,
+        unfocusedScale = if (selected && tabletNav) FocusMotion.navSelectedScale else FocusMotion.restScale, // TV web: the current link is not scaled
         label = "tvNavFocus",
     )
     Surface(
@@ -2371,7 +2371,7 @@ private fun TvNavTile(
                         ),
                     ),
                 ),
-                modifier = Modifier.padding(top = web?.labelGap ?: 2.3.dp, start = 4.dp, end = 4.dp),
+                modifier = Modifier.padding(top = (web?.labelGap ?: 2.3.dp) + if (selected && web == null) 3.dp else 0.dp, start = 4.dp, end = 4.dp),
             )
         }
     }
@@ -3910,15 +3910,16 @@ internal fun LibraryResults(
     // Television: web's first column starts at x 783.4 (measured on the live grid).
     // Web `--library-rail-top` clamp(128, 15 vu, 174) less the 140 dp the header already takes, and the row gap clamp(22, 2.5 vu, 36).
     val tvGridTop = webVu(128f, 15f, 174f) - 140.dp
-    // Measured against web at 1920 on the emulator: a 26 px gap puts rows 2 and 3 one pixel under web's, 27 px puts them two.
-    val tvRowGap = webVu(22f, 2.5f, 36f) - 1.dp
+    // Web's rows sit 240.33 px apart at 1080p (213.33 block + 27 gap); the grid rounds whole pixels, so the rows are trimmed below.
+    val tvRowGap = webVu(22f, 2.5f, 36f)
+    val tvRowPitchPx = if (isTelevision && artworkSize == LibraryArtworkSize.Medium && LocalStageScale.current == 1f) with(LocalDensity.current) { (213.33.dp + tvRowGap).toPx() } else 0f
     val tvRail = if (LocalStageScale.current != 1f) webLibraryRail() else null
     val screenPadding = if (isTelevision) PaddingValues(start = tvRail?.start ?: 52.7.dp /* web's first column paints at x 783 (rounded), not 784 */, end = tvRail?.end ?: 103.3.dp, top = tvGridTop, bottom = 104.dp) else padding
     when (viewMode) {
         LibraryViewMode.Screen -> {
         val phoneViewportDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
         val phoneColumns = fixedColumns ?: phonePosterColumns(artworkSize, phoneViewportDp)
-        val phoneRowPitchPx = if (!isTelevision && phoneViewportDp < 540) 136f * LocalDensity.current.density else 0f
+        val phoneRowPitchPx = if (!isTelevision && phoneViewportDp < 540) 136f * LocalDensity.current.density else tvRowPitchPx
         LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
@@ -3943,7 +3944,7 @@ internal fun LibraryResults(
                             // which drifts 0.3 px per row. Trim a pixel from the rows where the drift crosses one.
                             val placeable = measurable.measure(constraints)
                             val row = index / phoneColumns
-                            val pitch = placeable.height + 23.32.dp.roundToPx()
+                            val pitch = placeable.height + (if (isTelevision) tvRowGap else 23.32.dp).roundToPx()
                             val cut = pitch - (Math.round((row + 1) * phoneRowPitchPx) - Math.round(row * phoneRowPitchPx))
                             layout(placeable.width, placeable.height - cut) { placeable.place(0, 0) }
                         } else Modifier),
@@ -4683,8 +4684,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
-                            // Web marks the letter of the selected title while no letter filter is applied.
-                            val shownLetter = if (activeLetter == "#") selected.sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
+                            // Web marks the letter of the first card in the top visible row while no letter filter is applied.
+                            val shownLetter = if (activeLetter == "#") (filteredWorks.getOrNull(gridState.firstVisibleItemIndex) ?: selected).sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
                             Box(Modifier.size(44.dp * alphaCss), contentAlignment = Alignment.Center) {
@@ -7543,16 +7544,16 @@ internal fun SeriesEpisodeBrowser(
         }
         if (isTelevision) {
             // Tablet: the taller card block (art 8.25 dp lower, 270 dp card, 36.7 dp copy row) takes 17.25 dp from the gap, so the season headings stay where web puts them.
-            LazyColumn(Modifier.weight(1f), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(bottom = 80.dp)) {
+            LazyColumn(Modifier.weight(1f), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
                 items(seasons, key = { it.season.id }) { content(it) }
                 if (credits.cast.isNotEmpty()) {
                     item { Box(Modifier.padding(top = 55.dp * tabletDetail)) { DetailCreditsRail(credits.cast) } }
                 }
                 if (similarWorks.isNotEmpty()) {
                     item {
-                        Box(Modifier.padding(top = if (credits.cast.isEmpty()) 43.dp * tabletDetail else 0.dp)) {
-                            if (tabletDetail == 0f) SimilarWorksRail(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail)
-                            else WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, true)
+                        // TV: the web section gap (8.4 vu) sits above Similar titles, 36.7 dp more than the related-track gap between seasons.
+                        Box(Modifier.padding(top = if (tabletDetail == 0f) webVu(62f, 8.4f, 108f) - webVu(38f, 5f, 64f) else if (credits.cast.isEmpty()) 43.dp else 0.dp)) {
+                            WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, tabletDetail != 0f)
                         }
                     }
                 }
@@ -7799,7 +7800,8 @@ internal fun MovieDetailBrowser(
         Column(
             // Web's track stack starts at half the viewport height; a tablet's rails are 28 css px further apart than the 1080 gap gives.
             modifier.verticalScroll(rememberScrollState()).padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(54.dp + 42.dp * (if (LocalStageScale.current != 1f) 1f else 0f)),
+            // Web `--tv-track-gap-section` (8.4 vu) above Cast and Similar titles, every track here.
+            verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) 96.dp else webVu(62f, 8.4f, 108f)),
         ) {
             if (chapters.isNotEmpty()) {
                 WebMediaTrack(
@@ -7951,6 +7953,25 @@ private fun WebSimilarTrack(
         tabletStartInset = 0.dp,
     ) {
         itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
+            if (!tablet) {
+                // TV web `.tv-title-card` (the library card, 327 dp) with its kind line.
+                Column {
+                    ExperienceLandscapeCard(
+                        modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
+                        work = work,
+                        serverUrl = serverUrl,
+                        accessToken = accessToken,
+                        width = 327.dp,
+                        selected = false,
+                        onSelected = {},
+                        onClick = { onOpenWork(work.id) },
+                        webTvStyle = true,
+                        webTvLibrary = true,
+                    )
+                    Text(work.kind.playarrSingularLabel(), color = WebInkMuted, fontSize = 8.64.sp, lineHeight = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 2.6.dp))
+                }
+                return@itemsIndexed
+            }
             WebEpisodeCard(
                 cardWidth = if (tablet) 320.dp else 268.dp,
                 artHeight = if (tablet) 180.dp else 150.8.dp,

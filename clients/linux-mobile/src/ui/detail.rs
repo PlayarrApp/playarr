@@ -310,16 +310,43 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     }
     // A film's title block sits 6 and 7 px (css) closer than the episode view's, as the web phone's.
     let film = focus_ep.is_none();
-    gap(&body, if film { 5 } else { 10 });
-    body.append(
-        &gtk4::Label::builder()
-            .label(&w.title)
-            .css_classes(["pa-display"])
-            .wrap(true)
-            .xalign(0.0)
-            .build(),
+    let title_label = gtk4::Label::builder()
+        .label(&w.title)
+        .css_classes(["pa-display"])
+        .xalign(0.0)
+        .build();
+    // The web's title box is 12ch (about 245 css px): break the title there. GTK cannot cap a label's width.
+    let wrapped = wrap_title(&title_label, &w.title, 245);
+    let two = wrapped.contains('\n');
+    // A two-line title sits 5 px higher than a one-line one.
+    gap(
+        &body,
+        if film {
+            5
+        } else if two {
+            9
+        } else {
+            10
+        },
     );
-    gap(&body, if film { 4 } else { 11 });
+    title_label.set_label(&wrapped);
+    if two {
+        // The web sets the title at line-height 0.94; GTK's CSS line-height does not reach wrapped Pango lines.
+        let attrs = gtk4::pango::AttrList::new();
+        attrs.insert(gtk4::pango::AttrFloat::new_line_height(0.70));
+        title_label.set_attributes(Some(&attrs));
+    }
+    body.append(&title_label);
+    gap(
+        &body,
+        if film {
+            4
+        } else if two {
+            9
+        } else {
+            11
+        },
+    );
     if let Some((_, e)) = &focus_ep {
         body.append(
             &gtk4::Label::builder()
@@ -372,8 +399,16 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             .take(if series { 1 } else { 3 })
             .map(|g| (g.clone(), false)),
     );
-    body.append(&meta_row(&meta));
-    gap(&body, if film { 11 } else { 10 });
+    let meta_flow = meta_row(&meta);
+    if focus_ep.is_some() {
+        // The episode meta row starts 2 px left of where the flow puts it, so the genre fits on the first line as on the web.
+        meta_flow.set_margin_start(-1);
+        meta_flow.set_margin_end(-4);
+        // The web's episode synopsis sits 14 px closer to the meta row than the film's.
+        meta_flow.set_margin_bottom(-6);
+    }
+    body.append(&meta_flow);
+    gap(&body, if film { 11 } else { 0 });
     let overview = focus_ep
         .as_ref()
         .and_then(|(_, e)| e.episode.overview.clone())
@@ -393,7 +428,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         l.set_valign(gtk4::Align::Start);
         body.append(&l);
     }
-    gap(&body, 14);
+    gap(&body, if series { 28 } else { 14 });
 
     let title = w.title.clone();
     let play = {
@@ -780,6 +815,34 @@ fn season_rail(
     col.append(&faded);
     col.set_margin_bottom(39 - FOCUS_ROOM);
     col
+}
+
+/// `text` with a line break wherever a line would pass `max_px` css pixels at `label`'s font.
+fn wrap_title(label: &gtk4::Label, text: &str, max_px: i32) -> String {
+    let layout = label.create_pango_layout(None);
+    // The layout is made before the style's -2.6 px letter spacing applies, so take it off per character.
+    let width = |t: &str| {
+        layout.set_text(t);
+        layout.pixel_size().0 - (t.chars().count() as f64 * 2.6) as i32
+    };
+    let mut out = String::new();
+    let mut line = String::new();
+    for word in text.split_whitespace() {
+        let next = if line.is_empty() {
+            word.to_string()
+        } else {
+            format!("{line} {word}")
+        };
+        if !line.is_empty() && width(&next) > max_px {
+            out.push_str(&line);
+            out.push('\n');
+            line = word.to_string();
+        } else {
+            line = next;
+        }
+    }
+    out.push_str(&line);
+    out
 }
 
 /// Heading and count over a rail, as the season rails have them.
