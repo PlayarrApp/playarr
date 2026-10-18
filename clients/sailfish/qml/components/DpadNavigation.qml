@@ -43,7 +43,7 @@ Item {
                 if (rect.x + rect.width <= clipRect.x || rect.y + rect.height <= clipRect.y || rect.x >= clipRect.x + clipRect.width || rect.y >= clipRect.y + clipRect.height) return false
             }
         }
-        return item.navigationFocusable === true || item.objectName.indexOf("parity-nav-") === 0 || (item.activeFocus && item === actualFocus())   // not a Loader or scope that only holds focus for its content
+        return item.navigationFocusable === true || item.objectName.indexOf("parity-nav-") === 0 || item.activeFocus
     }
     function itemRectInPage(item) {
         var a = item.mapToItem(page, 0, 0)
