@@ -54,7 +54,7 @@ const RAIL_GROUPS: readonly RailGroup[] = [
     items: [
       {target: 'playlists', label: 'Playlists', icon: 'playlists'},
       {target: 'watchlist', label: 'Watchlist', icon: 'watchlist'},
-      {target: 'requests', label: 'Requests', icon: 'watchlist'},
+      {target: 'requests', label: 'Requests', icon: 'requests'},
       {target: 'calendar', label: 'Calendar', icon: 'calendar'},
     ],
   },

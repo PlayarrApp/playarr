@@ -517,7 +517,7 @@ extension Work {
         case .artist: singular = "Artist"
         case .author: singular = "Author"
         }
-        guard let year = releaseDate?.prefix(4), year.count == 4, Int(year) != nil else { return singular }
+        guard let year = WMFormat.yearRange(releaseDate: releaseDate, endDate: kind == .series ? endDate : nil) else { return singular }
         return "\(singular) · \(year)"
     }
 }
@@ -566,7 +566,7 @@ struct WMRailCard: View {
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
-            WMText(work.singularKindYearLabel, 7.3, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
+            WMText(work.singularKindYearLabel, 7.3, 400, color: WM.ink, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
     }

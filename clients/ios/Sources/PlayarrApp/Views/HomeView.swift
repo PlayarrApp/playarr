@@ -319,13 +319,13 @@ struct HomeView: View {
     private func rails(phone: Bool, width: CGFloat, height: CGFloat) -> some View {
         let railWidth = HomeLayout.railWidth(viewportWidth: width, phone: phone)
         return ScrollView(.vertical) {
-            LazyVStack(alignment: .leading, spacing: phone ? 24 : 58) {
+            LazyVStack(alignment: .leading, spacing: phone ? 24 : 73) {
                 ForEach(viewModel.rails) { rail in
                     mediaRail(rail, phone: phone, width: width)
                 }
             }
             .frame(width: railWidth, alignment: .leading)
-            .padding(.top, phone ? HomeLayout.phoneTopOffset : min(max(128, height * 0.15), 174)) // web --library-rail-top
+            .padding(.top, phone ? HomeLayout.phoneTopOffset : min(max(128, height * 0.15), 174) + 4) // web --library-rail-top
             .padding(.bottom, phone ? 112 : height * 0.5)
         }
         .refreshable { await viewModel.load() }
