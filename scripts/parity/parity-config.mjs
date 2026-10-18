@@ -46,11 +46,12 @@ export function deriveConfig(file, deck = MOVIES[ON_DECK[0].movie]) {
 
 export function loadParityConfig(env = process.env) {
   const file = parseEnvFile(readFileSync(FILE, "utf8"));
-  for (const k of ["PARITY_SERVER_HOST", "PARITY_SERVER_PORT"]) if (env[k]) file[k] = env[k];
+  // Any key of parity.env can be overridden from the environment (a second instance needs its own server, artwork and build ports).
+  for (const k of ["PARITY_SERVER_HOST", ...Object.keys(file)]) if (env[k]) file[k] = env[k];
   const cfg = deriveConfig(file);
   if (env.PARITY_LIVE !== "1" && staticPasswordPresent(env)) for (const [k, v] of Object.entries(cfg)) env[k] ??= v;
   return Object.fromEntries(Object.keys(cfg).map((k) => [k, env[k] ?? cfg[k]]));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === "--shell")
-  for (const [k, v] of Object.entries(loadParityConfig({}))) console.log(`export ${k}='${v}'`);
+  for (const [k, v] of Object.entries(loadParityConfig({ ...process.env }))) console.log(`export ${k}='${v}'`);

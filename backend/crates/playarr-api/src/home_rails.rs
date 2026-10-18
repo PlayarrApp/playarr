@@ -883,6 +883,10 @@ pub async fn put_rail_preferences_handler(
     headers: HeaderMap,
     Json(body): Json<RailPreferencesRequest>,
 ) -> Result<Json<RailPreferencesResponse>, ApiError> {
+    if state.static_mode {
+        let lang = resolve_lang(None, &headers);
+        return Ok(Json(preferences_view(&state, viewer.user_id, lang).await?));
+    }
     let known: HashSet<Uuid> = state
         .home_rail_repo
         .list()
@@ -936,6 +940,9 @@ pub async fn reset_rail_preferences_handler(
     State(state): State<AppState>,
     viewer: CatalogViewer,
 ) -> Result<StatusCode, ApiError> {
+    if state.static_mode {
+        return Ok(StatusCode::NO_CONTENT);
+    }
     state
         .home_rail_repo
         .set_user_prefs(viewer.user_id, &[])

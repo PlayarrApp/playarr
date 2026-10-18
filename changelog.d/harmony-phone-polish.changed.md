@@ -1,1 +1,0 @@
-- HarmonyOS phone: page background is the surface colour as on web, Preferences rows match web's metrics, the profile theme and language selects show a sun and globe in medium weight, and the first episode card's focus ring is no longer clipped.
