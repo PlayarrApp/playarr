@@ -1070,7 +1070,6 @@ internal sealed class PlaylistsScreen : IPage
         _focus.Item?.Style(false);
         FocusManager.Instance.ClearFocus();
         _root.Add(_createDrawer.Root);
-        _createDrawer.FocusNameInput();
     }
 
     private void CloseCreate()
