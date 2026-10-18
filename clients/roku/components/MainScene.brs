@@ -6023,6 +6023,9 @@ sub addEpisodeCardFields(item as Object, activeFactor as Float)
     item.activeRailFactor = activeFactor
     item.AddField("cardScale", "float", false)
     item.cardScale = 268.0 / 220.0
+    ' Web episode cards focus like Home cards (lift 6, art 1.025), not like library grid cards.
+    item.AddField("homeCardFocusStyle", "boolean", false)
+    item.homeCardFocusStyle = true
     ' Reserve the lift, ring and glow overflow inside the row's clip (8 px sides, 15 px top), as Home does.
     item.AddField("focusRingOutsideArt", "boolean", false)
     item.focusRingOutsideArt = true
