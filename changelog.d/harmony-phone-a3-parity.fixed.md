@@ -1,1 +1,0 @@
-- HarmonyOS phone: series-detail text block, title wrap and synopsis height match web, series year chip uses the end date, Profiles selects no longer wrap their label, Library filter language sections have web's gap.

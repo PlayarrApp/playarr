@@ -1,1 +1,0 @@
-- HarmonyOS phone: the agenda card fits the page width (328 vp) instead of scrolling sideways.
