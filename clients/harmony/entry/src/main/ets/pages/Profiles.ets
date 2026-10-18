@@ -438,6 +438,8 @@ struct Profiles {
             this.languageChoice = value;
             setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
             void saveLanguageChoice(value);
+            // Rebuild the page so every label reads in the new language at once.
+            replaceRoute(getNavStack(), ROUTES.Profiles);
           },
         })
       }
