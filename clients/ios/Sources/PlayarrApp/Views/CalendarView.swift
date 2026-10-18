@@ -155,7 +155,7 @@ struct CalendarView: View {
                         Text("Month").tag(CalendarViewMode.month)
                     }
                 } label: {
-                    WMText(tabletRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                    WMText(phoneRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
@@ -209,6 +209,13 @@ struct CalendarView: View {
             return formatter.string(from: anchor)
         }
         let sameYear = utc.component(.year, from: start) == utc.component(.year, from: end)
+        if sameYear, utc.component(.month, from: start) == utc.component(.month, from: end) {
+            // Inside one month the web drops the repeated month: "5 \u{2013} 11 Oct".
+            formatter.dateFormat = "d"
+            let first = formatter.string(from: start)
+            formatter.dateFormat = "d MMM"
+            return "\(first) \u{2013} \(formatter.string(from: end))"
+        }
         formatter.dateFormat = sameYear ? "d MMM" : "d MMM yyyy"
         let first = formatter.string(from: start)
         if sameYear {
@@ -220,23 +227,6 @@ struct CalendarView: View {
         }
         formatter.dateFormat = "d MMM yyyy"
         return "\(first) \u{2013} \(formatter.string(from: end))"
-    }
-
-    /// The web tablet range pill folds a one-month week to "12 \u{2013} 18 Oct".
-    private var tabletRangeLabel: String {
-        let window = viewModel.window
-        guard viewModel.mode != .month, let start = CalendarDays.displayDate(window.start), let end = CalendarDays.displayDate(window.end) else {
-            return phoneRangeLabel
-        }
-        var utc = Calendar(identifier: .gregorian)
-        utc.timeZone = TimeZone(identifier: "UTC") ?? .current
-        guard utc.component(.month, from: start) == utc.component(.month, from: end),
-              utc.component(.year, from: start) == utc.component(.year, from: end) else { return phoneRangeLabel }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_GB")
-        formatter.timeZone = utc.timeZone
-        formatter.dateFormat = "MMM"
-        return "\(utc.component(.day, from: start)) \u{2013} \(utc.component(.day, from: end)) \(formatter.string(from: end))"
     }
 
     private func roundButton(_ glyph: String, label: String, action: @escaping () -> Void) -> some View {
@@ -282,6 +272,8 @@ struct CalendarView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             if case .loaded = viewModel.loadState, !viewModel.dayGroups.isEmpty, viewModel.mode == .agenda {
+                // The web agenda sits on the first release's backdrop in the dark theme only.
+                WMKeyArt(work: nil, apiClient: apiClient, lightOpacity: 0, backdropWorkID: viewModel.dayGroups.first?.items.first?.entries.first?.workID)
                 phoneAgenda(groups: viewModel.dayGroups)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
@@ -501,14 +493,14 @@ struct CalendarView: View {
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .offset(x: 16, y: 15)
-                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: 9)
+                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: 7.7)
                 if let entry {
                     WMText(
                         [entry.episodeCode, entry.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} "),
                         16, 400, color: WM.inkSoft, lh: 24
                     )
                     .frame(width: 220, alignment: .leading)
-                    .offset(x: 70, y: 35)
+                    .offset(x: 70, y: 33.7)
                     HStack(spacing: 12) {
                         let time = calendarTimeLabel24(entry)
                         WMText(time.isEmpty || time == "00:00" ? "All day" : time, 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
@@ -686,14 +678,24 @@ struct CalendarView: View {
         GeometryReader { proxy in
             // The web tablet lane is a fixed 324 pt column (measured on the 1366 pt iPad capture).
             let laneWidth: CGFloat = phone ? max(300, screenWidth * 0.82) : 324
+            ScrollViewReader { reader in
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(viewModel.dayGroups) { group in
                         VStack(alignment: .leading, spacing: 6.4) {
-                            Text(CalendarDays.displayDate(group.day).map { Self.groupFormatter.string(from: $0) } ?? group.day)
-                                .font(.custom("Avenir Next", fixedSize: 14.4).weight(.semibold))
-                                .foregroundStyle(PlayarrStyle.ink)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            HStack(spacing: 12) {
+                                Text(CalendarDays.displayDate(group.day).map { Self.groupFormatter.string(from: $0) } ?? group.day)
+                                    .font(.custom("Avenir Next", fixedSize: 14.4).weight(.semibold))
+                                    .foregroundStyle(PlayarrStyle.ink)
+                                if group.day == viewModel.today {
+                                    WMText("TODAY", 10.4, 700, color: WM.inkSoft, lh: 15.6, ls: 1.5)
+                                        .fixedSize()
+                                        .padding(.horizontal, 12)
+                                        .frame(height: 21)
+                                        .overlay(Capsule().stroke(WM.inkSoft, lineWidth: 1))
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             ScrollView {
                                 LazyVStack(spacing: phone ? 13.6 : 15.6) {
                                     ForEach(group.items) { item in
@@ -712,10 +714,21 @@ struct CalendarView: View {
                         .frame(width: laneWidth, height: proxy.size.height, alignment: .topLeading)
                     }
                 }
+                .padding(.trailing, 16)  // the web track ends 16 pt short of the edge when the last lane is today
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.viewAligned)
             .scrollIndicators(.hidden)
+            // The web week track opens on the today lane when the range holds it.
+            .onAppear { scrollToToday(reader) }
+            .onChange(of: viewModel.dayGroups.first?.id) { _, _ in scrollToToday(reader) }
+            }
+        }
+    }
+
+    private func scrollToToday(_ reader: ScrollViewProxy) {
+        if let today = viewModel.dayGroups.first(where: { $0.day == viewModel.today }) {
+            reader.scrollTo(today.id, anchor: .leading)
         }
     }
 
@@ -774,7 +787,7 @@ struct CalendarView: View {
                     Rectangle().fill(entry?.hasFile == true ? Color(red: 138 / 255, green: 197 / 255, blue: 165 / 255) : PlayarrStyle.ink)
                         .frame(width: 4)
                 } else {
-                    RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? PlayarrStyle.accent : PlayarrStyle.ink)
+                    RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? Color(red: 0.12, green: 0.33, blue: 0.25) : WM.ink)
                         .frame(width: 4).padding(.vertical, 8)
                 }
             }

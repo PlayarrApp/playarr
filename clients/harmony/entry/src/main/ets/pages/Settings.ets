@@ -22,6 +22,8 @@ import type { Choice } from '../design/components/ChoiceSegments';
 
 import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance, savedLanguageChoice, saveLanguageChoice, deviceLanguageTag } from '../AppContainer';
 import { t, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, resolveLanguage, setCurrentLanguage } from '../core/Language';
+import { getNavStack, replaceRoute } from '../navigation/NavStack';
+import { ROUTES } from '../navigation/Routes';
 import { InvitePanel } from '../design/components/InvitePanel';
 import { ProfileAvatarPanel } from '../design/components/ProfileAvatarPanel';
 import { HomeRailsPanel } from '../design/components/HomeRailsPanel';
@@ -74,20 +76,26 @@ function sectionCopyOf(id: string): string {
 function buildSections(): SettingsSection[] {
   return SECTION_ORDER.map((id: string, index: number): SettingsSection => ({ id: id, number: SECTION_NUMBERS[index], title: sectionTitleOf(id) }));
 }
-const HOME_VIEW_CHOICES: Choice[] = [
-  { value: 'thumbnail', label: 'Thumbnails' },
-  { value: 'cover', label: 'Covers' },
-];
-const ARTWORK_SIZE_CHOICES: Choice[] = [
-  { value: 'small', label: 'Small' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'large', label: 'Large' },
-];
-const SUBTITLE_MODE_CHOICES: Choice[] = [
-  { value: 'off', label: 'Off' },
-  { value: 'forced', label: 'Forced only' },
-  { value: 'always', label: 'Always on' },
-];
+function HOME_VIEW_CHOICES(): Choice[] {
+  return [
+    { value: 'thumbnail', label: t('settings.appearance.homeViewThumbnail', 'Thumbnails') },
+    { value: 'cover', label: t('settings.appearance.homeViewCover', 'Covers') },
+  ];
+}
+function ARTWORK_SIZE_CHOICES(): Choice[] {
+  return [
+    { value: 'small', label: 'Small' },
+    { value: 'medium', label: t('quality.level.medium', 'Medium') },
+    { value: 'large', label: 'Large' },
+  ];
+}
+function SUBTITLE_MODE_CHOICES(): Choice[] {
+  return [
+    { value: 'off', label: t('settings.playerPreferences.subtitlesOff', 'Off') },
+    { value: 'forced', label: t('settings.playerPreferences.subtitlesForced', 'Forced only') },
+    { value: 'always', label: t('settings.playerPreferences.subtitlesAlways', 'Always on') },
+  ];
+}
 const AUDIO_CHOICES: Choice[] = AUDIO_LANGUAGES.map((language: AudioLanguage): Choice => ({ value: language.value, label: language.label }));
 
 // Web `.settings-option`: 480x92 rows from (154, 162); number at +32/+24, title at +92, arrow at +432.
@@ -163,7 +171,7 @@ export struct SettingsScreen {
     }
     if (!remove && this.pinDraft.length !== 4) {
       this.lockStatus = 'error';
-      this.lockError = 'Enter exactly four digits.';
+      this.lockError = t('settings.profileLock.errorFourDigits', 'Enter exactly four digits.');
       return;
     }
     this.lockStatus = 'saving';
@@ -180,15 +188,15 @@ export struct SettingsScreen {
 
   private lockStatusText(): string {
     if (this.lockStatus === 'loading') {
-      return 'Loading profile lock…';
+      return t('settings.profileLock.loading', 'Loading profile lock…');
     }
     if (this.lockStatus === 'saving') {
-      return 'Updating profile lock…';
+      return t('settings.profileLock.updating', 'Updating profile lock…');
     }
     if (this.lockStatus === 'error') {
       return this.lockError;
     }
-    return this.pinLocked ? 'PIN lock is on.' : 'PIN lock is off.';
+    return this.pinLocked ? t('settings.profileLock.lockOn', 'PIN lock is on.') : t('settings.profileLock.lockOff', 'PIN lock is off.');
   }
 
   private async loadAppearanceChoices(): Promise<void> {
@@ -247,7 +255,7 @@ export struct SettingsScreen {
   private audioStatusText(): string {
     const language = audioLanguageLabel(this.audioLanguage);
     if (this.audioStatus === 'loading') {
-      return 'Loading your player preference…';
+      return t('settings.playerPreferences.statusLoading', 'Loading your player preference…');
     }
     if (this.audioStatus === 'saving') {
       return 'Saving ' + language + '…';
@@ -315,9 +323,9 @@ export struct SettingsScreen {
     })
     this.settingDivider()
     ChoiceSegments({
-      heading: 'Home screen artwork',
-      description: 'Show portrait covers instead of wide media thumbnails on the home screen.',
-      choices: HOME_VIEW_CHOICES,
+      heading: t('settings.appearance.homeViewTitle', 'Home screen artwork'),
+      description: t('settings.appearance.homeViewDescription', 'Show portrait covers instead of wide media thumbnails on the home screen.'),
+      choices: HOME_VIEW_CHOICES(),
       selected: this.homeView,
       large: true,
       sectionWidth: this.panelWidth(),
@@ -328,9 +336,9 @@ export struct SettingsScreen {
     })
     this.settingDivider()
     ChoiceSegments({
-      heading: 'Artwork size',
-      description: 'Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.',
-      choices: ARTWORK_SIZE_CHOICES,
+      heading: t('settings.appearance.artworkSizeTitle', 'Artwork size'),
+      description: t('settings.appearance.artworkSizeDescription', 'Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.'),
+      choices: ARTWORK_SIZE_CHOICES(),
       selected: this.artworkSize,
       large: true,
       sectionWidth: this.panelWidth(),
@@ -368,7 +376,7 @@ export struct SettingsScreen {
   private playerPanel(): void {
     Scroll() {
       Column({ space: tv(16) }) {
-        this.panelHeading('Default quality', 'Start playback at this quality when your connection allows it.')
+        this.panelHeading(t('settings.playerPreferences.qualityTitle', 'Default quality'), 'Start playback at this quality when your connection allows it.')
         QualityMatrix({
           selected: this.defaultQuality,
           matrixWidth: this.panelWidth(),
@@ -376,10 +384,10 @@ export struct SettingsScreen {
             this.setDefault('quality', id);
           },
         })
-        this.panelHeading('Default subtitles', 'Choose when subtitles start, and in which language.')
+        this.panelHeading(t('settings.playerPreferences.subtitlesTitle', 'Default subtitles'), 'Choose when subtitles start, and in which language.')
         ChoiceSegments({
           heading: '',
-          choices: SUBTITLE_MODE_CHOICES,
+          choices: SUBTITLE_MODE_CHOICES(),
           selected: this.subtitleMode,
           sectionWidth: this.panelWidth(),
           onChoose: (value: string): void => {
@@ -396,7 +404,7 @@ export struct SettingsScreen {
             },
           })
         }
-        this.panelHeading('Default audio track', 'Prefer this audio language whenever a matching track is available.')
+        this.panelHeading(t('settings.playerPreferences.audioTitle', 'Default audio track'), t('settings.playerPreferences.audioDescription', 'Prefer this audio language whenever a matching track is available.'))
         SelectField({
           options: AUDIO_CHOICES,
           value: this.audioLanguage,
@@ -426,7 +434,7 @@ export struct SettingsScreen {
   @Builder
   private profileLockPanel(): void {
     Column({ space: tv(16) }) {
-      Text(this.pinLocked ? 'Replace PIN' : 'New PIN').fontFamily(nunito(700))
+      Text(this.pinLocked ? t('settings.profileLock.replacePinLabel', 'Replace PIN') : t('settings.profileLock.newPinLabel', 'New PIN')).fontFamily(nunito(700))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
@@ -444,7 +452,7 @@ export struct SettingsScreen {
           .onChange((value: string) => {
             this.pinDraft = value;
           })
-        Text(this.lockStatus === 'saving' ? 'Saving…' : this.pinLocked ? 'Replace' : 'Set PIN').fontFamily(nunito(700))
+        Text(this.lockStatus === 'saving' ? t('settings.profileLock.saving', 'Saving…') : this.pinLocked ? t('settings.profileLock.replace', 'Replace') : t('settings.profileLock.setPin', 'Set PIN')).fontFamily(nunito(700))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(this.pinDraft.length === 4 ? activeColors().bg : activeColors().inkMuted))
@@ -508,6 +516,8 @@ export struct SettingsScreen {
         this.languageChoice = value;
         setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
         void saveLanguageChoice(value);
+        // Rebuild the page so every label reads in the new language at once.
+        replaceRoute(getNavStack(), ROUTES.Settings);
       },
     })
   }

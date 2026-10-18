@@ -43,7 +43,7 @@ Item {
             height: 87 * Tokens.u
             onClicked: page.open(modelData.id)
             function navigationActivate() { page.open(modelData.id) }
-            Rectangle { anchors { fill: parent; leftMargin: Tokens.pad; rightMargin: Tokens.pad } color: Tokens.dark ? Tokens.surfaceStrong : Tokens.surfaceSoft; opacity: index === 0 ? (Tokens.dark ? 0.5 : 1) : (parent.pressed ? 0.5 : 0) }
+            Rectangle { anchors { fill: parent; leftMargin: Tokens.pad; rightMargin: Tokens.pad } color: Tokens.dark ? (index === 0 ? "#312a30" : Tokens.surfaceStrong) : Tokens.surfaceSoft; opacity: index === 0 ? 1 : (parent.pressed ? 0.5 : 0) }
             Label { x: 27.5 * Tokens.u; y: 18 * Tokens.u; text: (index + 1 < 10 ? "0" : "") + (index + 1); color: Tokens.inkMuted; font.family: Tokens.family820; font.pixelSize: 8 * Tokens.u }
             Column {
                 anchors { left: parent.left; leftMargin: 71 * Tokens.u; right: arrow.left; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }

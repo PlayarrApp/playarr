@@ -45,3 +45,12 @@ export function t(key: string, fallback: string = ''): string {
   const english: string | undefined = STRINGS.en[key];
   return english !== undefined ? english : fallback;
 }
+
+/** `t` with `{{name}}` placeholders filled from `values` (web's interpolation). */
+export function tf(key: string, fallback: string, values: Record<string, string>): string {
+  let text: string = t(key, fallback);
+  for (const name of Object.keys(values)) {
+    text = text.split('{{' + name + '}}').join(values[name]);
+  }
+  return text;
+}

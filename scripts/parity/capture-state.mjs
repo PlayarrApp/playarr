@@ -94,7 +94,7 @@ export async function assertAndroidDeviceAccount({ session, expectedUsername, ex
   if (typeof session?.accessToken !== "string" || !session.accessToken || !session.userId) throw new Error("Android device account does not match the selected approved account");
   let response, profiles;
   try {
-    response = await fetchImpl(`${serverUrl}/api/v1/users/profiles`, { headers: { authorization: `Bearer ${session.accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(5000) });
+    response = await fetchImpl(`${serverUrl}/api/v1/users/profiles`, { headers: { authorization: `Bearer ${session.accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error();
     profiles = await response.json();
   } catch { throw new Error("Android device account identity check failed"); }
@@ -107,9 +107,10 @@ export async function readAndroidDeviceSession(env = process.env, persistToken =
   const adb = env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb";
   const pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
   try {
-    const { stdout } = await execFileAsync(adb, ["exec-out", "run-as", pkg, "cat", "files/datastore/playarr_client_prefs.preferences_pb"], { env, timeout: 10_000, maxBuffer: 1 << 20, encoding: "buffer" });
+    const { stdout } = await execFileAsync(adb, ["exec-out", "run-as", pkg, "cat", "files/datastore/playarr_client_prefs.preferences_pb"], { env, timeout: 30_000, maxBuffer: 1 << 20, encoding: "buffer" });
     const session = parseAndroidDeviceSession(stdout.toString("hex"));
-    await (persistToken ?? ((token) => storeSecrets({ PLAYARR_PARITY_ANDROID_OBSERVED_ACCESS_TOKEN: token })))(session.accessToken);
+    // The observed-token record is a convenience: ~/.secrets is shared by every worker, so a busy write lock must not fail the guard.
+    try { await (persistToken ?? ((token) => storeSecrets({ PLAYARR_PARITY_ANDROID_OBSERVED_ACCESS_TOKEN: token })))(session.accessToken); } catch { /* keep the session */ }
     return session;
   } catch { throw new Error("Android device session unavailable for account guard"); }
 }
@@ -139,7 +140,8 @@ async function acquireLock(client, env) {
       await mkdir(dir, { mode: 0o700 });
       try { await writeFile(join(dir, "owner.json"), JSON.stringify({ client, pid: process.pid, host: hostname(), acquired_at: new Date().toISOString() }), { mode: 0o600, flag: "wx" }); }
       catch (error) { await rmdir(dir).catch(() => {}); throw error; }
-      return async () => { await rm(join(dir, "owner.json"), { force: true }); await rmdir(dir); };
+      // A lock directory already gone (reclaimed or moved aside by hand) must not fail a run whose state was restored.
+      return async () => { await rm(join(dir, "owner.json"), { force: true }); await rmdir(dir).catch((error) => { if (error.code !== "ENOENT") throw error; }); };
     } catch (error) {
       if (error.code !== "EEXIST" && error.code !== "ENOTEMPTY") throw error;
       let recoverySnapshot = false;

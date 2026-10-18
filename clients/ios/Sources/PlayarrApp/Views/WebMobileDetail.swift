@@ -341,7 +341,7 @@ struct WMDetailPage: View {
     /// The hero art at `width` (the 390 pt web canvas, or the full screen for the strip behind the top inset).
     private func artBackdrop(width: CGFloat) -> some View {
         WMKeyArt(
-            work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5,
+            work: work, apiClient: apiClient, imageHeight: 280, fadeStart: 215, fadeEnd: 300, imageTop: -5, artScale: 1.01,
             lightOpacity: 0.41, webMask: true,
             fadeStops: [(0, 0), (120, 0), (160, 0.25), (200, 0.47), (240, isSeries ? 0.83 : 0.9), (270, 1)]
         )

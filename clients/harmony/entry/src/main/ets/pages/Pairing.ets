@@ -55,6 +55,7 @@ import { AsyncState, AsyncStateKind } from '../design/components/AsyncState';
 import { ROUTES } from '../navigation/Routes';
 import { getNavStack, pushRoute, replaceRoute } from '../navigation/NavStack';
 import { logWarn } from '../util/Log';
+import { t } from '../core/Language';
 
 /** brief 9 ("Slice 5" acceptance): "renders the user_code at display size
  * with wide letter-spacing". Not a `core/Tokens.ts` field -- that table has
@@ -199,7 +200,7 @@ struct Pairing {
           AsyncState({
             kind: AsyncStateKind.Error,
             message: this.errorMessage,
-            retryLabel: 'Try again',
+            retryLabel: t('components.deviceLogin.tryAgain', 'Try again'),
             retry: (): void => {
               this.restart();
             },
@@ -235,7 +236,7 @@ struct Pairing {
             }
             .alignItems(HorizontalAlign.Start)
           }
-          Button('Sign in manually')
+          Button(t('components.deviceLogin.signInManually', 'Sign in manually'))
             .defaultFocus(true)
             .onClick((): void => {
               this.cancelActivePoll();

@@ -6,6 +6,7 @@
  * Not yet here (13.10017): the Filters tile and drawer, recent searches.
  */
 
+import { t } from '../core/Language';
 import { nunito } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
@@ -71,12 +72,12 @@ const CLEAR_SIZE: number = 12.288;
 
 function kindLabel(work: Work): string {
   if (work.kind === 'movie') {
-    return 'Movie';
+    return t('pages.home.workKind.movie', 'Movie');
   }
   if (work.kind === 'series') {
-    return 'Series';
+    return t('pages.home.workKind.series', 'Series');
   }
-  return work.kind === 'artist' ? 'Artist' : 'Title';
+  return work.kind === 'artist' ? t('pages.home.workKind.artist', 'Artist') : 'Title';
 }
 
 function resultYear(work: Work): string {
@@ -243,7 +244,7 @@ export struct SearchScreen {
     if (year.length > 0) {
       parts.push(year);
     }
-    parts.push(work.genres.length > 0 ? work.genres.slice(0, 2).join(' · ') : 'Available to play');
+    parts.push(work.genres.length > 0 ? work.genres.slice(0, 2).join(' · ') : t('pages.search.availableToPlay', 'Available to play'));
     return [parts.join('    ')];
   }
 
@@ -278,7 +279,7 @@ export struct SearchScreen {
   @Builder
   private filtersBody(): void {
     ChoiceSegments({
-      heading: 'Type',
+      heading: t('pages.search.typeLabel', 'Type'),
       choices: searchTypeChoices(this.availableKinds),
       selected: this.mediaType,
       onChoose: (value: string): void => {
@@ -325,14 +326,14 @@ export struct SearchScreen {
     if (this.shownResults().length > 0) {
       this.resultsGrid()
     } else {
-      this.emptyState(this.searched ? 'No matching titles or playlists.' : 'Start typing to search.')
+      this.emptyState(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.'))
     }
     Row({ space: tv(12) }) {
       Image($r('app.media.nav_search'))
         .width(tv(ICON_SIZE))
         .height(tv(ICON_SIZE))
         .colorFilter(tintFilter(activeColors().inkSoft))
-      TextInput({ text: this.query, placeholder: 'Search your libraries and playlists' })
+      TextInput({ text: this.query, placeholder: t('pages.search.searchPlaceholder', 'Search your libraries and playlists') })
         .fontSize(tv(INPUT_SIZE))
         .fontColor(toResourceColor(activeColors().ink))
         .placeholderColor(toResourceColor(activeColors().inkMuted))
@@ -348,7 +349,7 @@ export struct SearchScreen {
           this.onQueryChange(value);
         })
       if (this.query.length > 0) {
-        Text('Clear').fontFamily(nunito(700))
+        Text(t('pages.search.clear', 'Clear')).fontFamily(nunito(700))
           .fontSize(tv(CLEAR_SIZE))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -367,7 +368,7 @@ export struct SearchScreen {
     .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(FORM_TOP) })
     ActionTile({
       icon: $r('app.media.action_filters'),
-      label: 'Filters',
+      label: t('pages.search.filters', 'Filters'),
       slot: 0,
       onActivate: (): void => {
         this.filtersOpen = true;
@@ -390,7 +391,7 @@ export struct SearchScreen {
     } else if (this.filtersOpen) {
       Drawer({
         kicker: 'Search controls',
-        title: 'Filters',
+        title: t('pages.search.filters', 'Filters'),
         onClose: (): void => {
           this.filtersOpen = false;
         },
@@ -410,7 +411,7 @@ export struct SearchScreen {
         .width(tv(PREVIEW_WIDTH))
         .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PREVIEW_TOP) })
     } else {
-      Text('Find any available movie, series, artist or playlist.').fontFamily(nunito(400))
+      Text(t('pages.search.emptyPrompt', 'Find any available movie, series, artist or playlist.')).fontFamily(nunito(400))
         .fontSize(tv(PROMPT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
         .width(tv(PROMPT_WIDTH))
@@ -437,7 +438,7 @@ export struct SearchScreen {
           .width(20)
           .height(20)
           .colorFilter(tintFilter(activeColors().inkSoft))
-        TextInput({ text: this.query, placeholder: 'Search your libraries and playlists' })
+        TextInput({ text: this.query, placeholder: t('pages.search.searchPlaceholder', 'Search your libraries and playlists') })
           .fontSize(16)
           .fontColor(toResourceColor(activeColors().ink))
           .placeholderColor(toResourceColor(activeColors().inkMuted))
@@ -498,7 +499,7 @@ export struct SearchScreen {
           .borderRadius(36)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
-          Text(this.searched ? 'No matching titles or playlists.' : 'Start typing to search.').fontFamily(nunito(500))
+          Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunito(500))
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))
@@ -536,7 +537,7 @@ export struct SearchScreen {
     if (this.filtersOpen && this.actionsWork === undefined) {
       Drawer({
         kicker: 'Search controls',
-        title: 'Filters',
+        title: t('pages.search.filters', 'Filters'),
         onClose: (): void => {
           this.filtersOpen = false;
         },
@@ -551,7 +552,7 @@ export struct SearchScreen {
     NavDestination() {
       Stack() {
       PageShell({
-        title: 'Search',
+        title: t('pages.search.title', 'Search'),
         touch: true,
         touchContent: (): void => {
           this.touchContentBody();

@@ -413,6 +413,8 @@ struct WMKeyArt: View {
     /// Draw the whole picture at the page width (no crop) instead of filling the frame.
     var contain = false
     var imageTop: CGFloat = -9
+    /// Scales the picture about its top-left corner (the web detail art measures 1% larger than its nominal box).
+    var artScale: CGFloat = 1
     /// How strong the grey artwork is in the light theme; the web shows it differently per page.
     var lightOpacity: Double = 0.22
     /// The web's horizontal treatment in the light theme: the artwork fades out over its last 28% (mask)
@@ -420,15 +422,25 @@ struct WMKeyArt: View {
     var webMask = false
     /// Replaces the two-point vertical fade with these (y, how much of the page colour covers) stops.
     var fadeStops: [(y: CGFloat, cover: Double)]?
+    /// Pages that only know a work id (calendar rows) draw its backdrop from the artwork route instead.
+    var backdropWorkID: UUID?
     @Environment(\.colorScheme) private var scheme
+
+    @ViewBuilder private var art: some View {
+        if let work {
+            PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+        } else if let id = backdropWorkID {
+            WMRemoteImage(apiClient: apiClient, sources: [WMRemoteImage.Source(path: "/api/v1/artwork/work/\(id.uuidString)/backdrop")])
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            if let work {
-                PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
+            if work != nil || backdropWorkID != nil {
+                art
                     .saturation(0)
                     .opacity(scheme == .dark ? 0.085 : lightOpacity)
-                    .frame(width: 406, height: contain ? 406 * 9 / 16 : imageHeight)
+                    .frame(width: 406 * artScale, height: (contain ? 406 * 9 / 16 : imageHeight) * artScale)
                     .mask {
                         if webMask && scheme == .light {
                             LinearGradient(

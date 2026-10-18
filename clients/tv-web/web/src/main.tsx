@@ -17,6 +17,7 @@ import {
   IS_WEBOS,
   PLAYARR_CLIENT_PLATFORM,
 } from "./lib/clientPlatform";
+import { syncInstalledAppHint } from "./lib/signedInHint";
 import { installTvStageScale } from "./lib/tvStageScale";
 import { installVidaaLongPress } from "./lib/vidaaLongPress";
 import { installScrollEdgeFades } from "./lib/scrollEdgeFade";
@@ -46,6 +47,22 @@ if (__PLAYARR_DEBUG_MIRROR__) {
     if (new URLSearchParams(window.location.search).get("mirrorPointer") === "1") window.sessionStorage.setItem("playarr.debugMirrorPointer", "1");
   } catch {
     // sessionStorage unavailable: the mirror falls back to the URL
+  }
+  // ?mirrorResetSession=1 drops the stored sign-in before the first render, so a stale session shows a fresh device-link code on the next load.
+  try {
+    if (new URLSearchParams(window.location.search).get("mirrorResetSession") === "1") {
+      window.localStorage.removeItem("playarr.profileSessions.v4");
+      window.localStorage.removeItem("playarr.activeProfile.v1");
+    }
+  } catch {
+    // localStorage unavailable: nothing to reset
+  }
+  // ?mirrorTheme=dark|light stores the explicit theme before the first render, so the parity driver can switch theme with a reload.
+  try {
+    const themeParam = new URLSearchParams(window.location.search).get("mirrorTheme");
+    if (themeParam === "dark" || themeParam === "light") window.localStorage.setItem("playarr-theme", themeParam);
+  } catch {
+    // localStorage unavailable: the stored theme stays
   }
   // ?mirrorNow=<ISO date-time> freezes Date so a capture shows the same day and time as its web reference.
   // shortcut: frozen time never advances, so timers keyed on it stall; fine for the short capture sessions this debug build serves.
@@ -104,6 +121,9 @@ if (parityMode !== "off" && !tvCrossEngine) {
   document.documentElement.dataset.parity = parityMode;
   installParityApplyHook();
 }
+
+// Installed apps are never shown the marketing site, signed in or not (see worker.js and appSignal.js).
+syncInstalledAppHint(PLAYARR_CLIENT_PLATFORM !== "web");
 
 const Router = IS_PACKAGED_TV ? HashRouter : BrowserRouter;
 

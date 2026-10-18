@@ -32,7 +32,13 @@ internal sealed class Shell : View
     private readonly Dictionary<string, object> _saved = new();
     private readonly View _chrome = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
     private TextLabel? _clockTime, _clockDate;
-    public void SetCaptureClock(DateTime? now) { _env.ClockNow = () => now ?? DateTime.Now; UpdateClock(); }
+    public void SetCaptureClock(DateTime? now)
+    {
+        // The parity suite pins UTC (screens.json determinism.timezone) and hands over UTC wall time; show release times (ToLocalTime) in the same zone.
+        if (now is not null) { Environment.SetEnvironmentVariable("TZ", "UTC"); TimeZoneInfo.ClearCachedData(); }
+        _env.ClockNow = () => now ?? DateTime.Now;
+        UpdateClock();
+    }
     private void UpdateClock()
     {
         var now = _env.ClockNow();
