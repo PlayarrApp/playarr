@@ -881,12 +881,12 @@ struct TVHomeCard: View {
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focusedLook ? 0.32 : 0.16),
                         radius: focusedLook ? 26 : 10,
-                        y: focusedLook ? 26 : 10
+                        y: TVParityLaunch.shadowY(focusedLook ? 26 : 10)
                     )
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focusedLook ? 0.22 : 0.10),
                         radius: focusedLook ? 11 : 4,
-                        y: focusedLook ? 11 : 3
+                        y: TVParityLaunch.shadowY(focusedLook ? 11 : 3)
                     )
                     // The art grows to 1.025 when focused.
                     .scaleEffect(focusedLook ? 1.025 : 1)
@@ -996,15 +996,16 @@ struct TVWebHomeCard: View {
                 if progress == nil {
                     Circle()
                         .fill(DesignTokens.Color.brandPrimary)
-                        .frame(width: 13, height: 13)
-                        .padding(10.6)
+                        .frame(width: 11.6, height: 11.6)
+                        .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
+                        .padding(11.5)
                 }
             }
             .background(
                 RoundedRectangle(cornerRadius: 12.48, style: .continuous)
                     .fill(DesignTokens.Stage.surfaceSoft)
-                    .shadow(color: Self.shadow.opacity(focused ? 0.32 : 0.16), radius: focused ? 26 : 11, y: focused ? 26 : 10)
-                    .shadow(color: Self.shadow.opacity(focused ? 0.22 : 0.10), radius: focused ? 11 : 4.5, y: focused ? 11 : 3)
+                    .shadow(color: Self.shadow.opacity(focused ? 0.32 : 0.16), radius: focused ? 26 : 11, y: TVParityLaunch.shadowY(focused ? 26 : 10))
+                    .shadow(color: Self.shadow.opacity(focused ? 0.22 : 0.10), radius: focused ? 11 : 4.5, y: TVParityLaunch.shadowY(focused ? 11 : 3))
             )
             .modifier(TVCardFocusGlow(focused: focused, cornerRadius: 12.48))
             .scaleEffect(focused ? 1.025 : 1)
@@ -1035,12 +1036,20 @@ struct TVCardFocusGlow: ViewModifier {
     let focused: Bool
     let cornerRadius: CGFloat
 
+    #if os(macOS)
+    // A 3 px stroke is centred on its path, so the path sits 1.5 px out for the ring to touch the art (the web's box-shadow
+    // ring); 3 left a 1.5 px gap that showed as a pale line between art and ring.
+    private let ringOffset: CGFloat = 1.5
+    #else
+    private let ringOffset: CGFloat = 3
+    #endif
+
     func body(content: Content) -> some View {
         content.overlay {
             if focused {
-                RoundedRectangle(cornerRadius: cornerRadius + 3, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius + ringOffset, style: .continuous)
                     .stroke(DesignTokens.Stage.cardGlow, lineWidth: 3)
-                    .padding(-3)
+                    .padding(-ringOffset)
                     #if os(macOS)
                     // Web `0 0 20px 4px` glow at 45%: the 4 px spread is a wider faint stroke under the blur.
                     .background(
@@ -1472,7 +1481,7 @@ struct TVSearchView: View {
                     // Focused search shadow: 0 22px 52px rgba(31, 14, 20, 0.28); the rest shadow is the card default.
                     .shadow(
                         color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(focused ? 0.28 : 0),
-                        radius: 26, y: 22
+                        radius: 26, y: TVParityLaunch.shadowY(22)
                     )
                 Circle()
                     .fill(DesignTokens.Color.brandPrimary)
@@ -2045,13 +2054,13 @@ struct TVLibraryKindView: View {
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
                             .opacity(isSelected ? 0.3 : 0.14),
                         radius: isSelected ? 48 : 20,
-                        y: isSelected ? 24 : 10
+                        y: TVParityLaunch.shadowY(isSelected ? 24 : 10)
                     )
                     .shadow(
                         color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255)
                             .opacity(isSelected ? 0.2 : 0.1),
                         radius: isSelected ? 20 : 8,
-                        y: isSelected ? 10 : 3
+                        y: TVParityLaunch.shadowY(isSelected ? 10 : 3)
                     )
                     // SPA fixture crops already include the pink unwatched disc; real art gets one from the viewer's watch state.
                     if showsUnwatchedDisc(work), !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
@@ -2403,6 +2412,8 @@ struct TVActionsDrawer: View {
                     TVActionRow(glyph: "\u{2190}", label: "Back") { self.playlists = nil }
                 } else {
                     TVActionRow(glyph: "\u{25B6}\u{FE0E}", label: "Play", preferred: true) { Task { await play() } }
+                    // Web lists Download here too; this client keeps no offline copies, so the row only explains that.
+                    TVActionRow(glyph: "\u{2193}", label: "Download") { message = "Downloads are not available on this device." }
                     TVActionRow(glyph: "\u{FF0B}", label: "Add to Playlist") {
                         Task { playlists = (try? await environment.apiClient.listPlaylists()) ?? [] }
                     }

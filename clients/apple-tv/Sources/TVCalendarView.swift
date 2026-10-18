@@ -258,7 +258,7 @@ struct TVCalendarView: View {
         } label: {
             entryCard(item, width: width, today: today)
                 .modifier(TVCardFocusGlow(focused: focused, cornerRadius: 12))
-                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.3 : 0), radius: 24, y: 24)
+                .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.3 : 0), radius: 24, y: TVParityLaunch.shadowY(24))
                 .offset(y: focused ? -7 : 0)
                 .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: focused)
         }

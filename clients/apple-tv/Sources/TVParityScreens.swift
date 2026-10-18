@@ -607,3 +607,23 @@ enum TVParityState {
     }
 }
 #endif
+
+extension TVParityLaunch {
+    /// The Mac parity snapshot (`MacDebugRemote.snapshot`, Debug builds) draws through `CALayer.render(in:)` into a flipped
+    /// context, which mirrors every SwiftUI shadow offset in y (the web shows the card shadow below, the capture showed it
+    /// above). Live windows draw correctly, so only a capture launch negates the offset.
+    #if DEBUG && os(macOS)
+    private static let mirrorsShadows: Bool = {
+        let args = ProcessInfo.processInfo.arguments
+        return ["-PlayarrInvisible", "-PlayarrMacSnapshot", argument, routeArgument].contains { args.contains($0) }
+    }()
+    #endif
+
+    static func shadowY(_ y: CGFloat) -> CGFloat {
+        #if DEBUG && os(macOS)
+        return mirrorsShadows ? -y : y
+        #else
+        return y
+        #endif
+    }
+}
