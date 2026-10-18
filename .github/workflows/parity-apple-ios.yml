@@ -22,9 +22,9 @@ on:
         type: string
         required: true
       fixed_now:
-        description: Pinned capture instant, matching the clock the web references were captured at (whole seconds, UTC)
+        description: Pinned capture instant, the static parity server clock (screens.json determinism.clock) (whole seconds, UTC)
         type: string
-        default: "2026-10-15T15:42:29Z" # quoted: unquoted, YAML turns it into a timestamp and the app cannot parse it
+        default: "2026-10-07T12:00:00Z" # quoted: unquoted, YAML turns it into a timestamp and the app cannot parse it
       screens:
         description: Comma-separated screen ids (default - all 15; leave out player-controls while no playback may run)
         type: string
