@@ -1,0 +1,2 @@
+- Android tablet: a series detail with few tracks centres its first season like the web, and Similar Titles use the web's wider 16:9 cards.
+- Android tablet: film detail shows the web's scene-marker count under Chapters, the Similar Titles track uses 320 x 180 cards, and the agenda list ends clear of the action column.

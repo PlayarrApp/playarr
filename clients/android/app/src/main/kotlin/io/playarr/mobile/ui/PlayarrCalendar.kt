@@ -660,7 +660,8 @@ internal fun TvCalendarAgenda(
             val detailsTop = if (tablet) 294.3.dp else 259.dp
             val listTop = if (tablet) 135.dp else 168.dp
             val listStart = if (tablet) 534.dp else 786.dp
-            val listWidth = if (tablet) (maxWidth - listStart - 24.dp) else 1049.dp
+            // Tablet web: the list ends at x 1193, clear of the right action column (measured on the 1280 x 800 static refs).
+            val listWidth = if (tablet) (maxWidth - listStart - 87.dp) else 1049.dp
             val dayFont = LocalCalendarMetrics.current
             val detailScroll = rememberScrollState()
             // The details are the library hero: keep them on the stage (1920 values); only the day list is in css px.

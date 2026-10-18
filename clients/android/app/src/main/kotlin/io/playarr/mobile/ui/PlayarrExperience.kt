@@ -6485,6 +6485,7 @@ private fun ExperienceVideoDetailContent(
                     onPlay = onPlay,
                     onOpenWork = onOpenWork,
                     playFocus = playFocus,
+                    generatedChapters = movieChapters.isEmpty(),
                     modifier = Modifier
                         .width(1038.4.dp)
                         .fillMaxHeight()
@@ -7465,7 +7466,8 @@ internal fun SeriesEpisodeBrowser(
         modifier = modifier
             .then(
                 if (isTelevision) {
-                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp + 22.5.dp * tabletDetail)
+                    // shortcut: the web centres the first track in its scroll box, so a short stack (static seed) sits 222 dp lower than a tall one; only the short case is matched, upgrade with a clamped initial scroll.
+                    Modifier.background(webRailSurfaceBrush()).padding(start = 152.dp + 16.5.dp * tabletDetail, top = 357.dp + 244.5.dp * tabletDetail)
                 } else {
                     Modifier.glass(RoundedCornerShape(16.dp), WebGlass.Panel).padding(14.dp)
                 },
@@ -7544,10 +7546,15 @@ internal fun SeriesEpisodeBrowser(
             LazyColumn(Modifier.weight(1f), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(bottom = 80.dp)) {
                 items(seasons, key = { it.season.id }) { content(it) }
                 if (credits.cast.isNotEmpty()) {
-                    item { DetailCreditsRail(credits.cast) }
+                    item { Box(Modifier.padding(top = 55.dp * tabletDetail)) { DetailCreditsRail(credits.cast) } }
                 }
                 if (similarWorks.isNotEmpty()) {
-                    item { SimilarWorksRail(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail) }
+                    item {
+                        Box(Modifier.padding(top = if (credits.cast.isEmpty()) 43.dp * tabletDetail else 0.dp)) {
+                            if (tabletDetail == 0f) SimilarWorksRail(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail)
+                            else WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, true)
+                        }
+                    }
                 }
             }
         } else {
@@ -7775,6 +7782,7 @@ internal fun MovieDetailBrowser(
     onOpenWork: (String) -> Unit,
     modifier: Modifier = Modifier,
     playFocus: FocusRequester? = null,
+    generatedChapters: Boolean = false,
 ) {
     if (chapters.isEmpty() && credits.cast.isEmpty() && similarWorks.isEmpty()) return
     // Web tracks: chapters then similar titles (the cast row has nothing to focus); UP/DOWN land on the closest tile by x,
@@ -7796,7 +7804,7 @@ internal fun MovieDetailBrowser(
             if (chapters.isNotEmpty()) {
                 WebMediaTrack(
                     title = playarrString(PlayarrString.DetailChapters),
-                    count = playarrString(PlayarrString.DetailChaptersCount, "count" to chapters.size),
+                    count = playarrString(if (generatedChapters) PlayarrString.DetailSceneMarkersCount else PlayarrString.DetailChaptersCount, "count" to chapters.size),
                     state = tvRails.rowState(chaptersRail),
                 ) {
                     itemsIndexed(chapters, key = { _, it -> it.index }) { chapterIndex, chapter ->
@@ -7822,35 +7830,7 @@ internal fun MovieDetailBrowser(
                 }
             }
             if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast, television = true)
-            if (similarWorks.isNotEmpty()) {
-                WebMediaTrack(
-                    title = playarrString(PlayarrString.DetailSimilarTitles),
-                    count = playarrString(
-                        if (similarWorks.size == 1) PlayarrString.DetailTitlesCountOne else PlayarrString.DetailTitlesCountOther,
-                        "count" to similarWorks.size,
-                    ),
-                    state = tvRails.rowState(similarRail),
-                ) {
-                    itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
-                        WebEpisodeCard(
-                            modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
-                            onClick = { onOpenWork(work.id) },
-                            lead = null,
-                            title = work.title,
-                            badge = null,
-                        ) {
-                            AuthenticatedArtwork(
-                                work = work,
-                                kinds = listOf(ImageKind.Backdrop, ImageKind.Poster),
-                                serverUrl = serverUrl,
-                                accessToken = accessToken,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                }
-            }
+            if (similarWorks.isNotEmpty()) WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, LocalStageScale.current != 1f)
         }
         return
     }
@@ -7929,6 +7909,7 @@ private fun WebMediaTrack(
     title: String,
     count: String,
     state: androidx.compose.foundation.lazy.LazyListState? = null,
+    tabletStartInset: Dp = 4.dp,
     cards: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     val tabletTrack = if (LocalStageScale.current != 1f) 1f else 0f
@@ -7942,10 +7923,53 @@ private fun WebMediaTrack(
             // Measured against web at 1280 x 800: 10 css px more under the heading; the viewport reaches left so a focused first tile is not clipped.
             modifier = Modifier.padding(top = 17.2.dp + 15.dp * tabletTrack).extendStart(40.dp),
             // Tablet tracks start 4 dp further in than the TV ones (measured on the 1280 x 800 web).
-            contentPadding = PaddingValues(start = 40.dp + 4.dp * tabletTrack, top = 18.dp, end = tabletTrackEnd(24.dp)),
+            contentPadding = PaddingValues(start = 40.dp + tabletStartInset * tabletTrack, top = 18.dp, end = tabletTrackEnd(24.dp)),
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             content = cards,
         )
+    }
+}
+
+/** Web similar-titles track: the library cards are 320 x 180 on the tablet's 1280 x 800 web, and its track starts at the TV inset. */
+@Composable
+private fun WebSimilarTrack(
+    similarWorks: List<Work>,
+    serverUrl: String,
+    accessToken: String?,
+    onOpenWork: (String) -> Unit,
+    tvRails: TvRails,
+    similarRail: Int,
+    tablet: Boolean,
+) {
+    WebMediaTrack(
+        title = playarrString(PlayarrString.DetailSimilarTitles),
+        count = playarrString(
+            if (similarWorks.size == 1) PlayarrString.DetailTitlesCountOne else PlayarrString.DetailTitlesCountOther,
+            "count" to similarWorks.size,
+        ),
+        state = tvRails.rowState(similarRail),
+        tabletStartInset = 0.dp,
+    ) {
+        itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
+            WebEpisodeCard(
+                cardWidth = if (tablet) 320.dp else 268.dp,
+                artHeight = if (tablet) 180.dp else 150.8.dp,
+                modifier = Modifier.tvRailItem(tvRails, similarRail, similarIndex),
+                onClick = { onOpenWork(work.id) },
+                lead = null,
+                title = work.title,
+                badge = null,
+            ) {
+                AuthenticatedArtwork(
+                    work = work,
+                    kinds = listOf(ImageKind.Backdrop, ImageKind.Poster),
+                    serverUrl = serverUrl,
+                    accessToken = accessToken,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
     }
 }
 
@@ -7957,12 +7981,14 @@ private fun WebEpisodeCard(
     title: String,
     badge: String?,
     modifier: Modifier = Modifier,
+    cardWidth: Dp = 268.dp,
+    artHeight: Dp = 150.8.dp,
     art: @Composable () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
     Box(
         modifier
-            .width(268.dp)
+            .width(cardWidth)
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick),
     ) {
@@ -7971,7 +7997,7 @@ private fun WebEpisodeCard(
             shadows = if (focused) webCardFocusShadows else webCardRestShadows,
             shape = RoundedCornerShape(13.44.dp),
             focusGlow = focused,
-            modifier = Modifier.fillMaxWidth().height(150.8.dp),
+            modifier = Modifier.fillMaxWidth().height(artHeight),
             innerModifier = Modifier.background(WebSurfaceSoft),
         ) {
             WebEpisodeArt { art() }
