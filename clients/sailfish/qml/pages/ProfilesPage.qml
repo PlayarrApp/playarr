@@ -146,7 +146,20 @@ PlayarrPage {
                     GradientStop { position: 0; color: Tokens.dark ? "#6a2c42" : "#eec4cd" }
                     GradientStop { position: 1; color: Tokens.dark ? "#962a4e" : "#b84b6b" }
                 }
-                border.width: 1; border.color: Qt.rgba(1, 1, 1, Tokens.dark ? 0.2 : 0.4)
+                Canvas {   // web: a 1 px dashed ring (Qt 5 Canvas has no setLineDash, so the dashes are arcs)
+                    anchors.fill: parent
+                    renderTarget: Canvas.Image
+                    property color ring: Tokens.dark ? "#7c4154" : "#bb7f8c"
+                    onRingChanged: requestPaint()
+                    onWidthChanged: requestPaint()
+                    onPaint: {
+                        var c = getContext("2d"), r = (width - Tokens.u) / 2, n = Math.round(2 * Math.PI * r / (5.6 * Tokens.u))
+                        c.reset(); c.strokeStyle = ring; c.lineWidth = Tokens.u
+                        for (var i = 0; i < n; ++i) {
+                            c.beginPath(); c.arc(width / 2, height / 2, r, i * 2 * Math.PI / n, (i + 0.55) * 2 * Math.PI / n); c.stroke()
+                        }
+                    }
+                }
                 RadialGradient {   // web: a soft light spot up and left of centre
                     x: 0.30 * parent.width - width / 2; y: 0.26 * parent.width - height / 2
                     width: 0.5 * parent.width; height: width; horizontalRadius: width / 2; verticalRadius: height / 2
