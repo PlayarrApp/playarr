@@ -173,7 +173,9 @@ function calendarArtworkUrl(entry as Object) as String
     if entry = invalid then return ""
     if entry.poster_url <> invalid and entry.poster_url <> ""
         posterUrl = entry.poster_url
-        if posterUrl.Left(7) = "http://" or posterUrl.Left(8) = "https://"
+        ' A loopback art URL (the static server's art host) only works from the server's own machine: the stick uses the server proxy.
+        loopback = Instr(1, posterUrl, "//127.0.0.1") > 0 or Instr(1, posterUrl, "//localhost") > 0
+        if (posterUrl.Left(7) = "http://" or posterUrl.Left(8) = "https://") and not loopback
             return calendarSizedPosterUrl(posterUrl)
         end if
     end if
@@ -2516,6 +2518,10 @@ sub edgeFadesInit()
     home = m.top.findNode("homeGroup")
     m.homeFadeLeft = pgFade(home, "l", 729.6, 170, 53.76, 670)
     m.homeFadeRight = pgFade(home, "r", 1824, 170, 96, 670)
+    ' Web Home and title pages fade out at the bottom edge where the rails continue; the Roku draws it while a rail shows there.
+    m.homeFadeBottom = pgFade(home, "b", 740, 1020.6, 1110, 59.4)
+    m.homeFadeBottom.visible = true
+    m.detailFadeBottom = pgFade(m.top.findNode("detailGroup"), "b", 740, 1020.6, 1110, 59.4)
     browse = m.top.findNode("browseGroup")
     m.browseFadeTop = pgFade(browse, "t", 740, 128, 1110, 40)
     m.browseFadeBottom = pgFade(browse, "b", 740, 1020.6, 1110, 59.4)

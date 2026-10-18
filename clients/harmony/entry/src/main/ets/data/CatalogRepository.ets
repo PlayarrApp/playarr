@@ -89,6 +89,9 @@ import { WatchProgress } from '../core/Types/Playback.ts';
  */
 const MAX_SIMILAR_FALLBACK_GENRE_QUERIES: number = 3;
 
+/** Candidates fetched per genre query by the similar-titles fallback (web: 100). */
+const SIMILAR_FALLBACK_PAGE_LIMIT: number = 100;
+
 /**
  * Up to this many `part_watched` rows are hydrated for the Home screen's
  * continue-watching rail (brief 4.8: "hydrating up to 10 part_watched
@@ -354,7 +357,7 @@ async function getSimilarByGenreFallback(target: Work, limit: number): Promise<A
   const pages: CatalogPage[] = [];
 
   for (const genre of genresToQuery) {
-    const query: BrowseQuery = { genre: genre, limit: limit };
+    const query: BrowseQuery = { genre: genre, limit: SIMILAR_FALLBACK_PAGE_LIMIT };  // web asks for 100 per genre, then ranks and cuts to `limit`
     const pageResult = await getCatalog(query);
     if (pageResult.kind === 'ok') {
       pages.push(pageResult.value);

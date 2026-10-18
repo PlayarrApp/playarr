@@ -42,6 +42,8 @@ internal sealed class DetailScreen : IPage
         _root.Add(_keyArt.Root);
         _root.Add(Ui.PanelWash(_t)); // web: the right rail panel frosts the key art (the page top is not a surface fade)
         _root.Add(_content);
+        _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, _t.Surface, atLeft: false)); // web scroll-edge fades of the rail panel, as on series detail
+        _root.Add(Ui.EdgeFade(ClipX, TizenClient.DesignHeight, TizenClient.DesignWidth - ClipX, _t.Surface, atTop: false));
         _ = LoadAsync();
     }
 
@@ -99,7 +101,7 @@ internal sealed class DetailScreen : IPage
         AddButton("Download", "⇩", 153.6f, y1, 142, primary: false, label: "download", select: () => OpenDownload(w));
         AddButton("Playback", "☷", 311.6f, y1, 142, primary: false, label: "playback settings", select: () => Toast("Playback settings are not available in this app yet."));
         PlayIndex = _focus.Items.Count;
-        AddButton(resume, "▶", 469.6f, y1, resume.Length > 4 ? 160.6f : 112, primary: true, label: $"play {w.Title}".ToLowerInvariant(), select: () => PlayFrom(_progress is { State: WatchState.InProgress } rp ? rp.PositionMs : null));
+        AddButton(resume, "▶", 469.6f, y1, Math.Max(156f, resume.Length > 4 ? 160.6f : 0), primary: true, label: $"play {w.Title}".ToLowerInvariant(), select: () => PlayFrom(_progress is { State: WatchState.InProgress } rp ? rp.PositionMs : null));
         AddButton("Add to watchlist", "+", 153.6f, y2, 142, primary: false, label: "add to watchlist", select: () => Toast("The watchlist is not available in this app yet."));
         AddButton("Add to Playlist", "+", 311.6f, y2, 142, primary: false, label: "add to playlist", select: () => Toast("Playlists are not available in this app yet."));
     }
@@ -109,6 +111,7 @@ internal sealed class DetailScreen : IPage
         var bg = primary ? _t.Ink : new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f);
         var box = Ui.Box(x, y, w, 64, bg, 32);
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
+        else box.BoxShadow = new Shadow(46, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.18f), new Vector2(0, 18), new Vector2(0, 0)); // web .tv-detail-play
         var fg = primary ? _t.OnAccent : _t.Ink;
         var gw = primary ? 8f : 11f;
         var textW = text.Length * 6.4f;
@@ -175,10 +178,15 @@ internal sealed class DetailScreen : IPage
         {
             var x = RailX + c.Index * ChapterPitch;
             var box = new View { PositionX = x, Size = new Size(268, 200) };
+            var rest = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f); // web .tv-episode-art resting shadow
+            rest.BoxShadow = new Shadow(20, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.14f), new Vector2(0, 10), new Vector2(0, 0));
+            box.Add(rest);
             var art = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f);
             art.ClippingMode = ClippingModeType.ClipChildren;
             SetThumbAsync(art, file, c.StartMs);
-            art.Add(Ui.Gradient(0, 0, 268, 150.8f, false, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
+            // web .tv-episode-art: grayscale(0.25) image under a 135deg black 5 % to 48 % wash (a custom shader reads the thumbnail as grey here, so the grey is a flat 25 % overlay)
+            art.Add(Ui.Box(0, 0, 268, 150.8f, new Rgba(0.28f, 0.28f, 0.28f, 0.25f)));
+            art.Add(Ui.DiagonalGradient(0, 0, 268, 150.8f, 135, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
             art.Add(Ui.Text((c.Index + 1).ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
             var (ring, glow) = Widgets.RailRing(_t, 268, 150.8f, 13.44f); art.Add(ring);
             box.Add(glow); box.Add(art);
@@ -191,7 +199,7 @@ internal sealed class DetailScreen : IPage
             {
                 Rect = () => new Box(x - _chapterScroll, 620.7f + _stackY, 268, 150.8f), Label = $"play from {c.Title}".ToLowerInvariant(),
                 Select = () => PlayFrom(startMs),
-                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Show(f); if (f) ring.RaiseToTop(); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = f ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink); },
+                Style = f => { rest.Show(!f); art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Show(f); if (f) ring.RaiseToTop(); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = f ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink); },
                 Focused = () => { SetStackY(0); ScrollChapters(idx); },
             });
         }
