@@ -103,6 +103,7 @@ namespace Playarr.Xbox.Views
             Window.Current.CoreWindow.PointerPressed -= CoreWindow_PointerPressed;
             Window.Current.Content.GotFocus -= WindowContent_GotFocus;
             CancelRefreshFocusRestore();
+            if (_initialFocus.CancelForUserInput()) FocusClaim.Cancel(WorksGridView);
             base.OnNavigatedFrom(e);
         }
 
@@ -200,12 +201,19 @@ namespace Playarr.Xbox.Views
                 _focusFirst = false;
                 if (_initialFocus.ShouldStartClaim)
                 {
-                    CardFocus.FocusWhenReady(WorksGridView, RestoreOrFirst, () => _initialFocus.Settle());
+                    StartInitialClaim();
                 }
             }
 
             RenderLetterRail();
         }
+
+        /// <summary>A claim that runs out before focus sticks (a slow first layout) must not report the grid ready while focus is still on the nav rail: claim again until it lands, the user moves, or the page is left.</summary>
+        private void StartInitialClaim() => CardFocus.FocusWhenReady(WorksGridView, RestoreOrFirst, () =>
+        {
+            if (_initialFocus.ShouldStartClaim && !IsFocusWithin(WorksGridView)) StartInitialClaim();
+            else _initialFocus.Settle();
+        });
 
         private string MemoryKey() => "library:" + _viewModel.SelectedKind;
 
