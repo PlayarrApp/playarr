@@ -272,7 +272,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .build();
     backdrop.set_size_request(-1, 340);
     let wash = gtk4::Box::builder()
-        .css_classes(["pa-key-wash"])
+        .css_classes(["pa-key-wash", "pa-home-wash"])
         .valign(gtk4::Align::Start)
         .build();
     wash.set_size_request(-1, 340);

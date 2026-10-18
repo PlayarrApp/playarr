@@ -92,7 +92,7 @@ pub fn css(dark: bool) -> String {
             ".pa-key-art.soft { opacity: 0.13; }\n.pa-add-label { opacity: 0.8; }\n"
         } else {
             // The light Profiles page is a flat #f5f3f2 (web), its top-bar dropdowns the same.
-            ".pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #f5f3f2; }\n.pa-topbar dropdown.pa-dropdown > button { background: #f5f3f2; }\n.pa-mcell.outside { background: #efeeed; }\n.pa-key-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0) 72px, @pa_bg 122px); }\n"
+            ".pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #f5f3f2; }\n.pa-topbar dropdown.pa-dropdown > button { background: #f5f3f2; }\n.pa-mcell.outside { background: #efeeed; }\n.pa-key-wash.pa-home-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0) 72px, @pa_bg 122px); }\n"
         };
     let hero = format!(
         ".pa-khero-fade {{ background: {edge}; }}\n{hard}.pa-key-art.pa-khero {{ opacity: {}; filter: {}; }}\n",

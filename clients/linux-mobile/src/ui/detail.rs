@@ -581,7 +581,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     if let Some((outer, _)) = band {
         page.append(&outer);
     }
-    if series && !seasons.is_empty() {
+    // Nothing watched: the page opens at its top (the web refs), not at the first season.
+    if series && !seasons.is_empty() && l.resume.as_ref().is_some_and(|r| r.1 > 0) {
         // Open scrolled to the next-up episode's season, as the web does.
         let adj = scroll.vadjustment();
         let target = 415.5 + 238.0 * focus_index as f64;
