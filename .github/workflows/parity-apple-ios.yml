@@ -51,6 +51,11 @@ permissions:
 
 # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
 env:
+  # Captures run against the static seeded parity server (a named tunnel to the lab host), never the live server.
+  # These three repo secrets are the one place that switches every hosted parity workflow.
+  PARITY_SERVER_URL: ${{ secrets.PARITY_STATIC_URL }}
+  PARITY_USERNAME: ${{ secrets.PARITY_STATIC_USERNAME }}
+  PARITY_PASSWORD: ${{ secrets.PARITY_STATIC_PASSWORD }}
   PARITY_STABLE: "0"
 
 jobs:
@@ -307,29 +312,29 @@ jobs:
       - name: Start the simulator
         timeout-minutes: 15
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
         run: bash "$TRUSTED/scripts/apple-wall/wall.sh" up "$DEVICE"
 
       - name: Parity suite (iOS driver)
         id: suite
         timeout-minutes: 60
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
           PARITY_CAPTURE_DETERMINISTIC: "1"
           # Accepted iPhone web calendar reference: facts.json captured 2026-10-15T15:42:29.032Z; parser uses whole seconds.
           PARITY_FIXED_NOW: ${{ inputs.fixed_now }}
           # --reset-progress: On deck and Resume start from the state the web references were captured in.
-          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          PLAYARR_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_PASSWORD: ${{ env.PARITY_PASSWORD }}
           REF: ${{ inputs.ref }}
           SCREENS: ${{ inputs.screens }}
           FOCUS: ${{ inputs.focus }}

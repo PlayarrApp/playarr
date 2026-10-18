@@ -35,6 +35,11 @@ permissions:
 
 # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
 env:
+  # Captures run against the static seeded parity server (a named tunnel to the lab host), never the live server.
+  # These three repo secrets are the one place that switches every hosted parity workflow.
+  PARITY_SERVER_URL: ${{ secrets.PARITY_STATIC_URL }}
+  PARITY_USERNAME: ${{ secrets.PARITY_STATIC_USERNAME }}
+  PARITY_PASSWORD: ${{ secrets.PARITY_STATIC_PASSWORD }}
   PARITY_STABLE: "0"
 
 jobs:
@@ -121,21 +126,21 @@ jobs:
           "$XBOX_IO" restart
       - name: Sign in as Device Test
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
           TEST_ACCOUNT_KEY: PLAYARR_DEVICE_TEST_USERNAME
-          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
         run: python scripts/xbox-wall/pair.py
       - name: Run the suite part
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          PLAYARR_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          PLAYARR_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
-          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          PLAYARR_DEVICE_TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          PLAYARR_USERNAME: ${{ env.PARITY_USERNAME }}
+          PLAYARR_PASSWORD: ${{ env.PARITY_PASSWORD }}
+          PLAYARR_DEVICE_TEST_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          PLAYARR_DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
           PART: ${{ matrix.part }}
           SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters' }}
           PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID: ${{ secrets.PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID }}
