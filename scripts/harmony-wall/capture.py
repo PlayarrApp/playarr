@@ -416,8 +416,10 @@ def open_detail(kind, xy, wait):
 
 
 def leave_detail():
-    """A detail opened through the route mailbox has no list page under it: the next route() call is the way out."""
-    if os.environ.get("PARITY_STATIC_SERVER") != "1":
+    """A detail opened through the route mailbox has no list page under it: leave through Home, as the pinned-detail path does."""
+    if os.environ.get("PARITY_STATIC_SERVER") == "1":
+        route("home", 8)
+    else:
         key("back"); time.sleep(3); key("back"); time.sleep(4)
 
 
