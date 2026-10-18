@@ -695,9 +695,9 @@ struct CalendarView: View {
                                 .foregroundStyle(PlayarrStyle.ink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             ScrollView {
-                                LazyVStack(spacing: 13.6) {
+                                LazyVStack(spacing: phone ? 13.6 : 15.6) {
                                     ForEach(group.items) { item in
-                                        weekItemCard(item, width: laneWidth)
+                                        weekItemCard(item, width: laneWidth, tablet: !phone)
                                     }
                                     if group.items.isEmpty {
                                         Text("Nothing scheduled")
@@ -719,7 +719,7 @@ struct CalendarView: View {
         }
     }
 
-    private func weekItemCard(_ item: CalendarItem, width: CGFloat) -> some View {
+    private func weekItemCard(_ item: CalendarItem, width: CGFloat, tablet: Bool) -> some View {
         let entry = item.entries.first
         return Button {
             viewModel.select(item)
@@ -763,15 +763,22 @@ struct CalendarView: View {
                     }
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, tablet ? 8.5 : 8)
             .padding(.horizontal, 12)
             .frame(width: width, alignment: .leading)
             .frame(minHeight: 64, alignment: .leading)
             .background(PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            // The web's 4 pt leading edge, flush with the card and cut by its corners (green once in the library).
             .overlay(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? PlayarrStyle.accent : PlayarrStyle.ink)
-                    .frame(width: 4).padding(.vertical, 8)
+                if tablet {
+                    Rectangle().fill(entry?.hasFile == true ? Color(red: 138 / 255, green: 197 / 255, blue: 165 / 255) : PlayarrStyle.ink)
+                        .frame(width: 4)
+                } else {
+                    RoundedRectangle(cornerRadius: 2).fill(entry?.hasFile == true ? PlayarrStyle.accent : PlayarrStyle.ink)
+                        .frame(width: 4).padding(.vertical, 8)
+                }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
         .buttonStyle(.plain)
