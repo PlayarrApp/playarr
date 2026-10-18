@@ -1,5 +1,5 @@
 {
-  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. liveScreens: screens the driver cannot reach (the player), taken with roku/capture-web-live.mjs at the same viewport and dpr. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces. noDownloads: Downloads hidden in the web client (device cannot store downloads; Roku). liveScreens player-controls are taken with the video hidden on every non-phone group; phone groups keep the capture-web hideVideo convention.",
+  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. player-controls is taken by the web driver (playerControls) on the static server: clip paused at 2 s, video visible, focus dropped. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces. noDownloads: Downloads hidden in the web client (device cannot store downloads; Roku).",
   "date": "20261018-static",
   "groups": {
     "tv": {
@@ -24,10 +24,7 @@
         "vidaa",
         "xbox"
       ],
-      "actionsTitle": "Amber Cathedral 18",
-      "liveScreens": [
-        "player-controls"
-      ]
+      "actionsTitle": "Amber Cathedral 18"
     },
     "tv-nodl": {
       "viewport": [
@@ -44,10 +41,7 @@
         "roku"
       ],
       "actionsTitle": "Amber Cathedral 18",
-      "noDownloads": true,
-      "liveScreens": [
-        "player-controls"
-      ]
+      "noDownloads": true
     },
     "ipad": {
       "viewport": [
@@ -64,10 +58,7 @@
       "dirs": [
         "ios-tablet"
       ],
-      "actionsTitle": "Amber Cathedral 18",
-      "liveScreens": [
-        "player-controls"
-      ]
+      "actionsTitle": "Amber Cathedral 18"
     },
     "android-tablet": {
       "viewport": [
@@ -83,9 +74,6 @@
       ],
       "dirs": [
         "android-tablet"
-      ],
-      "liveScreens": [
-        "player-controls"
       ],
       "actionsTitle": "Amber Cathedral 18"
     },
@@ -188,8 +176,10 @@
     "settings",
     "filters",
     "profiles",
-    "actions"
+    "actions",
+    "player-controls"
   ],
+  "themeless": ["player-controls"],
   "titles": {
     "film-detail": "Silent Meridian 1",
     "series-detail": "Golden Cathedral 1",
