@@ -806,6 +806,12 @@ def player(s):
     assert s.count(old) == 1
     return s.replace(old, "        Column().width('100%').height('100%')\n", 1)
 
+# The web refs are captured with the clock pinned to 2026-10-07T12:00Z (UTC, en-GB), so Calendar and the TV clock show Wednesday 7 October.
+PINNED_NOW = "new Date(Date.UTC(2026, 9, 7, 12, 0, 0))"
+
+def pinned_clock(s):
+    return s.replace("localDayOf(new Date())", "localDayOf(" + PINNED_NOW + ")").replace("= new Date();", "= " + PINNED_NOW + ";")
+
 def card_dbg(s):
     old = "        if (this.artwork !== undefined) {\n          Image(this.artwork)"
     assert old in s
@@ -822,3 +828,5 @@ if __name__ == '__main__':
     edit('pages/Index.ets', index)
     edit('pages/Detail.ets', detail)
     edit('pages/Player.ets', player)
+    edit('pages/Calendar.ets', pinned_clock)
+    edit('design/components/Clock.ets', pinned_clock)
