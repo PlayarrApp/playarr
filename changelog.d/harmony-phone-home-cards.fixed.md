@@ -1,0 +1,1 @@
+- Harmony phone Home cards are 158 vp wide like the web (no letter-rail clearance), the Library and Home content scrolls under the nav bar, the alphabet rail's current letter wears the brand ring, and the Series nav icon's play triangle renders.

@@ -387,7 +387,8 @@ private fun PhoneCalendarRound(modifier: Modifier, glyph: String, description: S
 
 /** Range title as the web formats it (`Intl` date-range style): "7 Oct – 5 Nov 2026" in en-GB, "Oct 7 – Nov 5, 2026" in en-US. */
 private fun phoneCalendarRangeTitle(mode: CalendarViewMode, anchor: LocalDate, window: CalendarWindow, locale: Locale): String {
-    if (mode == CalendarViewMode.Month) return calendarWindowTitle(mode, anchor, window, locale)
+    // Web phone toolbar: the month button reads "Oct 2026", as the short label.
+    if (mode == CalendarViewMode.Month) return PlayarrDateFormat("yMMM", locale).format(anchor)
     // Web phone toolbar: no year, and a week inside one month reads "5 \u2013 11 Oct".
     val start = window.start
     val end = if (mode == CalendarViewMode.Agenda) window.end.minusDays(1) else window.end
@@ -1558,7 +1559,7 @@ private fun CalendarMonthChips(
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(headerHeight)) {
                 calendarWeekdayLabels(firstDay, locale).forEach { label ->
-                    Text(label.uppercase(locale), color = if (isTelevision) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                    Text(label.uppercase(locale), color = if (isTelevision) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(top = if (phoneStrip) 7.dp else 0.dp))
                 }
             }
             rows.forEachIndexed { rowIndex, week ->
