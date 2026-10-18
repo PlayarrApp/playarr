@@ -1,0 +1,1 @@
+- Web: hero, detail and library-preview artwork starts at the nav clearance, so artwork with a baked-in title never renders under the left nav (the nav-overlap e2e no longer exempts it).
