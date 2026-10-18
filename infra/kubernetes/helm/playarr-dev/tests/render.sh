@@ -157,3 +157,41 @@ if grep -Eq 'service: ".*\.dev:80"' "$rendered"; then
   echo "found a hard-coded dev namespace service reference" >&2
   exit 1
 fi
+# Defaults are unchanged: Recreate, hostPort, no public Service.
+test "$(grep -c '^    type: Recreate' "$rendered")" -eq 2
+test "$(grep -c 'externalIPs:' "$rendered")" -eq 0
+# externalIP exposure with a surge rollout: public Service, no hostPort, RollingUpdate.
+surge="$(mktemp)"
+trap 'rm -rf "$chart_dir"; rm -f "$rendered" "$no_tls" "$no_host" "$relay" "$relay_only" "$surge"' EXIT
+surge_args=(
+  --set regionalInstances.playarr-a.hostExposure=null
+  --set regionalInstances.playarr-a.exposure.mode=externalIP
+  --set 'regionalInstances.playarr-a.exposure.externalIPs={203.0.113.10}'
+  --set regionalInstances.playarr-a.strategy.type=RollingUpdate
+  --set regionalInstances.playarr-a.strategy.allowConcurrentPods=true
+)
+helm template playarr-dev "$chart_dir" --namespace playarr "${surge_args[@]}" >"$surge"
+test "$(grep -c '^kind: Service$' "$surge")" -eq 9
+public="$(awk '/^kind: Service$/{show=1; block=""} show{block=block $0 ORS} /^---$/{if(show && block ~ /name: playarr-a-public/) printf "%s", block; show=0}' "$surge")"
+grep -q '^  externalTrafficPolicy: Local$' <<<"$public"
+grep -q '^    - "203.0.113.10"$' <<<"$public"
+grep -q '^      port: 8484$' <<<"$public"
+grep -q '^    app.kubernetes.io/instance: playarr-a$' <<<"$public"
+test "$(grep -c 'app.kubernetes.io/instance: playarr-b' <<<"$public")" -eq 0
+surge_a="$(awk '/^kind: Deployment$/{show=1; block=""} show{block=block $0 ORS} /^---$/{if(show && block ~ /name: playarr-a/) printf "%s", block; show=0}' "$surge")"
+grep -q '^    type: RollingUpdate$' <<<"$surge_a"
+grep -q '^      maxSurge: 1$' <<<"$surge_a"
+grep -q '^      maxUnavailable: 0$' <<<"$surge_a"
+test "$(grep -c '^              hostPort: ' "$surge")" -eq 1
+grep -A1 'name: PLAYARR_PUBLIC_IPV4' "$surge" | grep -q 'value: "203.0.113.10"'
+# Guard: RollingUpdate with hostPort is rejected.
+guard="$(helm template playarr-dev "$chart_dir" --namespace playarr --set regionalInstances.playarr-a.strategy.type=RollingUpdate 2>&1 || true)"
+grep -q 'cannot be combined with hostPort exposure' <<<"$guard"
+# Guard: RollingUpdate without the shared-state opt-in is rejected even with externalIP.
+guard="$(helm template playarr-dev "$chart_dir" --namespace playarr "${surge_args[@]}" --set regionalInstances.playarr-a.strategy.allowConcurrentPods=false 2>&1 || true)"
+grep -q 'which the server does not support' <<<"$guard"
+# Guard: externalIP needs addresses and replaces hostExposure.
+if helm template playarr-dev "$chart_dir" --namespace playarr --set regionalInstances.playarr-a.exposure.mode=externalIP >/dev/null 2>&1; then
+  echo "chart accepted externalIP together with hostExposure" >&2
+  exit 1
+fi

@@ -1,0 +1,1 @@
+- Helm chart `playarr-dev`: regional instances accept `strategy` and `exposure.mode: externalIP` (a public ClusterIP Service with `externalIPs` and `externalTrafficPolicy: Local`). `RollingUpdate` is rejected with `hostPort` and, until the server supports two processes on one volume, without an explicit `allowConcurrentPods` opt-in. Defaults render unchanged.
