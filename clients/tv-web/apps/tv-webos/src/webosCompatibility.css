@@ -11,6 +11,12 @@ html[data-platform="tv-webos"] .calendar-week-scroll .calendar-day::-webkit-scro
   height: 0;
 }
 
+/* Newer webOS Chromium (132) ignores the ::-webkit-scrollbar rules above while the shared sheet sets scrollbar-color, so it draws native bars; scrollbar-width wins there. */
+html[data-platform="tv-webos"] .calendar-week-scroll,
+html[data-platform="tv-webos"] .calendar-week-scroll .calendar-day {
+  scrollbar-width: none;
+}
+
 /* Measured webOS calendar line boxes need the web reference minima; the status pill's 26.56px reference is its 1.4em line, .36rem vertical padding and 2px borders. */
 html[data-platform="tv-webos"] .calendar-day h3,
 html[data-platform="tv-webos"] .calendar-entry-title,
