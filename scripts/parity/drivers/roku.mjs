@@ -516,6 +516,8 @@ export function createDriver({ out, args = [] } = {}) {
   const keyDelay = Math.max(300, Number(env.ROKU_PARITY_KEY_DELAY_MS ?? 850));
   const selectDelay = Math.max(1000, Number(env.ROKU_PARITY_SELECT_DELAY_MS ?? 2600));
   const artEnabled = env.ROKU_ART_READINESS !== "0";
+  // The frozen suite clock (PARITY_FIXED_NOW, 2026-10-07T12:00:00Z by default) goes to the channel as a launch argument; "0" opts out.
+  const pinArg = env.ROKU_PARITY_CLOCK === "0" ? "" : `&parityNow=${encodeURIComponent(env.PARITY_FIXED_NOW ?? "2026-10-07T12:00:00Z")}`;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const parityState = createParityState();
   let socket;
@@ -689,7 +691,7 @@ export function createDriver({ out, args = [] } = {}) {
     const beforeScreenSeq = screenSeq;
     const beforeFocusSeq = focusSeq;
     resetObservedState();
-    await sendEcp(`launch/dev${artEnabled ? "?parityArtReady=1" : ""}`);
+    await sendEcp(`launch/dev${artEnabled ? `?parityArtReady=1${pinArg}` : ""}`);
     await connectDebug();
     try {
       await waitFor(() => hasFreshProfilesScreen({ screen, screenSeq }, beforeScreenSeq), "fresh signed-in Profiles screen", 40000);
@@ -826,7 +828,7 @@ export function createDriver({ out, args = [] } = {}) {
     await sleep(4000);
     resetArtReadinessState(parityState.artState);
     resetObservedState();
-    await sendEcp(`launch/dev?parityArtReady=1&route=${encodeURIComponent(path)}`);
+    await sendEcp(`launch/dev?parityArtReady=1${pinArg}&route=${encodeURIComponent(path)}`);
     await connectDebug();
     await waitFor(() => screen === "detail" && !!parityState.detailKind, `detail screen for ${path}`, 60000);
     await waitFor(() => focus !== null && focusScreenSeq === screenSeq, "detail focus", 40000);

@@ -422,8 +422,7 @@ end sub
 ' the device's actual configured local time, matching what a browser's Date
 ' object already gives tv-web for free.
 sub updateClock()
-    dt = CreateObject("roDateTime")
-    dt.ToLocalTime()
+    dt = ParityNowLocal()
     hourStr = dt.GetHours().ToStr()
     if dt.GetHours() < 10 then hourStr = "0" + hourStr
     minuteStr = dt.GetMinutes().ToStr()
