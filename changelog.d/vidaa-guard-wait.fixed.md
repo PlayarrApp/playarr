@@ -1,1 +1,0 @@
-- Add a guard wait for the VIDAA parity driver that retries a stale identity heartbeat after a page load and fails at once on any account rejection.
