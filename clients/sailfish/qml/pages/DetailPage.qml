@@ -6,6 +6,7 @@ import "../components"
 // Title detail: hero, facts, Play/Resume, and the episode or track lists.
 PlayarrPage {
     id: page
+    objectName: "detail"
     property var work
     property var detail: null
     property var progress: ({})      // media_file_id -> watch progress
@@ -127,6 +128,7 @@ PlayarrPage {
                     y: -Tokens.safeTop; width: parent.width; height: parent.height + Tokens.safeTop
                     clip: true
                     HeroArt { y: 0; work: page.work }
+                    Rectangle { width: parent.width; height: Tokens.safeTop + 68 * Tokens.u; color: Tokens.bg }   // web: the picture starts below the header row
                     Item {
                         y: Tokens.safeTop; width: parent.width; height: 298 * Tokens.u
                         PageTitle {
@@ -200,6 +202,7 @@ PlayarrPage {
                     visible: !!detail && !!detail.media_file_id
                     icon: "\u21E9"; iconSize: 10 * Tokens.u; labelFamily: Tokens.family610
                     text: qsTr("Download")
+                    parityRail: 0; parityIndex: 0; navigationActivate: function() { page.requestDownload() }
                     fontSize: 8.5 * Tokens.u
                     onClicked: page.requestDownload()
                 }
@@ -207,6 +210,7 @@ PlayarrPage {
                     lift: true
                     icon: "\u2637"; iconSize: 13 * Tokens.u; labelFamily: Tokens.family610
                     text: qsTr("Playback")
+                    parityRail: 0; parityIndex: 1; navigationActivate: function() { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work }) }
                     width: parent.fillW
                     fontSize: 11 * Tokens.u
                     onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
@@ -220,6 +224,7 @@ PlayarrPage {
                     implicitHeight: 44 * Tokens.u
                     width: parent.fillW
                     text: page.targetProgress ? qsTr("Resume from %1").arg(mmss(page.targetProgress.position_ms)) : qsTr("Play")
+                    parityRail: 0; parityIndex: 2; navigationInitialFocus: true; navigationActivate: function() { page.resumeSeries() }
                     onClicked: page.resumeSeries()
                 }
             }
@@ -231,6 +236,7 @@ PlayarrPage {
                     lift: true
                     icon: page.inWatchlist ? "\u2713" : "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                     text: page.inWatchlist ? qsTr("Remove from watchlist") : qsTr("Add to watchlist")
+                    parityRail: 0; parityIndex: 3; navigationActivate: function() { page.toggleWatchlist() }
                     fontSize: 8.5 * Tokens.u
                     onClicked: page.toggleWatchlist()
                 }
@@ -238,6 +244,7 @@ PlayarrPage {
                     lift: true
                     icon: "+"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                     text: qsTr("Add to Playlist")
+                    parityRail: 0; parityIndex: 4; navigationActivate: function() { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work }) }
                     fontSize: 8.5 * Tokens.u
                     onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
                 }
@@ -281,11 +288,11 @@ PlayarrPage {
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
                     wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11.7 * Tokens.u; lineHeight: 0.94
+                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11.7 * Tokens.u; lineHeight: 0.97
                 }
                 // The web lays the actions over a faded slice of the series backdrop.
                 Item {
-                    width: parent.width; height: 68 * Tokens.u
+                    width: parent.width; height: 67 * Tokens.u
                     z: -1   // the slice starts above the row, under the overview text
                     // The web's key art is pinned to the top of the screen (sticky); only the part below the copy shows.
                     Item {
@@ -300,7 +307,7 @@ PlayarrPage {
                         }
                     }
                     Row {
-                        y: 2.5 * Tokens.u
+                        y: 2 * Tokens.u
                         x: Tokens.pad
                         spacing: 8 * Tokens.u
                         PillButton {
@@ -311,6 +318,7 @@ PlayarrPage {
                             implicitHeight: 43.5 * Tokens.u
                             width: col.width - 2 * Tokens.pad - (askBtn.visible ? 3 : 2) * parent.spacing - wlBtn.width - plBtn.width - (askBtn.visible ? askBtn.width : 0)
                             text: page.plan ? (page.plan.action === "start" ? qsTr("Start") : page.plan.action === "restart" ? qsTr("Watch again") : qsTr("Resume")) : page.targetProgress ? qsTr("Resume") : qsTr("Play")
+                            parityRail: 0; parityIndex: 0; navigationInitialFocus: true; navigationActivate: function() { page.resumeSeries() }
                             onClicked: page.resumeSeries()
                         }
                         PillButton {
@@ -321,6 +329,7 @@ PlayarrPage {
                             fontSize: 8.5 * Tokens.u
                             implicitHeight: 43.5 * Tokens.u
                             text: qsTr("Ask again")
+                            parityRail: 0; parityIndex: 1; navigationActivate: function() { page.askAgain() }
                             onClicked: page.askAgain()
                         }
                         PillButton {
@@ -331,6 +340,7 @@ PlayarrPage {
                             fontSize: 8.0 * Tokens.u
                             implicitHeight: 43.5 * Tokens.u
                             text: page.inWatchlist ? qsTr("Remove from watchlist") : qsTr("Add to watchlist")
+                            parityRail: 0; parityIndex: 2; navigationActivate: function() { page.toggleWatchlist() }
                             onClicked: page.toggleWatchlist()
                         }
                         PillButton {
@@ -341,6 +351,7 @@ PlayarrPage {
                             fontSize: 8.0 * Tokens.u
                             implicitHeight: 43.5 * Tokens.u
                             text: qsTr("Add to Playlist")
+                            parityRail: 0; parityIndex: 3; navigationActivate: function() { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work }) }
                             onClicked: pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work })
                         }
                     }
@@ -381,12 +392,18 @@ PlayarrPage {
                         delegate: MouseArea {
                                 y: 24 * Tokens.u
                                 id: epCard
+                                property bool navigationFocusable: enabled
+                                property string parityLabel: modelData.episode.title || qsTr("Episode %1").arg(modelData.episode.episode_number)
+                                property int parityRail: 1 + index
+                                property int parityIndex: index
+                                function navigationActivate() { page.play(modelData.media_file_id, work.title + " \u00B7 " + (modelData.episode.title || "")) }
+                                function navigationLongPress() { pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), { mediaFileId: modelData.media_file_id, title: work.title + " \u00B7 " + (modelData.episode.title || ""), info: { kind: "episode", series: work.title, season: seasonCol.sdata.season.season_number, episode: modelData.episode.episode_number } }) }
                                 readonly property real cw: 178.8 * Tokens.u
                                 width: cw
                                 height: cw * 9 / 16 + 34 * Tokens.u
                                 enabled: !!modelData.media_file_id
                                 opacity: enabled ? 1 : 0.4
-                                onClicked: page.play(modelData.media_file_id, work.title + " \u00B7 " + (modelData.episode.title || ""))
+                                onClicked: navigationActivate()
                                 // Press and hold: download this episode (grouped by series and season in the Downloads tab).
                                 onPressAndHold: pageStack.push(Qt.resolvedUrl("DownloadPage.qml"), {
                                     mediaFileId: modelData.media_file_id, title: work.title + " \u00B7 " + (modelData.episode.title || ""),
@@ -498,11 +515,16 @@ PlayarrPage {
                     Repeater {
                         model: modelData.tracks
                         MouseArea {
+                            property bool navigationFocusable: enabled
+                            property string parityLabel: modelData.track.track_number + ". " + modelData.track.title
+                            property int parityRail: 2
+                            property int parityIndex: index
+                            function navigationActivate() { page.play(modelData.media_file_id, modelData.track.title) }
                             width: col.width
                             height: 44 * Tokens.u
                             enabled: !!modelData.media_file_id
                             opacity: enabled ? 1 : 0.4
-                            onClicked: page.play(modelData.media_file_id, modelData.track.title)
+                            onClicked: navigationActivate()
                             Label {
                                 x: Tokens.pad
                                 anchors.verticalCenter: parent.verticalCenter

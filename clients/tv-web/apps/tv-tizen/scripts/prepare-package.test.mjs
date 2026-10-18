@@ -7,7 +7,7 @@ import { preparePackage } from "./prepare-package.mjs";
 
 const validManifest = `
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" version="0.1.0">
-  <tizen:application id="StrmarrTV1.Playarr" package="StrmarrTV1" required_version="7.0"/>
+  <tizen:application id="StrmarrTV1.Playarr" package="StrmarrTV1" required_version="6.5"/>
   <tizen:profile name="tv"/>
   <name>Playarr</name>
   <content src="index.html"/>
@@ -75,12 +75,12 @@ test("rejects a manifest without the Tizen TV profile", async () => {
   );
 });
 
-test("rejects a manifest below the Chromium 94 Tizen 7 floor", async () => {
+test("rejects a manifest below the Chromium 85 Tizen 6.5 floor", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "playarr-tizen-floor-"));
   const output = path.join(root, "dist");
   await writeFile(
     path.join(root, "tizen-manifest.xml"),
-    validManifest.replace('required_version="7.0"', 'required_version="6.0"')
+    validManifest.replace('required_version="6.5"', 'required_version="6.0"')
   );
   await writeFile(path.join(root, "package.json"), '{"version":"0.1.0"}');
   await writeFile(path.join(root, "playarr-config.json"), '{"apiBaseUrl":""}');
@@ -95,7 +95,7 @@ test("rejects a manifest below the Chromium 94 Tizen 7 floor", async () => {
       runtimeConfigSource: path.join(root, "playarr-config.json"),
       packageJsonSource: path.join(root, "package.json"),
     }),
-    /required_version="7\.0"/
+    /required_version="6\.5"/
   );
 });
 

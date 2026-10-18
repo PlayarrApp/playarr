@@ -5,7 +5,7 @@ set -euo pipefail
 RUN=${1:?run id}; DEVICE=${2:?tv or phone}; DEST=${3:?legend dir}
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 # the phone's themes are separate artifacts (harmony-wall-phone-<run>-dark / -light); the TV's is one
-gh run download "$RUN" -R ThomasMcFarlane/playarr -p "harmony-wall-$DEVICE-$RUN*" -D "$TMP"
+gh run download "$RUN" -R PlayarrApp/playarr -p "harmony-wall-$DEVICE-$RUN*" -D "$TMP"
 mkdir -p "$DEST/dev/light"
 # the artifact root is the common parent of its files, so it may or may not hold a capture/ level: find the folders
 for d in $(find "$TMP" -type d -name dark -o -type d -name light | grep -v _debug); do

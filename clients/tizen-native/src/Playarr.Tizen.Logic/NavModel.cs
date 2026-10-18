@@ -15,7 +15,7 @@ public static class NavModel
         new NavItem("music", "Music", "/music", "music", 1),
         new NavItem("playlists", "Playlists", "/playlists", "playlists", 2),
         new NavItem("watchlist", "Watchlist", "/watchlist", "watchlist", 2),
-        new NavItem("requests", "Requests", "/requests", "watchlist", 2),
+        new NavItem("requests", "Requests", "/requests", "requests", 2),
         new NavItem("calendar", "Calendar", "/calendar", "calendar", 2),
     };
 

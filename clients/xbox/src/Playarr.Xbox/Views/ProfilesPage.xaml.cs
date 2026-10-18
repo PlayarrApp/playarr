@@ -431,8 +431,8 @@ namespace Playarr.Xbox.Views
             clients.HorizontalAlignment = HorizontalAlignment.Right;
             clients.VerticalAlignment = VerticalAlignment.Bottom;
             clients.Margin = new Thickness(0, 0, 48, 36);
-            // The web's /clients page lists the apps for every platform; it lives on the server.
-            clients.Click += (s, e) => _ = Windows.System.Launcher.LaunchUriAsync(new System.Uri(App.Environment.ServerUrl, "/clients"));
+            // The public Clients page lists the apps for every platform; it only exists on playarr.app.
+            clients.Click += (s, e) => _ = Windows.System.Launcher.LaunchUriAsync(new System.Uri("https://playarr.app/clients"));
             Root.Children.Add(clients);
         }
 

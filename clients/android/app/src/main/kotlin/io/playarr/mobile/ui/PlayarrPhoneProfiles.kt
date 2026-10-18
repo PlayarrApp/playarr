@@ -88,7 +88,7 @@ internal fun PhoneProfilesHeading(kicker: String, title: String) {
     ) {
         Text(
             kicker.uppercase(),
-            color = ProfilesBrandRose, fontSize = 7.36.sp, lineHeight = 11.04.sp, fontWeight = FontWeight(820),
+            color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk, fontSize = 7.36.sp, lineHeight = 11.04.sp, fontWeight = FontWeight(820),
             letterSpacing = 0.9568.sp, style = WebTextStyle, maxLines = 1,
         )
         Spacer(Modifier.height(7.2.dp))

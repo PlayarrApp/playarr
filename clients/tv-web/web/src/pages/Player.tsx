@@ -44,11 +44,13 @@ import {
 } from "../lib/cast/castMessages";
 import {
   InlineMusicStatus,
+  MiniPlayerCloseButton,
   PlayerCloseButton,
   PlayerSurface,
   type PlayerMusicContext,
   type PlayerPlaylistItem,
 } from "../components/player/PlayerSurface";
+import { rememberFocusBeforeMiniPlayer } from "../lib/miniPlayerClose";
 import {
   ErrorIcon,
   LockIcon,
@@ -757,6 +759,7 @@ function PlayerPageInner({
           title={title ?? activePlaylistItem?.title ?? t("pages.player.nowPlaying")}
           status={t("pages.player.playbackUnavailable")}
           onMaximise={onMaximise}
+          onStop={onClose}
         />
       );
     }
@@ -859,10 +862,12 @@ function MinimisedPlayerStatus({
   title,
   status,
   onMaximise,
+  onStop,
 }: {
   title: string;
   status: string;
   onMaximise: () => void;
+  onStop: () => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -873,8 +878,10 @@ function MinimisedPlayerStatus({
           className="mini-player-hit-target"
           data-navigation-focus-key="shell:mini-player"
           onClick={onMaximise}
+          onFocus={(event) => rememberFocusBeforeMiniPlayer(event.relatedTarget as HTMLElement | null)}
           aria-label={t("pages.player.maximiseTitle", { title })}
         />
+        <MiniPlayerCloseButton onStop={onStop} />
         <div className="mini-player-details" aria-hidden="true">
           <span className="mini-player-title">{title}</span>
           <span className="mini-player-time">{status}</span>

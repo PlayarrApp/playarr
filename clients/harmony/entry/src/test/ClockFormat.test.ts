@@ -14,4 +14,6 @@ test("date is short weekday, day, long month", () => {
   assert.equal(clockDate(new Date(2026, 9, 11, 4, 6)), "Sun 11 October");
   assert.equal(clockDate(new Date(2026, 0, 1, 12, 0)), "Thu 1 January");
   assert.equal(clockDate(new Date(2026, 11, 31, 12, 0)), "Thu 31 December");
+  assert.match(clockDate(new Date(2026, 9, 11, 4, 6), "ja"), /11/);
+  assert.doesNotMatch(clockDate(new Date(2026, 9, 11, 4, 6), "th"), /October/);
 });

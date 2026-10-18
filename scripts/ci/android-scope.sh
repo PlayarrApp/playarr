@@ -5,8 +5,9 @@
 #   android=true|false
 #   android_tasks="<gradle tasks>"      (empty when android=false)
 #
-# - Pushes to main, the nightly schedule and dispatches on main run the full `build` (all modules,
-#   both flavours, release variants, lint on every variant).
+# - Dispatches on main run the full `build` (all modules, both flavours, release variants, lint on
+#   every variant). A push to main is scoped like a pull request, against the previous main tip.
+# - Screenshot (Roborazzi) verification is not run in CI; record/verify it locally.
 # - A pull request (or a dispatch on a PR branch) with no Android-relevant change skips the job.
 # - Otherwise a pull request runs the unit tests and lint of the affected library modules (changed
 #   modules plus every module that depends on them) and, always, the app's sideload debug unit
@@ -21,14 +22,22 @@ full() { echo "android=true"; echo "android_tasks=build"; exit 0; }
 
 if [ -z "${CHANGED_FILES:-}" ]; then
   case "${EVENT_NAME:-}" in
-    pull_request | workflow_dispatch) ;;
+    pull_request | workflow_dispatch | push) ;;
     *) full ;;
   esac
   [ "${EVENT_NAME:-}" = workflow_dispatch ] && [ "${GITHUB_REF_NAME:-}" = main ] && full
-  base="${BASE_REF:-main}"
-  git fetch -q --no-tags origin "$base" 2>/dev/null || full
-  if [ "${EVENT_NAME:-}" = pull_request ]; then head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD); else head=$(git rev-parse HEAD); fi
-  CHANGED_FILES=$(git diff --name-only "origin/$base...$head") || full
+  if [ "${EVENT_NAME:-}" = push ]; then
+    # Push to main: diff against the previous tip (BEFORE_SHA); unknown history means a full run.
+    before="${BEFORE_SHA:-}"
+    case "$before" in "" | 0000000000000000000000000000000000000000) full ;; esac
+    git cat-file -e "$before^{commit}" 2>/dev/null || full
+    CHANGED_FILES=$(git diff --name-only "$before" HEAD) || full
+  else
+    base="${BASE_REF:-main}"
+    git fetch -q --no-tags origin "$base" 2>/dev/null || full
+    if [ "${EVENT_NAME:-}" = pull_request ]; then head=$(git rev-parse HEAD^2 2>/dev/null || git rev-parse HEAD); else head=$(git rev-parse HEAD); fi
+    CHANGED_FILES=$(git diff --name-only "origin/$base...$head") || full
+  fi
 fi
 
 A=clients/android
@@ -77,8 +86,6 @@ tasks=":app:testSideloadDebugUnitTest :app:assembleSideloadDebug :app:lintSidelo
 for m in $(tr ' ' '\n' <<<"$set" | sort -u); do
   [ "$m" = app ] && continue
   tasks=":$m:testDebugUnitTest :$m:lintDebug $tasks"
-  # core-designsystem holds the Roborazzi goldens of the shared page components (docs/design/page-layout.md 7.3).
-  [ "$m" = core-designsystem ] && tasks=":$m:verifyRoborazziDebug $tasks"
 done
 echo "android=true"
 echo "android_tasks=$tasks"

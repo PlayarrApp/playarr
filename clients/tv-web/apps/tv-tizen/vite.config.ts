@@ -17,7 +17,7 @@ const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.met
 export default defineConfig({
   base: "./",
   publicDir: "../../web/public",
-  plugins: [legacyTvCssPlugin(), react()],
+  plugins: [legacyTvCssPlugin({ chromium85: true }), react()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __PLAYARR_PLATFORM__: JSON.stringify("tv-tizen"),
@@ -27,6 +27,8 @@ export default defineConfig({
   build: {
     outDir: "dist",
     target: "es2018",
-    cssTarget: "chrome94",
+    // Tizen 6.5 TVs (2022 models) run Chromium 85: a newer target lets the minifier merge top/right/bottom/left back into `inset`, which
+    // that engine ignores (the full-bleed key art collapsed to its content height).
+    cssTarget: "chrome85",
   },
 });

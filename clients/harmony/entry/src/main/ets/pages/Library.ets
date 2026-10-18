@@ -138,7 +138,7 @@ import { indexWatchProgressByWork, watchMarkFor } from '../core/WatchState';
 import { orderWorks } from '../core/LibraryOrder';
 import type { WatchMark } from '../core/WatchState';
 import type { WatchProgress } from '../core/Types/Playback';
-import { fetchWorkArtworkByPriority, COVER_ARTWORK_PRIORITY, LANDSCAPE_ARTWORK_PRIORITY } from '../data/ArtworkRepository';
+import { fetchWorkArtworkByPriority, COVER_ARTWORK_PRIORITY, HERO_ARTWORK_PRIORITY, LANDSCAPE_ARTWORK_PRIORITY } from '../data/ArtworkRepository';
 
 import { catalogPageSize } from '../core/AppConfig';
 import type { WorkKind } from '../core/Types/Catalog';
@@ -486,6 +486,10 @@ export struct Library {
   @State private total: number = -1;
   /** The TV hero: the focused title, the first one until a card takes focus (web `.tv-library-preview`). */
   @State private hero: Work | undefined = undefined;
+  @State private heroArtwork: image.PixelMap | undefined = undefined;
+  private heroArtworkGeneration: number = 0;
+  private heroArtworkWorkId: string = '';
+  private pendingHeroArtworkWorkId: string = '';
   /** The A-Z rail's current letter: the hero's (web `activeLetter`). */
   @State private activeLetter: string = '#';
   /** The Filters drawer (web `?panel=filters`). */
@@ -518,9 +522,15 @@ export struct Library {
   @State private artworkSize: ArtworkSizeName = 'medium';
 
   aboutToAppear(): void {
+    this.restartHeroArtworkIfNeeded();
     this.loadPage(0);
     this.loadWatchProgress();
     this.loadView();
+  }
+
+  aboutToDisappear(): void {
+    this.heroArtworkGeneration += 1;
+    this.pendingHeroArtworkWorkId = '';
   }
 
   private async loadView(): Promise<void> {
@@ -552,10 +562,54 @@ export struct Library {
   }
 
   private setHero(work: Work | undefined): void {
-    this.hero = work;
-    if (work !== undefined) {
-      this.activeLetter = workLetter(work.sort_title, work.title);
+    if (work === undefined) {
+      this.heroArtworkGeneration += 1;
+      this.heroArtwork = undefined;
+      this.heroArtworkWorkId = '';
+      this.pendingHeroArtworkWorkId = '';
+      this.hero = undefined;
+      this.activeLetter = '#';
+      return;
     }
+
+    const sameWork = this.hero !== undefined && this.hero.id === work.id;
+    this.hero = work;
+    this.activeLetter = workLetter(work.sort_title, work.title);
+    if (!isTvMetrics()) {
+      return;
+    }
+    if (sameWork && (this.heroArtworkWorkId === work.id || this.pendingHeroArtworkWorkId === work.id)) {
+      return;
+    }
+
+    const generation = ++this.heroArtworkGeneration;
+    this.pendingHeroArtworkWorkId = work.id;
+    this.loadHeroArtwork(work.id, generation);
+  }
+
+  private async loadHeroArtwork(workId: string, generation: number): Promise<void> {
+    const result = await fetchWorkArtworkByPriority(workId, HERO_ARTWORK_PRIORITY);
+    if (this.heroArtworkGeneration !== generation || this.hero === undefined || this.hero.id !== workId) {
+      return;
+    }
+    this.pendingHeroArtworkWorkId = '';
+    if (result.kind === 'ok') {
+      this.heroArtwork = result.value;
+      this.heroArtworkWorkId = workId;
+    } else {
+      this.heroArtwork = undefined;
+      this.heroArtworkWorkId = '';
+    }
+  }
+
+  private restartHeroArtworkIfNeeded(): void {
+    const hero = this.hero;
+    if (!isTvMetrics() || hero === undefined || this.heroArtworkWorkId === hero.id || this.pendingHeroArtworkWorkId === hero.id) {
+      return;
+    }
+    const generation = ++this.heroArtworkGeneration;
+    this.pendingHeroArtworkWorkId = hero.id;
+    this.loadHeroArtwork(hero.id, generation);
   }
 
   /** Web `jumpToLetter`: the first title at or after the letter in the current order, loading pages until
@@ -676,6 +730,7 @@ export struct Library {
 
   private resetAndReload(): void {
     this.items = [];
+    this.setHero(undefined);
     this.hasMore = true;
     this.errorMessage = '';
     this.loadMoreFailed = false;
@@ -1164,7 +1219,7 @@ export struct Library {
   @Builder
   private tvContent(): void {
     Stage({
-      keyArt: '',
+      keyArt: this.heroArtwork ?? '',
       kicker: this.hero !== undefined && this.hero.genres.length > 0 ? this.hero.genres[0] : '',
       title: this.hero !== undefined ? this.hero.title : '',
       metaLines: this.hero !== undefined ? heroMetaLines(this.hero) : [],
@@ -1290,10 +1345,21 @@ const JUMP_WAIT_MS: number = 100;
 const JUMP_SCROLL_DELAY_MS: number = 50;
 
 
+/** Web `yearRangeLabel`: "2011", or "2011–2019" for an ended series that closed in a later year. */
+function yearRangeOf(work: Work): string {
+  const start = releaseYearOf(work);
+  const raw = work.end_date;
+  if (start.length === 0 || raw === undefined || raw === null || raw.length < 4) {
+    return start;
+  }
+  const end = raw.slice(0, 4);
+  return end > start ? start + '\u2013' + end : start;
+}
+
 /** Web library hero meta: "2003  Action · Crime" (year, then genres). */
 function heroMetaLines(work: Work): string[] {
   const parts: string[] = [];
-  const year = releaseYearOf(work);
+  const year = yearRangeOf(work);
   if (year.length > 0) {
     parts.push(year);
   }

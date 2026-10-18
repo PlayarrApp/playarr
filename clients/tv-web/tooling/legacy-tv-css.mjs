@@ -253,7 +253,66 @@ function addHasFallbacks(root) {
   }
 }
 
-export function addLegacyTvCssFallbacks(css, from = undefined) {
+
+// Chromium 85 (Tizen 6.5) has no :is(), :where(), :focus-visible, the logical padding/margin shorthands or overflow: clip. A rule with an
+// unsupported selector is dropped whole, so these are rewritten for the Tizen package only (`chromium85: true`). Playarr's TV builds have
+// only a remote, so focus is always keyboard focus and :focus-visible reads as :focus.
+const MAX_EXPANDED_SELECTORS = 64;
+
+/** Expands :is() and :where() argument lists into plain selectors (the order of the list is kept); undefined when too many result. */
+export function expandMatchesSelectors(selector) {
+  const match = /:(?:is|where)\(/.exec(selector);
+  if (!match) return [selector];
+  const open = match.index + match[0].length - 1;
+  const close = matchingParen(selector, open);
+  if (close < 0) return [selector];
+  const results = [];
+  for (const argument of topLevelParts(selector.slice(open + 1, close))) {
+    for (const expanded of expandMatchesSelectors(`${selector.slice(0, match.index)}${argument}${selector.slice(close + 1)}`)) {
+      results.push(expanded);
+      if (results.length > MAX_EXPANDED_SELECTORS) return undefined;
+    }
+  }
+  return results;
+}
+
+const LOGICAL_SHORTHANDS = {
+  "padding-inline": ["padding-left", "padding-right"],
+  "padding-block": ["padding-top", "padding-bottom"],
+  "margin-inline": ["margin-left", "margin-right"],
+  "margin-block": ["margin-top", "margin-bottom"],
+};
+
+function addChromium85Fallbacks(root) {
+  root.walkRules((rule) => {
+    if (rule.parent?.type === "atrule" && /keyframes$/i.test(rule.parent.name)) return;
+    if (!/:(?:is|where|focus-visible)\b/.test(rule.selector)) return;
+    const selectors = rule.selectors.flatMap((selector) => expandMatchesSelectors(selector) ?? [selector]);
+    rule.selectors = [...new Set(selectors.map((selector) => selector.replace(/:focus-visible\b/g, ":focus")))];
+  });
+  root.walkDecls((declaration) => {
+    // The :has() fallback evaluates its relative selectors with matches(), which throws on :focus-visible here.
+    if (declaration.prop.startsWith("--lc-has-")) declaration.value = declaration.value.replace(/:focus-visible\b/g, ":focus");
+    const sides = LOGICAL_SHORTHANDS[declaration.prop];
+    if (sides) {
+      const values = postcss.list.space(declaration.value);
+      if (values.length >= 1 && values.length <= 2) {
+        declaration.cloneBefore({ prop: sides[0], value: values[0] });
+        declaration.cloneBefore({ prop: sides[1], value: values[1] ?? values[0] });
+      }
+    } else if (declaration.prop === "aspect-ratio") {
+      // The runtime half is legacy-aspect-ratio.mjs; a rule that sets its own height ignores the ratio, so it needs no help.
+      const rule = declaration.parent;
+      const sized = rule?.nodes?.some((node) => node.type === "decl" && /^(?:height|min-height|block-size)$/i.test(node.prop));
+      const inKeyframes = rule?.parent?.type === "atrule" && /keyframes$/i.test(rule.parent.name);
+      if (rule?.type === "rule" && !sized && !inKeyframes) declaration.cloneAfter({ prop: "--lc-ar", value: declaration.value });
+    } else if (declaration.prop === "overflow" && /^clip$/i.test(declaration.value.trim())) {
+      declaration.cloneBefore({ value: "hidden" });
+    }
+  });
+}
+
+export function addLegacyTvCssFallbacks(css, from = undefined, { chromium85 = false } = {}) {
   const root = postcss.parse(css, { from });
   const mixedRules = new Set();
   root.walkDecls((declaration) => {
@@ -336,6 +395,7 @@ export function addLegacyTvCssFallbacks(css, from = undefined) {
     rule.after(postcss.atRule({ name: "supports", params: MIX_SUPPORTS, nodes: [modern] }));
   }
   addHasFallbacks(root);
+  if (chromium85) addChromium85Fallbacks(root);
   return root.toString();
 }
 
@@ -390,13 +450,13 @@ export function pinFontWeights(css, from = undefined) {
   return root.toString();
 }
 
-export function legacyTvCssPlugin({ pinWeights = false } = {}) {
+export function legacyTvCssPlugin({ pinWeights = false, chromium85 = false } = {}) {
   return {
     name: "playarr-legacy-tv-css",
     enforce: "pre",
     transform(code, id) {
       if (!id.split("?", 1)[0].endsWith(".css")) return null;
-      const css = addLegacyTvCssFallbacks(code, id);
+      const css = addLegacyTvCssFallbacks(code, id, { chromium85 });
       return { code: pinWeights ? pinFontWeights(css, id) : css, map: null };
     },
   };

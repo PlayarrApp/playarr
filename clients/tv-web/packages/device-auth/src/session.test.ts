@@ -996,3 +996,69 @@ describe("session persistence under races and outages", () => {
     expect(calls).toBe(afterFirst);
   });
 });
+
+describe("ensureAccessToken without transparent login", () => {
+  it("rejects with 401 and sends no request when nothing is stored", async () => {
+    const fetchImpl = mockFetch(async () => jsonResponse(200, {}));
+    const client = new ApiClient({ baseUrl: BASE_URL, fetchImpl });
+    await expect(
+      ensureAccessToken(client, new TokenStore(), IDENTITY, { allowTransparentLogin: false })
+    ).rejects.toMatchObject({ status: 401 });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe("refresh that outlives a sign-out", () => {
+  const other = { accessToken: "Y", refreshToken: "rY", tokenType: "Bearer", expiresAt: Date.now() + 3_600_000 };
+  const old = { accessToken: "old", refreshToken: "r", tokenType: "Bearer", expiresAt: Date.now() - 1000 };
+  const refreshed = { access_token: "new", refresh_token: "r2", expires_in: 3600, token_type: "Bearer" };
+
+  it("does not write back over a later session (primary)", async () => {
+    const store = new TokenStore();
+    store.set(old);
+    const fetchImpl = mockFetch(async () => {
+      store.clear();
+      store.set(other);
+      return jsonResponse(200, refreshed);
+    });
+    const client = new ApiClient({ baseUrl: BASE_URL, fetchImpl });
+    await expect(
+      ensureAccessToken(client, store, IDENTITY, { allowTransparentLogin: false })
+    ).rejects.toMatchObject({ status: 401 });
+    expect(store.get()?.accessToken).toBe("Y");
+  });
+
+  it("does not write back over a later session (server group)", async () => {
+    const issuer = "11111111-1111-4111-8111-111111111111";
+    const claims = btoa(JSON.stringify({ sub: "00000000-0000-0000-0000-000000000009", iss: issuer })).replace(/=+$/, "");
+    const store = new TokenStore();
+    store.set({ ...old, accessToken: `h.${claims}.s` });
+    const primary = new ApiClient({
+      baseUrl: BASE_URL,
+      fetchImpl: mockFetch(async () => {
+        throw new TypeError("net");
+      }),
+    });
+    const sibling = new ApiClient({
+      baseUrl: "http://b:1",
+      fetchImpl: mockFetch(async () => {
+        store.clear();
+        store.set(other);
+        return jsonResponse(200, refreshed);
+      }),
+    });
+    await expect(
+      ensureAccessToken(primary, store, IDENTITY, {
+        allowTransparentLogin: false,
+        serverGroup: {
+          servers: [
+            { url: "http://b:1", peerNodeId: issuer },
+            { url: BASE_URL, peerNodeId: issuer },
+          ],
+        } as never,
+        clientForUrl: () => sibling,
+      })
+    ).rejects.toBeDefined();
+    expect(store.get()?.accessToken).toBe("Y");
+  });
+});
