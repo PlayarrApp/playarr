@@ -2490,7 +2490,7 @@ struct Detail {
         .height(HERO_TOUCH_HEIGHT)
         .linearGradient({
           direction: GradientDirection.Bottom,
-          colors: [[toResourceColorWithAlpha(activeColors().bg, 0.78), 0.0], [toResourceColorWithAlpha(activeColors().bg, 0.9), 0.55], [toResourceColor(activeColors().bg), 1.0]],
+          colors: [[toResourceColorWithAlpha(activeColors().surface, 0.78), 0.0], [toResourceColorWithAlpha(activeColors().surface, 0.9), 0.55], [toResourceColor(activeColors().surface), 1.0]],
         })
 
         Column({ space: TouchGeometry.detailListSpacing }) {
@@ -2589,9 +2589,9 @@ struct Detail {
         .linearGradient({
           direction: GradientDirection.Bottom,
           colors: [
-            [toResourceColor(activeColors().bg), 0.0],
-            [toResourceColor(activeColors().bg), (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP) / (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)],
-            [toResourceColorWithAlpha(activeColors().bg, 0), 1.0],
+            [toResourceColor(activeColors().surface), 0.0],
+            [toResourceColor(activeColors().surface), (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP) / (atLeast(PHONE_HEADER_TOP, this.safeTop) + PHONE_BACK_SIZE + PHONE_HEADER_GAP + PHONE_HEADER_FADE)],
+            [toResourceColorWithAlpha(activeColors().surface, 0), 1.0],
           ],
         })
         .hitTestBehavior(HitTestMode.None)
@@ -2640,7 +2640,7 @@ struct Detail {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(activeColors().bg))
+    .backgroundColor(toResourceColor(activeColors().surface))
   }
 
   @Builder
@@ -2669,7 +2669,7 @@ struct Detail {
         .height('100%')
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
-        .backgroundColor(toResourceColor(activeColors().bg))
+        .backgroundColor(toResourceColor(isTvMetrics() ? activeColors().bg : activeColors().surface))
       } else if (isTvMetrics()) {
         this.tvLayout()
       } else {
@@ -2677,7 +2677,7 @@ struct Detail {
       }
     }
     .hideTitleBar(true)
-    .backgroundColor(toResourceColor(activeColors().bg))
+    .backgroundColor(toResourceColor(isTvMetrics() ? activeColors().bg : activeColors().surface))
     .onKeyEvent((event: KeyEvent): boolean => {
       if (event.type === KeyType.Down) {
         this.cancelInitialEpisodeFocus();

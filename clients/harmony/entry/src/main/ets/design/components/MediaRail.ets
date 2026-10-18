@@ -351,11 +351,11 @@ export struct MediaRail {
       .linearGradient({
         angle: 90,
         colors: [
-          [toResourceColorWithAlpha(activeColors().bg, 0), 0],
-          [toResourceColorWithAlpha(activeColors().bg, 0.109), 0.25],
-          [toResourceColorWithAlpha(activeColors().bg, 0.35), 0.5],
-          [toResourceColorWithAlpha(activeColors().bg, 0.591), 0.75],
-          [toResourceColorWithAlpha(activeColors().bg, 0.7), 1],
+          [toResourceColorWithAlpha(activeColors().surface, 0), 0],
+          [toResourceColorWithAlpha(activeColors().surface, 0.109), 0.25],
+          [toResourceColorWithAlpha(activeColors().surface, 0.35), 0.5],
+          [toResourceColorWithAlpha(activeColors().surface, 0.591), 0.75],
+          [toResourceColorWithAlpha(activeColors().surface, 0.7), 1],
         ],
       })
       .hitTestBehavior(HitTestMode.None)
@@ -424,7 +424,11 @@ export struct MediaRail {
           this.items,
           (item: MediaRailItem, index: number) => {
             ListItem() {
-              this.itemBuilder(item, index, this.activeRailFactor)
+              // Phone (overflowItems): the top inset lives in the item so the focus ring is inside the List's content box, not clipped by it.
+              Column() {
+                this.itemBuilder(item, index, this.activeRailFactor)
+              }
+              .padding({ top: this.overflowItems ? this.clipInsetTop : 0 })
             }
             .attributeModifier(new ItemOverflowModifier(this.overflowItems))
             .onAreaChange((_oldArea: Area, area: Area) => {
@@ -443,7 +447,8 @@ export struct MediaRail {
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
       .attributeModifier(new FocusedOverflowModifier(this.allowFocusedOverflow))
-      .padding({ left: this.clipInsetStart, top: this.clipInsetTop, bottom: RAIL_CLIP_INSET_BOTTOM })
+      .contentStartOffset(this.overflowItems ? this.clipInsetStart : 0)
+      .padding({ left: this.overflowItems ? 0 : this.clipInsetStart, top: this.overflowItems ? 0 : this.clipInsetTop, bottom: RAIL_CLIP_INSET_BOTTOM })
       .margin({ left: -this.clipInsetStart, top: -this.clipInsetTop, bottom: -RAIL_CLIP_INSET_BOTTOM })
       .focusScopeId(this.railId, true, true)
       .id(this.measurementId.length > 0 ? this.measurementId : this.railId + '-list')

@@ -615,32 +615,37 @@ export struct SettingsScreen {
     } else {
       Column() {
         ForEach(buildSections(), (section: SettingsSection) => {
-          Row({ space: 16 }) {
+          // Web phone `.settings-option`: 328 x 88 rows (16 vp page margin), number at +12/+14, copy at +56, arrow centred at +310.
+          Stack({ alignContent: Alignment.TopStart }) {
             Text(section.number).fontFamily(nunito(700))
               .fontSize(10)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-              .alignSelf(ItemAlign.Start)
-              .margin({ top: 6 })
-            Column({ space: 4 }) {
+              .position({ x: 12, y: 14 })
+            Column({ space: 3.5 }) {
               Text(section.title).fontFamily(nunito(500))
-                .fontSize(20)
+                .fontSize(15.5)
                 .fontWeight(FontWeight.Medium)
+                .letterSpacing(-0.54)
                 .fontColor(toResourceColor(activeColors().ink))
               Text(sectionCopyOf(section.id)).fontFamily(nunito(400))
-                .fontSize(12)
+                .fontSize(11)
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
             .alignItems(HorizontalAlign.Start)
-            .layoutWeight(1)
+            .width(226)
+            .position({ x: 56, y: 23 })
             Text('→').fontFamily(nunito(400))
-              .fontSize(18)
+              .fontSize(14)
               .fontColor(toResourceColor(activeColors().ink))
+              .height(88)
+              .position({ x: 303, y: 0 })
           }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+          .width(328)
+          .height(88)
+          .margin({ left: 16, right: 16 })
           .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
           .onClick(() => {
             this.openSection = section.id;
