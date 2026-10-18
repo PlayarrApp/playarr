@@ -4079,9 +4079,11 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   color: var(--ink);
 }
 
+/* Artwork can carry a baked-in title, so it starts at the nav clearance (owner rule 2026-10-18: nothing under the nav).
+   The fade and wash below run from that edge rightward; phones, where the nav is a bottom bar, keep the full width. */
 .tv-key-art {
   position: absolute;
-  inset: 0;
+  inset: 0 0 0 var(--tv-nav-clearance);
   z-index: 0;
   overflow: hidden;
   animation: tv-key-art-in 760ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
@@ -4097,7 +4099,7 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
 }
 
 .tv-key-art img {
-  width: 52%;
+  width: calc(52 * var(--vw) - var(--tv-nav-clearance));
   height: 106%;
   margin-left: 0;
   object-fit: cover;
@@ -4107,6 +4109,7 @@ body[data-input-mode="remote"] .player-seek-track:focus .player-seek-thumb {
   -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 72%, transparent 100%);
   mask-image: linear-gradient(90deg, #000 0%, #000 72%, transparent 100%);
   transform: scale(1.04);
+  transform-origin: left center;
 }
 
 :root[data-theme="dark"] .tv-key-art img {
@@ -8713,6 +8716,10 @@ html.is-native-scroll-root .profile-auth-scroll {
   .profiles-page {
     height: var(--viewport-height);
     min-height: 0;
+  }
+
+  .tv-key-art {
+    left: 0;
   }
 
   .tv-key-art img,

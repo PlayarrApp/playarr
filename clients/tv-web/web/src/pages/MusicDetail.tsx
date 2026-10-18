@@ -812,7 +812,6 @@ export function MusicDetailPage() {
       kinds={["poster"]}
       alt=""
       className="tv-music-detail-backdrop"
-      data-nav-behind
       fallback={
         selectedAlbumTracks[0]?.media_file_id ? (
           <MediaThumbnailArtwork
@@ -820,7 +819,6 @@ export function MusicDetailPage() {
             positionMs={0}
             fallback={null}
             className="tv-music-detail-backdrop"
-            data-nav-behind
           />
         ) : null
       }
@@ -875,7 +873,6 @@ export function MusicDetailPage() {
             kinds={["backdrop"]}
             alt=""
             className="tv-music-detail-backdrop"
-            data-nav-behind
             fallback={albumBackdrop}
           />
         ),
