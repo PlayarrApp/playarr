@@ -18,7 +18,7 @@ eval "$(node scripts/parity/parity-config.mjs --shell)"
 
 HOME_DIR="${PARITY_STATIC_HOME:-$HOME/.cache/playarr-parity-static}"
 scoped() { systemd-run --user --scope --quiet -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=512M -- "$@"; }
-ip -4 -o addr show | grep -q " ${PARITY_SERVER_HOST}/" || { echo "static-server: ${PARITY_SERVER_HOST} (parity.env) is not an address of this host" >&2; exit 1; }
+[[ -n "${PARITY_SERVER_HOST:-}" ]] && ip -4 -o addr show | grep -q " ${PARITY_SERVER_HOST}/" || { echo "static-server: ${PARITY_SERVER_HOST:-no LAN address} is not an address of this host (set PARITY_SERVER_HOST)" >&2; exit 1; }
 mkdir -p "$HOME_DIR"
 
 # 1. Backend binary.

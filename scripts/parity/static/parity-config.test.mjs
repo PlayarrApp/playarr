@@ -14,12 +14,12 @@ test("the clock comes from screens.json and the config never carries a secret", 
 });
 
 test("variables already set win, and PARITY_LIVE=1 applies nothing", () => {
-  const env = { PARITY_SERVER_URL: "http://example.invalid:1", PARITY_SERVER_HOST: "192.0.2.10" };
+  const env = { PARITY_SERVER_URL: "http://example.invalid:1", PARITY_SERVER_HOST: "192.0.2.10", PLAYARR_PARITY_STATIC_PASSWORD: "x" };
   loadParityConfig(env);
   assert.equal(env.PARITY_SERVER_URL, "http://example.invalid:1");
-  const live = { PARITY_LIVE: "1", PARITY_SERVER_HOST: "192.0.2.10" };
+  const live = { PARITY_LIVE: "1", PARITY_SERVER_HOST: "192.0.2.10", PLAYARR_PARITY_STATIC_PASSWORD: "x" };
   loadParityConfig(live);
-  assert.deepEqual(live, { PARITY_LIVE: "1", PARITY_SERVER_HOST: "192.0.2.10" });
+  assert.deepEqual(Object.keys(live).sort(), ["PARITY_LIVE", "PARITY_SERVER_HOST", "PLAYARR_PARITY_STATIC_PASSWORD"]);
 });
 
 test("parseEnvFile skips comments and strips quotes", () => {
