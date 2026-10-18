@@ -1570,10 +1570,23 @@ function calendarDateString(dt as Object) as String
 end function
 
 function calendarToday() as Object
+    return ParityNowLocal()
+end function
+
+' Now in the device's local time; under a parity clock pin (global parityNowSeconds) the frozen instant, read as UTC.
+function ParityNowLocal() as Object
     dt = CreateObject("roDateTime")
-    dt.ToLocalTime()
+    if m.global.parityNowSeconds <> invalid and m.global.parityNowSeconds > 0
+        dt.FromSeconds(m.global.parityNowSeconds)
+    else
+        dt.ToLocalTime()
+    end if
     return dt
 end function
+
+sub ParityToLocal(dt as Object)
+    if m.global.parityNowSeconds = invalid or m.global.parityNowSeconds = 0 then dt.ToLocalTime()
+end sub
 
 sub calendarEnsureRange()
     if m.calendarView = invalid then m.calendarView = "month"
@@ -1666,7 +1679,7 @@ function calendarEntryDate(entry as Object) as Object
     dt = CreateObject("roDateTime")
     if calendarHasTime(entry)
         dt.FromISO8601String(entry.release_at)
-        dt.ToLocalTime()
+        ParityToLocal(dt)
     else if entry.date <> invalid
         dt.FromISO8601String(entry.date + "T00:00:00Z")
     end if
@@ -1949,23 +1962,24 @@ sub renderCalendarAgenda(entries as Object)
 
     ' Left: the selected entry's sheet.
     dt = calendarEntryDate(selected)
-    pgLabel(m.pageHead, 153.6, 240, 600, 18, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12, 800, "inkMuted")
-    pgLabel(m.pageHead, 153.6, 272, 600, 58, selected.title, 38, 600, "ink")
-    pgLabel(m.pageHead, 153.6, 344, 600, 30, calendarEntrySubtitle(selected), 19, 400, "ink")
-    pgLabel(m.pageHead, 153.6, 387, 600, 17, UCase("Release"), 11, 400, "inkMuted")
-    pgLabel(m.pageHead, 153.6, 405, 620, 26, calendarDayHeading(dt, true) + " at " + calendarTime(dt), 19, 400, "ink")
-    pgLabel(m.pageHead, 153.6, 443, 600, 17, UCase("Status"), 11, 400, "inkMuted")
+    ' Web agenda stage: kicker, the 69 px title (up to 3 lines, balanced), one meta line, the status pill, the overview, then the buttons.
+    pgTrackedText(m.pageHead, 153.6, 263.2, 0, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12, 800, 0.983, "brandInk", true)
+    stageTitle = CreateObject("roSGNode", "TrackedText")
+    stageTitle.translation = [153.6, 292.5]
+    stageTitle.spec = { text: selected.title, size: 69, weight: 560, tracking: -4.977, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    m.pageHead.AppendChild(stageTitle)
+    titleLines = stageTitle.lineCount
+    if titleLines < 1 then titleLines = 1
+    metaY = 307.5 + 62.208 * titleLines + 27
+    sub1 = pgLabel(m.pageHead, 153.6, metaY, 0, 18, calendarEntrySubtitle(selected), 14, 400, "inkMuted")
+    pgLabel(m.pageHead, 153.6 + sub1.boundingRect().width + 14, metaY, 0, 18, calendarDayHeading(dt, true) + " at " + calendarTime(dt), 14, 400, "inkMuted")
     statusText = calendarStatusText(selected)
-    badgeW = calendarBadge(m.pageHead, 153.6, 461.3, 26, statusText, 19)
-    pgLabel(m.pageHead, 153.6, 498.7, 600, 17, UCase("Reported by"), 11, 400, "inkMuted")
-    y = 516.0
-    if selected.sources <> invalid
-        for each src in selected.sources
-            pgLabel(m.pageHead, 153.6, y, 620, 28, src.source_name + "  (" + src.source_kind + ")", 19, 400, "ink")
-            y = y + 29
-        end for
-    end if
-    btnY = y + 14
+    calendarBadge(m.pageHead, 153.6, metaY + 39, 28, statusText, 13)
+    overview = JsonString(selected.overview)
+    if overview = "" then overview = "No synopsis available."
+    pgLabel(m.pageHead, 153.6, metaY + 88, 336, 22, overview, 15, 400, "inkMuted", { wrap: true, maxLines: 4 })
+    y = metaY + 131
+    btnY = y
     x = 153.6
     playFile = ""
     openWork = ""
@@ -1982,7 +1996,9 @@ sub renderCalendarAgenda(entries as Object)
         label = "Open title"
         if selected.media_kind = "episode" then label = "Open series"
         if selected.media_kind = "movie" then label = "Open movie"
-        x = x + pgButton(m.pageHead, x, btnY, 58, label, "secondary", "calOpen", openWork, 24) + 10
+        openStyle = "secondary"
+        if playFile = "" then openStyle = "primary"
+        x = x + pgButton(m.pageHead, x, btnY, 58, label, openStyle, "calOpen", openWork, 24) + 10
     end if
     pgButton(m.pageHead, x, btnY, 58, "+  Add to watchlist", "secondary", "calWatch", selected, 24)
 
@@ -2029,20 +2045,29 @@ sub renderCalendarAgenda(entries as Object)
             ay = ay + 76
             lastDay = day
         end if
+        ' Web: a release without a subtitle line (a movie) has a shorter card.
+        hasSub = calendarEntrySubtitle(entry) <> ""
+        ch = 106
+        metaOff = 70
+        if not hasSub
+            ch = 77
+            metaOff = 41
+        end if
         role = "inkMuted"
         if calendarItemAvailable(entry) then role = "success"
-        pgRound(m.pageBody, 783.4, ay, 1034, 106, 14, role)
-        pgRound(m.pageBody, 787.4, ay, 1030, 106, 14, "surfaceStrong")
-        pgRound(m.pageBody, 783.4, ay, 1034, 106, 14, "line", -1, true)
-        if entry.id = m.calendarSelected then pgRound(m.pageBody, 783.4, ay, 1034, 106, 14, "ink", 56, true)
+        pgRound(m.pageBody, 783.4, ay, 1034, ch, 14, role)
+        pgRound(m.pageBody, 787.4, ay, 1030, ch, 14, "surfaceStrong")
+        pgRound(m.pageBody, 783.4, ay, 1034, ch, 14, "line", -1, true)
+        if entry.id = m.calendarSelected then pgRound(m.pageBody, 783.4, ay, 1034, ch, 14, "ink", 56, true)
         art = calendarArtworkUrl(entry)
-        pgRound(m.pageBody, 799.4, ay + 23, 40, 60, 6, "surfaceSoft")
-        pgArtwork(m.pageBody, 799.4, ay + 23, 40, 60, art)
+        artY = ay + (ch - 60) / 2
+        pgRound(m.pageBody, 799.4, artY, 40, 60, 6, "surfaceSoft")
+        pgArtwork(m.pageBody, 799.4, artY, 40, 60, art)
         pgLabel(m.pageBody, 853.4, ay + 9, 900, 26, entry.title, 20, 600, "ink", { maxLines: 1 })
-        pgLabel(m.pageBody, 853.4, ay + 40, 900, 26, calendarEntrySubtitle(entry), 20, 400, "inkSoft", { maxLines: 1 })
-        calendarMetaRow(m.pageBody, 853.4, ay + 70, entry, 13)
-        pgFocusable(783.4, ay, 1034, 106, 14, "entry", entry.id, true)
-        ay = ay + 120.6
+        if hasSub then pgLabel(m.pageBody, 853.4, ay + 40, 900, 26, calendarEntrySubtitle(entry), 20, 400, "inkSoft", { maxLines: 1 })
+        calendarMetaRow(m.pageBody, 853.4, ay + metaOff, entry, 13)
+        pgFocusable(783.4, ay, 1034, ch, 14, "entry", entry.id, true)
+        ay = ay + ch + 14.6
     end for
     if m.agendaDays.Count() > 0 then m.agendaDays.Peek().endY = ay - 14.6
 end sub
