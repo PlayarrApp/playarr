@@ -323,7 +323,7 @@ Item {
                             function navigationActivate() { root.openEntry(modelData) }
                             x: dayCol.wk ? 0 : Tokens.pad
                             width: dayCol.cw - (dayCol.wk ? 0 : Tokens.pad - 40 * Tokens.u)   // the web agenda card runs past the right edge
-                            height: Math.max(75.7 * Tokens.u, info.height + 18 * Tokens.u)   // web: the 60 px poster plus the padding is the floor
+                            height: Math.max(75.7 * Tokens.u, info.height + 18 * Tokens.u) + (dayCol.wk ? 1 : 0)   // week refs: cards run one pixel taller   // web: the 60 px poster plus the padding is the floor
                             onClicked: navigationActivate()
                             // Left border: we have it (playable, green) or not, never which library; the card sits over it so it curves with the corners.
                             Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: (card.pressed ? 0.6 : 1) * (dayCol.wk ? 0.32 : 1) }   // week refs: the border accent is a third strong
@@ -343,12 +343,12 @@ Item {
                                 id: info
                                 anchors { left: poster.right; leftMargin: 14.7 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                                 spacing: 3 * Tokens.u
-                                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.3 * Tokens.u }
+                                Label { width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.3 * Tokens.u }
                                 Label {
                                     width: parent.width
                                     visible: text !== ""
                                     text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
-                                    elide: Text.ElideRight; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 16.2 * Tokens.u
+                                    elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 16.2 * Tokens.u
                                 }
                                 Row {
                                     spacing: 11 * Tokens.u
