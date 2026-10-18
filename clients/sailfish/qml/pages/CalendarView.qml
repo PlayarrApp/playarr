@@ -30,7 +30,7 @@ Item {
     property int pickerMoveIndex: -1
 
     function parseDate(iso) {
-        if (!iso || iso.length < 10) return new Date()
+        if (!iso || iso.length < 10) iso = Calendar.todayIso()   // the pinned parity clock, not the system date
         var parts = iso.split("-")
         return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
     }
@@ -42,6 +42,7 @@ Item {
     }
     // The selected period is based on the visible anchor date, including page navigation.
     function rangeForPage(view, pageNumber, anchor) {
+        if (!anchor) return Calendar.rangeFor(view, pageNumber)   // today, from the pinned parity clock when set
         var base = parseDate(anchor)
         var start, end, label, month = 0
         if (view === "month") {

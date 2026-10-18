@@ -55,6 +55,14 @@ Item {
             anchors { left: parent.left; leftMargin: 42 * Tokens.u; right: parent.right; rightMargin: 18 * Tokens.u; verticalCenter: parent.verticalCenter }
             color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u
             inputMethodHints: Qt.ImhNoPredictiveText
+            // D-pad focus rests on the field without the on-screen keyboard or a caret; Enter or a tap starts editing.
+            property bool editing: false
+            readOnly: !editing
+            cursorVisible: editing && activeFocus
+            onActiveFocusChanged: if (!activeFocus) editing = false
+            Keys.onReturnPressed: { if (!editing) { editing = true; Qt.inputMethod.show() } else event.accepted = false }
+            Keys.onEnterPressed: { if (!editing) { editing = true; Qt.inputMethod.show() } else event.accepted = false }
+            MouseArea { anchors.fill: parent; enabled: !input.editing; onClicked: { input.editing = true; input.forceActiveFocus(); Qt.inputMethod.show() } }
             EnterKey.iconSource: "image://theme/icon-m-enter-close"
             EnterKey.onClicked: focus = false
             onTextChanged: debounce.restart()
