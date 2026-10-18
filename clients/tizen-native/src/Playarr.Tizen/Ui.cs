@@ -294,6 +294,11 @@ internal static class Ui
         PositionX = x, PositionY = y, Size = new Size(size, size), Color = C(tint),
     };
 
+    public static ImageView Icon(string name, float x, float y, float width, float height, Rgba tint) => new(ResPath($"icons/{name}.svg"))
+    {
+        PositionX = x, PositionY = y, Size = new Size(width, height), Color = C(tint),
+    };
+
     private static PropertyMap AddWeight(this PropertyMap map, int weight)
     {
         map.Add("weight", new PropertyValue(weight >= 800 ? "extraBold" : weight >= 700 ? "bold" : weight >= 600 ? "semiBold" : weight >= 500 ? "medium" : weight >= 400 ? "regular" : "light"));
