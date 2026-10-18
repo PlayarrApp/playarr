@@ -1,0 +1,1 @@
+- Harmony phone: the focused poster card draws its brand glow, the header back arrow and filter glyph match the web's size, and the Series nav icon's play glyph is a polygon.

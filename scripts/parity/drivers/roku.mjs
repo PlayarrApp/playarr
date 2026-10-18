@@ -1024,12 +1024,16 @@ export function createDriver({ out, args = [] } = {}) {
             ? "timeout" : "interrupted";
           throw new Error(`Calendar ${targetView} readiness ${reason}; gates=${JSON.stringify(diagnostics)}`);
         }
-        // Leave the range selector: web captures show no focus ring in the header, so land on the first entry.
-        const beforeEntryFocusSeq = parityState.calendarFocusSeq;
-        await press("down");
-        await waitFor(() => hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeEntryFocusSeq), "Calendar focus on the first entry", 8000);
-        // Down lands under the selector, in the last visible day column, and scrolls the week sideways: walk back to the first column.
-        if (targetView === "week") for (let i = 0; i < 4; i += 1) await press("left");
+        // The web captures rest on a header control: Today in the agenda, Filters in the week (Right x2 or Right x3, then Down x2).
+        const rest = targetView === "agenda"
+          ? { keys: ["right", "right"], action: "calToday" }
+          : { keys: ["right", "right", "right", "down", "down"], action: "calFilters" };
+        for (const key of rest.keys) {
+          const beforeRestFocusSeq = parityState.calendarFocusSeq;
+          await press(key);
+          await waitFor(() => hasFreshCalendarFocus(parityState, beforeCalendarScreenSeq, beforeRestFocusSeq), `Calendar focus towards ${rest.action}`, 8000);
+        }
+        if (parityState.calendarFocus !== rest.action) throw new Error(`Calendar ${targetView} must rest on ${rest.action}, focus is ${parityState.calendarFocus}`);
       }
     } else {
       if (entry.id === "actions") drawerSource = "actions";

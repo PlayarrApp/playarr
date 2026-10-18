@@ -55,8 +55,20 @@ namespace Playarr.Xbox.Views
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
             BackdropStageWashRight.Fill = Theme.KeyArtStageWashRight();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
-            PlaybackButton = Ui.Filled(Ui.Pill("\u2637  Playback", OpenPlaybackDrawer, 142));
+            PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
             PlaybackButton.Height = 64;
+            // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
+            PlayButton.GotFocus += (s, e) => PaintPlay(true);
+            PlayButton.LostFocus += (s, e) => PaintPlay(false);
+        }
+
+        private void PaintPlay(bool focused)
+        {
+            var resources = Application.Current.Resources;
+            PlayButton.Background = (Windows.UI.Xaml.Media.Brush)resources[focused ? "PlayarrBrand" : "PlayarrInk"];
+            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrSurfaceStrong"];
+            PlayLabel.Foreground = ink;
+            PlayIcon.Foreground = ink;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -148,7 +160,8 @@ namespace Playarr.Xbox.Views
             {
                 if (showPlayback)
                 {
-                    PrimaryRow.Children.Insert(0, PlaybackButton);
+                    // After Download, which the web keeps first.
+                    PrimaryRow.Children.Insert(_downloadPill != null && PrimaryRow.Children.Contains(_downloadPill) ? 1 : 0, PlaybackButton);
                 }
                 else
                 {
@@ -374,7 +387,7 @@ namespace Playarr.Xbox.Views
 
                 CardFocus.Attach(list);
                 var section = new StackPanel { Margin = new Thickness(0, _viewModel.IsSeries ? 44 : 60, 0, 0) };
-                section.Children.Add(new TextBlock { Text = "Cast", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+                section.Children.Add(DetailRailTitle("Cast"));
                 section.Children.Add(new TextBlock
                 {
                     Text = credits.Cast.Count == 1 ? "1 person" : $"{credits.Cast.Count} people",
@@ -513,7 +526,7 @@ namespace Playarr.Xbox.Views
             };
             CardFocus.Attach(list);
             var section = new StackPanel { Margin = new Thickness(0, 195, 0, 0) };
-            section.Children.Add(new TextBlock { Text = "Chapters", Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+            section.Children.Add(DetailRailTitle("Chapters"));
             section.Children.Add(new TextBlock
             {
                 Text = real ? $"{chapters.Count} chapters" : $"{chapters.Count} scene markers",
@@ -659,7 +672,7 @@ namespace Playarr.Xbox.Views
                 ActionRow.Children.Add(ask);
             }
 
-            var download = Ui.Filled(Ui.Pill("Download", null));
+            var download = Ui.WithIcon(Ui.Filled(Ui.Pill("Download", null)), "\u21e9");
             download.Click += async (s, e) =>
             {
                 var template = _viewModel.DownloadTemplate();
@@ -811,7 +824,8 @@ namespace Playarr.Xbox.Views
                         PlayButton_Click(this, new RoutedEventArgs());
                     }
                 };
-                CardFocus.Attach(list);
+                // The web's episode ring sits 2.5 px outside the art (measured 280 x 160 on a 268 x 151 card).
+                CardFocus.Attach(list, true, 2.5);
                 list.GotFocus += (s, e) =>
                 {
                     if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: EpisodeDetail episode } })
@@ -821,14 +835,14 @@ namespace Playarr.Xbox.Views
                 };
 
                 var section = new StackPanel { Margin = new Thickness(0, 13, 0, 11) };
-                section.Children.Add(new TextBlock { Text = SeasonLabel(season), Style = (Style)Application.Current.Resources["PlayarrRailTitle"] });
+                section.Children.Add(DetailRailTitle(SeasonLabel(season)));
                 section.Children.Add(new TextBlock
                 {
                     Text = $"{season.Episodes.Count} episodes",
                     FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 1, 0, 40),
+                    Margin = new Thickness(0, 3.5, 0, 37.5),
                 });
                 section.Children.Add(list);
                 SeriesPanel.Children.Add(section);
@@ -836,6 +850,16 @@ namespace Playarr.Xbox.Views
 
             AppendCast();
         }
+
+        /// <summary>The detail page's rail title: the web draws it at 16.5 px (Home's rail titles are 19), in the same 26 px line.</summary>
+        private static TextBlock DetailRailTitle(string text) => new TextBlock
+        {
+            Text = text,
+            Style = (Style)Application.Current.Resources["PlayarrRailTitle"],
+            FontSize = 16.5,
+            LineHeight = 26,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+        };
 
         private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail, (double? Percent, bool Unwatched) watch)
         {
