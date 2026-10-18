@@ -81,6 +81,21 @@ class FixturePreflightTests(unittest.TestCase):
         self.assertEqual(result["failure"], "pinned-fixture-unavailable")
         self.assertEqual(result["fixtures"]["seed-progress"], 404)
 
+    def test_static_server_skips_the_live_seed_progress_item(self):
+        def requester(_server, path, **kwargs):
+            if path.endswith("/auth/login"):
+                return 200, {"access_token": "test-token"}
+            if path.endswith("/users/profiles"):
+                return 200, [{"username": "parity", "is_current": True}]
+            if path.endswith("/progress"):
+                return 404, None
+            return 200, {"work": {"id": path.rsplit("/", 1)[-1]}}
+
+        result = fixture_preflight.check_fixtures(
+            "https://service.example", "parity", "credential", requester=requester, static=True)
+        self.assertTrue(result["ready"])
+        self.assertNotIn("seed-progress", result["fixtures"])
+
     def test_invalid_server_url_makes_no_request(self):
         calls = []
         result = fixture_preflight.check_fixtures(
