@@ -64,7 +64,7 @@ namespace Playarr.Xbox.Views
 
             titles.Children.Clear();
             subtitle.Text = subtitle.Text.ToUpperInvariant();
-            subtitle.FontSize = 11;
+            subtitle.FontSize = 11.1; // web: clamp(0.62rem, 0.58vw, 0.72rem) at 1920
             subtitle.FontWeight = FontWeights.Bold;
             subtitle.CharacterSpacing = 45; // web: 0.045em
             subtitle.Foreground = Res("PlayarrInk");
@@ -76,13 +76,13 @@ namespace Playarr.Xbox.Views
 
             title.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
             subtitle.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
-            if (title.DesiredSize.Width + 45 + subtitle.DesiredSize.Width <= 250)
+            if (title.DesiredSize.Width + 47 + subtitle.DesiredSize.Width <= 250)
             {
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 subtitle.VerticalAlignment = VerticalAlignment.Center;
                 subtitle.Margin = new Thickness(0, 6, 0, 0);
                 row.Children.Add(title);
-                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(22, 8, 22, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(23, 8, 23, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(subtitle);
                 titles.Children.Add(row);
             }
