@@ -5,6 +5,7 @@ import "../components"
 // One preferences section: appearance, avatar, language, player defaults, server, profile lock.
 PlayarrPage {
     id: page
+    objectName: "settings-subpage"
     property string section
     readonly property var titles: ({ appearance: qsTr("Appearance"), avatar: qsTr("Profile avatar"), language: qsTr("Language"),
                                      player: qsTr("Player"), server: qsTr("Server connection"), lock: qsTr("Profile lock") })
@@ -41,8 +42,13 @@ PlayarrPage {
                 Repeater {
                     model: page.presets
                     MouseArea {
+                        property bool navigationFocusable: true
+                        property string parityLabel: qsTr("Avatar %1").arg(index + 1)
+                        property int parityRail: 0
+                        property int parityIndex: index
                         width: 84 * Tokens.u; height: width
                         onClicked: page.pickAvatar(modelData)
+                        function navigationActivate() { page.pickAvatar(modelData) }
                         Avatar { anchors.fill: parent; width: parent.width; source: Api.avatarSource(modelData) }
                     }
                 }
