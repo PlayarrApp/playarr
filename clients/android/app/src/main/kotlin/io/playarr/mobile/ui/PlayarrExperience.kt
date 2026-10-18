@@ -7546,7 +7546,7 @@ internal fun SeriesEpisodeBrowser(
         }
         if (isTelevision) {
             // Tablet: the taller card block (art 8.25 dp lower, 270 dp card, 36.7 dp copy row) takes 17.25 dp from the gap, so the season headings stay where web puts them.
-            LazyColumn(Modifier.weight(1f), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
+            LazyColumn(Modifier.weight(1f).then(if (tabletDetail == 1f) Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) }) else Modifier), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
                 items(seasons, key = { it.season.id }) { content(it) }
                 if (credits.cast.isNotEmpty()) {
                     item { Box(Modifier.padding(top = 55.dp * tabletDetail)) { DetailCreditsRail(credits.cast) } }
@@ -7799,9 +7799,13 @@ internal fun MovieDetailBrowser(
     tvRails.onUpEdge = { _ -> playFocus?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false }
     if (isTelevision) {
         // Web `.tv-media-track` stack: no panel, sections start at y = 540 and repeat every 314.3 dp.
+        val filmScroll = rememberScrollState()
+        // Web `[data-tv-scroll-container]`: the stack fades into the page at the edge it can still scroll to (tablet refs).
+        val filmScrollFade = if (LocalStageScale.current != 1f) Modifier.playarrEdgeFades(filmScroll.canScrollBackward, filmScroll.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical,
+            panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) }) else Modifier
         Column(
             // Web's track stack starts at half the viewport height; a tablet's rails are 28 css px further apart than the 1080 gap gives.
-            modifier.verticalScroll(rememberScrollState()).padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
+            modifier.then(filmScrollFade).verticalScroll(filmScroll).padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
             // Web `--tv-track-gap-section` (8.4 vu) above Cast and Similar titles, every track here.
             verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) 96.dp else webVu(62f, 8.4f, 108f)),
         ) {
@@ -7810,11 +7814,14 @@ internal fun MovieDetailBrowser(
                     title = playarrString(PlayarrString.DetailChapters),
                     count = playarrString(if (generatedChapters) PlayarrString.DetailSceneMarkersCount else PlayarrString.DetailChaptersCount, "count" to chapters.size),
                     state = tvRails.rowState(chaptersRail),
+                    tabletStartInset = 12.5.dp,
                 ) {
                     itemsIndexed(chapters, key = { _, it -> it.index }) { chapterIndex, chapter ->
                         val label = chapter.title ?: playarrString(PlayarrString.DetailChapterNumber, "number" to chapter.index + 1)
                         WebEpisodeCard(
                             modifier = Modifier.tvRailItem(tvRails, chaptersRail, chapterIndex),
+                            // Tablet static refs: the chapter label sits 7 px lower than an episode card's (measured on the 1280 x 800 web).
+                            copyTopInset = if (LocalStageScale.current != 1f) 13.6.dp else 0.dp,
                             onClick = { onPlay(mediaFileId, chapter.startMs, launchSettings) },
                             lead = formatPlayarrPlayerTime(chapter.startMs),
                             title = label,
@@ -7834,7 +7841,7 @@ internal fun MovieDetailBrowser(
                 }
             }
             if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast, television = true)
-            if (similarWorks.isNotEmpty()) WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, LocalStageScale.current != 1f)
+            if (similarWorks.isNotEmpty()) WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, LocalStageScale.current != 1f, tabletStartInset = 11.5.dp)
         }
         return
     }
@@ -7944,6 +7951,7 @@ private fun WebSimilarTrack(
     tvRails: TvRails,
     similarRail: Int,
     tablet: Boolean,
+    tabletStartInset: Dp = 0.dp,
 ) {
     WebMediaTrack(
         title = playarrString(PlayarrString.DetailSimilarTitles),
@@ -7952,7 +7960,7 @@ private fun WebSimilarTrack(
             "count" to similarWorks.size,
         ),
         state = tvRails.rowState(similarRail),
-        tabletStartInset = 0.dp,
+        tabletStartInset = tabletStartInset,
     ) {
         itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
             if (!tablet) {
@@ -8006,6 +8014,7 @@ private fun WebEpisodeCard(
     modifier: Modifier = Modifier,
     cardWidth: Dp = 268.dp,
     artHeight: Dp = 150.8.dp,
+    copyTopInset: Dp = 0.dp,
     art: @Composable () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -8035,7 +8044,7 @@ private fun WebEpisodeCard(
                 )
             }
         }
-        Row(Modifier.height(28.8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = copyTopInset).height(28.8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (lead != null) {
                 Text(lead, color = WebInkMuted, fontSize = 8.832.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.5.dp))
             } else {
