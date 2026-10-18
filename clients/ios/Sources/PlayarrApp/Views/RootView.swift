@@ -206,7 +206,7 @@ struct RootView: View {
                     Task { await ParityDownloads.run(environment.downloadRepository) }
                 } catch {
                     ParityLaunch.record("identityVerified", false)
-                    ParityLaunch.record("failure", "authentication-or-readiness-failed")
+                    ParityLaunch.record("failure", "authentication-or-readiness-failed: \(error)")
                 }
                 return
             }
@@ -431,6 +431,11 @@ private struct AuthenticatedPlayarrShell: View {
                     Text("Playback negotiation")
                         .accessibilityIdentifier("parity.directPlay")
                         .accessibilityValue(ParityLaunch.recordedBool("directPlay").map { String($0) } ?? "pending")
+                        .font(.system(size: 1))
+                        .foregroundStyle(.clear)
+                    Text("Parity failure")
+                        .accessibilityIdentifier("parity.failure")
+                        .accessibilityValue(ParityLaunch.recordedString("failure") ?? "")
                         .font(.system(size: 1))
                         .foregroundStyle(.clear)
                     Text("Requested route ready")

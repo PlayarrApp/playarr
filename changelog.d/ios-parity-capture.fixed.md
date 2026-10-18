@@ -1,1 +1,0 @@
-- iOS parity captures now use the configured reference clock, fail when consecutive simulator frames never stabilise, and retain Xcode result bundles for UI test diagnosis.

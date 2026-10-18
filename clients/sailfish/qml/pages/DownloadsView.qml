@@ -154,7 +154,7 @@ Item {
         width: 43.7 * Tokens.u; height: width
         onClicked: root.filtersOpen = !root.filtersOpen
         Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: root.filtersOpen ? Tokens.surfaceStrong : "transparent"; border.width: 1; border.color: Tokens.line }
-        Label { anchors.centerIn: parent; text: root.filterCount > 0 ? root.filterCount : "☰"; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
+        Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.filterCount > 0 ? root.filterCount : "☰"; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
     }
     Column {
         id: filters
@@ -172,7 +172,7 @@ Item {
                 property var spec: modelData
                 x: Tokens.pad
                 spacing: 6 * Tokens.u
-                Label { width: 46 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: modelData.label; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; width: 46 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: modelData.label; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
                 Repeater {
                     model: modelData.opts
                     PillButton {
@@ -203,7 +203,7 @@ Item {
             x: Tokens.pad + (r.kind === "head" ? 0 : (r.level || 0) * 14 * Tokens.u)
             width: list.width - 2 * Tokens.pad - (r.kind === "head" ? 0 : (r.level || 0) * 14 * Tokens.u)
             height: r.kind === "head" ? 28 * Tokens.u : r.kind === "group" ? 92 * Tokens.u : 118 * Tokens.u
-            Label { visible: r.kind === "head"; anchors.bottom: parent.bottom; text: r.title || ""; color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 15 * Tokens.u }
+            Label { renderType: Text.NativeRendering; visible: r.kind === "head"; anchors.bottom: parent.bottom; text: r.title || ""; color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 15 * Tokens.u }
             Rectangle { visible: r.kind !== "head"; anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line }
             // Group row: caret, title, totals and the controls for everything inside.
             MouseArea {
@@ -212,9 +212,9 @@ Item {
                 onClicked: root.toggle(r.key)
                 Column {
                     anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: parent.right; verticalCenter: parent.verticalCenter }
-                    Label { width: parent.width; text: (root.expanded[r.key] ? "▾  " : "▸  ") + (r.title || ""); elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 15 * Tokens.u }
-                    Label { width: parent.width; text: r.meta || ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 11 * Tokens.u }
-                    Label { width: parent.width; text: r.agg ? root.groupStatus(r.agg) : ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 11 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; width: parent.width; text: (root.expanded[r.key] ? "▾  " : "▸  ") + (r.title || ""); elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 15 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; width: parent.width; text: r.meta || ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 11 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; width: parent.width; text: r.agg ? root.groupStatus(r.agg) : ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 11 * Tokens.u }
                 }
             }
             Row {
@@ -247,8 +247,8 @@ Item {
             Column {
                 visible: r.kind === "item"
                 anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; top: parent.top; topMargin: 12 * Tokens.u }
-                Label { width: parent.width; text: row.t ? root.titleOf(row.t) : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
-                Label { width: parent.width; text: row.t ? root.statusText(row.t) : ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
+                Label { renderType: Text.NativeRendering; width: parent.width; text: row.t ? root.titleOf(row.t) : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 16 * Tokens.u }
+                Label { renderType: Text.NativeRendering; width: parent.width; text: row.t ? root.statusText(row.t) : ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 13 * Tokens.u }
             }
             Row {
                 id: actions

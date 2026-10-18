@@ -207,6 +207,7 @@ describe("MusicDetail track list", () => {
     expect(contextMenuSource).toContain('mediaType: "audio"');
     expect(contextMenuSource).toContain("playlist.media_type === target.mediaType");
     expect(contextMenuSource).toContain("track_id: target.trackId");
-    expect(contextMenuSource).toContain("const LONG_PRESS_MS = 650");
+    expect(contextMenuSource).toContain("LONG_PRESS_MS");
+    expect(readFileSync(new URL("../lib/longPress.ts", import.meta.url), "utf8")).toContain("const LONG_PRESS_MS = 650");
   });
 });

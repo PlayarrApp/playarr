@@ -1,1 +1,0 @@
-- Android TV Home rails start at the Library grid's left edge with the first rail at the Library's first-row top, matching web Home.

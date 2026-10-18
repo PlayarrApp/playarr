@@ -1,2 +1,0 @@
-- Keep the native Add to Playlist action available for eligible titles when the account has no personal playlists, and explain where to create one.
-- Verify the Sailfish portrait framebuffer before parity capture and stop acceptance from creating playlists in the test account.

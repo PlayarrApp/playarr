@@ -307,7 +307,7 @@ internal fun WatchlistToggleButton(
             enabled = listed != null,
         ) {
             Text(if (listed == true) "✓" else "+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(7.6.dp))
             Text(
                 playarrString(if (listed == true) PlayarrString.WatchlistRemove else PlayarrString.WatchlistAdd),
                 color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1,

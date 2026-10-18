@@ -1,1 +1,0 @@
-- Tizen native: the Requests rail item uses the web circle-plus icon (it reused the Watchlist bookmark) and the Calendar link tile uses the web bell icon.

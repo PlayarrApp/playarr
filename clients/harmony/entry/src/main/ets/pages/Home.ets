@@ -115,7 +115,7 @@ import type { NavRailItem } from '../design/components/NavRail';
 import { HOME_NAV_ID, buildNavRailItems, navigateFromRail } from '../navigation/NavItems';
 import { PageShell } from '../design/components/PageShell';
 import { TitleActionsDrawer } from '../design/components/TitleActionsDrawer';
-import { TouchNavBar } from '../design/components/TouchNavBar';
+import { TouchNavBar, touchNavBarBox } from '../design/components/TouchNavBar';
 import { atLeast } from '../core/SafeInsets';
 import { NavPill } from '../design/components/NavPill';
 import type { NavPillItem } from '../design/components/NavPill';
@@ -198,10 +198,9 @@ const TOUCH_RAIL_GAP: number = 50;
 const TOUCH_RAILS_TOP: number = 94;
 /** The touch card's caption block under the art (name and kind line). */
 const TOUCH_CARD_CAPTION_HEIGHT: number = 63;
-/** Web phone poster card (`--card-w`, `--card-w-cover`): the page less a 16 vp gutter and the 52 vp letter-rail clearance, split into
+/** Web phone poster card (`--card-w`, `--card-w-cover`): the page less a 16 vp gutter each side (Home has no letter rail), split into
  * 2 + artwork-size-step columns 12 vp apart. Landscape cards are 16:9, Covers 2:3; the Home screen artwork setting picks which. */
 const TOUCH_GUTTER: number = 16;
-const TOUCH_RAIL_CLEARANCE: number = 52;
 const TOUCH_CARD_GAP: number = 12;
 const TOUCH_RAIL_HEADING_SIZE: number = 16;
 const TOUCH_RAIL_HEADING_GAP: number = 22;
@@ -510,7 +509,7 @@ export struct Home {
 
   private touchCardWidth(): number {
     const columns = Math.max(1, 2 + artworkStep(this.artworkSize));
-    return (this.touchWidthVp - TOUCH_GUTTER - TOUCH_RAIL_CLEARANCE - this.safeRight - TOUCH_CARD_GAP * (columns - 1)) / columns;
+    return (this.touchWidthVp - TOUCH_GUTTER * 2 - this.safeRight - TOUCH_CARD_GAP * (columns - 1)) / columns;
   }
 
   private touchCardHeight(): number {
@@ -1191,7 +1190,8 @@ export struct Home {
           }
           .scrollBar(BarState.Off)
           .width('100%')
-          .height('100%')
+          // Web scrolls the rails under the translucent nav bar: run the Scroll over the bar's slot (a Stack does not clip its children).
+          .height(`calc(100% + ${touchNavBarBox(this.safeBottom)}vp)`)
         }
         .width('100%')
         .layoutWeight(1)

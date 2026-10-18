@@ -7,6 +7,7 @@ import { Drawer } from '../design/components/Drawer';
 import { ActionList } from '../design/components/ActionList';
 import type { ActionItem } from '../design/components/ActionList';
 import type { QualityOption } from '../core/Types/Playback.ts';
+import { t } from '../core/Language';
 
 const TICK: string = '✓';
 
@@ -37,8 +38,8 @@ export struct PlayerQualityDrawer {
 
   build() {
     Drawer({
-      kicker: 'Playback',
-      title: 'Quality',
+      kicker: t('pages.workDetail.playbackButtonLabel', 'Playback'),
+      title: t('pages.workDetail.qualityHeading', 'Quality'),
       onClose: (): void => {
         this.onClose();
       },

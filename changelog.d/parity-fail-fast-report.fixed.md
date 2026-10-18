@@ -1,1 +1,0 @@
-- Preserve sanitized failure reports when fail-fast parity checks abort.

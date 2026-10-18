@@ -1,1 +1,0 @@
-- Android phone Search: result cards are 155 dp wide and start at y 170, captions use the web sizes, and the field shows the page focus ring instead of the rose ring.

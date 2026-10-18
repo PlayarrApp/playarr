@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // One command regenerates every web reference screenshot (the pixel reference native clients are scored against).
 //   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--bak <backup dir name>] [--dry] [--allow-stale-web]
+//   The capture clock is always FIXTURE_CLOCK (PARITY_FIXED_NOW is ignored).
 //   --dry prints the plan (groups, viewports, dirs, Downloads hidden or not, live screens) and the web build sha check, then exits without capturing.
 //   The web build served at PLAYARR_WEB_URL must contain origin/main's web client (no clients/tv-web change between its sha and origin/main), else the run stops (--allow-stale-web overrides).
 // Needs PARITY_CHROME=<chromium path> (or Playwright's own), PARITY_CLIENT, PARITY_LOCK_DIR, and credentials resolved by capture-state.mjs.
@@ -62,8 +63,11 @@ if (requestedLiveScreens.length) throw new Error(`unsupported live screen captur
 
 if (!process.env.PARITY_CLIENT) throw new Error("PARITY_CLIENT is required for isolated web-reference capture");
 if (!process.env.PARITY_LOCK_DIR) throw new Error("PARITY_LOCK_DIR must point to the supplied scratch lock directory");
-const fixedNow = process.env.PARITY_FIXED_NOW ?? FIXTURE_CLOCK;
-if (!Number.isFinite(Date.parse(fixedNow))) throw new Error("PARITY_FIXED_NOW must be a valid ISO date");
+// The refs always use the fixture clock the device suites pin (scripts/fixtures/catalog.mjs, mirrored in screens.json determinism.clock),
+// never the wall clock or an environment override, so calendar refs cannot drift from the devices' dates.
+const fixedNow = FIXTURE_CLOCK;
+const screensClock = JSON.parse(readFileSync(join(here, "screens.json"), "utf8")).determinism?.clock;
+if (screensClock !== fixedNow) throw new Error(`screens.json determinism.clock ${screensClock} differs from FIXTURE_CLOCK ${fixedNow}`);
 // The canonical deck item must be inside the captured progress scope, or seeding it fails after the run has started.
 const deckScope = deckFromEnv({ ...process.env, PARITY_SEED_CANONICAL: "1" }, readSecrets()).deckFile;
 const stateFiles = [...new Set([...suite.performance.map((p) => p.file), ...Object.values(suite.downloadMedia).map((m) => m.file), deckScope])];
@@ -90,6 +94,11 @@ if (!args.includes("--no-reset")) {
   for (const file of new Set(pinned)) if (file !== deck?.deckFile) await captureState.writeProgress(file, { position_ms: 0, duration_ms: captureState.snapshot.files[file]?.duration_ms ?? 0, completed: false });
   await captureState.clearResumeChoices();
 }
+// Library state behind the Home rails (ids of the first items per rail): live rails drift as the library changes, so a Home score
+// that fell between two builds can be checked against this fingerprint in build.json.
+const homeRails = (await (await fetch(`${srv}/api/v1/home/rails?lang=en`, { headers: auth })).json()).rails ?? [];
+const library = { rails: homeRails.map((r) => ({ id: r.id, title_key: r.title_key, total: r.total, items: (r.items ?? []).slice(0, 12).map((i) => i.id) })) };
+library.hash = createHash("sha256").update(JSON.stringify(library.rails)).digest("hex").slice(0, 16);
 const captureSnapshot = await captureState.snapshotNow();
 const stateHash = captureSnapshot.hash;
 
@@ -192,7 +201,7 @@ if (copy) {
         cpSync(join(work, name, "dark", `${id}.png`), join(web, `${id}.png`));
         cpSync(join(work, name, "light", `${id}.png`), join(web, "light", `${id}.png`));
       }
-      if (shouldStampReferenceBuild({ partial, liveScreens: g.liveScreens ?? [] })) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha: webBuild.sha, repoSha, webBuiltAt: webBuild.builtAt, pr: null, captured_at: startedAt, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
+      if (shouldStampReferenceBuild({ partial, liveScreens: g.liveScreens ?? [] })) writeFileSync(join(web, "build.json"), JSON.stringify({ branch: "live web", sha: webBuild.sha, repoSha, webBuiltAt: webBuild.builtAt, pr: null, captured_at: startedAt, library, viewport: `${g.viewport.join("x")}@${g.dpr}`, group: name, tool: "scripts/parity/capture-refs.mjs" }));
       console.log(`published ${name} -> ${d}/web`);
     }
   }

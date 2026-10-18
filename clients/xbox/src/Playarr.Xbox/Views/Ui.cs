@@ -10,6 +10,10 @@ namespace Playarr.Xbox.Views
     /// <summary>Small shared builders for code-built screens, in the web TV look (tokens from App.xaml).</summary>
     internal static class Ui
     {
+        /// <summary>The web's en-GB short date ("19 Sept 2011": current ICU writes September as Sept).</summary>
+        public static string GbDate(DateTimeOffset date) =>
+            date.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")).Replace(" Sep ", " Sept ");
+
         public static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 
         public static TextBlock Text(string text, double size, FontWeight weight, string brushKey, Thickness margin = default) =>
@@ -226,7 +230,20 @@ namespace Playarr.Xbox.Views
             return pill;
         }
 
-        public static void SetPillText(Button pill, string text) => ((TextBlock)pill.Content).Text = text;
+        /// <summary>The web action pill's brand-pink leading glyph ahead of the label (the pill's text stays settable).</summary>
+        public static Button WithIcon(Button pill, string glyph)
+        {
+            var label = (TextBlock)pill.Content;
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+            row.Children.Add(Text(glyph, 12, FontWeights.SemiBold, "PlayarrBrand"));
+            row.Children.Add(label);
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(pill, label.Text);
+            pill.Content = row;
+            return pill;
+        }
+
+        public static void SetPillText(Button pill, string text) =>
+            (pill.Content is StackPanel { Children: { Count: 2 } parts } ? (TextBlock)parts[1] : (TextBlock)pill.Content).Text = text;
 
         /// <summary>A small outlined status pill ("Available", "Missing"); <paramref name="web"/> is the calendar week's larger one with a tinted fill and ink text.</summary>
         public static Border StatusPill(string text, Color color, bool web = false) => new Border

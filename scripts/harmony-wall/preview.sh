@@ -27,6 +27,7 @@ build() {
   python3 "$HERE/patch_index.py" entry/src/main/ets/pages/Index.ets
   python3 "$HERE/patch_prefs.py" entry/src/main/ets/auth/SettingsStore.ets
   python3 "$HERE/patch_theme.py" entry/src/main/ets/pages/Profiles.ets
+  python3 "$HERE/patch_language.py" entry/src/main/ets/AppContainer.ets "${PREVIEW_LANGUAGE:-en}"
   if [ "$DEVICE" = phone ]; then python3 "$HERE/patch_drawer.py" entry/src/main/ets/design/components/Drawer.ets; fi
   python3 "$HERE/patch_pairing.py" entry/src/main/ets/pages/Pairing.ets
   python3 "$HERE/patch_route.py" entry/src/main/ets/pages/Index.ets "$CTL"

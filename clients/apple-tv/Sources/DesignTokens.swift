@@ -346,7 +346,7 @@ enum DesignTokens {
         static let libraryCardArtHeight: CGFloat = 184
         /// Centre-to-centre pitch of unwatched dots / cards.
         static let libraryCardPitchX: CGFloat = 353
-        static let libraryCardPitchY: CGFloat = 240
+        static let libraryCardPitchY: CGFloat = 240.4
         /// Title under art.
         static let libraryCardTitleHeight: CGFloat = 28
         /// `--library-rail-top: clamp(128px, 15vh, 174px)` → 162

@@ -13,7 +13,7 @@ MouseArea {
     property bool selected: false
     width: parent ? parent.width : 0
     height: 44 * Tokens.u
-    Label {
+    Label { renderType: Text.NativeRendering;
         id: check
         width: 28 * Tokens.u
         anchors.verticalCenter: parent.verticalCenter
@@ -21,7 +21,7 @@ MouseArea {
         color: Tokens.brandPinkSoft
         font.pixelSize: 16 * Tokens.u
     }
-    Label {
+    Label { renderType: Text.NativeRendering;
         anchors { left: check.right; right: parent.right; verticalCenter: parent.verticalCenter }
         text: parent.text
         elide: Text.ElideRight

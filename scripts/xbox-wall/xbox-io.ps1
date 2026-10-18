@@ -25,6 +25,13 @@ public class Win {
 $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 function Pkg { Get-AppxPackage Playarr.PlayarrXbox | Select-Object -First 1 }
 function State { Join-Path $env:LOCALAPPDATA "Packages\$((Pkg).PackageFamilyName)\LocalState" }
+# The app may hold the target open while it reads it: retry the replace instead of failing the capture.
+function Move-Atomic([string]$from, [string]$to) {
+  for ($i = 0; $i -lt 10; $i++) {
+    try { Move-Item -Force -Path $from -Destination $to -ErrorAction Stop; return } catch { Start-Sleep -Milliseconds 300 }
+  }
+  Copy-Item -Force -Path $from -Destination $to; Remove-Item $from -ErrorAction SilentlyContinue
+}
 function PointerTo([double]$x, [double]$y) { [Win]::SetCursorPos([int]($x * $screen.Width / 1920), [int]($y * $screen.Height / 1080)) | Out-Null; Start-Sleep -Milliseconds 100 }
 function Tap($down, $up) { [Win]::mouse_event($down, 0, 0, 0, [IntPtr]::Zero); Start-Sleep -Milliseconds 80; [Win]::mouse_event($up, 0, 0, 0, [IntPtr]::Zero) }
 function Chord([byte[]]$codes, [int]$flags = 0) {
@@ -64,7 +71,7 @@ switch ($Cmd) {
     $path = Join-Path (State) $A
     $temporaryPath = "$path.tmp"
     Set-Content -NoNewline -Path $temporaryPath -Value $B
-    Move-Item -Force -Path $temporaryPath -Destination $path
+    Move-Atomic $temporaryPath $path
   }
   'identity' {
     $markerPath = Join-Path (State) 'parity.expected-user'
@@ -72,7 +79,7 @@ switch ($Cmd) {
     $marker.nonce = $A
     $temporaryPath = "$markerPath.tmp"
     Set-Content -NoNewline -Path $temporaryPath -Value ($marker | ConvertTo-Json -Compress)
-    Move-Item -Force -Path $temporaryPath -Destination $markerPath
+    Move-Atomic $temporaryPath $markerPath
   }
   'res' { "set 1920x1080: $([Win]::Res(1920, 1080)); display now $($screen.Width)x$($screen.Height)" }
   'restart' {

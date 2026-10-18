@@ -1614,7 +1614,11 @@ struct TVLibraryKindView: View {
         )
     }
 
+    /// The title whose actions drawer is open: the preview keeps it (web), and no card is lifted or ringed meanwhile.
+    @Environment(\.actionsWorkID) private var actionsWorkID
+
     private var selected: Work? {
+        if let actionsWorkID, let match = items.first(where: { $0.id == actionsWorkID }) { return match }
         if let selectedID, let match = items.first(where: { $0.id == selectedID }) {
             return match
         }
@@ -1842,8 +1846,8 @@ struct TVLibraryKindView: View {
                     .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
-                    .lineSpacing(4)
-                    .padding(.top, 25)
+                    .lineSpacing(3.25)
+                    .padding(.top, 24)
                     .frame(maxWidth: 340, alignment: .leading)
             }
         }
@@ -1857,7 +1861,8 @@ struct TVLibraryKindView: View {
             Text(yearString(for: work))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
             if !genreLine.isEmpty {
-                Text("  \(genreLine)")
+                // Web: the gap belongs to the year; a title without one starts flush left (music).
+                Text((yearString(for: work).isEmpty ? "" : "  ") + genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
             }
         }
@@ -2024,7 +2029,7 @@ struct TVLibraryKindView: View {
         artIncludesDot: Bool,
         gridPosition: TVParityGridPosition? = nil
     ) -> some View {
-        let isSelected = selected?.id == work.id
+        let isSelected = selected?.id == work.id && actionsWorkID == nil
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
                             parityGridPosition: gridPosition) {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
@@ -2108,7 +2113,7 @@ struct TVLibraryKindView: View {
     /// Web list view row (`.tv-list-card`): a 172.8 x 97.2 thumbnail, the title 14.98/610 and "Genres · Year" 9.6 beside
     /// it; rows 121.9 apart. Same focus look and actions as the cards.
     private func libraryRow(_ work: Work) -> some View {
-        let isSelected = selected?.id == work.id
+        let isSelected = selected?.id == work.id && actionsWorkID == nil
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil) {
             HStack(alignment: .center, spacing: 30) {
                 TVWorkArt(work: work, apiClient: environment.apiClient)

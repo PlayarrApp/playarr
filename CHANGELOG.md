@@ -13,6 +13,72 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Android phone film and series detail: the header shows the back pill and the kind title only, as the web phone header does; the work title stays a TV subtitle.
+- Android phone: library rows follow the web's fractional 136 css px pitch, Home starts with the first On deck card selected, the Calendar week columns end above the nav bar with the web fade, the Calendar toolbar draws the Today ring on open, agenda entries take the width of the widest entry (as the web's grid does), the nav bar's idle icons use the muted ink with the web's narrower selected pill and smaller avatar, and unavailable discovery sources no longer show the backend "(task N)" suffix.
+- Android phone Profiles: the "PROFILES" kicker uses the web brand-ink colour (light rose in dark, deep rose in light) instead of the accent rose.
+- Android phone Search: result cards are 155 dp wide and start at y 170, captions use the web sizes, and the field shows the page focus ring instead of the rose ring.
+- Android Calendar Week: an empty day reads "Nothing scheduled" (web `pages.calendar.dayEmpty`) at 16 px on phones; the phone capture driver can capture the Week view.
+- Android phone Calendar Week opens with today's column at the start of the track and a short start-edge scrim, as the web phone week does.
+- Android TV Home rails start at the Library grid's left edge with the first rail at the Library's first-row top, matching web Home.
+- Android TV nav tile labels sit 2.5 dp closer to their icons and the version label 3 dp closer to the profile tile, as web.
+- Fix iOS wall suite argument handling under macOS Bash 3 with `set -u`, while preserving fixture preflight and iPhone-only progress reset behaviour.
+- Show the selected Harmony TV library title's hero artwork in the native stage, keeping the previous image visible while the next image loads.
+- HarmonyOS phone series detail: the season rails run to the screen edge and the secondary action pills use web's bold ink labels.
+- iPhone calendar entries show Play, Resume, Open and the watchlist chip exactly as the server computes them, instead of guessing from whether a file exists.
+- iOS parity captures now use the configured reference clock, fail when consecutive simulator frames never stabilise, and retain Xcode result bundles for UI test diagnosis.
+- Pass the protocol's default bitrate and profile arguments explicitly in the iOS parity direct-play check so the hosted build compiles without changing its direct-play validation.
+- Mark the keyboard-focus screenshot helper as main-actor isolated so it can safely call the capture-readiness guard.
+- Match tablet Library alphabet navigation to web paging, descending rail order, and visible-row tracking, and keep the stage gradient aligned with its offset panel.
+- Match the iPad Filters and Actions drawer width to the web tablet layout.
+- Align the iPad library preview, synopsis, focused-work selection, and Filters control with the tablet layout.
+- Keep the shared-account iPad series-detail capture skipped on pull requests and require explicit confirmation of an exclusive fixture window for manual runs.
+- Keep the keyboard player-control UI test out of automatic shared-fixture runs; manual playback requires explicit confirmation of an exclusive test-account window.
+- Nura calendar: date-only releases show "All day", sort first and stay on their day outside UTC, as the web; capture helper runs the app in UTC.
+- Preserve sanitized failure reports when fail-fast parity checks abort.
+- Keep the SafeArea player route out of automatic shared-fixture runs while preserving the four non-player captures; manual player capture requires explicit exclusive-window confirmation.
+- Sailfish hides the Download action unless the server grants download capability, matching the web client and preventing denied or failed capability checks from shifting the Actions menu. Smoke coverage checks granted, denied, and failed capability responses.
+- Keep the native Add to Playlist action available for eligible titles when the account has no personal playlists, and explain where to create one.
+- Verify the Sailfish portrait framebuffer before parity capture and stop acceptance from creating playlists in the test account.
+- Sailfish: the library alphabet rail draws the web focus ring (crimson ring with a page-coloured gap) around the first letter.
+- Sailfish: the calendar link page matches the web spacing around the QR code and steps list, and pushed pages no longer show Silica's edge glow (calendar link dark 91.67 to 92.76, light 91.76 to 92.69; film-detail dark 96.16 to 96.25).
+- Match the Calendar navigation pills and week card outlines to Web, and fade the horizontally scrolling week view at its trailing edge.
+- Add a scrollable month and year picker to Sailfish Calendar, with D-pad trapping, draft year selection, applied month selection, and focus return to the range button.
+- Sailfish: week calendar cards are one pixel taller and wrap long titles and subtitles as the web (week dark 94.67 to 95.64, light 93.50 to 94.91).
+- Sailfish: the calendar week strip scrolls so today's column starts at the page padding, and week cards use the web's dimmer left accent and border.
+- Sailfish: the detail hero picture starts below the header row, as on the web.
+- Sailfish parity actions stop before capture, D-pad input, or playback unless the app's authenticated user matches the explicitly configured device-test account username, without assuming a particular account name.
+- Sailfish parity keys now reach Qt through the VNC driver, with focus and route readback from the owned app process; directional navigation uses actual Qt focus and scrolls clipped rails and grids.
+- Sailfish acceptance runs can fail on the first route or D-pad error instead of retrying an intermittent failure to green.
+- Sailfish: dark library pages carry the web key-art wash tint (movies, series, music).
+- Sailfish: the add-profile circle has the web's dashed border (profiles dark 90.35 to 90.38, light 89.62 to 89.66).
+- Sailfish: profiles logo size, add-profile light spot and caption tone as the web.
+- Android tablet parity capture guards now require the app session to use the configured trusted server URL.
+- Draw the Library alphabet letter circle on Tizen 6.5 TVs (Chromium 85), where its aspect-ratio collapsed it to a flat pill.
+- Add an aspect-ratio fallback for Tizen 6.5 TVs (Chromium 85) to the Tizen package.
+- Tizen native parity captures show calendar release times in UTC, the zone the suite pins (the clock already did), instead of the emulator's local zone.
+- Make the Samsung Tizen package render on Tizen 6.5 TVs (Chromium 85): selector and inset fallbacks for `:is()`, `:where()`, `:focus-visible`, `inset`, the logical padding and margin shorthands and `overflow: clip`.
+- Tizen native create-playlist drawer matches the web: a two-line title, Playlist type and Parent playlist with their icons, a dimmed Create button while the name is empty, no Cancel button or helper text, and it opens on the close button instead of raising the on-screen keyboard.
+- Size the Home hero ambient circle on Tizen 6.5 TVs (Chromium 85), where its aspect-ratio collapsed it to nothing.
+- Tizen native: the Requests rail item uses the web circle-plus icon (it reused the Watchlist bookmark) and the Calendar link tile uses the web bell icon.
+- Tizen native Playlists: a long playlist name wraps to two or three hero lines with the copy below it, the playlist detail header puts its count under the title as the web does, and the create drawer name field shows its text (it was invisible).
+- Preserve text-field typing while handling remote navigation, and allow long playlist names in the native Tizen Create drawer.
+- Tizen native profile picker matches the web more closely: the Sign in circle carries the brand wash, the settings and Sign out pills have their icons and position, the Theme select shows a sun and a chevron icon, and the name and caption sit 3 px higher. Word wrapping now lives in a testable `TextWrap` with unit tests.
+- Tizen native Search idle state shows the web zoom-out graphic in the brand colour, centred as on web.
+- Judge a long OK press from the key events' timestamps as well as the hold timer, so a hold on a busy TV (Tizen 6.5) still opens the title and playlist actions instead of being read as a short press.
+- Web: hero, detail and library-preview artwork starts at the nav clearance, so artwork with a baked-in title never renders under the left nav (the nav-overlap e2e no longer exempts it).
+- Installed apps (the hosted VIDAA app, Xbox, Android) never show the marketing site: playarr.app now serves the app at `/` for any `?platform=` marker, app user agent or app cookie, sign-out goes to the login route in installed apps, the PWA starts at `/?platform=web`, and the shell precache no longer stores the marketing page.
+- Web: browser Back restores a library scroll position even when the list mounts after the route (and again after Forward then Back).
+- Web: the film and series detail copy no longer shows, hides and animates in again on navigation; it fades in once with the page.
+- Web: no page content sits under the left nav at any width (a new all-routes e2e guards it), and pages without the library letter rail no longer reserve a gutter for it on phones (Search, Watchlist, Requests, Playlists, Downloads).
+- Web: the Calendar week view on phones now swipes left and right between day columns (columns no longer block the horizontal swipe) and opens on today's column.
+- Web: on phones the series, film and music detail header (Back and title) stays fixed at the top while the content scrolls, fading out beneath it.
+- Web: the Download, Watchlist, Playlist and Playback buttons on film and series pages now switch their icon to the label colour while focused or hovered, so the icon stays visible on the filled button.
+- Web: the Library alphabet rail now draws a ring around the active letter that follows the grid, keeps the standard focus ring on a focused letter (also when it is the active one), and a letter jump leaves focus on the letter (only Right enters the grid, on the first card of the section).
+- Web: the Home and library hero copy no longer shows, hides and animates in again on navigation; it now fades in once with the page.
+- Web: navigating to another page now starts every scroll container at the top on the first frame, and library pages no longer carry the alphabet letter across routes.
+- Web: filter and view panels stay mounted when an option changes (Calendar no longer remounts its panel when switching to or from Agenda), and the page behind an open panel no longer scrolls.
+- Web: on the Library alphabet rail only the key pointing toward the grid (Left when the rail is right of the grid, Right when it is left of it) enters the grid; the key pointing away does nothing, so Right on the TV rail no longer wraps back into the grid. The side comes from the rail and grid rects.
+- Web: Requests now has its own plus-in-circle nav icon instead of sharing the Watchlist bookmark.
 - The hosted iOS parity workflow passes its pinned clock to the app as text, so iPhone captures confirm the fixed clock.
 - A release dry run no longer fails in the web deploy job's post-job cache save when the deploy steps are skipped.
 - The release collects the Xbox package under its real `.msix` name and picks the HarmonyOS HAP by name, failing the release if the HAP is missing, so `clients.json` no longer lists Xbox as pending.
@@ -544,6 +610,12 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Validate the configured fixture server and Device Test profile before the Apple iOS wall builds or captures.
+- HarmonyOS: a string layer from the web's English, Thai and Japanese tables and Settings > Language; navigation labels and Settings text follow it.
+- Add a native Tizen playlist directory with filters and a Create drawer for personal playlists.
+- Add a VIDAA parity driver and a debug-mirror `mirrorTheme` launch flag for the TV parity suite.
+- Web: the Settings approval-notifications button also shows "Notifications blocked" when the browser blocks notifications, asks again on click and explains how to unblock.
+- Web: when browser notifications are blocked, the Downloads notifications button shows a blocked bell; clicking it asks again and, if the browser still refuses, explains how to unblock in the address bar.
 - Releases now build the Samsung Tizen native tpk, name every package after its client variant (for example `playarr-lg-webos-<version>.ipk`, `playarr-android-<version>.apk`) and attach a `clients.json` that lists every variant with its minimum OS and download route. Older asset names stay beside the new ones.
 - On iPad, Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) settings. Covers draws Home rails as portrait posters at the Library cover card width, and the size changes the Library column count and the Home card width.
 - macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.
@@ -770,6 +842,25 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Helm chart `playarr-dev`: regional instances accept `strategy` and `exposure.mode: externalIP` (a public ClusterIP Service with `externalIPs` and `externalTrafficPolicy: Local`). `RollingUpdate` is rejected with `hostPort` and, until the server supports two processes on one volume, without an explicit `allowConcurrentPods` opt-in. Defaults render unchanged.
+- The iPad capture workflow now reports sanitized Xcode runtime download errors and package inventory when the pinned iOS 18.5 runtime cannot be acquired.
+- HarmonyOS: Requests in the navigation uses web's plus-in-circle icon.
+- iOS: one Back button (a 44 pt circle) and one Filters tile on every page, following the shared page anatomy.
+- Nura and Sailfish calendars can pin "today" to the parity fixture clock (PLAYARR_PARITY_CLOCK, UTC) for captures; unset in normal use.
+- Nura: Filters drawer, alphabet rail ring, full-width Home cards, week view scrolled to today, regular-weight agenda meta and the navigation bar match the web.
+- Nura: the film detail art sits under the page's top cover as on the web, the Playback pill is no longer greyed out, the month grid keeps the web's 720 px track and opens at Monday, agenda status chips take the web's size and softer border, library cards show the unseen dot for artists and the web's dot style, and the library backdrop is dimmer in dark.
+- Nura parity tooling (score.mjs, reset-deck.mjs) now lives in scripts/parity/nura.
+- Nura profiles page: Clients link, page backdrop gradient and pill shadows as the live web.
+- Nura calendar week cards wrap the episode line as the web.
+- Sailfish profiles page: Clients link at the bottom right as the live web.
+- Sailfish profiles top bar and pills use the web sun, globe, chevron, settings and logout icons.
+- Tizen playlist detail now presents horizontal track rails, the focused title's synopsis and kind, and playlist create, edit, reparent, and delete controls.
+- Apple TV: parity focus trace reports the focused item's frame when it has no label.
+- Apple TV: Home rails start at the Library grid's left edge and top as on the web, and the Calendar takes first focus on Today.
+- Apple TV: the Search Filters tile uses the shared action column width, and a source guard keeps header tiles and Back on the shared components.
+- Apple TV: Select on a sidebar item opens the page and puts focus on its first item, as on the web.
+- Apple TV: Down from Calendar's Today button goes to Filters, and the profile gear opens Settings.
+- Apple TV: Down from the profile avatar lands on the Settings gear.
 - The marketing site moved to its own repository and Worker (`PlayarrApp/playarr-site`). `playarr.app` now serves it on `/`
   for signed-out visitors and on the Clients, docs and legal routes through a `SITE` service binding; the web app, the
   duplicate React legal and Clients pages and `site/` are gone from this repository. The app sets a `playarr_signed_in`
@@ -3216,6 +3307,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- Require iOS parity runs to verify the authenticated profile against the approved Device Test account before routing, capture, or playback.
+- Abort iOS parity captures when resetting test-account playback progress fails, and fail the Apple wall job when its primary suite fails.
+- The iPad series-detail UI test now skips unless its workflow explicitly grants an exclusive fixture window, verifies the app identity before progress changes, checks the current profile before every progress write, and awaits guarded cleanup.
 - Add an opt-in Android TV parity account guard that validates the signed-in device account before capture, D-pad input or playback actions.
 - Require parity browser and simulator drivers to verify the authenticated current profile against an explicit device-test account allowlist and trusted server before capture, navigation, playback, or D-pad operations.
 - A PIN-locked profile's stored refresh token can no longer be redeemed without the PIN: the server holds a device-bound unlock lease (granted by login or `POST /api/v1/auth/unlock`, slid by refresh, cleared by `POST /api/v1/auth/lock`) and answers `403 pin_required` without one. Web and Android clients prompt for the PIN and lock a profile when switching away.
@@ -3233,6 +3327,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Add a fail-closed Android tablet capture preflight that confirms the active test account and server before screenshots.
+- iPad Home parity captures now fail closed when the Device Test account has unexpected playback progress or the canonical Home deck row changes during capture.
+- Propagate capture-readiness errors from the iPad series-detail UI test helper so the UI-test target compiles and fails closed when readiness checks fail.
+- Web: the nav-overlap e2e also covers tall and near-square desktop windows (1600x1164 at 1x and 2x and with a classic scrollbar, 1440x1080, 1280x1024, 1024x1024, 1366x1366, 1080x1920) and checks the hero title's leftmost glyph against the nav rail on Home, the library pages and film, series and artist detail.
 - Add opt-in stable native capture readiness checks for Android TV Movies, Series and Music; other routes retain their existing screenshot path and fail closed when stable capture readiness is requested.
 - Harmony capture runs now validate the signed-in device-test profile and pinned detail and progress fixtures before starting the Previewer.
 - Allow an explicit Harmony phone core diagnostic capture to skip player-controls and record the omission, while the default core capture still requires all 15 screens.

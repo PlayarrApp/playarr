@@ -273,6 +273,9 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         col.append(&meta);
         col.append(&chip);
     } else {
+        // The web's agenda chip is 21 px tall, sitting 1.5 px below the meta text.
+        chip.add_css_class("agenda");
+        chip.set_valign(gtk4::Align::Center);
         meta.append(&chip);
         col.append(&meta);
     }
@@ -464,7 +467,7 @@ impl Cal {
         let sec = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .spacing(13)
-            .margin_bottom(19)
+            .margin_bottom(if week { 19 } else { 31 })
             .build();
         head.set_margin_bottom(0);
         sec.append(&head);
@@ -532,8 +535,12 @@ impl Cal {
                 }
                 // The web opens the week scrolled to today's column.
                 let today_col = (0..7).find(|i| add_days(start, *i) == today());
-                let (view, cols) = (self.days_view.clone(), cols.clone());
+                let (me, view, cols) = (self.clone(), self.days_view.clone(), cols.clone());
                 gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || {
+                    // A quick switch to Month or Agenda must not inherit the week's scroll.
+                    if me.view.get() != View::Week {
+                        return;
+                    }
                     let mut col = cols.first_child();
                     for _ in 0..today_col.unwrap_or(0) {
                         col = col.and_then(|c| c.next_sibling());
@@ -599,7 +606,7 @@ impl Cal {
                 }
                 let shown = items.len().min(chips);
                 for (_, e, n) in items.iter().take(shown) {
-                    let row = gtk4::Box::builder().spacing(7).css_classes(["pa-mline"]).build();
+                    let row = gtk4::Box::builder().spacing(9).css_classes(["pa-mline"]).build();
                     let tone = match status_chip(e, today_date).1 {
                         "ok" => "have",
                         "soon" => "soon",
@@ -635,6 +642,7 @@ impl Cal {
                     &gtk4::Label::builder()
                         .label(d.d.to_string())
                         .css_classes(["pa-mdaynum"])
+                        .xalign(0.0)
                         .build(),
                 );
                 if items.len() > shown {
@@ -670,6 +678,8 @@ impl Cal {
             gtk4::PolicyType::Never
         });
         self.days_view.set_kinetic_scrolling(week);
+        // The web agenda's entries run off the page's right edge; the other views stop at the 16 px gutter.
+        self.days_view.set_margin_end(if v == View::Agenda { 0 } else { 16 });
         for f in &self.fades {
             f.set_visible(week);
         }
@@ -750,13 +760,13 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
 
     let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     content.set_margin_start(16);
-    content.set_margin_end(16);
     page.append(&content);
 
     let controls = gtk4::Box::builder()
         .spacing(8)
         .halign(gtk4::Align::End)
         .margin_top(5)
+        .margin_end(16)
         .css_classes(["pa-cal-controls"])
         .build();
     let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();

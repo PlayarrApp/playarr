@@ -1,4 +1,5 @@
 import * as QRCode from "qrcode/lib/core/qrcode.js";
+import { isAppRequest } from "./appSignal.js";
 import { handleRelayRequest, runCleanup } from "./relay.js";
 
 // Every client download is served from GitHub Releases only: the single
@@ -556,12 +557,11 @@ export default {
       return new Response(null, { status: 301, headers: { Location: "/clients" } });
     }
     if (url.pathname === "/") {
-      // The marketing site is for signed-out visitors only. The cookie is a routing hint set by the app, never a credential.
-      const signedIn = /(?:^|;\s*)playarr_signed_in=1(?:;|$)/.test(request.headers.get("Cookie") ?? "");
-      const upstream = env.SITE && !signedIn ? env.SITE : env.ASSETS;
+      // The marketing site is for signed-out browser visitors only: any app signal (appSignal.js) gets the app.
+      const upstream = env.SITE && !isAppRequest(request) ? env.SITE : env.ASSETS;
       const response = await upstream.fetch(request);
       const headers = new Headers(response.headers);
-      headers.append("Vary", "Cookie");
+      headers.append("Vary", "Cookie, User-Agent");
       headers.set("Cache-Control", "no-cache");
       return new Response(response.body, {
         status: response.status,
