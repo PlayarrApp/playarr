@@ -93,8 +93,6 @@ enum MacDebugRemote {
             NSLog("PlayarrMac debug: snapshot skipped, window content %@", NSStringFromRect(window.contentView?.bounds ?? .zero))
             return
         }
-        // DIAGNOSTIC (temporary): the real window as the window server draws it, to tell a hosted snapshot defect from an app one.
-        if realWindowShot(window: window, to: url) { return }
         let width = 1920, height = 1080
         guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
@@ -113,18 +111,5 @@ enum MacDebugRemote {
         try? data.write(to: url)
         NSLog("PlayarrMac debug: snapshot %@", url.path)
     }
-
-    private static func realWindowShot(window: NSWindow, to url: URL) -> Bool {
-        let was = window.alphaValue
-        window.alphaValue = 1
-        window.orderFrontRegardless()
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-        task.arguments = ["-x", "-o", "-l\(window.windowNumber)", url.path]
-        try? task.run()
-        task.waitUntilExit()
-        window.alphaValue = was
-        return task.terminationStatus == 0 && FileManager.default.fileExists(atPath: url.path)
-    }
 }
+#endif
