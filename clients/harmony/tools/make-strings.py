@@ -15,7 +15,7 @@ SRC = ROOT / "tv-web/web/src/lib/i18n/translations"
 OUT = ROOT / "harmony/entry/src/main/ets/core/Strings.ts"
 PREFIXES = (
     "settings.index.", "settings.language.", "settings.appearance.", "shell.nav.",
-    "pages.home.customise.title", "pages.library.size",
+    "pages.home.customise.title", "pages.library.size", "pages.profiles.", "settings.account.signOut",
 )
 ENTRY = re.compile(r'^  "([A-Za-z0-9_.]+)":\s*("(?:[^"\\]|\\.)*")\s*,?\s*$', re.M | re.S)
 

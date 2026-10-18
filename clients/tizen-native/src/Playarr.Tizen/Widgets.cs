@@ -41,8 +41,14 @@ internal sealed class MediaCard
     private const float StackDrop = 10f;
     private View? _playlistIcon;
     private bool _playlistCollage;
+    private bool _playlistHasCovers;
+    private View? _playlistFocusGlow;
+    private View? _playlistFocusRing;
     private bool _playlistCoverSet;
     private bool _focused;
+    private TextLabel? _playlistMetadata;
+    private string _playlistMediaType = "video";
+    private bool _playlistShared;
 
     private float SearchPlaylistFocusRingExtent => SearchPlaylistFocusRingWidth / (_boxScale * _scale);
 
@@ -152,6 +158,11 @@ internal sealed class MediaCard
             _shadow2.BoxShadow = focused ? new Shadow(_blur * 0.42f, new Color(56 / 255f, 38 / 255f, 33 / 255f, _shadowAlpha * 0.68f), new Vector2(0, _shadowY * 0.42f), new Vector2(0, 0))
                 : new Shadow(_restBlur * 0.4f, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.10f), new Vector2(0, 3), new Vector2(0, 0));
         }
+        if (_playlistCollage)
+        {
+            SetPlaylistGroupShadow();
+            SetPlaylistFocusGlow(focused);
+        }
         if (_searchPlaylistFocusGlow is not null)
         {
             var glowColor = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
@@ -164,9 +175,10 @@ internal sealed class MediaCard
                 ? new Shadow(20, new Color(glowColor.R, glowColor.G, glowColor.B, 0.45f), new Vector2(0, 0), new Vector2(0, 0))
                 : null;
         }
+        if (_playlistCollage && _playlistHasCovers) SetPlaylistFocusRing(focused);
         if (_ring is not null)
         {
-            var showRing = focused && _searchPlaylistFocusGlow is null;
+            var showRing = focused && !(_playlistCollage && _playlistHasCovers) && _searchPlaylistFocusGlow is null;
             _ring.Show(showRing);
             if (showRing) _ring.RaiseToTop(); // the poster loads later and would otherwise sit on top of the ring
         }
@@ -178,6 +190,15 @@ internal sealed class MediaCard
         var width = W * _boxScale;
         var height = _focusHeight * _boxScale;
         return new Box(x + (W - width) / 2, y + _boxLift + (_focusHeight - height) / 2, width, height);
+    }
+
+    public void SetPlaylistItemCount(int count)
+    {
+        if (_playlistMetadata is null) return;
+        var mediaType = _playlistMediaType.Equals("audio", StringComparison.OrdinalIgnoreCase) ? "Audio" : "Video";
+        var ownership = _playlistShared ? "Shared" : "Personal";
+        _playlistMetadata.Text = $"{mediaType} · {ownership} · {count} {(count == 1 ? "title" : "titles")}";
+        _playlistMetadata.Show(true);
     }
 
     /// <summary>Replaces the directory placeholder with the web's poster-first, backdrop-fallback cover stack.</summary>
@@ -212,6 +233,9 @@ internal sealed class MediaCard
 
         Art.BackgroundColor = new Color(0, 0, 0, 0);
         Art.ClippingMode = default;
+        _playlistHasCovers = true;
+        EnsurePlaylistFocusGlow();
+        _ring?.Show(false);
         // Add back-to-front. The first selected work stays on top, matching the web z-index order.
         for (var index = covers.Count - 1; index >= 0; index--)
         {
@@ -233,13 +257,91 @@ internal sealed class MediaCard
                 BorderlineWidth = 1,
                 BorderlineColor = Ui.C(new Rgba(_t.LineStrong.R, _t.LineStrong.G, _t.LineStrong.B, _t.LineStrong.A * 0.76f)),
                 Orientation = new Rotation(new Radian((float)((index - (covers.Count - 1) / 2.0) * -1.5 * Math.PI / 180)), new Vector3(0, 0, 1)),
-                BoxShadow = new Shadow(28, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.18f), new Vector2(0, 10), new Vector2(0, 0)),
             };
             Art.Add(layer);
             var path = ArtworkPaths.Path(work, ImageKind.Poster) ?? ArtworkPaths.Path(work, ImageKind.Backdrop);
             env.Images.Apply(layer, path, width, height, 12.48f);
         }
-        if (_focused) _ring?.RaiseToTop();
+        _ring?.Show(false);
+        SetPlaylistGroupShadow();
+        SetPlaylistFocusGlow(_focused);
+        SetPlaylistFocusRing(_focused);
+    }
+
+    private void EnsurePlaylistFocusGlow()
+    {
+        if (_playlistFocusGlow is not null) return;
+        _playlistFocusGlow = new View
+        {
+            PositionX = Art.PositionX,
+            PositionY = Art.PositionY,
+            Size = Art.Size,
+            CornerRadius = Art.CornerRadius,
+            BackgroundColor = new Color(0, 0, 0, 0),
+        };
+        Box.Add(_playlistFocusGlow);
+        _playlistFocusGlow.LowerToBottom();
+    }
+
+    private void SetPlaylistFocusGlow(bool focused)
+    {
+        if (_playlistFocusGlow is null) return;
+        _playlistFocusGlow.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        _playlistFocusGlow.PositionY = _artDy + (focused ? _lift : 0);
+        if (!focused)
+        {
+            _playlistFocusGlow.BoxShadow = null;
+            return;
+        }
+
+        // Web adds a separate 20 px, 4 px spread glow to the playlist card ring. Keep this layer independent of the
+        // brown cover-stack shadow above; the glow token is brand-ink in dark and brand-strong in light.
+        var glow = _t.Name == "dark" ? _t.BrandInk : Rgba.Hex(0xa52745);
+        _playlistFocusGlow.BoxShadow = new Shadow(20, new Color(glow.R, glow.G, glow.B, 0.45f), new Vector2(0, 0), new Vector2(4, 4));
+    }
+
+    private void SetPlaylistGroupShadow()
+    {
+        if (!_playlistHasCovers)
+        {
+            Art.BoxShadow = null;
+            return;
+        }
+
+        // BoxShadow follows this rounded rectangle, not the stacked images' alpha. The front cover fills this frame,
+        // so its outer silhouette stays close; one NUI shadow approximates the web's two measured focus shadows.
+        var opacity = _focused ? 0.44f : 0.14f;
+        var blur = _focused ? 10f : 5f;
+        var offsetY = _focused ? 9.2f : 5f;
+        Art.BoxShadow = new Shadow(blur, new Color(56 / 255f, 38 / 255f, 33 / 255f, opacity), new Vector2(0, offsetY), new Vector2(0, 0));
+    }
+
+    private void SetPlaylistFocusRing(bool focused)
+    {
+        if (_playlistFocusRing is null)
+        {
+            const float spread = 3f;
+            var ring = new View
+            {
+                PositionX = Art.PositionX - spread,
+                PositionY = Art.PositionY - spread,
+                Size = new Size(Art.Size.Width + spread * 2, Art.Size.Height + spread * 2),
+                CornerRadius = Art.CornerRadius + spread,
+                BorderlineWidth = spread,
+                BorderlineOffset = -1,
+                BorderlineColor = _t.Name == "dark"
+                    ? new Color(_t.BrandInk.R, _t.BrandInk.G, _t.BrandInk.B, 0.95f)
+                    : new Color(0.647f, 0.153f, 0.271f, 1),
+                BackgroundColor = new Color(0, 0, 0, 0),
+            };
+            Box.Add(ring);
+            _playlistFocusRing = ring;
+        }
+
+        _playlistFocusRing.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
+        _playlistFocusRing.PositionY = _artDy + (focused ? _lift : 0) - 3f;
+        _playlistFocusRing.Show(focused);
+        if (focused) _playlistFocusRing.RaiseToTop();
     }
 
     public static MediaCard Home(AppEnv env, WorkCard card, float x, float y, CardLayout? layout = null)
@@ -327,7 +429,7 @@ internal sealed class MediaCard
         var media = new MediaCard(env, env.Theme, card, x, y, showSub: false, titleInset: 1.9f, scale: 1.025f, lift: 0,
             blur: 52, shadowY: 24, shadowAlpha: 0.30f, boxHeight: l.CardHeight, boxScale: 1.015f, boxLift: -5f, focusHeight: l.CardHeight, artW: l.Width, artH: l.ArtHeight);
         media._playlistCollage = true;
-        AddPlaylistKind(media, env, card);
+        AddPlaylistKind(media, env, card, directory: true);
         return media;
     }
 
@@ -341,7 +443,7 @@ internal sealed class MediaCard
         return media;
     }
 
-    private static void AddPlaylistKind(MediaCard media, AppEnv env, WorkCard card)
+    private static void AddPlaylistKind(MediaCard media, AppEnv env, WorkCard card, bool directory = false)
     {
         if (card.Kind == WorkKind.Unknown)
         {
@@ -349,7 +451,18 @@ internal sealed class MediaCard
             media._playlistIcon = icon;
             media.Art.Add(icon);
         }
-        media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, media.H + 14.5f, 8.448f, 700, env.Theme.InkMuted, media.W, 12.672f, HorizontalAlignment.End));
+        if (directory)
+        {
+            media._playlistMediaType = card.Kicker;
+            media._playlistShared = card.Sub.Equals("Shared", StringComparison.OrdinalIgnoreCase);
+            media._playlistMetadata = Ui.Text("", 1.9f, media.H + 31.9f, 8.832f, 400, env.Theme.InkMuted, media.W - 3.8f, 13.248f);
+            media._playlistMetadata.Show(false);
+            media.Box.Add(media._playlistMetadata);
+        }
+        else
+        {
+            media.Box.Add(Ui.Text(card.Sub.ToUpperInvariant(), 0, media.H + 14.5f, 8.448f, 700, env.Theme.InkMuted, media.W, 12.672f, HorizontalAlignment.End));
+        }
     }
 }
 

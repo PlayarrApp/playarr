@@ -1,0 +1,1 @@
+- Tizen native create-playlist drawer matches the web: a two-line title, Playlist type and Parent playlist with their icons, a dimmed Create button while the name is empty, no Cancel button or helper text, and it opens on the close button instead of raising the on-screen keyboard.

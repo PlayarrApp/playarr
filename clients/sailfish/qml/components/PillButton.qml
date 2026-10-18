@@ -6,10 +6,17 @@ import QtGraphicalEffects 1.0
 // Web's rounded action button; `primary` is the filled "Play" style.
 MouseArea {
     id: root
+    property bool navigationFocusable: true
+    property bool navigationInitialFocus: false
+    property bool navigationActive: !!(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive)
+    property int parityRail: -1
+    property int parityIndex: -1
+    property var navigationActivate: null
     property alias text: label.text
     property bool primary: false
     property color fill: "transparent"   // a solid fill other than the primary one (transparent = the standard look)
     property color fillInk: Tokens.ink
+    property bool outlineOnly: false
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -32,13 +39,13 @@ MouseArea {
     Rectangle {
         anchors.fill: parent
         radius: height / 2
-        color: root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
-        border.width: root.primary || root.fill.a > 0 ? 0 : 1
-        border.color: Tokens.line
+        color: root.outlineOnly ? Tokens.surface : root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
+        border.width: root.primary || (root.fill.a > 0 && !root.outlineOnly) || root.lift ? 0 : 1
+        border.color: root.outlineOnly ? Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.66) : Tokens.line
         opacity: root.pressed ? 0.7 : 1
     }
     Rectangle {
-        visible: root.restRing
+        visible: root.navigationActive ? root.activeFocus : root.restRing
         anchors { fill: parent; margins: -4 * Tokens.u }
         radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary
     }

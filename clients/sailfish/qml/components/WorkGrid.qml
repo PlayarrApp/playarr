@@ -5,6 +5,19 @@ import Sailfish.Silica 1.0
 // Two-column grid of WorkCards with end-of-list paging (`loadMore` fires near the bottom).
 SilicaGridView {
     id: root
+    // Qt 5.6 GridView consumes directional keys for currentIndex navigation
+    // before they reach PlayarrPage. Intercept them first so focus and scrolling
+    // stay under the shared D-pad navigation model.
+    Keys.priority: Keys.BeforeItem
+    Keys.onPressed: {
+        var current = pageStack.currentPage
+        if (!current || !current.navigation) return
+        if (!current.navigation.handleBack(event)) current.navigation.handlePressed(event)
+    }
+    Keys.onReleased: {
+        var current = pageStack.currentPage
+        if (current && current.navigation) current.navigation.handleReleased(event)
+    }
     property var works: []
     property bool busy: false
     property bool done: false
@@ -38,9 +51,12 @@ SilicaGridView {
             id: cardComp
             WorkCard {
                 work: modelData
+                parityRail: 0
+                parityIndex: index
+                navigationActive: !!(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive)
                 poster: root.mode === "cover"
                 compact: true
-                ring: root.restRing && index === 0
+                ring: activeFocus || (root.restRing && index === 0 && !(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive))
                 cardWidth: root.cardW
                 onOpened: root.opened(work)
                 onHeld: root.held(work)
@@ -50,6 +66,8 @@ SilicaGridView {
             id: rowComp
             WorkRow {
                 work: modelData
+                parityRail: 0
+                parityIndex: index
                 width: root.cellWidth
                 onOpened: root.opened(work)
                 onHeld: root.held(work)

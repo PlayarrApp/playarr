@@ -245,6 +245,7 @@ const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
 const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 361;
+const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 719;
 const CHAPTER_CARD_WIDTH: number = 268;
 const CHAPTER_CARD_HEIGHT: number = 150;
@@ -1818,6 +1819,16 @@ struct Detail {
     return this.detail !== null && this.detail.work.kind === 'series';
   }
 
+  /** Web's series pills carry a soft drop shadow (light theme; the dark pills are flat). */
+  private pillShadow(primary: boolean): ShadowOptions {
+    if (!this.isSeriesPage() || resolvedThemeMode() === 'dark') {
+      return { radius: 0, color: Color.Transparent };
+    }
+    return primary
+      ? { radius: tv(22), offsetY: tv(10), color: 'rgba(56, 38, 33, 0.28)' }
+      : { radius: tv(22), offsetY: tv(8), color: 'rgba(56, 38, 33, 0.08)' };
+  }
+
   /** Web's action pill: a glyph and a label in a rounded translucent capsule, the primary one filled. */
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
@@ -1838,6 +1849,7 @@ struct Detail {
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .backgroundColor(primary ? toResourceColor(activeColors().ink) : this.isSeriesPage() ? (resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7)) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA))
+    .shadow(this.pillShadow(primary))
     .opacity(enabled ? 1 : 0.5)
     .focusable(enabled)
     .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
@@ -1861,7 +1873,7 @@ struct Detail {
   private tvSeriesActions(): void {
     Row({ space: tv(PILL_GAP) }) {
       if (this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null) {
-        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
         if (this.resumePlan.action !== 'start') {
@@ -1870,7 +1882,7 @@ struct Detail {
           })
         }
       }
-      this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+      this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, true, (): void => {
         void this.toggleWatchlist();
       })
       this.actionPill('Add to Playlist', '+', false, true, (): void => {
@@ -1899,12 +1911,12 @@ struct Detail {
             this.optionsOpen = true;
           })
         }
-        this.actionPill(this.primaryLabel(), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(this.primaryLabel(), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
       }
       Row({ space: tv(PILL_GAP) }) {
-        this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, this.listed !== null, (): void => {
+        this.actionPill(this.listed === true ? 'Remove from watchlist' : 'Add to watchlist', this.listed === true ? '\u2713' : '+', false, true, (): void => {
           void this.toggleWatchlist();
         })
         this.actionPill('Add to Playlist', '+', false, true, (): void => {
@@ -2103,9 +2115,10 @@ struct Detail {
               measurementId: this.seriesMeasurementId('rail', this.workId, this.seriesFocusGeneration, rail.id),
               heading: '',
               headingGap: 0,
-              itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle) : PHONE_EPISODE_RAIL_GAP,
+              itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle + 2) : PHONE_EPISODE_RAIL_GAP, // +2: web pitch 294 vs 292
               clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
               clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
+              allowFocusedOverflow: isTvMetrics(), // the focused card's ring and lift stay inside the rail's padding, not clipped at the list edge
               bleedEnd: isTvMetrics() ? 0 : atLeast(16, this.safeRight), // web: the season rails run to the screen edge
               overflowItems: !isTvMetrics(),
               items: rail.items,
@@ -2174,14 +2187,19 @@ struct Detail {
 
       if (this.detail !== null && this.detail.work.kind === 'series') {
         Scroll(this.seriesStackScroller) {
-          this.tvRightColumn()
+          Column() {
+            this.tvRightColumn()
+          }
+          .width('100%')
+          .padding({ left: tv(SERIES_COLUMN_BLEED) })
         }
         .id(this.seriesMeasurementId('page', this.workId, this.seriesFocusGeneration, ''))
         .align(Alignment.Top)
-        .width(tv(RIGHT_COLUMN_WIDTH))
+        .width(tv(RIGHT_COLUMN_WIDTH + SERIES_COLUMN_BLEED))
         .height(tv(SERIES_COLUMN_HEIGHT))
         .scrollBar(BarState.Off)
-        .position({ x: tv(RIGHT_COLUMN_X), y: tv(SERIES_COLUMN_TOP) })
+        // The scroll box starts BLEED left of the column so the first card's focus ring (and lift) is not cut at the box edge.
+        .position({ x: tv(RIGHT_COLUMN_X - SERIES_COLUMN_BLEED), y: tv(SERIES_COLUMN_TOP) })
         .onAreaChange(this.seriesPageAreaReporter(this.workId, this.seriesFocusGeneration))
         .onScroll(this.seriesPageScrollReporter(this.workId, this.seriesFocusGeneration))
       } else {

@@ -393,10 +393,13 @@ struct LibraryView: View {
             ScrollView(.vertical) { VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
-                        if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 22, height: 22) }
+                        if letter == activeLetter {
+                            Circle().fill(WM.ink.opacity(0.78)).frame(width: 22, height: 22)
+                            Circle().stroke(WM.pink, lineWidth: 2).frame(width: 26, height: 26)  // the web focus ring on the focused tile's letter
+                        }
                         Text(letter).font(WM.font(9.5, 700)).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
-                    .frame(width: 44).frame(height: 25)
+                    .frame(width: 44).frame(height: 25.27)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         let first = viewModel.works.first { work in
@@ -409,7 +412,7 @@ struct LibraryView: View {
             } }
             .scrollIndicators(.hidden)
             .frame(width: 44, height: max(0, geo.size.height - 90 - 84), alignment: .top)
-            .offset(x: geo.size.width - 48, y: 87.5)
+            .offset(x: geo.size.width - 48, y: 86.9)
         }
     }
 
