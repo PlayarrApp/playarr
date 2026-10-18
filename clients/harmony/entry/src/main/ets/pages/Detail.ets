@@ -2617,6 +2617,7 @@ struct Detail {
               .maxLines(3)
               // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
               .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })
+              .align(Alignment.TopStart) // the reserved lines sit below the text, which must not centre in them
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
               this.touchActionRows()
