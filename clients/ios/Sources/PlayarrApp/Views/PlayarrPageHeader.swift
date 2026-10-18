@@ -96,7 +96,7 @@ struct PlayarrHeaderPill: View {
         Button(action: action) {
             VStack(spacing: 5.6) {
                 Image(systemName: systemImage)
-                    .font(.system(size: iconOnly ? 18 : 22, weight: .regular))
+                    .font(.system(size: iconOnly ? 15 : 22, weight: iconOnly ? .light : .regular)) // web phone tile glyph is a 13 pt thin stroke icon
                 if !iconOnly {
                     Text(label)
                         .font(.custom("Avenir Next", fixedSize: 8.3).weight(.bold))

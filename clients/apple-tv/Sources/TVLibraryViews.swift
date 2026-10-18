@@ -1843,12 +1843,14 @@ struct TVLibraryKindView: View {
                 .padding(.top, 26)
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
-                    .font(TVTheme.font(size: DesignTokens.Shell.featureOverviewSize, weight: .regular))
+                    // Web `.details-panel .tv-preview-overview`: 0.72vw (13.8 px) at weight 600, line-height 1.58 (21.8 px pitch),
+                    // measured on the light refs of series and music (lines wrap at about 348 px).
+                    .font(TVTheme.font(size: 13.8, css: 600))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
-                    .lineSpacing(3.25)
+                    .lineSpacing(3)
                     .padding(.top, 24)
-                    .frame(maxWidth: 340, alignment: .leading)
+                    .frame(maxWidth: 348, alignment: .leading)
             }
         }
         .frame(maxWidth: DesignTokens.Shell.titlePanelWidth, alignment: .leading)
