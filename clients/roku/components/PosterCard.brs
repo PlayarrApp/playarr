@@ -17,7 +17,7 @@ sub init()
     m.overlayNumber = m.top.findNode("overlayNumber")
     m.captionPrefix = m.top.findNode("captionPrefix")
     m.overlayNumber.font = PlayarrMakeFont(600, 19)
-    m.captionPrefix.font = PlayarrMakeFont(700, 9)
+    m.captionPrefix.font = PlayarrMakeFont(700, 10)
     m.kind = m.top.findNode("kind")
     m.titleFont0 = m.title.font
     m.kindFont0 = m.kind.font
