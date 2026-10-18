@@ -1,4 +1,4 @@
-/** The phone header's round icon button (web phone page actions: the bell, the filter button), 40 px. */
+/** The phone header's round icon button (web phone page actions: the bell, the filter button), 44 px. */
 
 import { activeColors, tintFilter, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
@@ -15,11 +15,13 @@ export struct TouchIconButton {
     Image(this.icon)
       .colorFilter(tintFilter(activeColors().inkSoft))
       .padding(12)
-      .width(43)
-      .height(43)
+      .width(44)
+      .height(44)
       .borderRadius(13)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+      // web .action-pill: 0 14 36 rgba(56, 38, 33, 0.08)
+      .shadow({ radius: 36, offsetX: 0, offsetY: 14, color: 'rgba(56, 38, 33, 0.08)' })
       .onClick(() => {
         this.onTap();
       })
