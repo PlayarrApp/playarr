@@ -27,6 +27,12 @@ PlayarrPage {
         })
     }
     function loaderItem() { return loader.item }   // for the PLAYARR_STEPS smoke scripts
+    function actionsNamed(kind, title) {   // the pinned title of the actions ref (web-refs.json titles.actions)
+        Api.request("GET", "/api/v1/catalog?kind=" + kind + "&available_only=true&limit=200&sort=title&order=asc", null, function (st, d) {
+            var hit = st === 200 && d ? d.items.filter(function (w) { return w.title === title }) : []
+            if (hit.length) actions(hit[0])
+        })
+    }
     function actionsFirst(kind) { firstWork(kind, actions) }
     // The web opens its actions panel on the first card of Home; the suite driver does the same.
     function actionsHome() { var h = loader.item; if (h && h.rails && h.rails.length && h.rails[0].items.length) actions(h.rails[0].items[0]) }
