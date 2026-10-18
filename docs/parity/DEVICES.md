@@ -84,6 +84,15 @@ D-pad column as n/a.
 | Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad | Display capture over VNC | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
 | Nura (postmarketOS) | `pmbootstrap` qemu-amd64 | QEMU input | QEMU screendump | Slow; software rendering | `postmarketos` |
 
+## Sailfish emulator: cold boot
+
+A cold-booted emulator on a busy host shows only the lipstick wallpaper or a "Playarr is not responding" dialog. The VM
+disk is slow with the VirtualBox host I/O cache off, so lipstick and pulseaudio miss systemd's one minute start timeout
+and loop. Once, with the VM powered off: `VBoxManage storagectl <vm> --name SATA --hostiocache on`. After each cold boot:
+`PLAYARR_SF_SSH_KEY=<key> scripts/parity/sailfish/vm-coldboot.sh` (raises the guest start timeouts, waits for the lock
+screen, unlocks). Boot takes 2 to 4 minutes. If `VBoxHeadless` ignores SIGTERM at the BIOS stage, kill that PID and let
+the service restart.
+
 ## Downloads: which platforms support them
 
 Checked in each client's code (11 Oct 2026). Platforms marked Yes must run the `downloads` cases and report

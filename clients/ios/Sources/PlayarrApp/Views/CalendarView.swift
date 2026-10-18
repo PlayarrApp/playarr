@@ -219,7 +219,7 @@ struct CalendarView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
 
-            WMHeaderCircleButton(width: 44, height: 44, glyph: "\u{2190}", action: goHome)
+            PlayarrBackButton(action: goHome)
                 .offset(x: 16, y: top)
             WMText("Calendar", 17.6, 580, lh: 26.4, ls: -0.792)
                 .frame(height: 44)
@@ -356,11 +356,19 @@ struct CalendarView: View {
         }
     }
 
+    /// The action row as the server computed it (`CalendarAction`); a server without computed actions keeps the earlier
+    /// `hasFile` rule.
     private func phoneActions(item: CalendarItem, entry: CalendarEntry) -> some View {
-        HStack(spacing: 9) {
+        let serverActions = !entry.actions.isEmpty
+        let play = entry.action(.play) ?? entry.action(.resume)
+        let showPlay = serverActions ? play?.enabled == true : entry.hasFile
+        let showOpen = serverActions ? entry.action(.open)?.enabled == true : true
+        let watchlist = entry.action(.watchlist)
+        let showWatchlist = serverActions ? watchlist?.enabled == true : true
+        let removing = watchlist?.active == true
+        return HStack(spacing: 9) {
             if let mediaWork = entry.workID {
-                // The server offers Play only for an entry with a file (unaired episodes show Open series alone).
-                if entry.hasFile {
+                if showPlay {
                     NavigationLink {
                         WorkDetailView(
                             viewModel: WorkDetailViewModel(apiClient: apiClient, workID: mediaWork),
@@ -368,35 +376,40 @@ struct CalendarView: View {
                             downloadRepository: downloadRepository
                         )
                     } label: {
-                        WMText("Play", 11.52, 720, color: PlayarrStyle.onAccent, lh: 17)
-                            .frame(width: 66, height: 44)
+                        let resume = play?.kind == .resume
+                        WMText(resume ? "Resume" : "Play", 11.52, 720, color: PlayarrStyle.onAccent, lh: 17)
+                            .frame(width: resume ? 88 : 66, height: 44)
                             .background(PlayarrStyle.accent, in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }
-                NavigationLink {
-                    WorkDetailView(
-                        viewModel: WorkDetailViewModel(apiClient: apiClient, workID: mediaWork),
-                        apiClient: apiClient,
-                        downloadRepository: downloadRepository
-                    )
-                } label: {
-                    let primary = !entry.hasFile
-                    WMText(entry.mediaKind == "episode" ? "Open series" : "Open", 11.52, 720,
-                           color: primary ? PlayarrStyle.onAccent : WM.inkSoft, lh: 17)
-                        .frame(width: entry.mediaKind == "episode" ? 106 : 70, height: 44)
-                        .background(primary ? PlayarrStyle.accent : WM.page, in: Capsule())
-                        .overlay(Capsule().stroke(primary ? Color.clear : WM.line.opacity(0.2), lineWidth: 1))
+                if showOpen {
+                    NavigationLink {
+                        WorkDetailView(
+                            viewModel: WorkDetailViewModel(apiClient: apiClient, workID: mediaWork),
+                            apiClient: apiClient,
+                            downloadRepository: downloadRepository
+                        )
+                    } label: {
+                        let primary = !showPlay
+                        WMText(entry.mediaKind == "episode" ? "Open series" : "Open", 11.52, 720,
+                               color: primary ? PlayarrStyle.onAccent : WM.inkSoft, lh: 17)
+                            .frame(width: entry.mediaKind == "episode" ? 106 : 70, height: 44)
+                            .background(primary ? PlayarrStyle.accent : WM.page, in: Capsule())
+                            .overlay(Capsule().stroke(primary ? Color.clear : WM.line.opacity(0.2), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
-            HStack(spacing: 10) {
-                WMText("+", 11.52, 720, color: WM.inkSoft, lh: 17).fixedSize()
-                WMText("Add to watchlist", 11.52, 900, color: WM.inkSoft, lh: 17).fixedSize()
+            if showWatchlist {
+                HStack(spacing: 10) {
+                    WMText(removing ? "\u{2212}" : "+", 11.52, 720, color: WM.inkSoft, lh: 17).fixedSize()
+                    WMText(removing ? "Remove from watchlist" : "Add to watchlist", 11.52, 900, color: WM.inkSoft, lh: 17).fixedSize()
+                }
+                .frame(width: removing ? 182 : 152, height: 44)
+                .background(WM.page, in: Capsule())
+                .overlay(Capsule().stroke(WM.line.opacity(0.2), lineWidth: 1))
             }
-            .frame(width: 152, height: 44)
-            .background(WM.page, in: Capsule())
-            .overlay(Capsule().stroke(WM.line.opacity(0.2), lineWidth: 1))
         }
     }
 
@@ -650,9 +663,9 @@ struct CalendarView: View {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(viewModel.dayGroups) { group in
                         VStack(alignment: .leading, spacing: 6.4) {
-                            Text(dayHeading(group.day, today: viewModel.today))
+                            Text(CalendarDays.displayDate(group.day).map { Self.groupFormatter.string(from: $0) } ?? group.day)
                                 .font(.custom("Avenir Next", fixedSize: 14.4).weight(.semibold))
-                                .foregroundStyle(group.day == viewModel.today ? PlayarrStyle.pink : PlayarrStyle.muted)
+                                .foregroundStyle(PlayarrStyle.ink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             ScrollView {
                                 LazyVStack(spacing: 13.6) {
@@ -710,13 +723,15 @@ struct CalendarView: View {
                         .foregroundStyle(PlayarrStyle.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                     if let entry {
-                        CalendarWeekMetadataLayout(horizontalSpacing: 12, verticalSpacing: 3.2) {
-                            Text(calendarTimeLabel(entry) ?? "All day")
+                        // One row like the web: the badge never wraps under the title.
+                        HStack(spacing: 12) {
+                            Text(calendarTimeLabel(entry).flatMap { $0 == "00:00" ? nil : $0 } ?? "All day")
                             Text(releaseTypeLabel(entry.releaseType))
                             if item.entries.count == 1 { Text(kindLabel(entry.mediaKind)) }
                             agendaBadge(entry)
                         }
                         .font(.custom("Avenir Next", fixedSize: 12.8))
+                        .lineLimit(1)
                         .foregroundStyle(PlayarrStyle.muted)
                     }
                 }
@@ -940,56 +955,6 @@ struct CalendarView: View {
     }
 }
 
-private struct CalendarWeekMetadataLayout: Layout {
-    var horizontalSpacing: CGFloat
-    var verticalSpacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let availableWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var contentWidth: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > 0, x + horizontalSpacing + size.width > availableWidth {
-                y += rowHeight + verticalSpacing
-                x = 0
-                rowHeight = 0
-            }
-            if x > 0 { x += horizontalSpacing }
-            x += size.width
-            contentWidth = max(contentWidth, x)
-            rowHeight = max(rowHeight, size.height)
-        }
-
-        return CGSize(width: proposal.width ?? contentWidth, height: y + rowHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > bounds.minX, x + horizontalSpacing + size.width > bounds.maxX {
-                y += rowHeight + verticalSpacing
-                x = bounds.minX
-                rowHeight = 0
-            }
-            if x > bounds.minX { x += horizontalSpacing }
-            subview.place(
-                at: CGPoint(x: x, y: y),
-                proposal: ProposedViewSize(width: size.width, height: size.height)
-            )
-            x += size.width
-            rowHeight = max(rowHeight, size.height)
-        }
-    }
-}
-
 /// "TODAY", "TOMORROW", otherwise "MON 6 OCT".
 func dayHeading(_ day: String, today: String) -> String {
     if day == today { return "TODAY" }
@@ -1061,9 +1026,18 @@ private struct CalendarItemRow: View {
     }
 }
 
+private let calendarTimeFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_GB")
+    formatter.timeZone = TimeZone(identifier: "UTC")
+    formatter.dateFormat = "HH:mm"
+    return formatter
+}()
+
+/// 24-hour "01:00" in UTC, as the web calendar shows it.
 func calendarTimeLabel(_ entry: CalendarEntry) -> String? {
     guard let at = entry.releaseAt else { return nil }
-    return at.formatted(date: .omitted, time: .shortened)
+    return calendarTimeFormatter.string(from: at)
 }
 
 struct CalendarStateBadge: View {

@@ -6,6 +6,7 @@ import {
   extraTitles,
   libraryDetailRoute,
   playerTargetFor,
+  providerReasonText,
   primaryAction,
   snapshotFromTitle,
   snapshotFromWork,
@@ -134,5 +135,16 @@ describe("discoveryUnsupportedByServer", () => {
     expect(discoveryUnsupportedByServer({ status: 404 })).toBe(true);
     expect(discoveryUnsupportedByServer({ status: 500 })).toBe(false);
     expect(discoveryUnsupportedByServer(new Error("boom"))).toBe(false);
+  });
+});
+
+describe("providerReasonText", () => {
+  it("drops the trailing backend task suffix and keeps the message", () => {
+    expect(providerReasonText("Games catalogue is not available yet (task 22)")).toBe(
+      "Games catalogue is not available yet"
+    );
+    expect(providerReasonText("This source is not reachable right now.")).toBe(
+      "This source is not reachable right now."
+    );
   });
 });

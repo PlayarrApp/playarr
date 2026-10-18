@@ -25,7 +25,7 @@ export async function preparePackage({
     '<content src="index.html"',
     '<icon src="icon.png"',
     "<name>Playarr</name>",
-    'required_version="7.0"',
+    'required_version="6.5"',
     "http://tizen.org/privilege/internet",
     'http://tizen.org/privilege/tv.inputdevice',
     "http://tizen.org/privilege/filesystem.write",

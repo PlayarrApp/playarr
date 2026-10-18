@@ -2,6 +2,7 @@ import QtQuick 2.6
 import Sailfish.Silica 1.0
 import QtGraphicalEffects 1.0
 import "../components"
+import "../components/NavIcons.js" as NavIcons
 
 // "Who's watching?": the profiles signed in on this device, add-another, settings and sign out.
 PlayarrPage {
@@ -40,9 +41,9 @@ PlayarrPage {
             Row {
                 anchors.centerIn: parent
                 spacing: 9 * Tokens.u
-                Label { anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? "\u2600" : "\u25CC"; color: Tokens.inkSoft; font.pixelSize: 11 * Tokens.u }
+                Image { anchors.verticalCenter: parent.verticalCenter; width: 14 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url(index === 0 ? "sun" : "globe", Tokens.inkSoft) }
                 Label { anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto"); color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 11.5 * Tokens.u }
-                Label { anchors.verticalCenter: parent.verticalCenter; text: "\u2304"; color: Tokens.inkSoft; font.pixelSize: 11 * Tokens.u }
+                Image { anchors.verticalCenter: parent.verticalCenter; width: 11 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("chevron", Tokens.inkSoft) }
             }
         }
     }
@@ -73,6 +74,8 @@ PlayarrPage {
                     pageStack.replaceAbove(null, Qt.resolvedUrl("MainPage.qml"))
                 }
                 onPressAndHold: remorse.execute(qsTr("Removing profile"), function () { Api.removeProfile(modelData.userId) })
+                // Dark ring colour as WorkCard (web captures measure 197,138,151); light keeps the brand ink.
+                readonly property color ringColor: Tokens.dark ? Qt.rgba(197 / 255, 138 / 255, 151 / 255, 1) : Tokens.brandInk
                 // Web: the signed-in profile holds the default focus, so its card carries the focused shadow stack (as WorkCard).
                 RectangularGlow {
                     visible: modelData.active
@@ -86,13 +89,19 @@ PlayarrPage {
                     glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: width / 2 + glowRadius
                     color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.2)
                 }
+                RectangularGlow {   // the ring's own glow as WorkCard: 0 0 20px 4px at 45 %; dark only, light scored lower with it
+                    visible: modelData.active && Tokens.dark
+                    x: av.x; y: av.y; width: av.width; height: av.width
+                    glowRadius: 10 * Tokens.u; spread: 0.25; cornerRadius: width / 2 + glowRadius
+                    color: Qt.rgba(ringColor.r, ringColor.g, ringColor.b, 0.45)
+                }
                 Avatar {
                     id: av
                     y: 4 * Tokens.u; anchors.horizontalCenter: parent.horizontalCenter
                     width: 168.6 * Tokens.u
                     source: modelData.avatar
                     // The active ring sits outside the plate, as on web.
-                    Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: Tokens.dark ? Qt.rgba(0.81, 0.19, 0.34, 0.4) : Tokens.brandInk }   // alpha in the colour: item opacity drew a pink square behind the plate
+                    Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: ringColor }   // alpha in the colour: item opacity drew a pink square behind the plate
                 }
                 Label { anchors { top: av.bottom; topMargin: 5.8 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink
@@ -131,15 +140,22 @@ PlayarrPage {
             width: 43.7 * Tokens.u; height: width
             onClicked: page.openSettings()
             Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.dark ? "#1a181a" : "#fdfcfc"; border.width: 1; border.color: Tokens.lineStrong }
-            Label { anchors.centerIn: parent; text: "\u2699"; color: Tokens.brandPink; font.pixelSize: 20 * Tokens.u }
+            Image { anchors.centerIn: parent; width: 16 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("settings", Tokens.brandPink) }
         }
         PillButton {
-            icon: "\u21E5"; iconSize: 12 * Tokens.u; labelFamily: Tokens.family610
+            iconImage: NavIcons.url("logout", Tokens.ink); iconSize: 14 * Tokens.u; labelFamily: Tokens.family610
             text: qsTr("Sign out")
             fontSize: 8.8 * Tokens.u
             implicitHeight: 43.7 * Tokens.u
             onClicked: remorse.execute(qsTr("Signing out"), function () { Api.signOut() })
         }
+    }
+    // The web profiles page pins a Clients link 22 px from the bottom right corner.
+    PillButton {
+        anchors { right: parent.right; rightMargin: 22 * Tokens.u; bottom: parent.bottom; bottomMargin: 22 * Tokens.u }
+        labelFamily: Tokens.family610; fontSize: 7.3 * Tokens.u; implicitWidth: 75.5 * Tokens.u; implicitHeight: 43.7 * Tokens.u; lift: true
+        text: qsTr("Clients") + "  \u2192"
+        onClicked: Qt.openUrlExternally("https://playarr.app/clients")
     }
     RemorsePopup { id: remorse }
 }

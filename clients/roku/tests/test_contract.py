@@ -63,10 +63,9 @@ class ApiContractTests(unittest.TestCase):
 
 class NavigationContractTests(unittest.TestCase):
     def test_calendar_posters_use_the_entry_provider_poster_and_never_leak_session_headers(self) -> None:
-        self.assertEqual(PAGES.count("art = calendarPosterUrl(entry)"), 2)
-        self.assertNotIn('"/api/v1/artwork/work/" + UrlEncode(entry.work_id)', PAGES)
+        self.assertEqual(PAGES.count("art = calendarArtworkUrl(entry)"), 2)
         self.assertIn("image.tmdb.org/t/p/w185/", PAGES)
-        self.assertIn("url.Left(m.serverUrl.Len()) = m.serverUrl then agent.SetHeaders", PAGES)
+        self.assertIn("headers = artworkHeaders(url, g.playarrArtHeaders)", PAGES)
 
     def test_movies_grid_right_edge_hands_off_to_the_alphabet(self) -> None:
         grid = (ROOT / "components" / "BrowseGrid.brs").read_text(encoding="utf-8")
@@ -74,6 +73,28 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn("itemIndex mod columns <> columns - 1 and itemIndex <> itemCount - 1", grid)
         self.assertIn('m.browseGrid.alphabetHandoffEnabled = kind = "movie"', MAIN)
         self.assertIn("enterBrowseAlphabet(true)", MAIN)
+
+    def test_calendar_filters_are_a_drawer_with_view_type_status_and_monitored(self) -> None:
+        filters = (ROOT / "components" / "Filters.brs").read_text(encoding="utf-8")
+        self.assertIn("sub calFiltersOpen()", filters)
+        for label in ('"Month"', '"TV"', '"Aired"', '"Monitored only"', '"Clear filters"'):
+            self.assertIn(label, filters)
+        self.assertIn("calendarApplyFilters(m.pageData.entries)", PAGES)
+        self.assertIn("calFiltersOpen()", PAGES)
+        # Routed first in onKeyEvent, before the other drawers (a stray copy once sat inside the detail Back handler).
+        body = MAIN[MAIN.index("function onKeyEvent(key as String, press as Boolean) as Boolean"):]
+        self.assertLess(body.index("calFiltersOnKey(key)"), body.index("if m.drawerOpen = true then return drawerOnKey(key)"))
+        self.assertEqual(MAIN.count("calFiltersOnKey(key)"), 1)
+
+    def test_search_has_the_web_header_pill_field_and_active_dock_slot(self) -> None:
+        self.assertIn("sub searchChromeInit()", MAIN)
+        self.assertIn('setSearchHeader(formatCountWithCommas(m.searchDisplayItems.Count()) + " " + resultWord)', MAIN)
+        self.assertEqual(MAIN.count('m.top.screenState = "search"\n    renderNavDockFocus()'), 2)
+        self.assertIn('id="searchFieldBg" translation="[153.6,170]" width="596" height="84"', SCENE)
+
+    def test_detail_lights_the_dock_slot_of_its_library(self) -> None:
+        self.assertIn('if state = "detail" and m.selectedWork <> invalid and m.selectedWork.kind <> invalid', MAIN)
+        self.assertIn('m.top.ObserveField("screenState", "onScreenStateChanged")', MAIN)
 
     def test_overflowing_collections_are_native_scenegraph_lists(self) -> None:
         self.assertRegex(SCENE, r'<RowList id="libraryList"')

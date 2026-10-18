@@ -30,7 +30,7 @@ pub fn markup(name: &str) -> &'static str {
         "watchlist" => {
             r#"<path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/>"#
         }
-        "requests" => r#"<rect x="6" y="3.5" width="12" height="17" rx="2"/><path d="M10.5 17.5h3"/>"#,
+        "requests" => r#"<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>"#,
         "calendar" => r#"<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>"#,
         "filters" => {
             r#"<path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/>"#

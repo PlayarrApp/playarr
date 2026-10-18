@@ -48,6 +48,8 @@ const THEMES: [(&str, &str); 3] = [("dark", "Dark"), ("light", "Light"), ("syste
 pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     root.add_css_class("pa-page");
+    root.add_css_class("pa-profiles-bg");
+    root.set_vexpand(true);
 
     // Top bar: brand mark at the left, theme chooser (and the language chooser, not wired) at the right.
     let top = gtk4::Box::builder()
@@ -76,14 +78,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         store::update_settings(|s| s.theme = name.into());
         theme::apply(name);
     });
-    decorate_dropdown(
-        &theme_pick,
-        if store::load_settings().theme == "dark" {
-            "moon"
-        } else {
-            "sun"
-        },
-    );
+    // The web keeps the sun glyph in both themes.
+    decorate_dropdown(&theme_pick, "sun");
     top.append(&theme_pick);
     let lang = gtk4::DropDown::from_strings(&["Auto"]);
     lang.add_css_class("pa-dropdown");
@@ -97,6 +93,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .orientation(gtk4::Orientation::Vertical)
         .halign(gtk4::Align::Center)
         .margin_top(9)
+        // The web centres the heading about 15 px left of the page centre.
+        .margin_end(30)
         .build();
     heading.append(
         &gtk4::Label::builder()
@@ -113,8 +111,10 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     root.append(&heading);
 
     let tiles = gtk4::Box::builder()
-        .spacing(22)
-        .halign(gtk4::Align::Center)
+        .spacing(16)
+        // Left-aligned like the web row, whose avatar starts 20 px in.
+        .halign(gtk4::Align::Start)
+        .margin_start(20)
         .margin_top(33)
         .build();
     root.append(&tiles);
@@ -130,8 +130,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .spacing(9)
         .css_classes(["pa-profile-actions"])
         .halign(gtk4::Align::Start)
-        .margin_start(25)
-        .margin_top(22)
+        .margin_start(26)
+        .margin_top(21)
         .build();
     let settings = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
     settings.set_child(Some(&icons::image("settings", 16, Tone::Brand)));
@@ -174,12 +174,33 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
             }
         },
     );
-    gtk4::ScrolledWindow::builder()
+    let scroller = gtk4::ScrolledWindow::builder()
         .hscrollbar_policy(gtk4::PolicyType::Never)
         .child(&root)
         .css_classes(["pa-page"])
-        .build()
-        .upcast()
+        .build();
+    // The web profiles page pins a Clients link to the bottom right corner.
+    let clients = gtk4::Button::builder()
+        .css_classes(["pa-pill", "small", "pa-clients-link"])
+        .halign(gtk4::Align::End)
+        .valign(gtk4::Align::End)
+        .margin_end(22)
+        .margin_bottom(22)
+        .build();
+    let clients_row = gtk4::Box::builder().spacing(9).build();
+    clients_row.append(&gtk4::Label::new(Some("Clients")));
+    clients_row.append(&gtk4::Label::new(Some("→")));
+    clients.set_child(Some(&clients_row));
+    clients.connect_clicked(|_| {
+        let _ = gtk4::gio::AppInfo::launch_default_for_uri(
+            "https://playarr.app/clients",
+            None::<&gtk4::gio::AppLaunchContext>,
+        );
+    });
+    let overlay = gtk4::Overlay::new();
+    overlay.set_child(Some(&scroller));
+    overlay.add_overlay(&clients);
+    overlay.upcast()
 }
 
 fn tile(
@@ -360,7 +381,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .css_classes(["pa-add-circle"])
         .halign(gtk4::Align::Center)
         // Bottom-aligned with the 162 px current avatar, as on the web.
-        .margin_top(14)
+        .margin_top(15)
         .build();
     circle.set_size_request(144, 144);
     let plus = icons::image("add", 28, Tone::Ink);
