@@ -683,47 +683,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     root.upcast()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn natural_order_matches_the_web() {
-        let mut v = vec![
-            "10 Cloverfield Lane",
-            "The 5th Wave",
-            "2 Fast 2 Furious",
-            "9 Bullets",
-            "6 Underground",
-            "12 Strong",
-            "9-1-1",
-            "666 Park Avenue",
-            "10,000 BC",
-        ];
-        v.sort_by_key(|t| natural_key(t));
-        assert_eq!(
-            v,
-            [
-                "2 Fast 2 Furious",
-                "The 5th Wave",
-                "6 Underground",
-                "9 Bullets",
-                "10 Cloverfield Lane",
-                "12 Strong",
-                "666 Park Avenue",
-                "9-1-1",
-                "10,000 BC"
-            ]
-        );
-    }
-
-    #[test]
-    fn digit_grouping() {
-        assert_eq!(group_digits(1754), "1,754");
-        assert_eq!(group_digits(35), "35");
-    }
-}
-
 /// The web's view-switch glyphs (list, screen, cover), as css px (width, height).
 const VIEW_GLYPHS: [(i32, i32); 3] = [(20, 10), (21, 5), (17, 13)];
 
@@ -791,4 +750,45 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
     col.append(&area);
     col.append(&gtk4::Label::new(Some(name)));
     tile.set_child(Some(&col));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn natural_order_matches_the_web() {
+        let mut v = vec![
+            "10 Cloverfield Lane",
+            "The 5th Wave",
+            "2 Fast 2 Furious",
+            "9 Bullets",
+            "6 Underground",
+            "12 Strong",
+            "9-1-1",
+            "666 Park Avenue",
+            "10,000 BC",
+        ];
+        v.sort_by_key(|t| natural_key(t));
+        assert_eq!(
+            v,
+            [
+                "2 Fast 2 Furious",
+                "The 5th Wave",
+                "6 Underground",
+                "9 Bullets",
+                "10 Cloverfield Lane",
+                "12 Strong",
+                "666 Park Avenue",
+                "9-1-1",
+                "10,000 BC"
+            ]
+        );
+    }
+
+    #[test]
+    fn digit_grouping() {
+        assert_eq!(group_digits(1754), "1,754");
+        assert_eq!(group_digits(35), "35");
+    }
 }
