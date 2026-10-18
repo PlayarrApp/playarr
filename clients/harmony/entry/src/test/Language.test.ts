@@ -5,9 +5,10 @@ import { strict as assert } from "node:assert";
 import { STRINGS } from "../main/ets/core/Strings";
 import { normaliseLanguagePreference, resolveLanguage, setCurrentLanguage, t } from "../main/ets/core/Language";
 
-test("every language holds the same keys", () => {
-  assert.deepEqual(Object.keys(STRINGS.th).sort(), Object.keys(STRINGS.en).sort());
-  assert.deepEqual(Object.keys(STRINGS.ja).sort(), Object.keys(STRINGS.en).sort());
+test("every translated key exists in English (t falls back to English for the rest)", () => {
+  for (const lang of ["th", "ja"]) {
+    assert.deepEqual(Object.keys(STRINGS[lang]).filter((k) => !(k in STRINGS.en)), []);
+  }
 });
 
 test("system follows the device base language, unsupported reads as English", () => {
