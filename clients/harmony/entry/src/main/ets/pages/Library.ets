@@ -1092,7 +1092,7 @@ export struct Library {
           ['rgba(0, 0, 0, 0.409)', 0.75], ['rgba(0, 0, 0, 0.3)', 1]] })
     }
     .width('100%')
-    .height('100%')
+    .height(tv(1080)) // the panel is the full stage height; '100%' resolved to a shorter box and faded row 3
     .blendMode(BlendMode.DST_IN)
     .hitTestBehavior(HitTestMode.None)
   }
