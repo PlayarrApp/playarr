@@ -60,7 +60,7 @@ function offenders() {
 }
 
 const table = [];
-for (const [theme, widths] of [["dark", WIDTHS], ["light", LIGHT_WIDTHS]]) {
+for (const [theme, widths] of process.env.NAV_OVERLAP_HERO_ONLY ? [] : [["dark", WIDTHS], ["light", LIGHT_WIDTHS]]) {
   for (const width of widths) {
     for (const route of ROUTES) {
       const { page, context } = await open(route, { width, height: width < 700 ? 800 : 720, theme });
@@ -76,6 +76,21 @@ for (const [theme, widths] of [["dark", WIDTHS], ["light", LIGHT_WIDTHS]]) {
 if (table.length) {
   console.log("\ntheme  width  route  offender");
   for (const r of table) console.log(`${r.theme}\t${r.width}\t${r.route}\t${r.hit}`);
+}
+// Hero details panel (title, meta, synopsis, buttons): short heights and browser zoom shrink the CSS viewport (125% of
+// 1280x720 is 1024x576, 150% is 853x480), which is where the left panel used to slide under the rail.
+const HERO_ROUTES = ["/", "/movies", "/series", "/music", `/movies/${movieId}`, `/series/${seriesId}`];
+const heroSizes = [];
+for (const h of process.env.NAV_OVERLAP_QUICK ? [600, 768] : [600, 700, 768, 900, 1080]) for (const w of process.env.NAV_OVERLAP_QUICK ? [768, 1280] : [768, 900, 1024, 1180, 1280, 1440]) heroSizes.push([w, h, `${w}x${h}`]);
+for (const [w, h, z] of [[1280, 720, 1.25], [1280, 720, 1.5], [1440, 900, 1.25], [1440, 900, 1.5]]) heroSizes.push([Math.round(w / z), Math.round(h / z), `${w}x${h}@${z * 100}%`]);
+for (const [w, h, label] of heroSizes) {
+  for (const route of HERO_ROUTES) {
+    const { page, context } = await open(route, { width: w, height: h });
+    await page.waitForTimeout(500);
+    const { nav, hits } = await page.evaluate(offenders);
+    check(`hero ${label} ${route}: nothing under the nav`, nav && hits.length === 0, nav ? hits.slice(0, 2).join(" | ") : "no nav");
+    await context.close();
+  }
 }
 // Phones: a page without the library letter rail reserves no gutter for it. The cards fill the row to the page gutter.
 for (const route of ["/search?q=a", "/watchlist", "/playlists", "/movies"]) {
