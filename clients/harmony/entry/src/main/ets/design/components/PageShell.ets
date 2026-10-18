@@ -268,6 +268,7 @@ export struct PageShell {
         this.touchContent()
       }
       .layoutWeight(1)
+      .clip(false) // the grid runs on under the translucent nav bar
       .width('100%')
       TouchNavBarSpacer()
     }
