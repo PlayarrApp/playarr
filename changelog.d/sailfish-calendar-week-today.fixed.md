@@ -1,0 +1,1 @@
+- Sailfish: the calendar week strip scrolls so today's column starts at the page padding, and week cards use the web's dimmer left accent and border.
