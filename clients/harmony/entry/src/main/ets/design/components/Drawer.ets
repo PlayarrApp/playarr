@@ -17,6 +17,8 @@ const PADDING_H: number = 46;
 const HEADER_TOP: number = 54;
 // Web body starts at y=163: 34 below the 75 high header block.
 const BODY_GAP: number = 35;
+// TV: the body's focus rings are drawn outside their rows; the scroll box is widened by this much and the content padded back so the Scroll clip keeps them.
+const RING_ROOM: number = 4;
 const KICKER_SIZE: number = 9.6;
 const KICKER_LETTER_SPACING: number = 0.672;
 const TITLE_SIZE: number = 38.4;
@@ -124,16 +126,18 @@ export struct Drawer {
           this.body()
         }
         .width('100%')
+        .padding(isTvMetrics() ? tv(RING_ROOM) : 0)
         .alignItems(HorizontalAlign.Start)
       }
-      .width('100%')
+      .width(isTvMetrics() ? tv(DRAWER_WIDTH - 2 * PADDING_H + 2 * RING_ROOM) : '100%')
       .layoutWeight(1)
       .align(Alignment.Top)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
-      .margin({ top: isTvMetrics() ? tv(BODY_GAP) : TOUCH_BODY_GAP })
+      .margin(isTvMetrics() ? { top: tv(BODY_GAP - RING_ROOM), left: -tv(RING_ROOM) } : { top: TOUCH_BODY_GAP })
     }
     .width(isTvMetrics() ? tv(DRAWER_WIDTH) : '100%')
+    .alignItems(HorizontalAlign.Start) // the TV scroll box is wider than the content box (ring room), so no centring
     .height('100%')
     .padding({
       left: isTvMetrics() ? tv(PADDING_H) : atLeast(TOUCH_PADDING_H, this.safeLeft),
