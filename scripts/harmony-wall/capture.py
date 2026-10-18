@@ -323,11 +323,30 @@ def extra_screens(folder):
             print("player-controls not captured", flush=True)
 
 
+def static_player_file(suite):
+    """The media file of the pinned film on the static parity server (the web ref opens its player)."""
+    import urllib.request  # noqa: PLC0415
+    server = os.environ["SERVER_URL"].strip().rstrip("/")
+    headers = {"User-Agent": "playarr-parity-harmony", "content-type": "application/json"}  # Cloudflare refuses the default urllib agent
+    def call(path, body=None, token=None):
+        h = dict(headers, **({"authorization": "Bearer " + token} if token else {}))
+        req = urllib.request.Request(server + path, data=json.dumps(body).encode() if body is not None else None, headers=h)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return json.load(response)
+    login = call("/api/v1/auth/login", {"client_platform": "web", "client_version": "parity", "device_id": "00000000-0000-4000-8000-000000000042",
+                                        "device_name": "parity-harmony-player", "username": os.environ["TEST_USERNAME"], "password": os.environ["TEST_PASSWORD"]})
+    film = next(x for x in suite["screens"] if x.get("id") == "film-detail")["open"].rsplit("/", 1)[-1]
+    return call("/api/v1/catalog/" + film, token=login["access_token"])["media_file_id"]
+
+
 def configured_player_route():
     global PLAYER_FIXTURE_SOURCE
     suite = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))
     try:
-        file_path, PLAYER_FIXTURE_SOURCE = player_fixture_selection(suite, PLAYER_FIXTURE_OVERRIDE)
+        override = PLAYER_FIXTURE_OVERRIDE
+        if not override and os.environ.get("PARITY_STATIC_SERVER") == "1":
+            override = static_player_file(suite)  # the static server's one clip, which the live fixture id does not name
+        file_path, PLAYER_FIXTURE_SOURCE = player_fixture_selection(suite, override)
         return "player:" + file_path
     except ValueError as error:
         raise SystemExit(str(error)) from error
