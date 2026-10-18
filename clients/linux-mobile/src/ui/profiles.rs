@@ -78,14 +78,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         store::update_settings(|s| s.theme = name.into());
         theme::apply(name);
     });
-    decorate_dropdown(
-        &theme_pick,
-        if store::load_settings().theme == "dark" {
-            "moon"
-        } else {
-            "sun"
-        },
-    );
+    // The web keeps the sun glyph in both themes.
+    decorate_dropdown(&theme_pick, "sun");
     top.append(&theme_pick);
     let lang = gtk4::DropDown::from_strings(&["Auto"]);
     lang.add_css_class("pa-dropdown");
@@ -99,6 +93,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .orientation(gtk4::Orientation::Vertical)
         .halign(gtk4::Align::Center)
         .margin_top(9)
+        // The web centres the heading about 15 px left of the page centre.
+        .margin_end(30)
         .build();
     heading.append(
         &gtk4::Label::builder()
@@ -115,8 +111,10 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     root.append(&heading);
 
     let tiles = gtk4::Box::builder()
-        .spacing(22)
-        .halign(gtk4::Align::Center)
+        .spacing(16)
+        // Left-aligned like the web row, whose avatar starts 20 px in.
+        .halign(gtk4::Align::Start)
+        .margin_start(20)
         .margin_top(33)
         .build();
     root.append(&tiles);
@@ -132,8 +130,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .spacing(9)
         .css_classes(["pa-profile-actions"])
         .halign(gtk4::Align::Start)
-        .margin_start(25)
-        .margin_top(22)
+        .margin_start(26)
+        .margin_top(21)
         .build();
     let settings = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
     settings.set_child(Some(&icons::image("settings", 16, Tone::Brand)));
@@ -383,7 +381,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .css_classes(["pa-add-circle"])
         .halign(gtk4::Align::Center)
         // Bottom-aligned with the 162 px current avatar, as on the web.
-        .margin_top(14)
+        .margin_top(15)
         .build();
     circle.set_size_request(144, 144);
     let plus = icons::image("add", 28, Tone::Ink);
