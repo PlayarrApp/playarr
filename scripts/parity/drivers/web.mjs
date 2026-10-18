@@ -746,6 +746,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     async focused() { await guard(); return stableFocus(); },
     async screenshot(file) {
       await guard();
+      await page.mouse.move(-1, -1); // a pointer left over a control (the "#" alphabet-rail hover disc) draws a state no device can match
       await waitReady({ screen: new URL(page.url()).pathname.split("/")[1] || "home", phase: "capture" });
       // Every card on screen shows its poster: a card-art without a loaded img is a placeholder (fallback title on grey). Fatal in a stable capture.
       await labelled("every card shows its poster", () => page.waitForFunction(PLACEHOLDER_CARDS_GONE, null, { timeout: 20000 }));

@@ -104,3 +104,35 @@ Legend: ✅ the vendor supports it. ❌ the vendor does not offer it (none found
 | Roku | `make deploy` in `clients/roku`; `scripts/parity/roku/capture.mjs` | real device |
 | Xbox core | `dotnet test tests/Playarr.Core.Tests/Playarr.Core.Tests.csproj` in `clients/xbox` | CI, local |
 | HarmonyOS checks | `node scripts/validate.mjs`; `node tools/run-core-tests.mjs` in `clients/harmony` | CI, local |
+
+## Static parity server
+
+Web refs and device captures used to hit a live server, so Recently Added, On deck, watch progress, the watchlist, the
+calendar and the avatar drifted between runs. The static parity server serves one frozen, seeded library instead.
+
+    scripts/parity/static-server.sh            # builds what is missing, then serves until Ctrl-C
+    scripts/parity/static-server.sh --build    # build only
+
+- **URL and account:** `scripts/parity/parity.env` (`PARITY_SERVER_URL`, built from this host's LAN address (detected, never committed) and a fixed port, so real TVs and
+  phones reach it; `PARITY_ACCOUNT_NAME`). The password is `PLAYARR_PARITY_STATIC_PASSWORD` in `~/.secrets`, never in the
+  repo. The web client is served at `<url>/tv`. The clock is `screens.json` `determinism.clock`, exported as `PARITY_CLOCK`.
+- **Content:** built from scratch by `scripts/parity/static/build-db.mjs` from `static/catalogue.mjs`: 30 films, 20 series with
+  seasons and episodes, 6 artists with albums, three profiles (`parity`, `parity-kids`, `parity-guest`, fixed avatars), fixed added
+  dates, a fixed watchlist, calendar entries around the clock, and a deck of exactly the canonical On deck item. Artwork is
+  generated from the title text and a fixed colour pair; there is one 60 s playable clip. It is never a copy of a live DB.
+- **Frozen:** every start copies the pristine DB to a throw-away working directory. `PLAYARR_STATIC=1` stops arr and peer sync,
+  relay registration, ACME, backups, metadata refresh, the folder scanner, the calendar refresher and the Dubarr poller. The
+  backend runs in a cgroup (`MemoryHigh=8G`, `MemoryMax=12G`, `MemorySwapMax=512M`).
+- **Scripts:** every node capture script loads `parity.env` through `dpad-account.mjs`, and `readSecrets()` then answers the
+  Device Test and per-client parity accounts with the static server and account. `PARITY_LIVE=1` switches that off. Shell
+  scripts use `eval "$(node scripts/parity/parity-config.mjs --shell)"`.
+- **Not wired (still name a server or the Device Test account themselves):** `scripts/xbox-wall/pair.py`,
+  `scripts/apple-wall/*` (`login.py`, `wall.sh`, `fixture-server-preflight.mjs`), `scripts/harmony-wall/*.py`,
+  `scripts/vidaa/receiver.py`, `scripts/sim-vnc/seed_session.py`, `scripts/appletv-parity-suite.mjs`,
+  `scripts/parity/capture-web-scrolled.mjs` (fixture account), `scripts/parity/android-mobile/capture.{sh,py}` (fixture
+  account) and `scripts/parity/android-mobile/tablet/cap.sh`. They need the same two values by hand.
+- **Native apps:** each app is pointed at the static server on the device itself, with its own server field or pairing flow: Android
+  (TV and phone) and Fire TV: server field on the sign-in screen (`android-tv/capture.sh` types it); iOS, tvOS: server field
+  (`TVAppEnvironment.swift`, the simulator driver passes it); Tizen, webOS, VIDAA: the hosted web client's server field or the link
+  page of the static server (`<url>/tv/link`); Roku, Xbox, HarmonyOS, Sailfish, Linux mobile: their own sign-in or pairing screen.
+  The device must reach the host's LAN address (an Android emulator reaches it through its NAT).
