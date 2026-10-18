@@ -15,6 +15,7 @@ export type IconName =
   | 'music'
   | 'playlists'
   | 'watchlist'
+  | 'requests'
   | 'calendar'
   | 'back'
   | 'filters'
@@ -137,6 +138,14 @@ export function Icon({name, size, color, strokeWidth = 1.8}: IconProps): React.R
         <>
           <Path {...line} d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z" />
           <Path {...line} d="M12 7.5v5M9.5 10h5" />
+        </>
+      );
+      break;
+    case 'requests':
+      body = (
+        <>
+          <Circle {...line} cx={12} cy={12} r={8.5} />
+          <Path {...line} d="M12 8v8M8 12h8" />
         </>
       );
       break;

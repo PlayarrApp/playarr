@@ -56,14 +56,6 @@ import {
 import { householdBlockFromStatus } from "./lib/householdState";
 import { MusicDetailPage } from "./pages/MusicDetail";
 import { NotFoundPage } from "./pages/NotFound";
-import { ClientsPage } from "./pages/Clients";
-import {
-  AcceptableUsePage,
-  AccountDeletionPage,
-  LicencesPage,
-  PrivacyPolicyPage,
-  TermsPage,
-} from "./pages/Legal";
 import { LayoutHarnessPage } from "./pages/LayoutHarness";
 import { NavPerfHarnessPage } from "./pages/NavPerfHarness";
 import { UpdateToast } from "./components/UpdateToast";
@@ -105,7 +97,6 @@ import {
   IS_VIDAA,
   IS_TV,
   PLAYARR_CLIENT_PLATFORM,
-  shouldStartTvLink,
 } from "./lib/clientPlatform";
 import { formatShellClockDate } from "./lib/shellClockDate";
 import { ShellActionColumnProvider } from "./components/shell/ShellActionColumn";
@@ -217,6 +208,7 @@ function AppShell() {
     authFailed,
     connectedServers,
     currentUserId,
+    hasSession,
     currentUserName,
     savedProfiles,
   } = useAuth();
@@ -407,11 +399,13 @@ function AppShell() {
     }
   }, [currentUserId, playerSession]);
 
-  if (shouldStartTvLink(IS_TV, currentUserId, savedProfiles.length)) {
-    return <Navigate to="/login/qr" replace state={{ from: location }} />;
+  // Nobody signed in and nothing saved: sign-in is the first paint, never the shell.
+  if (!hasSession && savedProfiles.length === 0) {
+    return <Navigate to={IS_TV ? "/login/qr" : "/login"} replace state={{ from: location }} />;
   }
 
-  if (authFailed) {
+  // No active session but saved accounts: the picker is the first paint, never the shell.
+  if (authFailed || (!hasSession && savedProfiles.length > 0)) {
     return (
       <ProfilesPage
         loginFrom={`${location.pathname}${location.search}${location.hash}`}
@@ -669,14 +663,6 @@ export function App() {
       <Route path="/link" element={<DeviceLinkPage />} />
       <Route path="/profiles" element={<ProfilesPage />} />
       <Route path="/household" element={<HouseholdPage />} />
-      <Route path="/clients/:clientId?" element={<ClientsPage />} />
-      <Route path="/download" element={<Navigate to="/clients" replace />} />
-      <Route path="/install" element={<Navigate to="/clients" replace />} />
-      <Route path="/legal/privacy" element={<PrivacyPolicyPage />} />
-      <Route path="/legal/terms" element={<TermsPage />} />
-      <Route path="/legal/acceptable-use" element={<AcceptableUsePage />} />
-      <Route path="/legal/licences" element={<LicencesPage />} />
-      <Route path="/legal/account-deletion" element={<AccountDeletionPage />} />
       {/* Dense focus grid for 4K / limited-CPU nav measurement (dev only). */}
       {import.meta.env.DEV ? (
         <Route path="/__nav-perf" element={<NavPerfHarnessPage />} />

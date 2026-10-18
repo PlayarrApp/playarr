@@ -6,20 +6,26 @@ dark and light. Aborts, writing nothing more, when a frame is too plain (an erro
 import hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from PIL import Image
 from backend_preflight import check_backend
-from screen_selection import TV_SCREEN_IDS, parse_tv_screens, player_is_skipped
+from capture_identity import guarded_frame, parse_identity_digest, wait_for_verified_identity
+from screen_selection import (TV_SCREEN_IDS, parse_tv_screens, player_is_skipped, phone_core_only_requested,
+                              phone_core_manifest_selection, player_fixture_selection)
 from capture_diagnostics import (posters_stalled, tv_flat_card_blocks, home_recent_flat, save_rejected_frame, summarize_detail_events,
                                  summarize_detail_layout_events, summarize_detail_image_payload_events,
                                  analyze_episode_art_frame, episode_art_events_ready, decoded_art_is_accepted,
-                                 series_focus_failure, write_detail_summary, confirm_detail_route_source,
-                                 summarize_detail_load_events, phone_flat_card_rows)
+                                 series_focus_failure, previewer_focus_unavailable, write_detail_summary, confirm_detail_route_source,
+                                 summarize_detail_load_events, phone_flat_card_rows, preview_focus_confirmed)
 
 device, out, log = sys.argv[1], sys.argv[2], sys.argv[3]
 THEME = sys.argv[4] if len(sys.argv) > 4 else "dark"  # phone: the Previewer starts in this colour mode (-cm), one job per theme. TV: the part (all, dpad, extra, playback)
 TV_SCREENS_RAW = os.environ.get("TV_SCREENS", "all").strip()
 SKIP_PLAYER_REQUESTED = os.environ.get("SKIP_PLAYER", "false").lower() == "true"
+PHONE_CORE_ONLY_REQUESTED = os.environ.get("PHONE_CORE_ONLY", "false").lower() == "true"
+PLAYER_FIXTURE_OVERRIDE = os.environ.get("HARMONY_PLAYER_FIXTURE_ID", "")
+PLAYER_FIXTURE_SOURCE = None
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(out, exist_ok=True)
+IDENTITY_VERIFIED = False
 
 
 def get(path, **q):
@@ -35,7 +41,7 @@ def get(path, **q):
 
 
 def png() -> Image.Image:
-    return Image.open(io.BytesIO(get("/shot.png"))).convert("RGB")
+    return Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
 
 
 def key(*names):
@@ -84,6 +90,10 @@ try:
 except ValueError as error:
     abort(str(error))
 SKIP_PLAYER = player_is_skipped(TV_SELECTION, SKIP_PLAYER_REQUESTED)
+try:
+    PHONE_CORE_ONLY = phone_core_only_requested(device, PHONE_CORE_ONLY_REQUESTED)
+except ValueError as error:
+    abort(str(error))
 
 
 def guarded(name, fn):
@@ -91,6 +101,8 @@ def guarded(name, fn):
     try:
         fn()
     except (Skip, SystemExit) as e:
+        if PREVIEW_TELEMETRY_FATAL:
+            raise
         print(f"SKIP {name}: {e}", flush=True)
         MISSING.append(name)
 
@@ -123,6 +135,43 @@ def settle(limit=45, image_limit=90):
         settle(limit=20, image_limit=0)
 
 
+PREVIEW_TELEMETRY_LOG_OFFSET = 0
+PREVIEW_TELEMETRY_LOG_TAIL = b""
+PREVIEW_TELEMETRY_FATAL = False
+
+
+
+def assert_preview_telemetry_clean():
+    global PREVIEW_TELEMETRY_LOG_OFFSET, PREVIEW_TELEMETRY_LOG_TAIL, PREVIEW_TELEMETRY_FATAL
+    if PREVIEW_TELEMETRY_FATAL:
+        raise SystemExit("preview telemetry transport failed; refusing this capture")
+    marker = b"PLAYARR_PREVIEW_TELEMETRY_FAILED"
+    try:
+        with open(log, "rb") as preview_log:
+            preview_log.seek(0, os.SEEK_END)
+            size = preview_log.tell()
+            if size < PREVIEW_TELEMETRY_LOG_OFFSET:
+                PREVIEW_TELEMETRY_LOG_OFFSET = 0
+                PREVIEW_TELEMETRY_LOG_TAIL = b""
+            preview_log.seek(max(0, PREVIEW_TELEMETRY_LOG_OFFSET - len(marker) + 1))
+            appended = preview_log.read()
+            PREVIEW_TELEMETRY_LOG_OFFSET = size
+            failed = marker in PREVIEW_TELEMETRY_LOG_TAIL + appended
+            PREVIEW_TELEMETRY_LOG_TAIL = (PREVIEW_TELEMETRY_LOG_TAIL + appended)[-(len(marker) - 1):]
+    except OSError as error:
+        PREVIEW_TELEMETRY_FATAL = True
+        raise SystemExit("could not verify preview telemetry log") from error
+    if failed:
+        PREVIEW_TELEMETRY_FATAL = True
+        raise SystemExit("preview telemetry transport failed; refusing this capture")
+
+
+def settle_preview_telemetry():
+    # Cover the flush interval, all three bounded delivery attempts, and their retry delays.
+    time.sleep(6)
+    assert_preview_telemetry_clean()
+
+
 SEEN = {}
 
 
@@ -142,6 +191,7 @@ def snap(name, folder, floor=60000, frame_observer=None, before_frame=None):
 
 def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
     settle()
+    assert_preview_telemetry_clean()
     try:  # diagnostics: what the app reported at the moment of the frame (poster placeholders, network, image events)
         st = json.loads(get("/state"))
         print(f"[settle] {name} theme={THEME} img_pending={st.get('img_pending')} net_idle={st.get('net_idle')} dbg={ {k: v for k, v in (st.get('dbgcount') or {}).items() if not k[:4] in ('skel', 'img+', 'done', 'fail')} }", flush=True)
@@ -211,7 +261,6 @@ else:
 # 1. sign in: point the app at the test server (typed through the bridge, never baked into the build), then the pairing page logs
 # its user code; approve it as the Device Test account (fresh device id each run)
 route("serversetup", 8)
-debug("serversetup")
 FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
 click(*FIELD); time.sleep(1)
 get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
@@ -225,19 +274,33 @@ for _ in range(60):
     time.sleep(2)
 if code is None:
     abort("no link code for the test server in the Previewer log")
-if subprocess.run([sys.executable, os.path.join(HERE, "approve_link.py"), code]).returncode != 0:
+approval = subprocess.run([sys.executable, os.path.join(HERE, "approve_link.py"), code,
+                           "--identity-control-url", CTL + "/state"], capture_output=True, text=True)
+if approval.returncode != 0:
     abort("link code approval failed")
+try:
+    expected_identity_digest = parse_identity_digest(approval.stdout)
+except ValueError as error:
+    abort(str(error))
+
+# 2. Pairing owns the device-token poll. Do not navigate away: Profiles is reached naturally after authenticated pairing.
+def read_identity_state():
+    return json.loads(get("/state"))
+
+
+try:
+    wait_for_verified_identity(read_identity_state)
+except ValueError as error:
+    abort(str(error))
+IDENTITY_VERIFIED = True
+print("signed-in account verified", flush=True)
+
+# Seed only after the app identity is verified. This keeps a stale pairing from touching shared-account progress.
 subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])  # best effort: Home's On deck matches the web reference
 time.sleep(20)
-debug("after-approve")
 
-# 2. the profile picker: pick Device Test (alien avatar). Position found by looking at the picker, see PROFILE_CLICK.
-PROFILE_CLICK = {"tv": (846, 505), "phone": (291, 732)}[device]  # phone: the current profile avatar of the web-parity picker (144 vp circle at x 25, y 172, 3 px per vp)
-if device == "phone":
-    route("profiles", 8); debug("phone-profiles")
-click(*PROFILE_CLICK)
-time.sleep(20)
-debug("after-profile")
+# 3. Profiles only navigates to Home for the current account. Select the route directly after verification.
+route("home", 20)
 
 SCREENS_TV = None
 
@@ -254,10 +317,20 @@ def extra_screens(folder):
         print("player-controls skipped by request", flush=True)
     else:
         try:
-            route("player:" + json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["performance"][0]["file"], 20)
+            route(configured_player_route(), 20)
             click(960, 540); time.sleep(3); snap("player-controls", folder, 30000)
         except SystemExit:
             print("player-controls not captured", flush=True)
+
+
+def configured_player_route():
+    global PLAYER_FIXTURE_SOURCE
+    suite = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))
+    try:
+        file_path, PLAYER_FIXTURE_SOURCE = player_fixture_selection(suite, PLAYER_FIXTURE_OVERRIDE)
+        return "player:" + file_path
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
 
 
 def focus_first_card(click_xy=None):
@@ -265,12 +338,14 @@ def focus_first_card(click_xy=None):
     a focus event, so the preview patch turns PosterCard's state-driven focused look (ringOn) on for the first card on screen."""
     get("/state", resetfocused="1")
     get("/setroute", name="focus:pcard")
+    assert_preview_telemetry_clean()
     for _ in range(10):
         time.sleep(1)
-        if json.loads(get("/state")).get("focused"):
+        assert_preview_telemetry_clean()
+        if preview_focus_confirmed(json.loads(get("/state"))):
             time.sleep(2)
             return
-    print("focus_first_card: no card answered; capturing unfocused", flush=True)
+    raise SystemExit("focus_first_card: no live card acknowledged focus")
 
 
 def burst(folder, name, count=5):
@@ -481,7 +556,7 @@ if device == "tv":
                                          detail_load=detail_load_summary(current, cursor, work_id, generation))
                     raise Skip(failure)
 
-                deadline = time.time() + 12
+                deadline = time.time() + 40  # the bridge decodes uploads one by one: 24 episode images take ~20 s on a CI runner
                 while time.time() < deadline:
                     current = route_state()
                     if (current.get("route") != "Detail" or current.get("work_id") != work_id
@@ -524,6 +599,8 @@ if device == "tv":
                     # inspect_episode_art raises on failure, so reaching here means the last frame passed.
                     completion_seen = True
 
+            if name == "series-detail":  # which guard of the target-visibility report stopped it (preview-only counters)
+                print("series-detail guard", {k: v for k, v in (route_state().get("dbgcount") or {}).items() if k.startswith(("tgt-", "len-"))}, flush=True)
             try:
                 snap(name, folder, 100000,
                      frame_observer=inspect_episode_art if name == "series-detail" else None,
@@ -562,6 +639,9 @@ if device == "tv":
                     current.get("debug_events", []), sequence_after=cursor, work_id=work_id,
                     generation=generation)
                 focus_failure = series_focus_failure(layout, episode_art_result.get("metrics"))
+                if focus_failure in ("focus-request-not-accepted", "focus-not-target") and previewer_focus_unavailable(layout):
+                    print("series-detail: the Previewer has no focus controller (requestFocus threw); focus is not asserted here", flush=True)
+                    focus_failure = None
                 accepted = decoded_art[theme] and focus_failure is None
                 failure = focus_failure if focus_failure is not None else (
                     None if decoded_art[theme] else "episode-art-not-accepted")
@@ -599,14 +679,13 @@ if device == "tv":
     folder = os.path.join(out, "light" if THEME == "light" else "dark")
     if TV_SELECTION is None:
         route("profiles", 6); snap("profiles", folder)
-        # profiles picker -> home needs the same click as the first time
-        click(*PROFILE_CLICK); time.sleep(20)
+        route("home", 20)
         walk(folder, "")
         if THEME == "all":  # the dark and light jobs each start the Previewer in their own colour mode (-cm)
             # light: Settings theme toggle (coordinates of the Mac scripts), then the same walk
             route("settings", 8); click(394, 207); time.sleep(3); click(1295, 285); time.sleep(4)
             route("profiles", 6); snap("profiles", os.path.join(out, "light"))
-            click(*PROFILE_CLICK); time.sleep(20)
+            route("home", 20)
             walk(os.path.join(out, "light"), "")
 else:
     # phone: the web phone shell. Pages by route; the phone's own controls (the header filter button, a card tap or long press)
@@ -677,7 +756,7 @@ else:
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
-        if name == "home":  # other workers share the account: re-seed right before the frame so On deck is only The 5th Wave
+        if name == "home":  # other workers share the account: re-seed immediately before capture for the pinned fixture item
             subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])
         guarded(name, lambda: (route(r, 40 if name == 'home' else 15), focus_first_card() if name in ('home', 'movies', 'series', 'music') else None, snap(name, folder, floor)))
     route("library:movie", 15); settle()
@@ -687,6 +766,32 @@ else:
     guarded("calendar-month", lambda: calendar_view("month"))
     guarded("film-detail", lambda: open_detail("movie", "film-detail"))
     guarded("series-detail", lambda: open_detail("series", "series-detail"))
+
+    def write_phone_core_manifest():
+        settle_preview_telemetry()
+        suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))['screens']
+        requested = [screen["id"] for screen in suite_screens]
+        captured = [name for name in requested if os.path.isfile(os.path.join(folder, name + ".png"))]
+        selection, absent = phone_core_manifest_selection(requested, captured, SKIP_PLAYER)
+        missing = list(dict.fromkeys(MISSING + absent))
+        manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
+                    "theme": THEME, "missing": missing, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "screen_selection": {**selection, "captured": {THEME: selection["captured"]}}}
+        if PLAYER_FIXTURE_SOURCE is not None:
+            manifest["screen_selection"]["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
+        json.dump(manifest, open(os.path.join(out, "build.json"), "w"))
+        if missing:
+            print("INCOMPLETE: missing required screens: " + ", ".join(missing), flush=True)
+            return False
+        print("done", flush=True)
+        return True
+
+    if PHONE_CORE_ONLY:
+        # The player chrome is the fifteenth core screen unless explicitly skipped for a diagnostic capture.
+        if not SKIP_PLAYER:
+            guarded("player-controls", lambda: (route(configured_player_route(), 20), snap("player-controls", folder, 30000)))
+        sys.exit(0 if write_phone_core_manifest() else 2)
+
     # extras beyond the 15: search with results, the period picker (calibration), the three settings panels
     def search_results():
         route("search", 12); click(540, 276); time.sleep(1); get("/type", text="the"); time.sleep(12); snap("search-results", folder, 60000)
@@ -758,13 +863,16 @@ else:
         open_filters(name); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*CLOSE_DRAWER); time.sleep(5); settle()
         snap(name, folder, 100000)
 
-    for nm, btn in (("library-covers-medium", MEDIUM_BTN), ("library-covers-small", SMALL_BTN), ("library-covers-large", LARGE_BTN))  # medium first: the first Library visit of a run ignores the Cover tap (small was captured in Screen view twice), the saved view then holds:
+    # The first Library visit may ignore the Cover tap, so medium goes first and the saved view carries forward.
+    for nm, btn in (("library-covers-medium", MEDIUM_BTN), ("library-covers-small", SMALL_BTN), ("library-covers-large", LARGE_BTN)):
         guarded(nm, lambda nm=nm, btn=btn: library_covers(nm, btn))
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
-    guarded("player-controls", lambda: (route("player:b9a68b2c-8382-4c34-a6f0-c4dd58f55093", 20), snap("player-controls", folder, 30000)))
+    guarded("player-controls", lambda: (route(configured_player_route(), 20), snap("player-controls", folder, 30000)))
 import datetime
 manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
             "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+if PLAYER_FIXTURE_SOURCE is not None:
+    manifest["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
 if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
     suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
     requested = TV_SELECTION if TV_SELECTION is not None else [
@@ -784,6 +892,7 @@ if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
         manifest["screen_selection"]["pinned_detail_sources"] = detail_sources
         manifest["screen_selection"]["decoded_art"] = decoded_art
         manifest["screen_selection"]["series_detail_accepted"] = series_detail_acceptance
+settle_preview_telemetry()
 json.dump(manifest, open(os.path.join(out, "build.json"), "w"))
 if MISSING:
     print("INCOMPLETE: missing required screens: " + ", ".join(MISSING), flush=True)

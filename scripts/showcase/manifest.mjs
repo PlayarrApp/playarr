@@ -9,8 +9,6 @@ import { fileURLToPath } from "node:url";
 // Public screenshot locations (keep in sync with scripts/ci/check-public-screenshots.sh).
 export const PUBLIC_DIRS = [
   "docs/assets/readme/screenshots",
-  "site/src/assets/screenshots",
-  "site/public/screenshots",
   "clients/android/fastlane/metadata/android",
   "clients/ios/fastlane/screenshots",
   "clients/ios/fastlane/metadata",

@@ -5,16 +5,26 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, validateSuite } from "./suite-lib.mjs";
+import { assertCanonicalHomeProgress, expandKeys, focusForCheck, pinnedCatalogFiles, resetProgress, routeMatches, routeStateLabel, validateSuite } from "./suite-lib.mjs";
 import { resolveCaptureEnvironment } from "./capture-state.mjs";
 import { appendCalendarFocusTransition, appendSafeRouteTransition, applyParityLine, calendarCellLeftEdgeAction, calendarFocusTransitionError, calendarReadinessSnapshot, createParityState, hasFreshBrowseFocus, hasFreshCalendarContent, hasFreshCalendarDialogClosure, hasFreshCalendarFocus, hasFreshCalendarView, hasFreshHomeContentFocus, hasFreshProfilesScreen, hasFreshScreenFocus, isActivePlayerResponse, isLaunchErrorBody, parseCalendarContent, parseCalendarDialog, parseCalendarFocus, requestEcp, routeForState as rokuRouteForState, safeRouteSnapshot, sampleBackgroundPixel, spawnSyncBinary, splitDebugFrames, themePixelMatches, validateRunArgs as validateRokuRunArgs } from "./drivers/roku.mjs";
 import { artReadiness } from "./roku/art-readiness.mjs";
+import { CAPTURE_REGION, pinCapture, readinessMode } from "./suite-lib.mjs";
 import { createDriver as createAndroidTvDriver } from "./drivers/android-tv.mjs";
+// Fixture drivers here are not stable-capable; stable is the suite default, so these tests opt out.
+process.env.PARITY_STABLE ??= "0";
 
 const suite = JSON.parse(readFileSync(new URL("./suite.json", import.meta.url), "utf8"));
 const legend = ["home", "movies", "series", "music", "calendar-month", "calendar-week", "calendar-agenda", "search", "film-detail", "series-detail", "settings", "filters", "profiles", "player-controls", "actions"];
 
 test("suite.json is valid and matches the legend screens", () => assert.deepEqual(validateSuite(suite, legend), []));
+test("Home remains captured in both themes and its web rail navigation reference stays pinned", () => {
+  const screens = JSON.parse(readFileSync(new URL("./screens.json", import.meta.url), "utf8"));
+  const expected = JSON.parse(readFileSync(new URL("./expected.web.json", import.meta.url), "utf8"));
+  assert.ok(screens.screens.some((screen) => screen.id === "home"));
+  assert.deepEqual(screens.themes, ["light", "dark"]);
+  assert.deepEqual(expected.dpad["home-left-nav"].position, { rail: "nav", index: 2 });
+});
 test("validator rejects a bad suite", () => {
   const s = structuredClone(suite);
   s.screens[1].keys = ["sideways"];
@@ -32,6 +42,27 @@ test("routeMatches", () => {
   assert.ok(!routeMatches("/calendar?view=week", "/calendar?view=month"));
 });
 
+test("route state observations preserve Home as a non-empty state", () => {
+  assert.equal(routeStateLabel("/"), "home");
+  assert.equal(routeStateLabel("/?tab=home"), "home");
+  assert.equal(routeStateLabel("/movies/sample-id?panel=filters"), "movies/:id");
+  assert.throws(() => routeStateLabel(null), /no valid route/);
+  assert.throws(() => routeStateLabel(""), /no valid route/);
+});
+
+test("player-back-back observes Home after two back actions", async () => {
+  const check = suite.dpad.find(({ id }) => id === "player-back-back");
+  assert.deepEqual(check.keys, ["back", "back"]);
+  const driver = {
+    currentRoute: "/player/sample-id",
+    async key() { this.currentRoute = this.currentRoute === "/player/sample-id" ? "/movies/sample-id" : "/"; },
+    async location() { return this.currentRoute; },
+  };
+  for (const key of check.keys) await driver.key(key);
+  assert.equal(await driver.location(), "/");
+  assert.equal(routeStateLabel(await driver.location()), "home");
+});
+
 test("stable catalog lookup requires explicitly resolved account credentials", async () => {
   assert.deepEqual(await pinnedCatalogFiles(suite, {}), []);
   await assert.rejects(pinnedCatalogFiles(suite, {}, { required: true }), /resolved isolated account credentials/);
@@ -47,6 +78,13 @@ test("stable catalog lookup requires explicitly resolved account credentials", a
   });
   assert.equal(resolved.PLAYARR_USERNAME, "isolated-user");
   assert.equal(resolved.PLAYARR_SERVER_URL, "https://example.com");
+  const overridden = resolveCaptureEnvironment("web-capture-10620", {}, {
+    PLAYARR_PARITY_WEB_CAPTURE_10620_USERNAME: "isolated-user",
+    PLAYARR_PARITY_WEB_CAPTURE_10620_PASSWORD: "isolated-password",
+    PLAYARR_TEST_SERVER_URL: "https://override.example.com",
+    PLAYARR_DEVICE_TEST_SERVER_URL: "https://fallback.example.com",
+  });
+  assert.equal(overridden.PLAYARR_SERVER_URL, "https://override.example.com");
 });
 
 test("stable catalog lookup pins available episode files and tolerates episodes without files", async () => {
@@ -68,6 +106,109 @@ test("stable catalog lookup pins available episode files and tolerates episodes 
     assert.deepEqual(files, ["film-file", "episode-file", "another-episode-file"]);
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test("Home fixture preflight verifies one configured deck row with an approved current identity and performs no writes", async () => {
+  const filmFile = "12345678-1234-4234-8234-1234567890ab";
+  const calls = [];
+  const env = { PLAYARR_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "device-test", PLAYARR_PASSWORD: "secret",
+    PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID: filmFile };
+  const fetchImpl = async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    calls.push({ path, method: options.method ?? "GET" });
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "device-test", is_current: true }]));
+    if (path.endsWith("/playback/progress")) return new Response(JSON.stringify([{ media_file_id: filmFile, state: "part_watched", position_ms: 250, duration_ms: 1000 }]));
+    throw new Error("unexpected request");
+  };
+  const verified = await assertCanonicalHomeProgress(env, fetchImpl);
+  assert.deepEqual({ expectedPartWatched: verified.expectedPartWatched, actualPartWatched: verified.actualPartWatched }, { expectedPartWatched: 1, actualPartWatched: 1 });
+  assert.match(verified.signature, /^[0-9a-f]{64}$/);
+  assert.deepEqual(calls.map(({ path }) => path.split("/").slice(-2).join("/")), ["auth/login", "users/profiles", "playback/progress"]);
+  assert.ok(calls.every(({ method }) => method === "GET" || method === "POST"));
+});
+
+test("Home fixture preflight rejects extra or missing in-progress rows", async () => {
+  const filmFile = "12345678-1234-4234-8234-1234567890ab";
+  const extraFile = "abcdefab-cdef-4abc-8def-abcdefabcdef";
+  const env = { PLAYARR_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "device-test", PLAYARR_PASSWORD: "fixture-pass",
+    PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID: filmFile };
+  const fetchFor = (rows) => async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "device-test", is_current: true }]));
+    if (path.endsWith("/playback/progress")) return new Response(JSON.stringify(rows));
+    return new Response(JSON.stringify({ media_file_id: filmFile }));
+  };
+  await assert.rejects(assertCanonicalHomeProgress(env, fetchFor([
+    { media_file_id: filmFile, state: "part_watched", position_ms: 20, duration_ms: 100 }, { media_file_id: extraFile, state: "part_watched", position_ms: 30, duration_ms: 100 },
+  ])), /expected 1 canonical part_watched row, found 2/);
+  await assert.rejects(assertCanonicalHomeProgress(env, fetchFor([
+    { media_file_id: extraFile, state: "part_watched", position_ms: 20, duration_ms: 100 },
+  ])), /expected 1 canonical part_watched row, found 1/);
+  await assert.rejects(assertCanonicalHomeProgress(env, fetchFor([])), /expected 1 canonical part_watched row, found 0/);
+  await assert.rejects(assertCanonicalHomeProgress(env, fetchFor([
+    { media_file_id: filmFile, state: "part_watched", position_ms: 20, duration_ms: 100 }, { media_file_id: filmFile, state: "part_watched", position_ms: 20, duration_ms: 100 },
+  ])), /progress response schema/);
+});
+
+test("Home fixture preflight fails closed on unapproved identity and malformed progress", async () => {
+  const filmFile = "12345678-1234-4234-8234-1234567890ab";
+  const env = { PLAYARR_SERVER_URL: "https://example.com", PLAYARR_USERNAME: "other-user", PLAYARR_PASSWORD: "fixture-pass",
+    PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID: filmFile };
+  let calls = 0;
+  await assert.rejects(assertCanonicalHomeProgress(env, async () => { calls++; }), /matching a configured Device Test username/);
+  assert.equal(calls, 0, "unapproved account is rejected before login");
+  const approvedEnv = { ...env, PLAYARR_USERNAME: "device-test" };
+  const noCanonicalFile = { ...approvedEnv };
+  delete noCanonicalFile.PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID;
+  await assert.rejects(assertCanonicalHomeProgress(noCanonicalFile, async () => { calls++; }), /requires PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID/);
+  assert.equal(calls, 0, "missing canonical fixture fails before login");
+  let progressReadsAfterIdentityFailure = 0;
+  const fetchImpl = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "different-user", is_current: true }]));
+    if (path.endsWith("/playback/progress")) progressReadsAfterIdentityFailure++;
+    return new Response("{}", { status: 200 });
+  };
+  await assert.rejects(assertCanonicalHomeProgress(approvedEnv, fetchImpl), /authenticated identity mismatch/);
+  assert.equal(progressReadsAfterIdentityFailure, 0, "progress is not read after an identity mismatch");
+  const malformedProgress = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "device-test", is_current: true }]));
+    if (path.includes("/catalog/")) return new Response(JSON.stringify({ media_file_id: filmFile }));
+    return new Response(JSON.stringify([{ media_file_id: filmFile, state: "part_watched", position_ms: "250", duration_ms: 1000 }]));
+  };
+  await assert.rejects(assertCanonicalHomeProgress(approvedEnv, malformedProgress), /progress response schema/);
+  const apiError = async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/auth/login")) return new Response(JSON.stringify({ access_token: "fixture-token" }));
+    if (path.endsWith("/users/profiles")) return new Response(JSON.stringify([{ username: "device-test", is_current: true }]));
+    return new Response("unavailable", { status: 503 });
+  };
+  await assert.rejects(assertCanonicalHomeProgress(approvedEnv, apiError), /progress lookup failed \(503\)/);
+});
+
+test("Home fixture preflight is read-only and runs before the iOS driver starts", () => {
+  const runnerSource = readFileSync(new URL("./suite-run.mjs", import.meta.url), "utf8");
+  const preflight = runnerSource.indexOf('if (preflightHomeFixture) {\n  await assertCanonicalHomeProgress(process.env);');
+  const start = runnerSource.indexOf("await driver.start?.({ theme: themes[0] });");
+  assert.ok(preflight >= 0 && start > preflight, "canonical Home state is checked before app launch");
+
+  const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
+  assert.ok(testRoot, "PLAYARR_PARITY_TEST_OUT must point to task-scoped .data scratch space");
+  const out = mkdtempSync(join(testRoot, "home-preflight-reset-"));
+  try {
+    const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+    const result = spawnSync(process.execPath, [runner, "--driver", "./drivers/apple-ios.mjs", "--out", out,
+      "--only", "screens", "--screens", "home", "--reset-progress", "--preflight-home-fixture"], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Home fixture preflight cannot run with --reset-progress/);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
   }
 });
 
@@ -639,6 +780,106 @@ test("player toggle reference records exact web state and rejects an unchanged p
   }
 });
 
+test("reference fail-fast takes one D-pad observation and aborts without replacing expected.json", () => {
+  const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
+  if (testRoot) mkdirSync(testRoot, { recursive: true });
+  const out = mkdtempSync(join(testRoot || tmpdir(), "playarr-parity-fail-fast-"));
+  const driver = join(out, "driver.mjs");
+  const trace = join(out, "trace.log");
+  const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+  const expectedContents = JSON.stringify({ suite: 1, dpad: {}, performance: {} });
+  const mismatchedExpected = JSON.stringify({ suite: 1, dpad: { "home-right": { label: "Other item", position: { rail: 0, index: 1 } } }, performance: {} });
+  writeFileSync(join(out, "expected.json"), expectedContents);
+  writeFileSync(driver, `
+    import { appendFileSync } from "node:fs";
+    const trace = (entry) => appendFileSync(process.env.PARITY_TEST_TRACE, entry + "\\n");
+    export async function createDriver() {
+      return {
+        async start() {}, async setTheme() {}, async home() {}, async location() { return "/"; },
+        async focused() {
+          trace("focus");
+          return { label: "Home item", position: process.env.PARITY_TEST_MODE === "wrong-start" ? { rail: 8, index: 8 } : { rail: 0, index: 0 } };
+        },
+        async key() { trace("key"); if (process.env.PARITY_TEST_MODE === "key-error") throw new Error("key failed; bearer=secret-fixture-label"); },
+        async stop() { trace("stop"); },
+      };
+    }
+  `);
+  const run = (mode, scoring = false) => spawnSync(process.execPath, [runner, "--driver", driver, "--out", out, "--only", "dpad", "--checks", "home-right,home-down", ...(scoring ? ["--expected", join(out, "expected.json")] : ["--reference"]), "--fail-fast"], {
+    encoding: "utf8",
+    env: { ...process.env, PARITY_TEST_TRACE: trace, PARITY_TEST_MODE: mode },
+  });
+  try {
+    for (const [mode, expectedTrace, scoring] of [
+      ["wrong-start", ["focus", "stop"], false],
+      ["key-error", ["focus", "key", "stop"], false],
+      ["normal", ["focus", "key", "focus", "stop"], true],
+    ]) {
+      writeFileSync(trace, "");
+      const contents = scoring ? mismatchedExpected : expectedContents;
+      writeFileSync(join(out, "expected.json"), contents);
+      const result = run(mode, scoring);
+      assert.notEqual(result.status, 0, result.stdout);
+      assert.deepEqual(readFileSync(trace, "utf8").trim().split("\n"), expectedTrace);
+      assert.equal(readFileSync(join(out, "expected.json"), "utf8"), contents);
+      assert.ok(existsSync(join(out, "failure.json")), result.stderr || result.stdout);
+      const report = JSON.parse(readFileSync(join(out, "failure.json"), "utf8"));
+      assert.deepEqual(Object.keys(report).sort(), ["category", "id", "route", "stage", "suite"]);
+      assert.equal(report.stage, "dpad");
+      assert.equal(report.id, "home-right");
+      assert.equal(report.route, "home");
+      assert.equal(report.category, mode === "wrong-start" ? "focus-start-mismatch" : "check-failed");
+      assert.doesNotMatch(JSON.stringify(report), /secret-fixture-label|bearer|key failed/i);
+    }
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("fail-fast performance and download failures report their case and clean up downloads", () => {
+  const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
+  if (testRoot) mkdirSync(testRoot, { recursive: true });
+  const out = mkdtempSync(join(testRoot || tmpdir(), "playarr-parity-case-fail-fast-"));
+  const driver = join(out, "driver.mjs");
+  const trace = join(out, "trace.log");
+  const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+  writeFileSync(driver, `
+    import { appendFileSync } from "node:fs";
+    const trace = (entry) => appendFileSync(process.env.PARITY_TEST_TRACE, entry + "\\n");
+    export async function createDriver() {
+      return {
+        supports: { downloads: true },
+        async play(check) { trace("play:" + check.id); return { state: "stopped", advancedSeconds: 0, startSeconds: 0 }; },
+        async download(check) { trace("download:" + check.id); return { state: "error" }; },
+        async cleanupDownloads() { trace("cleanupDownloads"); },
+        async stop() { trace("stop"); },
+      };
+    }
+  `);
+  const run = (only) => spawnSync(process.execPath, [runner, "--driver", driver, "--out", out, "--only", only, "--reference", "--fail-fast"], {
+    encoding: "utf8",
+    env: { ...process.env, PARITY_TEST_TRACE: trace },
+  });
+  try {
+    for (const [only, expectedTrace, stage, id] of [
+      ["performance", ["play:a", "stop"], "performance", "a"],
+      ["downloads", ["download:movie-download", "cleanupDownloads", "stop"], "downloads", "movie-download"],
+    ]) {
+      writeFileSync(trace, "");
+      const result = run(only);
+      assert.notEqual(result.status, 0, result.stdout);
+      assert.deepEqual(readFileSync(trace, "utf8").trim().split("\n"), expectedTrace);
+      assert.ok(existsSync(join(out, "failure.json")), result.stderr || result.stdout);
+      const report = JSON.parse(readFileSync(join(out, "failure.json"), "utf8"));
+      assert.equal(report.stage, stage);
+      assert.equal(report.id, id);
+      assert.equal(report.category, "check-failed");
+    }
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
 test("non-stable suite capture skips stable-only driver methods and writes screens and D-pad results", () => {
   const testRoot = process.env.PLAYARR_PARITY_TEST_OUT;
   assert.ok(testRoot, "PLAYARR_PARITY_TEST_OUT must be set by test:suite");
@@ -665,7 +906,7 @@ export async function createDriver() {
   const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
   const expected = new URL("./expected.web.json", import.meta.url).pathname;
   const env = { ...process.env };
-  for (const name of ["PARITY_STABLE", "PARITY_CLIENT", "PARITY_ACCOUNT", "PARITY_PLAYBACK_PHASE_FILE", "PLAYARR_PLAYBACK_PHASE_FILE", "PARITY_FIXED_NOW"]) delete env[name];
+  for (const name of ["PARITY_CLIENT", "PARITY_ACCOUNT", "PARITY_PLAYBACK_PHASE_FILE", "PLAYARR_PLAYBACK_PHASE_FILE", "PARITY_FIXED_NOW"]) delete env[name];
   const result = spawnSync(process.execPath, [runner, "--driver", driver, "--out", out, "--only", "screens,dpad", "--screens", "home", "--checks", "home-right", "--expected", expected], { encoding: "utf8", env });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.ok(existsSync(join(out, "dark", "home.png")));
@@ -702,7 +943,7 @@ globalThis.fetch = async () => { writeFileSync(${JSON.stringify(networkMarker)},
 `);
   const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
   const env = { ...process.env };
-  for (const name of ["PARITY_STABLE", "PARITY_CLIENT", "PARITY_ACCOUNT", "PLAYARR_PLAYBACK_PHASE_FILE"]) delete env[name];
+  for (const name of ["PARITY_CLIENT", "PARITY_ACCOUNT", "PLAYARR_PLAYBACK_PHASE_FILE"]) delete env[name];
   const result = spawnSync(process.execPath, ["--import", preload, runner, "--driver", driver, "--out", out, "--only", "screens", "--screens", "home"], { encoding: "utf8", env: { ...env, HOME: home, PLAYARR_SERVER_URL: "http://localhost", PLAYARR_USERNAME: "fixture-user", PLAYARR_PASSWORD: "fixture-pass" } });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(existsSync(marker), false);
@@ -746,7 +987,7 @@ globalThis.fetch = async (url, options = {}) => {
   writeFileSync(join(out, "downloads.json"), "preserve-download-results");
   const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
   const env = { ...process.env, PLAYARR_SERVER_URL: "http://localhost", PLAYARR_USERNAME: "fixture-user", PLAYARR_PASSWORD: "fixture-pass", PARITY_TEST_PUT_COUNT: putCount };
-  for (const name of ["PARITY_STABLE", "PARITY_CLIENT", "PARITY_ACCOUNT", "PLAYARR_PLAYBACK_PHASE_FILE"]) delete env[name];
+  for (const name of ["PARITY_CLIENT", "PARITY_ACCOUNT", "PLAYARR_PLAYBACK_PHASE_FILE"]) delete env[name];
   const child = spawn(process.execPath, ["--import", preload, runner, "--driver", driver, "--out", out, "--only", "downloads", "--cases", "offline-play", "--reset-progress"], {
     env,
     stdio: ["ignore", "pipe", "pipe"],
@@ -803,7 +1044,7 @@ export async function createDriver() { let finishPlay; const keepAlive = setInte
 `);
   const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
   const env = { ...process.env };
-  for (const name of ["PARITY_STABLE", "PARITY_CLIENT", "PARITY_ACCOUNT", "PLAYARR_PLAYBACK_PHASE_FILE"]) delete env[name];
+  for (const name of ["PARITY_CLIENT", "PARITY_ACCOUNT", "PLAYARR_PLAYBACK_PHASE_FILE"]) delete env[name];
   const child = spawn(process.execPath, [runner, "--driver", driver, "--out", out, "--only", "performance", "--reference"], { env, stdio: ["ignore", "pipe", "pipe"] });
   let stdout = ""; let stderr = "";
   const closed = once(child, "close");
@@ -827,4 +1068,50 @@ test("committed web expected.json covers every D-pad check, never null", () => {
   const exp = JSON.parse(readFileSync(new URL("./expected.web.json", import.meta.url), "utf8"));
   for (const d of suite.dpad) assert.ok(exp.dpad[d.id], `${d.id} has an expected value`);
   for (const d of suite.dpad.filter((x) => x.compare === "position")) assert.ok(exp.dpad[d.id].position, `${d.id} has a position`);
+});
+
+test("stable capture is the default and PARITY_STABLE=0 is the only opt-out", () => {
+  const runner = new URL("./suite-run.mjs", import.meta.url).pathname;
+  const driver = new URL("./test-drivers/long-press-actions.mjs", import.meta.url).pathname;
+  const run = (stable) => spawnSync(process.execPath, [runner, "--driver", driver, "--out", join(tmpdir(), "playarr-stable-default-unused"), "--only", "screens"], { encoding: "utf8", env: { ...process.env, PARITY_STABLE: stable, PARITY_CLIENT: "" } });
+  const stableRun = run("");
+  assert.notEqual(stableRun.status, 0);
+  assert.match(stableRun.stderr, /stable capture requires isolated account state|stable catalog lookup/);
+  assert.doesNotMatch(run("0").stderr, /stable (capture|catalog)/);
+});
+
+test("strict readiness applies only to pinned runs on drivers that declare it", async () => {
+  assert.equal(readinessMode({ strictReadiness: true }, true), "strict");
+  assert.equal(readinessMode({ strictReadiness: true }, false), "standard");
+  assert.equal(readinessMode({}, true), "standard");
+  assert.equal(readinessMode(undefined, true), "standard");
+  assert.equal(createAndroidTvDriver({ env: {}, accountGuard: async () => {} }).strictReadiness, undefined);
+  for (const file of ["web", "apple-ios"]) assert.match(readFileSync(new URL(`./drivers/${file}.mjs`, import.meta.url), "utf8"), /strictReadiness: true/);
+});
+
+test("web refs and clients pin the same zone and locale, matching screens.json determinism", () => {
+  const spec = JSON.parse(readFileSync(new URL("./screens.json", import.meta.url), "utf8")).determinism;
+  assert.deepEqual({ ...CAPTURE_REGION }, { timeZone: spec.timezone, locale: spec.locale });
+  assert.match(readFileSync(new URL("./capture-refs.mjs", import.meta.url), "utf8"), /setDeterministicCapture\(\{ fixedNow, disableAnimations: true, \.\.\.CAPTURE_REGION \}\)/);
+  assert.match(readFileSync(new URL("./suite-run.mjs", import.meta.url), "utf8"), /pinCapture\(driver, \{ fixedNow/);
+  assert.match(readFileSync(new URL("./suite-lib.mjs", import.meta.url), "utf8"), /setDeterministicCapture\(\{ fixedNow, disableAnimations: true, \.\.\.CAPTURE_REGION \}\)/);
+});
+
+test("a driver that cannot pin runs unpinned on a default run, but --stable stays fatal", async () => {
+  const lines = [], log = (line) => lines.push(line);
+  const unsupported = { async setDeterministicCapture() { throw new Error("Roku stable deterministic capture unsupported: no clock"); } };
+  assert.equal(await pinCapture(unsupported, { fixedNow: "2026-10-07T12:00:00Z", log }), false);
+  assert.match(lines.join("\n"), /clock pin skipped: Roku stable/);
+  await assert.rejects(pinCapture(unsupported, { fixedNow: "2026-10-07T12:00:00Z", explicit: true, log }), /unsupported/);
+  await assert.rejects(pinCapture({}, { fixedNow: "x", explicit: true, log }), /lacks setDeterministicCapture/);
+  assert.equal(await pinCapture({}, { fixedNow: "x", log }), false);
+  const broken = { async setDeterministicCapture() { throw new Error("adb device offline"); } };
+  await assert.rejects(pinCapture(broken, { fixedNow: "x", log }), /offline/);
+  const calls = [];
+  assert.equal(await pinCapture({ async setDeterministicCapture(o) { calls.push(o); } }, { fixedNow: "2026-10-07T12:00:00Z", log }), true);
+  assert.deepEqual(calls, [{ fixedNow: "2026-10-07T12:00:00Z", disableAnimations: true, timeZone: "UTC", locale: "en-GB" }]);
+});
+
+test("web-ref capture puts the canonical deck item inside its captured progress scope", () => {
+  assert.match(readFileSync(new URL("./capture-refs.mjs", import.meta.url), "utf8"), /const stateFiles = \[\.\.\.new Set\(\[[^\]]*deckScope\]\)\]/);
 });

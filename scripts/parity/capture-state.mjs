@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, rm, rmdir, writeFile, readFile, unlink, rename } from "node:fs/promises";
+import { hostname } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { join } from "node:path";
@@ -24,7 +25,7 @@ function clientEnvironment(client, env, secrets) {
     ? { username: secrets.PLAYARR_DEVICE_TEST_DPAD_USERNAME ?? env.PLAYARR_DEVICE_TEST_DPAD_USERNAME, password: secrets.PLAYARR_DEVICE_TEST_DPAD_PASSWORD ?? env.PLAYARR_DEVICE_TEST_DPAD_PASSWORD }
     : parityCredentials({ ...env, PARITY_CLIENT: client }, secrets);
   if (!credentials.username || !credentials.password) throw new Error("missing explicitly selected parity account credentials");
-  const serverUrl = env.PLAYARR_SERVER_URL ?? env.PLAYARR_DEVICE_TEST_SERVER_URL ?? secrets.PLAYARR_DEVICE_TEST_SERVER_URL;
+  const serverUrl = env.PLAYARR_TEST_SERVER_URL ?? env.PLAYARR_SERVER_URL ?? env.PLAYARR_DEVICE_TEST_SERVER_URL ?? secrets.PLAYARR_TEST_SERVER_URL ?? secrets.PLAYARR_SERVER_URL ?? secrets.PLAYARR_DEVICE_TEST_SERVER_URL;
   if (!serverUrl) throw new Error("PLAYARR_SERVER_URL or PLAYARR_DEVICE_TEST_SERVER_URL is required");
   return { ...env, PARITY_CLIENT: client, PARITY_ACCOUNT: client, PLAYARR_SERVER_URL: serverUrl.replace(/\/$/, ""), PLAYARR_USERNAME: credentials.username, PLAYARR_PASSWORD: credentials.password, PARITY_USERNAME_KEY: dpadOptIn ? "PLAYARR_DEVICE_TEST_DPAD_USERNAME" : keys.username, PARITY_PASSWORD_KEY: dpadOptIn ? "PLAYARR_DEVICE_TEST_DPAD_PASSWORD" : keys.password };
 }
@@ -93,7 +94,7 @@ export async function assertAndroidDeviceAccount({ session, expectedUsername, ex
   if (typeof session?.accessToken !== "string" || !session.accessToken || !session.userId) throw new Error("Android device account does not match the selected approved account");
   let response, profiles;
   try {
-    response = await fetchImpl(`${serverUrl}/api/v1/users/profiles`, { headers: { authorization: `Bearer ${session.accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(5000) });
+    response = await fetchImpl(`${serverUrl}/api/v1/users/profiles`, { headers: { authorization: `Bearer ${session.accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error();
     profiles = await response.json();
   } catch { throw new Error("Android device account identity check failed"); }
@@ -106,9 +107,10 @@ export async function readAndroidDeviceSession(env = process.env, persistToken =
   const adb = env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb";
   const pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
   try {
-    const { stdout } = await execFileAsync(adb, ["exec-out", "run-as", pkg, "cat", "files/datastore/playarr_client_prefs.preferences_pb"], { env, timeout: 10_000, maxBuffer: 1 << 20, encoding: "buffer" });
+    const { stdout } = await execFileAsync(adb, ["exec-out", "run-as", pkg, "cat", "files/datastore/playarr_client_prefs.preferences_pb"], { env, timeout: 30_000, maxBuffer: 1 << 20, encoding: "buffer" });
     const session = parseAndroidDeviceSession(stdout.toString("hex"));
-    await (persistToken ?? ((token) => storeSecrets({ PLAYARR_PARITY_ANDROID_OBSERVED_ACCESS_TOKEN: token })))(session.accessToken);
+    // The observed-token record is a convenience: ~/.secrets is shared by every worker, so a busy write lock must not fail the guard.
+    try { await (persistToken ?? ((token) => storeSecrets({ PLAYARR_PARITY_ANDROID_OBSERVED_ACCESS_TOKEN: token })))(session.accessToken); } catch { /* keep the session */ }
     return session;
   } catch { throw new Error("Android device session unavailable for account guard"); }
 }
@@ -136,7 +138,7 @@ async function acquireLock(client, env) {
   while (true) {
     try {
       await mkdir(dir, { mode: 0o700 });
-      try { await writeFile(join(dir, "owner.json"), JSON.stringify({ client, pid: process.pid, host: process.env.HOSTNAME ?? "unknown", acquired_at: new Date().toISOString() }), { mode: 0o600, flag: "wx" }); }
+      try { await writeFile(join(dir, "owner.json"), JSON.stringify({ client, pid: process.pid, host: hostname(), acquired_at: new Date().toISOString() }), { mode: 0o600, flag: "wx" }); }
       catch (error) { await rmdir(dir).catch(() => {}); throw error; }
       return async () => { await rm(join(dir, "owner.json"), { force: true }); await rmdir(dir); };
     } catch (error) {
@@ -146,7 +148,7 @@ async function acquireLock(client, env) {
         const ownerPath = join(dir, "owner.json");
         const ownerBytes = await readFile(ownerPath);
         const owner = JSON.parse(ownerBytes.toString("utf8"));
-        if (owner.host === (process.env.HOSTNAME ?? "unknown") && Number.isInteger(owner.pid) && owner.pid > 1) {
+        if ((owner.host === hostname() || owner.host === "unknown") && Number.isInteger(owner.pid) && owner.pid > 1) {
           try { process.kill(owner.pid, 0); }
           catch (probeError) {
             if (probeError.code === "ESRCH") {

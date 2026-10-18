@@ -192,7 +192,7 @@ internal sealed class LibraryScreen : IPage
             audioSection, subsSection,
         };
         _filters = new FiltersDrawer(_env, "Library controls", sections, CloseFilters, Toast);
-        _ = LoadFacetsAsync(audioSection, subsSection);
+        LoadFacetsAsync(audioSection, subsSection);
         _root.Add(_filters.Root);
         _tile?.Show(false); // the drawer blurs what is behind it on web; nothing of the tile shows through
     }
@@ -215,12 +215,14 @@ internal sealed class LibraryScreen : IPage
     private List<string> _audio = new(), _subs = new();
 
     /// <summary>Web catalogLanguages: the languages (with work counts) for the current filters; the drawer's two selects fill in when they arrive.</summary>
-    private async Task LoadFacetsAsync(FilterSection audio, FilterSection subs)
+    private void LoadFacetsAsync(FilterSection audio, FilterSection subs) => _env.Images.Track(() => LoadFacetsCoreAsync(audio, subs));
+
+    private async Task LoadFacetsCoreAsync(FilterSection audio, FilterSection subs)
     {
         try
         {
             var f = await _env.Api.GetCatalogLanguagesAsync(_kind, true).ConfigureAwait(false);
-            SynchronizationContextHolder.Post(() =>
+            await AuthImage.OnUiAsync(() =>
             {
                 audio.Facets = f.Audio.OrderByDescending(x => x.Count).ToList(); subs.Facets = f.Subtitle.OrderByDescending(x => x.Count).ToList();
                 _filters?.Refresh();
@@ -229,7 +231,7 @@ internal sealed class LibraryScreen : IPage
         catch (Exception e)
         {
             Dbg.Log("LIB languages failed: " + e.Message);
-            SynchronizationContextHolder.Post(() => { audio.FacetsFailed = subs.FacetsFailed = true; _filters?.Refresh(); });
+            await AuthImage.OnUiAsync(() => { audio.FacetsFailed = subs.FacetsFailed = true; _filters?.Refresh(); });
         }
     }
 

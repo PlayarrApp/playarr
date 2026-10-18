@@ -70,6 +70,8 @@ export interface FilterDrawerProps {
   onFocused?: () => void;
   /** Optional parity identity for the drawer close button. */
   closeFocusId?: string;
+  /** Default true: the close button takes focus when the drawer opens. The title actions drawer sets false so Play holds it, as on web. */
+  closeTakesFocus?: boolean;
   /** The 430 px drawer of the title page's playback settings, over the 360 px one of the libraries and the calendar. */
   wide?: boolean;
 }
@@ -94,7 +96,7 @@ function layoutSections(sections: DrawerSection[]): {tops: number[]; end: number
   return {tops, end: y};
 }
 
-export function FilterDrawer({kicker, title, closeLabel, onClose, sections, footer, footerHeight = 0, onFocused, closeFocusId, wide}: FilterDrawerProps): React.ReactElement {
+export function FilterDrawer({kicker, title, closeLabel, onClose, sections, footer, footerHeight = 0, onFocused, closeFocusId, closeTakesFocus = true, wide}: FilterDrawerProps): React.ReactElement {
   const {colour} = useTheme();
   const focusOwner = useRef({}).current;
   useBackLayer(true, onClose);
@@ -148,7 +150,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
             <CloseButton label={closeLabel} onPress={onClose} onFocused={() => {
               if (closeFocusId) reportFocus(closeFocusId, undefined, focusOwner);
               onFocused?.();
-            }} x={wide ? 1826 - WIDE_X : undefined} />
+            }} x={wide ? 1826 - WIDE_X : undefined} takesFocus={closeTakesFocus} />
             {sections.map((section, index) => {
               const top = tops[index]!;
               return (
@@ -185,20 +187,21 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
 }
 
 /** The drawer's close button. It takes focus itself when the drawer opens, even when a tile of the action column held it. */
-export function CloseButton({label, onPress, onFocused, x = 1824.7 - DRAWER_X}: {label: string; onPress: () => void; onFocused?: () => void; x?: number}): React.ReactElement {
+export function CloseButton({label, onPress, onFocused, x = 1824.7 - DRAWER_X, takesFocus = true}: {label: string; onPress: () => void; onFocused?: () => void; x?: number; takesFocus?: boolean}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   const ref = useRef<View>(null);
   useEffect(() => {
+    if (!takesFocus) return undefined;
     const id = setTimeout(() => focusNode(ref), 300);
     return () => clearTimeout(id);
-  }, []);
+  }, [takesFocus]);
   return (
     <Pressable
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
-      hasTVPreferredFocus
+      hasTVPreferredFocus={takesFocus}
       onFocus={() => {
         setFocused(true);
         onFocused?.();

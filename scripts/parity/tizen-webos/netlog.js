@@ -1,4 +1,8 @@
 (function () {
+  // Parity pin (scripts/parity/drivers/tizen-webos.mjs): the driver keeps a script in localStorage that fixes Date, zone and locale; run it first so the app never renders unpinned.
+  try { var pin = localStorage.getItem("__parityPin"); if (pin) (0, eval)(pin); } catch (e) {}
+})();
+(function () {
   var SINK = "http://10.0.2.2:18733/";
   function send(kind, data) {
     try {

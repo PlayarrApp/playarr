@@ -15,7 +15,7 @@ export function sameCaptureBuildIdentity(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-export function createCaptureManifest({ suite, buildIdentity, clock, state, captures, checkedAt = new Date().toISOString() }) {
+export function createCaptureManifest({ suite, buildIdentity, clock, state, readiness = "strict", captures, checkedAt = new Date().toISOString() }) {
   const build = buildShaFromIdentity(buildIdentity);
   if (!Number.isFinite(Date.parse(checkedAt))) throw new Error("capture manifest checked_at must be an ISO timestamp");
   if (!Array.isArray(captures) || captures.length === 0) throw new Error("capture manifest requires at least one screenshot");
@@ -33,7 +33,7 @@ export function createCaptureManifest({ suite, buildIdentity, clock, state, capt
   return {
     suite,
     checked_at: checkedAt,
-    provenance: { suite, build, clock, state },
+    provenance: { suite, build, clock, state, readiness },
     captures: rows,
   };
 }

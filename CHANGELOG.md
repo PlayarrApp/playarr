@@ -13,6 +13,73 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The hosted iOS parity workflow passes its pinned clock to the app as text, so iPhone captures confirm the fixed clock.
+- A release dry run no longer fails in the web deploy job's post-job cache save when the deploy steps are skipped.
+- The release collects the Xbox package under its real `.msix` name and picks the HarmonyOS HAP by name, failing the release if the HAP is missing, so `clients.json` no longer lists Xbox as pending.
+- The Samsung TV install page now says Tizen 6.5 and 2022-or-newer TVs, matching the app's real floor (English, Japanese and Thai).
+- Web: the Downloads notifications toggle moves into the page action column and the Downloads panel keeps clear of the action bar, so nothing overlaps.
+- HarmonyOS TV Home opens aligned with the Library grid like web: rails and cards start 53 vp inside the rail column and the first heading sits at the Library first-row top; a focused later rail still centres.
+- The Nura capture helper clicks the display's left margin before each screenshot, so a sheet or drawer that opened after a long idle wait is no longer missed.
+- Fire TV: the card behind the title actions drawer no longer keeps its focus ring while the drawer is open.
+- Roku: Left from the first Home rail enters the dock on Home again after Home moved to the Library-aligned top.
+- Fix the Xbox playback-quality test to distinguish the legacy bitrate property from the canonical video bitrate property.
+- Add Tizen readiness, account, build, and deterministic clock checks for future parity captures.
+- Add a debug-only sign-out hook that rotates the Tizen test device identity without clearing app data.
+- Apply the suite-declared timezone consistently to web and Tizen deterministic captures.
+- Tizen playback quality now reflects the negotiated source bitrate, subtitle menus show available tracks and the selected track, and Home and series detail pages fade at their scroll edges. Series episode captions remain readable in light mode and synopsis text has room for five lines. Subtitle track selection remains unavailable where the native player cannot select a track.
+- Tizen Calendar Week now keeps all seven day columns reachable with horizontal and per-day vertical focus scrolling, and uses the filters icon for Filters.
+- Send the debug-mirror identity heartbeat from a Web Worker so a device-test guard can judge the signed-in account while renders block the page.
+- Fire TV: Home opens aligned with the Library grid like web (rails start 98 px further left, first rail 240 px higher, 54 px left fade); a focused later rail is held where it was.
+- Harmony preview captures now stop on the first failure, verify the signed-in Device Test account before capture input or screenshots, and refuse to capture when canonical watch-progress seeding fails.
+- HarmonyOS TV Series Detail captures now pass in the Previewer: episode image areas, target visibility and generation scoping reach the capture gate, and focus is waived only where the Previewer cannot deliver it.
+- Load episode watch progress on Harmony TV series details so unseen episode markers can appear.
+- Roku: Home opens aligned with the Library grid like web (rails start 98 px further left, first rail 240 px higher); a focused later rail is held where it was.
+- Match Android phone Home and library card artwork fallbacks to the web client's poster and backdrop ordering.
+- Match the Android phone language filter's expanded chevron and nested Back behaviour to the web client.
+- Show selected Android phone language filters as removable tokens alongside the Add language control.
+- Android phone library language filters now show a bounded, vertically scrollable checkbox list, matching the Web phone layout.
+- Fire TV: the title actions drawer opens with Play focused, as on web, so the close button keeps its light resting colour.
+- Roku: the player draws the web Minimise pill and a bordered round close button; Up from the seek bar reaches them. Minimise ends playback, as Roku cannot keep a mini player behind the browse pages.
+- Match Android phone Home and library card artwork fallbacks to the web client's poster and backdrop ordering.
+- Match the Android phone language filter's expanded chevron and nested Back behaviour to the web client.
+- Android phone library language filters now show a bounded, vertically scrollable checkbox list, matching the Web phone layout.
+- Roku: the left dock packs its first group like the Roku web reference, so Search sits where web's Downloads slot would be and every dock item moves up one step.
+- Revalidate the selected debug-mirror profile and credentials after frame rendering, and send frame identity only through an explicit public-field allow-list. This prevents slow captures from being rejected as stale while aborting if the active account changes.
+- Let the debug-mirror build pin its clock with a `mirrorNow` launch parameter, so TV captures show the same day and time as their web reference; frame timestamps keep using the real clock.
+- Make Nura parity capture fail closed on missing identity verification, stopped apps, route timeouts, capture or hash errors, and unstable frames.
+- Require the Nura parity capture identity guard to validate the isolated app process and signed-in device-test profile before route requests and screenshots, and invalidate stale capture success markers before configuration checks.
+- Make Nura captures fail when VNC fails, preserve full-size output, and require an explicit destination for scaled captures.
+- Roku detail action focus now stays on a valid action when switching between film and series layouts.
+- Native Harmony phone drawers blur their backdrop while keeping the bottom navigation visible above them, matching the web layer order.
+- Route generic Harmony build dependencies through the public npm registry while keeping `@ohos` packages on the HarmonyOS registry.
+- Align Harmony phone preview drawer captures with the frozen Web reference by omitting backdrop blur in the copied preview source while keeping product rendering unchanged (17.10623).
+- Harmony parity captures now stop unless the signed-in current profile matches the approved test account.
+- Home phone rails now let focused card rings and glow render into the reserved rail inset without shifting card or heading positions.
+- Preserve full-viewport positioning for the Harmony phone library alphabet rail inside the shell overlay.
+- Match the Harmony phone alphabet rail letter size, weight, and colours to the web layout.
+- Keep the phone alphabet rail Stack DSL in a dedicated builder so PreviewArkTS/Rollup can parse the Library overlay while preserving transparent hit testing and its layer order.
+- Remove the native-only transparent border from the phone navigation bar; captured tile content was 5 physical pixels to the right of the web reference across the bar, and a recapture is pending.
+- Position the phone navigation bar at the bottom of the screen, above filter overlays and below title actions.
+- Align Harmony phone series detail, Home backdrop, and Calendar agenda layout with the web reference.
+- Preserve detail action sizing while matching the borderless web surface, and keep phone season heading typography scoped to series pages.
+- Match the Home phone backdrop's theme treatment, visible height, and native scrims; Harmony ImageFit.Cover still uses its centred crop because ArkUI exposes no object-position control.
+- Match the Home phone rail's surface fade and the web navigation avatar's edge-to-edge artwork sizing.
+- Batch Harmony preview telemetry into bounded one-shot requests and fail captures when delivery errors occur.
+- Match touch-profile selected-card focus to the web reference by keeping the card at its resting position and drawing the focus ring outside the artwork.
+- Require the Harmony preview capture to acknowledge a selected live card before recording a focused frame, and fail the capture when focus is missing.
+- Avoid the Harmony Previewer HTTP crash by correcting the duplicated curl handle cleanup in the build 31 capture runtime.
+- Fix the Harmony capture script syntax error and fail a capture run directly instead of retrying it five times.
+- Xbox marks the current navigation item with the TV web client's subtle ink tint and scale.
+- Keep stale playback-progress resets out of the Xbox screen and D-pad captures, and pause player-controls at the shared two-second reference position.
+- Xbox Home now matches the web rail inset, responsive vertical spacing, and directional return-to-navigation geometry.
+- Xbox library letter navigation now scrolls within the visible rail, follows the focused title and focuses the selected jump destination.
+- Preserve the focused library card across result refreshes and restore it after returning from a title, while leaving focus on navigation controls when the library did not own focus.
+- Keep the original refresh target through intermediate loading and focus notifications until the target card is restored or the user moves focus.
+- Keep the Xbox library's initial card focus claim active until focus settles, while allowing user input to cancel it.
+- Xbox parity capture waits for native seek completion at the requested frame and emits sanitized player and focus readiness diagnostics.
+- Xbox parity traces report safe HTTP, network, and response diagnostics when direct-play fixture preflight fails.
+- Xbox parity captures now select the native theme control from its traced bounds and confirm the saved choice and effective theme before capturing.
+- Report Xbox theme-picker targets in the same fixed design coordinates used by parity pointer input, including scaled windows.
 - Apple wall captures now stop unless the configured device-test account's `Device Test` profile is uniquely identified and confirmed as the active profile before the app launches.
 - Include the authenticated user ID in DEBUG parity state so capture tooling can reject a mismatched signed-in account.
 - Require the Apple simulator driver's app-reported user ID to match the freshly verified device-test login before it sends keys, captures frames, or checks playback.
@@ -477,6 +544,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Releases now build the Samsung Tizen native tpk, name every package after its client variant (for example `playarr-lg-webos-<version>.ipk`, `playarr-android-<version>.apk`) and attach a `clients.json` that lists every variant with its minimum OS and download route. Older asset names stay beside the new ones.
 - On iPad, Settings > Appearance has the web's Home screen artwork (Thumbnails or Covers) and Artwork size (Small, Medium, Large) settings. Covers draws Home rails as portrait posters at the Library cover card width, and the size changes the Library column count and the Home card width.
 - macOS: Settings > Appearance > Home screen artwork now takes effect; Covers shows portrait 2:3 posters on the Home rails at the web cover width.
 - Xbox: the library Filters drawer has a View choice, Screen or Cover, and Cover shows portrait posters as the web.
@@ -702,6 +770,19 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The marketing site moved to its own repository and Worker (`PlayarrApp/playarr-site`). `playarr.app` now serves it on `/`
+  for signed-out visitors and on the Clients, docs and legal routes through a `SITE` service binding; the web app, the
+  duplicate React legal and Clients pages and `site/` are gone from this repository. The app sets a `playarr_signed_in`
+  routing-hint cookie so signed-in users keep landing in the app. Deploy `playarr-site` before `playarr-web`.
+- Nura library grids space their rows at the web phone's pitch (24.35 css px), so the third and later rows line up with the web's.
+- Let the Apple iOS wall take the pinned capture instant as an input, and print compiler errors when the Apple parity iOS build fails; the iPhone calendar parity captures now use the clock the web references show (Agenda dark 90.75 to 93.90).
+- Nura player controls follow the web phone player: a flat seek bar, a centred time, and two rows of icon buttons (previous, play or pause, next, mute, audio, subtitles, queue; then quality, health, play on and full screen), with a bordered close button. Previous, next, mute and full screen work; the rest show disabled until the player supports them.
+- Nura page headers draw the web phone's 42 px round and square buttons, the letter rail sits 1 px lower, and a film's title block closes up to the web's spacing.
+- Android TV Filters now use closed language multi-select fields with vertical, D-pad navigable options and web-sized View glyphs; drawer focus styling restores the opener card, and Left from Library Filters returns focus to the selected content item.
+- Match the Nura agenda cards to the web: white card fill, strong hairlines, 4 px availability bar, muted bar for unavailable, and the web's taller row spacing.
+- Add an opt-in Harmony phone core capture that validates all 15 required screens before skipping optional diagnostics.
+- The Xbox player-controls capture reads its pinned direct-play fixture from a repository Actions secret instead of exposing the media identifier as a workflow input.
+- Let hosted Xbox parity runs capture a validated subset of the Movies, Series and Music screens.
 - Match tvOS light-mode library key art opacity (0.24) to the wide web TV backdrop, reducing the artwork wash behind the preview.
 - Show the library preview's release-to-end year range for ended works, matching the web client's UTC year rules.
 - Align the iPad light-theme library rail, card sizing, grid spacing, and preview title with the web layout.
@@ -1380,6 +1461,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- Removed the merge train workflow and scripts, plus the cron schedules in CI, Apple wall and untracked-branches. PRs target `integration/parity`, which the coordinator batches into `main` with a merge commit once `ci-required` is green.
 - Removed the tvOS live simulator workflow and its keepalive script: the live Apple TV simulator runs only on the MacBook over ssh (owner decision), and this public repository never runs a self-hosted or long-lived Apple runner job.
 - Web calendar: the unused `CALENDAR_KINDS` and `filterByKinds` helpers are gone; the calendar test now checks rendered markup and the effective scroll rules instead of stale CSS text.
 - Web calendar: the unused `CALENDAR_KINDS` and `filterByKinds` helpers are gone; the calendar test now checks rendered markup and the effective scroll rules instead of stale CSS text.
@@ -3151,6 +3233,16 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
+- Add opt-in stable native capture readiness checks for Android TV Movies, Series and Music; other routes retain their existing screenshot path and fail closed when stable capture readiness is requested.
+- Harmony capture runs now validate the signed-in device-test profile and pinned detail and progress fixtures before starting the Previewer.
+- Allow an explicit Harmony phone core diagnostic capture to skip player-controls and record the omission, while the default core capture still requires all 15 screens.
+- Add selector regression coverage for partial viewport intersections, dead or invisible cards, offscreen positions and invalid geometry in the HarmonyOS preview focus route.
+- The Harmony wall can select a runtime player fixture through a repository secret without recording its identifier in capture manifests.
+- Make Harmony preview event privacy coverage deterministic by fixing the event timestamp and checking that it is preserved independently of private image identifiers.
+- Keep image-key privacy assertions scoped to event string fields so coincidental monotonic timestamp digits cannot make the tests flaky.
+- Replay transient Harmony preview telemetry failures in order with bridge deduplication, and stop captures when delivery is exhausted.
+- Require an explicit media-file ID for Xbox player-controls parity captures and verify Direct playback negotiation before opening the player and again before creating its source.
+- Xbox parity automation verifies the signed-in test account before sending input or capturing screenshots, serializes shared-account runs, and fails when its watch-progress reset cannot complete.
 - Keep Android deterministic driver unit tests independent of child-process startup latency while preserving the production bounded-command path.
 - Keep an expected credentialless startup login rejection from failing browser parity readiness after a successful manual sign-in, while preserving credentialed login failures.
 - Record stable-run and expected-reference provenance for D-pad results, guard reference build stamps, and cover non-stable capture and selective publication regressions.

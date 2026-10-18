@@ -1,4 +1,5 @@
 // Shared helpers for the parity suite (suite.json): validation, key expansion, route matching.
+import { createHash } from "node:crypto";
 
 const KEY = /^(up|down|left|right|select|back)(:long)?(\*[1-9]\d*)?$/;
 
@@ -37,6 +38,17 @@ export function routeMatches(pattern, url) {
   const u = new URL(url, "http://x");
   if (!new RegExp(`^${pp.replace(/:id/g, "[^/]+")}$`).test(u.pathname)) return false;
   return !pq || [...new URLSearchParams(pq)].every(([k, v]) => u.searchParams.get(k) === v);
+}
+
+// D-pad checks that observe the route need a non-empty label even for Home.
+// Keep the root route explicit instead of collapsing it to an empty string.
+export function routeStateLabel(route) {
+  if (typeof route !== "string" || !route.startsWith("/")) {
+    throw new Error("driver reported no valid route for state observation");
+  }
+  const pathname = route.split("?")[0];
+  if (pathname === "/") return "home";
+  return pathname.split("/").filter(Boolean).map((part, index) => index ? ":id" : part).join("/");
 }
 
 // D-pad labels share semantic roles across platforms. The action-list Play entry and play/pause
@@ -134,4 +146,77 @@ export async function pinnedCatalogFiles(suite, env = process.env, { required = 
     throw new Error("stable catalog lookup did not return the pinned film and an episode file");
   }
   return [film.media_file_id, ...episodeFiles].filter(Boolean);
+}
+
+/** Verify that Home has only the configured canonical deck row in progress, without changing account state. */
+export async function assertCanonicalHomeProgress(env = process.env, fetchImpl = fetch) {
+  const server = env.PLAYARR_SERVER_URL?.replace(/\/$/, "");
+  const username = env.PLAYARR_USERNAME?.trim();
+  const password = env.PLAYARR_PASSWORD;
+  const canonicalFile = env.PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID?.trim();
+  const approved = [env.PLAYARR_DEVICE_TEST_USERNAME, env.PLAYARR_DEVICE_TEST_DPAD_USERNAME]
+    .filter((value) => typeof value === "string" && value.trim()).map((value) => value.trim());
+  if (!server || !username || !password || !approved.includes(username)) {
+    throw new Error("Home fixture preflight requires credentials matching a configured Device Test username");
+  }
+  if (typeof canonicalFile !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(canonicalFile)) {
+    throw new Error("Home fixture preflight requires PLAYARR_DEVICE_TEST_HOME_DECK_MEDIA_FILE_ID");
+  }
+  const fail = (part, status) => { throw new Error(`Home fixture preflight ${part} failed${status ? ` (${status})` : ""}`); };
+  const request = async (url, options, part) => {
+    try {
+      const response = await fetchImpl(url, { ...options, redirect: "error", signal: AbortSignal.timeout(5000) });
+      return response;
+    } catch {
+      fail(`${part} request`);
+    }
+  };
+  const json = async (response, part) => {
+    if (!response.ok) fail(part, response.status);
+    try { return await response.json(); } catch { fail(`${part} returned invalid JSON`); }
+  };
+  const login = await json(await request(`${server}/api/v1/auth/login`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_platform: "web", client_version: "parity", device_id: crypto.randomUUID(), device_name: "home-fixture-preflight", username, password }),
+  }, "login"), "login");
+  if (typeof login?.access_token !== "string" || !login.access_token) fail("login response schema");
+  const headers = { authorization: `Bearer ${login.access_token}` };
+  const profiles = await json(await request(`${server}/api/v1/users/profiles`, { headers }, "identity lookup"), "identity lookup");
+  if (!Array.isArray(profiles)) fail("identity response schema");
+  const current = profiles.filter((profile) => profile?.is_current === true);
+  if (current.length !== 1 || current[0]?.username !== username) fail("authenticated identity mismatch");
+
+  const progress = await json(await request(`${server}/api/v1/playback/progress`, { headers }, "progress lookup"), "progress lookup");
+  if (!Array.isArray(progress) || progress.some((row) => !row || typeof row.media_file_id !== "string" ||
+      typeof row.state !== "string" || typeof row.position_ms !== "number" || !Number.isFinite(row.position_ms) || row.position_ms < 0 ||
+      typeof row.duration_ms !== "number" || !Number.isFinite(row.duration_ms) || row.duration_ms < 0) ||
+      new Set(progress.map((row) => row.media_file_id)).size !== progress.length) fail("progress response schema");
+  const partWatched = progress.filter((row) => row.state === "part_watched");
+  if (partWatched.length !== 1 || partWatched[0].media_file_id !== canonicalFile) {
+    throw new Error(`Home fixture preflight expected 1 canonical part_watched row, found ${partWatched.length}; capture refused`);
+  }
+  const row = partWatched[0];
+  const signature = createHash("sha256").update(JSON.stringify([canonicalFile, row.state, row.position_ms, row.duration_ms])).digest("hex");
+  return { expectedPartWatched: 1, actualPartWatched: 1, signature };
+}
+
+/** Strict readiness (verified build identity, capture-phase waits) only for pinned runs on drivers that declare it; others use their normal wait. */
+export function readinessMode(driver, pinned) {
+  return pinned && driver?.strictReadiness === true ? "strict" : "standard";
+}
+
+/** Time zone and locale pinned with the clock, equal to screens.json determinism: web refs and every client render the pinned instant the same way. */
+export const CAPTURE_REGION = Object.freeze({ timeZone: "UTC", locale: "en-GB" });
+
+/** Pin the driver's clock, zone, locale and animations. A driver that cannot pin runs unpinned on a default run (logged); explicit --stable keeps it fatal. Returns whether the run is pinned. */
+export async function pinCapture(driver, { fixedNow, explicit = false, log = console.log }) {
+  try {
+    if (!driver.setDeterministicCapture) throw new Error("stable capture unsupported: driver lacks setDeterministicCapture");
+    await driver.setDeterministicCapture({ fixedNow, disableAnimations: true, ...CAPTURE_REGION });
+    return true;
+  } catch (error) {
+    if (explicit || !/unsupported/i.test(error.message)) throw error;
+    log(`clock pin skipped: ${error.message.split("\n")[0]}`);
+    return false;
+  }
 }

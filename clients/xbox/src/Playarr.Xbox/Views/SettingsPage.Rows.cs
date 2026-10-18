@@ -244,7 +244,7 @@ namespace Playarr.Xbox.Views
         /// <summary>A language change redraws the page title, the section list and the open section in the new language.</summary>
         private void ApplyLanguage()
         {
-            PageTitleText.Text = Lang.T("settings.index.title");
+            _header.Title.Text = Lang.T("settings.index.title");
             var open = _openSection;
             TabsPanel.Children.Clear();
             _sections.Clear();

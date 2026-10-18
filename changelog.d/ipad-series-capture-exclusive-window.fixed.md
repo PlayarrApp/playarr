@@ -1,0 +1,1 @@
+- Keep the shared-account iPad series-detail capture skipped on pull requests and require explicit confirmation of an exclusive fixture window for manual runs.

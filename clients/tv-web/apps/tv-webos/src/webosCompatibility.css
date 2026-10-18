@@ -11,6 +11,12 @@ html[data-platform="tv-webos"] .calendar-week-scroll .calendar-day::-webkit-scro
   height: 0;
 }
 
+/* Newer webOS Chromium (132) ignores the ::-webkit-scrollbar rules above while the shared sheet sets scrollbar-color, so it draws native bars; scrollbar-width wins there. */
+html[data-platform="tv-webos"] .calendar-week-scroll,
+html[data-platform="tv-webos"] .calendar-week-scroll .calendar-day {
+  scrollbar-width: none;
+}
+
 /* Measured webOS calendar line boxes need the web reference minima; the status pill's 26.56px reference is its 1.4em line, .36rem vertical padding and 2px borders. */
 html[data-platform="tv-webos"] .calendar-day h3,
 html[data-platform="tv-webos"] .calendar-entry-title,
@@ -20,4 +26,14 @@ html[data-platform="tv-webos"] .calendar-entry-subtitle {
 
 html[data-platform="tv-webos"] .calendar-entry-meta .status-pill {
   min-block-size: calc(1.4em + 0.36rem + 2px);
+}
+
+/* webOS Chromium 132 rounds glyph advances to whole pixels under text-rendering:auto and optimizeLegibility (the page default), and buttons reset to auto; desktop Chrome, where the web reference is captured, uses fractional advances, so those lines ran 1 to 4 px off. */
+html[data-platform="tv-webos"],
+html[data-platform="tv-webos"] body,
+html[data-platform="tv-webos"] button,
+html[data-platform="tv-webos"] input,
+html[data-platform="tv-webos"] select,
+html[data-platform="tv-webos"] textarea {
+  text-rendering: geometricPrecision;
 }

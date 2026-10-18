@@ -80,6 +80,32 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        private static Style? _homeCardContainerStyle;
+
+        /// <summary>Home rail container: the web Home rail gap, 24 px at 1920 (measured 352 px card pitch on the 328 px card).</summary>
+        public static Style HomeCardContainerStyle
+        {
+            get
+            {
+                if (_homeCardContainerStyle == null)
+                {
+                    var style = new Style(typeof(ListViewItem));
+                    foreach (var setter in CardContainerStyle.Setters)
+                    {
+                        if (setter is Setter { Property: var property } plain && property != FrameworkElement.MarginProperty)
+                        {
+                            style.Setters.Add(new Setter(property, plain.Value));
+                        }
+                    }
+
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 24, 0)));
+                    _homeCardContainerStyle = style;
+                }
+
+                return _homeCardContainerStyle;
+            }
+        }
+
         private static Style? _gridCardContainerStyle;
 
         /// <summary>Library grid container: the web grid's 25 px column gap and 56 px row gap, same focus ring as rails.</summary>

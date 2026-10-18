@@ -11,7 +11,7 @@ node scripts/showcase/manifest.mjs --check
 base="${BASE_REF:-main}"
 if [[ "${GITHUB_EVENT_NAME:-pull_request}" == "pull_request" ]] && git rev-parse --verify -q "origin/${base}" >/dev/null; then
   changed="$(git diff --name-only "origin/${base}...HEAD")"
-  shots="$(grep -E '^(docs/assets/readme/screenshots/|site/src/assets/screenshots/|site/public/screenshots/|clients/android/fastlane/metadata/android/[^/]+/images/(phone|sevenInch|tenInch|tv|wear)Screenshots/|clients/ios/fastlane/screenshots/|clients/apple-tv/fastlane/screenshots/)' <<<"${changed}" || true)"
+  shots="$(grep -E '^(docs/assets/readme/screenshots/|clients/android/fastlane/metadata/android/[^/]+/images/(phone|sevenInch|tenInch|tv|wear)Screenshots/|clients/ios/fastlane/screenshots/|clients/apple-tv/fastlane/screenshots/)' <<<"${changed}" || true)"
   if [[ -n "${shots}" ]] && ! grep -q '^scripts/showcase/' <<<"${changed}"; then
     echo "Public screenshots changed without touching scripts/showcase/:" >&2
     sed 's/^/  /' <<<"${shots}" >&2

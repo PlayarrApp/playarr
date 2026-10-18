@@ -20,7 +20,8 @@ import { AUDIO_LANGUAGES, normaliseAudioLanguage, audioLanguageLabel } from '../
 import { getPlayerPreferences, updatePlayerPreferences, getProfilePinSetting, updateProfilePinSetting } from '../data/ProfileRepository';
 import type { Choice } from '../design/components/ChoiceSegments';
 
-import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance } from '../AppContainer';
+import { getServerDirectory, saveThemeChoice, loadPlayerDefaults, savePlayerDefault, loadAppearance, saveAppearance, savedLanguageChoice, saveLanguageChoice, deviceLanguageTag } from '../AppContainer';
+import { t, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, resolveLanguage, setCurrentLanguage } from '../core/Language';
 import { InvitePanel } from '../design/components/InvitePanel';
 import { ProfileAvatarPanel } from '../design/components/ProfileAvatarPanel';
 import { HomeRailsPanel } from '../design/components/HomeRailsPanel';
@@ -38,31 +39,41 @@ interface SettingsSection {
 const APPEARANCE: string = 'appearance';
 const PLAYER: string = 'player';
 const SERVER: string = 'server';
-// Web `PRODUCT_SETTINGS_SECTIONS` without the admin-only Request latency (08), in web's order.
-const SECTIONS: SettingsSection[] = [
-  { id: APPEARANCE, number: '01', title: 'Appearance' },
-  { id: 'profile-avatar', number: '02', title: 'Profile avatar' },
-  { id: 'language', number: '03', title: 'Language' },
-  { id: PLAYER, number: '04', title: 'Player' },
-  { id: SERVER, number: '05', title: 'Server connection' },
-  { id: 'profile-lock', number: '06', title: 'Profile lock' },
-  { id: 'invite', number: '07', title: 'Invite a friend' },
-  { id: 'remote', number: '09', title: 'Phone remote' },
-  { id: 'your-data', number: '10', title: 'Your data' },
-  { id: 'home', number: '11', title: 'Customise Home' },
-];
-const SECTION_COPY: Map<string, string> = new Map<string, string>([
-  [APPEARANCE, "Choose this device's theme and home screen layout."],
+// Web `PRODUCT_SETTINGS_SECTIONS` without the admin-only Request latency (08), in web's order. Titles and copy are
+// read when a page builds (`t()`), so a language change shows on the next build; text with no web key yet stays English.
+const LANGUAGE: string = 'language';
+const SECTION_KEYS: Map<string, string> = new Map<string, string>([
+  [APPEARANCE, 'appearance'], ['profile-avatar', 'profileAvatar'], [LANGUAGE, 'language'], [PLAYER, 'player'],
+  [SERVER, 'server'], ['profile-lock', 'profileLock'], ['invite', 'invite'], ['remote', 'remote'], ['your-data', 'yourData'],
+]);
+const SECTION_ENGLISH: Map<string, string> = new Map<string, string>([
+  [APPEARANCE, 'Appearance'], ['profile-avatar', 'Profile avatar'], [LANGUAGE, 'Language'], [PLAYER, 'Player'],
+  [SERVER, 'Server connection'], ['profile-lock', 'Profile lock'], ['invite', 'Invite a friend'], ['remote', 'Phone remote'],
+  ['your-data', 'Your data'], ['home', 'Customise Home'],
+]);
+const SECTION_COPY_ENGLISH: Map<string, string> = new Map<string, string>([
   [PLAYER, 'Choose how Playarr should start quality, subtitles and audio.'],
-  [SERVER, 'The server this device is connected to.'],
-  ['profile-avatar', 'Choose how your profile appears on this device.'],
-  ['language', 'Follow this device or keep a language fixed.'],
-  ['profile-lock', 'Require a four-digit PIN before switching profiles.'],
-  ['invite', 'Ask your Playarr Server admin for one friend-invite QR code.'],
-  ['remote', 'Control this device from your phone, or control another device.'],
-  ['your-data', 'Export your watch progress, playlists and preferences, or import them from another Playarr Server.'],
   ['home', 'Choose which rails appear on Home and in what order.'],
 ]);
+const SECTION_ORDER: string[] = [APPEARANCE, 'profile-avatar', LANGUAGE, PLAYER, SERVER, 'profile-lock', 'invite', 'remote', 'your-data', 'home'];
+const SECTION_NUMBERS: string[] = ['01', '02', '03', '04', '05', '06', '07', '09', '10', '11'];
+
+function sectionTitleOf(id: string): string {
+  const key: string | undefined = SECTION_KEYS.get(id);
+  return key !== undefined ? t('settings.index.' + key + '.title', SECTION_ENGLISH.get(id) ?? '') : t('pages.home.customise.title', 'Customise Home');
+}
+
+function sectionCopyOf(id: string): string {
+  if (id === LANGUAGE) {
+    return t('settings.language.description', 'Follow this device or keep a language fixed.');
+  }
+  const key: string | undefined = SECTION_KEYS.get(id);
+  return t(key !== undefined ? 'settings.index.' + key + '.description' : '', SECTION_COPY_ENGLISH.get(id) ?? '');
+}
+
+function buildSections(): SettingsSection[] {
+  return SECTION_ORDER.map((id: string, index: number): SettingsSection => ({ id: id, number: SECTION_NUMBERS[index], title: sectionTitleOf(id) }));
+}
 const HOME_VIEW_CHOICES: Choice[] = [
   { value: 'thumbnail', label: 'Thumbnails' },
   { value: 'cover', label: 'Covers' },
@@ -123,9 +134,12 @@ export struct SettingsScreen {
   @State private lockError: string = '';
   @State private homeView: string = 'thumbnail';
   @State private artworkSize: string = 'medium';
+  /** Settings > Language: 'system' or a fixed language. */
+  @State private languageChoice: string = 'system';
 
   aboutToAppear(): void {
     this.loadAudioLanguage();
+    savedLanguageChoice().then((value: string) => { this.languageChoice = value; });
     this.loadDefaults();
     this.loadAppearanceChoices();
     this.loadPinSetting();
@@ -249,7 +263,7 @@ export struct SettingsScreen {
   }
 
   private sectionTitle(): string {
-    const open = SECTIONS.find((section: SettingsSection) => section.id === this.openSection);
+    const open = buildSections().find((section: SettingsSection) => section.id === this.openSection);
     return open !== undefined ? open.title : '';
   }
 
@@ -289,7 +303,7 @@ export struct SettingsScreen {
   @Builder
   private appearancePanel(): void {
     ChoiceSegments({
-      heading: 'Colour theme',
+      heading: t('settings.appearance.colourThemeLabel', 'Colour theme'),
       choices: THEME_CHOICES,
       selected: this.themeSetting,
       large: true,
@@ -474,12 +488,36 @@ export struct SettingsScreen {
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(SECTION_COPY.get(this.openSection) ?? '').fontFamily(nunito(400))
+      Text(sectionCopyOf(this.openSection)).fontFamily(nunito(400))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
     .width(tv(this.panelWidth()))
     .alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  private languagePanel(): void {
+    ChoiceSegments({
+      heading: t('settings.language.title', 'Language'),
+      choices: this.languageChoices(),
+      selected: this.languageChoice,
+      large: true,
+      sectionWidth: this.panelWidth(),
+      onChoose: (value: string) => {
+        this.languageChoice = value;
+        setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
+        void saveLanguageChoice(value);
+      },
+    })
+  }
+
+  private languageChoices(): Choice[] {
+    const choices: Choice[] = [{ value: 'system', label: t('settings.language.optionSystem', 'Auto') }];
+    for (const language of SUPPORTED_LANGUAGES) {
+      choices.push({ value: language, label: LANGUAGE_NAMES[language] });
+    }
+    return choices;
   }
 
   @Builder
@@ -501,7 +539,7 @@ export struct SettingsScreen {
   @Builder
   private pageContent(): void {
     Column() {
-      ForEach(SECTIONS, (section: SettingsSection) => {
+      ForEach(buildSections(), (section: SettingsSection) => {
         this.sectionRow(section)
       }, (section: SettingsSection): string => `${section.id}:${section.id === this.openSection}`)
     }
@@ -509,6 +547,8 @@ export struct SettingsScreen {
     Column() {
       if (this.openSection === APPEARANCE) {
         this.appearancePanel()
+      } else if (this.openSection === LANGUAGE) {
+        this.languagePanel()
       } else if (this.openSection === PLAYER) {
         this.playerPanel()
       } else if (this.openSection === SERVER) {
@@ -538,6 +578,8 @@ export struct SettingsScreen {
         Column() {
           if (this.openSection === APPEARANCE) {
             this.appearancePanel()
+          } else if (this.openSection === LANGUAGE) {
+            this.languagePanel()
           } else if (this.openSection === PLAYER) {
             this.playerPanel()
           } else if (this.openSection === SERVER) {
@@ -566,7 +608,7 @@ export struct SettingsScreen {
       .align(Alignment.TopStart)
     } else {
       Column() {
-        ForEach(SECTIONS, (section: SettingsSection) => {
+        ForEach(buildSections(), (section: SettingsSection) => {
           Row({ space: 16 }) {
             Text(section.number).fontFamily(nunito(700))
               .fontSize(10)
@@ -579,7 +621,7 @@ export struct SettingsScreen {
                 .fontSize(20)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
-              Text(SECTION_COPY.get(section.id) ?? '').fontFamily(nunito(400))
+              Text(sectionCopyOf(section.id)).fontFamily(nunito(400))
                 .fontSize(12)
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .maxLines(1)
@@ -608,7 +650,7 @@ export struct SettingsScreen {
   build() {
     NavDestination() {
       PageShell({
-        title: 'Preferences',
+        title: t('settings.index.title', 'Preferences'),
         touch: true,
         selectedId: '',
         kicker: this.sectionOpen ? this.sectionTitle() : '',

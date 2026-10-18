@@ -15,13 +15,14 @@ const RAIL_HEIGHT: number = 810;
 const RAIL_PADDING_TOP: number = 8;
 const BUTTON_SIZE: number = 44;
 const LETTER_SIZE: number = 9.216;
+const TV_DISC: number = 24;
 // Phone (web `.tv-directory .tv-alphabet` under 760 px): fixed on the right edge, 52 wide, from 88 below the top to 82 above the bottom
-// (clear of the floating nav bar); the letters share that height, each 44 wide, 9 px bold.
+// (clear of the floating nav bar); the letters share that height, each 44 wide, 8.96 px bold.
 const TOUCH_RAIL_WIDTH: number = 52;
 const TOUCH_RAIL_TOP: number = 88;
 const TOUCH_RAIL_BOTTOM: number = 82;
 const TOUCH_LETTER_WIDTH: number = 44;
-const TOUCH_LETTER_SIZE: number = 8.5;
+const TOUCH_LETTER_SIZE: number = 8.96;
 const TOUCH_DISC: number = 22;
 
 @Component
@@ -43,14 +44,14 @@ export struct AlphabetRail {
       ForEach(this.letters, (letter: string) => {
         // a 44 vp target around web's 22 vp letter disc
         Column() {
-          Text(letter).fontFamily(nunito(500))
+          Text(letter).fontFamily(nunito(700))
             .width(TOUCH_DISC)
             .height(TOUCH_DISC)
             .textAlign(TextAlign.Center)
             .fontSize(TOUCH_LETTER_SIZE)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
-            .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.82) : Color.Transparent)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
+            .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.78) : Color.Transparent)
             .borderRadius(TOUCH_DISC / 2)
         }
         .width(TOUCH_LETTER_WIDTH)
@@ -81,18 +82,25 @@ export struct AlphabetRail {
     Scroll() {
       Column() {
         ForEach(this.letters, (letter: string) => {
-          Text(letter).fontFamily(nunito(400))
-            .width(tv(BUTTON_SIZE))
-            .height(tv(BUTTON_SIZE))
-            .textAlign(TextAlign.Center)
-            .fontSize(tv(LETTER_SIZE))
-            .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
-            .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().ink) : Color.Transparent)
-            .borderRadius(tv(BUTTON_SIZE / 2))
-            .focusable(true)
-            .onClick(() => {
-              this.onJump(letter);
-            })
+          Column() {
+            // Web's current letter is a 24 px disc in ink-soft (not the 44 px hit area), the letters sit ~1.5 px high.
+            Text(letter).fontFamily(nunito(400))
+              .width(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
+              .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
+              .textAlign(TextAlign.Center)
+              .fontSize(tv(LETTER_SIZE))
+              .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
+              .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().inkSoft) : Color.Transparent)
+              .borderRadius(tv(TV_DISC / 2))
+              .translate({ y: -tv(1.5) })
+          }
+          .width(tv(BUTTON_SIZE))
+          .height(tv(BUTTON_SIZE))
+          .justifyContent(FlexAlign.Center)
+          .focusable(true)
+          .onClick(() => {
+            this.onJump(letter);
+          })
         }, (letter: string): string => letter)
       }
       .padding({ top: tv(RAIL_PADDING_TOP) })

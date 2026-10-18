@@ -1,0 +1,1 @@
+- Tizen native Search idle state shows the web zoom-out graphic in the brand colour, centred as on web.

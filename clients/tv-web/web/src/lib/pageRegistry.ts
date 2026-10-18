@@ -90,8 +90,6 @@ export const PAGE_REGISTRY: readonly PageCoverage[] = [
   { file: "Profiles.tsx", mode: "exempt", routes: ["profiles"], reason: "Profile picker chrome (TvStageChrome).", evidence: "TvStageChrome" },
   // `/household` sits outside the app shell (a blocked profile still reaches it) but uses the standard page frame.
   { file: "Household.tsx", mode: "layout", pageId: "household", routes: [], urls: [] },
-  { file: "Clients.tsx", mode: "exempt", routes: ["clients"], reason: "Public install landing (TvStageChrome).", evidence: "TvStageChrome" },
-  { file: "Legal.tsx", mode: "exempt", routes: [], reason: "Public legal documents with their own article layout.", evidence: "ProfileAuthLayout" },
 ];
 
 /** The ratchet: a literal, lowered by the PR that migrates a page; the test fails when more pages are listed than this. */

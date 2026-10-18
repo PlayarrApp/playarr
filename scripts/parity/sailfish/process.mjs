@@ -55,6 +55,21 @@ export function requireSingleAppProcess(output, marker) {
   return processes[0];
 }
 
+export function appIdentityReceipt(identity, capturedAt = new Date()) {
+  if (!identity || !Number.isSafeInteger(identity.pid) || identity.pid < 1 || !/^\d+$/.test(String(identity.starttime))) {
+    throw new Error("invalid Sailfish process identity");
+  }
+  const marker = identity.markerPresent === true ? identity.marker : "none";
+  if (marker !== "none") validateMarker(marker);
+  const timestamp = capturedAt instanceof Date ? capturedAt.toISOString() : new Date(capturedAt).toISOString();
+  return {
+    pid: identity.pid,
+    start_ticks: String(identity.starttime),
+    marker,
+    capturedAt: timestamp,
+  };
+}
+
 export function cleanupAppProcessScript(identity) {
   const { pid, starttime, marker } = identity;
   validateMarker(marker);

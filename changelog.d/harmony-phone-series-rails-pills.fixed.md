@@ -1,0 +1,1 @@
+- HarmonyOS phone series detail: the season rails run to the screen edge and the secondary action pills use web's bold ink labels.

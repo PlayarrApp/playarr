@@ -8,7 +8,7 @@
     <RootNamespace>Playarr.Tizen</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition="'$(PlayarrDebug)' == 'true'">
-    <!-- Debug mirror and logging for the parity driver; never set in CI or release builds. -->
+    <!-- Debug mirror and logging for the parity driver; only set in non-production builds. -->
     <DefineConstants>$(DefineConstants);PLAYARR_DEBUG</DefineConstants>
   </PropertyGroup>
   <ItemGroup>

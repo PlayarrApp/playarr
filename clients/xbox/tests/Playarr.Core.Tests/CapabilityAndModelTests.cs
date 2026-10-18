@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using Playarr.Core.Models;
 using Playarr.Core.Networking;
 using Playarr.Core.Playback;
@@ -286,6 +287,39 @@ namespace Playarr.Core.Tests
             Assert.Equal(0, new WatchProgress { PositionMs = 500, DurationMs = 0 }.Fraction);
             Assert.Equal(0.5, new WatchProgress { PositionMs = 500, DurationMs = 1000 }.Fraction);
             Assert.Equal(1.0, new WatchProgress { PositionMs = 5000, DurationMs = 1000 }.Fraction);
+        }
+    }
+
+    public class PlaybackQualityTests
+    {
+        [Fact]
+        public void Playback_quality_reads_the_server_video_bitrate_field()
+        {
+            var quality = JsonCoding.Deserialize<PlaybackQualityOption>(
+                "{\"id\":\"original\",\"label\":\"Original\",\"height\":null,\"video_bitrate_bps\":24300000}");
+
+            Assert.Equal(24_300_000, quality.BitrateBps);
+        }
+
+        [Fact]
+        public void Playback_quality_still_reads_the_legacy_bitrate_field()
+        {
+            var quality = JsonCoding.Deserialize<PlaybackQualityOption>(
+                "{\"id\":\"original\",\"label\":\"Original\",\"bitrate_bps\":24300000}");
+
+            Assert.Equal(24_300_000, quality.BitrateBps);
+            var serialised = JObject.Parse(JsonCoding.Serialize(quality));
+            Assert.False(serialised.ContainsKey("bitrate_bps"));
+            Assert.True(serialised.ContainsKey("video_bitrate_bps"));
+        }
+
+        [Fact]
+        public void Playback_quality_prefers_the_canonical_field_when_both_are_present()
+        {
+            var quality = JsonCoding.Deserialize<PlaybackQualityOption>(
+                "{\"id\":\"original\",\"video_bitrate_bps\":24300000,\"bitrate_bps\":12000000}");
+
+            Assert.Equal(24_300_000, quality.BitrateBps);
         }
     }
 

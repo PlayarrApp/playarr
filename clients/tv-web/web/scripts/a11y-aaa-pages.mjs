@@ -59,8 +59,6 @@ const PAGES = [
   { id: "signup", route: "/signup", anonymous: true },
   { id: "link", route: "/link", anonymous: true },
   { id: "household", route: "/household" },
-  { id: "clients", route: "/clients" },
-  { id: "legal-privacy", route: "/legal/privacy", anonymous: true },
   { id: "not-found", route: "/no-such-page" },
   { id: "movies-filters-drawer", route: "/movies", steps: [click("button[aria-controls], .page-filters-button, .tv-filter-launcher")] },
   { id: "playlists-create-panel", route: "/playlists", steps: [click("button[aria-controls='create-panel']")] },
