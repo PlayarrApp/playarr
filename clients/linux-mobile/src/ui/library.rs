@@ -409,16 +409,20 @@ impl Lib {
                     .build(),
             );
         };
-        let tiles = |names: &[&str], active: usize| -> Vec<gtk4::ToggleButton> {
+        let tiles = |names: &[&str], active: usize, glyphs: bool| -> Vec<gtk4::ToggleButton> {
             let row = gtk4::Box::builder().spacing(10).homogeneous(true).build();
             let mut group: Option<gtk4::ToggleButton> = None;
             let mut out = Vec::new();
             for (i, n) in names.iter().enumerate() {
                 let t = gtk4::ToggleButton::builder()
-                    .label(*n)
-                    .css_classes(["pa-seg-tile"])
+                    .css_classes(if glyphs { vec!["pa-seg-tile", "view"] } else { vec!["pa-seg-tile"] })
                     .active(i == active)
                     .build();
+                if glyphs {
+                    view_tile_child(&t, i, n);
+                } else {
+                    t.set_label(n);
+                }
                 match &group {
                     Some(g) => t.set_group(Some(g)),
                     None => group = Some(t.clone()),
@@ -431,7 +435,7 @@ impl Lib {
         };
         label("View");
         // Screen and Cover are drawn here; the List view is not built yet and goes back to the current view.
-        let views = tiles(&["List", "Screen", "Cover"], usize::from(self.cover.get()) + 1);
+        let views = tiles(&["List", "Screen", "Cover"], usize::from(self.cover.get()) + 1, true);
         for (i, v) in views.iter().enumerate() {
             let (me, back) = (self.clone(), views[usize::from(self.cover.get()) + 1].clone());
             if i == 0 {
@@ -450,9 +454,9 @@ impl Lib {
             });
         }
         label("Sort by");
-        let sort = tiles(&["Title", "Date Added"], usize::from(q.sort == "date_added"));
+        let sort = tiles(&["Title", "Date Added"], usize::from(q.sort == "date_added"), false);
         label("Order");
-        let order = tiles(&["A-Z", "Z-A"], usize::from(q.descending));
+        let order = tiles(&["A-Z", "Z-A"], usize::from(q.descending), false);
 
         // Languages come from the server's facets for this kind.
         let langs: Rc<RefCell<Languages>> = Rc::new(RefCell::new(vec![Vec::new(), Vec::new()]));
@@ -714,4 +718,54 @@ mod tests {
         assert_eq!(group_digits(1754), "1,754");
         assert_eq!(group_digits(35), "35");
     }
+}
+
+/// The web's view-switch glyphs (list, screen, cover), as css px (width, height).
+const VIEW_GLYPHS: [(i32, i32); 3] = [(20, 10), (21, 5), (17, 13)];
+
+/// Glyph over label, the glyph following the tile's checked colour.
+fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
+    let (w, h) = VIEW_GLYPHS[i];
+    let weak = tile.downgrade();
+    let area = gtk4::DrawingArea::builder().content_width(w).content_height(h).halign(gtk4::Align::Center).build();
+    area.set_draw_func(move |_, cr, w, h| {
+        let on = weak.upgrade().is_some_and(|t| t.is_active());
+        let c = gtk4::gdk::RGBA::parse(crate::icons::color(if on { crate::icons::Tone::OnAccent } else { crate::icons::Tone::Ink })).unwrap();
+        cr.set_source_rgba(c.red().into(), c.green().into(), c.blue().into(), 1.0);
+        let (w, h) = (f64::from(w), f64::from(h));
+        match i {
+            0 => {
+                cr.set_line_width(2.0);
+                cr.set_line_cap(gtk4::cairo::LineCap::Round);
+                for y in [1.0, h / 2.0, h - 1.0] {
+                    cr.move_to(1.0, y);
+                    cr.line_to(w - 1.0, y);
+                }
+            }
+            _ => {
+                // Three outlined bars: wide and short (screen) or narrow and tall (cover).
+                let (bw, gap) = if i == 1 { (6.0, 1.25) } else { (5.0, 1.0) };
+                cr.set_line_width(1.6);
+                for k in 0..3 {
+                    let (x, r) = (0.8 + f64::from(k) * (bw + gap), if i == 1 { 1.2 } else { 1.5 });
+                    let (x2, y2) = (x + bw - 1.6, h - 0.8);
+                    cr.new_sub_path();
+                    cr.arc(x2 - r, 0.8 + r, r, -std::f64::consts::FRAC_PI_2, 0.0);
+                    cr.arc(x2 - r, y2 - r, r, 0.0, std::f64::consts::FRAC_PI_2);
+                    cr.arc(x + r, y2 - r, r, std::f64::consts::FRAC_PI_2, std::f64::consts::PI);
+                    cr.arc(x + r, 0.8 + r, r, std::f64::consts::PI, 3.0 * std::f64::consts::FRAC_PI_2);
+                    cr.close_path();
+                }
+            }
+        }
+        let _ = cr.stroke();
+    });
+    tile.connect_toggled({
+        let area = area.clone();
+        move |_| area.queue_draw()
+    });
+    let col = gtk4::Box::builder().orientation(gtk4::Orientation::Vertical).spacing(8).valign(gtk4::Align::Center).build();
+    col.append(&area);
+    col.append(&gtk4::Label::new(Some(name)));
+    tile.set_child(Some(&col));
 }

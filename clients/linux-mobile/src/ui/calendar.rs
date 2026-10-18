@@ -503,6 +503,9 @@ impl Cal {
         // The web lays the month out 720 px wide and the other views 510 px, inside a 360 px page.
         self.body
             .set_size_request(if self.view.get() == View::Month { 720 } else { 510 }, -1);
+        if self.view.get() != View::Week {
+            self.days_view.hadjustment().set_value(0.0);
+        }
         match self.view.get() {
             View::Agenda => {
                 if days.is_empty() {
@@ -527,6 +530,16 @@ impl Cal {
                     let es = days.get(&d).map(Vec::as_slice).unwrap_or(&[]);
                     self.day_section(&cols, d, es, Some("Nothing today"), true);
                 }
+                // The web opens the week scrolled to today's column.
+                let today_col = (0..7).find(|i| add_days(start, *i) == today());
+                let (view, cols) = (self.days_view.clone(), cols.clone());
+                gtk4::glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || {
+                    let mut col = cols.first_child();
+                    for _ in 0..today_col.unwrap_or(0) {
+                        col = col.and_then(|c| c.next_sibling());
+                    }
+                    view.hadjustment().set_value(col.map_or(0.0, |c| f64::from(c.allocation().x())));
+                });
             }
             View::Month => self.render_month(&days),
         }

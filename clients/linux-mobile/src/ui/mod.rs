@@ -258,16 +258,19 @@ impl App {
         close_primary: bool,
     ) {
         self.close_panel();
+        // The web's library Filters drawer sits its first section 10 px higher, is opaque and opens with the focused soft close.
+        let filters = kicker == "Library controls" && title == "Filters";
+        let close_primary = close_primary && !filters;
         let panel = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
-            .css_classes(["pa-panel"])
+            .css_classes(if filters { vec!["pa-panel", "filters"] } else { vec!["pa-panel"] })
             .build();
         let head = gtk4::Box::builder()
             .spacing(10)
             .margin_top(20)
             .margin_start(20)
             .margin_end(20)
-            .margin_bottom(25)
+            .margin_bottom(if filters { 15 } else { 25 })
             .build();
         let block = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
@@ -291,10 +294,10 @@ impl App {
                 .build(),
         );
         let close = gtk4::Button::builder()
-            .css_classes(if close_primary {
-                vec!["pa-close"]
-            } else {
-                vec!["pa-close", "soft"]
+            .css_classes(match (close_primary, filters) {
+                (true, _) => vec!["pa-close"],
+                (false, true) => vec!["pa-close", "soft", "ring"],
+                (false, false) => vec!["pa-close", "soft"],
             })
             .valign(gtk4::Align::Start)
             .build();
