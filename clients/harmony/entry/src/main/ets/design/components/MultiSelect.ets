@@ -23,6 +23,9 @@ const CONTROL_HEIGHT: number = 44;
 const CONTROL_RADIUS: number = 10;
 const CONTROL_PADDING: number = 14.4;
 const CONTROL_FONT: number = 11.84;
+// Phone (web, measured on the static refs): the trigger label is regular weight and smaller, in a 41.5 vp control.
+const TOUCH_CONTROL_FONT: number = 9.4;
+const TOUCH_CONTROL_HEIGHT: number = 41.5;
 const LIST_GAP: number = 9.6;
 const TRIGGER_BASIS: number = 153.6;
 const OPTION_RADIUS: number = 8;
@@ -109,9 +112,9 @@ export struct MultiSelect {
             })
           }, (value: string): string => value)
           Row() {
-            Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(nunito(700))
-              .fontSize(tv(CONTROL_FONT))
-              .fontWeight(FontWeight.Bold)
+            Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(nunito(isTvMetrics() ? 700 : 500))
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)
+              .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
             Text('⌄').fontFamily(nunito(400))
@@ -122,7 +125,7 @@ export struct MultiSelect {
           // Web `flex: 1 1 8rem`: shares a line with the tokens when it fits.
           .flexGrow(1)
           .flexBasis(tv(TRIGGER_BASIS))
-          .height(tv(CONTROL_HEIGHT))
+          .height(isTvMetrics() ? tv(CONTROL_HEIGHT) : TOUCH_CONTROL_HEIGHT)
           .padding({ left: tv(CONTROL_PADDING), right: tv(CONTROL_PADDING) })
           .borderRadius(tv(CONTROL_RADIUS))
           .focusable(true)

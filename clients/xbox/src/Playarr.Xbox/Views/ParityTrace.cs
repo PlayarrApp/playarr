@@ -68,6 +68,7 @@ namespace Playarr.Xbox.Views
                     if (accountMatchesTest)
                     {
                         await PlayRequestedAsync(frame, folder);
+                        OpenRequested(folder);
                         ResizeRequested(folder);
                         await PauseRequestedAsync(frame, folder);
                     }
@@ -113,6 +114,27 @@ namespace Playarr.Xbox.Views
             _checkedAccountMatches = serverMatches && currentProfiles.Count == 1 && currentProfiles[0].Id == expectedUserId;
             _checkedAccountKey = key;
             return (nonce, _checkedAccountMatches);
+        }
+
+        /// <summary>A <c>parity.open</c> file holding a work id opens that title's detail page (the pinned film and series the web refs use).</summary>
+        private static void OpenRequested(string folder)
+        {
+            var file = System.IO.Path.Combine(folder, "parity.open");
+            try
+            {
+                if (System.IO.File.Exists(file))
+                {
+                    var text = System.IO.File.ReadAllText(file).Trim();
+                    System.IO.File.Delete(file);
+                    if (Guid.TryParse(text, out var workId))
+                    {
+                        App.Navigation.Navigate(typeof(WorkDetailPage), workId);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
         }
 
         /// <summary>A <c>parity.pause</c> file pauses the player on its current frame (identical-frame screenshots).</summary>

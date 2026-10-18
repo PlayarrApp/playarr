@@ -1,0 +1,1 @@
+- Sailfish: agenda cards end at the page padding, loopback poster URLs fall back to the work art, the edge fade is limited to the active calendar view, and the Profiles header and select styling match the web.

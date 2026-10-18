@@ -145,12 +145,31 @@ export function applyTvStageScale(
   return scale;
 }
 
-/** Applies the scale now and again whenever the viewport changes. Returns a disposer. */
+/** True while a text field has focus, i.e. while the on-screen keyboard (IME) may be open. */
+function textFieldFocused(doc: Document): boolean {
+  const el = doc.activeElement as HTMLElement | null;
+  if (!el) return false;
+  return el.tagName === "TEXTAREA" || el.isContentEditable === true || (el.tagName === "INPUT" && !/^(button|checkbox|radio|range|submit|reset|image|file)$/i.test((el as HTMLInputElement).type));
+}
+
+/**
+ * Applies the scale now and again whenever the viewport changes. Returns a disposer.
+ * Tizen shrinks the viewport when the IME opens; recomputing then would shrink the whole stage and push the app up. A
+ * height-only shrink while a text field is focused is therefore ignored (the stage keeps its last size, behind the
+ * keyboard). Width changes and growth still apply, so a real resolution change and the keyboard closing both work.
+ */
 export function installTvStageScale(win: Window = window, mode: TvStageMode = "zoom"): () => void {
   const root = win.document.documentElement;
+  let lastW = 0;
+  let lastH = 0;
   const apply = () => {
     // After the geometry patch window.innerWidth is the stage size; the scale needs the real viewport.
-    applyTvStageScale(root, rawViewport.innerWidth?.() ?? win.innerWidth, rawViewport.innerHeight?.() ?? win.innerHeight, mode);
+    const w = rawViewport.innerWidth?.() ?? win.innerWidth;
+    const h = rawViewport.innerHeight?.() ?? win.innerHeight;
+    if (lastH > 0 && w === lastW && h < lastH && textFieldFocused(win.document)) return;
+    lastW = w;
+    lastH = h;
+    applyTvStageScale(root, w, h, mode);
   };
   apply();
   win.addEventListener("resize", apply);
