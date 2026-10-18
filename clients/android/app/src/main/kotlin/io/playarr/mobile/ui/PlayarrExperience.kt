@@ -1325,7 +1325,7 @@ internal val experienceDestinations = listOf(
     ExperienceDestination("folders", PlayarrString.NavFolders, PlayarrWebIcons.Folders, requiresFolders = true),
     ExperienceDestination("playlists", PlayarrString.NavPlaylists, PlayarrWebIcons.Playlists),
     ExperienceDestination("watchlist", PlayarrString.NavWatchlist, PlayarrWebIcons.Watchlist),
-    ExperienceDestination("requests", PlayarrString.NavRequests, PlayarrWebIcons.Watchlist),
+    ExperienceDestination("requests", PlayarrString.NavRequests, PlayarrWebIcons.Requests),
     ExperienceDestination("calendar", PlayarrString.NavCalendar, PlayarrWebIcons.Calendar),
 )
 
