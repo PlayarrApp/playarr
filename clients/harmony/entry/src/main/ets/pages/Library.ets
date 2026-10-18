@@ -1023,7 +1023,9 @@ export struct Library {
           .columnsGap(TOUCH_CARD_GAP)
           .rowsGap(TOUCH_ROW_GAP)
           .edgeEffect(EdgeEffect.Spring)
-          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg + touchNavBarBox(this.safeBottom) })
+          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP })
+          // the end room is a content offset, not padding: padding shrinks the layout window, so the rows under the nav were never built
+          .contentEndOffset(Spacing.lg + touchNavBarBox(this.safeBottom))
           .onAreaChange((_oldValue: Area, newValue: Area) => {
             this.measuredWidthVp = lengthToVp(newValue.width);
           })
@@ -1039,8 +1041,6 @@ export struct Library {
           // Web scrolls the grid under the translucent nav bar: the shell reserves no spacer, the grid pads its own end.
           .height('100%')
           .width('100%')
-          .backgroundColor('#33FF00FF') // DIAGNOSTIC: shows the Grid frame
-          .overlay('n=' + String(this.items.length) + ' total=' + String(this.total) + ' more=' + String(this.hasMore), { align: Alignment.Bottom, offset: { x: 0, y: -90 } })
         }
     }
     .width('100%')
