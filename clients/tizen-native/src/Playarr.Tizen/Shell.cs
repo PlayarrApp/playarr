@@ -32,7 +32,13 @@ internal sealed class Shell : View
     private readonly Dictionary<string, object> _saved = new();
     private readonly View _chrome = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
     private TextLabel? _clockTime, _clockDate;
-    public void SetCaptureClock(DateTime? now) { _env.ClockNow = () => now ?? DateTime.Now; UpdateClock(); }
+    public void SetCaptureClock(DateTime? now)
+    {
+        // The parity suite pins UTC (screens.json determinism.timezone) and hands over UTC wall time; show release times (ToLocalTime) in the same zone.
+        if (now is not null) { Environment.SetEnvironmentVariable("TZ", "UTC"); TimeZoneInfo.ClearCachedData(); }
+        _env.ClockNow = () => now ?? DateTime.Now;
+        UpdateClock();
+    }
     private void UpdateClock()
     {
         var now = _env.ClockNow();
@@ -51,6 +57,12 @@ internal sealed class Shell : View
     public IPage? Page => _page;
     public bool NavFocused => _navFocus >= 0;
     public bool Ready => _page?.IsReady ?? true;
+    public TextFieldEditingContext EditingTextFieldContext => _page switch
+    {
+        SearchScreen search when search.IsQueryEditing => TextFieldEditingContext.SearchQuery,
+        PlaylistsScreen playlists when playlists.IsPlaylistNameEditing => TextFieldEditingContext.PlaylistName,
+        _ => TextFieldEditingContext.None,
+    };
     /// <summary>{ rail, index }: "nav" and the item number from the top on the nav rail, else the page's own position (Home).</summary>
     public (string Rail, int Index)? FocusPosition => _navFocus >= 0 ? ("nav", _navFocus) : _page?.FocusPosition is { } p ? (p.Rail.ToString(), p.Index) : null;
     public string? FocusedLabel => _navFocus >= 0 ? _nav[_navFocus].Item.Label.ToLowerInvariant() : _page?.FocusedLabel;

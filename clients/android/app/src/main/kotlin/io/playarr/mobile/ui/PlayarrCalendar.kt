@@ -559,12 +559,17 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val time = entry.releaseAt?.atZone(zone)?.let { "%02d:%02d".format(it.hour, it.minute) } ?: playarrString(PlayarrString.CalendarAllDay)
     val kind = CalendarMediaKind.fromWire(entry.mediaKind)
     val m = LocalCalendarMetrics.current
+    val wrapTitles = LocalCalendarWrapTitles.current
+    // Web TV week text measures 4 % narrower than the agenda's (titles) and 2 % (meta), with the same line pitch.
+    val tvWeek = m === TvCalendarMetrics && wrapTitles
+    val titleSp = if (tvWeek) m.entryTitle * 0.96f else m.entryTitle
+    val titleLine = if (tvWeek) m.entryTitleLine * 1.03f else m.entryTitleLine
     val shape = RoundedCornerShape(m.entryRadius.dp)
     val ink = WebInk
     val fill = WebSurfaceStrong
     Surface(
         // Material's clickable Surface paints a focus state layer (a fill); web's focus state is the ring alone.
-        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().height((if (LocalCalendarWrapTitles.current) 87f else m.entryHeight).dp).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
+        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
@@ -603,20 +608,20 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             if (measureOnly) Spacer(Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp))
             else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp).clip(RoundedCornerShape(6.dp)))
             Column(Modifier.weight(1f).padding(start = 14.4.dp)) {
-                Text(item.title, color = WebInk, fontSize = m.entryTitle.sp, lineHeight = m.entryTitleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (LocalCalendarWrapTitles.current) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
+                Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(2.4.dp))
                 // Web `entrySubtitle` is the episode code and subtitle only: a movie shows no line (phone only; TV keeps the kind fallback).
                 val rowSubtitle = if (m === TvCalendarMetrics) calendarItemSubtitle(item) else (item as? CalendarItem.Single)?.entry?.let { e -> listOfNotNull(e.episodeCode(), e.subtitle?.takeIf(String::isNotBlank)).joinToString(" \u00b7 ") } ?: calendarItemSubtitle(item)
                 if (rowSubtitle.isNotEmpty()) {
-                    Text(rowSubtitle, color = WebInkSoft, fontSize = m.entryTitle.sp, lineHeight = m.entryTitleLine.sp, style = WebTextStyle, maxLines = if (LocalCalendarWrapTitles.current) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
+                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(2.4.dp))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(time, color = WebInkMuted, fontSize = m.entryMeta.sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
-                    Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = m.entryMeta.sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
+                    Text(time, color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
+                    Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
                     Text(
                         if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind,
-                        color = WebInkMuted, fontSize = m.entryMeta.sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle,
+                        color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle,
                     )
                     if (m === TvCalendarMetrics) CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone))
                     else CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone), phone = true)
@@ -1037,7 +1042,10 @@ internal fun CalendarWeek(
         UnstagedForWebCssPx { androidx.compose.runtime.CompositionLocalProvider(LocalCalendarWrapTitles provides true) { CalendarWeekBody(groups, loading, false, today, zone, locale, selectedKey, onSelect, modifier, webColumn = webVw(300f, 24f, 440f), topPad = (53f * stage + 7.7f).dp) } }
         return
     }
-    CalendarWeekBody(groups, loading, isTelevision, today, zone, locale, selectedKey, onSelect, modifier, webColumn = null, topPad = null)
+    // Web TV week: `.calendar-week-scroll .calendar-entry-title` wraps, so cards grow with long titles.
+    androidx.compose.runtime.CompositionLocalProvider(LocalCalendarWrapTitles provides isTelevision) {
+        CalendarWeekBody(groups, loading, isTelevision, today, zone, locale, selectedKey, onSelect, modifier, webColumn = null, topPad = null)
+    }
 }
 
 // Phone week at 390 css px (1.8436 device px per dp), measured against the web ref: heading text 4 device px lower and the first
@@ -1074,12 +1082,21 @@ private fun CalendarWeekBody(
         onDispose { if (firstEntry.requester === offered) firstEntry.requester = null }
     }
     val track = rememberScrollState()
+    // Web phone week opens with today's column at the start of the track.
+    if (!isTelevision && webColumn == null) {
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        androidx.compose.runtime.LaunchedEffect(groups.firstOrNull()?.date, loading) {
+            val index = groups.indexOfFirst { it.date == today }
+            if (!loading && index >= 0) track.scrollTo(with(density) { ((columnWidth + 20.dp) * index).roundToPx() })
+        }
+    }
     val columnScroll = remember(groups.size) { List(groups.size) { ScrollState(0) } }
     androidx.compose.runtime.CompositionLocalProvider(
         LocalCalendarMetrics provides if (isTelevision) TvCalendarMetrics else LocalCalendarMetrics.current,
         LocalCalendarToday provides today,
     ) {
-    Box(modifier.calendarEdgeFades(track.horizontalEdges())) {
+    // Phone web: the start scrim only dims the first letters of the heading, not the card stripe.
+    Box(modifier.calendarEdgeFades(track.horizontalEdges(), startBand = if (!isTelevision && webColumn == null) 30.dp else null)) {
         Row(
             // Phone: web's week columns end 726.8 css px down (118 dp above the screen bottom) and fade out there, above the nav bar.
             Modifier.fillMaxSize().horizontalScroll(track).padding(end = 24.dp, bottom = if (isTelevision || webColumn != null) 0.dp else PHONE_WEEK_BOTTOM_DP.dp),

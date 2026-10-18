@@ -1,0 +1,2 @@
+- Match the Calendar navigation pills and week card outlines to Web, and fade the horizontally scrolling week view at its trailing edge.
+- Add a scrollable month and year picker to Sailfish Calendar, with D-pad trapping, draft year selection, applied month selection, and focus return to the range button.

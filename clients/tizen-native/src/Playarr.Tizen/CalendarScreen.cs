@@ -89,7 +89,7 @@ internal sealed class CalendarScreen : IPage
 
     private void BuildTiles()
     {
-        Tile(151.2f, 62, 72, "Calendar link", "calendar", () => Toast("Calendar links are not available in this app yet."));
+        Tile(151.2f, 62, 72, "Calendar link", "bell", () => Toast("Calendar links are not available in this app yet."));
         Tile(236.1f, 62, 72, "Filters", "filters", OpenDrawer);
         // web: Down from the period navigation lands on Filters, not on Calendar link
         _focus.Overrides[(2, RemoteKey.Down)] = 5;

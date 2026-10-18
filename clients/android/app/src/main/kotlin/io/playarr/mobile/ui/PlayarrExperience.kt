@@ -7460,7 +7460,7 @@ internal fun SeriesEpisodeBrowser(
                 // The viewport reaches 40 dp left of the heading line so a focused first tile's ring, corner and glow are not clipped (web's track left gutter).
                 modifier = if (isTelevision) Modifier.padding(top = 18.3.dp + 13.85.dp * tabletDetail).extendStart(40.dp) else Modifier,
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 25.dp - 1.dp * tabletDetail else 12.dp),
-                contentPadding = if (isTelevision) PaddingValues(start = 44.dp - 3.dp * tabletDetail, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
+                contentPadding = if (isTelevision) PaddingValues(start = 40.dp - 3.dp * tabletDetail, top = 18.dp, end = tabletTrackEnd(24.dp), bottom = 24.dp * tabletDetail) else PaddingValues(vertical = 6.dp),
             ) {
                 itemsIndexed(season.episodes, key = { _, it -> it.episode.id }) { episodeIndex, episode ->
                     EpisodeDetailCard(

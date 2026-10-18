@@ -137,7 +137,7 @@ launch() { # <theme> [route]: (re)launch the app signed in, muted, on the route 
     macos)
       token || return 1 # fresh sign-in per launch (see tvOS above); a failure leaves the running app alone
       pkill -x PlayarrMac 2>/dev/null || true; sleep 1
-      mkdir -p "$WORK/machome"; pin_device
+      mkdir -p "$WORK/machome/Documents"; pin_device # the app writes parity-state.json under Documents; a missing folder made every write fail
       local open_flags=(-n -g -j)
       local app_args=(-PlayarrMuted -PlayarrTheme "$theme" -ApplePersistenceIgnoreState YES \
         -PlayarrServerURL "$SERVER_URL" -PlayarrAccessToken "$ACCESS_TOKEN" -PlayarrRefreshToken "$REFRESH_TOKEN")

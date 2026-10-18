@@ -1,0 +1,1 @@
+- Sailfish: the calendar link page matches the web spacing around the QR code and steps list, and pushed pages no longer show Silica's edge glow (calendar link dark 91.67 to 92.76, light 91.76 to 92.69; film-detail dark 96.16 to 96.25).

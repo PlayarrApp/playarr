@@ -300,6 +300,14 @@ export async function createDriver() {
             s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0 && !!(img.currentSrc || img.getAttribute("src") || img.getAttribute("srcset"));
         });
         if (${requireVisibleImage} && !visible.length) return null;
+        // A card whose art has not loaded yet (no src, or fading in at opacity 0) is not in the visible list; on Home only, wait for it for the first 30 s (a card with no art at all must not block the capture).
+        if (${requireVisibleImage} && ${i} < 40) {
+          const bare = [...document.querySelectorAll(".media-card")].filter((card) => {
+            const r = card.getBoundingClientRect();
+            return insideAncestorClips(card) && r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth && ![...card.querySelectorAll("img")].some((img) => (img.currentSrc || img.getAttribute("src")) && img.complete && img.naturalWidth > 0);
+          });
+          if (bare.length) return null;
+        }
         if (visible.some((img) => !img.currentSrc || !img.complete || img.naturalWidth === 0)) return null;
         try { await Promise.all(visible.map((img) => img.decode())); } catch { return null; }
         const page = document.querySelector("[data-page-id]");
