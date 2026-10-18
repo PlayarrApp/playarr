@@ -7,7 +7,7 @@
  */
 
 import { nunito } from '../Typography';
-import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
+import { activeColors, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
 import type { Choice } from './ChoiceSegments';
@@ -77,7 +77,7 @@ export struct SelectField {
           Image(this.lead === 'sun' ? $r('app.media.select_sun') : $r('app.media.select_globe'))
             .width(this.labelSize * 1.5)
             .height(this.labelSize * 1.5)
-            .fillColor(this.textColor(this.highlighted === '#trigger'))
+            .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
         }
         Text(this.labelOf(this.value)).fontFamily(nunito(this.labelWeight))
           .fontSize(tv(this.labelSize))
