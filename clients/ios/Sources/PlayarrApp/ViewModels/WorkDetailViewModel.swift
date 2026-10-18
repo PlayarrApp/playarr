@@ -68,11 +68,40 @@ public final class WorkDetailViewModel {
             detail = try await fetchedDetail
             loadState = .loaded
             credits = (try? await fetchedCredits) ?? WorkCredits(cast: [], crew: [])
-            similarWorks = (try? await fetchedSimilar) ?? []
+            let similar = ((try? await fetchedSimilar) ?? []).filter { $0.id != workID && ($0.kind == .movie || $0.kind == .series) }
+            similarWorks = similar.isEmpty ? await genreFallback(for: detail?.work) : similar
         } catch let error as APIError {
             loadState = .failed(error.displayMessage)
         } catch {
             loadState = .failed(error.localizedDescription)
         }
+    }
+
+    /// Web fallback when `/similar` is empty: library titles ranked by shared genres, kind, then year.
+    private func genreFallback(for target: Work?) async -> [Work] {
+        guard let target else { return [] }
+        var pages: [CatalogPage] = []
+        if target.genres.isEmpty {
+            if let page = try? await apiClient.browseCatalog(kind: target.kind, sort: "date_added", limit: 100) { pages = [page] }
+        } else {
+            for genre in target.genres.prefix(3) {
+                if let page = try? await apiClient.browseCatalog(genre: genre, limit: 100) { pages.append(page) }
+            }
+        }
+        var candidates: [UUID: Work] = [:]
+        for work in pages.flatMap(\.items)
+        where work.id != target.id && (work.kind == .movie || work.kind == .series) && work.availability == .available {
+            candidates[work.id] = work
+        }
+        let genres = Set(target.genres.map { $0.trimmingCharacters(in: .whitespaces).lowercased() })
+        func year(_ work: Work) -> Double? { work.releaseDate.flatMap { Double($0.prefix(4)) } }
+        func score(_ work: Work) -> Double {
+            let shared = work.genres.filter { genres.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) }.count
+            let near = year(target).flatMap { t in year(work).map { max(0, 5 - abs(t - $0) / 5) } } ?? 0
+            return Double(shared) * 100 + (work.kind == target.kind ? 10 : 0) + near
+        }
+        return Array(
+            candidates.values.sorted { score($0) != score($1) ? score($0) > score($1) : $0.sortTitle < $1.sortTitle }.prefix(20)
+        )
     }
 }
