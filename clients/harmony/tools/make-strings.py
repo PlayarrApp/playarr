@@ -19,12 +19,15 @@ PREFIXES = (
     "pages.search.", "discovery.watchlist.", "components.mediaContextMenu.addToPlaylist", "components.mediaContextMenu.download",
     "pages.home.workKind.",
 )
+# Every key a page asks for with t('key', ...) or tf('key', ...), so new call sites need no prefix edit.
+USED = re.compile(r"\bt[f]?\(\s*'([A-Za-z0-9_.]+)'")
+KEYS = {k for path in (ROOT / "harmony/entry/src/main/ets").rglob("*.ets") for k in USED.findall(path.read_text(encoding="utf-8"))}
 ENTRY = re.compile(r'^  "([A-Za-z0-9_.]+)":\s*("(?:[^"\\]|\\.)*")\s*,?\s*$', re.M | re.S)
 
 
 def load(lang):
     text = (SRC / f"{lang}.ts").read_text(encoding="utf-8")
-    return {k: json.loads(v) for k, v in ENTRY.findall(text) if k.startswith(PREFIXES)}
+    return {k: json.loads(v) for k, v in ENTRY.findall(text) if k.startswith(PREFIXES) or k in KEYS}
 
 
 tables = {lang: load(lang) for lang in ("en", "th", "ja")}

@@ -302,19 +302,23 @@ interface LibrarySortOption {
 /** Brief 4.8 / 9: `sort` is `"title"` (default) | `"date_added"` |
  * `"recent"`. Listed in the brief's own order. */
 // Web TV Filters drawer: Sort by Title or Date Added; Order A-Z or Z-A.
-const TV_SORT_CHOICES: Choice[] = [
-  { value: 'title', label: 'Title' },
-  { value: 'date_added', label: 'Date Added' },
-];
-const TV_ORDER_CHOICES: Choice[] = [
-  { value: 'asc', label: 'A-Z' },
-  { value: 'desc', label: 'Z-A' },
-];
+function TV_SORT_CHOICES(): Choice[] {
+  return [
+    { value: 'title', label: t('pages.library.sortTitle', 'Title') },
+    { value: 'date_added', label: t('pages.library.sortDateAdded', 'Date Added') },
+  ];
+}
+function TV_ORDER_CHOICES(): Choice[] {
+  return [
+    { value: 'asc', label: t('pages.library.sortAscAlpha', 'A-Z') },
+    { value: 'desc', label: t('pages.library.sortDescAlpha', 'Z-A') },
+  ];
+}
 
 const SORT_OPTIONS: LibrarySortOption[] = [
-  { value: 'title', label: 'Title' },
-  { value: 'date_added', label: 'Date Added' },
-  { value: 'recent', label: 'Recent' },
+  { value: 'title', label: t('pages.library.sortTitle', 'Title') },
+  { value: 'date_added', label: t('pages.library.sortDateAdded', 'Date Added') },
+  { value: 'recent', label: t('pages.downloads.sortRecent', 'Recent') },
 ];
 
 /**
@@ -1302,7 +1306,7 @@ export struct Library {
     })
     ChoiceSegments({
       heading: t('pages.library.sortBy', 'Sort by'),
-      choices: TV_SORT_CHOICES,
+      choices: TV_SORT_CHOICES(),
       selected: this.sort,
       onChoose: (value: string): void => {
         this.setSort(value);
@@ -1310,7 +1314,7 @@ export struct Library {
     })
     ChoiceSegments({
       heading: t('pages.library.order', 'Order'),
-      choices: TV_ORDER_CHOICES,
+      choices: TV_ORDER_CHOICES(),
       selected: this.order,
       onChoose: (value: string): void => {
         if (value !== this.order) {
