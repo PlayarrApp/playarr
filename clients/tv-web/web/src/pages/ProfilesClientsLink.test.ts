@@ -6,7 +6,7 @@ const source = readFileSync(new URL("./Profiles.tsx", import.meta.url), "utf8");
 describe("Profiles client navigation", () => {
   it("links the profile picker to the public Clients page with TV focus metadata", () => {
     expect(source).toContain('id="profiles-clients"');
-    expect(source).toContain('to="/clients"');
+    expect(source).toContain('href="https://playarr.app/clients"');
     expect(source).toContain('data-navigation-focus-key="profiles:clients"');
     expect(source).toContain('isAndroidTv ? "#profiles-check-updates" : "#profiles-clients"');
   });

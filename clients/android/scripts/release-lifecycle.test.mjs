@@ -5,6 +5,8 @@ import {
   findReleaseLifecycle,
   findInReviewVersionCodes,
   formatReleaseLifecycleEvidence,
+  isDeclarationBlock,
+  isVersionCodeReusable,
   waitForReleaseLifecycle,
 } from './release-lifecycle.mjs';
 
@@ -95,4 +97,24 @@ test('waits for the committed version to appear in lifecycle results', async () 
 
   assert.equal(lifecycle, 'RELEASE_LIFECYCLE_STATE_IN_REVIEW');
   assert.equal(sleeps, 1);
+});
+
+test('treats a declaration refusal as a draft fallback but not a review or version conflict', () => {
+  const foreground = { status: 403, apiMessage: 'You must let us know whether your app uses any Foreground Service permissions.' };
+  assert.equal(isDeclarationBlock(foreground), true);
+  assert.equal(isDeclarationBlock({ status: 400, apiMessage: 'Complete the data safety form.' }), true);
+  assert.equal(isDeclarationBlock({ status: 400, apiMessage: 'Changes cannot be sent: release in review' }), false);
+  assert.equal(isDeclarationBlock({ status: 403, apiMessage: 'Version code 12 has already been used.' }), false);
+  assert.equal(isDeclarationBlock({ status: 500, apiMessage: 'oops' }), false);
+  assert.equal(isDeclarationBlock(new Error('network')), false);
+});
+
+test('reuses an already uploaded bundle only for the expected version code', () => {
+  const used = { status: 403, apiMessage: 'Version code 30003252 has already been used.' };
+  assert.equal(isVersionCodeReusable(used, '30003252'), true);
+  assert.equal(isVersionCodeReusable(used, 30003252), true);
+  assert.equal(isVersionCodeReusable(used, '30003253'), false);
+  assert.equal(isVersionCodeReusable({ ...used, status: 400 }, '30003252'), false);
+  assert.equal(isVersionCodeReusable({ status: 403, apiMessage: 'Other' }, '30003252'), false);
+  assert.equal(isVersionCodeReusable(new Error('x'), '1'), false);
 });

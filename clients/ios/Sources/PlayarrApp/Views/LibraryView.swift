@@ -2,12 +2,20 @@ import PlayarrKit
 import SwiftUI
 import UIKit
 
+enum LibraryFocusMetrics {
+    static let tabletCardScale: CGFloat = 1.015
+    static let tabletArtworkScale: CGFloat = 1.025
+    static let tabletLift: CGFloat = -5
+}
+
 struct LibraryView: View {
     @State private var viewModel: LibraryViewModel
     /// Hardware-keyboard focus (Tab and arrows): the ring follows it, and starts on the first card as on the web.
     @FocusState private var focusedWork: UUID?
     /// Arrow keys move this card index in the phone grid; the ring and the scroll follow it.
     @State private var keyIndex: Int?
+    @State private var visibleWorkID: UUID?
+    @State private var alphabetJumpTask: Task<Void, Never>?
     @FocusState private var gridKeys: Bool
     let apiClient: PlayarrAPIClient
     let downloadRepository: DownloadRepository
@@ -15,12 +23,14 @@ struct LibraryView: View {
     @Environment(\.playarrGoHome) private var goHome
     @AppStorage(PlayarrArtworkPrefs.sizeKey) private var artworkSize = "medium"
     @State private var showingFilters = false
-    /// Works this profile has any progress on; a grid card for any other work shows the web's unseen dot.
+    /// Works this profile has watched or part-watched (an explicit unseen row does not count, as on web); a grid card for any other work shows the web's unseen dot.
     @State private var progressedWorkIDs: Set<UUID>?
     @State private var filtersOpen = false
     @State private var downloadTarget: Work?
     @Environment(\.colorScheme) private var scheme
     @State private var actionsWork: Work?
+    /// Web moves focus into an open drawer, so no grid card keeps its focus ring or lift behind it.
+    private var drawerOpen: Bool { showingFilters || actionsWork != nil }
     @State private var openWork: Work?
     private var isPhoneIdiom: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
@@ -68,7 +78,7 @@ struct LibraryView: View {
         .task {
             if case .idle = viewModel.loadState { await viewModel.load() }
             if progressedWorkIDs == nil {
-                progressedWorkIDs = Set(((try? await apiClient.listWatchProgress()) ?? []).map(\.workID))
+                progressedWorkIDs = Set(((try? await apiClient.listWatchProgress()) ?? []).filter { $0.state != .unseen }.map(\.workID))
             }
             #if DEBUG
             // Parity "actions": the first card's actions sheet, which a long press opens.
@@ -76,13 +86,16 @@ struct LibraryView: View {
             #endif
         }
         .navigationBarHidden(true)
+        #if DEBUG
+        .parityScreenLoad(parityLoadState)
+        #endif
         .overlay {
-            // Phones: a full-page panel; iPad: the web tablet's 352 pt drawer on the right.
+            // Phones: a full-page panel; iPad: the web tablet's 360 pt drawer on the right.
             HStack(spacing: 0) {
                 if !isPhoneIdiom { Spacer(minLength: 0) }
                 if showingFilters {
                     WMLibraryFiltersPanel(viewModel: viewModel) { showingFilters = false; Task { await viewModel.load() } }
-                        .frame(maxWidth: isPhoneIdiom ? .infinity : 352)
+                        .frame(maxWidth: isPhoneIdiom ? .infinity : 360)
                 } else if let work = actionsWork {
                     WMTitleActionsPanel(
                         work: work, apiClient: apiClient,
@@ -90,7 +103,7 @@ struct LibraryView: View {
                         onDownload: { actionsWork = nil; downloadTarget = work },
                         onClose: { actionsWork = nil }
                     )
-                    .frame(maxWidth: isPhoneIdiom ? .infinity : 352)
+                    .frame(maxWidth: isPhoneIdiom ? .infinity : 360)
                 }
             }
         }
@@ -103,6 +116,18 @@ struct LibraryView: View {
             WorkDownloadSheet(work: work, apiClient: apiClient, downloadRepository: downloadRepository)
         }
     }
+
+    #if DEBUG
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.loadState {
+        case .loaded, .empty:
+            if ParityLaunch.screen == "actions", actionsWork == nil { return .loading }
+            return .ready
+        case .failed: return .failed
+        case .idle, .loading: return .loading
+        }
+    }
+    #endif
 
     private struct SearchChip: Identifiable {
         let label: String
@@ -230,8 +255,8 @@ struct LibraryView: View {
             .keepInsideSafeArea()
 
             ZStack(alignment: .topLeading) {
-                WMHeaderCircleButton(width: 42, height: 38, glyph: "←", action: goHome)
-                    .offset(x: 16, y: WM.topInset + 2)
+                PlayarrBackButton(action: goHome)
+                    .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
                 WMText("Search", 21.6, 580, lh: 32.4, ls: -0.972)
                     .offset(x: 68, y: WM.topInset + 5)
             }
@@ -256,7 +281,12 @@ struct LibraryView: View {
         GeometryReader { proxy in
             let phone = PlayarrLayout.isPhone(proxy.size)
             ZStack(alignment: .topLeading) {
-                if !phone, let preview = viewModel.works.first {
+                let preview = LibraryOverlayParity.previewWork(
+                    actionsWork: actionsWork,
+                    focusedWork: viewModel.works.first(where: { $0.id == focusedWork }),
+                    works: viewModel.works
+                )
+                if !phone, let preview {
                     PlayarrArtwork(work: preview, kind: .backdrop, apiClient: apiClient)
                         .frame(width: proxy.size.width * 0.52, height: proxy.size.height)
                         .clipped() // scaledToFill art overflowed the frame and drew a grey band over the grid
@@ -269,7 +299,7 @@ struct LibraryView: View {
                             )
                         }
                     previewCopy(preview, viewportWidth: proxy.size.width)
-                        .frame(width: proxy.size.width * 0.205, alignment: .leading)
+                        .frame(width: proxy.size.width * 0.24, alignment: .leading)
                         .padding(.leading, proxy.size.width * 0.088)
                         .padding(.top, proxy.size.height * 0.24)
                         .zIndex(2)
@@ -323,22 +353,28 @@ struct LibraryView: View {
 
     /// Web tablet letter rail: 44 pt targets that scroll when the 27 letters do not fit (the first 16 show).
     private func tabletAlphabetRail(_ proxy: ScrollViewProxy, height: CGFloat) -> some View {
-        let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
+        let displayedLetters = LibraryViewModel.alphabetLetters(order: viewModel.order)
+        let activeWork = visibleWorkID.flatMap { id in viewModel.works.first { $0.id == id } }
+            ?? focusedWork.flatMap { id in viewModel.works.first { $0.id == id } }
+            ?? viewModel.works.first
+        let activeLetter = activeWork.map(LibraryViewModel.alphabetLetter(for:)) ?? "#"
         return ScrollView(.vertical) {
             VStack(spacing: 0) {
-                ForEach(letters, id: \.self) { letter in
+                ForEach(displayedLetters, id: \.self) { letter in
                     ZStack {
-                        if letter == "#" { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
-                        Text(letter).font(WM.font(8.8, 700)).foregroundStyle(letter == "#" ? PlayarrStyle.background : WM.muted)
+                        if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
+                        Text(letter).font(WM.font(8.8, 700)).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        let first = viewModel.works.first { work in
-                            let initial = work.title.first.map { String($0).uppercased() } ?? "#"
-                            return letter == "#" ? !("A"..."Z").contains(initial) : initial == letter
+                        alphabetJumpTask?.cancel()
+                        alphabetJumpTask = Task {
+                            guard let first = await viewModel.firstWork(atOrAfterAlphabetLetter: letter) else { return }
+                            guard !Task.isCancelled else { return }
+                            focusedWork = first.id
+                            proxy.scrollTo(first.id, anchor: .center)
                         }
-                        if let first { withAnimation { proxy.scrollTo(first.id, anchor: .top) } }
                     }
                 }
             }
@@ -357,10 +393,13 @@ struct LibraryView: View {
             ScrollView(.vertical) { VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
                     ZStack {
-                        if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 22, height: 22) }
+                        if letter == activeLetter {
+                            Circle().fill(WM.ink.opacity(0.78)).frame(width: 22, height: 22)
+                            Circle().stroke(WM.pink, lineWidth: 2).frame(width: 26, height: 26)  // the web focus ring on the focused tile's letter
+                        }
                         Text(letter).font(WM.font(9.5, 700)).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
-                    .frame(width: 44).frame(height: 25)
+                    .frame(width: 44).frame(height: 25.27)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         let first = viewModel.works.first { work in
@@ -373,7 +412,7 @@ struct LibraryView: View {
             } }
             .scrollIndicators(.hidden)
             .frame(width: 44, height: max(0, geo.size.height - 90 - 84), alignment: .top)
-            .offset(x: geo.size.width - 48, y: 87.5)
+            .offset(x: geo.size.width - 48, y: 86.9)
         }
     }
 
@@ -548,21 +587,51 @@ struct LibraryView: View {
                             if viewModel.viewMode == .list {
                                 libraryListRow(work, width: cardWidth)
                             } else {
-                                PlayarrMediaCard(work: work, apiClient: apiClient, width: cardWidth, showsSubtitle: false)
+                                let focused = (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
+                                PlayarrMediaCard(
+                                    work: work,
+                                    apiClient: apiClient,
+                                    width: cardWidth,
+                                    showsSubtitle: false,
+                                    focused: !phone && focused,
+                                    screenGridViewportWidth: matchesWebScreenGrid ? viewportWidth : nil
+                                )
                                     .overlay(alignment: .topTrailing) {
                                         if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
                                             WMUnseenDot().padding(.top, 7).padding(.trailing, 7)
                                         }
                                     }
                                     .overlay(alignment: .top) {
-                                        // Web focuses the first tile of a library on arrival: a pink ring with a soft glow.
-                                        if work.id == viewModel.works.first?.id {
-                                            WMFocusRing(width: cardWidth, height: cardWidth * 9 / 16, cornerRadius: min(13, max(8, cardWidth * 0.058)))
+                                        if focused {
+                                            WMFocusRing(
+                                                width: phone ? cardWidth : cardWidth * LibraryFocusMetrics.tabletArtworkScale,
+                                                height: phone ? cardWidth * 9 / 16 : cardWidth * 9 / 16 * LibraryFocusMetrics.tabletArtworkScale,
+                                                cornerRadius: min(13, max(8, cardWidth * 0.058)) * (phone ? 1 : LibraryFocusMetrics.tabletArtworkScale)
+                                            )
                                                 .frame(width: cardWidth, height: cardWidth * 9 / 16)
                                         }
                                     }
                             }
                         }
+                        .focusable(!phone)
+                        .focused($focusedWork, equals: work.id)
+                        .background {
+                            GeometryReader { geometry in
+                                Color.clear.preference(
+                                    key: LibraryWorkFrameKey.self,
+                                    value: [work.id: geometry.frame(in: .named("library-work-grid"))]
+                                )
+                            }
+                        }
+                        .scaleEffect(
+                            !phone && viewModel.viewMode != .list && (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
+                                ? LibraryFocusMetrics.tabletCardScale : 1,
+                            anchor: .center
+                        )
+                        .offset(
+                            y: !phone && viewModel.viewMode != .list && (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
+                                ? LibraryFocusMetrics.tabletLift : 0
+                        )
                         .buttonStyle(.plain)
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                         .task {
@@ -578,8 +647,17 @@ struct LibraryView: View {
                     }
                     .scrollClipDisabled() // the first tile's focus ring and glow are not cut at the grid edge
                     .webEdgeFade(.vertical, enabled: !phone)
+                    .coordinateSpace(name: "library-work-grid")
+                    .onPreferenceChange(LibraryWorkFrameKey.self) { frames in
+                        guard !phone else { return }
+                        visibleWorkID = LibraryViewModel.visibleWorkID(
+                            works: viewModel.works,
+                            frames: frames,
+                            viewportHeight: viewportHeight
+                        )
+                    }
                     .overlay(alignment: .topTrailing) {
-                        if !phone && !viewModel.isSearchMode && viewModel.viewMode != .list {
+                        if !phone && !viewModel.isSearchMode && viewModel.sort == "title" && viewModel.viewMode != .list {
                             tabletAlphabetRail(scrollProxy, height: proxy.size.height - 263 - 24)
                                 .padding(.trailing, 16).padding(.top, 263)
                         }
@@ -588,9 +666,6 @@ struct LibraryView: View {
                 }
             }
             .frame(width: panelWidth, height: proxy.size.height)
-            .offset(x: phone ? 0 : proxy.size.width * 0.35)
-            .refreshable { await viewModel.load() }
-            .scrollIndicators(.hidden)
             .background {
                 if phone {
                     PlayarrStyle.surface.opacity(0.96)
@@ -615,6 +690,13 @@ struct LibraryView: View {
                     )
                 }
             }
+            .offset(x: phone ? 0 : proxy.size.width * 0.35)
+            .onDisappear {
+                alphabetJumpTask?.cancel()
+                alphabetJumpTask = nil
+            }
+            .refreshable { await viewModel.load() }
+            .scrollIndicators(.hidden)
         }
     }
 
@@ -628,26 +710,64 @@ struct LibraryView: View {
             let isPad = UIDevice.current.userInterfaceIdiom == .pad
             let titleSize: CGFloat = isPad ? min(max(35.2, viewportWidth * 0.036), 80) : 42
             let titleWeight = isPad ? 560 : 400
-            let nativeLineHeight = DesignFont.uiFont(
+            let titleFont = DesignFont.uiFont(
                 family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: titleSize, weight: titleWeight, fixedAxes: DesignFont.nunitoAxes
-            )?.lineHeight ?? titleSize * 1.36
+            )
+            let nativeLineHeight = titleFont?.lineHeight ?? titleSize * 1.36
             let pitchCorrection = titleSize * 0.9 - nativeLineHeight
-            Text(work.title)
-                .font(WM.font(titleSize, titleWeight))
-                .tracking(isPad ? -titleSize * 0.072 : -1.5)
-                .lineSpacing(pitchCorrection)
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(3)
-                .frame(maxWidth: 215, alignment: .leading)
-                .padding(.bottom, pitchCorrection)
+            let nineChWidth = titleFont.map { ("000000000" as NSString).size(withAttributes: [.font: $0]).width } ?? titleSize * 4.5
+            let titleTracking = isPad ? -titleSize * 0.072 : -1.5
+            let titleWidth = isPad ? min(viewportWidth * 0.24, nineChWidth) : 215
+            let balancedLines = isPad ? titleFont.flatMap { BalancedTitleLayout.lines(for: work.title, font: $0, tracking: titleTracking, maxWidth: titleWidth) } : nil
+            if isPad, let balancedLines {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(balancedLines.enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(WM.font(titleSize, titleWeight))
+                            .tracking(titleTracking)
+                            .foregroundStyle(PlayarrStyle.ink)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(height: titleSize * 0.9, alignment: .top)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(work.title)
+            } else {
+                Text(work.title)
+                    .font(WM.font(titleSize, titleWeight))
+                    .tracking(titleTracking)
+                    .lineSpacing(pitchCorrection)
+                    .foregroundStyle(PlayarrStyle.ink)
+                    .lineLimit(isPad ? nil : 3)
+                    .frame(width: isPad ? titleWidth : nil, alignment: .leading)
+                    .frame(maxWidth: isPad ? nil : 215, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: isPad)
+                    .padding(.bottom, pitchCorrection)
+            }
             WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
                 .padding(.top, 26)
             if let overview = work.overview {
+                let overviewSize: CGFloat = isPad ? min(max(16 * 0.64, viewportWidth * 0.0072), 16 * 0.92) : 11.5
+                let overviewFont = isPad
+                    ? DesignFont.uiFont(
+                        family: "Nunito Sans",
+                        postScriptName: DesignFont.nunitoPostScriptName,
+                        size: overviewSize,
+                        weight: 600,
+                        fixedAxes: DesignFont.nunitoAxes
+                    )
+                    : nil
+                let overviewWidth = isPad
+                    ? (overviewFont.map { (String(repeating: "0", count: 42) as NSString).size(withAttributes: [.font: $0]).width } ?? overviewSize * 23.5)
+                    : 0
+                let overviewLineHeight = overviewFont?.lineHeight ?? overviewSize * 1.36
                 Text(overview)
-                    .font(WM.font(11.5, 500))
-                    .foregroundStyle(PlayarrStyle.inkSoft)
-                    .lineSpacing(2.5)
+                    .font(isPad ? WM.font(overviewSize, 600) : WM.font(11.5, 500))
+                    .foregroundStyle(isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
+                    .lineSpacing(isPad ? max(0, overviewSize * 1.58 - overviewLineHeight) : 2.5)
                     .lineLimit(5)
+                    .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
                     .padding(.top, 20)
             }
         }
@@ -658,7 +778,7 @@ struct LibraryView: View {
     private func tabletHeader(proxy: GeometryProxy) -> some View {
         let scale = proxy.size.width / 1366
         return ZStack(alignment: .topLeading) {
-            WMHeaderCircleButton(width: 43, height: 43, glyph: "←", action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
             WMTitleWithDetail(
                 detail: viewModel.total.map { "\($0.formatted(.number.grouping(.automatic))) \(viewModel.selectedKind == .artist ? "artists" : "titles")" },
                 maxWidth: max(0, (proxy.size.width > 1100 ? proxy.size.width * 0.24 : proxy.size.width * 0.6) - 182 * scale - 4), size: 9.92, gap: 15
@@ -668,19 +788,9 @@ struct LibraryView: View {
             .offset(x: 182 * scale, y: 57 * scale)
             HStack {
                 Spacer()
-                Button { showingFilters = true } label: {
-                    VStack(spacing: 7) {
-                        Image(systemName: "slider.horizontal.3").font(.system(size: 15, weight: .semibold))
-                        Text("Filters").font(WM.font(8, 700))
-                    }
-                    .foregroundStyle(WM.inkSoft)
-                    .frame(width: 45, height: 70)
-                    .background(WM.chip.opacity(0.66), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(0.14), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
+                PlayarrHeaderPill(label: "Filters", systemImage: "slider.horizontal.3") { showingFilters = true }
             }
-            .padding(.trailing, 16 * scale).offset(y: 83 * scale)
+            .padding(.trailing, 16 * scale).offset(y: min(max(116, proxy.size.height * 0.14), 164))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -846,6 +956,14 @@ struct LibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(PlayarrStyle.ink)
+    }
+}
+
+private struct LibraryWorkFrameKey: PreferenceKey {
+    static var defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
     }
 }
 

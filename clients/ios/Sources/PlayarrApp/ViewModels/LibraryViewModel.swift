@@ -2,13 +2,9 @@ import Foundation
 import Observation
 import PlayarrKit
 
-/// View model for `LibraryView` — the catalog browse/search screen. Backed
-/// entirely by the real `GET /api/v1/catalog` and `GET
-/// /api/v1/catalog/search` endpoints (see `backend/openapi/playarr.yaml`).
-/// There is no "libraries" (source instance) listing endpoint in the real
-/// spec, so — unlike the Wave-1 placeholder — this no longer offers a
-/// library picker, only the `kind`/`sort` filters the real `browse_catalog`
-/// query params actually support.
+/// View model for `LibraryView`, backed by the catalog and search endpoints.
+/// The filters follow the web catalogue contract, including kind, sort,
+/// order, and audio or subtitle language.
 @MainActor
 @Observable
 public final class LibraryViewModel {
@@ -34,15 +30,45 @@ public final class LibraryViewModel {
     public var searchScope: SearchScope = .all
     public var isSearchMode = false
     public private(set) var isLoadingMore = false
+    public private(set) var languageFacets: LanguageFacets?
+    public private(set) var languageFacetError: String?
+    public private(set) var isLoadingLanguageFacets = false
+    public private(set) var selectedAudioLanguages: [String] = []
+    public private(set) var selectedSubtitleLanguages: [String] = []
+
+    /// The web library's alphabet rail uses the first ASCII letter of the
+    /// accent-folded sort title, with every other initial grouped under `#`.
+    static func alphabetLetter(for title: String) -> String {
+        let decomposed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            .decomposedStringWithCompatibilityMapping
+            .unicodeScalars
+            .filter { !(0x0300...0x036F).contains(Int($0.value)) }
+        guard let first = String(String.UnicodeScalarView(decomposed)).first else { return "#" }
+        let initial = String(first).uppercased()
+        return initial.count == 1 && initial >= "A" && initial <= "Z" ? initial : "#"
+    }
+
+    static func alphabetLetter(for work: Work) -> String {
+        alphabetLetter(for: work.sortTitle.isEmpty ? work.title : work.sortTitle)
+    }
+
+    static func alphabetLetters(order: String) -> [String] {
+        let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
+        return order == "desc" ? Array(letters.reversed()) : letters
+    }
 
     public var canLoadMore: Bool {
         guard searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if let total { return Int64(works.count) < total }
-        return works.count == pageSize
+        return receivedFullPage
     }
 
     private let apiClient: PlayarrAPIClient
     private let pageSize = 200
+    private var loadRequestID = 0
+    private var languageFacetRequestID = 0
+    private var languageSelectionRevision = 0
+    private var receivedFullPage = false
 
     public init(apiClient: PlayarrAPIClient) {
         self.apiClient = apiClient
@@ -51,6 +77,8 @@ public final class LibraryViewModel {
     /// Loads (or reloads) the current page: a catalog search if
     /// `searchText` is non-empty, otherwise a filtered/sorted browse.
     public func load() async {
+        loadRequestID += 1
+        let requestID = loadRequestID
         loadState = .loading
         let trimmedQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
@@ -64,7 +92,17 @@ public final class LibraryViewModel {
             if trimmedQuery.isEmpty {
                 playlists = []
                 let page: CatalogPage
-                if let selectedKind {
+                if !selectedAudioLanguages.isEmpty || !selectedSubtitleLanguages.isEmpty {
+                    page = try await apiClient.browseCatalog(
+                        kind: selectedKind,
+                        sort: sort,
+                        order: order,
+                        audioLang: selectedAudioLanguages,
+                        subtitleLang: selectedSubtitleLanguages,
+                        limit: pageSize,
+                        offset: 0
+                    )
+                } else if let selectedKind {
                     page = try await apiClient.browseLibrary(
                         kind: selectedKind,
                         sort: sort,
@@ -79,13 +117,16 @@ public final class LibraryViewModel {
                         limit: pageSize, offset: 0
                     )
                 }
+                guard requestID == loadRequestID else { return }
                 works = selectedKind == nil ? page.items : ordered(page.items)
                 total = page.total
+                receivedFullPage = page.items.count == pageSize
             } else {
                 async let foundWorks = apiClient.searchCatalog(query: trimmedQuery, limit: pageSize)
                 async let foundPlaylists = apiClient.listPlaylists()
                 let allWorks = try await foundWorks
                 let allPlaylists = (try? await foundPlaylists) ?? []
+                guard requestID == loadRequestID else { return }
                 works = allWorks.filter { work in
                     switch searchScope {
                     case .all: true
@@ -103,14 +144,14 @@ public final class LibraryViewModel {
             }
             loadState = works.isEmpty && playlists.isEmpty ? .empty : .loaded
         } catch let error as APIError {
-            loadState = .failed(error.displayMessage)
+            if requestID == loadRequestID { loadState = .failed(error.displayMessage) }
         } catch {
-            loadState = .failed(error.localizedDescription)
+            if requestID == loadRequestID { loadState = .failed(error.localizedDescription) }
         }
     }
 
-    /// The web orders a library on the client: numeric, case and accent blind on `sort_title`, so "2 Fast 2 Furious" comes
-    /// before "10 Cloverfield Lane" (the server's plain string order puts it after).
+    /// The web orders a library on the client using numeric, case-insensitive,
+    /// accent-insensitive comparison of `sort_title`.
     private func ordered(_ items: [Work]) -> [Work] {
         let ascending = order == "asc"
         if sort == "date_added" {
@@ -124,24 +165,163 @@ public final class LibraryViewModel {
     }
 
     public func loadMore() async {
-        guard !isLoadingMore, canLoadMore, let selectedKind else { return }
+        let hasLanguageFilter = !selectedAudioLanguages.isEmpty || !selectedSubtitleLanguages.isEmpty
+        guard !isLoadingMore, canLoadMore, selectedKind != nil || hasLanguageFilter else { return }
+        let requestID = loadRequestID
         isLoadingMore = true
         defer { isLoadingMore = false }
         do {
-            let page = try await apiClient.browseLibrary(
-                kind: selectedKind,
-                sort: sort,
-                order: order,
-                availableOnly: true,
-                limit: pageSize,
-                offset: works.count
-            )
+            let page: CatalogPage
+            if !selectedAudioLanguages.isEmpty || !selectedSubtitleLanguages.isEmpty {
+                page = try await apiClient.browseCatalog(
+                    kind: selectedKind,
+                    sort: sort,
+                    order: order,
+                    audioLang: selectedAudioLanguages,
+                    subtitleLang: selectedSubtitleLanguages,
+                    limit: pageSize,
+                    offset: works.count
+                )
+            } else if let selectedKind {
+                page = try await apiClient.browseLibrary(
+                    kind: selectedKind,
+                    sort: sort,
+                    order: order,
+                    availableOnly: true,
+                    limit: pageSize,
+                    offset: works.count
+                )
+            } else {
+                page = try await apiClient.browseCatalog(
+                    kind: nil, genre: nil, tag: nil, sort: sort,
+                    limit: pageSize, offset: works.count
+                )
+            }
+            guard requestID == loadRequestID else { return }
             let existing = Set(works.map(\.id))
             works.append(contentsOf: page.items.filter { !existing.contains($0.id) })
             works = ordered(works)
             total = page.total ?? total
+            receivedFullPage = page.items.count == pageSize
         } catch {
             // Keep the loaded page visible; pull-to-refresh remains available.
         }
+    }
+
+    public func loadLanguageFacets() async {
+        languageFacetRequestID += 1
+        let requestID = languageFacetRequestID
+        isLoadingLanguageFacets = true
+        languageFacetError = nil
+        do {
+            let facets = try await apiClient.catalogLanguages(
+                kind: selectedKind,
+                audioLang: selectedAudioLanguages,
+                subtitleLang: selectedSubtitleLanguages
+            )
+            guard requestID == languageFacetRequestID else { return }
+            languageFacets = facets
+            isLoadingLanguageFacets = false
+        } catch {
+            guard requestID == languageFacetRequestID else { return }
+            languageFacets = nil
+            languageFacetError = error.localizedDescription
+            isLoadingLanguageFacets = false
+        }
+    }
+
+    public func toggleAudioLanguage(_ code: String) async {
+        selectedAudioLanguages = toggled(code, in: selectedAudioLanguages)
+        languageSelectionRevision += 1
+        let revision = languageSelectionRevision
+        await load()
+        guard revision == languageSelectionRevision else { return }
+        await loadLanguageFacets()
+    }
+
+    public func toggleSubtitleLanguage(_ code: String) async {
+        selectedSubtitleLanguages = toggled(code, in: selectedSubtitleLanguages)
+        languageSelectionRevision += 1
+        let revision = languageSelectionRevision
+        await load()
+        guard revision == languageSelectionRevision else { return }
+        await loadLanguageFacets()
+    }
+
+    public func clearLanguageFilters() async {
+        selectedAudioLanguages = []
+        selectedSubtitleLanguages = []
+        languageSelectionRevision += 1
+        let revision = languageSelectionRevision
+        await load()
+        guard revision == languageSelectionRevision else { return }
+        await loadLanguageFacets()
+    }
+
+    private func toggled(_ code: String, in selection: [String]) -> [String] {
+        if selection.contains(code) { return selection.filter { $0 != code } }
+        return (selection + [code]).sorted()
+    }
+
+    /// Finds the first work at or after a rail letter in display order, paging to that work or the catalogue end.
+    public func firstWork(atOrAfterAlphabetLetter letter: String) async -> Work? {
+        let requestID = loadRequestID
+        while !Task.isCancelled {
+            guard requestID == loadRequestID else { return nil }
+            if let target = Self.firstWork(atOrAfterAlphabetLetter: letter, order: order, works: works) {
+                return target
+            }
+            // A visible-card request may already be loading the page with the target.
+            while isLoadingMore {
+                do {
+                    try await Task.sleep(nanoseconds: 20_000_000)
+                } catch {
+                    return nil
+                }
+            }
+            guard !Task.isCancelled, requestID == loadRequestID else { return nil }
+            if let target = Self.firstWork(atOrAfterAlphabetLetter: letter, order: order, works: works) {
+                return target
+            }
+            guard canLoadMore else { return works.last }
+            let previousCount = works.count
+            await loadMore()
+            guard !Task.isCancelled, requestID == loadRequestID else { return nil }
+            if works.count == previousCount {
+                return Self.firstWork(atOrAfterAlphabetLetter: letter, order: order, works: works) ?? works.last
+            }
+        }
+        return nil
+    }
+
+    static func firstWork(atOrAfterAlphabetLetter letter: String, order: String, works: [Work]) -> Work? {
+        let orderedLetters = alphabetLetters(order: order)
+        guard let targetPosition = orderedLetters.firstIndex(of: letter) else { return nil }
+        return works.first { work in
+            guard let position = orderedLetters.firstIndex(of: alphabetLetter(for: work)) else { return false }
+            return position >= targetPosition
+        }
+    }
+
+    static func visibleWorkID(works: [Work], frames: [UUID: CGRect], viewportHeight: CGFloat) -> UUID? {
+        let trackingLine = min(64, viewportHeight * 0.1)
+        let positions = works.enumerated().compactMap { index, work -> (index: Int, id: UUID, frame: CGRect)? in
+            guard let frame = frames[work.id] else { return nil }
+            return (index, work.id, frame)
+        }
+        if let crossing = positions
+            .filter({ $0.frame.minY <= trackingLine && $0.frame.maxY >= trackingLine })
+            .min(by: { $0.index < $1.index }) {
+            return crossing.id
+        }
+        let visible = positions.filter { $0.frame.maxY > 0 && $0.frame.minY < viewportHeight }
+        if let preceding = visible
+            .filter({ $0.frame.minY <= trackingLine })
+            .max(by: {
+                $0.frame.minY == $1.frame.minY ? $0.index > $1.index : $0.frame.minY < $1.frame.minY
+            }) {
+            return preceding.id
+        }
+        return visible.min(by: { $0.index < $1.index })?.id
     }
 }

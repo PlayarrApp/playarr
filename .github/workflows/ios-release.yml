@@ -188,7 +188,10 @@ jobs:
           fi
 
       - name: Prepare App Store draft version and attach build
+        id: draft
         if: ${{ !inputs.dry_run }}
+        # The build is already uploaded; a blocked draft (missing App Store Connect declaration) must not fail the release.
+        continue-on-error: true
         timeout-minutes: 40
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -199,6 +202,12 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/asc-venv"
           "$RUNNER_TEMP/asc-venv/bin/pip" install --quiet 'pyjwt>=2.8,<3' 'cryptography>=42'
           "$RUNNER_TEMP/asc-venv/bin/python" clients/ios/scripts/asc_prepare_version.py
+
+      - name: Warn when the App Store draft was blocked
+        if: ${{ steps.draft.outcome == 'failure' }}
+        run: |
+          echo "::warning::App Store: build uploaded to TestFlight, draft version needs attention in App Store Connect (see the draft step log)"
+          echo "- App Store: build uploaded, draft version blocked, needs attention in App Store Connect" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Add the build to the external TestFlight groups
         id: external

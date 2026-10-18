@@ -1,0 +1,1 @@
+- The iPad capture workflow now reports sanitized Xcode runtime download errors and package inventory when the pinned iOS 18.5 runtime cannot be acquired.

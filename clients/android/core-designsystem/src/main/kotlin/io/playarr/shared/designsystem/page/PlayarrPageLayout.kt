@@ -146,7 +146,7 @@ internal fun PlayarrPageActions(actions: List<PlayarrPageAction>, modifier: Modi
                 }
                 is PlayarrPageAction.Panel -> PlayarrActionPill(action.icon, action.label, action.onToggle, active = action.open)
                 is PlayarrPageAction.Link -> PlayarrActionPill(action.icon, action.label, action.onClick)
-                is PlayarrPageAction.Filters -> PlayarrActionPill(PlayarrActionIcon.Filters, action.label, action.onToggle, active = action.open, count = action.activeCount)
+                is PlayarrPageAction.Filters -> PlayarrActionPill(PlayarrActionIcon.Filters, action.label, action.onToggle, active = action.open, count = action.activeCount, suppressFocusRingWhenActive = true, onLeft = action.onLeft)
                 is PlayarrPageAction.Status -> PlayarrStatusBadge(action.label)
             }
         }
@@ -222,7 +222,7 @@ private fun PlayarrShellActionColumn(actions: List<PlayarrPageAction>, modifier:
             when (action) {
                 is PlayarrPageAction.Panel -> PlayarrActionPill(action.icon, action.label, action.onToggle, active = action.open)
                 is PlayarrPageAction.Link -> PlayarrActionPill(action.icon, action.label, action.onClick)
-                is PlayarrPageAction.Filters -> PlayarrActionPill(PlayarrActionIcon.Filters, action.label, action.onToggle, active = action.open, count = action.activeCount)
+                is PlayarrPageAction.Filters -> PlayarrActionPill(PlayarrActionIcon.Filters, action.label, action.onToggle, active = action.open, count = action.activeCount, suppressFocusRingWhenActive = true, onLeft = action.onLeft)
                 is PlayarrPageAction.Status -> PlayarrStatusBadge(action.label)
                 is PlayarrPageAction.Navigation -> Unit
             }

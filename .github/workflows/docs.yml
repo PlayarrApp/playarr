@@ -29,7 +29,7 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
-  # The merge train (token mode) lands main without a push event and dispatches this workflow.
+  # Manual runs.
   workflow_dispatch:
   # Build-only check (no deploy) so a broken link fails the PR instead of main.
   pull_request:

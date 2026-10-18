@@ -11,7 +11,9 @@ internal sealed class AppEnv
     public const string Version = "0.1.0";
     public FileSessionStore Store { get; }
     public IPlayarrApiClient Api { get; }
+    public CaptureWork VisualWork { get; } = new();
     public AuthImage Images { get; }
+    public Func<DateTime> ClockNow { get; set; } = () => DateTime.Now;
     /// <summary>Set by the shell: opens a route (detail pages, the player).</summary>
     public Action<string> Navigate { get; set; } = _ => { };
     /// <summary>Set by the shell: the same as Back on the remote (previous page).</summary>
@@ -86,7 +88,7 @@ internal sealed class AppEnv
         catch (Exception e) { Dbg.Log("PLAYWORK failed: " + e.Message); }
     }
 
-    private AppEnv(FileSessionStore store, IPlayarrApiClient api) { Store = store; Api = api; Images = new AuthImage(api); Theme = PlayarrTheme.ByName(store.Theme());
+    private AppEnv(FileSessionStore store, IPlayarrApiClient api) { Store = store; Api = api; Images = new AuthImage(api, VisualWork); Theme = PlayarrTheme.ByName(store.Theme());
         DownloadsServer = new DownloadsApi(api, new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
         Downloads = new DownloadEngine(DownloadsServer, new DownloadStore(store.DataDirectory));
         Downloads.Recover();

@@ -22,12 +22,14 @@ namespace Playarr.Xbox.Views
         private readonly SettingsViewModel _viewModel;
         private bool _hasNavigatedToHomeAfterReconnect;
 
+        private readonly Ui.PageHeaderParts _header;
+
         public SettingsPage()
         {
             InitializeComponent();
+            _header = Ui.PageHeader(Root, Lang.T("settings.index.title"), "APPEARANCE", () => App.Navigation.GoBack());
             _viewModel = new SettingsViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerConnection.ServerAddress;
-            PageTitleText.Text = Lang.T("settings.index.title");
             BuildSections();
             ShowSection(0);
         }
@@ -100,8 +102,8 @@ namespace Playarr.Xbox.Views
 
             _sections[section].Host!.Visibility = Visibility.Visible;
 
-            SectionText.Text = _sections[section].Title;
-            Ui.LayoutHeader(HeaderTitles, PageTitleText, SectionText);
+            _header.Subtitle.Text = _sections[section].Title;
+            Ui.LayoutHeader(_header.Titles, _header.Title, _header.Subtitle);
             _sections[section].Render?.Invoke();
         }
 
@@ -333,7 +335,7 @@ namespace Playarr.Xbox.Views
                 Theme.Set(choices[i]);
                 // Rebuild this page so the controls it built in code pick the new tokens up.
                 App.Navigation.NavigateReplacingCurrent(typeof(SettingsPage), null!);
-            }, first: true));
+            }, first: true, automationIdPrefix: "appearance.theme"));
             AppearancePanel.Children.Add(SettingGroup(Lang.T("settings.appearance.homeViewTitle"), Lang.T("settings.appearance.homeViewDescription"),
                 new[] { Lang.T("settings.appearance.homeViewThumbnail"), Lang.T("settings.appearance.homeViewCover") }, Appearance.HomeCover ? 1 : 0, i => { Appearance.HomeCover = i == 1; RenderAppearance(); }));
             AppearancePanel.Children.Add(SettingGroup(Lang.T("settings.appearance.artworkSizeTitle"), Lang.T("settings.appearance.artworkSizeDescription"),
@@ -341,7 +343,7 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>The web's settings group: a heading, an optional note, the segmented choice, then a divider line.</summary>
-        private static StackPanel SettingGroup(string title, string? note, string[] options, int selected, System.Action<int> onSelect, bool first = false, bool divider = true)
+        private static StackPanel SettingGroup(string title, string? note, string[] options, int selected, System.Action<int> onSelect, bool first = false, bool divider = true, string? automationIdPrefix = null)
         {
             var group = new StackPanel { Margin = new Thickness(0, first ? 16 : 38, 0, 0) };
             group.Children.Add(Ui.Text(title, 17.5, Windows.UI.Text.FontWeights.SemiBold, "PlayarrInk"));
@@ -352,7 +354,7 @@ namespace Playarr.Xbox.Views
                 group.Children.Add(text);
             }
 
-            var choice = Drawer.Segmented(string.Empty, options, selected, onSelect);
+            var choice = Drawer.Segmented(string.Empty, options, selected, onSelect, automationIdPrefix);
             choice.Margin = new Thickness(0, 4, 0, 30);
             group.Children.Add(choice);
             if (divider)
@@ -369,7 +371,7 @@ namespace Playarr.Xbox.Views
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             Render();
             // The web opens Settings with the Back control focused.
-            FocusClaim.Start(this, () => BackButton);
+            FocusClaim.Start(this, () => _header.Back);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -463,7 +465,6 @@ namespace Playarr.Xbox.Views
         private void CancelPairingButton_Click(object sender, RoutedEventArgs e) =>
             _viewModel.ServerConnection.CancelPairing();
 
-        private void BackButton_Click(object sender, RoutedEventArgs e) => App.Navigation.GoBack();
 
         private void SignOutButton_Click(object sender, RoutedEventArgs e)
         {

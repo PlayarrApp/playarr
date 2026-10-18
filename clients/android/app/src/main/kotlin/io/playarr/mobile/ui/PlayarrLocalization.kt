@@ -312,7 +312,7 @@ internal enum class PlayarrString(
     CalendarLoading("Loading calendar", "กำลังโหลดปฏิทิน", "カレンダーを読み込み中"),
     CalendarEmptyTitle("Nothing scheduled", "ไม่มีรายการที่กำหนดไว้", "予定はありません"),
     CalendarEmptyDescription("No releases from your connected integrations fall in this period.", "ไม่มีรายการเผยแพร่จากการเชื่อมต่อของคุณในช่วงเวลานี้", "この期間に、連携中のサービスからのリリースはありません。"),
-    CalendarEmptyDay("No releases", "ไม่มีรายการเผยแพร่", "リリースなし"),
+    CalendarEmptyDay("Nothing scheduled", "ไม่มีรายการ", "予定なし"), // web `pages.calendar.dayEmpty`
     CalendarSourceProblemsTitle("Some integrations could not be read, so their releases are missing.", "อ่านข้อมูลจากบางการเชื่อมต่อไม่ได้ รายการเผยแพร่ของการเชื่อมต่อเหล่านั้นจึงหายไป", "一部の連携サービスを読み取れなかったため、そのリリースが表示されていません。"),
     CalendarSourceProblem("{{name}}: {{reason}}", "{{name}}: {{reason}}", "{{name}}: {{reason}}"),
     CalendarSourceProblemDetail("{{name}}: {{reason}} ({{detail}})", "{{name}}: {{reason}} ({{detail}})", "{{name}}: {{reason}} ({{detail}})"),
@@ -498,6 +498,8 @@ internal enum class PlayarrString(
     LibrarySubtitleLanguage("Subtitle language", "ภาษาคำบรรยาย", "字幕の言語"),
     LibraryClearLanguages("Clear language filters", "ล้างตัวกรองภาษา", "言語フィルターを解除"),
     LibraryAnyLanguage("Any language", "ทุกภาษา", "すべての言語"),
+    LibraryAddLanguage("Add language", "เพิ่มภาษา", "言語を追加"),
+    LibraryRemoveLanguage("Remove {{name}}", "ลบ {{name}}", "{{name}}を削除"),
     LibraryNoLanguages("No languages indexed yet", "ยังไม่มีข้อมูลภาษา", "言語はまだインデックスされていません"),
     LibraryNoMatches("No titles match these filters", "ไม่มีรายการที่ตรงกับตัวกรองเหล่านี้", "条件に一致する作品はありません"),
     LibraryView("View", "มุมมอง", "表示"),

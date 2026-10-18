@@ -8,6 +8,8 @@ private struct WMPanelFrame<Content: View>: View {
     let kicker: String
     let title: String
     let onClose: () -> Void
+    /// The actions drawer on iPad focuses its Play row on open, so the close button carries no ring there.
+    var closeFocused = true
     @ViewBuilder let content: () -> Content
 
     private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
@@ -40,7 +42,7 @@ private struct WMPanelFrame<Content: View>: View {
 
                     WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose)
                         // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
-                        .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
+                        .overlay(alignment: .trailing) { if closeFocused { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) } }
                 }
                 .padding(.horizontal, 34)
                 .padding(.top, 51 + WM.safeTop)
@@ -93,27 +95,98 @@ private struct WMChoice: View {
     }
 }
 
-private struct WMLanguageBox: View {
+private struct WMLanguageSelector: View {
     @Environment(\.colorScheme) private var scheme
     let label: String
-    var body: some View {
-        HStack {
-            Text("Any language").font(WM.font(10.5, 600)).foregroundStyle(WM.inkSoft)
-            Spacer()
-            Image(systemName: "chevron.down").font(.system(size: 7, weight: .bold)).foregroundStyle(WM.muted)
+    let identifier: String
+    let selectedCodes: [String]
+    let facets: [LanguageFacet]?
+    let isLoading: Bool
+    let error: String?
+    @Binding var isExpanded: Bool
+    let onToggle: (String) -> Void
+
+    private var selectedNames: String {
+        let names = selectedCodes.map { code in
+            facets?.first(where: { $0.code == code })?.displayName ?? code
         }
-        .padding(.horizontal, 19)
-        .frame(height: 58)
-        // Web `.ui-select-trigger`: the same fill and 1 px border as the filter chips.
-        .background(WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
-        .accessibilityLabel(label)
+        return names.isEmpty ? "Any language" : names.joined(separator: ", ")
+    }
+
+    private var options: [LanguageFacet] {
+        var available = facets ?? []
+        let availableCodes = Set(available.map(\.code))
+        available += selectedCodes
+            .filter { !availableCodes.contains($0) }
+            .map { LanguageFacet(code: $0, name: nil, count: nil) }
+        return available
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Button { isExpanded.toggle() } label: {
+                HStack {
+                    Text(selectedNames).font(WM.font(10.5, 600)).foregroundStyle(WM.inkSoft).lineLimit(1)
+                    Spacer(minLength: 8)
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 7, weight: .bold)).foregroundStyle(WM.muted)
+                }
+                .padding(.horizontal, 19)
+                .frame(height: 58)
+                .background(WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.line.opacity(scheme == .light ? 0.106 : 0.084), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(label), \(selectedNames)")
+            .accessibilityIdentifier(identifier)
+            .accessibilityHint(isExpanded ? "Hides language choices" : "Shows language choices")
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 0) {
+                    if error != nil && options.isEmpty {
+                        Text("Languages could not be loaded")
+                            .font(WM.font(11, 500)).foregroundStyle(WM.muted).padding(12)
+                            .accessibilityLabel("\(label): languages could not be loaded")
+                    } else if isLoading && facets == nil {
+                        ProgressView().frame(maxWidth: .infinity).padding(14)
+                            .accessibilityLabel("Loading \(label.lowercased())")
+                    } else if options.isEmpty && error == nil {
+                        Text("No languages available")
+                            .font(WM.font(11, 500)).foregroundStyle(WM.muted).padding(12)
+                    } else if !options.isEmpty {
+                        ForEach(options) { facet in
+                            Button { onToggle(facet.code) } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: selectedCodes.contains(facet.code) ? "checkmark.square.fill" : "square")
+                                        .foregroundStyle(selectedCodes.contains(facet.code) ? WM.pink : WM.muted)
+                                    Text(facet.displayName).foregroundStyle(WM.ink)
+                                    Spacer()
+                                    if let count = facet.count {
+                                        Text(count.formatted()).foregroundStyle(WM.muted)
+                                    }
+                                }
+                                .font(WM.font(11, 500))
+                                .padding(.horizontal, 13).frame(minHeight: 42)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("\(identifier)-option-\(facet.code)")
+                            .accessibilityAddTraits(selectedCodes.contains(facet.code) ? .isSelected : [])
+                        }
+                    }
+                }
+                .padding(.vertical, 3)
+                .background(WM.artFill.opacity(0.42), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
+            }
+        }
     }
 }
 
 struct WMLibraryFiltersPanel: View {
     @Bindable var viewModel: LibraryViewModel
     let onClose: () -> Void
+    @State private var expandedLanguage: String?
 
     private func section(_ name: String) -> some View {
         WMText(name.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1)
@@ -139,11 +212,40 @@ struct WMLibraryFiltersPanel: View {
                     WMChoice(label: viewModel.sort == "title" ? "Z-A" : "Newest", selected: viewModel.order == "desc", height: 48) { viewModel.order = "desc" }
                 }.padding(.top, 9)
                 section("Audio language").padding(.top, 26)
-                WMLanguageBox(label: "Audio language").padding(.top, 9)
+                WMLanguageSelector(
+                    label: "Audio language", identifier: "library-filter-audio-language",
+                    selectedCodes: viewModel.selectedAudioLanguages,
+                    facets: viewModel.languageFacets?.audio,
+                    isLoading: viewModel.isLoadingLanguageFacets,
+                    error: viewModel.languageFacetError,
+                    isExpanded: Binding(get: { expandedLanguage == "audio" }, set: { expandedLanguage = $0 ? "audio" : nil }),
+                    onToggle: { code in Task { await viewModel.toggleAudioLanguage(code) } }
+                ).padding(.top, 9)
                 section("Subtitle language").padding(.top, 22)
-                WMLanguageBox(label: "Subtitle language").padding(.top, 9)
+                WMLanguageSelector(
+                    label: "Subtitle language", identifier: "library-filter-subtitle-language",
+                    selectedCodes: viewModel.selectedSubtitleLanguages,
+                    facets: viewModel.languageFacets?.subtitle,
+                    isLoading: viewModel.isLoadingLanguageFacets,
+                    error: viewModel.languageFacetError,
+                    isExpanded: Binding(get: { expandedLanguage == "subtitle" }, set: { expandedLanguage = $0 ? "subtitle" : nil }),
+                    onToggle: { code in Task { await viewModel.toggleSubtitleLanguage(code) } }
+                ).padding(.top, 9)
+                if !viewModel.selectedAudioLanguages.isEmpty || !viewModel.selectedSubtitleLanguages.isEmpty {
+                    Button("Clear language filters") {
+                        Task { await viewModel.clearLanguageFilters() }
+                    }
+                    .font(WM.font(11, 600))
+                    .foregroundStyle(WM.ink)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
+                    .padding(.top, 14)
+                    .accessibilityIdentifier("library-filter-languages-clear")
+                }
             }
         }
+        .task { await viewModel.loadLanguageFacets() }
     }
 }
 
@@ -156,7 +258,7 @@ struct WMTitleActionsPanel: View {
     let onDownload: () -> Void
     let onClose: () -> Void
 
-    private func row(_ glyph: String, _ label: String, action: @escaping () -> Void) -> some View {
+    private func row(_ glyph: String, _ label: String, focused: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 0) {
                 Text(glyph).font(WM.font(15, 700)).foregroundStyle(WM.pink).frame(width: isPad ? 42 : 30)
@@ -172,6 +274,9 @@ struct WMTitleActionsPanel: View {
                 in: RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous)
             )
             .overlay(RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
+            .overlay {
+                if focused { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.ink, lineWidth: 3).padding(-3.5).allowsHitTesting(false) }
+            }
         }
         .buttonStyle(.plain)
     }
@@ -186,9 +291,9 @@ struct WMTitleActionsPanel: View {
     }
 
     var body: some View {
-        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose) {
+        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, closeFocused: !isPad) {
             VStack(spacing: isPad ? 14 : 15) {
-                row("▶", "Play", action: onPlay)
+                row("▶\u{FE0E}", "Play", focused: isPad, action: onPlay)
                 row("⇩", "Download", action: onDownload)
                 row("+", "Add to Playlist", action: onPlay)
                 row("✓", "Mark as Watched") { mark(watched: true) }

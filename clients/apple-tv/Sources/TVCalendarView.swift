@@ -11,6 +11,8 @@ struct TVCalendarView: View {
     @FocusState private var focusedEntry: String?
 
     private enum Panel { case link, filters }
+    private static let todayFocus = "calendar-today"
+    private static let filtersFocus = "calendar-filters"
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -21,6 +23,10 @@ struct TVCalendarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea()
+        #if !os(macOS)
+        // Web `data-tv-focus-default`: RIGHT from the nav rail lands on Today (row 28.961).
+        .defaultFocus($focusedEntry, Self.todayFocus)
+        #endif
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: viewModel?.mode) { _, mode in TVParityState.setCalendarView(mode?.rawValue) }
         .onChange(of: panel) { _, p in TVParityState.setPanel(p == .filters ? "filters" : nil) }
@@ -167,6 +173,12 @@ struct TVCalendarView: View {
         // Web `data-tv-focus-default`: the Today button takes the page's first focus.
         .macPreferredFocus(label == "Today")
         .environment(\.macDownTo, label == "Today" ? "calendar-filters" : nil)
+        #else
+        .focused($focusedEntry, equals: label == "Today" ? Self.todayFocus : "calendar-control-\(label)")
+        // Web: Down from Today goes to Filters.
+        #if os(tvOS)
+        .onMoveCommand { if label == "Today", $0 == .down { focusedEntry = Self.filtersFocus } }
+        #endif
         #endif
         .placed(x: x, y: 56.2, w: width, h: 50)
     }
@@ -670,6 +682,9 @@ struct TVCalendarView: View {
         .disabled(TVParityLaunch.frozen)
         #if os(macOS)
         .environment(\.macFocusName, label == "Filters" ? "calendar-filters" : nil)
+        #endif
+        #if !os(macOS)
+        .focused($focusedEntry, equals: label == "Filters" ? Self.filtersFocus : "calendar-pill-\(label)")
         #endif
         .placed(x: TVShellActionColumn.x, y: TVShellActionColumn.y(slot: slot), w: TVShellActionColumn.width, h: TVHeaderPill.height)
     }

@@ -87,7 +87,9 @@ struct TVKeyArtFilter: ViewModifier {
                 .brightness(0.1)
                 .opacity(0.24)
                 #else
-                .opacity(0.4)
+                // Web TV uses 0.24 for the light-mode key art on every wide
+                // viewport, including tvOS.
+                .opacity(0.24)
                 #endif
         } else {
             content
@@ -120,6 +122,13 @@ struct TVPageHeader: View {
     @Environment(\.colorScheme) private var scheme
     /// Web `--line-strong`: rgba(223, 220, 221, .23) in dark, rgba(56, 38, 33, .28) in light.
     private var lineStrong: Color { scheme == .dark ? Color(red: 223 / 255, green: 220 / 255, blue: 221 / 255).opacity(0.23) : Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.28) }
+
+    /// Gap round the hairline: the Mac's title ink runs 2 pt wider than the web's, so its gaps are 2 pt tighter.
+    #if os(macOS)
+    private let headerSpacing: CGFloat = 22
+    #else
+    private let headerSpacing: CGFloat = 24
+    #endif
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -155,7 +164,7 @@ struct TVPageHeader: View {
                     .fixedSize()
             }
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 24) {
+                HStack(alignment: .center, spacing: headerSpacing) {
                     titleText
                     if let subtitle {
                         Rectangle().fill(lineStrong).frame(width: 1, height: 17)
@@ -259,6 +268,32 @@ enum TVWebFormat {
     static func year(_ iso: String?) -> String? {
         guard let iso, iso.count >= 4 else { return nil }
         return String(iso.prefix(4))
+    }
+
+    /// Web `yearRangeLabel`: show the UTC end year only when it is later than the release year.
+    static func yearRange(_ releaseDate: String?, endDate: String?) -> String? {
+        guard let start = yearNumber(releaseDate) else { return nil }
+        guard let end = yearNumber(endDate), end > start else { return String(start) }
+        return "\(start)–\(end)"
+    }
+
+    private static func yearNumber(_ iso: String?) -> Int? {
+        guard let iso, let utc = TimeZone(secondsFromGMT: 0) else { return nil }
+        let parser = ISO8601DateFormatter()
+        parser.timeZone = utc
+        if iso.count == 10 {
+            parser.formatOptions = [.withFullDate]
+        } else {
+            parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if parser.date(from: iso) == nil {
+                parser.formatOptions = [.withInternetDateTime]
+            }
+        }
+        guard let date = parser.date(from: iso) else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = utc
+        let year = calendar.component(.year, from: date)
+        return year > 0 ? year : nil
     }
 
     static func runtime(ms: Int64?) -> String? {

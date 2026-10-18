@@ -77,6 +77,7 @@ struct ProfilesView: View {
         .task {
             if case .idle = viewModel.state { await viewModel.load() }
         }
+        .parityScreenLoad(parityLoadState)
         .alert("Enter profile PIN", isPresented: Binding(
             get: { pinProfile != nil },
             set: { if !$0 { pinProfile = nil; pin = "" } }
@@ -97,6 +98,14 @@ struct ProfilesView: View {
             Text("This profile is protected.")
         }
         .navigationBarHidden(true)
+    }
+
+    private var parityLoadState: ParityScreenLoad {
+        switch viewModel.state {
+        case .loaded: .ready
+        case .failed: .failed
+        case .idle, .loading: .loading
+        }
     }
 
     private var content: some View {
@@ -206,7 +215,7 @@ struct ProfilesView: View {
             }
 
             Button {
-                if let url = URL(string: "/clients", relativeTo: viewModel.environment.serverBaseURL)?.absoluteURL {
+                if let url = URL(string: "https://playarr.app/clients") {
                     UIApplication.shared.open(url)
                 }
             } label: {
@@ -214,13 +223,13 @@ struct ProfilesView: View {
                     WMText("Clients", 7.68, 720, color: WM.inkSoft, lh: 11.52).fixedSize()
                     WMText("\u{2192}", 7.68, 720, color: WM.inkSoft, lh: 11.52).fixedSize()
                 }
-                .frame(width: 78, height: 44)
+                .frame(width: 76, height: 44)
                 .background(WM.chip, in: Capsule())
                 .overlay(Capsule().stroke(WM.line.opacity(0.08), lineWidth: 1))
                 .wmChipShadow()
             }
             .buttonStyle(.plain)
-            .offset(x: 290, y: 775)
+            .offset(x: 295, y: 782)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -252,7 +261,7 @@ struct ProfilesView: View {
                 profile.isCurrent ? "WATCHING NOW" : profile.pinLocked ? "PIN REQUIRED" : "READY",
                 6.72, 690, color: WM.muted, lh: 10.08, ls: 0.3024
             )
-            .frame(width: 163).padding(.top, 9)
+            .frame(width: 163).padding(.top, 11)
             if selected {
                 HStack(spacing: 9) {
                     Button(action: onOpenSettings) {
@@ -280,7 +289,7 @@ struct ProfilesView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.top, 24).padding(.leading, 9)
+                .padding(.top, 24.7).padding(.leading, 9)
                 .frame(width: 163, alignment: .leading)
             }
         }
@@ -296,8 +305,8 @@ struct ProfilesView: View {
                     Circle().fill(
                         LinearGradient(
                             colors: [
-                                WM.adaptive(light: (233, 185, 196), dark: (140, 56, 86)),
-                                WM.adaptive(light: (190, 85, 115), dark: (90, 30, 58)),
+                                WM.adaptive(light: (233, 185, 196), dark: (96, 36, 56)),
+                                WM.adaptive(light: (190, 85, 115), dark: (146, 39, 76)),
                             ],
                             startPoint: UnitPoint(x: 0.2, y: 0.06),
                             endPoint: UnitPoint(x: 0.8, y: 0.94)
@@ -309,7 +318,7 @@ struct ProfilesView: View {
                 .frame(width: 156, height: 156)
                 WMText("Sign in", 13.12, 680, color: WM.inkSoft, lh: 19.68).frame(width: 156).padding(.top, 9)
                 WMText("ADD ANOTHER PROFILE", 6.72, 690, color: WM.muted, lh: 10.08, ls: 0.3024)
-                    .frame(width: 156).padding(.top, 8)
+                    .frame(width: 156).padding(.top, 10)
             }
             .frame(width: 156, alignment: .top)
         }

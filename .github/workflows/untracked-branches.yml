@@ -4,8 +4,6 @@
 name: Untracked branches
 
 on:
-  schedule:
-    - cron: '17 6 * * 1'
   workflow_dispatch:
 
 permissions:

@@ -23,13 +23,14 @@ namespace Playarr.Xbox.Views
             ["Downloads"] = (new[] { "M12,3 V15", "M7,10.5 L12,15 L17,10.5", "M4.5,18.5 V20 A1,1 0 0 0 5.5,21 H18.5 A1,1 0 0 0 19.5,20 V18.5" }, new string[0]),
             ["Playlists"] = (new[] { "M5,6 H15 M5,10 H15 M5,14 H11", "M17,13.5 V19.5", "M17,13.5 L21,12 V17.5", "M14,19.5 A1.5,1.5 0 1 1 17,19.5 A1.5,1.5 0 1 1 14,19.5", "M18,17.5 A1.5,1.5 0 1 1 21,17.5 A1.5,1.5 0 1 1 18,17.5" }, new string[0]),
             ["Watchlist"] = (new[] { "M6,3.5 H18 A1,1 0 0 1 19,4.5 V21 L12,16.5 L5,21 V4.5 A1,1 0 0 1 6,3.5 Z", "M12,7.5 V12.5 M9.5,10 H14.5" }, new string[0]),
+            ["Requests"] = (new[] { "M3.5,12 A8.5,8.5 0 1 1 20.5,12 A8.5,8.5 0 1 1 3.5,12", "M12,8 V16 M8,12 H16" }, new string[0]),
             ["Calendar"] = (new[] { "M5.5,5 H18.5 A2,2 0 0 1 20.5,7 V18 A2,2 0 0 1 18.5,20 H5.5 A2,2 0 0 1 3.5,18 V7 A2,2 0 0 1 5.5,5 Z", "M3.5,10 H20.5 M8,3 V7 M16,3 V7" }, new string[0]),
         };
 
-        /// <summary>The icon for a nav label ("Requests" shares the Watchlist icon, as on the web), 20 px, tinted by <paramref name="brush"/>.</summary>
+        /// <summary>The icon for a nav label (Requests has its own plus-in-circle icon, as on the web), 20 px, tinted by <paramref name="brush"/>.</summary>
         public static FrameworkElement Create(string name, Brush brush)
         {
-            var (lines, fills) = Icons[name == "Requests" ? "Watchlist" : name];
+            var (lines, fills) = Icons[name];
             var canvas = new Canvas { Width = 24, Height = 24 };
             foreach (var data in lines)
             {

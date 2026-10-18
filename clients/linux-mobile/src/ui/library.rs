@@ -38,6 +38,8 @@ pub struct CardGrid {
     pub widget: gtk4::Box,
     /// The row being filled and how many cards it holds.
     row: RefCell<Option<(gtk4::Box, usize)>>,
+    /// Rows started so far, for the web's fractional row pitch.
+    rows: Cell<usize>,
 }
 
 pub const COL_GAP: i32 = 12;
@@ -53,13 +55,21 @@ impl CardGrid {
                 .margin_top(1)
                 .build(),
             row: RefCell::default(),
+            rows: Cell::new(0),
         }
     }
 
     pub fn append(&self, card: &impl IsA<gtk4::Widget>) {
         let mut cur = self.row.borrow_mut();
         if cur.as_ref().map_or(true, |(_, n)| *n >= super::cards::cols()) {
-            let row = gtk4::Box::builder().spacing(COL_GAP).build();
+            // The web's rows are 0.35 css px further apart than the 24 px gap gives (measured on the music, series and
+            // movies grids at 2x: rows 3 and 4 sit 2 device px lower), so every third row takes one extra px.
+            let n = self.rows.replace(self.rows.get() + 1);
+            let extra = |n: usize| (n as f64 * 0.35).round() as i32;
+            let row = gtk4::Box::builder()
+                .spacing(COL_GAP)
+                .margin_top(if n == 0 { 0 } else { extra(n) - extra(n - 1) })
+                .build();
             self.widget.append(&row);
             *cur = Some((row, 0));
         }
@@ -79,6 +89,7 @@ impl CardGrid {
         while let Some(c) = self.widget.first_child() {
             self.widget.remove(&c);
         }
+        self.rows.set(0);
         self.row.replace(None);
     }
 
@@ -539,7 +550,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     let head = header::build(&app, title, "filters");
     // The web header keeps its subtitle row on a phone even though the text is hidden (#1299): the grid starts 18 px
     // lower than the bare title row, which the hidden subtitle no longer supplies.
-    head.widget.set_margin_bottom(21);
+    head.widget.set_margin_bottom(23);
     page.append(&head.widget);
     let flow = CardGrid::new();
     page.append(&flow.widget);
@@ -581,8 +592,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         .valign(gtk4::Align::Fill)
         .width_request(44)
         .margin_end(4)
-        .margin_top(87)
-        .margin_bottom(83)
+        .margin_top(88)
+        .margin_bottom(82)
         .build();
     let lib = Rc::new(Lib {
         scroll: scroll.clone(),

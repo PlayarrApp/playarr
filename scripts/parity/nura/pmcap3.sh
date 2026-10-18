@@ -1,15 +1,132 @@
 #!/usr/bin/env bash
-# usage: pmcap3.sh <outdir> <route>...   routes go to the running app through its control file (PLAYARR_CONTROL); review before publishing
-H=$(dirname "$0"); O=$1; shift; mkdir -p "$O"
-"$H/pmssh.sh" "pgrep -f release/playarr-mobile >/dev/null" || { "$H/pmssh.sh" "rm -f /tmp/pa-route"; PLAYARR_ROUTE=home PLAYARR_CONTROL=/tmp/pa-route PLAYARR_KEEP_CONTROLS=1 "$H/pmrun.sh" >/dev/null 2>&1; sleep 40; "$H/pmfocus.sh"; }
-for r in "$@"; do
-  name=$(echo "$r" | tr ':' '_')
-  "$H/pmssh.sh" "echo '$r' > /tmp/pa-route"
-  # the app removes the file when it has taken the route; a busy main loop can take a while
-  for i in $(seq 1 90); do "$H/pmssh.sh" "[ ! -f /tmp/pa-route ]" && break; sleep 4; done
-  w=${WAIT:-40}; case $r in player) w=70;; profiles) w=110;; theme*) w=20;; esac
-  sleep $w; case $r in theme*) ;; *)
-    # repaint is slow on this VM: shoot until two shots 20 s apart are identical (max 8), so a half-drawn or previous page is never kept
-    prev=""; for i in 1 2 3 4 5 6 7 8; do "$H/cap.sh" postmarketos "$O/$name.png" >/dev/null 2>&1; cur=$("$H/venv/bin/python" -c "import sys,hashlib;from PIL import Image;print(hashlib.md5(Image.open(sys.argv[1]).convert('RGB').crop((0,70,720,1410)).tobytes()).hexdigest())" "$O/$name.png"); [ "$cur" = "$prev" ] && break; prev=$cur; sleep 20; done;; esac
+# usage: pmcap3.sh <outdir> <route>...; requires an explicit identity guard and control path.
+set -euo pipefail
+
+H=$(cd -- "$(dirname -- "$0")" && pwd)
+if [ "$#" -lt 2 ]; then
+  echo "usage: pmcap3.sh <outdir> <route>..." >&2
+  exit 2
+fi
+
+O=$1
+shift
+mkdir -p -- "$O"
+rm -f -- "$O/DONE"
+CONTROL=${PLAYARR_CONTROL:-}
+IDENTITY_GUARD=${PLAYARR_CAPTURE_IDENTITY_GUARD:-}
+SSH=${PLAYARR_NURA_SSH:-$H/pmssh.sh}
+CAP=${PLAYARR_NURA_CAP:-$H/cap.sh}
+NUDGE=${PLAYARR_NURA_NUDGE:-$H/nudge.sh}
+HASHER=${PLAYARR_CAPTURE_HASHER:-}
+ACK_ATTEMPTS=${PLAYARR_CAPTURE_ACK_ATTEMPTS:-90}
+STABILITY_ATTEMPTS=${PLAYARR_CAPTURE_STABILITY_ATTEMPTS:-8}
+STABILITY_DELAY=${PLAYARR_CAPTURE_STABILITY_DELAY:-20}
+
+if [ -z "$CONTROL" ]; then
+  echo "PLAYARR_CONTROL must name the VM route-control file" >&2
+  exit 2
+fi
+if [ -z "$IDENTITY_GUARD" ] || [ ! -x "$IDENTITY_GUARD" ]; then
+  echo "PLAYARR_CAPTURE_IDENTITY_GUARD must name an executable identity verifier" >&2
+  exit 2
+fi
+if [ ! -x "$SSH" ] || [ ! -x "$CAP" ] || [ ! -x "$NUDGE" ]; then
+  echo "capture SSH, capture and nudge helpers must be executable" >&2
+  exit 2
+fi
+if ! [[ "$ACK_ATTEMPTS" =~ ^[1-9][0-9]*$ && "$STABILITY_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "acknowledgement and stability attempt counts must be positive integers" >&2
+  exit 2
+fi
+if ! [[ "$STABILITY_DELAY" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+  echo "stability delay must be a non-negative number" >&2
+  exit 2
+fi
+
+hash_image() {
+  local path=$1
+  if [ -n "$HASHER" ]; then
+    "$HASHER" "$path"
+  else
+    "$H/venv/bin/python" -c 'import hashlib,sys; from PIL import Image; image=Image.open(sys.argv[1]).convert("RGB").crop((0,70,720,1410)); print(hashlib.sha256(image.tobytes()).hexdigest())' "$path"
+  fi
+}
+
+quote_remote() {
+  local value=$1
+  value=${value//\'/\'\\\'\'}
+  printf "'%s'" "$value"
+}
+
+captures=0
+
+for route in "$@"; do
+  name=${route//:/_}
+  image=$O/$name.png
+  control_q=$(quote_remote "$CONTROL")
+  route_q=$(quote_remote "$route")
+
+  # The guard also verifies that the isolated capture process is alive. A
+  # process-name search could accept a different signed-in app instance.
+  # A route can trigger playback or expose account data, so verify before
+  # requesting it as well as immediately before each screenshot.
+  "$IDENTITY_GUARD" "$route" || { echo "identity verification failed for route: $route" >&2; exit 1; }
+  "$SSH" "printf %s $route_q > $control_q" || { echo "failed to request route: $route" >&2; exit 1; }
+
+  acknowledged=0
+  for ((attempt=1; attempt<=ACK_ATTEMPTS; attempt++)); do
+    if "$SSH" "[ ! -e $control_q ]"; then
+      acknowledged=1
+      break
+    fi
+    sleep 4
+  done
+  if [ "$acknowledged" -ne 1 ]; then
+    echo "timed out waiting for route acknowledgement: $route" >&2
+    exit 1
+  fi
+
+  wait_seconds=${WAIT:-40}
+  case $route in player) wait_seconds=70;; profiles) wait_seconds=110;; theme*) wait_seconds=20;; esac
+  sleep "$wait_seconds"
+  case $route in
+    theme*) continue ;;
+  esac
+
+  # Once per route, before the first screenshot: the idle wait above is what stalls the display (see nudge.sh).
+  "$NUDGE" || { echo "display nudge failed for route: $route" >&2; exit 1; }
+
+  previous=
+  stable=0
+  for ((attempt=1; attempt<=STABILITY_ATTEMPTS; attempt++)); do
+    rm -f -- "$image"
+    # Verify identity immediately before each screenshot, including retries.
+    "$IDENTITY_GUARD" "$route" || { echo "identity verification failed for route: $route" >&2; exit 1; }
+    if ! "$CAP" postmarketos "$image" >/dev/null 2>&1 || [ ! -s "$image" ]; then
+      echo "capture failed for route: $route" >&2
+      exit 1
+    fi
+    current=$(hash_image "$image") || { echo "image hashing failed for route: $route" >&2; exit 1; }
+    if [ -z "$current" ]; then
+      echo "image hashing returned an empty digest for route: $route" >&2
+      exit 1
+    fi
+    if [ "$current" = "$previous" ]; then
+      stable=1
+      break
+    fi
+    previous=$current
+    if [ "$attempt" -lt "$STABILITY_ATTEMPTS" ]; then sleep "$STABILITY_DELAY"; fi
+  done
+  if [ "$stable" -ne 1 ]; then
+    echo "capture did not stabilise for route: $route" >&2
+    exit 1
+  fi
+  captures=$((captures + 1))
 done
+
+if [ "$captures" -eq 0 ]; then
+  echo "no screen captures were requested" >&2
+  exit 1
+fi
 echo done > "$O/DONE"

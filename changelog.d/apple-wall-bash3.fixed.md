@@ -1,0 +1,1 @@
+- Fix iOS wall suite argument handling under macOS Bash 3 with `set -u`, while preserving fixture preflight and iPhone-only progress reset behaviour.

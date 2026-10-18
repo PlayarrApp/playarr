@@ -1,0 +1,2 @@
+- Require iOS parity runs to verify the authenticated profile against the approved Device Test account before routing, capture, or playback.
+- Abort iOS parity captures when resetting test-account playback progress fails, and fail the Apple wall job when its primary suite fails.

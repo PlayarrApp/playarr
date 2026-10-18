@@ -57,7 +57,6 @@ describe("productSurfaces — complete client catalogue", () => {
       "settings-request-latency",
       "settings-your-data",
       "settings-home",
-      "clients",
       "downloads",
     ]) {
       expect(ids, `missing surface ${required}`).toContain(required);
