@@ -663,7 +663,6 @@ struct TVNavIconVector {
     }
 }
 
-#if os(tvOS)
 private struct TVNavVectorIcon: View {
     let tab: TVNavTab
 
@@ -688,7 +687,6 @@ private struct TVNavVectorIcon: View {
         }
     }
 }
-#endif
 
 /// Focus identity shared between floating nav and main stage.
 enum TVShellFocus: Hashable {
@@ -1036,12 +1034,7 @@ struct TVFloatingNav: View {
             }
         } label: {
             VStack(spacing: 5) {
-                #if os(tvOS)
                 TVNavVectorIcon(tab: tab)
-                #else
-                Image(systemName: tab.systemImage)
-                    .font(.system(size: 20, weight: .medium))
-                #endif
                 Text(tab.title)
                     .font(TVTheme.font(size: 9, weight: .semibold))
                     .tracking(0.3)
