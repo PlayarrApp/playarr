@@ -1,1 +1,0 @@
-- Apple TV: actions drawer blurs and shades the page behind it, keeps the opened title in the library preview with no lifted card; library grid rows 240.4 apart, preview line spacing and flush-left genre line as the web.

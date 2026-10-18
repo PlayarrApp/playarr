@@ -1,1 +1,0 @@
-- Restrict Android calendar week columns and entries to the selected seven-day window while preserving wider agenda results.

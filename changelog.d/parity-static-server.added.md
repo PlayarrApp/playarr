@@ -1,1 +1,0 @@
-- Parity: a static, seeded, frozen reference server (`scripts/parity/static-server.sh`, `PLAYARR_STATIC=1`) and one shared capture config (`scripts/parity/parity.env`), so web refs and device captures stop drifting with a live library.

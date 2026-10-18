@@ -1,1 +1,0 @@
-- Android phone: series detail description ends on a whole word like the web, the watchlist and playlist pills use the web's glyph gap (so Start is the web width), and Calendar Week light uses the web's short start scrim (17.530).

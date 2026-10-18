@@ -1,1 +1,0 @@
-- Android tablet: series and film detail episode, chapter and cast tracks start at the web x again (a TV-only 4 dp change had pulled them left).
