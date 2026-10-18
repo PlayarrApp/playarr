@@ -159,8 +159,8 @@ internal sealed class SettingsScreen : IPage
     private void AppearanceSection(float top, string title, string description, string[] labels, int selected, Action<int> save, string saved)
     {
         _panel.Add(Ui.Box(773.8f, top - 52, 1042.1f, 1, new Rgba(_t.Line.R, _t.Line.G, _t.Line.B, _t.Line.A)));
-        _panel.Add(Ui.Text(title, 773.8f, top, 26.4f, 600, _t.Ink, 800, 39.6f, spacing: -0.92f));
-        _panel.Add(Ui.Text(description, 773.8f, top + 40, 11.2f, 400, _t.InkMuted, 900, 17));
+        _panel.Add(Ui.Text(title, 773.8f, top - 18.5f, 26.4f, 600, _t.Ink, 800, 39.6f, spacing: -0.92f));
+        _panel.Add(Ui.Text(description, 773.8f, top + 26, 13.056f, 400, _t.InkMuted, 900, 19.6f));
         var boxes = new List<(View Box, TextLabel Text)>();
         var gap = 8f; var w = (1042.1f - gap * (labels.Length - 1)) / labels.Length; var y = top + 62;
         for (var i = 0; i < labels.Length; i++)
