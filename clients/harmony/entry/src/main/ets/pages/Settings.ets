@@ -664,6 +664,7 @@ export struct SettingsScreen {
   build() {
     NavDestination() {
       PageShell({
+        railFrostWidthPct: 65,
         title: t('settings.index.title', 'Preferences'),
         touch: true,
         selectedId: '',
