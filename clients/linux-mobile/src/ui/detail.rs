@@ -190,7 +190,7 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Center)
         .build();
-    let tone = if primary { Tone::OnAccent } else { Tone::Brand };
+    let tone = if primary { Tone::White } else { Tone::Brand };
     row.append(&icons::image(icon, if small { 9 } else { 12 }, tone));
     let class = if small { "pa-action-label-s" } else { "pa-action-label" };
     // The large pills wrap ("Resume / from 0:23") as the web's do; the small ones fit on one line.
@@ -222,6 +222,8 @@ fn meta_row(parts: &[(String, bool)]) -> gtk4::FlowBox {
         .row_spacing(6)
         .css_classes(["pa-meta-flow"])
         .homogeneous(false)
+        // Start-aligned so the cells keep the web's 10 px gap instead of sharing the row's spare width.
+        .halign(gtk4::Align::Start)
         .max_children_per_line(10)
         .build();
     for (t, strong) in parts {
@@ -417,7 +419,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                     Some((_, pos, label)) => (format!("Resume from {label}"), *pos),
                     None => ("Play".to_string(), 0),
                 };
-                let b = action_pill("play", &label, 104, true, false);
+                let b = action_pill("play", &label, 110, true, false);
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
                 row1.append(&b);
