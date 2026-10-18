@@ -635,6 +635,7 @@ struct WMDetailPage: View {
             ZStack(alignment: .bottomTrailing) {
                 WMRemoteImage(apiClient: apiClient, sources: episodeSources(episode, season: season))
                     .frame(width: 181, height: 101.8)
+                    .wmEpisodeArtTreatment()
                     .background(WM.artFill)
                 WMText(String(format: "%02d", episode.episode.episodeNumber), 12.8, 560, color: .white, lh: 19.2)
                     .padding(.trailing, 10).padding(.bottom, 9)
@@ -656,9 +657,9 @@ struct WMDetailPage: View {
                 WMText(title, 12.48, 610, color: WM.ink, lh: 18.72, ls: -0.1872)
             }
             .frame(width: 181, alignment: .leading)
-            .padding(.top, 7)
+            .padding(.top, 11.8)
         }
-        .frame(width: 181, height: 127, alignment: .topLeading)
+        .frame(width: 181, height: 131.8, alignment: .topLeading)
 
         return Group {
             if let mediaFileID = episode.mediaFileID {
@@ -738,7 +739,7 @@ struct WMDetailPage: View {
                         )]
                     )
                     .frame(width: 181, height: 101.8)
-                    .opacity(0.67)
+                    .wmEpisodeArtTreatment()
                     .background(WM.artFill)
                     WMText(String(format: "%02d", chapter.index + 1), 12.8, 560, color: .white, lh: 19.2)
                         .padding(.trailing, 10).padding(.bottom, 9)
@@ -877,5 +878,14 @@ struct PlaybackSettingsSheet: View {
         } catch {
             message = "Playback settings could not be saved"
         }
+    }
+}
+
+extension View {
+    /// Web `.tv-episode-art`: grayscale(0.25) image under a 135deg black 5% to 48% wash.
+    func wmEpisodeArtTreatment() -> some View {
+        saturation(0.75).overlay(
+            LinearGradient(colors: [.black.opacity(0.05), .black.opacity(0.48)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
     }
 }
