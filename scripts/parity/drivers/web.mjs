@@ -684,7 +684,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   };
   return {
     strictReadiness: true,
-    endCrops: true, cropIds: ["filters-language", "filters-list"], // paired refs for the Xbox Filters List view and language flyout
+    endCrops: true, cropIds: ["filters-list", "filters-language"], // paired refs for the Xbox Filters List view and language flyout
     supports: { downloads: true, notifications: true, nowPlaying: true, "grouped-downloads": true },
     async setDeterministicCapture({ fixedNow: value, disableAnimations: disable = false, timeZone, locale } = {}) {
       if (!value || !Number.isFinite(Date.parse(value))) throw new Error("deterministic capture requires a valid fixedNow date string");
@@ -803,6 +803,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
           dialogs: [...document.querySelectorAll("[role=dialog], dialog[open], .media-context-drawer, .download-quality-drawer, [class*=filters-panel], [class*=drawer]")].filter(vis).length,
           brokenSrc: [...document.images].filter((i) => { const r = i.getBoundingClientRect(), x = Math.min(Math.max(r.left + r.width / 2, 0), innerWidth - 1), y = Math.min(Math.max(r.top + r.height / 2, 0), innerHeight - 1); return vis(i) && document.elementsFromPoint(x, y).includes(i) && !(i.complete && i.naturalWidth > 0); }).map((i) => (i.currentSrc || i.src).replace(/^https?:\/\/[^/]+/, "").slice(0, 90)),
           placeholderCards: [...document.querySelectorAll("[class*=card-art]:not([class*=skeleton])")].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0 && ![...e.querySelectorAll("img")].some((i) => i.complete && i.naturalWidth > 0); }).length,
+          // Per-server data on the calendar link panel (the URL field and the QR card encode the server address), in css px, so scorers can mask them.
+          maskRects: [".calendar-subscription-url", ".calendar-link-secret > :last-child"].flatMap((q) => [...document.querySelectorAll(q)].map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => Math.round(n * 10) / 10); })),
           fontsReady: document.fonts.status === "loaded",
           signedOut: !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"),
         };

@@ -31,7 +31,7 @@ import { t } from '../../core/Language';
 // A function so t() runs on every build and the labels follow a live language switch.
 function titleActions(): ActionItem[] {
   return [
-    { id: 'play', glyph: '▶\uFE0E', label: t('pages.workDetail.play', 'Play') },
+    { id: 'play', glyph: '\u25BA', label: t('pages.workDetail.play', 'Play') },
     { id: 'download', glyph: '⇩', label: t('settings.yourData.exportDownload', 'Download') },
     { id: 'playlist', glyph: '＋', label: t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist') },
     { id: 'watched', glyph: '✓', label: t('components.mediaContextMenu.markAsWatched', 'Mark as watched') },
@@ -260,6 +260,7 @@ export struct TitleActionsDrawer {
 
   build() {
     Drawer({
+      closeRing: false, // web focuses the first action, not the close button
       kicker: this.view === 'quality' ? t('settings.yourData.exportDownload', 'Download') : (this.view === 'playlists' ? t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist') : t('components.mediaContextMenu.titleActionsHeading', 'Title actions')),
       title: this.workTitle,
       onClose: (): void => {
