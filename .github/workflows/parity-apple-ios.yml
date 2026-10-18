@@ -56,6 +56,7 @@ env:
   PARITY_SERVER_URL: ${{ secrets.PARITY_STATIC_URL }}
   PARITY_USERNAME: ${{ secrets.PARITY_STATIC_USERNAME }}
   PARITY_PASSWORD: ${{ secrets.PARITY_STATIC_PASSWORD }}
+  PARITY_STATIC_SERVER: "1" # the static server's deck is canonical: no live-fixture seeding or pins
   PARITY_STABLE: "0"
 
 jobs:
