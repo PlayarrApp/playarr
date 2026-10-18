@@ -25,6 +25,9 @@ def call(method, path, body=None, token=None):
 
 
 def main() -> int:
+    if os.environ.get("PARITY_STATIC_SERVER") == "1":  # the static server's deck is canonical already; never write to it
+        print("seed skipped (static server)")
+        return 0
     status, out = call("POST", "/api/v1/auth/login", {"username": os.environ["TEST_USERNAME"], "password": os.environ["TEST_PASSWORD"],
                                                       "device_id": str(uuid.uuid4()), "device_name": "harmony-wall seed",
                                                       "client_platform": "web", "client_version": "parity"})

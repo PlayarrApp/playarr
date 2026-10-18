@@ -61,6 +61,12 @@ permissions:
 
 # Hosted walls have no isolated parity account; stable capture (the suite default) needs one.
 env:
+  # Captures run against the static seeded parity server (a named tunnel to the lab host), never the live server.
+  # These three repo secrets are the one place that switches every hosted parity workflow.
+  PARITY_SERVER_URL: ${{ secrets.PARITY_STATIC_URL }}
+  PARITY_USERNAME: ${{ secrets.PARITY_STATIC_USERNAME }}
+  PARITY_PASSWORD: ${{ secrets.PARITY_STATIC_PASSWORD }}
+  PARITY_STATIC_SERVER: "1" # the static server's deck is canonical: no live-fixture seeding or pins
   PARITY_STABLE: "0"
 
 jobs:
@@ -176,9 +182,9 @@ jobs:
       - run: python -m pip install --quiet pillow
       - name: Start the bridge and the Previewer, sign in and capture
         env:
-          SERVER_URL: ${{ secrets.PLAYARR_HARMONY_TEST_SERVER_URL || secrets.PLAYARR_TEST_SERVER_URL || secrets.PLAYARR_DEVICE_TEST_SERVER_URL }}
-          TEST_USERNAME: ${{ secrets.PLAYARR_DEVICE_TEST_USERNAME }}
-          TEST_PASSWORD: ${{ secrets.PLAYARR_DEVICE_TEST_PASSWORD }}
+          SERVER_URL: ${{ env.PARITY_SERVER_URL }}
+          TEST_USERNAME: ${{ env.PARITY_USERNAME }}
+          TEST_PASSWORD: ${{ env.PARITY_PASSWORD }}
           HARMONY_PLAYER_FIXTURE_ID: ${{ secrets.HARMONY_PLAYER_FIXTURE_ID }}
           BRANCH: ${{ github.ref_name }}
           SHA: ${{ github.sha }}

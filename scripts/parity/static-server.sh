@@ -20,6 +20,7 @@ HOME_DIR="${PARITY_STATIC_HOME:-$HOME/.cache/playarr-parity-static}"
 scoped() { systemd-run --user --scope --quiet -p MemoryHigh=8G -p MemoryMax=12G -p MemorySwapMax=512M -- "$@"; }
 [[ -n "${PARITY_SERVER_HOST:-}" ]] && ip -4 -o addr show | grep -q " ${PARITY_SERVER_HOST}/" || { echo "static-server: ${PARITY_SERVER_HOST:-no LAN address} is not an address of this host (set PARITY_SERVER_HOST)" >&2; exit 1; }
 mkdir -p "$HOME_DIR"
+. "$ROOT/scripts/parity/static/port-free.sh"
 
 # 1. Backend binary.
 BIN="${PLAYARR_SERVER_BIN:-}"
@@ -45,7 +46,11 @@ if [[ ! -f "$HOME_DIR/pristine.db" || "$(cat "$HOME_DIR/pristine.stamp" 2>/dev/n
 fi
 [[ "${1:-}" == "--build" ]] && exit 0
 
-# 4. A fresh working copy per start.
+# 4. A fresh working copy per start. Fail before anything starts if a port is taken: a stray listener there would otherwise
+# leave the backend running without its artwork source (502 artwork) or serve a stale instance.
+for port in "$PARITY_ART_PORT" "$PARITY_SERVER_PORT"; do
+  port_free "$port" || { echo "static-server: port $port is already in use; stop that process first" >&2; exit 1; }
+done
 WORK="$(mktemp -d "$HOME_DIR/run.XXXXXX")"
 PIDS=()
 cleanup() { for p in "${PIDS[@]}"; do kill "$p" 2>/dev/null || true; done; rm -rf "$WORK"; }
@@ -57,6 +62,9 @@ printf '{"sha":"%s","builtAt":"%s","run":"parity-static"}\n' "$(git rev-parse HE
 
 node scripts/parity/static/art-server.mjs "$HOME_DIR/art" "$PARITY_ART_PORT" &
 PIDS+=($!)
+# The artwork server must be up before the backend serves: wait for its port, fail if it died.
+for _ in $(seq 1 50); do port_free "$PARITY_ART_PORT" || break; kill -0 "${PIDS[0]}" 2>/dev/null || break; sleep 0.1; done
+port_free "$PARITY_ART_PORT" && { echo "static-server: art-server.mjs did not start on port $PARITY_ART_PORT" >&2; exit 1; }
 
 echo "static-server: serving $PARITY_SERVER_URL (web: $PARITY_SERVER_URL/tv, account: $PARITY_ACCOUNT_NAME, clock $PARITY_CLOCK)" >&2
 # exec: $! is then the backend itself (systemd-run --scope execs the command), so cleanup stops it.
@@ -70,4 +78,7 @@ echo "static-server: serving $PARITY_SERVER_URL (web: $PARITY_SERVER_URL/tv, acc
   PLAYARR_LOG="${PLAYARR_LOG:-info}" \
   "$BIN" ) &
 PIDS+=($!)
-wait "${PIDS[-1]}"
+# Exit (non-zero, so systemd restarts it) as soon as either the artwork server or the backend stops.
+wait -n "${PIDS[@]}" || true
+echo "static-server: the artwork server or the backend stopped" >&2
+exit 1
