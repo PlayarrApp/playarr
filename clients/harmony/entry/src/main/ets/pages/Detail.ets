@@ -2510,6 +2510,7 @@ struct Detail {
           .width('100%')
           .height(HERO_TOUCH_HEIGHT)
           .objectFit(ImageFit.Cover)
+          .objectPosition({ x: 0, y: -70 }) // web phone: the backdrop's title sits 70 vp higher
           .draggable(false)
           .focusable(false)
       } else {
