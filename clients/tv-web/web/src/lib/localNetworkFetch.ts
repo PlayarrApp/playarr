@@ -82,7 +82,9 @@ export function createLocalNetworkFetch(
   nativeFetch: typeof fetch = globalThis.fetch.bind(globalThis)
 ): (input: Request) => Promise<Response> {
   return (input) => {
-    const targetAddressSpace = targetAddressSpaceForUrl(input.url);
+    // A packaged app page (file://, LG webOS) is already on the device: Chrome 132 there fails the request when the hint is set.
+    const targetAddressSpace =
+      globalThis.location?.protocol === "file:" ? undefined : targetAddressSpaceForUrl(input.url);
     return targetAddressSpace
       ? nativeFetch(input, { targetAddressSpace } as LocalNetworkRequestInit)
       : nativeFetch(input);

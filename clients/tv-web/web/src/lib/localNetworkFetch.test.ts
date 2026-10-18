@@ -65,4 +65,18 @@ describe("createLocalNetworkFetch", () => {
     await expect(createLocalNetworkFetch(nativeFetch)(input)).resolves.toBe(response);
     expect(nativeFetch).toHaveBeenCalledWith(input);
   });
+
+  it("omits the address-space hint on a file:// page", async () => {
+    vi.stubGlobal("location", { protocol: "file:" });
+    try {
+      const response = new Response(null, { status: 204 });
+      const nativeFetch = vi.fn(async () => response);
+      const input = new Request("http://192.168.1.50:8080/api/system/health");
+
+      await expect(createLocalNetworkFetch(nativeFetch)(input)).resolves.toBe(response);
+      expect(nativeFetch).toHaveBeenCalledWith(input);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

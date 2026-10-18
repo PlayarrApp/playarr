@@ -345,9 +345,12 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.focusGlow.width = 400 * glowScale
         m.focusGlow.height = 304 * glowScale
     else
-        m.focusGlow.translation = [-90, -90]
-        m.focusGlow.width = artW + 180
-        m.focusGlow.height = artH + 180
+        ' Grid cards: the glow canvas is scaled so its 220x124 mask matches the art (the previous artW+180 canvas hid it under the card).
+        gx = artW / 220.0
+        gy = artH / 124.0
+        m.focusGlow.translation = [-90 * gx, -90 * gy - 5]
+        m.focusGlow.width = 400 * gx
+        m.focusGlow.height = 304 * gy
     end if
     if m.homeCardFocusStyle and ovW = 0
         ' The shadow masks share the same 400x304 canvas and 90px margins as
