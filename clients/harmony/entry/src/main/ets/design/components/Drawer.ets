@@ -32,7 +32,7 @@ const TOUCH_BODY_GAP: number = 29;
 // Web phone: the kicker sits 7.3 above the title; the close button's 3 vp ring is outside it, 2.3 vp clear, and the button 1.4 higher.
 const TOUCH_KICKER_GAP: number = 7.3;
 const TOUCH_CLOSE_RING_OUTSET: number = 5.3;
-const TOUCH_CLOSE_LIFT: number = 1.4;
+const TOUCH_CLOSE_LIFT: number = -0.6; // static web ref: the button is 2 vp lower than the older ref
 const TOUCH_TITLE_SIZE: number = 24;
 const TOUCH_TITLE_LETTER_SPACING: number = -2.1; // web's title is 12% narrower than this font draws at -0.8
 const TOUCH_BODY_RING_ROOM: number = 6;

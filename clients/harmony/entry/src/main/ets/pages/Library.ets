@@ -1022,6 +1022,7 @@ export struct Library {
           .columnsTemplate(columnsTemplateFor(this.touchColumns()))
           .columnsGap(TOUCH_CARD_GAP)
           .rowsGap(TOUCH_ROW_GAP)
+          .cachedCount(4) // web draws the row under the translucent nav bar; a lazy grid left it blank
           .edgeEffect(EdgeEffect.Spring)
           .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg + touchNavBarBox(this.safeBottom) })
           .onAreaChange((_oldValue: Area, newValue: Area) => {

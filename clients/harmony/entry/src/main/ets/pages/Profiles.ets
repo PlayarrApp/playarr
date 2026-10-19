@@ -609,6 +609,17 @@ struct Profiles {
   @Builder
   private pageBody(): void {
       Stack() {
+        if (!isTvMetrics()) {
+          // web `.profiles-page`: linear-gradient(145deg, surface, bg 72%) under a brand wash at 50% 48% (13%, out to 34% of the far corner)
+          Column()
+            .width('100%')
+            .height('100%')
+            .linearGradient({ angle: 145, colors: [[toResourceColor(activeColors().surface), 0], [toResourceColor(activeColors().bg), 0.72]] })
+          Column()
+            .width('100%')
+            .height('100%')
+            .radialGradient({ center: ['50%', '48%'], radius: 151, colors: [['rgba(207, 49, 87, 0.13)', 0], ['rgba(207, 49, 87, 0)', 1]] })
+        }
         if (this.viewState === ProfilesViewState.Ready && this.profiles.length > 0) {
           this.tvPicker()
         } else {

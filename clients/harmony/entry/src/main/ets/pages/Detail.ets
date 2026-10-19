@@ -2448,7 +2448,8 @@ struct Detail {
       .padding({ left: 16, right: 16 })
       .borderRadius(22)
       .layoutWeight(share ? 1 : 0)
-      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+      .backgroundColor(toResourceColor(activeColors().surfaceStrong)) // opaque so the soft web shadow below draws (ArkUI draws none for a translucent box)
+      .shadow({ radius: 22, color: 'rgba(31, 14, 20, 0.12)', offsetY: 10 })
       .border({ width: 1, color: Color.Transparent })
       .onClick(() => {
         this.cancelInitialEpisodeFocus();
@@ -2473,7 +2474,8 @@ struct Detail {
     .height(44)
     .justifyContent(FlexAlign.Center)
     .borderRadius(22)
-    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    .backgroundColor(toResourceColor(activeColors().surfaceStrong)) // opaque so the soft web shadow below draws (ArkUI draws none for a translucent box)
+      .shadow({ radius: 22, color: 'rgba(31, 14, 20, 0.12)', offsetY: 10 })
     .border({ width: 1, color: Color.Transparent })
     .onClick(() => {
       this.cancelInitialEpisodeFocus();
