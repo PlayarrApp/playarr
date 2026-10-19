@@ -419,6 +419,13 @@ internal sealed class PlayerScreen : IPage
     /// <summary>Capture only: hides the focus ring, as the web player-controls reference is taken with no focus.</summary>
     public void BlurFocus() => _focus.Item?.Style(false);
 
+    /// <summary>Capture only: the screenshot path may not carry the video plane, so the driver stands the clip's paused frame in behind the controls.</summary>
+    public void ShowStandInFrame(string path)
+    {
+        var frame = new ImageView(path) { Size = _root.Size };
+        _root.Add(frame); frame.LowerToBottom();
+    }
+
     public (bool Playing, long PositionMs) Status
     {
         get
