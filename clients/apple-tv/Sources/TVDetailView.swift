@@ -358,7 +358,7 @@ struct TVWorkDetailView: View {
     @ViewBuilder
     private func moviePlay(_ detail: WorkDetail, x: CGFloat, y: CGFloat) -> some View {
         // Web: Play is the focused control on load (scale 1.06).
-        let label = playLabel("Play", light: false, focusedLook: frozen).scaleEffect(1.06)
+        let label = playLabel("Play", light: false, focusedLook: frozen || macDetail(TVParityLaunch.pinnedClock, false)).scaleEffect(1.06)
         if let mediaFileID = detail.mediaFileID, interactive {
             NavigationLink {
                 TVPlayerView(

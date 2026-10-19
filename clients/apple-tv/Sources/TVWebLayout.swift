@@ -570,7 +570,7 @@ struct TVDrawer<Content: View>: View {
                         // Web `.drawer-close`: a round button with the shared dark focus ring; the frozen capture draws the ring of
                         // the focused close button too (the web reference opens with it focused).
                         .overlay {
-                            if TVParityLaunch.frozen, !focusesContent {
+                            if TVParityLaunch.pinnedClock, !focusesContent {
                                 RoundedRectangle(cornerRadius: Self.closeRadius + 3.5, style: .continuous)
                                     .stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5)
                             }
