@@ -1227,9 +1227,9 @@ internal fun PlayarrTelevisionControlBar(
             )
             // Web `.player-time`: three spans, 0.35rem apart, tabular digits, a fainter slash.
             Row(horizontalArrangement = Arrangement.spacedBy(5.6.dp)) {
-                Text(formatPlayarrPlayerTime(displayedPositionMs), color = Color.White, fontSize = 10.88.sp, fontFeatureSettings = "tnum")
+                Text(formatPlayarrPlayerTime(displayedPositionMs), color = Color.White, fontSize = 10.88.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
                 Text("/", color = Color(0xFFA5969E), fontSize = 10.88.sp)
-                Text(formatPlayarrPlayerTime(durationMs), color = Color.White, fontSize = 10.88.sp, fontFeatureSettings = "tnum")
+                Text(formatPlayarrPlayerTime(durationMs), color = Color.White, fontSize = 10.88.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
             }
             Spacer(Modifier.weight(1f))
             if (controls.audioTracks.isNotEmpty()) {
