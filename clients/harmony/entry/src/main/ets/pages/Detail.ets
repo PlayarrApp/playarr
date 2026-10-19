@@ -222,6 +222,11 @@ const PHONE_HEADER_FADE: number = 28;
 const PHONE_SEASON_ROW_GAP: number = 35.65;
 /** Web `--brand-strong`, the phone Play button's focused fill. */
 const PLAY_FOCUS_FILL: string = '#a52745';
+
+/** web `--brand-ink`: the kicker and pill glyph colour (#821e36 in light, the soft pink in dark). */
+function brandInk(): ResourceColor {
+  return resolvedThemeMode() === 'dark' ? toResourceColor(BRAND_PINK_SOFT) : '#821e36';
+}
 const PILL_GLYPH_DARK: string = '#ba8492'; // sampled from the dark static-server ref (anti-aliased thin glyph; refine if the colour reads off)
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
 const TOUCH_SETTLE_ATTEMPTS: number = 12;
@@ -2424,7 +2429,7 @@ struct Detail {
         // web: the pill glyphs are the brand pink (accent in light)
         Text(glyph).fontFamily(nunito(500))
           .fontSize(size)
-          .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
+          .fontColor(brandInk())
       }
       Text(label).fontFamily(nunito(500))
         .fontSize(size)
@@ -2451,7 +2456,7 @@ struct Detail {
     Row({ space: 4 }) {
       Text('+').fontFamily(nunito(700))
         .fontSize(8)
-        .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
+        .fontColor(brandInk())
       Text(label).fontFamily(nunito(700))
         .fontSize(8)
         .fontWeight(FontWeight.Bold)
@@ -2585,12 +2590,12 @@ struct Detail {
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
-              .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : activeColors().accent))
-              .margin({ bottom: 10 })
+              .fontColor(brandInk())
+              .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
-              .fontSize(36)
+              .fontSize(this.detail !== null && this.detail.work.kind === 'series' ? 36 : 33.5) // measured against the static refs: a film title is smaller than a series one
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-1.6)
+              .letterSpacing(this.detail !== null && this.detail.work.kind === 'series' ? -1.6 : -1.5)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 250 vp (measured on the static fixture: "Golden / Cathedral 1")
@@ -2612,6 +2617,7 @@ struct Detail {
               .maxLines(3)
               // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
               .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })
+              .align(Alignment.TopStart) // the reserved lines sit below the text, which must not centre in them
               .textOverflow({ overflow: TextOverflow.Ellipsis })
             Column() {
               this.touchActionRows()

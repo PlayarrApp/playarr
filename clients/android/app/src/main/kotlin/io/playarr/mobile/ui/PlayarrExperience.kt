@@ -7799,15 +7799,14 @@ internal fun MovieDetailBrowser(
     tvRails.onUpEdge = { _ -> playFocus?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false }
     if (isTelevision) {
         // Web `.tv-media-track` stack: no panel, sections start at y = 540 and repeat every 314.3 dp.
-        val filmScroll = rememberScrollState()
-        // Web `[data-tv-scroll-container]`: the stack fades into the page at the edge it can still scroll to (tablet refs).
-        val filmScrollFade = if (LocalStageScale.current != 1f) Modifier.playarrEdgeFades(filmScroll.canScrollBackward, filmScroll.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical,
-            panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) }) else Modifier
         Column(
             // Web's track stack starts at half the viewport height; a tablet's rails are 28 css px further apart than the 1080 gap gives.
-            modifier.then(filmScrollFade).verticalScroll(filmScroll).padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
+            modifier.run { val trackScroll = rememberScrollState(); this.playarrEdgeFades(trackScroll.canScrollBackward, trackScroll.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical,
+                // The page behind the stack (measured on the tablet refs): lighter than the library panel colour.
+                panel = if (LocalStageScale.current != 1f) PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) } else null).verticalScroll(trackScroll) }
+                .padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
             // Web `--tv-track-gap-section` (8.4 vu) above Cast and Similar titles, every track here.
-            verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) 96.dp else webVu(62f, 8.4f, 108f)),
+            verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) 96.dp else webVu(62f, 8.4f, 108f) - 1.dp),
         ) {
             if (chapters.isNotEmpty()) {
                 WebMediaTrack(
