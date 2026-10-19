@@ -98,10 +98,14 @@ struct TVStageBackground: View {
 /// `.buttonStyle(.plain)`, which can leave controls unfocusable under some
 /// SwiftUI/tvOS combinations) while avoiding the default glass chrome.
 struct TVFocusableCardButtonStyle: ButtonStyle {
+    /// The press that opened a drawer ends with it (web: the card shows no press state behind the Title actions drawer).
+    var ignoresPress = false
+
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.92 : 1)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+        let pressed = configuration.isPressed && !ignoresPress
+        return configuration.label
+            .opacity(pressed ? 0.92 : 1)
+            .scaleEffect(pressed ? 0.98 : 1)
     }
 }
 

@@ -1,0 +1,1 @@
+- HarmonyOS phone: the detail hero is drawn as the web does (58 vh box, greyscale art under a per-theme veil and two surface washes).

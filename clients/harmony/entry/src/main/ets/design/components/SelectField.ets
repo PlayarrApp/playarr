@@ -63,6 +63,10 @@ export struct SelectField {
   }
 
   private fill(active: boolean): ResourceColor {
+    // web phone corner selects (`.language-dropdown-trigger`): the opaque page colour
+    if (!active && !isTvMetrics() && this.lead.length > 0) {
+      return toResourceColor(activeColors().bg);
+    }
     return active ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().surfaceSoft, BG_ALPHA);
   }
 

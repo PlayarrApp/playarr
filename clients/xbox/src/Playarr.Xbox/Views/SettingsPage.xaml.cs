@@ -27,6 +27,7 @@ namespace Playarr.Xbox.Views
         public SettingsPage()
         {
             InitializeComponent();
+            Background = Theme.PageStage();
             _header = Ui.PageHeader(Root, Lang.T("settings.index.title"), "APPEARANCE", () => App.Navigation.GoBack());
             _viewModel = new SettingsViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerConnection.ServerAddress;

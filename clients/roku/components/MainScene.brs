@@ -6001,7 +6001,7 @@ sub updateSeriesEpisodeHeader()
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: -0.3, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7602,7 +7602,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: 0, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: -0.3, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else

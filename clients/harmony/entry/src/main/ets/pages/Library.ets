@@ -867,6 +867,7 @@ export struct Library {
         kicker: this.total >= 0 ? libraryCountLabel(this.kind, this.total) : '',
         selectedId: this.kind,
         touch: true,
+        contentUnderNav: true,
         touchActions: (): void => {
           this.touchFiltersButton();
         },
@@ -1035,8 +1036,8 @@ export struct Library {
           .onReachEnd(() => {
             this.maybeLoadMore(this.items.length - 1);
           })
-          // Web scrolls the grid under the translucent nav bar: run it over the shell's nav spacer (a Column does not clip its children).
-          .height(`calc(100% + ${touchNavBarBox(this.safeBottom)}vp)`)
+          // Web scrolls the grid under the translucent nav bar: the shell reserves no spacer, the grid pads its own end.
+          .height('100%')
           .width('100%')
         }
     }
