@@ -193,15 +193,15 @@ const TV_CLOSE_SIZE: number = 48;
 const TV_CLOSE_RIGHT: number = 58;
 const TV_CLOSE_TOP: number = 38;
 const TV_BAR_SIDE: number = 70;
-const TV_BAR_BOTTOM: number = 42;
+const TV_BAR_BOTTOM: number = 58;
 const TV_TRACK_HEIGHT: number = 6;
-const TV_PLAY_SIZE: number = 72;
-const TV_SEEK_SIZE: number = 48;
-const TV_ROW_GAP: number = 24;
-const TV_BAR_GAP: number = 28;
+const TV_PLAY_SIZE: number = 64;
+const TV_SEEK_SIZE: number = 64;
+const TV_ROW_GAP: number = 13.6;
+const TV_BAR_GAP: number = 20;
 const TV_TIME_FONT_SIZE: number = 12;
 const TV_QUALITY_WIDTH: number = 120;
-const TV_VOLUME_WIDTH: number = 76;
+const TV_VOLUME_WIDTH: number = 64;
 const BACK_BUTTON_WIDTH_TV: number = 96;
 
 function defaultChromePaddingH(): number {
@@ -338,6 +338,9 @@ struct ChromeButton {
   /** False draws the button dimmed and takes it out of focus (web's disabled previous and next). */
   active: boolean = true;
   circle: boolean = false;
+  /** Web's TV player buttons are bare icons: no fill, no ring; only the play button keeps a soft fill. */
+  bare: boolean = false;
+  fillAlpha: number = CIRCLE_FILL_ALPHA;
   ringWidth: number = 1;
 
   onActivate: () => void = () => {};
@@ -373,8 +376,8 @@ struct ChromeButton {
     .width(this.buttonWidth)
     .height(this.buttonHeight)
     .borderRadius(this.circle ? this.buttonHeight / 2 : 0)
-    .backgroundColor(this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_FILL_ALPHA) : Color.Transparent)
-    .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_RING_ALPHA) } : { width: 0 })
+    .backgroundColor(this.circle && !this.bare ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.fillAlpha) : Color.Transparent)
+    .border(this.circle && !this.bare ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_RING_ALPHA) } : { width: 0 })
     .scale({ x: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)), y: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)) })
     .opacity(this.active ? 1 : 0.35)
     .focusable(this.active)
@@ -605,6 +608,7 @@ export struct PlayerChrome {
           ChromeButton({
             label: '\u23EE',
             circle: true,
+            bare: true,
             active: this.canPrevious,
             buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
@@ -617,7 +621,8 @@ export struct PlayerChrome {
           ChromeButton({
             showGlyph: true,
             circle: true,
-            ringWidth: 2,
+            ringWidth: 0,
+            fillAlpha: 0.14,
             isPlaying: this.isPlaying,
             glyphSize: tv(TV_PLAY_SIZE / 2.4),
             buttonWidth: tv(TV_PLAY_SIZE),
@@ -630,6 +635,7 @@ export struct PlayerChrome {
           ChromeButton({
             label: '\u23ED',
             circle: true,
+            bare: true,
             active: this.canNext,
             buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
@@ -650,6 +656,7 @@ export struct PlayerChrome {
           ChromeButton({
             label: this.muted ? 'Muted' : 'Vol',
             circle: true,
+            bare: true,
             buttonWidth: tv(TV_VOLUME_WIDTH),
             buttonHeight: tv(TV_SEEK_SIZE),
             fontSize: tv(13),
@@ -662,6 +669,7 @@ export struct PlayerChrome {
             ChromeButton({
               label: this.qualityLabel,
               circle: true,
+              bare: true,
               buttonWidth: tv(TV_QUALITY_WIDTH),
               buttonHeight: tv(TV_SEEK_SIZE),
               fontSize: tv(13),
@@ -675,6 +683,7 @@ export struct PlayerChrome {
             ChromeButton({
               label: 'CC',
               circle: true,
+              bare: true,
               buttonWidth: tv(TV_SEEK_SIZE),
               buttonHeight: tv(TV_SEEK_SIZE),
               fontSize: tv(13),
@@ -687,6 +696,7 @@ export struct PlayerChrome {
           ChromeButton({
             label: 'i',
             circle: true,
+            bare: true,
             buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
             fontSize: tv(16),
