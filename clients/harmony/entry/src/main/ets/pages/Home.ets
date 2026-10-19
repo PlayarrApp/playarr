@@ -265,7 +265,9 @@ function releaseYearLabel(releaseDate: string | null): string {
 /** Web TV card caption: "Movie · 2014" (kind, then release year when known). */
 function cardCaption(kind: WorkKind, releaseDate: string | null): string {
   const year = releaseYearLabel(releaseDate);
-  return year.length > 0 ? `${workKindKicker(kind)} · ${year}` : workKindKicker(kind);
+  // Phone: web's detail line sets the dot tighter than this font's own spaces.
+  const gap = isTvMetrics() ? ' ' : '\u2009';
+  return year.length > 0 ? `${workKindKicker(kind)}${gap}·${gap}${year}` : workKindKicker(kind);
 }
 
 /** The hero kicker: the featured work's OWN kind, singular ("Movie",

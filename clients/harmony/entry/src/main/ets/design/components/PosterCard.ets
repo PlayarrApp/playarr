@@ -512,6 +512,7 @@ export struct PosterCard {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .padding({ left: this.softCaption ? 2.3 : tv(TV_CAPTION_INSET) })
+          .offset({ y: this.softCaption ? 1.2 : 0 }) // web phone: the detail line sits about 1 vp lower; layout unchanged
       }
     }
     .width(this.cardWidth)
