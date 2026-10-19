@@ -136,9 +136,7 @@ struct SettingsView: View {
     /// Web mobile "Preferences" index: back arrow, title and numbered rows of 88pt.
     private var phoneIndex: some View {
         ZStack(alignment: .topLeading) {
-            // Web: the shared header circle, carrying the focus ring the page puts on it.
             PlayarrBackButton(action: goHome)
-                .overlay(Circle().stroke(WM.ink, lineWidth: 3).padding(-3.7))
                 .offset(x: 16, y: WM.topInset + 2)
             WMText("Preferences", 21.6, 580, lh: 32.4, ls: -0.972)
                 .offset(x: 68, y: WM.topInset + 5)
