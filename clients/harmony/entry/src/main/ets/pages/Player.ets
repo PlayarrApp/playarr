@@ -180,7 +180,7 @@ const UI_TICK_INTERVAL_MS: number = 500;
 /** brief 9 Slice 7 / player/PlayerInput.ets: "Seek amount is +/-10 s." */
 /** The negotiated quality's name for the control bar ('' when the server offers no choice). */
 function qualityLabelOf(info: PlaybackInfoResponse): string {
-  if (info.quality_options.length < 2) {
+  if (info.quality_options.length < 2 && !isTvMetrics()) {
     return '';
   }
   for (const option of info.quality_options) {
