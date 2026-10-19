@@ -2436,10 +2436,11 @@ struct Detail {
           .fontSize(size)
           .fontColor(brandInk())
       }
-      Text(label).fontFamily(nunito(500))
+      // web: the 8 vp pills (Download, Add to ...) are bold in the ink colour, the larger Playback pill medium
+      Text(label).fontFamily(nunito(size <= 8 ? 700 : 500))
         .fontSize(size)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .fontWeight(size <= 8 ? FontWeight.Bold : FontWeight.Medium)
+        .fontColor(toResourceColor(size <= 8 ? activeColors().ink : activeColors().inkSoft))
         .maxLines(1)
     }
       .height(44)
