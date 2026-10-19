@@ -143,6 +143,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -433,15 +434,38 @@ internal val WebKicker = Color(0xFFCF3157)
 
 /** Fraction-sized hero backdrop pinned top-start: `fillMaxSize()` first would make the later fraction a no-op. */
 internal fun Modifier.heroBackdrop(isTelevision: Boolean, tvWidthFraction: Float, phoneHeightFraction: Float): Modifier =
-    if (isTelevision) {
+    if (isTelevision) composed {
+        val stage = LocalStageScale.current
+        if (stage == 1f) this.tvHeroBackdrop() else this.tabletHeroBackdrop(stage)
+    } else {
+        fillMaxWidth().fillMaxHeight(phoneHeightFraction).heroBackdropFade(false)
+    }
+
+/**
+ * Web `.tv-key-art img` at a tablet viewport: it starts at the nav clearance (`--tv-nav-edge` + 64 px item + 2 x 0.4rem
+ * + 2 px + 12 px), is `52vw` minus that clearance wide and 106% of the viewport height tall, scaled 1.04 from its left centre.
+ */
+private fun Modifier.tabletHeroBackdrop(stage: Float): Modifier = layout { measurable, constraints ->
+    val density = this
+    val widthCss = 1920f * stage
+    val clearanceCss = (widthCss * 0.022f).coerceIn(18f, 44f) + 64f + 12.8f + 2f + 12f
+    val start = (clearanceCss / stage * density.density).toInt()
+    val width = ((0.52f * widthCss - clearanceCss) / stage * density.density).toInt()
+    val height = (constraints.maxHeight * 1.06f).toInt()
+    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(width, height))
+    layout(width + start, constraints.maxHeight) { placeable.place(start, 0) }
+}
+    .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
+    .heroBackdropFade(true)
+
+private fun Modifier.tvHeroBackdrop(): Modifier =
+    run {
         // Web `.tv-key-art img`: 52% wide, 106% tall, scaled 1.04, masked to fade out over the last 28%.
         fillMaxWidth(0.52f)
             .wrapContentHeight(Alignment.Top, unbounded = true)
             .height(1144.8.dp)
             .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f }
             .heroBackdropFade(true)
-    } else {
-        fillMaxWidth().fillMaxHeight(phoneHeightFraction).heroBackdropFade(false)
     }
 
 /**
@@ -4102,7 +4126,7 @@ private fun LibraryFiltersDialog(
         onClose = onDismiss,
     ) {
         run {
-            Column(verticalArrangement = Arrangement.spacedBy(if (playarrTvDrawer()) 30.dp else 23.1.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(if (!playarrTvDrawer()) 23.1.dp else if (LocalTabletDrawerCssPx.current) webVu(22f, 2.8f, 34f) else 30.dp)) {
                 LibraryFilterChoices(
                     playarrString(PlayarrString.LibraryView),
                     availableViewModes,
