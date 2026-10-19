@@ -3086,8 +3086,7 @@ private fun ExperienceHomeScreen(
                                 homeView = homeView,
                                 selectedId = selectedId,
                                 active = rail.key == activeRailKey && (isTelevision || savedSelectedId != null),
-                                // Web phone Home (refs of 2026-10-17) draws the first On deck card selected from the start, its heading unscaled.
-                                markSelected = rail.key == activeRailKey,
+                                // Web touch Home refs (republished 2026-10-19) blur the default focus: no card is selected until one is touched.
                                 progressByWork = progressByWork,
                                 onSelected = { savedSelectedId = it.id; savedRailKey = rail.key },
                                 onClick = { work, onDeck ->
@@ -6616,16 +6615,26 @@ private fun PhoneVideoDetailBody(
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
                 // the box to the font height, so pin the height and lift the text the way CSS centres it.
                 // Web phone `.tv-detail-title`: max-width 12ch, so a long title wraps to a second 36.66 px line (the stage-scaled tablet keeps one line).
-                // shortcut: no `text-wrap: balance`, so a three-word title may break unevenly; add a balancing pass if one shows up in the refs.
                 val phoneTitle = LocalStageScale.current == 1f
                 val titleStyle = WebTextStyle.merge(androidx.compose.ui.text.TextStyle(fontSize = 39.sp, fontWeight = FontWeight(560)))
                 val measurer = androidx.compose.ui.text.rememberTextMeasurer()
                 val density = LocalDensity.current
-                val titleMax = with(density) { (measurer.measure("0", titleStyle).size.width * 12).toDp() }
+                val titleMaxPx = measurer.measure("0", titleStyle).size.width * 12
+                val titleMax = with(density) { titleMaxPx.toDp() }
+                // Web `text-wrap: balance`: a title that wraps breaks where its longer line is shortest.
+                val spacedTitleStyle = titleStyle.merge(androidx.compose.ui.text.TextStyle(letterSpacing = (-2.808).sp))
+                val shownTitle = remember(work.title, titleMaxPx, phoneTitle) {
+                    val words = work.title.split(' ')
+                    fun width(text: String) = measurer.measure(text, spacedTitleStyle).size.width
+                    if (!phoneTitle || words.size < 2 || width(work.title) <= titleMaxPx) work.title
+                    else (1 until words.size)
+                        .minBy { maxOf(width(words.take(it).joinToString(" ")), width(words.drop(it).joinToString(" "))) }
+                        .let { words.take(it).joinToString(" ") + "\n" + words.drop(it).joinToString(" ") }
+                }
                 var titleLines by remember(work.title) { mutableStateOf(1) }
                 Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
                     Text(
-                        work.title, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
+                        shownTitle, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
                         onTextLayout = { titleLines = it.lineCount },
                         modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() },
