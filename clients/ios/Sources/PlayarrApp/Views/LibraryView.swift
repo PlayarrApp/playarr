@@ -589,28 +589,18 @@ struct LibraryView: View {
                             if viewModel.viewMode == .list {
                                 libraryListRow(work, width: cardWidth)
                             } else {
-                                let focused = (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
+                                // A touch web page draws no focus ring, lift or scale on the first tile (owner 2026-10-19).
                                 PlayarrMediaCard(
                                     work: work,
                                     apiClient: apiClient,
                                     width: cardWidth,
                                     showsSubtitle: false,
-                                    focused: !phone && focused,
+                                    focused: false,
                                     screenGridViewportWidth: matchesWebScreenGrid ? viewportWidth : nil
                                 )
                                     .overlay(alignment: .topTrailing) {
                                         if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
                                             WMUnseenDot().padding(.top, 7).padding(.trailing, 7)
-                                        }
-                                    }
-                                    .overlay(alignment: .top) {
-                                        if focused {
-                                            WMFocusRing(
-                                                width: phone ? cardWidth : cardWidth * LibraryFocusMetrics.tabletArtworkScale,
-                                                height: phone ? cardWidth * 9 / 16 : cardWidth * 9 / 16 * LibraryFocusMetrics.tabletArtworkScale,
-                                                cornerRadius: min(13, max(8, cardWidth * 0.058)) * (phone ? 1 : LibraryFocusMetrics.tabletArtworkScale)
-                                            )
-                                                .frame(width: cardWidth, height: cardWidth * 9 / 16)
                                         }
                                     }
                             }
@@ -625,15 +615,6 @@ struct LibraryView: View {
                                 )
                             }
                         }
-                        .scaleEffect(
-                            !phone && viewModel.viewMode != .list && (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
-                                ? LibraryFocusMetrics.tabletCardScale : 1,
-                            anchor: .center
-                        )
-                        .offset(
-                            y: !phone && viewModel.viewMode != .list && (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
-                                ? LibraryFocusMetrics.tabletLift : 0
-                        )
                         .buttonStyle(.plain)
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                         .task {
