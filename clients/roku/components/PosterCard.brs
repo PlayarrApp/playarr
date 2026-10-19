@@ -107,6 +107,7 @@ sub onContentChanged()
     ' guess: a documented simplification, not a bug.
     hasNumber = content.overlayNumber <> invalid and content.overlayNumber <> ""
     m.overlayNumber.visible = hasNumber
+    m.top.findNode("chapterWash").visible = hasNumber
     if hasNumber then m.overlayNumber.text = content.overlayNumber
     hasPrefix = content.captionPrefix <> invalid and content.captionPrefix <> ""
     m.captionPrefix.visible = hasPrefix
@@ -321,6 +322,8 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.top.findNode("posterBg").height = artH
     m.poster.width = artW
     m.poster.height = artH
+    m.top.findNode("chapterWash").width = artW
+    m.top.findNode("chapterWash").height = artH
     m.artGroup.scaleRotateCenter = [artW / 2, artH / 2]
     m.top.findNode("cornerTL").translation = [0, 0]
     m.top.findNode("cornerTR").translation = [artW - 12, 0]
