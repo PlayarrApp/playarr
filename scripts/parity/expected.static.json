@@ -2,21 +2,21 @@
  "suite": 1,
  "dpad": {
   "home-right": {
-   "label": "the 5th wavemovie \u00b7 2016",
+   "label": "midnight compass 5movie \u00b7 2018",
    "position": {
     "rail": 0,
     "index": 0
    }
   },
   "home-down": {
-   "label": "brothersmovie \u00b7 2024",
+   "label": "silent meridian 1movie \u00b7 1998",
    "position": {
     "rail": 1,
     "index": 0
    }
   },
   "home-down-right": {
-   "label": "brothersmovie \u00b7 2009",
+   "label": "electric archive 2movie \u00b7 2003",
    "position": {
     "rail": 1,
     "index": 1
