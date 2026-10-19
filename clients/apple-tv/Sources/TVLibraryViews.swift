@@ -316,9 +316,14 @@ struct TVHomeView: View {
                         }
                         .onMoveCommand { direction in
                             cancelStageFocusRequest()
-                            if direction == .left, index == 0,
-                               let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
-                                focusedCard = nil
+                            if direction == .left, index == 0 {
+                                if (homeCardFrames[focus]?.midY ?? 0) < 520 {
+                                    // The first rail's leading card hands over to the active tab (web: Home).
+                                    requestNavFocus()
+                                    focusedCard = nil
+                                } else if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                    focusedCard = nil
+                                }
                             }
                         }
                     }
@@ -567,7 +572,10 @@ struct TVHomeView: View {
                             // Per-card Left at the rail head → dock.
                             if direction == .left, index == 0 {
                                 #if os(tvOS)
-                                if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                if (homeCardFrames[focus]?.midY ?? 0) < 520 {
+                                    requestNavFocus()
+                                    focusedCard = nil
+                                } else if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
                                     focusedCard = nil
                                 }
                                 #else
