@@ -29,6 +29,7 @@ namespace Playarr.Xbox.Views
         public SearchPage()
         {
             InitializeComponent();
+            Background = Theme.PageStage();
             Ui.PageHeader(Root, "Search", null, () => App.Navigation.GoBack());
             ResultsGrid.ItemContainerStyle = CatalogTileFactory.GridCardContainerStyle;
             CardFocus.Attach(ResultsGrid);

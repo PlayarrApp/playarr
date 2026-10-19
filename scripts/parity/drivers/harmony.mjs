@@ -2,7 +2,17 @@
 //   HARMONY_CTL=40017 (the bridge's control port; 40117 for the phone profile)
 // Keys go through the Previewer's command channel; the route and the focused item come from the preview-only parity state the patched
 // app reports to the bridge (scripts/harmony-wall/patch_state.py). Run it against a signed-in Previewer (scripts/harmony-wall/capture.py).
-import { writeFileSync, readFileSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync, appendFileSync } from "node:fs";
+
+let dbgN = 0;
+// Diagnostics for the focus checks: one line of state and a frame per call, kept under suite/dark (uploaded with the captures).
+const dbgShot = async (tag) => {
+  const s = await (await get("/state")).json();
+  const line = `  harmony ${tag}: ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-3) })} ${(await (await get("/health")).text()).trim().slice(0, 100)}`;
+  console.log(line);
+  mkdirSync("suite/dark", { recursive: true }); appendFileSync("suite/dark/dbg.log", line + "\n");
+  try { mkdirSync("suite/dark", { recursive: true }); writeFileSync(`suite/dark/dbg-${String(++dbgN).padStart(2, "0")}-${tag}.png`, Buffer.from(await (await get("/shot.png")).arrayBuffer())); } catch {}
+};
 
 const CTL = `http://127.0.0.1:${process.env.HARMONY_CTL ?? "40017"}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -34,6 +44,7 @@ export async function createDriver() {
       if (!name) throw new Error(`no preview route for ${path}`);
       const want = detail ? { route: "Detail", work_id: detail } : name.startsWith("library:") ? { route: "Library", lib_kind: name.slice(8) } : null;
       await get(`/setroute?name=${encodeURIComponent(name)}`);
+      await dbgShot(`route-${name.replace(/\W/g, "_")}-set`);
       const t0 = Date.now();
       for (;;) {
         await sleep(2000);
@@ -42,6 +53,7 @@ export async function createDriver() {
         if (Date.now() - t0 > 45000) { console.log(`  harmony route ${path}: state ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-4) })}`); break; }
       }
       await sleep(6000);
+      await dbgShot(`route-${name.replace(/\W/g, "_")}-done`);
     },
     async home() {
       await this.route("/");
@@ -52,12 +64,19 @@ export async function createDriver() {
       if (!(await state()).focused) {
         // Focus requests do not take in the Previewer until a touch has activated focus: click the first card (opens its detail), come back.
         console.log(`  harmony home: no focus, dbg ${JSON.stringify((await state()).dbglog?.slice(-4))}; touch-activating`);
-        await get("/click?x=1044&y=544");
+        await get("/click?x=950&y=320"); // the On deck card (783..1115 x 224..405 at 1920x1080); a miss leaves Back to pop Home off the stack
         await sleep(8000);
         await get("/key/back");
         await sleep(6000);
+        if ((await state()).route !== "Home") { await get("/setroute?name=home"); await sleep(8000); }
+        // The click only labels the card ("click:"); ask again for real focus now that touch has activated it.
+        await get("/state?resetfocused=1");
+        await get("/setroute?name=focus:pcard");
+        const t1 = Date.now();
+        while (Date.now() - t1 < 12000 && !(await state()).focused) await sleep(1000);
       }
       await sleep(1500);
+      await dbgShot("home-ready");
     },
     async location() {
       const s = await state();
@@ -77,6 +96,7 @@ export async function createDriver() {
     async focused() {
       const s = await state();
       if (!s.focused) console.log(`  harmony focused: none, state ${JSON.stringify({ ...s, dbglog: s.dbglog?.slice(-4) })}`);
+      await dbgShot("focused");
       return s.focused;
     },
     async screenshot(file) {

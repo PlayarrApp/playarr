@@ -479,7 +479,7 @@ internal fun PlayarrPlayerChrome(
 
         AnimatedVisibility(visible = visible, enter = PlayerChromeFadeEnter, exit = PlayerChromeFadeExit, modifier = Modifier.align(Alignment.TopEnd)) {
             Row(
-                modifier = (if (isTelevision) Modifier.padding(top = 37.8.dp, end = 58.dp) else Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(16.dp)),
+                modifier = (if (isTelevision) (if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 1500) Modifier.padding(top = 27.8.dp, end = 46.dp) else Modifier.padding(top = 37.8.dp, end = 58.dp)) else Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(16.dp)),
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 12.dp else 8.dp),
             ) {
                 if (onMinimise != null) {
@@ -830,7 +830,8 @@ private fun PlayarrPlayerControlBar(
     val durationMs = timeline.durationMs.coerceAtLeast(0L)
     val displayedPositionMs = (scrubPositionMs ?: timeline.positionMs).coerceIn(0L, durationMs.coerceAtLeast(0L))
     val bufferedProgress = if (durationMs > 0L) {
-        timeline.bufferedPositionMs.toFloat() / durationMs.toFloat()
+        // Parity captures (debug pause extra): the web ref's video has buffered 16 s of the clip, the local player all of it.
+        (if (parityPauseAtMs != null) minOf(timeline.bufferedPositionMs, 16_000L) else timeline.bufferedPositionMs).toFloat() / durationMs.toFloat()
     } else {
         0f
     }
@@ -1085,11 +1086,13 @@ internal fun PlayarrTelevisionControlBar(
     val focusManager = LocalFocusManager.current
     val progress = if (durationMs > 0L) (displayedPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
     val dimmed = Color.White.copy(alpha = 0.35f)
+    // Tablet web (1280 x 800 refs): the control row sits 3 px lower and the seek bar 5 px lower than the 1080 tuning gives.
+    val tabletPlayer = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 1500
     Column(
         Modifier
             .fillMaxWidth()
             // The scrim behind the bar is drawn separately (PlayarrPlayerScrim) so it can rise from the bottom.
-            .padding(start = webVw(24f, 4f, 70f), end = webVw(24f, 4f, 70f), bottom = webVw(22f, 3.5f, 58f), top = 40.dp), // web `.player-controls` padding, css px
+            .padding(start = webVw(24f, 4f, 70f), end = webVw(24f, 4f, 70f), bottom = webVw(22f, 3.5f, 58f) - (if (tabletPlayer) 3.dp else 0.dp), top = 40.dp), // web `.player-controls` padding, css px
         verticalArrangement = Arrangement.Bottom,
     ) {
         val scrubSource = remember { MutableInteractionSource() }
@@ -1190,7 +1193,7 @@ internal fun PlayarrTelevisionControlBar(
                 )
             }
         }
-        Spacer(Modifier.height(11.5.dp))
+        Spacer(Modifier.height(if (tabletPlayer) 9.5.dp else 14.5.dp))
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(13.6.dp),
@@ -1277,11 +1280,11 @@ internal fun PlayarrTelevisionControlBar(
                         .semantics { contentDescription = qualityDescription },
                 ) {
                     Row(
-                        Modifier.padding(horizontal = 14.4.dp),
+                        Modifier.padding(start = if (tabletPlayer) 14.4.dp else 19.4.dp, end = 14.4.dp), // TV: measured against the web ref capture
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(if (tabletPlayer) 8.8.dp else 16.dp),
                     ) {
-                        Text("HD", fontSize = 7.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("HD", fontSize = if (tabletPlayer) 7.sp else 8.8.sp, fontWeight = FontWeight.ExtraBold)
                         Text(
                             active?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") }
                                 ?: playarrString(PlayarrString.PlayerQualityHeading),
@@ -1431,7 +1434,8 @@ private fun PlayarrPlayerPlaylistPanel(
 @Composable
 private fun Modifier.playerFocusRing(source: MutableInteractionSource, shape: androidx.compose.ui.graphics.Shape): Modifier {
     val focused by source.collectIsFocusedAsState()
-    return if (focused) border(2.dp, Color.White, shape) else this
+    // Parity captures (debug pause extra) keep focus but draw no ring: the web ref is at rest with none.
+    return if (focused && parityPauseAtMs == null) border(2.dp, Color.White, shape) else this
 }
 
 @Composable

@@ -24,10 +24,7 @@
         "vidaa",
         "xbox"
       ],
-      "actionsTitle": "Amber Cathedral 18",
-      "liveScreens": [
-        "player-controls"
-      ]
+      "actionsTitle": "Amber Cathedral 18"
     },
     "tv-nodl": {
       "viewport": [
@@ -44,10 +41,7 @@
         "roku"
       ],
       "actionsTitle": "Amber Cathedral 18",
-      "noDownloads": true,
-      "liveScreens": [
-        "player-controls"
-      ]
+      "noDownloads": true
     },
     "ipad": {
       "viewport": [
@@ -56,6 +50,7 @@
       ],
       "dpr": 2,
       "mobile": false,
+      "noFocusRing": true,
       "pixels": [
         2732,
         2048
@@ -63,10 +58,7 @@
       "dirs": [
         "ios-tablet"
       ],
-      "actionsTitle": "Amber Cathedral 18",
-      "liveScreens": [
-        "player-controls"
-      ]
+      "actionsTitle": "Amber Cathedral 18"
     },
     "android-tablet": {
       "viewport": [
@@ -75,15 +67,13 @@
       ],
       "dpr": 2,
       "mobile": false,
+      "noFocusRing": true,
       "pixels": [
         2560,
         1600
       ],
       "dirs": [
         "android-tablet"
-      ],
-      "liveScreens": [
-        "player-controls"
       ],
       "actionsTitle": "Amber Cathedral 18"
     },
@@ -94,6 +84,7 @@
       ],
       "dpr": 3,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         1179,
         2556
@@ -109,6 +100,7 @@
       ],
       "dpr": 1.8436,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         719,
         1558
@@ -124,6 +116,7 @@
       ],
       "dpr": 3,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         1080,
         2340
@@ -139,6 +132,7 @@
       ],
       "dpr": 1.9692,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         768,
         1344
@@ -158,6 +152,7 @@
       ],
       "dpr": 2,
       "mobile": true,
+      "noFocusRing": true,
       "pixels": [
         720,
         1346
@@ -184,6 +179,7 @@
     "actions",
     "calendar-link"
   ],
+  "themeless": ["player-controls"],
   "titles": {
     "film-detail": "Silent Meridian 1",
     "series-detail": "Golden Cathedral 1",

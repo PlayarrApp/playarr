@@ -48,12 +48,12 @@ namespace Playarr.Xbox.Views
         public WorkDetailPage()
         {
             InitializeComponent();
+            Background = Theme.PageStage();
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
             BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
-            BackdropStageWashRight.Fill = Theme.KeyArtStageWashRight();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
             PlaybackButton.Height = 64;
@@ -125,7 +125,7 @@ namespace Playarr.Xbox.Views
                 if (_viewModel.RuntimeMs is { } runtime && runtime > 0)
                 {
                     var totalMinutes = Math.Max(1, (int)Math.Round(runtime / 60000.0)); // web formatRuntime rounds
-                    meta.Add(totalMinutes >= 60 ? (totalMinutes % 60 > 0 ? $"{totalMinutes / 60}h {totalMinutes % 60}m" : $"{totalMinutes / 60}h") : $"{totalMinutes}m");
+                    meta.Add(totalMinutes >= 60 ? (totalMinutes % 60 > 0 ? $"{totalMinutes / 60}h {totalMinutes % 60}m" : $"{totalMinutes / 60}h") : $"{totalMinutes} min");
                 }
 
                 if (WorkLabels.YearRange(work) is { } years)

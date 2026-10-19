@@ -19,7 +19,20 @@ struct TVSettingsView: View {
         ("08", "Request latency", "Per-route HTTP request latency for admins.", 299.7),
         ("09", "Phone remote", "Control this device from your phone, or control another device.", 449.8),
         ("10", "Your data", "Export your watch progress, playlists and preferences, or import them from another Playarr Server.", 702.8),
+        ("11", "Customise Home", "Choose which rails Home shows and in what order.", 400),
     ]
+
+    /// macOS matches the static web refs (Parity worker B); tvOS keeps its own measured values.
+    private func mac<T>(_ macOS: T, _ other: T) -> T {
+        #if os(macOS)
+        macOS
+        #else
+        other
+        #endif
+    }
+
+    /// Web lists Request latency (08) for admins only; the device profile is not one. tvOS keeps the row.
+    private var visibleSections: [Int] { sections.indices.filter { mac($0 != 7, $0 != 10) } }
 
     var body: some View {
         @Bindable var environment = environment
@@ -32,17 +45,18 @@ struct TVSettingsView: View {
             // Web: the selected section is the page subtitle (shared small style), nothing else under the title.
             TVPageHeader(title: "Preferences", detail: sections[selectedSection].title, backFocused: true)
 
-            // `.settings-option` rows: x 153.6, y 162, 480.4 x 91.9, pitch 91.9.
-            ForEach(Array(sections.enumerated()), id: \.offset) { index, section in
+            // `.settings-option` rows: x 153.6, y 162, 470 (tvOS 480.4) x 91.9, pitch 91.9.
+            ForEach(Array(visibleSections.enumerated()), id: \.element) { row, index in
+                let section = sections[index]
                 let selected = selectedSection == index
-                let top = 162 + CGFloat(index) * 91.9
+                let top = 162 + CGFloat(row) * 91.9
                 Button {
                     selectedSection = index
                 } label: {
                     ZStack(alignment: .topLeading) {
                         Rectangle()
                             .fill(selected ? DesignTokens.Color.backgroundRaised : Color.clear)
-                            .frame(width: 480.4, height: 91.9)
+                            .frame(width: mac(470, 480.4), height: 91.9)
                         Text(section.number)
                             .font(TVTheme.font(size: 9.92, weight: .bold))
                             .foregroundStyle(DesignTokens.Color.textDisabled)
@@ -56,9 +70,9 @@ struct TVSettingsView: View {
                         Text("\u{2192}")
                             .font(TVTheme.font(size: 20.8, weight: .regular))
                             .foregroundStyle(selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                            .placed(x: selected ? 432.6 : 427.6, y: 30.3, w: 20.8, h: 31.2)
+                            .placed(x: selected ? mac(422.6, 432.6) : mac(417.6, 427.6), y: 30.3, w: 20.8, h: 31.2)
                     }
-                    .frame(width: 480.4, height: 91.9, alignment: .topLeading)
+                    .frame(width: mac(470, 480.4), height: 91.9, alignment: .topLeading)
                     .modifier(TVNavItemFocusFill(fill: DesignTokens.Color.backgroundRaised, cornerRadius: 0))
                 }
                 // Web settings menu: the focused row gets the selected fill and opens its panel; no system platter.
@@ -66,7 +80,7 @@ struct TVSettingsView: View {
                 .focused($focusedSection, equals: index)
                 .disabled(TVParityLaunch.frozen) // not .focusable: on a Button it adds a second, inert focus target
                 .focusEffectDisabled()
-                .pinned(x: 153.6, y: top, w: 480.4, h: 91.9)
+                .pinned(x: 153.6, y: top, w: mac(470, 480.4), h: 91.9)
             }
 
             Color.clear.frame(width: 0, height: 0)
@@ -84,7 +98,7 @@ struct TVSettingsView: View {
                     sectionDetail
                 }
             }
-            .frame(width: 995, alignment: .topLeading)
+            .frame(width: mac(1046, 995), alignment: .topLeading)
             .pinned(x: 773.8, y: selectedSection == 0 ? 0 : 210, w: 995, alignment: .topLeading)
             .focusSection()
         }
@@ -146,7 +160,7 @@ struct TVSettingsView: View {
                     displayPreferences.artworkSize = TVDisplayPreferences.ArtworkSize.allCases[index]
                 }
             }
-            .frame(width: 995, height: 760, alignment: .topLeading) // real height: controls outside a 1-pt frame cannot take focus
+            .frame(width: mac(1046, 995), height: 760, alignment: .topLeading) // real height: controls outside a 1-pt frame cannot take focus
         case 4:
             Text("Playarr Server")
                 .font(.system(size: 22, weight: .semibold))
