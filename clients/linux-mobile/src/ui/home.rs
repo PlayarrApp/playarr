@@ -354,7 +354,8 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                 let app = app.clone();
                 move |w: &Work| app.open_work(w)
             };
-            let mut initial_selection = true;
+            // Touch parity: the web touch refs show no resting ring; the halo follows real focus only.
+            let mut initial_selection = false;
             let mut focus_sections = Vec::new();
             let mut art_set = false;
             let mut set_art = |w: &Work| {
