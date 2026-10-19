@@ -22,6 +22,8 @@ const ROW_PADDING_H: number = 18;
 const GLYPH_COLUMN: number = 42;
 const GLYPH_SIZE: number = 19.5;
 const LABEL_SIZE: number = 19.4;
+// web phone label measured on the static refs: 18% narrower than the TV's 19.4 at the Previewer's Nunito widths
+const PHONE_LABEL_SIZE: number = 16.6;
 
 @Component
 export struct ActionList {
@@ -40,9 +42,9 @@ export struct ActionList {
           Text(action.glyph).fontFamily(nunito(400))
             .width(tv(GLYPH_COLUMN))
             .fontSize(tv(GLYPH_SIZE))
-            .fontColor(toResourceColor(isTvMetrics() ? BRAND_PINK : activeColors().accent))
+            .fontColor(toResourceColor(BRAND_PINK))
           Text(action.label).fontFamily(nunito(700))
-            .fontSize(tv(LABEL_SIZE))
+            .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
         }
@@ -51,7 +53,7 @@ export struct ActionList {
         .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
         .borderRadius(tv(ROW_RADIUS))
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-        .outline(isTvMetrics() && action.id === this.actions[0].id ? { width: tv(3), color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) } : { width: 0 }) // web: the first action starts focused
+        .outline(action.id === this.actions[0].id ? { width: isTvMetrics() ? tv(3) : 2, color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) } : { width: 0 }) // web: the first action starts focused
         .opacity(this.busyId.length > 0 && this.busyId !== action.id ? 0.5 : 1)
         .focusable(this.busyId.length === 0)
         .defaultFocus(action.id === this.actions[0].id)
