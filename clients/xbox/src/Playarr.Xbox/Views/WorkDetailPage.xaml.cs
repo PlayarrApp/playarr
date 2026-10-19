@@ -49,7 +49,7 @@ namespace Playarr.Xbox.Views
         {
             InitializeComponent();
             Background = Theme.PageStage();
-            EdgeFade.AttachVertical(Root, RailsScroll, 833);
+            EdgeFade.AttachVertical(Root, RailsScroll, 833, true);
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();

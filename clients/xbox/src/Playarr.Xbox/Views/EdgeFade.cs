@@ -18,10 +18,10 @@ namespace Playarr.Xbox.Views
         private const double Floor = 0.3;
 
         /// <summary>Vertical fade for a scroller (a <see cref="ScrollViewer"/> or a list that owns one) inside <paramref name="host"/>, aligned to its left and width.</summary>
-        public static void AttachVertical(Grid host, FrameworkElement scroller, double? left = null)
+        public static void AttachVertical(Grid host, FrameworkElement scroller, double? left = null, bool ground = false)
         {
-            var top = Overlay(true);
-            var bottom = Overlay(false);
+            var top = Overlay(true, ground);
+            var bottom = Overlay(false, ground);
             foreach (var overlay in new[] { top, bottom })
             {
                 overlay.HorizontalAlignment = scroller.HorizontalAlignment;
@@ -89,9 +89,10 @@ namespace Playarr.Xbox.Views
             return null;
         }
 
-        private static Windows.UI.Xaml.Shapes.Rectangle Overlay(bool start)
+        private static Windows.UI.Xaml.Shapes.Rectangle Overlay(bool start, bool ground)
         {
-            var bg = Theme.Bg;
+            // ground: the tinted page ground the web mask reveals over the right of the page (measured), instead of the flat page colour.
+            var bg = ground ? (Theme.IsLight ? Windows.UI.Color.FromArgb(255, 0xF1, 0xF0, 0xF0) : Windows.UI.Color.FromArgb(255, 0x25, 0x20, 0x25)) : Theme.Bg;
             // Alpha of the page colour is 1 - mask; the mask runs from the floor at the edge to 1 at Size.
             Windows.UI.Color At(double mask) => Windows.UI.Color.FromArgb((byte)Math.Round(255 * (1 - mask)), bg.R, bg.G, bg.B);
             double Mask(double s) => Floor + (1 - Floor) * s;
