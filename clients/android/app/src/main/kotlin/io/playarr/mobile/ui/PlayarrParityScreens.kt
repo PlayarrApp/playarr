@@ -1818,7 +1818,8 @@ internal fun ExperienceProfilesScreen(
         }
         // Web `TvStageChrome` — logo left, theme + language right.
         if (isTelevision) {
-            ProfilesStageChrome()
+            // Tablet web at 1280 x 800 draws the chrome in css px (selectors 47.5 css tall at 28.5 from the right, mark 29 css at 54 / 48).
+            if (LocalStageScale.current != 1f) UnstagedForWebCssPx { ProfilesStageChrome(tablet = true) } else ProfilesStageChrome()
         } else {
             PhoneProfilesChrome()
         }
@@ -1914,7 +1915,8 @@ private fun TelevisionProfilesStage(
         // Web keeps the Playarr mark at the top left of the profile picker, where the shell draws it.
         PlayarrLogo(Modifier.align(Alignment.TopStart).padding(start = 59.dp, top = 60.dp))
         // `.profile-clients-link`: the glass pill bottom right (web shows it on every TV client).
-        ProfilesGlassPill(onClick = onClients, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 50.dp, bottom = 34.dp)) {
+        // Tablet web (1280 x 800 refs) shows no Clients link.
+        if (LocalStageScale.current == 1f) ProfilesGlassPill(onClick = onClients, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 50.dp, bottom = 34.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(playarrString(PlayarrString.ProfilesClients), color = WebInkSoft, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Text("\u2192", color = WebInkSoft, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -1924,7 +1926,7 @@ private fun TelevisionProfilesStage(
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 162.dp)
+                .padding(top = if (LocalStageScale.current != 1f) 183.dp else 162.dp)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -1954,7 +1956,7 @@ private fun TelevisionProfilesStage(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(top = 382.4.dp)
+                .padding(top = if (LocalStageScale.current != 1f) 432.4.dp else 382.4.dp)
                 .height(420.dp),
             contentAlignment = Alignment.TopCenter,
         ) {
@@ -2069,10 +2071,12 @@ private fun TelevisionProfilesStage(
             is AndroidUpdateEvent.Error -> playarrString(PlayarrString.ProfilesUpdateRetry)
             null -> playarrString(PlayarrString.ProfilesCheckForUpdates)
         }
-        Column(
+        val tabletUpdate = LocalStageScale.current != 1f
+        // Tablet web draws the update pill in css px: 44 tall, 16 padding, 8 px text, 38 from the left and 24.5 from the bottom.
+        @Composable fun UpdateColumn() = Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 40.dp, bottom = 36.dp),
+                .padding(start = if (tabletUpdate) 38.dp else 40.dp, bottom = if (tabletUpdate) 24.5.dp else 36.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (updateControl.available) {
@@ -2083,7 +2087,7 @@ private fun TelevisionProfilesStage(
                     Text(
                         label,
                         color = WebInkSoft,
-                        fontSize = 11.sp,
+                        fontSize = if (tabletUpdate) 8.sp else 11.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -2105,6 +2109,7 @@ private fun TelevisionProfilesStage(
                 )
             }
         }
+        if (tabletUpdate) UnstagedForWebCssPx { UpdateColumn() } else UpdateColumn()
     }
 }
 
@@ -2175,9 +2180,10 @@ private fun MobileProfilesStage(
 
 /** Web `TvStageChrome` on profiles (logo + theme + language, no back). */
 @Composable
-private fun BoxScope.ProfilesStageChrome() {
+private fun BoxScope.ProfilesStageChrome(tablet: Boolean = false) {
     val display = LocalPlayarrDisplayPreferences.current
-    Icon(
+    // The tablet shell already draws the mark where the web has it.
+    if (!tablet) Icon(
         painter = painterResource(R.drawable.playarr_mark),
         contentDescription = "Playarr",
         tint = Color.Unspecified,
@@ -2190,7 +2196,7 @@ private fun BoxScope.ProfilesStageChrome() {
     Row(
         modifier = Modifier
             .align(Alignment.TopEnd)
-            .padding(end = 42.dp, top = 50.dp)
+            .padding(end = if (tablet) 28.5.dp else 42.dp, top = if (tablet) 37.dp else 50.dp)
             .zIndex(3f),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2421,7 +2427,7 @@ private fun ProfileChoice(
 ) {
     // Web `.profile-choice` flex-basis clamp(160px, 13vw, 244px): 13vw is 249.6 at 1920, so 244.
     val cardWidth = if (isTelevision) 244.dp else 148.dp
-    val avatarSize = if (isTelevision) 244.dp else 132.dp
+    val avatarSize = if (isTelevision) (if (LocalStageScale.current != 1f) 249.dp else 244.dp) else 132.dp
     val avatarDescription = playarrString(
         if (profile.isCurrent) PlayarrString.ProfilesAvatarLabelCurrent else PlayarrString.ProfilesAvatarLabel,
         "name" to profile.displayName,
@@ -2522,7 +2528,7 @@ private fun ProfileChoice(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
             modifier = Modifier
-                .padding(top = if (isTelevision) 8.8.dp else 12.dp)
+                .padding(top = if (isTelevision) (if (LocalStageScale.current != 1f) 13.6.dp else 8.8.dp) else 12.dp)
                 .fillMaxWidth(),
         )
         if (!serverLabel.isNullOrBlank()) {
@@ -2552,9 +2558,12 @@ private fun ProfileChoice(
             modifier = Modifier.padding(top = if (isTelevision) 8.8.dp else 4.dp),
         )
         if (selected) {
+          // Tablet web draws the action pills in css px (44 css tall).
+          val tabletActions = LocalStageScale.current != 1f
+          @Composable fun ActionRow() {
             // Web `.profile-actions`
             Row(
-                modifier = Modifier.padding(top = if (isTelevision) 11.2.dp else 18.dp),
+                modifier = Modifier.padding(top = if (tabletActions) 20.dp else if (isTelevision) 11.2.dp else 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 8.8.dp else 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -2591,13 +2600,15 @@ private fun ProfileChoice(
                             Text(
                                 playarrString(PlayarrString.ProfilesSignOut),
                                 color = WebInkSoft,
-                                fontSize = if (isTelevision) 10.752.sp else 11.sp,
+                                fontSize = if (tabletActions) 8.sp else if (isTelevision) 10.752.sp else 11.sp,
                                 fontWeight = if (isTelevision) FontWeight(720) else FontWeight.Bold,
                             )
                         }
                     }
                 }
             }
+          }
+          if (tabletActions) UnstagedForWebCssPx { ActionRow() } else ActionRow()
         }
     }
 }
