@@ -423,7 +423,7 @@ export struct PosterCard {
           }
           .width('100%')
           .height(PROGRESS_BAR_HEIGHT)
-          .backgroundColor(toResourceColor(activeColors().line))
+          .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().line) : 'rgba(255, 255, 255, 0.2)') // web phone: a white 20% track in both themes
           .justifyContent(FlexAlign.Start)
         }
 
