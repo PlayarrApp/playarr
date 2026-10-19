@@ -495,7 +495,7 @@ export struct PosterCard {
         Text(this.title).fontFamily(nunito(this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
-          .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+          .fontWeight(this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT)
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
