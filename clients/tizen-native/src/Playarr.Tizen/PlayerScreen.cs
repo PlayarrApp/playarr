@@ -58,6 +58,8 @@ internal sealed class PlayerScreen : IPage
         _root.Add(_controls);
 
         var white = new Rgba(1, 1, 1);
+        // web: the control bar sits on a bottom scrim, black at 92 % along the last 520 px
+        _controls.Add(Ui.Gradient(0, 560, 1920, 520, false, (0f, new Rgba(0, 0, 0, 0)), (1f, new Rgba(0, 0, 0, 0.92f))));
         // seek track
         _controls.Add(Ui.Box(TrackX, TrackY, TrackW, 6, new Rgba(1, 1, 1, 0.18f), 3));
         _progress = Ui.Box(TrackX, TrackY, 0, 6, _t.Brand, 3);
@@ -413,6 +415,9 @@ internal sealed class PlayerScreen : IPage
         Stop();
         _env.NavigateBack();
     }
+
+    /// <summary>Capture only: hides the focus ring, as the web player-controls reference is taken with no focus.</summary>
+    public void BlurFocus() => _focus.Item?.Style(false);
 
     public (bool Playing, long PositionMs) Status
     {

@@ -98,6 +98,23 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       await verifyAccount();
       await waitStable();
     },
+    // Web player-controls ref: the clip paused at 2 s with the controls shown. The player reports its position only while playing and
+    // holds the start position for the first frames, so start at 2 s and pause on the first playing sample.
+    async pausePlayerAtTwoSeconds() {
+      const base = state.route.split("?")[0];
+      await request("POST", `/route?path=${encodeURIComponent(`${base}?t=2000`)}`);
+      for (let waited = 0; waited < 45000; waited += 50) {
+        await readState();
+        if (state.playing && state.positionMs >= 2000 && state.positionMs < 2600) break;
+        await delay(50);
+      }
+      await request("POST", "/key?name=pause");
+      await delay(KEY_MS);
+      await waitStable();
+      await readState();
+      if (state.playing) throw new Error("player did not pause");
+      await request("POST", "/blur");
+    },
     async home() { await verifyAccount(); await request("POST", "/route?path=/"); await this.settle(5000); },
     async route(p) { await verifyAccount(); await request("POST", `/route?path=${encodeURIComponent(p)}`); await this.settle(4000); },
     async key(k, { long } = {}) { await verifyAccount(); await request("POST", `/key?name=${encodeURIComponent(k)}${long ? "&long=1" : ""}`); await delay(long ? 1500 : KEY_MS); await waitStable(); },
@@ -106,6 +123,7 @@ export async function createDriver({ request = call, delay = sleep, env = proces
     async screenshot(file) {
       await verifyAccount();
       await waitStable();
+      if (state.route.startsWith("/player/")) await this.pausePlayerAtTwoSeconds();
       if (state.route.startsWith("/player/") && state.playing) throw new Error("Tizen player capture requires paused playback for deterministic pixels");
       const first = `${file}.stability.png`;
       const capture = captureScreenshot ?? ((path) => execFileSync("import", ["-window", process.env.PLAYARR_TIZEN_WINDOW ?? "root", path], { env: { ...process.env, DISPLAY } }));
