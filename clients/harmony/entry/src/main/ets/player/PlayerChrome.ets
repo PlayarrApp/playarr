@@ -193,16 +193,15 @@ const TV_CLOSE_SIZE: number = 48;
 const TV_CLOSE_RIGHT: number = 58;
 const TV_CLOSE_TOP: number = 38;
 const TV_BAR_SIDE: number = 70;
-const TV_BAR_BOTTOM: number = 54;
+const TV_BAR_BOTTOM: number = 42;
 const TV_TRACK_HEIGHT: number = 6;
 const TV_PLAY_SIZE: number = 72;
 const TV_SEEK_SIZE: number = 48;
-const TV_ROW_GAP: number = 11;
-const TV_BAR_GAP: number = 16;
-// Web's icon buttons are wider than tall; the icons sit centred in them.
-const TV_ICON_WIDTH: number = 62;
+const TV_ROW_GAP: number = 24;
+const TV_BAR_GAP: number = 28;
 const TV_TIME_FONT_SIZE: number = 12;
 const TV_QUALITY_WIDTH: number = 120;
+const TV_VOLUME_WIDTH: number = 76;
 const BACK_BUTTON_WIDTH_TV: number = 96;
 
 function defaultChromePaddingH(): number {
@@ -316,51 +315,6 @@ struct PlayPauseGlyph {
   }
 }
 
-/** Web's line icons of the TV control row, drawn in a 24 unit box ('f:' paths are filled, 's:' paths stroked). */
-function chromeIconPaths(kind: string): string[] {
-  switch (kind) {
-    case 'prev':
-      return ['f:M5 5 H7 V19 H5 Z', 'f:M19 5 V19 L9 12 Z'];
-    case 'next':
-      return ['f:M17 5 H19 V19 H17 Z', 'f:M5 5 V19 L15 12 Z'];
-    case 'volume':
-      return ['f:M3 9 H7 L12 4 V20 L7 15 H3 Z', 's:M15.5 8.5 A5 5 0 0 1 15.5 15.5', 's:M18 5.5 A9 9 0 0 1 18 18.5'];
-    case 'muted':
-      return ['f:M3 9 H7 L12 4 V20 L7 15 H3 Z', 's:M16 9 L22 15', 's:M22 9 L16 15'];
-    case 'captions':
-      return ['s:M3 5 H21 V19 H3 Z', 's:M6 12 H10', 's:M13 12 H18', 's:M6 15.5 H9', 's:M12 15.5 H18'];
-    case 'info':
-      return ['s:M12 3 A9 9 0 1 1 11.99 3 Z', 's:M12 11 V17', 's:M12 7.5 V8'];
-    default:
-      return [];
-  }
-}
-
-@Component
-struct ChromeIcon {
-  @Prop kind: string = '';
-  @Prop iconSize: number = 20;
-
-  build() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      ForEach(chromeIconPaths(this.kind), (spec: string): void => {
-        Path()
-          .commands(spec.substring(2))
-          .width(24)
-          .height(24)
-          .fill(spec.charAt(0) === 'f' ? toResourceColor(CHROME_TEXT_PRIMARY) : Color.Transparent)
-          .stroke(spec.charAt(0) === 's' ? toResourceColor(CHROME_TEXT_PRIMARY) : Color.Transparent)
-          .strokeWidth(1.8)
-          .strokeLineCap(LineCapStyle.Round)
-          .strokeLineJoin(LineJoinStyle.Round)
-      }, (spec: string): string => spec)
-    }
-    .width(24)
-    .height(24)
-    .scale({ x: this.iconSize / 24, y: this.iconSize / 24 })
-  }
-}
-
 /**
  * One focusable, clickable control in this bar. Renders `label` as plain
  * text unless `showGlyph` is set, in which case it renders `PlayPauseGlyph`
@@ -376,8 +330,6 @@ struct ChromeButton {
   showGlyph: boolean = false;
   isPlaying: boolean = false;
   glyphSize: number = 24;
-  /** TV: a web line icon (see `chromeIconPaths`) instead of the text label; drawn without ring or fill until focused. */
-  icon: string = '';
 
   /** Plain (non-reactive) callback fields -- functions are not observable
    * state, the same pattern as every other content component in this
@@ -410,8 +362,6 @@ struct ChromeButton {
     Stack({ alignContent: Alignment.Center }) {
       if (this.showGlyph) {
         PlayPauseGlyph({ isPlaying: this.isPlaying, glyphSize: this.glyphSize })
-      } else if (this.icon.length > 0) {
-        ChromeIcon({ kind: this.icon, iconSize: this.glyphSize })
       } else {
         Text(this.label).fontFamily(nunito(700))
           .fontSize(this.fontSize)
@@ -423,8 +373,8 @@ struct ChromeButton {
     .width(this.buttonWidth)
     .height(this.buttonHeight)
     .borderRadius(this.circle ? this.buttonHeight / 2 : 0)
-    .backgroundColor(this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_FILL_ALPHA * (this.icon.length > 0 ? this.focusPercent : 1)) : Color.Transparent)
-    .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_RING_ALPHA * (this.icon.length > 0 ? this.focusPercent : 1)) } : { width: 0 })
+    .backgroundColor(this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_FILL_ALPHA) : Color.Transparent)
+    .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, CIRCLE_RING_ALPHA) } : { width: 0 })
     .scale({ x: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)), y: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)) })
     .opacity(this.active ? 1 : 0.35)
     .focusable(this.active)
@@ -653,12 +603,12 @@ export struct PlayerChrome {
         }
         Row({ space: tv(TV_ROW_GAP) }) {
           ChromeButton({
-            icon: 'prev',
+            label: '\u23EE',
             circle: true,
             active: this.canPrevious,
-            buttonWidth: tv(TV_ICON_WIDTH),
+            buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
-            glyphSize: tv(20),
+            fontSize: tv(16),
             onActivate: this.onPrevious,
             notifyFocusChanged: ((focused: boolean): void => {
               this.setChildFocused(focused);
@@ -678,12 +628,12 @@ export struct PlayerChrome {
             }),
           })
           ChromeButton({
-            icon: 'next',
+            label: '\u23ED',
             circle: true,
             active: this.canNext,
-            buttonWidth: tv(TV_ICON_WIDTH),
+            buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
-            glyphSize: tv(20),
+            fontSize: tv(16),
             onActivate: this.onNext,
             notifyFocusChanged: ((focused: boolean): void => {
               this.setChildFocused(focused);
@@ -698,11 +648,11 @@ export struct PlayerChrome {
           }
           Blank()
           ChromeButton({
-            icon: this.muted ? 'muted' : 'volume',
+            label: this.muted ? 'Muted' : 'Vol',
             circle: true,
-            buttonWidth: tv(TV_ICON_WIDTH),
+            buttonWidth: tv(TV_VOLUME_WIDTH),
             buttonHeight: tv(TV_SEEK_SIZE),
-            glyphSize: tv(20),
+            fontSize: tv(13),
             onActivate: this.onToggleMute,
             notifyFocusChanged: ((focused: boolean): void => {
               this.setChildFocused(focused);
@@ -723,11 +673,11 @@ export struct PlayerChrome {
           }
           if (this.hasTracks) {
             ChromeButton({
-              icon: 'captions',
+              label: 'CC',
               circle: true,
-              buttonWidth: tv(TV_ICON_WIDTH),
+              buttonWidth: tv(TV_SEEK_SIZE),
               buttonHeight: tv(TV_SEEK_SIZE),
-              glyphSize: tv(20),
+              fontSize: tv(13),
               onActivate: this.onOpenTracks,
               notifyFocusChanged: ((focused: boolean): void => {
                 this.setChildFocused(focused);
@@ -735,11 +685,11 @@ export struct PlayerChrome {
             })
           }
           ChromeButton({
-            icon: 'info',
+            label: 'i',
             circle: true,
-            buttonWidth: tv(TV_ICON_WIDTH),
+            buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
-            glyphSize: tv(20),
+            fontSize: tv(16),
             onActivate: this.onOpenInfo,
             notifyFocusChanged: ((focused: boolean): void => {
               this.setChildFocused(focused);
