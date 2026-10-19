@@ -42,7 +42,7 @@ const KICKER_COLOR_DARK: RgbaColor = { r: 234, g: 166, b: 182, a: 1 };
 
 const HERO_TITLE_FONT_SIZE: number = 69.12;
 const HERO_TITLE_FONT_WEIGHT: number = 500; // web 560: nearest static instance below 600 is the closer width
-const HERO_TITLE_LETTER_SPACING: number = HERO_TITLE_FONT_SIZE * -0.072;
+const HERO_TITLE_LETTER_SPACING: number = HERO_TITLE_FONT_SIZE * -0.077; // web is 2.3% narrower on "7 Distant Harbour 30"
 const HERO_TITLE_LINE_HEIGHT: number = 62;
 const HERO_TITLE_MAX_WIDTH: number = 373;
 // Web `.tv-detail-copy h2:not(.tv-detail-title)` at 1920x1080.
@@ -67,7 +67,7 @@ const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
 const SYNOPSIS_MAX_WIDTH: number = 324;
 // Nunito renders ~2% wider than web's at this size, so lines break one word earlier; trim the tracking, not the column.
-const SYNOPSIS_LETTER_SPACING: number = -0.12;
+const SYNOPSIS_LETTER_SPACING: number = -0.24;
 const SYNOPSIS_MAX_LINES: number = 5;
 // Measured on the 2026-10-18 Library refs: 5 lines at a 21.7 pitch, about 334 wide for 50 characters.
 const LIBRARY_SYNOPSIS_FONT_SIZE: number = 14.4;
