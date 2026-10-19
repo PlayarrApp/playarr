@@ -488,7 +488,7 @@ struct Profiles {
               .translate({ y: profile.is_current && !isTvMetrics() ? -8.6 : 0 })
               // web phone: the current avatar throws a crimson glow (measured on the pinned reference, light theme)
               .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
-              .shadow(profile.is_current && !isTvMetrics() ? { radius: 22, color: 'rgba(158, 35, 70, 0.32)', offsetY: 8 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
+              .shadow(profile.is_current && !isTvMetrics() ? { radius: 16, color: 'rgba(158, 35, 70, 0.5)', offsetY: 4 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
             Text(profile.display_name).fontFamily(nunito(700))
               .fontSize(this.pick(17.28, 12))
               .fontWeight(FontWeight.Bold)
