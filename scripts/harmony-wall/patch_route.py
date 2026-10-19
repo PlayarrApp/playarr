@@ -58,22 +58,6 @@ methods = """
       this.getUIContext().getFocusController().activate(true, false);
       let result: string = 'ok';
       if (name === 'focus:pcard') {
-        window.getLastWindow(this.getUIContext().getHostContext() as Context).then((w: window.Window): void => {
-          w.setWindowFocusable(true).then((): void => {
-            previewReport('dbg=' + encodeURIComponent('winfocusable:ok'));
-          }).catch((e: Object): void => {
-            previewReport('dbg=' + encodeURIComponent('winfocusable:' + JSON.stringify(e)));
-          });
-        }).catch((e: Object): void => {
-          previewReport('dbg=' + encodeURIComponent('getLastWindow:' + JSON.stringify(e)));
-        });
-        // Real ArkUI focus first (needs a focused window; the result and any onFocus/key arrival are logged), then the look the captures use.
-        try {
-          this.getUIContext().getFocusController().requestFocus('pcard');
-          previewReport('dbg=' + encodeURIComponent('pcard-real:ok'));
-        } catch (err) {
-          previewReport('dbg=' + encodeURIComponent('pcard-real:' + JSON.stringify(err)));
-        }
         result = previewFocusFirstCard(isTvMetrics());
         previewReport('dbg=' + encodeURIComponent('pcard-state:' + result));
         previewReport('focusack=' + encodeURIComponent(result));
@@ -105,8 +89,7 @@ methods = """
 """ % port
 s = s.replace("\n@Entry", "\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
-s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { window } from '@kit.ArkUI';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
-s = s.replace("    .navDestination(this.previewRoutes)\n  }\n}", "    .navDestination(this.previewRoutes)\n    .onKeyEvent((event: KeyEvent): boolean => {\n      previewReport('dbg=' + encodeURIComponent('key:' + event.keyCode + ':' + event.type));\n      return false;\n    })\n  }\n}", 1)
+s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
 s = s.replace("  aboutToAppear(): void {\n", "  aboutToAppear(): void {\n    this.startPreviewRoutePoll();\n", 1)
-assert 'this.startPreviewRoutePoll();' in s and 'previewPollOnce' in s and '.onKeyEvent(' in s
+assert 'this.startPreviewRoutePoll();' in s and 'previewPollOnce' in s
 open(p, 'w').write(s)
