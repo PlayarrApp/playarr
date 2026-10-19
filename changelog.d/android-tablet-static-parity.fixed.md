@@ -1,1 +1,2 @@
 - Android tablet: Home rail cards, the film and series detail tracks, the Chapters label gap and the Calendar month grid follow the static web (positions, css px text, bottom edge fade).
+- Android tablet: the player's control row, seek bar and top buttons sit where the static web has them.
