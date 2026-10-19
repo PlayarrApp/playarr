@@ -492,10 +492,10 @@ export struct PosterCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
       } else {
-        Text(this.title).fontFamily(nunito(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT))
+        Text(this.title).fontFamily(nunito(this.softCaption ? 700 : CARD_TITLE_FONT_WEIGHT))
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
-          .fontWeight(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT)
+          .fontWeight(this.softCaption ? 700 : CARD_TITLE_FONT_WEIGHT)
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
