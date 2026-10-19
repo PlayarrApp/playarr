@@ -97,7 +97,7 @@ methods = """
 s = s.replace("\n@Entry", "\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
 s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
-s = s.replace("    .hideTitleBar(true)\n  }\n}", "    .hideTitleBar(true)\n    .onKeyEvent((event: KeyEvent): boolean => {\n      previewReport('dbg=' + encodeURIComponent('key:' + event.keyCode + ':' + event.type));\n      return false;\n    })\n  }\n}", 1)
+s = s.replace("    .navDestination(this.previewRoutes)\n  }\n}", "    .navDestination(this.previewRoutes)\n    .onKeyEvent((event: KeyEvent): boolean => {\n      previewReport('dbg=' + encodeURIComponent('key:' + event.keyCode + ':' + event.type));\n      return false;\n    })\n  }\n}", 1)
 s = s.replace("  aboutToAppear(): void {\n", "  aboutToAppear(): void {\n    this.startPreviewRoutePoll();\n", 1)
 assert 'this.startPreviewRoutePoll();' in s and 'previewPollOnce' in s and '.onKeyEvent(' in s
 open(p, 'w').write(s)
