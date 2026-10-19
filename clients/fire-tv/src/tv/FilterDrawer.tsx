@@ -142,7 +142,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
                 {kicker}
               </T>
             </View>
-            <View style={{position: 'absolute', left: u(CONTENT_X), top: u(71.6), width: u(wide ? 330 : 200)}}>
+            <View style={{position: 'absolute', left: u(CONTENT_X), top: u(71.6), width: u(wide ? 330 : 204)}}>
               <T size={38.4} weight={590} ls={-2.112} lh={57.6} color={colour.ink}>
                 {title}
               </T>

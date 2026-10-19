@@ -176,6 +176,8 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
             );
           })}
         </Animated.View>
+        {/* The web's page scroller fades its end edge while more tracks continue below. */}
+        <EdgeFade side="bottom" active={tracks.length > 0 && trackY(tracks, restY, tracks.length - 1) + shiftTarget + TRACK_FIT_H > 1080} x={0} y={0} w={TRACK_VIEW_W} h={1080} />
       </Box>
   );
 }
