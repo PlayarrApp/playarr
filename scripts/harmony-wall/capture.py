@@ -344,8 +344,8 @@ def configured_player_route():
     suite = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))
     try:
         override = PLAYER_FIXTURE_OVERRIDE
-        if not override and os.environ.get("PARITY_STATIC_SERVER") == "1":
-            override = static_player_file(suite)  # the static server's one clip, which the live fixture id does not name
+        if os.environ.get("PARITY_STATIC_SERVER") == "1":
+            override = static_player_file(suite)  # the static server's pinned film clip; the live fixture secret names a file it does not have
         file_path, PLAYER_FIXTURE_SOURCE = player_fixture_selection(suite, override)
         return "player:" + file_path
     except ValueError as error:
