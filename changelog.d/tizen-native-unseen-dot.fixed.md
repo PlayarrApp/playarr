@@ -1,0 +1,1 @@
+- Tizen native: the unseen dot on library cards uses web's 2 px ring and sits half a pixel lower.

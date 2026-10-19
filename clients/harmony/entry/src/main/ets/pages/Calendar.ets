@@ -114,7 +114,7 @@ const PHONE_ENTRY_HEIGHT_NO_SUBTITLE: number = 77;
 const PHONE_PILL_SIZE: number = 11.2;
 const PHONE_PILL_HEIGHT: number = 22.5;
 const PHONE_DAY_HEADING_SIZE: number = 14.4;
-const PHONE_ENTRY_GAP: number = 13.7;
+const PHONE_ENTRY_GAP: number = 13; // web: day pitch 543 px, first card 2 px higher than at 13.7
 // Web phone week (`.calendar-week-scroll`): day columns 82vw wide (295.2 on the 360 vp reference), 1.25rem apart, snapping to the column
 // start; the page opens on today's column. Cards wrap their text: min-height 64, 8 vp above and below, 2.4 between lines.
 const PHONE_WEEK_COLUMN: number = 295.2;
@@ -172,7 +172,10 @@ const WEEK_HEADING_GAP: number = 6;
 const MONTH_HEAD_HEIGHT: number = 31;
 const MONTH_WEEKDAY_SIZE: number = 12;
 const MONTH_LINE_HEIGHT: number = 25;
-const TOUCH_MONTH_LINE_HEIGHT: number = 22;
+// Web phone month (static ref): the TV's cell type (12.48 vp, 9 vp dot) in cells 103 vp high, the day number 25.5 vp above the bottom.
+const TOUCH_MONTH_LINE_HEIGHT: number = 25;
+const TOUCH_MONTH_CELL_HEIGHT: number = 103;
+const TOUCH_MONTH_FOOT_HEIGHT: number = 51;
 const MONTH_LINE_SIZE: number = 12.48;
 const MONTH_DOT_SIZE: number = 9;
 const MONTH_FOOT_HEIGHT: number = 44;
@@ -623,13 +626,13 @@ export struct ReleaseCalendar {
     Column() {
       Column() {
         ForEach(groupSeriesEpisodes(cell.entries).slice(0, this.monthLinesFor(cellHeight)), (item: CalendarItem) => {
-          Row({ space: isTvMetrics() ? tv(7) : 3 }) {
+          Row({ space: tv(7) }) {
             Circle()
-              .width(isTvMetrics() ? tv(MONTH_DOT_SIZE) : 5)
-              .height(isTvMetrics() ? tv(MONTH_DOT_SIZE) : 5)
+              .width(tv(MONTH_DOT_SIZE))
+              .height(tv(MONTH_DOT_SIZE))
               .fill(toResourceColor(toneColor(itemPillTone(item, this.today))))
             Text(itemLineText(item)).fontFamily(nunito(item.grouped ? 700 : 400))
-              .fontSize(isTvMetrics() ? tv(MONTH_LINE_SIZE) : 9)
+              .fontSize(tv(MONTH_LINE_SIZE))
               .fontWeight(item.grouped ? FontWeight.Bold : FontWeight.Normal)
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
@@ -638,7 +641,7 @@ export struct ReleaseCalendar {
           }
           .height(isTvMetrics() ? tv(MONTH_LINE_HEIGHT) : TOUCH_MONTH_LINE_HEIGHT)
           .width('100%')
-          .padding({ left: isTvMetrics() ? tv(6) : 2 })
+          .padding({ left: tv(6) })
         }, (item: CalendarItem): string => item.key)
       }
       .layoutWeight(1)
@@ -654,7 +657,7 @@ export struct ReleaseCalendar {
             .fontColor(toResourceColor(activeColors().inkSoft))
         }
       }
-      .height(tv(MONTH_FOOT_HEIGHT))
+      .height(isTvMetrics() ? tv(MONTH_FOOT_HEIGHT) : TOUCH_MONTH_FOOT_HEIGHT)
       .width('100%')
       .padding({ left: tv(6) })
     }
@@ -674,7 +677,7 @@ export struct ReleaseCalendar {
     }
     // Match Web's content-room calculation, excluding phone padding and a conservative max border.
     const phoneRoom: number = cellHeight - TOUCH_MONTH_CELL_VERTICAL_INSET;
-    return Math.max(0, Math.floor((phoneRoom - MONTH_FOOT_HEIGHT - 2) / TOUCH_MONTH_LINE_HEIGHT));
+    return Math.max(0, Math.floor((phoneRoom - TOUCH_MONTH_FOOT_HEIGHT - 2) / TOUCH_MONTH_LINE_HEIGHT));
   }
 
   @Builder
@@ -1043,9 +1046,10 @@ export struct ReleaseCalendar {
   @Builder
   private touchControl(label: string, width: number, onTap: () => void): void {
     Stack() {
-      Text(label).fontFamily(nunito(700))
-        .fontSize(PHONE_CONTROL_FONT)
-        .fontWeight(FontWeight.Bold)
+      // web: the arrows are thin, smaller glyphs than the bold labels
+      Text(label).fontFamily(nunito(label.length === 1 ? 400 : 700))
+        .fontSize(label.length === 1 ? 9 : PHONE_CONTROL_FONT)
+        .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .textAlign(TextAlign.Center)
         .width(width)
@@ -1117,7 +1121,7 @@ export struct ReleaseCalendar {
         .borderRadius(tv(POSTER_RADIUS))
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-      Column({ space: PHONE_WEEK_TEXT_GAP }) {
+      Column({ space: fixedHeight > 0 ? 2 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
         Text(item.title).fontFamily(nunito(500))
           .fontSize(PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
@@ -1140,16 +1144,17 @@ export struct ReleaseCalendar {
           this.statusPill(itemPillTone(item, this.today))
         }
         .width('100%')
+        .margin({ top: fixedHeight > 0 ? -1 : 0 })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-      .margin({ bottom: 5 }) // web's text block sits 2.5 vp higher in the card than the centred one
+      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 9.4 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
     }
     .width('100%')
     .constraintSize({
       minWidth: minWidth,
       minHeight: fixedHeight > 0 ? fixedHeight : PHONE_WEEK_CARD_MIN_HEIGHT,
-      maxHeight: fixedHeight > 0 ? fixedHeight : PHONE_CARD_NO_MAX,
+      maxHeight: fixedHeight === PHONE_ENTRY_HEIGHT ? fixedHeight : PHONE_CARD_NO_MAX, // web: a movie's pill wraps under the meta line and the card grows with it
     })
     .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: 8, bottom: 8 })
     .borderRadius(tv(ENTRY_RADIUS))
@@ -1236,7 +1241,7 @@ export struct ReleaseCalendar {
             }, (cell: CalendarCell): string => cellKey(cell))
           }
           .width('100%')
-          .layoutWeight(1)
+          .height(TOUCH_MONTH_CELL_HEIGHT)
         }, (week: CalendarCell[]): string => week.map((cell: CalendarCell): string => cellKey(cell)).join('|'))
       }
       .width('100%')
@@ -1260,10 +1265,7 @@ export struct ReleaseCalendar {
 
   private touchMonthCellHeight(): number {
     const weekCount: number = buildMonthGrid(this.anchor, this.groups, this.today).length;
-    if (weekCount <= 0 || this.touchMonthViewportHeight <= 0) {
-      return 0;
-    }
-    return Math.max(0, (this.touchMonthViewportHeight - MONTH_HEAD_HEIGHT) / weekCount);
+    return weekCount <= 0 ? 0 : TOUCH_MONTH_CELL_HEIGHT; // web: fixed 103 vp cells, whatever the viewport
   }
 
   @Builder

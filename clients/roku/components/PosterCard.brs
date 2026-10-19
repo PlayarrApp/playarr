@@ -107,6 +107,7 @@ sub onContentChanged()
     ' guess: a documented simplification, not a bug.
     hasNumber = content.overlayNumber <> invalid and content.overlayNumber <> ""
     m.overlayNumber.visible = hasNumber
+    m.top.findNode("chapterWash").visible = hasNumber
     if hasNumber then m.overlayNumber.text = content.overlayNumber
     hasPrefix = content.captionPrefix <> invalid and content.captionPrefix <> ""
     m.captionPrefix.visible = hasPrefix
@@ -321,6 +322,8 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.top.findNode("posterBg").height = artH
     m.poster.width = artW
     m.poster.height = artH
+    m.top.findNode("chapterWash").width = artW
+    m.top.findNode("chapterWash").height = artH
     m.artGroup.scaleRotateCenter = [artW / 2, artH / 2]
     m.top.findNode("cornerTL").translation = [0, 0]
     m.top.findNode("cornerTR").translation = [artW - 12, 0]
@@ -335,6 +338,8 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.focusRing.translation = [-focusInset, -focusInset]
     m.focusRing.width = artW + (focusInset * 2)
     m.focusRing.height = artH + (focusInset * 2)
+    gx = artW / 220.0
+    gy = artH / 124.0
     if m.homeCardFocusStyle and ovW = 0
         ' card-glow.png has a 220x124 mask centred in a 400x304 canvas with
         ' 90px margins. Home artwork is laid out at the 1.4864 card scale, so
@@ -346,8 +351,6 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.focusGlow.height = 304 * glowScale
     else
         ' Grid cards: the glow canvas is scaled so its 220x124 mask matches the art (the previous artW+180 canvas hid it under the card).
-        gx = artW / 220.0
-        gy = artH / 124.0
         m.focusGlow.translation = [-90 * gx, -90 * gy - 5]
         m.focusGlow.width = 400 * gx
         m.focusGlow.height = 304 * gy
@@ -364,12 +367,13 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.focusShadow.width = 400 * shadowScale
         m.focusShadow.height = 304 * shadowScale
     else
-        m.restShadow.translation = [-90, -90]
-        m.restShadow.width = artW + 180
-        m.restShadow.height = artH + 180
-        m.focusShadow.translation = [-90, -90]
-        m.focusShadow.width = artW + 180
-        m.focusShadow.height = artH + 180
+        ' Same canvas scaling as the grid glow: the 220x124 mask of the shadow bitmaps lands on the art.
+        m.restShadow.translation = [-90 * gx, -90 * gy]
+        m.restShadow.width = 400 * gx
+        m.restShadow.height = 304 * gy
+        m.focusShadow.translation = [-90 * gx, -90 * gy]
+        m.focusShadow.width = 400 * gx
+        m.focusShadow.height = 304 * gy
     end if
     titleGap = 9.9
     if cardScale > 1 then titleGap = 11.5
