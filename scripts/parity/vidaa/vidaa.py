@@ -68,6 +68,11 @@ def _parse():
             if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
                 v = v[1:-1]
             out[m.group(1)] = v
+    # Static parity server (PARITY_SERVER_URL and PARITY_ACCOUNT_NAME from scripts/parity/parity.env): its server and seeded account are the
+    # trusted ones, as for the node tools (dpad-account.mjs staticOverlay).
+    url, user = os.environ.get("PARITY_SERVER_URL", "").rstrip("/"), os.environ.get("PARITY_ACCOUNT_NAME", "")
+    if url and user and out.get("PLAYARR_PARITY_STATIC_PASSWORD"):
+        out.update(PLAYARR_TEST_SERVER_URL=url, PLAYARR_DEVICE_TEST_SERVER_URL=url, PLAYARR_DEVICE_TEST_USERNAME=user, PLAYARR_DEVICE_TEST_DPAD_USERNAME=user)
     return out
 
 
@@ -181,7 +186,6 @@ class Tv:
         self.c.on_subscribe = self._on_subscribe
         self._state_mid = None
         self.subacks = {}
-        self.opened = 0.0
 
     def _on_connect(self, c, u, f, rc):
         self.rc = rc
@@ -223,7 +227,6 @@ class Tv:
             self.c.loop_stop()
             sys.exit(f"MQTT connect failed (rc={self.rc})")
         time.sleep(0.7)  # let retained messages arrive
-        self.opened = time.time()
         return self
 
     def close(self):
@@ -248,16 +251,15 @@ class Tv:
         return None
 
     def state(self, timeout=4):
-        """Latest state JSON. The retained broadcast counts only right after connecting; later a reply must be newer
-        than this query, or a wedged TV would keep looking healthy on a long-lived session."""
+        """Latest state JSON (the retained broadcast, kept current by the TV's state broadcasts while subscribed; the TV
+        rarely answers gettvstate itself). Liveness is checked with apps(), not with this."""
         since = time.time()
-        floor = 0.0 if since - self.opened < 5 else since
         self.pub("ui_service", "gettvstate", "")
         self.wait("ui_service/data/state", 1.5, since)
         time.sleep(0.3)
         with self.lock:
             cands = [(ts, p) for t, p, r, ts in self.msgs
-                     if ts >= floor and (t.endswith("ui_service/state") or t.endswith("ui_service/data/state"))]
+                     if t.endswith("ui_service/state") or t.endswith("ui_service/data/state")]
         if not cands:
             return None
         try:
@@ -436,26 +438,30 @@ def cmd_launch(a):
     print(via_broker("launch", op_launch, app=a.app, allow_any=a.allow_any))
 
 
-def debug_url(path="/"):
+def debug_url(path="/", seed=False):
     if not re.fullmatch(r"/[A-Za-z0-9_./?=&%-]*", path) or path.startswith("//"):
         sys.exit("--path must be a plain route on the mirror origin")
     sep = "&" if "?" in path else "?"
-    return f"{mirror_base()}{path}{sep}platform=tv-vidaa&mirrorToken={mirror_token()}&r={int(time.time())}"  # r: forces a reload
+    url = f"{mirror_base()}{path}{sep}platform=tv-vidaa&mirrorToken={mirror_token()}&r={int(time.time())}"  # r: forces a reload
+    if seed:  # the receiver signs the static parity account in (fresh login, saved session replaced), then opens the page
+        import urllib.parse
+        return f"{mirror_base()}/__mirror/seed?t={urllib.parse.quote(mirror_token())}&next={urllib.parse.quote(url[len(mirror_base()):], safe='')}"
+    return url
 
 
-def op_open_debug(tv, variant="app", path="/", wait=5):
+def op_open_debug(tv, variant="app", path="/", wait=5, seed=False):
     apps = tv.apps() or []
     base = next((x for x in apps if x.get("appId") == "playarr-tv"), None)
     if not base:
         sys.exit("Playarr app entry not found; run `apps`")
     payload = {k: base[k] for k in base if k != "httpIcon"}
     if variant == "app":          # the installed Playarr entry, url swapped for our debug page
-        payload["url"] = debug_url(path)
+        payload["url"] = debug_url(path, seed)
     elif variant == "webapp":     # a fresh entry, no appId
-        payload = {"name": "Playarr Debug", "urlType": 37, "storeType": 98, "url": debug_url(path)}
+        payload = {"name": "Playarr Debug", "urlType": 37, "storeType": 98, "url": debug_url(path, seed)}
     elif variant == "noid":       # Playarr entry minus appId
         payload.pop("appId", None)
-        payload["url"] = debug_url(path)
+        payload["url"] = debug_url(path, seed)
     tv.pub("ui_service", "launchapp", payload)
     time.sleep(wait)
     return f"open-debug requested, variant: {variant}\n{redact(tv.state())}"
@@ -467,7 +473,7 @@ def cmd_open_debug(a):
         urllib.request.urlopen(f"{mirror_base()}/", timeout=4).read(64)
     except Exception as e:
         sys.exit(f"receiver not reachable at the mirror base: {e}")
-    print(via_broker("open_debug", op_open_debug, variant=a.variant, path=a.path, wait=a.wait))
+    print(via_broker("open_debug", op_open_debug, variant=a.variant, path=a.path, wait=a.wait, seed=a.seed))
 
 
 def _latest(suffix):
@@ -734,7 +740,7 @@ def main():
     k.add_argument("--delay", type=float, default=0.6); k.set_defaults(f=cmd_key)
     l = sp.add_parser("launch"); l.add_argument("app"); l.add_argument("--allow-any", action="store_true"); l.set_defaults(f=cmd_launch)
     od = sp.add_parser("open-debug"); od.add_argument("--variant", choices=["app", "webapp", "noid"], default="app")
-    od.add_argument("--wait", type=float, default=5); od.add_argument("--path", default="/"); od.set_defaults(f=cmd_open_debug)
+    od.add_argument("--wait", type=float, default=5); od.add_argument("--seed", action="store_true"); od.add_argument("--path", default="/"); od.set_defaults(f=cmd_open_debug)
     sc = sp.add_parser("screen"); sc.add_argument("--out"); sc.set_defaults(f=cmd_screen)
     fo = sp.add_parser("focus"); fo.add_argument("--text", action="store_true"); fo.set_defaults(f=cmd_focus)
     gd = sp.add_parser("guard"); gd.add_argument("--seq", type=int); gd.set_defaults(f=cmd_guard)

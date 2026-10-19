@@ -16,7 +16,10 @@ Log: `.data/PlayarrApp/playarr/scratch/20261017-parity-vidaa/keepalive.log`.
 
 1. Copy `keepalive.py`, `broker.py` and `vidaa.py` together to `.data/PlayarrApp/playarr/scripts/vidaa/` (the unit runs that copy; keepalive imports the `vidaa.py` and `broker.py` beside it). Re-copy all three after any change here.
 2. `systemctl --user disable --now playarr-vidaa-watchdog.timer`
-3. Fill the placeholders: `sed -e "s#@DATA@#<path to .data/PlayarrApp/playarr>#g" -e "s#@VIDAA_HOST@#<TV address>#" playarr-vidaa-keepalive.service > ~/.config/systemd/user/playarr-vidaa-keepalive.service && systemctl --user daemon-reload`
+3. Fill the placeholders: `sed -e "s#@DATA@#<path to .data/PlayarrApp/playarr>#g" -e "s#@VIDAA_HOST@#<TV address>#" -e "s#@PARITY_SERVER_URL@#<static server URL, see parity.env>#" -e "s#@PARITY_ACCOUNT_NAME@#parity#" playarr-vidaa-keepalive.service > ~/.config/systemd/user/playarr-vidaa-keepalive.service && systemctl --user daemon-reload`
 4. `systemctl --user enable --now playarr-vidaa-keepalive.service`
+
+The two PARITY values make the broker's account guard trust the static parity server (`scripts/parity/static-server.sh`) and its seeded account, like the node tools; leave them empty for the old Device Test account.
+`receiver.py` takes the same two variables, and `vidaa open-debug --seed` (once per server change) has it log the account in and replace the TV page's saved sign-in.
 
 Test: `python3 -m unittest test_keepalive test_broker` in this directory.
