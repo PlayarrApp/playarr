@@ -22,6 +22,7 @@ SKIP_PLAYER_REQUESTED = os.environ.get("SKIP_PLAYER", "false").lower() == "true"
 PHONE_CORE_ONLY_REQUESTED = os.environ.get("PHONE_CORE_ONLY", "false").lower() == "true"
 PLAYER_FIXTURE_OVERRIDE = os.environ.get("HARMONY_PLAYER_FIXTURE_ID", "")
 PLAYER_FIXTURE_SOURCE = None
+STATIC = os.environ.get("PARITY_STATIC_SERVER") == "1"
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(out, exist_ok=True)
@@ -323,11 +324,33 @@ def extra_screens(folder):
             print("player-controls not captured", flush=True)
 
 
+STATIC_PLAYER_WORK = "ca309574-c0f4-4564-bb54-4512eab7e531"  # the pinned film "Silent Meridian 1" (scripts/parity/suite.json, open)
+
+
+def static_player_file():
+    """The media file of the static server's one playable clip: the pinned film's own file, read through the API."""
+    import urllib.request, uuid
+    base = os.environ["SERVER_URL"].strip().rstrip("/")
+
+    def call(method, path, body=None, token=None):
+        headers = {"content-type": "application/json", "accept": "application/json", "user-agent": "playarr-harmony-wall"}
+        if token:
+            headers["authorization"] = "Bearer " + token
+        req = urllib.request.Request(base + path, data=json.dumps(body).encode() if body is not None else None, headers=headers, method=method)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return json.loads(response.read().decode())
+
+    login = call("POST", "/api/v1/auth/login", {"username": os.environ["TEST_USERNAME"], "password": os.environ["TEST_PASSWORD"],
+                                                "device_id": str(uuid.uuid4()), "device_name": "harmony-wall player", "client_platform": "web",
+                                                "client_version": "parity"})
+    return call("GET", "/api/v1/catalog/" + STATIC_PLAYER_WORK, token=login["access_token"])["media_file_id"]
+
+
 def configured_player_route():
     global PLAYER_FIXTURE_SOURCE
     suite = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))
     try:
-        file_path, PLAYER_FIXTURE_SOURCE = player_fixture_selection(suite, PLAYER_FIXTURE_OVERRIDE)
+        file_path, PLAYER_FIXTURE_SOURCE = player_fixture_selection(suite, PLAYER_FIXTURE_OVERRIDE if not STATIC else static_player_file())
         return "player:" + file_path
     except ValueError as error:
         raise SystemExit(str(error)) from error
