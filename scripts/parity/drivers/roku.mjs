@@ -871,6 +871,9 @@ export function createDriver({ out, args = [] } = {}) {
         // The grid still loads its first page and artwork after it reports focus; Info pressed early is dropped.
         if (artEnabled) await waitForArt("movies");
         await sleep(1500);
+        // The web path walks Right along the first row to Amber Thicket 3 before the Filters button, so its hero stays on that title.
+        await traceFilterKey("right");
+        await traceFilterKey("right");
         drawerSource = "filters";
         parityState.drawerSource = "filters";
         await traceFilterKey("info", async () => {
