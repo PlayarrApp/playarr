@@ -474,7 +474,76 @@ struct CalendarView: View {
         }
     }
 
-    private func phoneAgendaCard(_ item: CalendarItem) -> some View {
+    /// Web tablet agenda: the selected release as a hero on the left, day headings and release cards on the right
+    /// (page coordinates from the 1366 x 1024 web layout, relative to the 120 pt content gutter).
+    private func tabletAgenda(groups: [CalendarDayGroup]) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            Group {
+                if let item = viewModel.selectedItem ?? groups.first?.items.first, let entry = item.entries.first {
+                    tabletAgendaHero(item: item, entry: entry).padding(.top, 79)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 447, alignment: .topLeading)
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(groups) { group in
+                        HStack(spacing: 10) {
+                            WMText(Self.groupFormatter.string(from: CalendarDays.displayDate(group.day) ?? Date()), 15.5, 560, color: WM.inkSoft, lh: 22)
+                            if group.day == viewModel.today {
+                                WMText("TODAY", 10.4, 700, color: WM.inkSoft, lh: 15.6, ls: 1.5)
+                                    .fixedSize()
+                                    .padding(.horizontal, 8.1)
+                                    .frame(height: 21)
+                                    .overlay(Capsule().stroke(WM.inkSoft, lineWidth: 1))
+                            }
+                        }
+                        .padding(.top, group.id == groups.first?.id ? 3 : 43)
+                        ForEach(Array(group.items.enumerated()), id: \.element.id) { index, row in
+                            phoneAgendaCard(row, tablet: true).padding(.top, index == 0 ? 45 : 15)
+                        }
+                    }
+                }
+                .padding(.bottom, 130)
+            }
+            .scrollIndicators(.hidden)
+            .frame(width: 713)
+            .padding(.top, -10)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func tabletAgendaHero(item: CalendarItem, entry: CalendarEntry) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            WMText("\(kindLabel(entry.mediaKind)) \u{00B7} \(releaseTypeLabel(entry.releaseType))".uppercased(), 10.4, 700, color: WM.pink, lh: 15.6, ls: 1.5)
+                .fixedSize()
+            TabletTitleLabel(
+                text: item.title, fontSize: 49.2,
+                nativeLineHeight: DesignFont.uiFont(
+                    family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName,
+                    size: 49.2, weight: 560, fixedAxes: DesignFont.nunitoAxes
+                )?.lineHeight ?? 49.2 * 1.36,
+                lineHeight: 49.2 * 0.9, width: 330
+            )
+            .padding(.top, 20)
+            HStack(spacing: 16) {
+                WMText([entry.episodeCode, entry.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} "), 11, 400, color: WM.inkSoft, lh: 16).fixedSize()
+                if let at = entry.releaseAt {
+                    WMText(Self.releaseFormatter.string(from: at), 11, 400, color: WM.inkSoft, lh: 16).fixedSize()
+                }
+            }
+            .padding(.top, 24)
+            agendaBadge(entry).padding(.top, 18)
+            if let overview = entry.overview {
+                WMText(overview, 11, 400, color: WM.inkSoft, lh: 17).padding(.top, 24)
+            }
+            phoneActions(item: item, entry: entry).padding(.top, 24)
+        }
+        .frame(width: 400, alignment: .leading)
+    }
+
+    private func phoneAgendaCard(_ item: CalendarItem, tablet: Bool = false) -> some View {
         let entry = item.entries.first
         let subtitle = entry.map { [$0.episodeCode, $0.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} ") } ?? ""
         // The web card has no subtitle row for a film release: it is 76.6 pt tall instead of 91.
@@ -637,17 +706,7 @@ struct CalendarView: View {
             } else if phone {
                 dayList(groups: groups, phone: true)
             } else {
-                // Wide screens: details on the left, the list on the right.
-                HStack(alignment: .top, spacing: 24) {
-                    ScrollView {
-                        if let item = viewModel.selectedItem ?? groups.first?.items.first {
-                            CalendarDetailPane(item: item, apiClient: apiClient, downloadRepository: downloadRepository)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    dayList(groups: groups, phone: false)
-                        .frame(maxWidth: .infinity)
-                }
+                tabletAgenda(groups: groups)
             }
         }
     }
