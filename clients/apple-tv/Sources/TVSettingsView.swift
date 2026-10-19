@@ -98,7 +98,7 @@ struct TVSettingsView: View {
                     sectionDetail
                 }
             }
-            .frame(width: mac(1042, 995), alignment: .topLeading)
+            .frame(width: mac(1046, 995), alignment: .topLeading)
             .pinned(x: 773.8, y: selectedSection == 0 ? 0 : 210, w: 995, alignment: .topLeading)
             .focusSection()
         }
@@ -121,46 +121,46 @@ struct TVSettingsView: View {
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .placed(x: 0, y: 210, w: 995, h: 39.6)
-                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), y: mac(266, 265.8)) { index in
+                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [343.3, 343.3, 343.3], y: 265.8) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
                 }
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
-                    .frame(width: mac(1042, 995), height: 1)
-                    .offset(y: mac(352, 346))
+                    .frame(width: 1046, height: 1)
+                    .offset(y: 352.5)
                 Text("Home screen artwork")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: mac(382.2, 377.3), w: 995, h: 39.6)
+                    .placed(x: 0, y: 383.8, w: 995, h: 39.6)
                 Text("Show portrait covers instead of wide media thumbnails on the home screen.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .placed(x: 0, y: mac(428, 422.5), w: 995, h: 20.3)
-                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, y: mac(465, 459)) { index in
+                    .placed(x: 0, y: 429, w: 995, h: 20.3)
+                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [519, 519], y: 465.5) { index in
                     displayPreferences.homeCovers = index == 1
                 }
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
-                    .frame(width: mac(1042, 995), height: 1)
-                    .offset(y: mac(551, 539.5))
+                    .frame(width: 1046, height: 1)
+                    .offset(y: 552.5)
                 // Web Appearance > Artwork size: one size for all artwork (Home, Library, Search and more).
                 Text("Artwork size")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: mac(582, 570.8), w: 995, h: 39.6)
+                    .placed(x: 0, y: 583.8, w: 995, h: 39.6)
                 Text("Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .placed(x: 0, y: mac(628, 616), w: 995, h: 20.3)
+                    .placed(x: 0, y: 629, w: 995, h: 20.3)
                 choice(["Small", "Medium", "Large"],
                        selected: TVDisplayPreferences.ArtworkSize.allCases.firstIndex(of: displayPreferences.artworkSize) ?? 1,
-                       y: mac(664, 652.5)) { index in
+                       widths: [343.3, 343.3, 343.3], y: 665.5) { index in
                     displayPreferences.artworkSize = TVDisplayPreferences.ArtworkSize.allCases[index]
                 }
             }
-            .frame(width: mac(1042, 995), height: 760, alignment: .topLeading) // real height: controls outside a 1-pt frame cannot take focus
+            .frame(width: mac(1046, 995), height: 760, alignment: .topLeading) // real height: controls outside a 1-pt frame cannot take focus
         case 4:
             Text("Playarr Server")
                 .font(.system(size: 22, weight: .semibold))
@@ -200,51 +200,25 @@ struct TVSettingsView: View {
         }
     }
 
-    /// Web `.theme-choice`. macOS: equal columns across the 1042 pt panel, 8 pt apart, 56 pt tall, 6 pt corners; the chosen
-    /// one is white and grows 2.5 %. tvOS: the compact bordered segmented control. Each is a real, focusable choice.
-    private func choice(_ labels: [String], selected: Int, y: CGFloat, onSelect: ((Int) -> Void)? = nil) -> some View {
-        #if os(macOS)
-        let width = (1042 - 8 * CGFloat(labels.count - 1)) / CGFloat(labels.count)
-        return HStack(spacing: 8) {
-            ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
-                let on = index == selected
-                Button { onSelect?(index) } label: {
-                    Text(label)
-                        .font(TVTheme.font(size: 11.52, weight: .bold))
-                        .foregroundStyle(on ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                        .frame(width: width, height: 56)
-                        .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(on ? DesignTokens.Color.textPrimary : DesignTokens.Color.textPrimary.opacity(0.04)))
-                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .stroke(DesignTokens.Color.borderDefault.opacity(on ? 0 : 0.35), lineWidth: 1))
-                        .scaleEffect(on ? 1.025 : 1)
-                }
-                .buttonStyle(TVRingButtonStyle(cornerRadius: 6))
-                .focusEffectDisabled()
-                .disabled(onSelect == nil || TVParityLaunch.frozen)
-            }
-        }
-        .pinned(x: 0, y: y, h: 56)
-        #else
-        let widths: [CGFloat] = labels.count == 3 && labels[0] == "System" ? [80.4, 67.6, 68.1]
-            : labels.count == 2 ? [110.5, 78] : [331.7, 331.7, 331.7]
-        return HStack(spacing: 0) {
+    /// Web `.theme-choice`: equal-width bordered 12pt buttons across the 1046pt panel (8pt gap, 56.5pt high); each is a real, focusable choice.
+    private func choice(_ labels: [String], selected: Int, widths: [CGFloat], y: CGFloat, onSelect: ((Int) -> Void)? = nil) -> some View {
+        HStack(spacing: 8) {
             ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
                 Button { onSelect?(index) } label: {
                     Text(label)
                         .font(TVTheme.font(size: 11.52, weight: .bold))
                         .foregroundStyle(index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                        .frame(width: widths[index], height: 50)
+                        .frame(width: widths[index], height: 56.5)
                         .background(index == selected ? DesignTokens.Color.textPrimary : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
                 }
-                .buttonStyle(TVRingButtonStyle(cornerRadius: 0))
+                .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
                 .focusEffectDisabled()
                 .disabled(onSelect == nil || TVParityLaunch.frozen)
             }
         }
-        .overlay(Rectangle().stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
-        .pinned(x: 0, y: y, h: 50)
-        #endif
+        .pinned(x: 0, y: y, h: 56.5)
     }
 
     private func themeChip(_ label: String, selected: Bool) -> some View {

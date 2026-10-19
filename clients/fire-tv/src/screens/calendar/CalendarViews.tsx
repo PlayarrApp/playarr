@@ -232,7 +232,7 @@ function WeekEdges({scrolled, max, top, height}: {scrolled: number; max: number;
 }
 
 const MONTH_X = 153.6;
-const MONTH_W = 1689.6;
+const MONTH_W = 1663.2;
 const MONTH_GRID_Y = 205.2;
 const MONTH_HEAD_Y = MONTH_GRID_Y - 30.8;
 const CELL_W = MONTH_W / 7;

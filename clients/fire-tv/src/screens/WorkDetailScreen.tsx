@@ -447,11 +447,11 @@ function CopyColumn(props: {
   movieActions: React.ReactNode;
   actions: React.ReactNode;
 }): React.ReactElement {
-  const {colour} = useTheme();
+  const {colour, scheme} = useTheme();
   const {t} = useLanguage();
   return (
     <Box x={153.6} y={259.2} w={540}>
-      <T size={12.288} weight={820} ls={0.983} lh={18.4} color="#cf3157" upper>
+      <T size={12.288} weight={820} ls={0.983} lh={18.4} color={scheme === 'dark' ? '#eaa6b6' : '#821e36'} upper>
         {props.kicker}
       </T>
       <View style={{marginTop: u(25.9)}}>

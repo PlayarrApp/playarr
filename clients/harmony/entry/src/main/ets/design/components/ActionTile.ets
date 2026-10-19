@@ -27,6 +27,8 @@ export struct ActionTile {
   @Prop label: string = '';
   /** Position in the action column, 0 at the top. */
   @Prop slot: number = 0;
+  /** Web returns focus to the tile that opened a drawer; the Previewer never reports focus, so a page can draw the ring itself. */
+  @Prop ringed: boolean = false;
   onActivate: () => void = () => {};
 
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
@@ -52,7 +54,7 @@ export struct ActionTile {
     .justifyContent(FlexAlign.Center)
     .borderRadius(tv(TILE_RADIUS))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, TILE_BG_ALPHA))
-    .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.075) })
+    .border(this.ringed ? { width: tv(3), color: toResourceColor(activeColors().focusOutline) } : { width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.075) })
     .shadow({ radius: tv(36), offsetX: 0, offsetY: tv(14), color: SHADOW_COLOR })
     .position({ x: tv(TILE_LEFT), y: tv(TILE_TOP + TILE_PITCH * this.slot) })
     .focusable(true)

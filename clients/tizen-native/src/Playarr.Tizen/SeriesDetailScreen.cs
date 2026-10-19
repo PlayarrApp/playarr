@@ -9,7 +9,7 @@ namespace Playarr.Tizen;
 /// <summary>Series detail (web WorkDetail for a series): lead episode copy and actions on the left, one episode rail per season on the right.</summary>
 internal sealed class SeriesDetailScreen : IPage
 {
-    private const float RailX = 881.6f, CardPitch = 292.95f, FocusedHeadingY = 358f, RailPitch = 314.3f, ClipX = 729.6f;
+    private const float RailX = 881.6f, CardPitch = 292.95f, FocusedHeadingY = 540f, RailPitch = 314.3f, ClipX = 729.6f;
 
     private sealed class Rail { public View Row = new(); public float Scroll; public List<int> Items = new(); }
 
@@ -220,15 +220,15 @@ internal sealed class SeriesDetailScreen : IPage
         _copy.Add(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true);
         var bas = 303.5f + 62.208f * lines;
-        _copy.Add(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 21.7f, 21.12f, 600, _t.InkSoft, 312, 24.288f, spacing: -0.74f));
+        _copy.Add(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 18.7f, 21.12f, 600, _t.InkSoft, 312, 24.288f, spacing: -0.74f));
         var meta = new List<string> { $"Season {season.Season.SeasonNumber}", code };
         if (ep.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(ep.RuntimeMs.Value));
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
         if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired  " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(3));
-        _copy.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 73f, 10.56f, 400, _t.InkMuted, 700, 15.84f));
-        var synopsisLines = Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
-        var yb = bas + 110.5f + Math.Max(1, synopsisLines) * 20.325f + 12f;
+        _copy.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 71.5f, 10.56f, 400, _t.InkMuted, 700, 15.84f));
+        var synopsisLines = Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 108f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
+        var yb = bas + 107.5f + Math.Max(1, synopsisLines) * 20.325f + 12f;
         var hasProgress = ep.MediaFileId is { } f && _progress.TryGetValue(f, out var pr) && pr.State == WatchState.InProgress;
         _leadEp = ep;
         EnsurePillSlots();

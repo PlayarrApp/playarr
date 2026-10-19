@@ -237,19 +237,6 @@ final class TVWorkDetailViewModel {
         }.prefix(limit))
     }
 
-    private func genreRankedSimilar(to target: Work) async -> [Work] {
-        let genres = Array(target.genres.prefix(3))
-        var pool: [Work] = []
-        if genres.isEmpty {
-            pool = (try? await apiClient.browseCatalog(kind: target.kind, genre: nil, tag: nil, sort: "date_added", limit: 100, offset: 0).items) ?? []
-        } else {
-            for genre in genres {
-                pool += (try? await apiClient.browseCatalog(kind: nil, genre: genre, tag: nil, sort: nil, limit: 100, offset: 0).items) ?? []
-            }
-        }
-        return Self.rankSimilar(target: target, candidates: pool)
-    }
-
     func load() async {
         state = .loading
         // Parity detail screens use deterministic fixtures (UUIDs are not on
@@ -278,8 +265,15 @@ final class TVWorkDetailViewModel {
             let loaded = try await apiClient.fetchWork(id: workID)
             detail = loaded
             state = .loaded
+<<<<<<< ours
             similar = (try? await apiClient.fetchSimilarWorks(id: workID, limit: 12)) ?? []
             if similar.isEmpty { similar = await genreRankedSimilar(to: loaded.work) }
+=======
+            let embedded = ((try? await apiClient.fetchSimilarWorks(id: workID, limit: 12)) ?? [])
+                .filter { $0.id != workID && ($0.kind == .movie || $0.kind == .series) }
+            // Web `WorkDetail` fallback: no similar results (no embeddings, or none stored) lists library titles ranked by genre.
+            similar = embedded.isEmpty ? await genreFallback(for: loaded.work) : embedded
+>>>>>>> theirs
             cast = (try? await apiClient.fetchWorkCredits(id: workID).cast) ?? []
             if loaded.work.kind == .series {
                 availabilityLag = (try? await apiClient.fetchAvailabilityLag(id: workID)) ?? nil
@@ -290,6 +284,24 @@ final class TVWorkDetailViewModel {
         } catch {
             state = .failed(error.localizedDescription)
         }
+    }
+
+    /// Web `loadGenreFallback` and `relatedWorkScore`: up to three genres (else the kind, newest first), movies and series only,
+    /// ranked by shared genres, same kind and release-year proximity, then sort title; 20 at most.
+    private func genreFallback(for target: Work) async -> [Work] {
+        var candidates: [UUID: Work] = [:]
+        let genres = Array(target.genres.prefix(3))
+        for genre in genres {
+            for item in ((try? await apiClient.browseCatalog(kind: nil, genre: genre, tag: nil, sort: nil, limit: 100, offset: nil))?.items ?? []) {
+                candidates[item.id] = item
+            }
+        }
+        if genres.isEmpty {
+            for item in ((try? await apiClient.browseCatalog(kind: target.kind, genre: nil, tag: nil, sort: "date_added", limit: 100, offset: nil))?.items ?? []) {
+                candidates[item.id] = item
+            }
+        }
+        return Self.rankSimilar(target: target, candidates: Array(candidates.values))
     }
 }
 

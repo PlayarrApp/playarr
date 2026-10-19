@@ -68,6 +68,7 @@ namespace Playarr.Xbox.Views
                     if (accountMatchesTest)
                     {
                         await PlayRequestedAsync(frame, folder);
+                        OpenRequested(folder);
                         ResizeRequested(folder);
                         await PauseRequestedAsync(frame, folder);
                     }
@@ -113,6 +114,32 @@ namespace Playarr.Xbox.Views
             _checkedAccountMatches = serverMatches && currentProfiles.Count == 1 && currentProfiles[0].Id == expectedUserId;
             _checkedAccountKey = key;
             return (nonce, _checkedAccountMatches);
+        }
+
+        /// <summary>A <c>parity.open</c> file holding <c>movies:</c> or <c>series:</c> and a work id opens that title's detail page over its library, so Back lands on the library's first card as the web does for a directly loaded title (the pinned film and series the web refs use). A bare id opens the page over the current one.</summary>
+        private static void OpenRequested(string folder)
+        {
+            var file = System.IO.Path.Combine(folder, "parity.open");
+            try
+            {
+                if (System.IO.File.Exists(file))
+                {
+                    var text = System.IO.File.ReadAllText(file).Trim();
+                    System.IO.File.Delete(file);
+                    var colon = text.IndexOf(':');
+                    var library = colon < 0 ? null : text.Substring(0, colon);
+                    if (colon >= 0) text = text.Substring(colon + 1);
+                    if (Guid.TryParse(text, out var workId))
+                    {
+                        if (library == "movies") App.Navigation.Navigate(typeof(LibraryPage), WorkKind.Movie);
+                        else if (library == "series") App.Navigation.Navigate(typeof(LibraryPage), WorkKind.Series);
+                        App.Navigation.Navigate(typeof(WorkDetailPage), workId);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
         }
 
         /// <summary>A <c>parity.pause</c> file pauses the player on its current frame (identical-frame screenshots).</summary>

@@ -16,7 +16,7 @@ const DRAWER_BACKDROP_BLUR: number = 38;
 const PADDING_H: number = 46;
 const HEADER_TOP: number = 54;
 // Web body starts at y=163: 34 below the 75 high header block.
-const BODY_GAP: number = 34;
+const BODY_GAP: number = 35;
 const KICKER_SIZE: number = 9.6;
 const KICKER_LETTER_SPACING: number = 0.672;
 const TITLE_SIZE: number = 38.4;
@@ -26,13 +26,14 @@ const CLOSE_GLYPH_SIZE: number = 26.88;
 // Phone (web phone drawer): the full page width, 20 padding, a 24 px title, a 43 round close button.
 const TOUCH_PADDING_H: number = 20;
 const TOUCH_HEADER_TOP: number = 20.7;
-const TOUCH_BODY_GAP: number = 30;
+const TOUCH_BODY_GAP: number = 29;
 // Web phone: the kicker sits 7.3 above the title; the close button's 3 vp ring is outside it, 2.3 vp clear, and the button 1.4 higher.
 const TOUCH_KICKER_GAP: number = 7.3;
 const TOUCH_CLOSE_RING_OUTSET: number = 5.3;
 const TOUCH_CLOSE_LIFT: number = 1.4;
 const TOUCH_TITLE_SIZE: number = 24;
 const TOUCH_TITLE_LETTER_SPACING: number = -0.8;
+const TOUCH_BODY_RING_ROOM: number = 6;
 const TOUCH_CLOSE_SIZE: number = 43;
 const TOUCH_CLOSE_GLYPH_SIZE: number = 20;
 const SHADOW_COLOR: string = 'rgba(40, 26, 24, 0.24)';
@@ -41,6 +42,8 @@ const SHADOW_COLOR: string = 'rgba(40, 26, 24, 0.24)';
 export struct Drawer {
   @Prop kicker: string = '';
   @Prop title: string = '';
+  /** TV: draw the focused close button's ring (web opens most drawers with the close button focused). */
+  @Prop closeRing: boolean = true;
   onClose: () => void = () => {};
 
   @Builder
@@ -59,7 +62,7 @@ export struct Drawer {
   build() {
     Column() {
       Row() {
-        Column({ space: isTvMetrics() ? tv(4) : TOUCH_KICKER_GAP }) {
+        Column({ space: isTvMetrics() ? tv(6.5) : TOUCH_KICKER_GAP }) {
           Text(this.kicker).fontFamily(nunito(700))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
@@ -70,6 +73,7 @@ export struct Drawer {
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
             .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
+            .lineHeight(isTvMetrics() ? tv(57) : 0) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
         }
         .alignItems(HorizontalAlign.Start)
@@ -90,7 +94,16 @@ export struct Drawer {
             .onClick(() => {
               this.onClose();
             })
-          if (!isTvMetrics()) {
+          if (isTvMetrics() && this.closeRing) {
+            // web opens the drawer with its close button focused (ring 5 px out, 3 px wide); the Previewer reports no focus
+            Column()
+              .width(tv(CLOSE_SIZE + 10))
+              .height(tv(CLOSE_SIZE + 10))
+              .borderRadius(tv(CLOSE_SIZE / 2 + 5))
+              .border({ width: tv(3), color: toResourceColor(activeColors().ink) })
+              .hitTestBehavior(HitTestMode.None)
+          }
+          if (!isTvMetrics() && this.closeRing) {
             // web opens the drawer with its close button focused: on the phone the ring is drawn from the state (the Previewer reports no focus)
             Column()
               .width(TOUCH_CLOSE_SIZE + TOUCH_CLOSE_RING_OUTSET * 2)
@@ -114,12 +127,14 @@ export struct Drawer {
         .width('100%')
         .alignItems(HorizontalAlign.Start)
       }
-      .width('100%')
+      .width(isTvMetrics() ? '100%' : `calc(100% + ${TOUCH_BODY_RING_ROOM * 2}vp)`)
       .layoutWeight(1)
       .align(Alignment.Top)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.None)
-      .margin({ top: isTvMetrics() ? tv(BODY_GAP) : TOUCH_BODY_GAP })
+      // phone: room around the body inside the scroll's clip for a focus ring (padding in, the same margin out)
+      .padding(isTvMetrics() ? {} : { left: TOUCH_BODY_RING_ROOM, right: TOUCH_BODY_RING_ROOM, top: TOUCH_BODY_RING_ROOM, bottom: TOUCH_BODY_RING_ROOM })
+      .margin(isTvMetrics() ? { top: tv(BODY_GAP) } : { top: TOUCH_BODY_GAP - TOUCH_BODY_RING_ROOM, left: -TOUCH_BODY_RING_ROOM, right: -TOUCH_BODY_RING_ROOM })
     }
     .width(isTvMetrics() ? tv(DRAWER_WIDTH) : '100%')
     .height('100%')

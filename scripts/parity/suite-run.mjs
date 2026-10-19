@@ -62,7 +62,8 @@ const regressionReason = process.env.PARITY_REGRESSION_REASON;
 const unknownThemes = themes.filter((theme) => !suite.themes.includes(theme));
 if (unknownThemes.length) throw new Error(`unknown --themes value(s): ${unknownThemes.join(", ")}`);
 // Without --expected: the web run next to this one, else the committed reference (expected.web.json, the pinned Device Test state).
-const committedExpected = join(here, "expected.web.json");
+// On the static parity server (PARITY_SERVER_URL set by parity.env, unless PARITY_LIVE=1) the committed reference is expected.static.json.
+const committedExpected = join(here, process.env.PARITY_SERVER_URL && !process.env.PARITY_LIVE && existsSync(join(here, "expected.static.json")) ? "expected.static.json" : "expected.web.json");
 const siblingExpected = join(out, "..", "web", "expected.json");
 const expectedFile = resolve(opt("expected", existsSync(siblingExpected) || !existsSync(committedExpected) ? siblingExpected : committedExpected));
 const problems = validateSuite(suite);
@@ -279,7 +280,8 @@ if (only.includes("screens") && !only.includes("dpad") && driver.endCrops) {
       try {
         await driver.setLaunchArgs?.(c.launchArgs ?? []); // e.g. Home artwork = Covers
         await reach(suite.screens.find((x) => x.id === c.from));
-        await press(c.keys);
+        await press(driver.cropKeys?.[c.id] ?? c.keys); // a driver whose focus starts elsewhere supplies its own keys
+        await driver.afterCropKeys?.(c.id);
         if (strict) await waitReady(c.id, "capture");
         else await sleep(c.settle ?? 1200); // legacy captures can preserve intentional motion sampling
         await driver.screenshot(join(out, theme, "crops", `${c.id}.png`));

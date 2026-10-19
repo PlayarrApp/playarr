@@ -562,15 +562,17 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val m = LocalCalendarMetrics.current
     val wrapTitles = LocalCalendarWrapTitles.current
     // Web TV week text measures 4 % narrower than the agenda's (titles) and 2 % (meta), with the same line pitch.
-    val tvWeek = m === TvCalendarMetrics && wrapTitles
+    val tvWeek = m === TvCalendarMetrics // agenda included: the main-seed web agenda measures the same 4 % / 2 % narrower
     val titleSp = if (tvWeek) m.entryTitle * 0.96f else m.entryTitle
     val titleLine = if (tvWeek) m.entryTitleLine * 1.03f else m.entryTitleLine
+    // Web `entrySubtitle` is the episode code and subtitle only: a movie shows no line (every layout, as on the main-seed refs).
+    val rowSubtitle = (item as? CalendarItem.Single)?.entry?.let { e -> listOfNotNull(e.episodeCode(), e.subtitle?.takeIf(String::isNotBlank)).joinToString(" \u00b7 ") } ?: calendarItemSubtitle(item)
     val shape = RoundedCornerShape(m.entryRadius.dp)
     val ink = WebInk
     val fill = WebSurfaceStrong
     Surface(
         // Material's clickable Surface paints a focus state layer (a fill); web's focus state is the ring alone.
-        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
+        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === PhoneCalendarMetrics && LocalStageScale.current == 1f && rowSubtitle.isEmpty()) 76.5f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
@@ -611,8 +613,6 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             Column(Modifier.weight(1f).padding(start = 14.4.dp)) {
                 Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(2.4.dp))
-                // Web `entrySubtitle` is the episode code and subtitle only: a movie shows no line (phone and TV week; the TV agenda keeps the kind fallback).
-                val rowSubtitle = if (m === TvCalendarMetrics && !tvWeek) calendarItemSubtitle(item) else (item as? CalendarItem.Single)?.entry?.let { e -> listOfNotNull(e.episodeCode(), e.subtitle?.takeIf(String::isNotBlank)).joinToString(" \u00b7 ") } ?: calendarItemSubtitle(item)
                 if (rowSubtitle.isNotEmpty()) {
                     Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(2.4.dp))
@@ -658,9 +658,10 @@ internal fun TvCalendarAgenda(
             // Web: the date range lives in the header group; the details panel takes the library stage (eyebrow at y 259)
             // and the day list starts under the header. Both panes end at the bottom of the screen.
             val detailsTop = if (tablet) 294.3.dp else 259.dp
-            val listTop = if (tablet) 135.dp else 168.dp
-            val listStart = if (tablet) 534.dp else 786.dp
-            val listWidth = if (tablet) (maxWidth - listStart - 24.dp) else 1049.dp
+            val listTop = if (tablet) 135.dp else 167.dp
+            val listStart = if (tablet) 534.dp else 783.dp
+            // Tablet web: the list ends at x 1193, clear of the right action column (measured on the 1280 x 800 static refs).
+            val listWidth = if (tablet) (maxWidth - listStart - 87.dp) else 1049.dp
             val dayFont = LocalCalendarMetrics.current
             val detailScroll = rememberScrollState()
             // The details are the library hero: keep them on the stage (1920 values); only the day list is in css px.
@@ -716,7 +717,7 @@ internal fun TvCalendarAgenda(
                     rows.forEachIndexed { index, (day, item) ->
                         if (day != null) {
                             item(key = "day-$day") {
-                                Row(Modifier.padding(top = if (index > 0) 25.dp else 0.dp, bottom = if (tablet) 45.dp else 37.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(Modifier.padding(top = if (index > 0) (if (tablet) 25.dp else 27.dp) else 0.dp, bottom = if (tablet) 45.dp else 39.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Text(
                                         phoneCalendarDayHeading(day, locale), color = WebInk, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(560),
                                         style = WebTextStyle, modifier = Modifier.semantics { heading() },

@@ -1,1 +1,0 @@
-- Apple TV: the Library preview overview uses the web size, weight and line height, so its lines wrap like the web (series, music, movies).

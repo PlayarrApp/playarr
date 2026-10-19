@@ -76,9 +76,9 @@ PlayarrPage {
             spacing: 13.5 * Tokens.u
             Item {
                 width: parent.width
-                height: 47.4 * Tokens.u + Math.min(2, titleLbl.lineCount) * 33 * Tokens.u
+                height: 46.4 * Tokens.u + Math.min(2, titleLbl.lineCount) * 33 * Tokens.u
                 Column {
-                    anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 18 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
+                    anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 19 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
                     spacing: 4 * Tokens.u
                     Label { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 0.8 * Tokens.u }
                     Label { renderType: Text.NativeRendering;
@@ -101,7 +101,7 @@ PlayarrPage {
                 }
             }
             ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; navigationInitialFocus: true; parityIndex: 0; navigationActivate: function() { page.play() }; onClicked: page.play() }
-            ActionRow { glyph: "⤓"; text: qsTr("Download"); visible: page.downloadActionVisible; parityIndex: 1; navigationActivate: function() { page.download() }; onClicked: page.download() }
+            ActionRow { glyph: "\u21E9"; text: qsTr("Download"); visible: page.downloadActionVisible; parityIndex: 1; navigationActivate: function() { page.download() }; onClicked: page.download() }
             ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlistActionVisible; parityIndex: 2; navigationActivate: function() { page.showPlaylists = !page.showPlaylists }; onClicked: page.showPlaylists = !page.showPlaylists }
             Label { renderType: Text.NativeRendering; x: Tokens.pad * 2; visible: page.showPlaylists && page.playlists.length === 0; text: qsTr("No personal playlists yet. Create one from the Playlists page."); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 14 * Tokens.u; wrapMode: Text.Wrap; width: col.width - 3 * Tokens.pad }
             Repeater {

@@ -1854,6 +1854,7 @@ async fn boot_api(
         playlist_repo,
         watchlist_repo,
         resume_dismissals,
+        static_mode: static_mode(),
         discovery_requests_allow_all_users: std::env::var("PLAYARR_REQUESTS_ALLOW_ALL_USERS")
             .is_ok_and(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes")),
         request_sync: request_sync.clone(),
@@ -2016,6 +2017,9 @@ async fn boot_api(
         // Calendar: refresh every source's data in the background so the calendar
         // API answers from the cache and never waits on an *arr instance.
         tokio::spawn(playarr_api::calendar_cache::run_refresher(state.clone()));
+    } else {
+        // Static mode never refreshes, but the seeded chunks are the whole calendar: load them once.
+        state.calendar_cache.load().await;
     }
 
     // Read the catalogue into memory now, so the first Home or Library request

@@ -309,7 +309,7 @@ def extra_screens(folder):
     """Screens a click cannot reach in one step: the actions drawer (long press on a card) and the player controls."""
     try:
         route("library:movie", 15)
-        get("/hold", x=946, y=254); time.sleep(4); snap("actions", folder)
+        get("/hold", x=1299, y=254); time.sleep(4); snap("actions", folder)  # the web ref holds the second card (Amber Cathedral 18)
         key("back"); time.sleep(3)
     except SystemExit:
         print("actions not captured", flush=True)
@@ -756,13 +756,17 @@ else:
                     # check can see art that is still above the fold while the cards the frame will show are grey (light, 2026-10-15).
                     while clean < 2 and time.time() < art_end:
                         time.sleep(5)
-                        clean = clean + 1 if phone_flat_card_rows(png()) == 0 else 0
+                        clean = clean + 1 if phone_flat_card_rows(png(), top_px=700, bottom_px=260) == 0 else 0
                         if clean == 0 and time.time() >= next_reopen:
                             route("home", 6); route("detail:" + work_id, 8)
                             next_reopen = time.time() + 30
                     if clean < 2:
                         debug(name + "-placeholder-art")
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
+                # the web refs are taken at page top; the app scrolls to the next-up episode, so drag back up before the frame
+                for _ in range(3):
+                    get("/swipe", x1=540, y1=500, x2=540, y2=2200, steps=12, ms=300); time.sleep(1.5)
+                time.sleep(2)
                 snap(name, folder, 100000)
                 if kind == "series":  # the saved frame itself must show art (the page may have moved since the last check)
                     saved = os.path.join(folder, name + ".png")
@@ -781,12 +785,13 @@ else:
         click(*CLOSE_DRAWER); time.sleep(3)
         snap("calendar-" + view, folder, 60000)
 
+    # the phone Home ref is taken without the On deck focus ring (web-refs.json noFocusRing), so Home is not focused here
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
         if name == "home":  # other workers share the account: re-seed immediately before capture for the pinned fixture item
             subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])
-        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), focus_first_card() if name in ('home', 'movies', 'series', 'music') else None, snap(name, folder, floor)))
+        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), focus_first_card() if name in ('movies', 'series', 'music') else None, snap(name, folder, floor)))
     route("library:movie", 15); settle()
     open_filters("movies"); guarded("filters", lambda: snap("filters", folder, 40000)); click(*CLOSE_DRAWER); time.sleep(3)
     longclick(*CARDS[0]); time.sleep(5); debug("movies-actions-open"); guarded("actions", lambda: snap("actions", folder, 40000))

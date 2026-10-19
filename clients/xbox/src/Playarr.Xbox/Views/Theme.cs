@@ -132,6 +132,28 @@ namespace Playarr.Xbox.Views
             },
         };
 
+        /// <summary>
+        /// The web page ground on pages without key art: the surface colour under the left 36 %, easing to a tinted ground
+        /// (measured from the web refs: light 239 238 238, dark 40 34 39) by 76 % of the width.
+        /// </summary>
+        public static LinearGradientBrush PageStage()
+        {
+            return new LinearGradientBrush
+            {
+                StartPoint = new Windows.Foundation.Point(0, 0),
+                EndPoint = new Windows.Foundation.Point(1, 0),
+                GradientStops =
+                {
+                    new GradientStop { Color = Surface, Offset = 0 },
+                    new GradientStop { Color = Surface, Offset = 0.365 },
+                    new GradientStop { Color = Parse(IsLight ? "#F4F3F3" : "#231E22"), Offset = 0.443 },
+                    new GradientStop { Color = Parse(IsLight ? "#F2F0F1" : "#252025"), Offset = 0.52 },
+                    new GradientStop { Color = Parse(IsLight ? "#F0EEEF" : "#272227"), Offset = 0.68 },
+                    new GradientStop { Color = Parse(IsLight ? "#EFEEEE" : "#282227"), Offset = 1 },
+                },
+            };
+        }
+
         /// <summary>The web image opacity, applied after the grayscale, contrast and brightness filters.</summary>
         public static double KeyArtGroupOpacity => IsLight ? 0.24 : 0.72;
 
