@@ -928,7 +928,7 @@ struct CalendarView: View {
                             Text(weekdayHeading(day))
                                 .font(.custom("Avenir Next", fixedSize: 12))
                                 .tracking(0.96)
-                                .foregroundStyle(PlayarrStyle.muted)
+                                .foregroundStyle(WM.inkSoft // web weekday heading reads ink-soft)
                                 .frame(width: gridWidth / 7, height: 32)
                         }
                     }
