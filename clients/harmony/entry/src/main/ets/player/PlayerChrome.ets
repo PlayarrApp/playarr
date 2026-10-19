@@ -339,7 +339,7 @@ function chromeIconPaths(kind: string): string[] {
 @Component
 struct ChromeIcon {
   @Prop kind: string = '';
-  @Prop size: number = 20;
+  @Prop iconSize: number = 20;
 
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
@@ -357,7 +357,7 @@ struct ChromeIcon {
     }
     .width(24)
     .height(24)
-    .scale({ x: this.size / 24, y: this.size / 24 })
+    .scale({ x: this.iconSize / 24, y: this.iconSize / 24 })
   }
 }
 
@@ -411,7 +411,7 @@ struct ChromeButton {
       if (this.showGlyph) {
         PlayPauseGlyph({ isPlaying: this.isPlaying, glyphSize: this.glyphSize })
       } else if (this.icon.length > 0) {
-        ChromeIcon({ kind: this.icon, size: this.glyphSize })
+        ChromeIcon({ kind: this.icon, iconSize: this.glyphSize })
       } else {
         Text(this.label).fontFamily(nunito(700))
           .fontSize(this.fontSize)
