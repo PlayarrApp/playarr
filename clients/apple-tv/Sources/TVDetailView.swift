@@ -333,6 +333,16 @@ struct TVWorkDetailView: View {
         }
     }
 
+    /// A key-driven parity capture opens the player as the web reference shows it: the clip's frame at 0:02 of 1:00 with the
+    /// controls, since a simulator stream is not up in time and the reference is a still (debug builds only).
+    private static var captureStill: (position: Double, duration: Double, menuOpen: Bool)? {
+        #if DEBUG
+        return TVParityLaunch.pinnedClock ? (2.0, 60.0, false) : nil
+        #else
+        return nil
+        #endif
+    }
+
     @ViewBuilder
     private func moviePlay(_ detail: WorkDetail, x: CGFloat, y: CGFloat) -> some View {
         // Web: Play is the focused control on load (scale 1.06).
@@ -344,7 +354,8 @@ struct TVWorkDetailView: View {
                     title: detail.work.title,
                     apiClient: apiClient,
                     suggestionsWorkID: detail.work.id,
-                    artworkPath: detail.work.images.first(where: { $0.kind == .poster })?.url ?? detail.work.images.first?.url
+                    artworkPath: detail.work.images.first(where: { $0.kind == .poster })?.url ?? detail.work.images.first?.url,
+                    parity: Self.captureStill
                 )
             } label: {
                 label
