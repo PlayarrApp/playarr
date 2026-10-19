@@ -62,10 +62,10 @@ impl CardGrid {
     pub fn append(&self, card: &impl IsA<gtk4::Widget>) {
         let mut cur = self.row.borrow_mut();
         if cur.as_ref().map_or(true, |(_, n)| *n >= super::cards::cols()) {
-            // The web's rows are 0.35 css px further apart than the 24 px gap gives (measured on the music, series and
-            // movies grids at 2x: rows 3 and 4 sit 2 device px lower), so every third row takes one extra px.
+            // The web's rows are about 0.4 css px further apart than the 24 px gap gives (measured on the music, series and
+            // movies grids at 2x: rows 3 and 4 sit 2 device px lower), so rows 3 and 5 take one extra px.
             let n = self.rows.replace(self.rows.get() + 1);
-            let extra = |n: usize| (n as f64 * 0.35).round() as i32;
+            let extra = |n: usize| (n as f64 * 0.4).round() as i32;
             let row = gtk4::Box::builder()
                 .spacing(COL_GAP)
                 .margin_top(if n == 0 { 0 } else { extra(n) - extra(n - 1) })
@@ -682,6 +682,14 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     let root = gtk4::Overlay::builder().child(&backdrop).build();
     root.add_overlay(&wash);
     root.add_overlay(&scroll);
+    // The web fades the grid into the page colour over the last 66 px, down to 60% at the screen edge.
+    let foot = gtk4::Box::builder()
+        .css_classes(["pa-lib-foot"])
+        .valign(gtk4::Align::End)
+        .can_target(false)
+        .build();
+    foot.set_size_request(-1, 66);
+    root.add_overlay(&foot);
     root.add_overlay(&rail);
     if kind == "movie" {
         // Capture hook: open the filters sheet.

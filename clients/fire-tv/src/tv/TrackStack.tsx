@@ -27,13 +27,17 @@ const TRACK_PITCH = 314.8;
 const CHAPTERS_PITCH = 351;
 const PERSON_TRACK_PITCH = 284.2;
 /** The distance from a track's heading to the next track's heading. */
-export function trackPitch(track: Pick<Track, 'id' | 'items'>): number {
-  return isPersonTrack(track as Track) ? PERSON_TRACK_PITCH : track.id === 'chapters' ? CHAPTERS_PITCH : TRACK_PITCH;
+// Web .tv-media-track spacing: the seasons of one show sit close (--tv-track-gap-related), every other track follows a section gap.
+const SECTION_EXTRA = CHAPTERS_PITCH - TRACK_PITCH;
+export function trackPitch(track: Pick<Track, 'id' | 'items'>, next?: Pick<Track, 'id' | 'items'>): number {
+  if (isPersonTrack(track as Track)) return PERSON_TRACK_PITCH;
+  if (track.id === 'chapters') return CHAPTERS_PITCH;
+  return next && !(track.id.startsWith('season-') && next.id.startsWith('season-')) ? TRACK_PITCH + SECTION_EXTRA : TRACK_PITCH;
 }
 /** Where track `index` starts, below `restY`. */
 export function trackY(tracks: readonly Pick<Track, 'id' | 'items'>[], restY: number, index: number): number {
   let y = restY;
-  for (let i = 0; i < index; i += 1) y += trackPitch(tracks[i]!);
+  for (let i = 0; i < index; i += 1) y += trackPitch(tracks[i]!, tracks[i + 1]);
   return y;
 }
 // Cast and crew (web .tv-person-card at 1920): a 103.7 px circle centred in a 152 px cell, cells 176.9 px apart.
@@ -44,6 +48,8 @@ const isPersonTrack = (track: Track): boolean => track.items[0]?.person === true
 /** Where the focused track's heading sits. */
 // Web: the focused track's heading sits at 358 px (series page, Season 1 with an episode focused).
 const FOCUS_Y = 358;
+/** A track's height from its heading to the bottom of its captions: it is visible without scrolling when it ends inside the screen. */
+const TRACK_FIT_H = 270;
 
 export interface TrackItem {
   id: string;
@@ -85,7 +91,9 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
   const {colour} = useTheme();
   const {tracks, restY, focus} = props;
   // Vertical position of the stack: the focused track's heading sits at FOCUS_Y; with no focus in the stack it rests.
-  const shiftTarget = focus ? FOCUS_Y - trackY(tracks, restY, focus.track) : 0;
+  // Like the web's scroller, the stack only moves when the focused track would otherwise be below the screen.
+  const focusY = focus ? trackY(tracks, restY, focus.track) : 0;
+  const shiftTarget = focus && focusY + TRACK_FIT_H > 1080 ? FOCUS_Y - focusY : 0;
   const shift = useRef(new Animated.Value(shiftTarget)).current;
   useEffect(() => {
     const animation = Animated.timing(shift, {toValue: shiftTarget, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false});

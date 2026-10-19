@@ -98,6 +98,7 @@ button.pa-hbtn.square { border-radius: 14px; }
 
 /* Home key art and search field */
 .pa-key-art { opacity: 0.38; filter: grayscale(1); }
+.pa-lib-foot { background: linear-gradient(to bottom, alpha(@pa_bg, 0), alpha(@pa_bg, 0.6)); }
 .pa-key-wash { background: linear-gradient(to bottom, @pa_wash, @pa_bg); }
 .pa-key-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0.54), alpha(@pa_bg, 0)), linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }
 scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { background: transparent; }
@@ -199,10 +200,10 @@ button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 1px 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
 button.pa-entry.have { border-left-color: #8ac5a5; }
 button.pa-entry.missing { border-left-color: @pa_muted; }
-button.pa-entry:not(.week) { padding: 9px 12px 7px 12px; }
-button.pa-entry:not(.week) .pa-entry-sub { margin-top: 2px; }
+button.pa-entry:not(.week) { padding: 9px 12px 8px 12px; }
+button.pa-entry:not(.week) .pa-entry-sub { margin-top: 1px; }
 button.pa-entry:not(.week) .pa-entry-metarow { margin-top: 0; }
-button.pa-entry:not(.week) .pa-chip-status.agenda { min-height: 21px; }
+button.pa-entry .pa-chip-status.agenda { min-height: 21px; }
 /* Week cards keep their earlier look until measured against the web week */
 button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface; border-color: @pa_line; }
 button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }

@@ -14,7 +14,7 @@ connection (the TV leaks sessions on connection churn and then stops answering t
 run every INTERVAL seconds even while a capture holds the vidaa-busy lock; Playarr is only relaunched when the
 lock is free.
 
-Env: PLAYARR_DATA_DIR (required), VIDAA_DIR (dir holding vidaa.py), VIDAA_HOST, KEEPALIVE_LOG, KEEPALIVE_INTERVAL, VIDAA_BUSY_LOCK, VIDAA_SOCK.
+Env: PLAYARR_DATA_DIR (required), VIDAA_DIR (dir holding vidaa.py), VIDAA_HOST, KEEPALIVE_LOG, KEEPALIVE_INTERVAL, VIDAA_BUSY_LOCK, VIDAA_SOCK, VIDAA_KEEPALIVE_LOCK.
 """
 import fcntl
 import os
@@ -60,12 +60,26 @@ class Session:
     lock = threading.RLock()
 
 
+def after_miss(misses, backoff, now):
+    """(drop the session, new backoff, retry time) after a missed liveness check. Two misses drop it; the retry then backs off
+    exponentially (a flapping TV must not see a reconnect every few seconds) and only a healthy check resets it."""
+    if misses < 2:
+        return False, backoff, 0.0
+    backoff = next_backoff(backoff)
+    return True, backoff, now + backoff
+
+
+def probe(vidaa, tv):
+    """(alive, foreground ok, state). Liveness is an applist reply: the TV answers that reliably but often ignores gettvstate."""
+    return tv.apps() is not None, *vidaa.foreground_ok(tv)
+
+
 def make_handler(vidaa, session):
     ops = {"state": lambda tv, r: vidaa.op_state(tv),
            "apps": lambda tv, r: vidaa.op_apps(tv),
            "key": lambda tv, r: vidaa.op_key(tv, [str(k) for k in r["keys"]], bool(r.get("allow_any")), min(max(float(r.get("delay", 0.6)), 0.0), 30.0)),
            "launch": lambda tv, r: vidaa.op_launch(tv, str(r["app"]), bool(r.get("allow_any"))),
-           "open_debug": lambda tv, r: vidaa.op_open_debug(tv, str(r.get("variant", "app")), str(r.get("path", "/")), min(max(float(r.get("wait", 5)), 0.0), 60.0))}
+           "open_debug": lambda tv, r: vidaa.op_open_debug(tv, str(r.get("variant", "app")), str(r.get("path", "/")), min(max(float(r.get("wait", 5)), 0.0), 60.0), bool(r.get("seed")))}
 
     def handle(req):
         op = ops.get(req.get("op"))
@@ -100,18 +114,18 @@ def main():
                 S.tv = None
         log(f"closed client ({why})")
 
+    if broker.hold_lock() is None:  # the fd lives until the process exits
+        sys.exit("another keepalive already holds the TV session lock")
     server = broker.serve(broker.sock_path(), make_handler(vidaa, S))
     log(f"start interval={INTERVAL}s host={os.environ.get('VIDAA_HOST')} socket={broker.sock_path()}")
     while not stop:
         try:
             if S.tv is None and time.time() >= retry_at:
                 try:
-                    new = vidaa.connect()
+                    new = vidaa.connect(owner=True)
                     with S.lock:
                         S.tv = new
-                    if wedged:
-                        log("RECOVERED: remote service answers again")
-                    wedged, backoff, misses = False, 0, 0
+                    misses = 0
                     log("connected")
                 except vidaa.TransportError as e:
                     if not wedged:
@@ -130,16 +144,20 @@ def main():
                         log(f"connect failed: {msg}; retry in {backoff}s")
             elif S.tv is not None:
                 with S.lock:
-                    fg, st = vidaa.foreground_ok(S.tv)
-                if st is None:
+                    alive, fg, st = probe(vidaa, S.tv)
+                if not alive:
                     misses += 1
-                    log(f"state query got no reply ({misses})")
-                    if misses >= 2:
-                        drop("no state replies")
-                        wedged, retry_at = True, time.time() + BACKOFF_MIN
-                        log("WEDGE: connected but no state replies")
+                    log(f"applist query got no reply ({misses})")
+                    gone, backoff, due = after_miss(misses, backoff, time.time())
+                    if gone:
+                        drop("no applist replies")
+                        wedged, retry_at = True, due
+                        log(f"WEDGE: connected but no applist replies; retry in {backoff}s")
                 else:
                     misses = 0
+                    if wedged:  # recovered only once the new session answers
+                        log("RECOVERED: remote service answers again")
+                    wedged, backoff = False, 0
                     log(f"ok: {vidaa.redact(st)[:200]} foreground={fg}")
                     if not fg and not busy() and time.time() - last_launch >= LAUNCH_EVERY:
                         last_launch = time.time()

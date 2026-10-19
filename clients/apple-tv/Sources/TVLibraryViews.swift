@@ -189,6 +189,10 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
+            #if os(macOS)
+            // Web `[data-fade-axis="y"][data-fade-end]` on `.tv-home-rails`: the last visible row dims to the floor at the page edge.
+            .macEdgeFade(axis: .vertical, endFloor: 0.3)
+            #endif
             // Web `.tv-home-rails.is-vertical-tracks`: the first rail opens at the Library grid's first row (clamp(128, 15vh, 174)).
             .padding(.top, Self.railTopY - origin.y)
             // Web `.tv-home-rails` starts where the Library grid panel starts (100% - 62%), cards at its left padding.
@@ -2099,13 +2103,12 @@ struct TVLibraryKindView: View {
                 }
             }
             .frame(width: width, alignment: .leading)
-            .opacity(isSelected || parityMode ? 1 : 0.92)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
             .scaleEffect(isSelected ? 1.025 : 1)
             .offset(y: isSelected ? -7 : 0)
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
-        .buttonStyle(TVFocusableCardButtonStyle())
+        .buttonStyle(TVFocusableCardButtonStyle(ignoresPress: actionsWorkID != nil))
         #if os(macOS)
         .environment(\.macFocusBindingBridge, macFocusBridge(for: work))
         #else
@@ -2430,7 +2433,7 @@ struct TVActionsDrawer: View {
                 } else {
                     TVActionRow(glyph: "\u{25B6}\u{FE0E}", label: "Play", preferred: true) { Task { await play() } }
                     // Web lists Download here too; this client keeps no offline copies, so the row only explains that.
-                    TVActionRow(glyph: "\u{2193}", label: "Download") { message = "Downloads are not available on this device." }
+                    TVActionRow(glyph: "\u{21E9}", label: "Download") { message = "Downloads are not available on this device." }
                     TVActionRow(glyph: "\u{FF0B}", label: "Add to Playlist") {
                         Task { playlists = (try? await environment.apiClient.listPlaylists()) ?? [] }
                     }

@@ -914,6 +914,8 @@ export struct Home {
           listHeight: this.railListHeight(),
           heading: t('pages.home.rail.onDeck', 'On deck'),
           items: this.continueWatchingItems,
+          allowFocusedOverflow: true, // the focused On deck card's ring and glow draw past the list cell, as on the web
+          overflowItems: true,
           itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
             this.tvCardItemBuilder(item, index, activeRailFactor);
           },

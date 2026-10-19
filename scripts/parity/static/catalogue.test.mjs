@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CALENDAR, CLOCK, MOVIES, ON_DECK, PINNED, SERIES, uid } from "./catalogue.mjs";
+import { CALENDAR, CLIP, CLOCK, MOVIES, ON_DECK, PINNED, SERIES, uid } from "./catalogue.mjs";
 
 test("catalogue is deterministic and sized for every screen", () => {
   assert.equal(MOVIES.length, 30);
@@ -21,4 +21,9 @@ test("suite.json pinned ids exist in the catalogue", () => {
   const ep = SERIES[1].seasons[1].episodes[2];
   assert.equal(ep.fileId, PINNED["series:1"].episodeFile.id);
   assert.ok(CALENDAR.every((e) => e.date.startsWith("2026-")));
+});
+
+test("the seeded clip is mp4, which Apple clients direct-play", () => {
+  assert.equal(CLIP.container, "mp4");
+  assert.ok(CLIP.file.endsWith(".mp4"));
 });

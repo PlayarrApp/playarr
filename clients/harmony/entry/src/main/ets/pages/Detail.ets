@@ -2593,9 +2593,9 @@ struct Detail {
               .fontColor(brandInk())
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
-              .fontSize(this.detail !== null && this.detail.work.kind === 'series' ? 36 : 33.5) // measured against the static refs: a film title is smaller than a series one
+              .fontSize(33.5) // measured against the static refs
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(this.detail !== null && this.detail.work.kind === 'series' ? -1.6 : -1.5)
+              .letterSpacing(-1.5)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 250 vp (measured on the static fixture: "Golden / Cathedral 1")
@@ -2606,14 +2606,14 @@ struct Detail {
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
-                .margin({ top: 3 })
+                .margin({ top: 5.7 })
             }
             this.touchMetaChips()
             Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunito(400))
               .fontSize(11.52)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(16.7)
-              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 11.7 : 10) : 12 })
+              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
               .maxLines(3)
               // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
               .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })
