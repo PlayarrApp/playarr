@@ -132,7 +132,7 @@ const HOME_SHADOW_REST: ShadowLayerSpec[] = [
 ];
 // Phone only: ArkUI's blur draws lighter than CSS's, so the wide layer is stronger and wider (measured on the light static refs).
 const PHONE_HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
-  { offsetY: 26, radius: 68, alpha: 0.55 },
+  { offsetY: 34, radius: 100, alpha: 0.7 },
   { offsetY: 11, radius: 22, alpha: 0.22 },
 ];
 const HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
@@ -423,7 +423,7 @@ export struct PosterCard {
           }
           .width('100%')
           .height(PROGRESS_BAR_HEIGHT)
-          .backgroundColor(toResourceColor(activeColors().line))
+          .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().line) : 'rgba(255, 255, 255, 0.2)') // web phone: a white 20% track in both themes
           .justifyContent(FlexAlign.Start)
         }
 
@@ -492,10 +492,11 @@ export struct PosterCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
       } else {
-        Text(this.title).fontFamily(nunito(this.softCaption ? 500 : CARD_TITLE_FONT_WEIGHT))
+        Text(this.title).fontFamily(nunito(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT))
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
-          .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+          .fontWeight(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT)
+          .letterSpacing(this.softCaption ? 0.15 : 0)
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })

@@ -7546,7 +7546,7 @@ internal fun SeriesEpisodeBrowser(
         }
         if (isTelevision) {
             // Tablet: the taller card block (art 8.25 dp lower, 270 dp card, 36.7 dp copy row) takes 17.25 dp from the gap, so the season headings stay where web puts them.
-            LazyColumn(Modifier.weight(1f).then(if (tabletDetail == 1f) Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) }) else Modifier), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
+            LazyColumn(Modifier.weight(1f).then(if (tabletDetail == 1f) Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) }) else Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical)), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
                 items(seasons, key = { it.season.id }) { content(it) }
                 if (credits.cast.isNotEmpty()) {
                     item { Box(Modifier.padding(top = 55.dp * tabletDetail)) { DetailCreditsRail(credits.cast) } }
@@ -9847,7 +9847,8 @@ private fun ExperiencePlayerScreen(
         val pauseAt = parityPauseAtMs ?: return@LaunchedEffect
         if (state !is ExperienceLoad.Ready) return@LaunchedEffect
         // Parity captures: wait until playback has advanced past the first frame, then pause in place (a seek re-buffers).
-        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(100)
+        // Polled every 5 ms so the pause lands at the target, not up to 100 ms late (the web ref pauses at 0:02 exactly).
+        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(5)
         viewModel.player.pause()
     }
     LaunchedEffect(state, activeMediaFileId) {

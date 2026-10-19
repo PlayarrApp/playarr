@@ -459,18 +459,18 @@ struct TVWorkDetailView: View {
             if !viewModel.cast.isEmpty {
                 castRail(viewModel.cast)
             } else {
-                similarRail(y: macDetail(889.5, 854.3))
+                similarRail(y: 889.5)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     /// Web "Similar Titles" rail: the server's list, else the genre-ranked library titles (`TVWorkDetailViewModel`).
-    /// macOS cards are Home-sized (327 pt, pitch 352, art from y 972); tvOS keeps its 268 pt cards.
+    /// Cards are Home-sized (327 pt, pitch 352, art from y 972) on tvOS and macOS, as on the static web refs.
     @ViewBuilder
     private func similarRail(y: CGFloat) -> some View {
         if !viewModel.similar.isEmpty {
-            let cardWidth: CGFloat = macDetail(327, 268), cardHeight: CGFloat = macDetail(183.9, 150.8)
+            let cardWidth: CGFloat = 327, cardHeight: CGFloat = 183.9
             railHeading("Similar Titles", count: "\(viewModel.similar.count) titles", y: y)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 25) {
@@ -495,15 +495,15 @@ struct TVWorkDetailView: View {
                 }
                 .padding(.trailing, 80)
             }
-            .frame(width: 1038.4, height: macDetail(210, 190), alignment: .topLeading)
-            .placed(x: 881.6, y: y + macDetail(82.5, 80.7), w: 1038.4, h: macDetail(210, 190), alignment: .topLeading)
+            .frame(width: 1038.4, height: 210, alignment: .topLeading)
+            .placed(x: 881.6, y: y + 82.5, w: 1038.4, h: 210, alignment: .topLeading)
         }
     }
 
-    /// Web "S01 · E01"; the tvOS client keeps its spaced "S 01 · E 01".
+    /// Web "S01 · E01".
     private func episodeCode(season: Int32, episode: Int32) -> String {
         let s = String(format: "%02d", season), e = String(format: "%02d", episode)
-        return macDetail("S\(s) \u{00B7} E\(e)", "S \(s) \u{00B7} E \(e)")
+        return "S\(s) \u{00B7} E\(e)"
     }
 
     private func macDetail<T>(_ macOS: T, _ other: T) -> T {
@@ -590,8 +590,8 @@ struct TVWorkDetailView: View {
         // The focused episode (the next-up one until focus moves) decides which season is scrolled into view.
         let activeID = frozen ? nextUp : (focusedEpisodeID ?? nextUp)
         let activeSeason = ordered.firstIndex { season in season.episodes.contains { $0.episode.id == activeID } } ?? 0
-        // macOS (static web refs): with Similar Titles below, the seasons start at 540 like the film's Chapters.
-        let base: CGFloat = macDetail(viewModel.similar.isEmpty ? 358 : 540, 358)
+        // Static web refs: with Similar Titles below, the seasons start at 540 like the film's Chapters.
+        let base: CGFloat = viewModel.similar.isEmpty ? 358 : 540
         let shift = max(0, base + CGFloat(activeSeason) * 314.3 + 270 - 1020)
         return ZStack(alignment: .topLeading) {
             TVRailPanelGradient(width: 1190.4)
@@ -618,7 +618,7 @@ struct TVWorkDetailView: View {
                             .placed(x: 881.6 + CGFloat(index) * 293, y: top + 80.7, w: 268, h: 190, alignment: .topLeading)
                     }
                 }
-                if macDetail(true, false) { similarRail(y: base + CGFloat(ordered.count - 1) * 314.3 + 349.5) }
+                similarRail(y: base + CGFloat(ordered.count - 1) * 314.3 + 349.5)
             }
             .offset(y: -shift)
             .animation(.easeOut(duration: 0.25), value: shift)

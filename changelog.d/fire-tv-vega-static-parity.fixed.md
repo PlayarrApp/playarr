@@ -1,0 +1,1 @@
+- Fire TV (Vega): detail pages fall back to genre-ranked library titles for Similar Titles when the server returns none, the primary action pill turns brand red with white text when focused, and tracks follow the web spacing (seasons close, other tracks a section gap apart).

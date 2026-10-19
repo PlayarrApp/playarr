@@ -1,0 +1,1 @@
+- Android TV player controls: the parity capture (debug pause extra) now matches the web ref at rest: no focus ring, 16 s buffered bar, seek bar 3 px higher and the quality pill spacing as web. Series detail fades at the bottom edge like the web, light detail score 97.2 to 99.1.
