@@ -156,6 +156,7 @@ export struct SearchScreen {
   @State private query: string = '';
   @State private results: Work[] = [];
   @State private searched: boolean = false;
+  @State private fieldFocused: boolean = false;
   /** Web's Type filter (Filters drawer): 'all' or a work kind. */
   @State private mediaType: string = 'all';
   @State private availableKinds: string[] = [];
@@ -433,6 +434,7 @@ export struct SearchScreen {
   @Builder
   private touchContentBody(): void {
     Column({ space: 16 }) {
+      Column() {
       Row({ space: 12 }) {
         Image($r('app.media.nav_search'))
           .width(20)
@@ -448,16 +450,26 @@ export struct SearchScreen {
           .padding(0)
           .caretColor(toResourceColor(activeColors().ink))
           .layoutWeight(1)
+          .defaultFocus(true)
+          .onFocus(() => { this.fieldFocused = true; })
+          .onBlur(() => { this.fieldFocused = false; })
           .onChange((value: string) => {
             this.onQueryChange(value);
           })
       }
       .width('100%')
-      .height(56)
+      .height(60) // web phone field: 60 vp, 18 vp below the header
       .padding({ left: 20, right: 20 })
       .borderRadius(28)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
+      }
+      // Web focuses the field on open: a 2 vp ring 3 vp outside it, without moving the layout.
+      .width('calc(100% + 6vp)')
+      .padding(3)
+      .margin({ left: -3, right: -3, top: -3, bottom: -3 })
+      .borderRadius(31)
+      .outline({ width: this.fieldFocused ? 2 : 0, color: toResourceColor(activeColors().ink), radius: 33 })
       if (this.shownResults().length > 0) {
         Grid() {
           ForEach(this.shownResults(), (work: Work) => {
@@ -487,29 +499,29 @@ export struct SearchScreen {
           this.touchWidthVp = Number(area.width);
         })
       } else {
-        Row({ space: 20 }) {
+        Row({ space: 22 }) {
           Stack() {
             Image($r('app.media.nav_search'))
-              .width(30)
-              .height(30)
+              .width(26)
+              .height(26)
               .colorFilter(tintFilter(BRAND_PINK))
           }
-          .width(72)
-          .height(72)
-          .borderRadius(36)
+          .width(84)
+          .height(84)
+          .borderRadius(42)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
-          Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunito(500))
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
+          Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunito(600))
+            .fontSize(11)
+            .fontWeight(600)
             .fontColor(toResourceColor(activeColors().ink))
         }
-        .padding({ top: 12 })
+        .padding({ top: 4 })
       }
     }
     .width('100%')
     .height('100%')
-    .padding({ left: 16, right: 16 })
+    .padding({ left: 16, right: 16, top: 18 })
     .alignItems(HorizontalAlign.Start)
   }
 
