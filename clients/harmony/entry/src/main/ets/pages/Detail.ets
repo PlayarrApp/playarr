@@ -2094,13 +2094,16 @@ struct Detail {
         )
       }
       if (this.chaptersRail !== null) {
-        Column({ space: tv(SERIES_SEASON_HEADER_CARD_GAP) }) {
-          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), this.chaptersGenerated ? tf('pages.workDetail.sceneMarkersCount', '{{count}} scene markers', { count: this.chaptersRail.items.length.toString() }) : tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }))
+        Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP) : PHONE_SEASON_HEADER_CARD_GAP }) {
+          this.railHeading(t('pages.workDetail.chaptersHeading', 'Chapters'), this.chaptersGenerated ? tf('pages.workDetail.sceneMarkersCount', '{{count}} scene markers', { count: this.chaptersRail.items.length.toString() }) : tf('pages.workDetail.chaptersCount', '{{count}} chapters', { count: this.chaptersRail.items.length.toString() }), !isTvMetrics())
           MediaRail({
             railId: 'chapters',
             headingGap: 0,
-            listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : 0,
-            itemGap: tv(TvGeometry.railItemGapTitle),
+            listHeight: isTvMetrics() ? tv(SERIES_EPISODE_LIST_HEIGHT) : PHONE_SEASON_LIST_HEIGHT,
+            // web phone: the Chapters rail is laid out like a season's episode rail
+            itemGap: isTvMetrics() ? tv(TvGeometry.railItemGapTitle) : PHONE_EPISODE_RAIL_GAP,
+            clipInsetStart: isTvMetrics() ? 8 : PHONE_DETAIL_RAIL_CLIP_START,
+            clipInsetTop: isTvMetrics() ? 24 : PHONE_DETAIL_RAIL_CLIP_TOP,
             items: this.chaptersRail.items,
             itemBuilder: (item: MediaRailItem, index: number, activeRailFactor: number): void => {
               this.chapterItem(item, index, activeRailFactor);
@@ -2209,8 +2212,10 @@ struct Detail {
       episodeCaption: (item as DetailRow).episodeCaption ?? '',
       episodeNumberOverlay: ((item as DetailRow).episodeNumberOverlay ?? ''), // parenthesised: the capture patch anchors on the series card's line
       artWash: 0.32,
-      cardWidth: tv(CHAPTER_CARD_WIDTH),
-      cardHeight: tv(CHAPTER_CARD_HEIGHT),
+      titleFontSize: isTvMetrics() ? 11.904 : 12.4,
+      subtitleFontSize: isTvMetrics() ? 8.832 : 9.5,
+      cardWidth: isTvMetrics() ? tv(CHAPTER_CARD_WIDTH) : PHONE_EPISODE_CARD_WIDTH,
+      cardHeight: isTvMetrics() ? tv(CHAPTER_CARD_HEIGHT) : Math.round(PHONE_EPISODE_CARD_WIDTH * 9 / 16),
       activeRailFactor: activeRailFactor,
       onCardFocus: this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration),
       onSelect: () => { this.selectRow((item as DetailRow)); },
@@ -2431,10 +2436,11 @@ struct Detail {
           .fontSize(size)
           .fontColor(brandInk())
       }
-      Text(label).fontFamily(nunito(500))
+      // web: the 8 vp pills (Download, Add to ...) are bold in the ink colour, the larger Playback pill medium
+      Text(label).fontFamily(nunito(size <= 8 ? 700 : 500))
         .fontSize(size)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .fontWeight(size <= 8 ? FontWeight.Bold : FontWeight.Medium)
+        .fontColor(toResourceColor(size <= 8 ? activeColors().ink : activeColors().inkSoft))
         .maxLines(1)
     }
       .height(44)
@@ -2442,7 +2448,8 @@ struct Detail {
       .padding({ left: 16, right: 16 })
       .borderRadius(22)
       .layoutWeight(share ? 1 : 0)
-      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+      .backgroundColor(toResourceColor(activeColors().surfaceStrong)) // opaque so the soft web shadow below draws (ArkUI draws none for a translucent box)
+      .shadow({ radius: 22, color: 'rgba(31, 14, 20, 0.12)', offsetY: 10 })
       .border({ width: 1, color: Color.Transparent })
       .onClick(() => {
         this.cancelInitialEpisodeFocus();
@@ -2467,7 +2474,8 @@ struct Detail {
     .height(44)
     .justifyContent(FlexAlign.Center)
     .borderRadius(22)
-    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    .backgroundColor(toResourceColor(activeColors().surfaceStrong)) // opaque so the soft web shadow below draws (ArkUI draws none for a translucent box)
+      .shadow({ radius: 22, color: 'rgba(31, 14, 20, 0.12)', offsetY: 10 })
     .border({ width: 1, color: Color.Transparent })
     .onClick(() => {
       this.cancelInitialEpisodeFocus();
@@ -2593,27 +2601,27 @@ struct Detail {
               .fontColor(brandInk())
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
-              .fontSize(this.detail !== null && this.detail.work.kind === 'series' ? 36 : 33.5) // measured against the static refs: a film title is smaller than a series one
+              .fontSize(33.5) // measured against the static refs
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(this.detail !== null && this.detail.work.kind === 'series' ? -1.6 : -1.5)
+              .letterSpacing(-1.5)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
-              // web phone: a series title wraps at about 250 vp (measured on the static fixture: "Golden / Cathedral 1")
-              .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 250 : '100%' })
+              // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
+              .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunito(500))
                 .fontSize(14.4)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
-                .margin({ top: 3 })
+                .margin({ top: 5.7 })
             }
             this.touchMetaChips()
             Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunito(400))
               .fontSize(11.52)
               .fontColor(toResourceColor(activeColors().inkSoft))
               .lineHeight(16.7)
-              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 11.7 : 10) : 12 })
+              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
               .maxLines(3)
               // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
               .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })

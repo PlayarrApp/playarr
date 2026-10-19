@@ -219,11 +219,20 @@ struct WorkDetailView: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .opacity(scheme == .dark ? (detail.work.kind == .movie || detail.work.kind == .series ? 0.06 : 0.3) : 0.07)
                     .overlay {
-                        LinearGradient(
-                            colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        if detail.work.kind == .movie || detail.work.kind == .series {
+                            // Web: the page colour fades out over the left 40 %, the art tints only the copy side.
+                            LinearGradient(
+                                stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.4)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        } else {
+                            LinearGradient(
+                                colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        }
                     }
 
                 detailCopy(
@@ -242,6 +251,9 @@ struct WorkDetailView: View {
                             children(for: detail.children, tabletScale: proxy.size.width / 1366)
                             if detail.work.kind == .movie {
                                 tabletMovieRails(detail, tabletScale: proxy.size.width / 1366)
+                            }
+                            if detail.work.kind == .movie || detail.work.kind == .series {
+                                tabletSimilarRail(tabletScale: proxy.size.width / 1366, gap: detail.work.kind == .series ? -46 : 42)
                             } else {
                                 discoveryContent
                             }
@@ -252,11 +264,13 @@ struct WorkDetailView: View {
                     }
                     .frame(width: proxy.size.width * 0.62, height: proxy.size.height)
                     .background {
-                        LinearGradient(
-                            colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        if detail.work.kind != .movie && detail.work.kind != .series {
+                            LinearGradient(
+                                colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        }
                     }
                     .scrollIndicators(.hidden)
                     .webEdgeFade(.vertical)
@@ -501,8 +515,6 @@ struct WorkDetailView: View {
             weight: 560,
             fixedAxes: DesignFont.nunitoAxes
         )?.lineHeight ?? titleFont * 1.36
-        // CSS line-height .9: match its pitch and drop the last line's extra leading, as the series copy does.
-        let titleLineHeightCorrection = titleFont * 0.9 - titleNativeLineHeight
         let metaFont = DesignFont.font(7.68 * tabletScale, 400)
         let runtime = detail.runtimeMs.map { Self.runtimeLabel($0) }
         let year = work.releaseDate.flatMap { Int($0.prefix(4)) }.map(String.init)
@@ -514,14 +526,10 @@ struct WorkDetailView: View {
                 .tracking(0.08 * 8.75 * tabletScale)
                 .foregroundStyle(PlayarrStyle.brandInk)
                 .padding(.bottom, 26 * tabletScale)
-            Text(work.title)
-                .font(DesignFont.font(titleFont, 560))
-                .tracking(-0.072 * titleFont)
-                .lineSpacing(titleLineHeightCorrection)
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(2)
-                .frame(maxWidth: 190 * tabletScale * 1.3, alignment: .leading)
-                .padding(.bottom, titleLineHeightCorrection)
+            TabletTitleLabel(
+                text: work.title, fontSize: titleFont, nativeLineHeight: titleNativeLineHeight,
+                lineHeight: titleFont * 0.9, width: 190 * tabletScale * 1.3
+            )
             HStack(spacing: 13.6 * tabletScale) {
                 ForEach(Array(meta.enumerated()), id: \.offset) { _, item in
                     Text(item).fixedSize(horizontal: true, vertical: false)
@@ -565,13 +573,6 @@ struct WorkDetailView: View {
                                 .frame(minWidth: 116.109 * tabletScale, minHeight: 57.359 * tabletScale)
                                 .background(PlayarrStyle.ink, in: Capsule())
                                 .foregroundStyle(PlayarrStyle.background)
-                                // Web: the film page opens with Play focused, drawn as a 3 px ring a few points off the pill.
-                                .overlay {
-                                    if playFocused {
-                                        Capsule().stroke(scheme == .dark ? Color.white : PlayarrStyle.ink, lineWidth: 3 * tabletScale)
-                                            .padding(-6 * tabletScale)
-                                    }
-                                }
                         }
                         .buttonStyle(.plain)
                         .focused($playFocused)
@@ -615,6 +616,50 @@ struct WorkDetailView: View {
             if let mediaFileID = detail.mediaFileID {
                 PlaybackSettingsSheet(apiClient: apiClient, mediaFileID: mediaFileID, title: work.title)
             }
+        }
+    }
+
+    /// The web's "Similar Titles" rail: 16:9 art cards with the title underneath.
+    @ViewBuilder
+    private func tabletSimilarRail(tabletScale: CGFloat, gap: CGFloat) -> some View {
+        if !viewModel.similarWorks.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Similar Titles")
+                    .font(DesignFont.font(12.567 * tabletScale, 610))
+                    .foregroundStyle(PlayarrStyle.ink)
+                Text("\(viewModel.similarWorks.count) titles")
+                    .font(DesignFont.font(7.36 * tabletScale, 400))
+                    .foregroundStyle(PlayarrStyle.muted)
+                    .padding(.top, 4 * tabletScale)
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: 18 * tabletScale) {
+                        ForEach(viewModel.similarWorks) { other in
+                            NavigationLink {
+                                WorkDetailView(
+                                    viewModel: WorkDetailViewModel(apiClient: apiClient, workID: other.id),
+                                    apiClient: apiClient,
+                                    downloadRepository: downloadRepository
+                                )
+                            } label: {
+                                VStack(alignment: .leading, spacing: 8 * tabletScale) {
+                                    PlayarrArtwork(work: other, kind: .backdrop, apiClient: apiClient)
+                                        .frame(width: 229 * tabletScale, height: 129 * tabletScale)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10 * tabletScale, style: .continuous))
+                                    Text(other.title)
+                                        .font(DesignFont.font(8 * tabletScale, 400))
+                                        .foregroundStyle(PlayarrStyle.muted)
+                                        .lineLimit(1)
+                                        .frame(width: 229 * tabletScale, alignment: .leading)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 26 * tabletScale)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .padding(.top, gap * tabletScale)
         }
     }
 
@@ -673,7 +718,7 @@ struct WorkDetailView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.top, 26 * tabletScale)
+                    .padding(.top, 37 * tabletScale)
                 }
                 .scrollIndicators(.hidden)
                 .webEdgeFade(.horizontal)
@@ -796,12 +841,10 @@ struct WorkDetailView: View {
                     TabletDetailFrameDiagnostic(element: "kicker", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
                 }
                 .padding(.bottom, kickerToTitleGap)
-            Text(detail.work.title)
-                .font(DesignFont.font(titleFont, 560))
-                .tracking(-0.072 * titleFont)
-                .lineSpacing(titleLineHeightCorrection)
-                .foregroundStyle(PlayarrStyle.ink)
-                .lineLimit(2)
+            TabletTitleLabel(
+                text: detail.work.title, fontSize: titleFont, nativeLineHeight: titleNativeLineHeight,
+                lineHeight: titleWebLineHeight, width: nil
+            )
                 .overlay {
                     TabletTitleLayoutDiagnostic(
                         stage: "natural",
@@ -811,8 +854,6 @@ struct WorkDetailView: View {
                         colorScheme: scheme
                     )
                 }
-                // CSS uses line-height: .9. Match its line pitch and remove the final native line's extra leading.
-                .padding(.bottom, titleLineHeightCorrection)
                 .overlay {
                     TabletTitleLayoutDiagnostic(
                         stage: "adjusted",
@@ -1025,6 +1066,10 @@ struct WorkDetailView: View {
     }
 
     private func centreTabletEpisode(_ proxy: ScrollViewProxy, seasons: [SeasonDetail]) {
+        #if DEBUG
+        // Parity captures stay at page top, as the web refs do.
+        if ParityLaunch.route != nil { return }
+        #endif
         guard let id = selectedTabletEpisodeID,
               let season = seasons.first(where: { $0.episodes.contains { $0.id == id } }) else {
             if let first = seasons.first {
@@ -1484,12 +1529,12 @@ struct WorkDetailView: View {
             .overlay {
                 RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
                     .stroke(
-                        tabletScale == nil ? (selected ? PlayarrStyle.pink : PlayarrStyle.lineStrong) : (selected ? focusColor : .clear),
+                        tabletScale == nil ? (selected ? PlayarrStyle.pink : PlayarrStyle.lineStrong) : .clear, // a touch web page draws no focus ring (owner 2026-10-19)
                         lineWidth: tabletScale == nil ? (selected ? 3 : 1) : (selected ? 3 * scale : 0)
                     )
             }
             .scaleEffect(selected && tabletScale != nil ? 1.025 : 1)
-            .shadow(color: selected && tabletScale != nil ? focusColor.opacity(0.45) : .clear, radius: selected ? 10 * scale : 0)
+            .shadow(color: .clear, radius: 0)
             if let tabletScale {
                 HStack(alignment: .firstTextBaseline, spacing: 8.8 * tabletScale) {
                     Text(label)
@@ -1721,5 +1766,53 @@ private struct TabletDetailFrameDiagnostic: View {
         lastMeasurement = signature
         Self.logger.info("PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC element=\(element, privacy: .public) x=\(Double(frame.minX), format: .fixed(precision: 2), privacy: .public) y=\(Double(frame.minY), format: .fixed(precision: 2), privacy: .public) width=\(Double(frame.width), format: .fixed(precision: 2), privacy: .public) height=\(Double(frame.height), format: .fixed(precision: 2), privacy: .public) theme=\(colorScheme == .dark ? "dark" : "light", privacy: .public)")
         #endif
+    }
+}
+
+
+/// Title with the web's CSS line box (`line-height: .9`). SwiftUI's negative `lineSpacing` does not tighten the
+/// rendered line pitch, so UIKit draws it: fixed line height, glyphs centred in the line like CSS half-leading.
+struct TabletTitleLabel: UIViewRepresentable {
+    let text: String
+    let fontSize: CGFloat
+    let nativeLineHeight: CGFloat
+    let lineHeight: CGFloat
+    let width: CGFloat?
+
+    func makeUIView(context: Context) -> UILabel {
+        let label = UILabel()
+        label.numberOfLines = 2
+        label.lineBreakMode = .byTruncatingTail
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return label
+    }
+
+    func updateUIView(_ label: UILabel, context: Context) {
+        let font = DesignFont.uiFont(
+            family: "Nunito Sans",
+            postScriptName: DesignFont.nunitoPostScriptName,
+            size: fontSize,
+            weight: 560,
+            fixedAxes: DesignFont.nunitoAxes
+        ) ?? UIFont(name: "AvenirNext-Medium", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
+        let style = NSMutableParagraphStyle()
+        style.minimumLineHeight = lineHeight
+        style.maximumLineHeight = lineHeight
+        style.lineBreakMode = .byTruncatingTail
+        label.attributedText = NSAttributedString(string: text, attributes: [
+            .font: font,
+            .kern: -0.072 * fontSize,
+            .paragraphStyle: style,
+            .baselineOffset: (lineHeight - nativeLineHeight) / 2,
+            .foregroundColor: UIColor(PlayarrStyle.ink),
+        ])
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UILabel, context: Context) -> CGSize? {
+        let available = width ?? proposal.width ?? 358
+        uiView.preferredMaxLayoutWidth = available
+        let fit = uiView.sizeThatFits(CGSize(width: available, height: .greatestFiniteMagnitude))
+        return CGSize(width: min(available, fit.width), height: fit.height)
     }
 }

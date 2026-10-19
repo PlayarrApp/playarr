@@ -56,6 +56,7 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
     public let snapshot: TitleSnapshot?
     /// What the caller can do with this entry, computed by the server; shown as given.
     public let actions: [CalendarAction]
+    public let overview: String?
 
     public init(
         id: String,
@@ -74,7 +75,8 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
         averageLagSeconds: Int64? = nil,
         sources: [CalendarEntrySource] = [],
         snapshot: TitleSnapshot? = nil,
-        actions: [CalendarAction] = []
+        actions: [CalendarAction] = [],
+        overview: String? = nil
     ) {
         self.id = id
         self.mediaKind = mediaKind
@@ -93,6 +95,7 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
         self.sources = sources
         self.snapshot = snapshot
         self.actions = actions
+        self.overview = overview
     }
 
     public init(from decoder: Decoder) throws {
@@ -114,6 +117,7 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
         sources = try c.decode([CalendarEntrySource].self, forKey: .sources)
         snapshot = try c.decodeIfPresent(TitleSnapshot.self, forKey: .snapshot)
         actions = try c.decodeIfPresent([CalendarAction].self, forKey: .actions) ?? []
+        overview = try c.decodeIfPresent(String.self, forKey: .overview)
     }
 
     public var kind: CalendarMediaKind? { CalendarMediaKind(rawValue: mediaKind) }
@@ -133,7 +137,7 @@ public struct CalendarEntry: Codable, Sendable, Equatable, Hashable, Identifiabl
         case posterURL = "poster_url"
         case workID = "work_id"
         case averageLagSeconds = "average_lag_seconds"
-        case sources, snapshot, actions
+        case sources, snapshot, actions, overview
     }
 }
 

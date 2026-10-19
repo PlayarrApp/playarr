@@ -4,6 +4,7 @@
 //   The capture clock is always FIXTURE_CLOCK (PARITY_FIXED_NOW is ignored).
 //   --dry prints the plan (groups, viewports, dirs, Downloads hidden or not, live screens) and the web build sha check, then exits without capturing.
 //   The web build served at PLAYARR_WEB_URL must contain origin/main's web client (no clients/tv-web change between its sha and origin/main), else the run stops (--allow-stale-web overrides).
+//   A group with "noFocusRing": true gets focus dropped before every shot.
 // Needs PARITY_CHROME=<chromium path> (or Playwright's own), PARITY_CLIENT, PARITY_LOCK_DIR, and credentials resolved by capture-state.mjs.
 // Steps: snapshot account state, reset watch progress of the pinned files, capture each selected supported screen x dark/light once per viewport group
 // (fresh sign-in, sessionStorage cleared on every document, fixed fixture clock, deterministic animation policy, readiness checks), verify, then back up
@@ -17,7 +18,7 @@ import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { CAPTURE_REGION, expandKeys } from "./suite-lib.mjs";
-import { assertBuildIdentityStable, selectedLiveScreens, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
+import { assertBuildIdentityStable, shouldStampReferenceBuild } from "./capture-refs-contract.mjs";
 import { withCaptureState } from "./capture-state.mjs";
 import { deckFromEnv, seedCanonicalDeck } from "./canonical-deck.mjs";
 import { readSecrets } from "./dpad-account.mjs";
@@ -59,8 +60,7 @@ if (args.includes("--dry")) {
   process.exit(0);
 }
 
-const requestedLiveScreens = selectedLiveScreens(wantScreens, groups, manifest.groups);
-if (requestedLiveScreens.length) throw new Error(`unsupported live screen capture: ${requestedLiveScreens.join(", ")}; capture-refs only publishes deterministic web-driver screens`);
+// player-controls is captured by the web driver (playerControls) on the static server; no screen is "live" any more.
 
 if (!process.env.PARITY_CLIENT) throw new Error("PARITY_CLIENT is required for isolated web-reference capture");
 if (!process.env.PARITY_LOCK_DIR) throw new Error("PARITY_LOCK_DIR must point to the supplied scratch lock directory");
@@ -133,7 +133,8 @@ for (const name of groups) {
           // a poster still loading after the readiness wait.
           for (let attempt = 1; ; attempt++) {
             await driver.home();
-            if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
+            if (s.id === "player-controls") await driver.playerControls(film.media_file_id);
+            else if (s.id === "actions" && g.mobile) { await driver.route("/movies"); await driver.openActions(); }
             else if (s.open) await driver.route(s.open, { requireHeroAction: /^\/(?:movies|series)\/[^/]+\/?$/.test(s.open) });
             else if (!g.mobile && s.keys) for (const { key, long } of expandKeys(s.keys)) { await driver.key(key, { long }); await sleep(250); } // let the route or panel the key opened settle before the next key
             else await driver.route(s.route);
@@ -141,6 +142,7 @@ for (const name of groups) {
             await driver.waitReady({ screen: s.id, phase: "capture" });
             await sleep(600); // posters swap to their final source shortly after the first load
             await driver.waitReady({ screen: s.id, phase: "capture" });
+            if (g.noFocusRing) await driver.blurFocus(); // touch layouts rest with no focus ring: the web focuses the first card (and the "#" index) on mount; TV groups keep it
             const imagePath = join(work, name, theme, `${s.id}.png`);
             await driver.screenshot(imagePath);
             const f = await driver.inspect();

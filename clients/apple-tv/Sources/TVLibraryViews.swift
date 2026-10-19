@@ -189,6 +189,10 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
+            #if os(macOS)
+            // Web `[data-fade-axis="y"][data-fade-end]` on `.tv-home-rails`: the last visible row dims to the floor at the page edge.
+            .macEdgeFade(axis: .vertical, endFloor: 0.3)
+            #endif
             // Web `.tv-home-rails.is-vertical-tracks`: the first rail opens at the Library grid's first row (clamp(128, 15vh, 174)).
             .padding(.top, Self.railTopY - origin.y)
             // Web `.tv-home-rails` starts where the Library grid panel starts (100% - 62%), cards at its left padding.
@@ -1619,15 +1623,6 @@ struct TVLibraryKindView: View {
     /// The title whose actions drawer is open: the preview keeps it (web), and no card is lifted or ringed meanwhile.
     @Environment(\.actionsWorkID) private var actionsWorkID
 
-    /// macOS: the open Filters drawer is modal and owns the ring (web), so no grid card keeps its selection ring behind it.
-    private var gridRingHidden: Bool {
-        #if os(macOS)
-        filtersOpen
-        #else
-        false
-        #endif
-    }
-
     private var selected: Work? {
         if let actionsWorkID, let match = items.first(where: { $0.id == actionsWorkID }) { return match }
         if let selectedID, let match = items.first(where: { $0.id == selectedID }) {
@@ -1735,7 +1730,7 @@ struct TVLibraryKindView: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(alignment: .leading, spacing: 0) {
                                 TVChoiceSection(title: "View", options: [("list", "List"), ("screen", "Screen"), ("cover", "Cover")], selection: $view)
-                                TVChoiceSection(title: "Sort by", options: [("title", "Title"), ("date_added", "Date added")], selection: $sort)
+                                TVChoiceSection(title: "Sort by", options: [("title", "Title"), ("date_added", "Date Added")], selection: $sort)
                                 TVChoiceSection(title: "Order", options: [("asc", sort == "title" ? "A-Z" : "Oldest"),
                                                                           ("desc", sort == "title" ? "Z-A" : "Newest")], selection: $order)
                                 TVMultiSelectSection(title: "Audio language", facets: facets?.audio, loaded: facets != nil, selection: $audioLangs)
@@ -2050,7 +2045,7 @@ struct TVLibraryKindView: View {
         artIncludesDot: Bool,
         gridPosition: TVParityGridPosition? = nil
     ) -> some View {
-        let isSelected = selected?.id == work.id && actionsWorkID == nil && !gridRingHidden
+        let isSelected = selected?.id == work.id && actionsWorkID == nil && !filtersOpen // web: the open drawer holds focus, so no card is lifted or ringed
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
                             parityGridPosition: gridPosition) {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
@@ -2108,13 +2103,12 @@ struct TVLibraryKindView: View {
                 }
             }
             .frame(width: width, alignment: .leading)
-            .opacity(isSelected || parityMode ? 1 : 0.92)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
             .scaleEffect(isSelected ? 1.025 : 1)
             .offset(y: isSelected ? -7 : 0)
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
-        .buttonStyle(TVFocusableCardButtonStyle())
+        .buttonStyle(TVFocusableCardButtonStyle(ignoresPress: actionsWorkID != nil))
         #if os(macOS)
         .environment(\.macFocusBindingBridge, macFocusBridge(for: work))
         #else
@@ -2134,7 +2128,7 @@ struct TVLibraryKindView: View {
     /// Web list view row (`.tv-list-card`): a 172.8 x 97.2 thumbnail, the title 14.98/610 and "Genres · Year" 9.6 beside
     /// it; rows 121.9 apart. Same focus look and actions as the cards.
     private func libraryRow(_ work: Work) -> some View {
-        let isSelected = selected?.id == work.id && actionsWorkID == nil && !gridRingHidden
+        let isSelected = selected?.id == work.id && actionsWorkID == nil && !filtersOpen // web: the open drawer holds focus, so no card is lifted or ringed
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil) {
             HStack(alignment: .center, spacing: 30) {
                 TVWorkArt(work: work, apiClient: environment.apiClient)
@@ -2439,7 +2433,7 @@ struct TVActionsDrawer: View {
                 } else {
                     TVActionRow(glyph: "\u{25B6}\u{FE0E}", label: "Play", preferred: true) { Task { await play() } }
                     // Web lists Download here too; this client keeps no offline copies, so the row only explains that.
-                    TVActionRow(glyph: "\u{2193}", label: "Download") { message = "Downloads are not available on this device." }
+                    TVActionRow(glyph: "\u{21E9}", label: "Download") { message = "Downloads are not available on this device." }
                     TVActionRow(glyph: "\u{FF0B}", label: "Add to Playlist") {
                         Task { playlists = (try? await environment.apiClient.listPlaylists()) ?? [] }
                     }

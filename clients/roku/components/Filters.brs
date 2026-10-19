@@ -70,12 +70,12 @@ end function
 sub filtersRender()
     g = m.filtersGroup
     g.removeChildrenIndex(g.getChildCount(), 0)
-    pgRect(g, 1560, 0, 360, 1080, "panel")
-    pgLabel(g, 1606, 56, 190, 16, "LIBRARY CONTROLS", 11, 700, "inkMuted")
-    pgLabel(g, 1606, 82, 200, 56, "Filters", 36, 600, "ink")
-    pgRound(g, 1825.5, 53.5, 49, 49, 25, "surface", 179)
-    pgRound(g, 1825.5, 53.5, 49, 49, 25, "line", -1, true)
-    pgIcon(g, 1838, 66, 24, "player-close.png", "ink")
+    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
+    pgLabel(g, 1606, 52, 190, 16, "LIBRARY CONTROLS", 11, 700, "inkMuted")
+    pgLabel(g, 1606, 75, 200, 56, "Filters", 36, 600, "ink")
+    pgRound(g, 1826.5, 54.5, 49, 49, 25, "surfaceSoft")
+    pgRound(g, 1826.5, 54.5, 49, 49, 25, "line", -1, true)
+    pgIcon(g, 1839, 67, 24, "player-close.png", "ink")
     if m.filtersPicker <> ""
         filtersRenderPicker(g)
         return
@@ -123,8 +123,8 @@ sub filtersTile(g as Object, x as Float, y as Float, w as Float, h as Float, tex
     role = "inkSoft"
     if chosen then role = "onAccent"
     if icon <> ""
-        filtersViewIcon(g, x + w / 2, y + 14, icon, role)
-        pgLabel(g, x, y + 33, w, 16, text, 11, 700, role, { horizAlign: "center" })
+        filtersViewIcon(g, x + w / 2, y + 8, icon, role)
+        pgLabel(g, x, y + 30, w, 16, text, 11, 700, role, { horizAlign: "center" })
     else
         pgLabel(g, x, y, w, h, text, 11, 700, role, { horizAlign: "center", vertAlign: "center" })
     end if
@@ -422,12 +422,12 @@ end sub
 sub calFiltersRender()
     g = m.filtersGroup
     g.removeChildrenIndex(g.getChildCount(), 0)
-    pgRect(g, 1560, 0, 360, 1080, "panel")
-    pgLabel(g, 1606, 56, 190, 16, "CALENDAR", 11, 700, "inkMuted")
-    pgLabel(g, 1606, 82, 200, 56, "Filters", 36, 600, "ink")
-    pgRound(g, 1825.5, 53.5, 49, 49, 25, "surface", 179)
-    pgRound(g, 1825.5, 53.5, 49, 49, 25, "line", -1, true)
-    pgIcon(g, 1838, 66, 24, "player-close.png", "ink")
+    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
+    pgLabel(g, 1606, 52, 190, 16, "CALENDAR", 11, 700, "inkMuted")
+    pgLabel(g, 1606, 75, 200, 56, "Filters", 36, 600, "ink")
+    pgRound(g, 1826.5, 54.5, 49, 49, 25, "surfaceSoft")
+    pgRound(g, 1826.5, 54.5, 49, 49, 25, "line", -1, true)
+    pgIcon(g, 1839, 67, 24, "player-close.png", "ink")
     m.filtersFocus = []
     pgLabel(g, 1606, 162, 250, 16, "VIEW", 10, 700, "inkMuted")
     views = ["month", "week", "agenda"]

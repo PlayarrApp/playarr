@@ -50,6 +50,7 @@ export struct TouchNavBar {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('currentProfileId') private profileId: string = '';
+  @StorageProp('currentAvatarPreset') private avatarOverride: string = ''; // the profile's saved avatar, as on the TV rail
   @StorageProp('safeBottom') private safeBottom: number = 0;
   @StorageProp('safeLeft') private safeLeft: number = 0;
   @StorageProp('safeRight') private safeRight: number = 0;
@@ -97,7 +98,7 @@ export struct TouchNavBar {
         Row({ space: 2 }) {
           Column() {
             ProfileAvatar({
-              presetId: resolveAvatarPreset(this.profileId),
+              presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId),
               diameter: AVATAR_SIZE,
               ringWidth: 0,
               illustrationRatio: 0.86,
@@ -128,7 +129,7 @@ export struct TouchNavBar {
     .width(`calc(100% - ${atLeast(BAR_SIDE, this.safeLeft) + atLeast(BAR_SIDE, this.safeRight)}vp)`)
     .height(BAR_HEIGHT)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.88)) // web: 0.88 measured over the Chapters thumbnail, both themes
     .borderRadius(BAR_RADIUS)
     .shadow({ radius: 20, color: 'rgba(31, 14, 20, 0.2)', offsetY: 14 })
     .margin({ left: atLeast(BAR_SIDE, this.safeLeft), right: atLeast(BAR_SIDE, this.safeRight), bottom: atLeast(BAR_BOTTOM, this.safeBottom), top: 4 })

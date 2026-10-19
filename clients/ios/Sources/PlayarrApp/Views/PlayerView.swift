@@ -432,12 +432,11 @@ struct PlayerView: View {
                     reveal()
                 } label: {
                     PlayerGlyphView(glyph: isPlaying ? .pause : .play, size: 22 * s + 4)
-                        .frame(width: 60 * s, height: 60 * s)
+                        .frame(width: 52 * s, height: 52 * s)
                         .background(Circle().fill(.white.opacity(0.14)))
-                        .overlay(Circle().strokeBorder(.white, lineWidth: 2).padding(-3))
-                }
+                                        }
                 .buttonStyle(.plain).accessibilityLabel(isPlaying ? "Pause" : "Play")
-                .padding(.horizontal, 12 * s)
+                .padding(.horizontal, 19 * s)
                 iconButton(.next, disabled: queueEmpty, label: "Next") { playQueueEntry(at: 0, viewModel) }
                 HStack(spacing: 5.6) {
                     Text(playerTimeString(shownTime))
@@ -447,31 +446,33 @@ struct PlayerView: View {
                 .font(WM.font(9.92 + 1).monospacedDigit()).foregroundStyle(.white)
                 .padding(.leading, 28 * s)
                 Spacer(minLength: 24)
-                iconButton(isMuted ? .volumeMuted : .volumeHigh, label: isMuted ? "Unmute" : "Mute") {
-                    viewModel.avPlayer?.isMuted.toggle()
-                    isMuted = viewModel.avPlayer?.isMuted ?? false
-                    reveal()
-                }
-                iconButton(.subtitles, active: activeMenu == .subtitles, label: "Subtitles") { toggle(.subtitles) }
-                iconButton(.playlist, active: activeMenu == .queue, label: "Queue") { toggle(.queue) }
-                Button { toggle(.quality) } label: {
-                    HStack(spacing: 10) {
-                        WMText(PlayerQuality.badge(selectedQuality), 7.68, 650, color: .white, lh: 20, ls: 0.3072)
-                        WMText(PlayerQuality.displayLabel(selectedQuality), 11, 650, color: .white, lh: 16, ls: 0.1)
+                HStack(spacing: 22 * s) {
+                    iconButton(isMuted ? .volumeMuted : .volumeHigh, label: isMuted ? "Unmute" : "Mute") {
+                        viewModel.avPlayer?.isMuted.toggle()
+                        isMuted = viewModel.avPlayer?.isMuted ?? false
+                        reveal()
                     }
-                    .padding(.horizontal, 12)
-                }
-                .buttonStyle(.plain).disabled(viewModel.qualityOptions.isEmpty)
-                iconButton(.info, active: activeMenu == .info, label: "Playback info") { toggle(.info) }
-                ZStack {
-                    iconButton(.castDevices, label: "Cast to a device") {}
-                    if showsCastAffordance { CastButton(tintColor: .clear).frame(width: 42, height: 42).opacity(0.02) }
+                    iconButton(.subtitles, active: activeMenu == .subtitles, label: "Subtitles") { toggle(.subtitles) }
+                    iconButton(.playlist, active: activeMenu == .queue, label: "Queue") { toggle(.queue) }
+                    Button { toggle(.quality) } label: {
+                        HStack(spacing: 10) {
+                            WMText(PlayerQuality.badge(selectedQuality), 7.68, 650, color: .white, lh: 20, ls: 0.3072)
+                            WMText(PlayerQuality.displayLabel(selectedQuality), 11, 650, color: .white, lh: 16, ls: 0.1)
+                        }
+                        .padding(.leading, 26).padding(.trailing, 12)
+                    }
+                    .buttonStyle(.plain).disabled(viewModel.qualityOptions.isEmpty)
+                    iconButton(.info, active: activeMenu == .info, label: "Playback info") { toggle(.info) }
+                    ZStack {
+                        iconButton(.castDevices, label: "Cast to a device") {}
+                        if showsCastAffordance { CastButton(tintColor: .clear).frame(width: 42, height: 42).opacity(0.02) }
+                    }
                 }
             }
         }
         .padding(.leading, edge)
         .padding(.trailing, max(60 * s, WM.trailingInset))
-        .padding(.bottom, max(34 * s + 5, bottomInset)) // the web row sits about 5 pt higher
+        .padding(.bottom, max(34 * s + 10.5, bottomInset)) // the web row sits about 10 pt higher
         .frame(width: size.width, height: size.height, alignment: .bottom)
     }
 

@@ -91,8 +91,8 @@ internal sealed class MediaCard
         }
         if (card.Unseen)
         {
-            var dot = Ui.Box(W - 23.6f, 10.6f, 13, 13, t.Brand, 6.5f);
-            dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
+            var dot = Ui.Box(W - 23.6f, 11.1f, 13, 13, t.Brand, 6.5f);
+            dot.BorderlineWidth = 2; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         var drop = card.StackOptions > 1 ? StackDrop : 0;
@@ -101,6 +101,27 @@ internal sealed class MediaCard
         _titleY = Title.PositionY; _subY = H + 31.9f + drop;
         if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
+    }
+
+    /// <summary>Web Library: the 3 px focus ring sits outside the scaled art (not clipped inside it).</summary>
+    public bool OuterRing { get; init; }
+    private View? _outerRing, _outerGlow;
+
+    private void SetOuterRing(bool show)
+    {
+        if (_outerRing is null)
+        {
+            var rc = _t.Name == "dark" ? new Color(_t.BrandInk.R, _t.BrandInk.G, _t.BrandInk.B, 0.95f) : new Color(0.647f, 0.153f, 0.271f, 1);
+            _outerRing = new View { Size = new Size(W + 6, H + 6), CornerRadius = 15.48f, BorderlineWidth = 3, BorderlineColor = rc, BorderlineOffset = -1 };
+            Box.Add(_outerRing);
+            // web: the focus ring carries a soft ring-coloured glow, as the rail rings do; it sits on its own view behind the art
+            _outerGlow = new View { Size = new Size(W, H), CornerRadius = 12.48f, BoxShadow = new Shadow(22, new Color(rc.R, rc.G, rc.B, 0.5f), new Vector2(0, 1), new Vector2(0, 0)) };
+            Box.Add(_outerGlow); _outerGlow.LowerToBottom();
+        }
+        _outerGlow!.PositionX = Art.PositionX; _outerGlow.PositionY = Art.PositionY; _outerGlow.Scale = Art.Scale; _outerGlow.Show(show);
+        _outerRing.PositionX = Art.PositionX - 3; _outerRing.PositionY = Art.PositionY - 3; _outerRing.Scale = Art.Scale;
+        _outerRing.Show(show);
+        if (show) _outerRing.RaiseToTop();
     }
 
     private View? _stackNear, _stackFar, _shadow2, _sub;
@@ -179,8 +200,9 @@ internal sealed class MediaCard
         if (_ring is not null)
         {
             var showRing = focused && !(_playlistCollage && _playlistHasCovers) && _searchPlaylistFocusGlow is null;
-            _ring.Show(showRing);
-            if (showRing) _ring.RaiseToTop(); // the poster loads later and would otherwise sit on top of the ring
+            _ring.Show(showRing && !OuterRing);
+            if (showRing && !OuterRing) _ring.RaiseToTop(); // the poster loads later and would otherwise sit on top of the ring
+            if (OuterRing) SetOuterRing(showRing);
         }
         Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
     }
@@ -419,7 +441,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.Library(false, "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight);
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f };
     }
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>

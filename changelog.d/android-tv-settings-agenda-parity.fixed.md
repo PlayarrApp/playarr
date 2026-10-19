@@ -1,0 +1,1 @@
+- Android TV settings and calendar agenda follow the web more closely: the section list and panel have the web widths, the active segment is 1.025 times larger, and agenda cards for titles without a subtitle are shorter.

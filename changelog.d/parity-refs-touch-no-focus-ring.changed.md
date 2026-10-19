@@ -1,0 +1,1 @@
+- Parity web references: touch groups (iPad, Android tablet, iPhone, Android phone, HarmonyOS phone, Sailfish, Nura) now drop the web's mount focus before every screen shot, not only Home, so library, calendar, detail and settings refs no longer show a ring on the first card, the "#" index letter or the close button. TV and desktop refs keep their rings.

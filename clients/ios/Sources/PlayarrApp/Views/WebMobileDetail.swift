@@ -530,8 +530,8 @@ struct WMDetailPage: View {
                 )
             } label: {
                 pill(
-                    width: 127.7, height: 47, fill: Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255), /* web Play #a52745 */ glyph: "▶\u{FE0E}", glyphSize: 8.6,
-                    glyphColor: .white, label: "Play", labelSize: 11.2, labelColor: .white, gap: 11
+                    width: 127.7, height: 47, fill: WM.ink, /* web touch Play is the ink fill; the rose is its keyboard-focus state */ glyph: "▶\u{FE0E}", glyphSize: 8.6,
+                    glyphColor: WM.shell, label: "Play", labelSize: 11.2, labelColor: WM.shell, gap: 11
                 )
             }
             .buttonStyle(.plain)
@@ -645,7 +645,7 @@ struct WMDetailPage: View {
             WMFadingRail {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(season.episodes, id: \.id) { episode in
-                        episodeCard(episode, season: season.season, focused: focusedEpisode.map { $0 == episode.id } ?? (episode.id == selectedEpisode?.detail.id))
+                        episodeCard(episode, season: season.season, focused: focusedEpisode.map { $0 == episode.id } ?? false)
                     }
                 }
                 .padding(.horizontal, 16)

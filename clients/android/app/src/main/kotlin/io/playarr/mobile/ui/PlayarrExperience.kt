@@ -143,6 +143,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -433,15 +434,38 @@ internal val WebKicker = Color(0xFFCF3157)
 
 /** Fraction-sized hero backdrop pinned top-start: `fillMaxSize()` first would make the later fraction a no-op. */
 internal fun Modifier.heroBackdrop(isTelevision: Boolean, tvWidthFraction: Float, phoneHeightFraction: Float): Modifier =
-    if (isTelevision) {
+    if (isTelevision) composed {
+        val stage = LocalStageScale.current
+        if (stage == 1f) this.tvHeroBackdrop() else this.tabletHeroBackdrop(stage)
+    } else {
+        fillMaxWidth().fillMaxHeight(phoneHeightFraction).heroBackdropFade(false)
+    }
+
+/**
+ * Web `.tv-key-art img` at a tablet viewport: it starts at the nav clearance (`--tv-nav-edge` + 64 px item + 2 x 0.4rem
+ * + 2 px + 12 px), is `52vw` minus that clearance wide and 106% of the viewport height tall, scaled 1.04 from its left centre.
+ */
+private fun Modifier.tabletHeroBackdrop(stage: Float): Modifier = layout { measurable, constraints ->
+    val density = this
+    val widthCss = 1920f * stage
+    val clearanceCss = (widthCss * 0.022f).coerceIn(18f, 44f) + 64f + 12.8f + 2f + 12f
+    val start = (clearanceCss / stage * density.density).toInt()
+    val width = ((0.52f * widthCss - clearanceCss) / stage * density.density).toInt()
+    val height = (constraints.maxHeight * 1.06f).toInt()
+    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(width, height))
+    layout(width + start, constraints.maxHeight) { placeable.place(start, 0) }
+}
+    .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
+    .heroBackdropFade(true)
+
+private fun Modifier.tvHeroBackdrop(): Modifier =
+    run {
         // Web `.tv-key-art img`: 52% wide, 106% tall, scaled 1.04, masked to fade out over the last 28%.
         fillMaxWidth(0.52f)
             .wrapContentHeight(Alignment.Top, unbounded = true)
             .height(1144.8.dp)
             .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f }
             .heroBackdropFade(true)
-    } else {
-        fillMaxWidth().fillMaxHeight(phoneHeightFraction).heroBackdropFade(false)
     }
 
 /**
@@ -3086,8 +3110,7 @@ private fun ExperienceHomeScreen(
                                 homeView = homeView,
                                 selectedId = selectedId,
                                 active = rail.key == activeRailKey && (isTelevision || savedSelectedId != null),
-                                // Web phone Home (refs of 2026-10-17) draws the first On deck card selected from the start, its heading unscaled.
-                                markSelected = rail.key == activeRailKey,
+                                // Web touch Home refs (republished 2026-10-19) blur the default focus: no card is selected until one is touched.
                                 progressByWork = progressByWork,
                                 onSelected = { savedSelectedId = it.id; savedRailKey = rail.key },
                                 onClick = { work, onDeck ->
@@ -3496,6 +3519,8 @@ internal fun ExperienceMediaRail(
         val phoneFocusBottomHeadroom = with(density) { phoneFocusBottomHeadroomPx.toDp() }
         val trackModifier = if (isTelevision) {
             Modifier.fillMaxWidth().extendStart(trackGutter).padding(top = tvOuterTopPadding)
+                // Tablet static refs (1280 x 800): the cards sit 6.4 css px higher than the 1080 tuning gives.
+                .then(if (LocalStageScale.current != 1f) Modifier.offset(y = -(6.4f * cssDp).dp) else Modifier)
         } else {
             Modifier.fillMaxWidth().padding(end = 5.dp).layout { measurable, constraints ->
                 // Web `.tv-media-track-scroll` adds 24px above and 80px below the card for focus shadows, then uses
@@ -4100,7 +4125,7 @@ private fun LibraryFiltersDialog(
         onClose = onDismiss,
     ) {
         run {
-            Column(verticalArrangement = Arrangement.spacedBy(if (playarrTvDrawer()) 30.dp else 23.1.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(if (!playarrTvDrawer()) 23.1.dp else if (LocalTabletDrawerCssPx.current) webVu(22f, 2.8f, 34f) else 30.dp)) {
                 LibraryFilterChoices(
                     playarrString(PlayarrString.LibraryView),
                     availableViewModes,
@@ -4214,7 +4239,8 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
         focusedLanguageCode = null
         runCatching { triggerFocus.requestFocus() }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+    val summarySize = if (LocalTabletDrawerCssPx.current) webVw(8.96f, 0.62f, 11.84f).value else 11.84f
+    Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 13.dp)) {
         PlayarrTvDrawerHeading(title)
         Column(
             Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
@@ -4228,7 +4254,7 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
                     }.webFocusRing(triggerFocused, radius = 10.dp, offset = 2.dp).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
             ) {
-                Text(summary, color = WebInk, fontSize = 11.84.sp, lineHeight = 17.76.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(summary, color = WebInk, fontSize = summarySize.sp, lineHeight = (summarySize * 1.5f).sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(if (open) "⌃" else "⌄", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680))
             }
             if (open) {
@@ -4386,7 +4412,7 @@ private fun <T> LibraryFilterChoices(
     val language = LocalPlayarrLanguage.current
     if (playarrTvDrawer()) {
         // Web drawer segmented control: the segments share the row equally.
-        Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 13.dp)) {
             PlayarrTvDrawerHeading(title)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 values.forEach { value -> PlayarrChoice(label(value), value == selected, Modifier.weight(1f), icon = icon?.let { draw -> { colour -> draw(value, colour) } }) { onSelected(value) } }
@@ -6614,16 +6640,21 @@ private fun PhoneVideoDetailBody(
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
                 // the box to the font height, so pin the height and lift the text the way CSS centres it.
                 // Web phone `.tv-detail-title`: max-width 12ch, so a long title wraps to a second 36.66 px line (the stage-scaled tablet keeps one line).
-                // shortcut: no `text-wrap: balance`, so a three-word title may break unevenly; add a balancing pass if one shows up in the refs.
                 val phoneTitle = LocalStageScale.current == 1f
                 val titleStyle = WebTextStyle.merge(androidx.compose.ui.text.TextStyle(fontSize = 39.sp, fontWeight = FontWeight(560)))
                 val measurer = androidx.compose.ui.text.rememberTextMeasurer()
                 val density = LocalDensity.current
-                val titleMax = with(density) { (measurer.measure("0", titleStyle).size.width * 12).toDp() }
+                val titleMaxPx = measurer.measure("0", titleStyle).size.width * 12
+                val titleMax = with(density) { titleMaxPx.toDp() }
+                val spacedTitleStyle = titleStyle.merge(androidx.compose.ui.text.TextStyle(letterSpacing = (-2.808).sp))
+                val shownTitle = remember(work.title, titleMaxPx, phoneTitle) {
+                    if (!phoneTitle) work.title
+                    else balanceTitleWrap(work.title, titleMaxPx) { measurer.measure(it, spacedTitleStyle).size.width }
+                }
                 var titleLines by remember(work.title) { mutableStateOf(1) }
                 Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
                     Text(
-                        work.title, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
+                        shownTitle, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
                         onTextLayout = { titleLines = it.lineCount },
                         modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() },
@@ -7544,7 +7575,7 @@ internal fun SeriesEpisodeBrowser(
         }
         if (isTelevision) {
             // Tablet: the taller card block (art 8.25 dp lower, 270 dp card, 36.7 dp copy row) takes 17.25 dp from the gap, so the season headings stay where web puts them.
-            LazyColumn(Modifier.weight(1f), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
+            LazyColumn(Modifier.weight(1f).then(if (tabletDetail == 1f) Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) }) else Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical)), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
                 items(seasons, key = { it.season.id }) { content(it) }
                 if (credits.cast.isNotEmpty()) {
                     item { Box(Modifier.padding(top = 55.dp * tabletDetail)) { DetailCreditsRail(credits.cast) } }
@@ -7799,7 +7830,9 @@ internal fun MovieDetailBrowser(
         // Web `.tv-media-track` stack: no panel, sections start at y = 540 and repeat every 314.3 dp.
         Column(
             // Web's track stack starts at half the viewport height; a tablet's rails are 28 css px further apart than the 1080 gap gives.
-            modifier.run { val trackScroll = rememberScrollState(); this.playarrEdgeFades(trackScroll.canScrollBackward, trackScroll.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical).verticalScroll(trackScroll) }
+            modifier.run { val trackScroll = rememberScrollState(); this.playarrEdgeFades(trackScroll.canScrollBackward, trackScroll.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical,
+                // The page behind the stack (measured on the tablet refs): lighter than the library panel colour.
+                panel = if (LocalStageScale.current != 1f) PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) } else null).verticalScroll(trackScroll) }
                 .padding(top = 540.dp * homeStageVerticalScale(), bottom = 120.dp),
             // Web `--tv-track-gap-section` (8.4 vu) above Cast and Similar titles, every track here.
             verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) 96.dp else webVu(62f, 8.4f, 108f) - 1.dp),
@@ -7809,11 +7842,14 @@ internal fun MovieDetailBrowser(
                     title = playarrString(PlayarrString.DetailChapters),
                     count = playarrString(if (generatedChapters) PlayarrString.DetailSceneMarkersCount else PlayarrString.DetailChaptersCount, "count" to chapters.size),
                     state = tvRails.rowState(chaptersRail),
+                    tabletStartInset = 12.5.dp,
                 ) {
                     itemsIndexed(chapters, key = { _, it -> it.index }) { chapterIndex, chapter ->
                         val label = chapter.title ?: playarrString(PlayarrString.DetailChapterNumber, "number" to chapter.index + 1)
                         WebEpisodeCard(
                             modifier = Modifier.tvRailItem(tvRails, chaptersRail, chapterIndex),
+                            // Tablet static refs: the chapter label sits 7 px lower than an episode card's (measured on the 1280 x 800 web).
+                            copyTopInset = if (LocalStageScale.current != 1f) 13.6.dp else 0.dp,
                             onClick = { onPlay(mediaFileId, chapter.startMs, launchSettings) },
                             lead = formatPlayarrPlayerTime(chapter.startMs),
                             title = label,
@@ -7833,7 +7869,7 @@ internal fun MovieDetailBrowser(
                 }
             }
             if (credits.cast.isNotEmpty()) DetailCreditsRail(credits.cast, television = true)
-            if (similarWorks.isNotEmpty()) WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, LocalStageScale.current != 1f)
+            if (similarWorks.isNotEmpty()) WebSimilarTrack(similarWorks, serverUrl, accessToken, onOpenWork, tvRails, similarRail, LocalStageScale.current != 1f, tabletStartInset = 11.5.dp)
         }
         return
     }
@@ -7943,6 +7979,7 @@ private fun WebSimilarTrack(
     tvRails: TvRails,
     similarRail: Int,
     tablet: Boolean,
+    tabletStartInset: Dp = 0.dp,
 ) {
     WebMediaTrack(
         title = playarrString(PlayarrString.DetailSimilarTitles),
@@ -7951,7 +7988,7 @@ private fun WebSimilarTrack(
             "count" to similarWorks.size,
         ),
         state = tvRails.rowState(similarRail),
-        tabletStartInset = 0.dp,
+        tabletStartInset = tabletStartInset,
     ) {
         itemsIndexed(similarWorks, key = { _, it -> it.id }) { similarIndex, work ->
             if (!tablet) {
@@ -8005,6 +8042,7 @@ private fun WebEpisodeCard(
     modifier: Modifier = Modifier,
     cardWidth: Dp = 268.dp,
     artHeight: Dp = 150.8.dp,
+    copyTopInset: Dp = 0.dp,
     art: @Composable () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -8034,7 +8072,7 @@ private fun WebEpisodeCard(
                 )
             }
         }
-        Row(Modifier.height(28.8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = copyTopInset).height(28.8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (lead != null) {
                 Text(lead, color = WebInkMuted, fontSize = 8.832.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.5.dp))
             } else {
@@ -9838,7 +9876,8 @@ private fun ExperiencePlayerScreen(
         val pauseAt = parityPauseAtMs ?: return@LaunchedEffect
         if (state !is ExperienceLoad.Ready) return@LaunchedEffect
         // Parity captures: wait until playback has advanced past the first frame, then pause in place (a seek re-buffers).
-        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(100)
+        // Polled every 5 ms so the pause lands at the target, not up to 100 ms late (the web ref pauses at 0:02 exactly).
+        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(5)
         viewModel.player.pause()
     }
     LaunchedEffect(state, activeMediaFileId) {

@@ -68,7 +68,7 @@ namespace Playarr.Xbox.Views
                 CardFocus.Attach(WorksGridView, true, 4, CardFocus.LibraryLift);
             }
 
-            EdgeFade.AttachVertical(Root, WorksGridView);
+            EdgeFade.AttachVertical(Root, WorksGridView, null, true);
             CardActions.Attach(WorksGridView, id => _worksById.TryGetValue(id, out var work) ? work : null);
             Root.GotFocus += Root_GotFocus;
             Root.SizeChanged += (s, e) => UpdateLetterRailViewport(e.NewSize.Height);

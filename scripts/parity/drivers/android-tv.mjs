@@ -119,7 +119,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   const animationScaleKeys = ["window_animation_scale", "transition_animation_scale", "animator_duration_scale"];
 
   const parityLines = async () => (await adb("logcat", "-d", "-s", "PlayarrParity:I")).split("\n").map((l) => l.replace(/^.*PlayarrParity: /, "")).filter(Boolean);
-  // pause: the debug build pauses the player at its first frame (a still frame for the player-controls screen); off for playback cases.
+  // pause: the debug build pauses the player at 2 s (0:02, as the web ref; PARITY_PAUSE_AT_MS overrides), a still frame for the player-controls screen; off for playback cases.
   const launch = async (route, pause = true) => {
     await guardDeviceAccount();
     const requestedCaptureScreen = captureTarget ? (captureSurface ? "movies" : captureTarget) : null;
@@ -130,7 +130,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
     await shell("am", "start", "-n", `${pkg}/.MainActivity`, "--es", "parity_route", route,
       ...(parityClock ? ["--es", "parity_clock", parityClock] : []),
       ...(captureGeneration ? ["--es", "parity_capture_generation", captureGeneration, "--es", "parity_capture_screen", captureScreen] : []),
-      ...(pause ? ["--el", "parity_pause_at_ms", "500"] : []));
+      ...(pause ? ["--el", "parity_pause_at_ms", env.PARITY_PAUSE_AT_MS ?? "2000"] : []));
     if (parityClock) await waitForClockConsumption();
   };
   const waitForClockConsumption = async () => {
