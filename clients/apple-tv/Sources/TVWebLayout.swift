@@ -1002,7 +1002,7 @@ struct TVWorkDetailLoader: View {
     }
 }
 
-#if os(macOS)
+#if os(macOS) || os(tvOS)
 extension View {
     /// Web `[data-fade-axis][data-fade-end]` mask: a smoothstep ramp (0.844 / 0.5 / 0.156 at 25 / 50 / 75 %) over the page's edge-fade
     /// size, down to `endFloor` at the very edge. The start side is left alone: the web fades it only once content has scrolled past.

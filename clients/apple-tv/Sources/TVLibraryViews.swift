@@ -189,7 +189,7 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
-            #if os(macOS)
+            #if os(macOS) || os(tvOS)
             // Web `[data-fade-axis="y"][data-fade-end]` on `.tv-home-rails`: the last visible row dims to the floor at the page edge.
             .macEdgeFade(axis: .vertical, endFloor: 0.3)
             #endif
@@ -2016,7 +2016,7 @@ struct TVLibraryKindView: View {
                 startPoint: .top, endPoint: .bottom
             )
         )
-        #if os(macOS)
+        #if os(macOS) || os(tvOS)
         // Web end-side scroll fade (`--page-edge-fade-floor` .3 over 5.5 vh): the last row dims toward the screen edge. The diff
         // against the movies reference showed a band of mismatch along the foot of the last visible row.
         .macEdgeFade(axis: .vertical, endFloor: 0.3)
