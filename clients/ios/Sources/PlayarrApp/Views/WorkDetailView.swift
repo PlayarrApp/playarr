@@ -253,7 +253,7 @@ struct WorkDetailView: View {
                                 tabletMovieRails(detail, tabletScale: proxy.size.width / 1366)
                             }
                             if detail.work.kind == .movie || detail.work.kind == .series {
-                                tabletSimilarRail(tabletScale: proxy.size.width / 1366, gap: detail.work.kind == .series ? -46 : 53)
+                                tabletSimilarRail(tabletScale: proxy.size.width / 1366, gap: detail.work.kind == .series ? -46 : 42)
                             } else {
                                 discoveryContent
                             }
@@ -725,7 +725,7 @@ struct WorkDetailView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.top, 26 * tabletScale)
+                    .padding(.top, 37 * tabletScale)
                 }
                 .scrollIndicators(.hidden)
                 .webEdgeFade(.horizontal)
