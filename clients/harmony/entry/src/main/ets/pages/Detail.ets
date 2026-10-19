@@ -1717,7 +1717,7 @@ struct Detail {
   }
 
   private playInk(): ResourceColor {
-    return this.playFocused && !isTvMetrics() ? '#ffffff' : toResourceColor(isTvMetrics() ? activeColors().onAccent : activeColors().bg);
+    return toResourceColor(isTvMetrics() ? activeColors().onAccent : activeColors().bg); // web touch draws no focus fill
   }
 
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
@@ -1762,11 +1762,10 @@ struct Detail {
     .borderRadius(Radii.pillFull)
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor((enabled ? (this.playFocused && !isTvMetrics() ? PLAY_FOCUS_FILL : toResourceColor(isTvMetrics() ? activeColors().accent : activeColors().ink)) : toResourceColor(activeColors().inkMuted)))
+    .backgroundColor((enabled ? toResourceColor(isTvMetrics() ? activeColors().accent : activeColors().ink) : toResourceColor(activeColors().inkMuted)))
     .opacity((enabled ? 1 : 0.6))
     .focusable(enabled)
-    .defaultFocus(enabled && !isTvMetrics())
-    .scale(this.playFocused && !isTvMetrics() ? { x: 1.06, y: 1.06 } : { x: 1, y: 1 })
+    .scale({ x: 1, y: 1 }) // web touch: no default focus, so no focused fill, ring or growth on the phone's Play
     .onFocus((): void => {
       this.playFocused = true;
       this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration)();
