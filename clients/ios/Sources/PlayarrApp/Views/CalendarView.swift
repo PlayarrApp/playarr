@@ -231,7 +231,8 @@ struct CalendarView: View {
 
     private func roundButton(_ glyph: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            WMText(glyph, 11.52, 400, color: WM.inkSoft, lh: 17.28)
+            WMText(glyph, 7.7, 400, color: WM.inkSoft, lh: 17.28) // web arrow glyph: 0.67 times the fallback size
+                .offset(y: 1.8)
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(WM.page))
                 .overlay(Circle().stroke(WM.line.opacity(0.14), lineWidth: 1))
