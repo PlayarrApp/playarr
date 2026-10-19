@@ -490,14 +490,14 @@ struct Profiles {
               .fontSize(this.pick(17.28, 12))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-              .margin({ top: this.pick(6, 10.8) })
+              .margin({ top: this.pick(6, profile.is_current ? 5.5 : 10.8) })  // web phone: the lifted current avatar pulls its name up
             Text(this.statusLabel(profile)).fontFamily(nunito(700))
               .fontSize(this.pick(9.408, 7.3))
               .fontWeight(FontWeight.Bold)
               .letterSpacing(this.pick(0.423, 0.33))
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(activeColors().inkSoft))
-              .margin({ top: this.pick(9, 12) })
+              .margin({ top: this.pick(9, profile.is_current ? 14 : 12) })
             if (profile.is_current) {
               Row({ space: tv(9) }) {
                 this.tvActionButton($r('app.media.nav_settings'), '', BRAND_PINK, () => {
@@ -507,7 +507,7 @@ struct Profiles {
                   this.handleSignOut();
                 })
               }
-              .margin({ top: tv(21) })
+              .margin({ top: tv(21) + (isTvMetrics() ? 0 : 3.8) })
             }
           }
           .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
