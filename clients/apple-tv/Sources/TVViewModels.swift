@@ -265,15 +265,10 @@ final class TVWorkDetailViewModel {
             let loaded = try await apiClient.fetchWork(id: workID)
             detail = loaded
             state = .loaded
-<<<<<<< ours
-            similar = (try? await apiClient.fetchSimilarWorks(id: workID, limit: 12)) ?? []
-            if similar.isEmpty { similar = await genreRankedSimilar(to: loaded.work) }
-=======
             let embedded = ((try? await apiClient.fetchSimilarWorks(id: workID, limit: 12)) ?? [])
                 .filter { $0.id != workID && ($0.kind == .movie || $0.kind == .series) }
             // Web `WorkDetail` fallback: no similar results (no embeddings, or none stored) lists library titles ranked by genre.
             similar = embedded.isEmpty ? await genreFallback(for: loaded.work) : embedded
->>>>>>> theirs
             cast = (try? await apiClient.fetchWorkCredits(id: workID).cast) ?? []
             if loaded.work.kind == .series {
                 availabilityLag = (try? await apiClient.fetchAvailabilityLag(id: workID)) ?? nil
