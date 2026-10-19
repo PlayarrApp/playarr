@@ -40,6 +40,17 @@ struct TVWorkDetailView: View {
 
     var body: some View {
         content
+            #if os(macOS)
+            .overlay(alignment: .bottomTrailing) {
+                // Web: the Similar Titles cards fade into the page over the last 55 px (about 70 % at the edge).
+                if !viewModel.similar.isEmpty {
+                    LinearGradient(colors: [DesignTokens.Color.backgroundBase.opacity(0), DesignTokens.Color.backgroundBase.opacity(0.72)],
+                                   startPoint: .top, endPoint: .bottom)
+                        .frame(width: 1038.4, height: 55)
+                        .allowsHitTesting(false)
+                }
+            }
+            #endif
             .alert("Downloads", isPresented: $showDownloadNote) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -324,12 +335,23 @@ struct TVWorkDetailView: View {
         .frame(width: 156, height: 64)
         .background(pillBackground(true, light: light))
         // Web: the focused Play (the default focus on load) is a darker crimson (165, 39, 69) inside the control ring
-        // (3 px, 2 px offset). Live focus draws its own look; the frozen capture has none, so it gets this one.
-        .background { if focusedLook { Capsule().fill(Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255)) } }
-        .overlay {
-            if focusedLook {
-                Capsule().stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5)
-            }
+        // (3 px, 2 px offset). The frozen capture has no focus, so it gets this look; on the Mac it follows the real focus.
+        .modifier(PlayFocusLook(forced: focusedLook))
+    }
+
+    private struct PlayFocusLook: ViewModifier {
+        let forced: Bool
+        @Environment(\.isFocused) private var isFocused
+
+        func body(content: Content) -> some View {
+            #if os(macOS)
+            let on = forced || isFocused
+            #else
+            let on = forced
+            #endif
+            return content
+                .background { if on { Capsule().fill(Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255)) } }
+                .overlay { if on { Capsule().stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5) } }
         }
     }
 
@@ -351,6 +373,9 @@ struct TVWorkDetailView: View {
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused($playFocused)
+            #if os(macOS)
+            .macPreferredFocus() // web: Play holds the focus when the film page opens
+            #endif
             .placed(x: x, y: y, w: 156, h: 64)
         } else {
             label.placed(x: x, y: y, w: 156, h: 64)

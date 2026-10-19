@@ -534,6 +534,15 @@ struct TVDrawer<Content: View>: View {
     /// The web close button is a circle (the 2026-10-15 refs of every Apple device).
     private static var closeRadius: CGFloat { 25 }
 
+    /// macOS: the web sections start 4 pt lower than the tvOS measure (Filters and Actions refs, 2026-10-19).
+    private var drawerContentTop: CGFloat {
+        #if os(macOS)
+        38
+        #else
+        34
+        #endif
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 0) {
@@ -578,7 +587,7 @@ struct TVDrawer<Content: View>: View {
             }
             .padding(.top, 54)
             content()
-                .padding(.top, 34)
+                .padding(.top, drawerContentTop)
             Spacer(minLength: 0)
         }
         .padding(.leading, 46)
@@ -600,7 +609,16 @@ struct TVDrawer<Content: View>: View {
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)
         #endif
         .onExitCommand(perform: onClose)
-        .task { if !focusesContent { closeFocused = true } }
+        .task {
+            if !focusesContent { closeFocused = true }
+            #if os(macOS)
+            // The grid card may still hold the key window's focus on the first frames: ask again once the layer has settled.
+            for _ in 0..<3 where !focusesContent {
+                try? await Task.sleep(for: .milliseconds(500))
+                closeFocused = true
+            }
+            #endif
+        }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onAppear { TVParityState.setPanel(title) }
         .onDisappear { TVParityState.setPanel(nil) }

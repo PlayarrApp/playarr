@@ -1619,6 +1619,15 @@ struct TVLibraryKindView: View {
     /// The title whose actions drawer is open: the preview keeps it (web), and no card is lifted or ringed meanwhile.
     @Environment(\.actionsWorkID) private var actionsWorkID
 
+    /// macOS: the open Filters drawer is modal and owns the ring (web), so no grid card keeps its selection ring behind it.
+    private var gridRingHidden: Bool {
+        #if os(macOS)
+        filtersOpen
+        #else
+        false
+        #endif
+    }
+
     private var selected: Work? {
         if let actionsWorkID, let match = items.first(where: { $0.id == actionsWorkID }) { return match }
         if let selectedID, let match = items.first(where: { $0.id == selectedID }) {
@@ -2041,7 +2050,7 @@ struct TVLibraryKindView: View {
         artIncludesDot: Bool,
         gridPosition: TVParityGridPosition? = nil
     ) -> some View {
-        let isSelected = selected?.id == work.id && actionsWorkID == nil
+        let isSelected = selected?.id == work.id && actionsWorkID == nil && !gridRingHidden
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
                             parityGridPosition: gridPosition) {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
@@ -2125,7 +2134,7 @@ struct TVLibraryKindView: View {
     /// Web list view row (`.tv-list-card`): a 172.8 x 97.2 thumbnail, the title 14.98/610 and "Genres · Year" 9.6 beside
     /// it; rows 121.9 apart. Same focus look and actions as the cards.
     private func libraryRow(_ work: Work) -> some View {
-        let isSelected = selected?.id == work.id && actionsWorkID == nil
+        let isSelected = selected?.id == work.id && actionsWorkID == nil && !gridRingHidden
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil) {
             HStack(alignment: .center, spacing: 30) {
                 TVWorkArt(work: work, apiClient: environment.apiClient)
