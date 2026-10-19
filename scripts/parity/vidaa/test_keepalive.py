@@ -27,6 +27,14 @@ class AfterMiss(unittest.TestCase):
         self.assertEqual(waits, [15, 30, 60, 120])
 
 
+class DroppedNote(unittest.TestCase):
+    def test_note_only_when_the_tv_dropped_us(self):
+        from unittest import mock
+        self.assertIsNone(keepalive.dropped_note(mock.Mock(dropped_rc=None)))
+        note = keepalive.dropped_note(mock.Mock(dropped_rc=7))
+        self.assertIn("TV DROPPED our session (disconnect rc=7)", note)
+
+
 class Probe(unittest.TestCase):
     def test_alive_follows_applist_not_state(self):
         from unittest import mock

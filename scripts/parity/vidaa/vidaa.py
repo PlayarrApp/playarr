@@ -184,6 +184,8 @@ class Tv:
         self.c.on_connect = self._on_connect
         self.c.on_message = self._on_message
         self.c.on_subscribe = self._on_subscribe
+        self.c.on_disconnect = self._on_disconnect
+        self.closing, self.dropped_rc = False, None
         self._state_mid = None
         self.subacks = {}
 
@@ -206,6 +208,10 @@ class Tv:
                       "/remoteapp/mobile/broadcast/ui_service/volume"):
                 c.subscribe(t)
         self.connected.set()
+
+    def _on_disconnect(self, c, u, rc):
+        if not self.closing:  # the TV (or the network) ended the session, not us
+            self.dropped_rc = rc
 
     def _on_subscribe(self, c, u, mid, granted):
         self.subacks[mid] = bool(granted) and granted[0] != 128
@@ -230,6 +236,7 @@ class Tv:
         return self
 
     def close(self):
+        self.closing = True
         self.c.loop_stop()
         self.c.disconnect()
 

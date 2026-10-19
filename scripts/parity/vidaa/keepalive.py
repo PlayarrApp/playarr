@@ -69,6 +69,16 @@ def after_miss(misses, backoff, now):
     return True, backoff, now + backoff
 
 
+def dropped_note(tv):
+    """Log line when the TV ended our session with no local cause (another MQTT client using our client id takes the session over;
+    the TV does not reveal that client's address), else None."""
+    rc = getattr(tv, "dropped_rc", None)
+    if rc is None:
+        return None
+    return (f"TV DROPPED our session (disconnect rc={rc}) with no local cause; line this time up with other MQTT clients "
+            f"of the TV (for example the Ergon VIDAA connector), a second client with our client id takes the session over")
+
+
 def probe(vidaa, tv):
     """(alive, foreground ok, state). Liveness is an applist reply: the TV answers that reliably but often ignores gettvstate."""
     return tv.apps() is not None, *vidaa.foreground_ok(tv)
@@ -120,6 +130,13 @@ def main():
     log(f"start interval={INTERVAL}s host={os.environ.get('VIDAA_HOST')} socket={broker.sock_path()}")
     while not stop:
         try:
+            note = dropped_note(S.tv) if S.tv else None
+            if note:
+                log(note)
+                drop("dropped by the TV")
+                backoff = next_backoff(backoff)
+                retry_at = time.time() + backoff
+                log(f"retry in {backoff}s")
             if S.tv is None and time.time() >= retry_at:
                 try:
                     new = vidaa.connect(owner=True)
