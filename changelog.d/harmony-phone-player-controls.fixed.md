@@ -1,0 +1,1 @@
+- HarmonyOS phone: the player controls follow the web's control set and layout (previous, play, next, two volume, subtitles and queue icons; quality, info, devices and full screen below).

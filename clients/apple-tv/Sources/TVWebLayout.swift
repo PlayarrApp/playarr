@@ -171,8 +171,7 @@ struct TVPageHeader: View {
                         subtitle
                     }
                 }
-                #if os(macOS)
-                // Static web refs: title centred at y 80, hairline at 112, subtitle centred at 126 (tvOS keeps its stack below).
+                // Static web refs: title centred at y 80, hairline at 112, subtitle centred at 126.
                 VStack(alignment: .leading, spacing: 0) {
                     titleText.frame(height: 50).overlay(alignment: .bottom) {
                         Rectangle().fill(lineStrong).frame(height: 1).offset(y: 5.8)
@@ -180,15 +179,6 @@ struct TVPageHeader: View {
                     if let subtitle { subtitle.padding(.top, 12.8) }
                 }
                 .frame(height: 50, alignment: .top)
-                #else
-                VStack(alignment: .leading, spacing: 4) {
-                    // Web: a hairline under the title where the subtitle wraps below it.
-                    titleText.overlay(alignment: .bottom) {
-                        Rectangle().fill(lineStrong).frame(height: 1).offset(y: 8)
-                    }
-                    if let subtitle { subtitle }
-                }
-                #endif
             }
             .frame(width: 466 - 226.6, alignment: .leading)
             .placed(x: 226.6, y: 56.2, h: 50)

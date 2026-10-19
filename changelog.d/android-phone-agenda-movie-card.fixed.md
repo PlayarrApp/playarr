@@ -1,0 +1,1 @@
+- Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.

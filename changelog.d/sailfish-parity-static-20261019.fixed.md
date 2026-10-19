@@ -1,0 +1,1 @@
+- Sailfish: Home rails use the web's 170 px cards, title pages lead with the next-up episode on series, wrap long titles like the web and show Chapters (generated "Chapter 1" fallback) and Similar Titles (genre-ranked library fallback) when the server returns none.
