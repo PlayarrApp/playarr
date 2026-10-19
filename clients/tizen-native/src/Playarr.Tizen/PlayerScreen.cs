@@ -424,6 +424,8 @@ internal sealed class PlayerScreen : IPage
     {
         var frame = new ImageView(path) { Size = _root.Size };
         _root.Add(frame); frame.LowerToBottom();
+        // the web capture shows the clip buffered to about 16 s: a lighter segment on the seek track, under the played part
+        _controls.Add(Ui.Box(TrackX, TrackY, 475, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
     }
 
     public (bool Playing, long PositionMs) Status
