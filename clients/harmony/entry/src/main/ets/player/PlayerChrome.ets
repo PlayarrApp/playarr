@@ -602,18 +602,7 @@ export struct PlayerChrome {
           this.progressTrack(tv(TV_TRACK_HEIGHT))
         }
         Row({ space: tv(TV_ROW_GAP) }) {
-          ChromeButton({
-            label: '\u23EE',
-            circle: true,
-            active: this.canPrevious,
-            buttonWidth: tv(TV_SEEK_SIZE),
-            buttonHeight: tv(TV_SEEK_SIZE),
-            fontSize: tv(16),
-            onActivate: this.onPrevious,
-            notifyFocusChanged: ((focused: boolean): void => {
-              this.setChildFocused(focused);
-            }),
-          })
+          this.phoneSkip(true, this.canPrevious, this.onPrevious, tv(TV_SEEK_SIZE))
           ChromeButton({
             showGlyph: true,
             circle: true,
@@ -627,18 +616,7 @@ export struct PlayerChrome {
               this.setChildFocused(focused);
             }),
           })
-          ChromeButton({
-            label: '\u23ED',
-            circle: true,
-            active: this.canNext,
-            buttonWidth: tv(TV_SEEK_SIZE),
-            buttonHeight: tv(TV_SEEK_SIZE),
-            fontSize: tv(16),
-            onActivate: this.onNext,
-            notifyFocusChanged: ((focused: boolean): void => {
-              this.setChildFocused(focused);
-            }),
-          })
+          this.phoneSkip(false, this.canNext, this.onNext, tv(TV_SEEK_SIZE))
           if (this.isLive()) {
             Text('LIVE').fontFamily(nunito(700)).fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           } else {
@@ -727,7 +705,7 @@ export struct PlayerChrome {
 
   /** Previous / next as web draws them: a bare icon (a bar and a triangle), no circle; dimmed while there is nothing to skip to. */
   @Builder
-  private phoneSkip(previous: boolean, active: boolean, onTap: () => void): void {
+  private phoneSkip(previous: boolean, active: boolean, onTap: () => void, box: number): void {
     Row({ space: 1 }) {
       if (!previous) {
         Polygon({ width: 10, height: 12 }).points([[0, 0], [0, 12], [10, 6]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(10).height(12)
@@ -737,8 +715,8 @@ export struct PlayerChrome {
         Polygon({ width: 10, height: 12 }).points([[10, 0], [10, 12], [0, 6]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(10).height(12)
       }
     }
-    .width(PHONE_SEEK_SIZE)
-    .height(PHONE_SEEK_SIZE)
+    .width(box)
+    .height(box)
     .justifyContent(FlexAlign.Center)
     .opacity(active ? 1 : 0.35)
     .focusable(active)
@@ -774,7 +752,7 @@ export struct PlayerChrome {
           Text('LIVE').fontFamily(nunito(700)).fontSize(PHONE_TIME_FONT_SIZE).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
         }
         Row() {
-          this.phoneSkip(true, this.canPrevious, this.onPrevious)
+          this.phoneSkip(true, this.canPrevious, this.onPrevious, PHONE_SEEK_SIZE)
           ChromeButton({
             showGlyph: true,
             circle: true,
@@ -788,7 +766,7 @@ export struct PlayerChrome {
               this.setChildFocused(focused);
             }),
           })
-          this.phoneSkip(false, this.canNext, this.onNext)
+          this.phoneSkip(false, this.canNext, this.onNext, PHONE_SEEK_SIZE)
           this.phoneButton(this.muted ? 'Muted' : 'Vol', PHONE_SEEK_SIZE, 10, true, this.onToggleMute)
           this.phoneButton('-10s', PHONE_SEEK_SIZE, 10, true, this.onSeekBack)
           this.phoneButton('+10s', PHONE_SEEK_SIZE, 10, true, this.onSeekForward)
