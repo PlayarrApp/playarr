@@ -6645,15 +6645,10 @@ private fun PhoneVideoDetailBody(
                 val density = LocalDensity.current
                 val titleMaxPx = measurer.measure("0", titleStyle).size.width * 12
                 val titleMax = with(density) { titleMaxPx.toDp() }
-                // Web `text-wrap: balance`: a title that wraps breaks where its longer line is shortest.
                 val spacedTitleStyle = titleStyle.merge(androidx.compose.ui.text.TextStyle(letterSpacing = (-2.808).sp))
                 val shownTitle = remember(work.title, titleMaxPx, phoneTitle) {
-                    val words = work.title.split(' ')
-                    fun width(text: String) = measurer.measure(text, spacedTitleStyle).size.width
-                    if (!phoneTitle || words.size < 2 || width(work.title) <= titleMaxPx) work.title
-                    else (1 until words.size)
-                        .minBy { maxOf(width(words.take(it).joinToString(" ")), width(words.drop(it).joinToString(" "))) }
-                        .let { words.take(it).joinToString(" ") + "\n" + words.drop(it).joinToString(" ") }
+                    if (!phoneTitle) work.title
+                    else balanceTitleWrap(work.title, titleMaxPx) { measurer.measure(it, spacedTitleStyle).size.width }
                 }
                 var titleLines by remember(work.title) { mutableStateOf(1) }
                 Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
