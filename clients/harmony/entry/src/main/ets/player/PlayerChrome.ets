@@ -708,10 +708,11 @@ export struct PlayerChrome {
           if (this.qualityLabel.length > 0) {
             // web: the HD badge and the negotiated quality's name, between the queue and info buttons
             Row({ space: tv(12) }) {
-              Text('HD').fontFamily(nunito(700)).fontSize(tv(8.5)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              Text(this.qualityLabel).fontFamily(nunito(700)).fontSize(tv(10.5)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+              Text('HD').fontFamily(nunito(600)).fontSize(tv(7.5)).fontWeight(FontWeight.Medium).fontColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.85))
+              Text(this.qualityLabel).fontFamily(nunito(700)).fontSize(tv(10.4)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
             }
             .width(tv(161))
+            .padding({ left: tv(10) })
             .justifyContent(FlexAlign.Center)
             .onClick(() => {
               this.onOpenQuality();
