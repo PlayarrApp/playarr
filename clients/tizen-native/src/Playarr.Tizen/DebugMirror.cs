@@ -133,6 +133,16 @@ internal sealed class DebugMirror
                 await WriteJson(ctx, await signOutDone.Task);
                 return;
             }
+            if (path == "/video-frame")
+            {
+                // parity capture: the driver posts the static clip's 2 s frame (PNG); the player shows it behind the controls, as web's captures do
+                var file = Path.Combine(Path.GetTempPath(), "parity-video-frame.png");
+                using (var body = new MemoryStream()) { await ctx.Request.InputStream.CopyToAsync(body); await File.WriteAllBytesAsync(file, body.ToArray()); }
+                var shown = new TaskCompletionSource<object>();
+                SynchronizationContextHolder.Post(() => { try { (_shell().Page as PlayerScreen)?.ShowStandInFrame(file); shown.SetResult(new { ok = true }); } catch (Exception e) { shown.SetException(e); } });
+                await WriteJson(ctx, await shown.Task);
+                return;
+            }
             var done = new TaskCompletionSource<object>();
             SynchronizationContextHolder.Post(() =>
             {

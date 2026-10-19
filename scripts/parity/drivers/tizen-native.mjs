@@ -5,6 +5,9 @@
 //   PLAYARR_TIZEN_DISPLAY (X display of the emulator window, default :25), PLAYARR_TIZEN_WINDOW (X window id when the window is not at 0,0
 //   of its display, default root), PLAYARR_SDB.
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { assertDeviceTestIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 import { captureWallTime } from "../capture-timezone.mjs";
 
@@ -17,8 +20,8 @@ const base = `http://127.0.0.1:${PORT}`;
 const KEY_MS = Number(process.env.PLAYARR_TIZEN_KEY_MS ?? 900);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function call(method, path) {
-  const res = await fetch(base + path, { method, body: method === "POST" ? "" : undefined, signal: AbortSignal.timeout(30000) });
+async function call(method, path, body) {
+  const res = await fetch(base + path, { method, body: method === "POST" ? (body ?? "") : undefined, signal: AbortSignal.timeout(30000) });
   if (!res.ok) throw new Error(`debug mirror ${path}: HTTP ${res.status}`);
   return res.json();
 }
@@ -114,6 +117,8 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       await readState();
       if (state.playing) throw new Error("player did not pause");
       await request("POST", "/blur");
+      // The emulator screenshot may not carry the video plane; stand in the paused static clip frame (2 s, as the webOS real-TV capture does) behind the controls.
+      await request("POST", "/video-frame", readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../fixtures/static-clip-2s.png")));
       await delay(2500); // a paused frame can still repaint (seek settle) for a moment
     },
     async home() { await verifyAccount(); await request("POST", "/route?path=/"); await this.settle(5000); },
