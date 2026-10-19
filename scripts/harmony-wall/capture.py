@@ -309,7 +309,7 @@ def extra_screens(folder):
     """Screens a click cannot reach in one step: the actions drawer (long press on a card) and the player controls."""
     try:
         route("library:movie", 15)
-        get("/hold", x=946, y=254); time.sleep(4); snap("actions", folder)
+        get("/hold", x=1299, y=254); time.sleep(4); snap("actions", folder)  # the web ref holds the second card (Amber Cathedral 18)
         key("back"); time.sleep(3)
     except SystemExit:
         print("actions not captured", flush=True)

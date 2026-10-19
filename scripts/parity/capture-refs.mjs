@@ -106,7 +106,7 @@ const stateHash = captureSnapshot.hash;
 // Capture.
 const startedAt = new Date().toISOString();
 const driverUrl = pathToFileURL(join(here, "drivers", "web.mjs")).href;
-const screens = suite.screens.filter((s) => manifest.screens.includes(s.id) && wantScreens.includes(s.id));
+const screens = [...suite.screens, ...(manifest.extraScreens ?? [])].filter((s) => manifest.screens.includes(s.id) && wantScreens.includes(s.id));
 const captureRowsByGroup = new Map();
 for (const name of groups) {
   const g = manifest.groups[name];

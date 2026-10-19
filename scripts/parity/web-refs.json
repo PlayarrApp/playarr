@@ -1,5 +1,5 @@
 {
-  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. player-controls is taken by the web driver (playerControls) on the static server: clip paused at 2 s, video visible, focus dropped. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces. noDownloads: Downloads hidden in the web client (device cannot store downloads; Roku).",
+  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. player-controls is taken by the web driver (playerControls) on the static server: clip paused at 2 s, video visible, focus dropped. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces. noDownloads: Downloads hidden in the web client (device cannot store downloads; Roku). extraScreens: ref-only screens that are not in suite.json (the device suites do not run them); each has an id and a route and is captured like a route screen.",
   "date": "20261018-static",
   "groups": {
     "tv": {
@@ -177,6 +177,7 @@
     "filters",
     "profiles",
     "actions",
+    "calendar-link",
     "player-controls"
   ],
   "themeless": ["player-controls"],
@@ -187,6 +188,13 @@
   },
   "dialogScreens": [
     "filters",
-    "actions"
+    "actions",
+    "calendar-link"
+  ],
+  "extraScreens": [
+    {
+      "id": "calendar-link",
+      "route": "/calendar?panel=link"
+    }
   ]
 }
