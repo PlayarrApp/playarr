@@ -1,1 +1,0 @@
-- Android phone player controls: buttons are 44 dp, Previous and Next dim when the queue has one item, and the time and button rows are spaced as on the web.
