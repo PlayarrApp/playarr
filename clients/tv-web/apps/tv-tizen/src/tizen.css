@@ -147,6 +147,21 @@ html[data-platform="tv-tizen"] .calendar-line-text {
   min-height: 1.2em;
 }
 
+/* The flooring also drops the half-leading, so the glyphs sit up to half a pixel above web inside the restored box. Padding of half the lost fraction (the TV viewport is fixed at 1920, so the sizes are constants) puts the baseline back; min-height absorbs it, the box does not grow. */
+html[data-platform="tv-tizen"] .app-clock-time { padding-top: 0.46px; }
+html[data-platform="tv-tizen"] .app-nav-label { padding-top: 0.42px; }
+html[data-platform="tv-tizen"] .page-header-detail { padding-top: 0.35px; }
+html[data-platform="tv-tizen"] .tv-provider { padding-top: 0.22px; }
+html[data-platform="tv-tizen"] .tv-preview-meta > span { padding-top: 0.29px; }
+html[data-platform="tv-tizen"] .tv-title-card-copy strong { padding-top: 0.43px; }
+html[data-platform="tv-tizen"] .tv-episode-copy strong { padding-top: 0.14px; }
+html[data-platform="tv-tizen"] .tv-media-track-heading h2 { padding-top: 0.25px; }
+html[data-platform="tv-tizen"] .calendar-entry-title,
+html[data-platform="tv-tizen"] .calendar-entry-subtitle { padding-top: 0.4px; }
+html[data-platform="tv-tizen"] .settings-option-copy strong { padding-top: 0.2px; }
+html[data-platform="tv-tizen"] .appearance-setting-heading h3 { padding-top: 0.3px; }
+html[data-platform="tv-tizen"] .appearance-setting-heading p { padding-top: 0.17px; }
+
 /* Status pill: the same flooring hits its 1.4 line box; border-box min-height of the unrounded line, vertical padding (0.18rem x 2) and 2px of border. */
 html[data-platform="tv-tizen"] .status-pill {
   min-height: calc(1.4em + 0.36rem + 2px);
