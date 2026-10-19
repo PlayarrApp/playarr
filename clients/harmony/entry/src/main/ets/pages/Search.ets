@@ -453,7 +453,7 @@ export struct SearchScreen {
           })
       }
       .width('100%')
-      .height(56)
+      .height(60) // web phone field: 60 vp, 18 vp below the header
       .padding({ left: 20, right: 20 })
       .borderRadius(28)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
@@ -487,29 +487,29 @@ export struct SearchScreen {
           this.touchWidthVp = Number(area.width);
         })
       } else {
-        Row({ space: 20 }) {
+        Row({ space: 22 }) {
           Stack() {
             Image($r('app.media.nav_search'))
-              .width(30)
-              .height(30)
+              .width(26)
+              .height(26)
               .colorFilter(tintFilter(BRAND_PINK))
           }
-          .width(72)
-          .height(72)
-          .borderRadius(36)
+          .width(84)
+          .height(84)
+          .borderRadius(42)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
-          Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunito(500))
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
+          Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunito(600))
+            .fontSize(11)
+            .fontWeight(600)
             .fontColor(toResourceColor(activeColors().ink))
         }
-        .padding({ top: 12 })
+        .padding({ top: 4 })
       }
     }
     .width('100%')
     .height('100%')
-    .padding({ left: 16, right: 16 })
+    .padding({ left: 16, right: 16, top: 18 })
     .alignItems(HorizontalAlign.Start)
   }
 
