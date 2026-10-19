@@ -22,6 +22,8 @@ const ROW_PADDING_H: number = 18;
 const GLYPH_COLUMN: number = 42;
 const GLYPH_SIZE: number = 19.5;
 const LABEL_SIZE: number = 19.4;
+// Phone: the web glyph sizes measured on the static refs, as a factor of GLYPH_SIZE (the fallback fonts draw each glyph differently).
+const PHONE_GLYPH_SCALE: Record<string, number> = { '\u21E9': 0.86, '\uFF0B': 1.9, '\u2713': 0.78, '\u25CB': 0.62 };
 // web phone label measured on the static refs: 18% narrower than the TV's 19.4 at the Previewer's Nunito widths
 const PHONE_LABEL_SIZE: number = 16.6;
 
@@ -41,7 +43,7 @@ export struct ActionList {
         Row() {
           Text(action.glyph).fontFamily(nunito(400))
             .width(tv(GLYPH_COLUMN))
-            .fontSize(tv(GLYPH_SIZE))
+            .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))
             .fontColor(toResourceColor(BRAND_PINK))
           Text(action.label).fontFamily(nunito(700))
             .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)

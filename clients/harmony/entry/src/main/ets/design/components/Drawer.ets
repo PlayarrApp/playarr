@@ -32,10 +32,10 @@ const TOUCH_KICKER_GAP: number = 7.3;
 const TOUCH_CLOSE_RING_OUTSET: number = 5.3;
 const TOUCH_CLOSE_LIFT: number = 1.4;
 const TOUCH_TITLE_SIZE: number = 24;
-const TOUCH_TITLE_LETTER_SPACING: number = -0.8;
+const TOUCH_TITLE_LETTER_SPACING: number = -2.1; // web's title is 12% narrower than this font draws at -0.8
 const TOUCH_BODY_RING_ROOM: number = 6;
 const TOUCH_CLOSE_SIZE: number = 43;
-const TOUCH_CLOSE_GLYPH_SIZE: number = 20;
+const TOUCH_CLOSE_GLYPH_SIZE: number = 17;
 const SHADOW_COLOR: string = 'rgba(40, 26, 24, 0.24)';
 
 @Component
@@ -79,9 +79,9 @@ export struct Drawer {
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
         Stack() {
-          Text('×').fontFamily(nunito(700))
+          Text('×').fontFamily(nunito(isTvMetrics() ? 700 : 500))
             .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
-            .fontWeight(FontWeight.Bold)
+            .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))
             .textAlign(TextAlign.Center)
             .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
