@@ -333,10 +333,10 @@ struct TVWorkDetailView: View {
         }
         .foregroundStyle(light ? DesignTokens.Color.backgroundBase : Color.white)
         .frame(width: 156, height: 64)
-        .background(pillBackground(true, light: light))
         // Web: the focused Play (the default focus on load) is a darker crimson (165, 39, 69) inside the control ring
         // (3 px, 2 px offset). The frozen capture has no focus, so it gets this look; on the Mac it follows the real focus.
         .modifier(PlayFocusLook(forced: focusedLook))
+        .background(pillBackground(true, light: light))
     }
 
     private struct PlayFocusLook: ViewModifier {
