@@ -5,6 +5,18 @@ import XCTest
 
 /// Locks the pieces of the web parity work that are pure functions.
 final class TVWebParityTests: XCTestCase {
+    /// Web genre fallback for Similar Titles: shared genres first, never the title itself or an artist.
+    @MainActor
+    func testSimilarFallbackRanksSharedGenresFirst() {
+        func work(_ title: String, _ genres: [String], kind: WorkKind = .movie) -> Work {
+            Work(id: UUID(), kind: kind, title: title, sortTitle: title, genres: genres, addedAt: Date(), monitored: false, availability: .available)
+        }
+        let target = work("T", ["Drama", "Comedy"])
+        let both = work("Both", ["comedy", "Drama"]), one = work("One", ["Drama"]), none = work("None", []), artist = work("A", ["Drama"], kind: .artist)
+        let ranked = TVWorkDetailViewModel.rankSimilar(target: target, candidates: [none, one, target, artist, both, one])
+        XCTAssertEqual(ranked.map(\.title), ["Both", "One", "None"])
+    }
+
     /// Web `orderWorks`: numeric, case-insensitive order on the sort title ("2" before "10").
     func testLibraryTitleOrderIsNumericLikeTheWeb() {
         func work(_ title: String) -> Work {

@@ -220,6 +220,23 @@ final class TVWorkDetailViewModel {
         self.apiClient = apiClient
     }
 
+    /// Web `WorkDetail` fallback when the server has no similar list: library titles ranked by shared genres, then kind and year.
+    static func rankSimilar(target: Work, candidates: [Work], limit: Int = 20) -> [Work] {
+        func year(_ w: Work) -> Int? { w.releaseDate.flatMap { Int($0.prefix(4)) }.flatMap { $0 > 0 ? $0 : nil } }
+        let genres = Set(target.genres.map { $0.trimmingCharacters(in: .whitespaces).lowercased() })
+        func score(_ c: Work) -> Double {
+            let shared = c.genres.filter { genres.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) }.count
+            let proximity = year(target).flatMap { a in year(c).map { max(0, 5 - Double(abs(a - $0)) / 5) } } ?? 0
+            return Double(shared) * 100 + (c.kind == target.kind ? 10 : 0) + proximity
+        }
+        var seen = Set<UUID>()
+        let unique = candidates.filter { $0.id != target.id && ($0.kind == .movie || $0.kind == .series) && seen.insert($0.id).inserted }
+        return Array(unique.sorted {
+            let (a, b) = (score($0), score($1))
+            return a != b ? a > b : $0.sortTitle.localizedCompare($1.sortTitle) == .orderedAscending
+        }.prefix(limit))
+    }
+
     func load() async {
         state = .loading
         // Parity detail screens use deterministic fixtures (UUIDs are not on
@@ -279,18 +296,7 @@ final class TVWorkDetailViewModel {
                 candidates[item.id] = item
             }
         }
-        let own = Set(target.genres.map { $0.trimmingCharacters(in: .whitespaces).lowercased() })
-        func year(_ work: Work) -> Double? { work.releaseDate.flatMap { Double($0.prefix(4)) } }
-        func score(_ work: Work) -> Double {
-            let shared = work.genres.filter { own.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) }.count
-            let proximity = year(target).flatMap { t in year(work).map { max(0, 5 - abs(t - $0) / 5) } } ?? 0
-            return Double(shared) * 100 + (work.kind == target.kind ? 10 : 0) + proximity
-        }
-        return candidates.values
-            .filter { $0.id != target.id && ($0.kind == .movie || $0.kind == .series) }
-            .sorted { score($0) != score($1) ? score($0) > score($1) : $0.sortTitle.localizedCompare($1.sortTitle) == .orderedAscending }
-            .prefix(20)
-            .map { $0 }
+        return Self.rankSimilar(target: target, candidates: Array(candidates.values))
     }
 }
 
