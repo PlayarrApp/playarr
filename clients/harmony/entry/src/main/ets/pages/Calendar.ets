@@ -108,7 +108,7 @@ const ENTRY_META_SIZE: number = 12.8;
 /** Web phone agenda card, measured on the 360 vp reference: smaller type and a 92 vp card than the TV's. */
 const PHONE_ENTRY_TITLE_SIZE: number = 16;
 const PHONE_ENTRY_META_SIZE: number = 13;
-const PHONE_ENTRY_HEIGHT: number = 92;
+const PHONE_ENTRY_HEIGHT: number = 93; // web: 255 px in the static ref
 /** A card without a subtitle line (a movie) is 15 vp shorter on web. */
 const PHONE_ENTRY_HEIGHT_NO_SUBTITLE: number = 77;
 const PHONE_PILL_SIZE: number = 11.2;
@@ -1088,7 +1088,7 @@ export struct ReleaseCalendar {
         .width('100%')
         .layoutWeight(1)
     } else {
-      List({ space: 32 }) {
+      List({ space: 31 }) {
         ForEach(this.groups, (group: DayGroup) => {
           ListItem() {
             Column({ space: PHONE_ENTRY_GAP }) {
@@ -1148,7 +1148,7 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 9.4 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
+      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 13.1 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
     }
     .width('100%')
     .constraintSize({
@@ -1156,7 +1156,7 @@ export struct ReleaseCalendar {
       minHeight: fixedHeight > 0 ? fixedHeight : PHONE_WEEK_CARD_MIN_HEIGHT,
       maxHeight: fixedHeight === PHONE_ENTRY_HEIGHT ? fixedHeight : PHONE_CARD_NO_MAX, // web: a movie's pill wraps under the meta line and the card grows with it
     })
-    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: 8, bottom: 8 })
+    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : 8, bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
     .border({

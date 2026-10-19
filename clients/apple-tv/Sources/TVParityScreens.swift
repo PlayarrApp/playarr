@@ -141,7 +141,8 @@ extension TVParityLaunch {
     /// `(title, menuOpen)` for `player:<title>` and `player:<title>:quality`.
     static var livePlayer: (title: String, menuOpen: Bool)? {
         guard let route, route.hasPrefix("player:") else { return nil }
-        var rest = String(route.dropFirst("player:".count))
+        // `%20` stands for a space: the Mac launcher splits its extra arguments on spaces.
+        var rest = String(route.dropFirst("player:".count)).removingPercentEncoding ?? ""
         var menu = false
         if rest.hasSuffix(":quality") {
             menu = true
@@ -207,6 +208,9 @@ struct TVParityLivePlayerView: View {
             ), let work = page.items.first(where: { $0.title == target.title }),
                let detail = try? await environment.apiClient.fetchWork(id: work.id) {
                 mediaFileID = detail.mediaFileID
+                #if DEBUG && (os(tvOS) || os(macOS))
+                if let id = mediaFileID { TVParityState.setPlayerRoute(id) }
+                #endif
             }
         }
     }
@@ -548,6 +552,13 @@ enum TVParityState {
         case nil:
             base = tab == .home ? "/" : "/\(tab.rawValue)"
         }
+        write()
+    }
+
+    /// The player's web route, `/player/<media file id>`.
+    static func setPlayerRoute(_ id: UUID) {
+        query = [:]
+        base = "/player/\(id.uuidString.lowercased())"
         write()
     }
 

@@ -2057,7 +2057,7 @@ struct TVLibraryKindView: View {
         artIncludesDot: Bool,
         gridPosition: TVParityGridPosition? = nil
     ) -> some View {
-        let isSelected = selected?.id == work.id && actionsWorkID == nil
+        let isSelected = selected?.id == work.id && actionsWorkID == nil && !filtersOpen // web: the open drawer holds focus, so no card is lifted or ringed
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
                             parityGridPosition: gridPosition) {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
@@ -2140,7 +2140,7 @@ struct TVLibraryKindView: View {
     /// Web list view row (`.tv-list-card`): a 172.8 x 97.2 thumbnail, the title 14.98/610 and "Genres · Year" 9.6 beside
     /// it; rows 121.9 apart. Same focus look and actions as the cards.
     private func libraryRow(_ work: Work) -> some View {
-        let isSelected = selected?.id == work.id && actionsWorkID == nil
+        let isSelected = selected?.id == work.id && actionsWorkID == nil && !filtersOpen // web: the open drawer holds focus, so no card is lifted or ringed
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil) {
             HStack(alignment: .center, spacing: 30) {
                 TVWorkArt(work: work, apiClient: environment.apiClient)
