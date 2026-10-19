@@ -486,7 +486,7 @@ private struct TVProductionShell<Stage: View>: View {
                 }
             }
 
-            TVShellHeader(frozenClock: TVParityLaunch.isLive)
+            TVShellHeader(frozenClock: TVParityLaunch.pinnedClock)
                 .opacity(chromeHidden ? 0 : 1)
                 .frame(maxWidth: .infinity, alignment: .top)
                 .allowsHitTesting(false)

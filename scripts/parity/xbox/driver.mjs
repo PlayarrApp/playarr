@@ -220,7 +220,7 @@ export async function createDriver() {
       // The pinned film and series the web refs open: the app opens the id itself (never the first card of a grid).
       const pinned = /^\/(movies|series)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(base);
       if (pinned) {
-        await requireTestAccount(); run("write", "parity.open", pinned[2]);
+        await requireTestAccount(); run("write", "parity.open", `${pinned[1]}:${pinned[2]}`);
         await until((t) => t.screen === "detail", 30, "the pinned detail page");
         await sleep(8000);
         return;

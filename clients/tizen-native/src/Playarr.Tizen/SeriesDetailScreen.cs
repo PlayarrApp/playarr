@@ -129,18 +129,25 @@ internal sealed class SeriesDetailScreen : IPage
                 art.Add(Ui.Box(0, 147.8f, 268, 3, new Rgba(1, 1, 1, 0.2f)));
                 art.Add(Ui.Box(0, 147.8f, Math.Max(3, 268 * (float)inProgress.Fraction), 3, _t.Brand));
             }
-            var (ring, glow) = Widgets.RailRing(_t, 268, 150.8f, 13.44f); art.Add(ring);
-            box.Add(glow); box.Add(art);
+            var (_, glow) = Widgets.RailRing(_t, 268, 150.8f, 13.44f);
+            // web: the episode focus ring sits 3 px outside the art (unlike the clipped rail rings elsewhere), scaled and lifted with it
+            var ringColour = _t.Name == "dark" ? new Color(_t.BrandInk.R, _t.BrandInk.G, _t.BrandInk.B, 0.95f) : new Color(0.647f, 0.153f, 0.271f, 1);
+            var ring = new View { PositionX = -3, PositionY = -3, Size = new Size(274, 156.8f), CornerRadius = 16.44f, BorderlineWidth = 3, BorderlineColor = ringColour, BorderlineOffset = -1 };
+            ring.Show(false);
+            box.Add(glow); box.Add(art); box.Add(ring);
             if (unseen)
             {
                 var dot = Ui.Box(268 - 23.6f, 10.6f, 13, 13, _t.Brand, 6.5f);
-                dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
-                box.Add(dot);
+                dot.BorderlineWidth = 3; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
+                art.Add(dot);
             }
             var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
-            box.Add(Ui.Text(code, 0, 165.3f, 8.832f, 700, _t.InkMuted, 46, 13.248f));
+            var codeLabel = Ui.Text(code, 0, 165.3f, 8.832f, 700, _t.InkMuted, 46, 13.248f);
+            box.Add(codeLabel);
+            var codeY = codeLabel.PositionY;
             var tt = Ui.Text(ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}", 45.8f, 162.3f, 11.52f, 700, _t.Ink, 222, 17.28f, spacing: -0.17f);
             box.Add(tt);
+            var titleY = tt.PositionY;
             rail.Row.Add(box);
             var railIdx = si; var col = ci; var epc = ep; var seasonc = season;
             _episodes.Add((si, ci, ep, season));
@@ -150,7 +157,7 @@ internal sealed class SeriesDetailScreen : IPage
                 Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
                 Label = $"play {code}".ToLowerInvariant(),
                 Select = () => PlayEpisode(epc),
-                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Show(f); if (f) ring.RaiseToTop(); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(_t.Ink); },
+                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(_t.Ink); codeLabel.PositionY = codeY + (f ? -7.5f : 0); tt.PositionY = titleY + (f ? -7.5f : 0); },
                 Focused = () => OnEpisodeFocused(railIdx, col, epc, seasonc),
             });
         }
@@ -220,15 +227,15 @@ internal sealed class SeriesDetailScreen : IPage
         _copy.Add(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true);
         var bas = 303.5f + 62.208f * lines;
-        _copy.Add(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 21.7f, 21.12f, 600, _t.InkSoft, 312, 24.288f, spacing: -0.74f));
+        _copy.Add(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 18.7f, 21.12f, 600, _t.InkSoft, 312, 24.288f, spacing: -0.74f));
         var meta = new List<string> { $"Season {season.Season.SeasonNumber}", code };
         if (ep.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(ep.RuntimeMs.Value));
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
         if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired  " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(3));
-        _copy.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 73f, 10.56f, 400, _t.InkMuted, 700, 15.84f));
-        var synopsisLines = Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 110.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
-        var yb = bas + 110.5f + Math.Max(1, synopsisLines) * 20.325f + 12f;
+        _copy.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 71.5f, 10.56f, 400, _t.InkMuted, 700, 15.84f));
+        var synopsisLines = Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 108f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
+        var yb = bas + 107.5f + Math.Max(1, synopsisLines) * 20.325f + 12f;
         var hasProgress = ep.MediaFileId is { } f && _progress.TryGetValue(f, out var pr) && pr.State == WatchState.InProgress;
         _leadEp = ep;
         EnsurePillSlots();

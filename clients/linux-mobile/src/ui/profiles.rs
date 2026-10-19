@@ -140,7 +140,10 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         settings.connect_clicked(move |_| app.push_settings(client.clone()));
     }
     let sign_out = gtk4::Button::builder().css_classes(["pa-pill", "small"]).build();
-    let out_row = gtk4::Box::builder().spacing(6).build();
+    // The web's Sign out pill is 3 px tighter on the left, 4 px on the right, and its icon sits 2 px further from the text.
+    let out_row = gtk4::Box::builder().spacing(8).build();
+    out_row.set_margin_start(-3);
+    out_row.set_margin_end(-4);
     out_row.append(&icons::image("logout", 14, Tone::Ink));
     out_row.append(&gtk4::Label::new(Some("Sign out")));
     sign_out.set_child(Some(&out_row));
@@ -189,7 +192,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .build();
     let clients_row = gtk4::Box::builder().spacing(9).build();
     clients_row.append(&gtk4::Label::new(Some("Clients")));
-    clients_row.append(&gtk4::Label::new(Some("→")));
+    clients_row.append(&gtk4::Label::builder().label("→").css_classes(["pa-back-arrow"]).build());
     clients.set_child(Some(&clients_row));
     clients.connect_clicked(|_| {
         let _ = gtk4::gio::AppInfo::launch_default_for_uri(

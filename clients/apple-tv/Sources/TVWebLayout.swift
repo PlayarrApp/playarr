@@ -171,12 +171,12 @@ struct TVPageHeader: View {
                         subtitle
                     }
                 }
-                // Title keeps its single-row centre (y 81); the hairline sits 6 below its 50 pt box, the subtitle 13 further down.
+                // Static web refs: title centred at y 80, hairline at 112, subtitle centred at 126.
                 VStack(alignment: .leading, spacing: 0) {
                     titleText.frame(height: 50).overlay(alignment: .bottom) {
                         Rectangle().fill(lineStrong).frame(height: 1).offset(y: 5.8)
                     }
-                    if let subtitle { subtitle.padding(.top, 13) }
+                    if let subtitle { subtitle.padding(.top, 12.8) }
                 }
                 .frame(height: 50, alignment: .top)
             }
@@ -263,7 +263,13 @@ enum TVWebFormat {
         out.locale = Locale(identifier: "en_GB")
         out.timeZone = TimeZone(identifier: "UTC")
         out.dateFormat = "d MMM yyyy"
-        return out.string(from: date)
+        let text = out.string(from: date)
+        #if os(macOS)
+        // Chrome's en-GB abbreviates September as "Sept"; the Mac's ICU says "Sep".
+        return text.replacingOccurrences(of: " Sep ", with: " Sept ")
+        #else
+        return text
+        #endif
     }
 
     static func year(_ iso: String?) -> String? {

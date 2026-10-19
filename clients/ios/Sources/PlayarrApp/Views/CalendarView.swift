@@ -475,6 +475,9 @@ struct CalendarView: View {
 
     private func phoneAgendaCard(_ item: CalendarItem) -> some View {
         let entry = item.entries.first
+        let subtitle = entry.map { [$0.episodeCode, $0.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} ") } ?? ""
+        // The web card has no subtitle row for a film release: it is 76.6 pt tall instead of 91.
+        let height: CGFloat = subtitle.isEmpty ? 76.6 : 91
         return Button {
             viewModel.select(item)
         } label: {
@@ -496,16 +499,15 @@ struct CalendarView: View {
                 .frame(width: 40, height: 60)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .offset(x: 16, y: 15)
-                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: 7.7)
+                .offset(x: 16, y: (height - 60) / 2)
+                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: subtitle.isEmpty ? 13 : 7.7)
                 if let entry {
-                    WMText(
-                        [entry.episodeCode, entry.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} "),
-                        16, 400, color: WM.inkSoft, lh: 24
-                    )
-                    .fixedSize() // the web agenda subtitle never truncates, it runs off the card edge
-                    .frame(width: 220, alignment: .leading)
-                    .offset(x: 70, y: 33.7)
+                    if !subtitle.isEmpty {
+                        WMText(subtitle, 16, 400, color: WM.inkSoft, lh: 24)
+                            .fixedSize() // the web agenda subtitle never truncates
+                            .frame(width: 220, alignment: .leading)
+                            .offset(x: 70, y: 33.7)
+                    }
                     HStack(alignment: .top, spacing: 12) {
                         let time = calendarTimeLabel24(entry)
                         WMText(time.isEmpty || time == "00:00" ? "All day" : time, 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
@@ -513,10 +515,11 @@ struct CalendarView: View {
                         WMText(kindLabel(entry.mediaKind), 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
                         agendaBadge(entry)
                     }
-                    .offset(x: 70, y: 60.6)
+                    .offset(x: 70, y: subtitle.isEmpty ? 38.5 : 60.6)
                 }
             }
-            .frame(width: 460, height: 91, alignment: .topLeading)
+            .frame(width: screenWidth - 32, height: height, alignment: .topLeading)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(WM.line.opacity(0.14), lineWidth: 1)
@@ -916,8 +919,8 @@ struct CalendarView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text("\(dayNumber)")
-                        .font(.custom("Avenir Next", fixedSize: 13).weight(day == viewModel.today ? .heavy : .medium))
-                        .foregroundStyle(day == viewModel.today ? PlayarrStyle.pink : (inMonth ? PlayarrStyle.ink : PlayarrStyle.muted))
+                        .font(.custom("Avenir Next", fixedSize: 13).weight(.medium))
+                        .foregroundStyle(PlayarrStyle.ink) // web: today and out-of-month numbers read as plain ink
                     let hidden = max(0, items.count - shownCount)
                     Spacer(minLength: 0)
                     if hidden > 0 {
@@ -932,11 +935,11 @@ struct CalendarView: View {
         }
         .padding(.horizontal, 10.9)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(inMonth ? Color.clear : PlayarrStyle.surfaceStrong)
+        .background(inMonth ? Color.clear : WM.adaptive(light: (239, 238, 237), dark: (36, 31, 35)))
         .overlay(Rectangle().stroke(WM.line.opacity(0.23), lineWidth: 1))
         .overlay {
             if day == viewModel.today {
-                Rectangle().stroke(PlayarrStyle.pink, lineWidth: 2).padding(1)
+                Rectangle().stroke(PlayarrStyle.ink, lineWidth: 3).padding(1.5) // web focus ring on today
             }
         }
         .accessibilityElement(children: .contain)

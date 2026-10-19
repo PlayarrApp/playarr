@@ -562,11 +562,11 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val m = LocalCalendarMetrics.current
     val wrapTitles = LocalCalendarWrapTitles.current
     // Web TV week text measures 4 % narrower than the agenda's (titles) and 2 % (meta), with the same line pitch.
-    val tvWeek = m === TvCalendarMetrics && wrapTitles
+    val tvWeek = m === TvCalendarMetrics // agenda included: the main-seed web agenda measures the same 4 % / 2 % narrower
     val titleSp = if (tvWeek) m.entryTitle * 0.96f else m.entryTitle
     val titleLine = if (tvWeek) m.entryTitleLine * 1.03f else m.entryTitleLine
-    // Web `entrySubtitle` is the episode code and subtitle only: a movie shows no line (phone and TV week; the TV agenda keeps the kind fallback).
-    val rowSubtitle = if (m === TvCalendarMetrics && !tvWeek) calendarItemSubtitle(item) else (item as? CalendarItem.Single)?.entry?.let { e -> listOfNotNull(e.episodeCode(), e.subtitle?.takeIf(String::isNotBlank)).joinToString(" \u00b7 ") } ?: calendarItemSubtitle(item)
+    // Web `entrySubtitle` is the episode code and subtitle only: a movie shows no line (every layout, as on the main-seed refs).
+    val rowSubtitle = (item as? CalendarItem.Single)?.entry?.let { e -> listOfNotNull(e.episodeCode(), e.subtitle?.takeIf(String::isNotBlank)).joinToString(" \u00b7 ") } ?: calendarItemSubtitle(item)
     val shape = RoundedCornerShape(m.entryRadius.dp)
     val ink = WebInk
     val fill = WebSurfaceStrong
@@ -658,8 +658,8 @@ internal fun TvCalendarAgenda(
             // Web: the date range lives in the header group; the details panel takes the library stage (eyebrow at y 259)
             // and the day list starts under the header. Both panes end at the bottom of the screen.
             val detailsTop = if (tablet) 294.3.dp else 259.dp
-            val listTop = if (tablet) 135.dp else 168.dp
-            val listStart = if (tablet) 534.dp else 786.dp
+            val listTop = if (tablet) 135.dp else 167.dp
+            val listStart = if (tablet) 534.dp else 783.dp
             // Tablet web: the list ends at x 1193, clear of the right action column (measured on the 1280 x 800 static refs).
             val listWidth = if (tablet) (maxWidth - listStart - 87.dp) else 1049.dp
             val dayFont = LocalCalendarMetrics.current
@@ -717,7 +717,7 @@ internal fun TvCalendarAgenda(
                     rows.forEachIndexed { index, (day, item) ->
                         if (day != null) {
                             item(key = "day-$day") {
-                                Row(Modifier.padding(top = if (index > 0) 25.dp else 0.dp, bottom = if (tablet) 45.dp else 37.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(Modifier.padding(top = if (index > 0) (if (tablet) 25.dp else 27.dp) else 0.dp, bottom = if (tablet) 45.dp else 39.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Text(
                                         phoneCalendarDayHeading(day, locale), color = WebInk, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(560),
                                         style = WebTextStyle, modifier = Modifier.semantics { heading() },
@@ -1425,6 +1425,13 @@ internal fun CalendarMonth(
         if (wide) {
             // Web `.calendar-month`: chips inside the day cells, filling the space below the header.
             // Web TV month grid: 1662 px wide (clear of the right action column), header at y 179, cells 151.2 tall and ending at y 961.
+            if (isTelevision && LocalStageScale.current != 1f) {
+                // Tablet web at 1280 x 800 draws the month grid in css px (12.48 px lines, 106 px rows): grid at x 131 to 1167, y 134 to 691.
+                UnstagedForWebCssPx {
+                    CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().padding(top = 53.25.dp, end = 35.dp, bottom = 26.dp), true, tabletCss = true)
+                }
+                return@BoxWithConstraints
+            }
             CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().then(if (isTelevision) Modifier.padding(top = 59.dp, end = 32.dp, bottom = 23.dp) else Modifier.padding(top = 8.dp)), isTelevision)
             return@BoxWithConstraints
         }
@@ -1535,6 +1542,8 @@ private fun CalendarMonthChips(
     isTelevision: Boolean = false,
     /** The phone's scrolling strip: web draws three lines per cell there, with the header row 8 dp deeper. */
     phoneStrip: Boolean = false,
+    /** Tablet web at 1280 x 800: the TV cell with 7.5 px more above the lines and 14 px more under them. */
+    tabletCss: Boolean = false,
 ) {
     val rows = remember(state.window) { calendarGridRows(state.window) }
     val cells = remember(rows) { rows.flatten() }
@@ -1543,7 +1552,7 @@ private fun CalendarMonthChips(
         entries.groupBy { it.date }.mapValues { (_, day) -> groupSeriesEpisodes(day.sortedBy { it.releaseAt }, zone) }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val headerHeight = if (phoneStrip) 34.dp else 26.dp
+        val headerHeight = if (phoneStrip) 34.dp else if (tabletCss) 29.75.dp else 26.dp
         val cellHeight = (maxHeight - headerHeight) / rows.size
         // Web: chips that fit = (cell height - 52) / 26, between 1 and 5; when more exist the last slot is "+N more".
         // Web TV text lines: 25 dp lines above a footer with the day number and "+N more", so the count never takes a line.
@@ -1586,7 +1595,7 @@ private fun CalendarMonthChips(
                                     .background(if (inMonth) Color.Transparent else WebSurfaceSoft.copy(alpha = 0.4f))
                                     .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.11f, 0.13f))
                                     .then(if (day == today) Modifier.border(2.dp, WebInk) else Modifier)
-                                    .padding(horizontal = 4.8.dp, vertical = 0.8.dp),
+                                    .padding(start = 4.8.dp, end = 4.8.dp, top = 0.8.dp + (if (tabletCss) 7.5.dp else 0.dp), bottom = 0.8.dp + (if (tabletCss) 14.dp else 0.dp)),
                             ) {
                                 Column(Modifier.weight(1f).padding(top = 1.dp)) {
                                     shown.forEachIndexed { slot, item ->

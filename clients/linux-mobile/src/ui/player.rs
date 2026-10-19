@@ -151,7 +151,8 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
         });
     }
 
-    let (file, start) = (req.media_file_id.clone(), req.start_ms);
+    // Capture hook: `PLAYARR_PARITY_PAUSE_MS=<ms>` starts there and pauses, as the web's player-controls ref (paused at 0:02).
+    let (file, start) = (req.media_file_id.clone(), pause_ms().unwrap_or(req.start_ms));
     let c = client.clone();
     let proxy_port = app.proxy_port();
     let weak = root_weak(&root);
@@ -179,6 +180,12 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
         },
     );
     root.upcast()
+}
+
+fn pause_ms() -> Option<i64> {
+    std::env::var("PLAYARR_PARITY_PAUSE_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
 }
 
 fn root_weak(root: &gtk4::Overlay) -> glib::WeakRef<gtk4::Overlay> {
@@ -444,8 +451,9 @@ fn start_pipeline(
     }
 
     let _ = pipeline.set_state(gst::State::Playing);
-    let need_start_seek = Cell::new(direct && req.start_ms > 0);
-    let start_ms = req.start_ms;
+    let start_ms = pause_ms().unwrap_or(req.start_ms);
+    let need_start_seek = Cell::new(direct && start_ms > 0);
+    let pause_pending = Cell::new(pause_ms().is_some());
     let bus = pipeline.bus().ok_or("no bus")?;
     let (p2, status_root) = (player.clone(), root.downgrade());
     glib::timeout_add_local(Duration::from_millis(250), move |/* tick */| {
@@ -490,6 +498,12 @@ fn start_pipeline(
         if need_start_seek.get() && player.pipeline.query_duration::<gst::ClockTime>().is_some() {
             need_start_seek.set(false);
             let _ = player.pipeline.seek_simple(gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT, gst::ClockTime::from_mseconds(start_ms as u64));
+        }
+        if pause_pending.get() && player.pipeline.query_position::<gst::ClockTime>().is_some_and(|p| p.mseconds() as i64 + player.offset_ms >= start_ms) {
+            pause_pending.set(false);
+            let _ = player.pipeline.set_state(gst::State::Paused);
+            playing.set(false);
+            set_icon(&toggle, "p-play");
         }
         let pos = player.position_ms();
         pos_label.set_label(&super::detail::fmt_clock(pos));
