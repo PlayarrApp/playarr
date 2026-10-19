@@ -788,10 +788,10 @@ export struct PlayerChrome {
           Text(formatClockMs(this.positionMs) + '  /  ' + formatClockMs(this.durationMs)).fontFamily(nunito(400))
             .fontSize(PHONE_TIME_FONT_SIZE)
             .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-            .padding({ top: 12, bottom: 7 })
+            .padding({ top: 14.3, bottom: 7 })
         } else {
           Text('LIVE').fontFamily(nunito(700)).fontSize(PHONE_TIME_FONT_SIZE).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
-            .padding({ top: 12, bottom: 7 })
+            .padding({ top: 14.3, bottom: 7 })
         }
         Row() {
           this.phoneSkip(true, this.canPrevious, this.onPrevious)
@@ -817,10 +817,10 @@ export struct PlayerChrome {
           .justifyContent(FlexAlign.Center)
           .alignItems(VerticalAlign.Center)
           this.phoneSkip(false, this.canNext, this.onNext)
-          this.phoneIcon($r('app.media.player_volume'), 21.6, this.onToggleMute, false, 40, true)
-          this.phoneIcon($r('app.media.player_volume'), 21.6, this.onToggleMute, false, 40, true)
-          this.phoneIcon($r('app.media.player_subtitles'), 21.6, this.onOpenTracks, false, 40, this.hasTracks)
-          this.phoneIcon($r('app.media.player_queue'), 19, this.onNext, false, 40, this.canNext)
+          this.phoneIcon($r('app.media.player_volume'), 18.5, this.onToggleMute, false, 40, true)
+          this.phoneIcon($r('app.media.player_volume'), 18.5, this.onToggleMute, false, 40, true)
+          this.phoneIcon($r('app.media.player_subtitles'), 18.8, this.onOpenTracks, false, 40, true)
+          this.phoneIcon($r('app.media.player_queue'), 19, (): void => {}, false, 40, true)
         }
         .width('100%')
         .padding({ left: 6.8 })
@@ -843,8 +843,8 @@ export struct PlayerChrome {
             Row().width(28)
           }
           this.phoneIcon($r('app.media.player_info'), 19, this.onOpenInfo, false, 40, true)
-          this.phoneIcon($r('app.media.player_cast'), 21.6, (): void => {}, false, 40, true)
-          this.phoneIcon($r('app.media.player_fullscreen'), 22, (): void => {}, false, 40, true)
+          this.phoneIcon($r('app.media.player_cast'), 19.4, (): void => {}, false, 40, true)
+          this.phoneIcon($r('app.media.player_fullscreen'), 20.3, (): void => {}, false, 40, true)
         }
         .width('100%')
         .padding({ left: 54 })
@@ -853,7 +853,7 @@ export struct PlayerChrome {
         .height(PHONE_ROW_HEIGHT)
       }
       .width('100%')
-      .padding({ left: PHONE_SIDE, right: PHONE_SIDE, bottom: 14 })
+      .padding({ left: PHONE_SIDE, right: PHONE_SIDE, bottom: 14.7 })
     }
     .width('100%')
     .height('100%')
