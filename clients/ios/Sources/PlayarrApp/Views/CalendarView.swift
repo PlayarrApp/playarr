@@ -476,10 +476,15 @@ struct CalendarView: View {
     /// Web tablet agenda: the selected release as a hero on the left, day headings and release cards on the right
     /// (page coordinates from the 1366 x 1024 web layout, relative to the 120 pt content gutter).
     private func tabletAgenda(groups: [CalendarDayGroup]) -> some View {
-        ZStack(alignment: .topLeading) {
-            if let item = viewModel.selectedItem ?? groups.first?.items.first, let entry = item.entries.first {
-                tabletAgendaHero(item: item, entry: entry).offset(y: 79)
+        HStack(alignment: .top, spacing: 0) {
+            Group {
+                if let item = viewModel.selectedItem ?? groups.first?.items.first, let entry = item.entries.first {
+                    tabletAgendaHero(item: item, entry: entry).padding(.top, 79)
+                } else {
+                    Color.clear
+                }
             }
+            .frame(width: 447, alignment: .topLeading)
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(groups) { group in
@@ -504,7 +509,6 @@ struct CalendarView: View {
             .scrollIndicators(.hidden)
             .frame(width: 713)
             .padding(.top, -10)
-            .offset(x: 447)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -513,9 +517,15 @@ struct CalendarView: View {
         VStack(alignment: .leading, spacing: 0) {
             WMText("\(kindLabel(entry.mediaKind)) \u{00B7} \(releaseTypeLabel(entry.releaseType))".uppercased(), 10.4, 700, color: WM.pink, lh: 15.6, ls: 1.5)
                 .fixedSize()
-            WMText(item.title, 52, 520, lh: 44.5, ls: -1.5)
-                .frame(width: 330, alignment: .leading)
-                .padding(.top, 20)
+            TabletTitleLabel(
+                text: item.title, fontSize: 49.2,
+                nativeLineHeight: DesignFont.uiFont(
+                    family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName,
+                    size: 49.2, weight: 560, fixedAxes: DesignFont.nunitoAxes
+                )?.lineHeight ?? 49.2 * 1.36,
+                lineHeight: 49.2 * 0.9, width: 330
+            )
+            .padding(.top, 20)
             HStack(spacing: 16) {
                 WMText([entry.episodeCode, entry.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} "), 11, 400, color: WM.inkSoft, lh: 16).fixedSize()
                 if let at = entry.releaseAt {
