@@ -57,6 +57,8 @@ export struct PageShell {
    * web phone shell: Back and title on top, the bottom nav bar below. False: the TV chrome is drawn (the page has no phone layout). */
   @Prop touch: boolean = false;
   @BuilderParam touchContent: () => void = this.emptyContent;
+  /** Phone: the content runs under the translucent nav bar (web's scroll area), so no spacer is reserved; the page pads its own scroll end. */
+  contentUnderNav: boolean = false;
   @BuilderParam touchActions: () => void = this.emptyContent;
   /** Phone-only drawer/menu layer, painted below the foreground bottom navigation. */
   @BuilderParam touchOverlay: () => void = this.emptyContent;
@@ -269,7 +271,9 @@ export struct PageShell {
       }
       .layoutWeight(1)
       .width('100%')
-      TouchNavBarSpacer()
+      if (!this.contentUnderNav) {
+        TouchNavBarSpacer()
+      }
     }
     .width('100%')
     .height('100%')
