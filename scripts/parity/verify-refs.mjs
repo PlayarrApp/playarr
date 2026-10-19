@@ -29,8 +29,9 @@ export function verifyDir(dir, group, manifest, screens = manifest.screens) {
     if (st.width !== group.pixels[0] || st.height !== group.pixels[1]) bad.push(`${k}: ${st.width}x${st.height}, expected ${group.pixels.join("x")}`);
     if (st.range < 40) bad.push(`${k}: blank (luminance range ${st.range.toFixed(0)})`);
     // Dark theme backgrounds are near black, light ones near white; dialogs and art shift the mean, so the bounds are loose.
-    if (theme === "dark" && st.mean > 110) bad.push(`${k}: not dark (mean luminance ${st.mean.toFixed(0)})`);
-    if (theme === "light" && st.mean < 130) bad.push(`${k}: not light (mean luminance ${st.mean.toFixed(0)})`);
+    const themeless = manifest.themeless?.includes(id); // the player is black in both themes
+    if (!themeless && theme === "dark" && st.mean > 110) bad.push(`${k}: not dark (mean luminance ${st.mean.toFixed(0)})`);
+    if (!themeless && theme === "light" && st.mean < 130) bad.push(`${k}: not light (mean luminance ${st.mean.toFixed(0)})`);
     means[k] = st.mean;
     if (f.theme && f.theme !== theme) bad.push(`${k}: page theme is ${f.theme}`);
     if (id.endsWith("-detail") && f.resumeState) bad.push(`${k}: shows a Resume or Ask-again state (reset watch progress)`);
@@ -46,7 +47,7 @@ export function verifyDir(dir, group, manifest, screens = manifest.screens) {
     if (title && id !== "actions" && f.detailTitle !== title) bad.push(`${k}: title "${f.detailTitle}", expected "${title}"`);
     if (id === "actions" && !(f.drawerTitle ?? "").includes(title)) bad.push(`${k}: drawer title "${f.drawerTitle}", expected "${title}"`);
   }
-  for (const id of screens) if (means[`light/${id}`] <= means[`dark/${id}`] + 20) bad.push(`${id}: light is not lighter than dark`);
+  for (const id of screens) if (!manifest.themeless?.includes(id) && means[`light/${id}`] <= means[`dark/${id}`] + 20) bad.push(`${id}: light is not lighter than dark`);
   return bad;
 }
 
