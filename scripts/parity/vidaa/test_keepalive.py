@@ -14,5 +14,15 @@ class Backoff(unittest.TestCase):
         self.assertEqual(seq, [15, 30, 60, 120, 240, 300, 300])
 
 
+class Probe(unittest.TestCase):
+    def test_alive_follows_applist_not_state(self):
+        from unittest import mock
+        vidaa = mock.Mock(foreground_ok=mock.Mock(return_value=(False, None)))
+        tv = mock.Mock(apps=mock.Mock(return_value=[{"name": "Playarr"}]))
+        self.assertEqual(keepalive.probe(vidaa, tv), (True, False, None))  # no state reply, still alive
+        tv.apps.return_value = None
+        self.assertEqual(keepalive.probe(vidaa, tv)[0], False)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -60,12 +60,17 @@ class Session:
     lock = threading.RLock()
 
 
+def probe(vidaa, tv):
+    """(alive, foreground ok, state). Liveness is an applist reply: the TV answers that reliably but often ignores gettvstate."""
+    return tv.apps() is not None, *vidaa.foreground_ok(tv)
+
+
 def make_handler(vidaa, session):
     ops = {"state": lambda tv, r: vidaa.op_state(tv),
            "apps": lambda tv, r: vidaa.op_apps(tv),
            "key": lambda tv, r: vidaa.op_key(tv, [str(k) for k in r["keys"]], bool(r.get("allow_any")), min(max(float(r.get("delay", 0.6)), 0.0), 30.0)),
            "launch": lambda tv, r: vidaa.op_launch(tv, str(r["app"]), bool(r.get("allow_any"))),
-           "open_debug": lambda tv, r: vidaa.op_open_debug(tv, str(r.get("variant", "app")), str(r.get("path", "/")), min(max(float(r.get("wait", 5)), 0.0), 60.0))}
+           "open_debug": lambda tv, r: vidaa.op_open_debug(tv, str(r.get("variant", "app")), str(r.get("path", "/")), min(max(float(r.get("wait", 5)), 0.0), 60.0), bool(r.get("seed")))}
 
     def handle(req):
         op = ops.get(req.get("op"))
@@ -130,14 +135,14 @@ def main():
                         log(f"connect failed: {msg}; retry in {backoff}s")
             elif S.tv is not None:
                 with S.lock:
-                    fg, st = vidaa.foreground_ok(S.tv)
-                if st is None:
+                    alive, fg, st = probe(vidaa, S.tv)
+                if not alive:
                     misses += 1
-                    log(f"state query got no reply ({misses})")
+                    log(f"applist query got no reply ({misses})")
                     if misses >= 2:
-                        drop("no state replies")
+                        drop("no applist replies")
                         wedged, retry_at = True, time.time() + BACKOFF_MIN
-                        log("WEDGE: connected but no state replies")
+                        log("WEDGE: connected but no applist replies")
                 else:
                     misses = 0
                     log(f"ok: {vidaa.redact(st)[:200]} foreground={fg}")

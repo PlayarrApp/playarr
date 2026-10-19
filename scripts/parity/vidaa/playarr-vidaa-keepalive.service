@@ -7,6 +7,8 @@ Type=simple
 Environment=VIDAA_HOST=@VIDAA_HOST@
 Environment=VIDAA_MIRROR_PORT=18742
 Environment=PYTHONUNBUFFERED=1
+Environment=PARITY_SERVER_URL=@PARITY_SERVER_URL@
+Environment=PARITY_ACCOUNT_NAME=@PARITY_ACCOUNT_NAME@
 Environment=PLAYARR_DATA_DIR=@DATA@
 ExecStart=@DATA@/scratch/20261008-vidaa-remote/venv/bin/python @DATA@/scripts/vidaa/keepalive.py
 Restart=always
