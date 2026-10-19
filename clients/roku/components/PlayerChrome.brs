@@ -51,6 +51,14 @@ sub playerChromeBuild()
     ThemeSetRole(scrim, "playerScrim")
     scrim.blendColor = ThemeColor("playerScrim")
     g.insertChild(scrim, 0)
+    ' Parity captures only: the Roku screenshot omits the video plane, so the static clip's 2 s frame stands in behind the controls.
+    if m.global.parityArtEnabled = true
+        frame = CreateObject("roSGNode", "Poster")
+        frame.uri = "pkg:/images/parity-clip-2s.png"
+        frame.width = 1920
+        frame.height = 1080
+        g.insertChild(frame, 0)
+    end if
 
     m.pcThumb = pgRound(g, 121.8, 931.5, 15, 15, 7, "brand")
     m.pcPrev = pgIcon(g, 92, 980, 20, "player-prev.png", "playerInk")

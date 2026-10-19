@@ -422,12 +422,12 @@ end sub
 sub calFiltersRender()
     g = m.filtersGroup
     g.removeChildrenIndex(g.getChildCount(), 0)
-    pgRect(g, 1560, 0, 360, 1080, "panel")
-    pgLabel(g, 1606, 56, 190, 16, "CALENDAR", 11, 700, "inkMuted")
-    pgLabel(g, 1606, 82, 200, 56, "Filters", 36, 600, "ink")
-    pgRound(g, 1825.5, 53.5, 49, 49, 25, "surface", 179)
-    pgRound(g, 1825.5, 53.5, 49, 49, 25, "line", -1, true)
-    pgIcon(g, 1838, 66, 24, "player-close.png", "ink")
+    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
+    pgLabel(g, 1606, 52, 190, 16, "CALENDAR", 11, 700, "inkMuted")
+    pgLabel(g, 1606, 75, 200, 56, "Filters", 36, 600, "ink")
+    pgRound(g, 1826.5, 54.5, 49, 49, 25, "surfaceSoft")
+    pgRound(g, 1826.5, 54.5, 49, 49, 25, "line", -1, true)
+    pgIcon(g, 1839, 67, 24, "player-close.png", "ink")
     m.filtersFocus = []
     pgLabel(g, 1606, 162, 250, 16, "VIEW", 10, 700, "inkMuted")
     views = ["month", "week", "agenda"]
