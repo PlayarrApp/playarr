@@ -143,9 +143,10 @@ internal sealed class DebugMirror
                         case "/key":
                             var name = q["name"] ?? "";
                             _shell().OnKey(name switch { "up" => RemoteKey.Up, "down" => RemoteKey.Down, "left" => RemoteKey.Left, "right" => RemoteKey.Right,
-                                "select" => q["long"] == "1" ? RemoteKey.SelectLong : RemoteKey.Select, "back" => RemoteKey.Back, _ => RemoteKey.None });
+                                "select" => q["long"] == "1" ? RemoteKey.SelectLong : RemoteKey.Select, "back" => RemoteKey.Back, "pause" => RemoteKey.Pause, "rewind" => RemoteKey.Rewind, _ => RemoteKey.None });
                             break;
                         case "/text": if (_shell().Page is SearchScreen ss) ss.SetQuery(q["value"] ?? ""); else if (_shell().Page is PlaylistsScreen ps) ps.SetCreateName(q["value"] ?? ""); break;
+                        case "/blur": (_shell().Page as PlayerScreen)?.BlurFocus(); break;
                         case "/route": _shell().NavigateDeepLink(q["path"] ?? "/"); break;
                         case "/theme": _env().SetTheme(q["name"] ?? "dark"); break;
                         case "/capture-clock":

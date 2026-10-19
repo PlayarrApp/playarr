@@ -94,6 +94,8 @@ const TODAY_TAG_SIZE: number = 11.2;
 const TODAY_TAG_LETTER_SPACING: number = 0.896;
 // Web `.calendar-entry`: 107 high, 12 radius, 1px line border with a 4px availability edge, surfaceStrong.
 const ENTRY_HEIGHT: number = 107;
+// Web: an entry without a subtitle line (a movie) is 78 high.
+const ENTRY_HEIGHT_NO_SUBTITLE: number = 78;
 const ENTRY_RADIUS: number = 12;
 const ENTRY_EDGE: number = 4;
 const ENTRY_PADDING_LEFT: number = 12;
@@ -434,7 +436,7 @@ export struct ReleaseCalendar {
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-        if (isTvMetrics() || itemSubtitle(item).length > 0) {
+        if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunito(400))
             .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
             .fontColor(toResourceColor(activeColors().inkSoft))
@@ -457,7 +459,7 @@ export struct ReleaseCalendar {
     }
     .width(isTvMetrics() ? tv(width) : '100%')
     .constraintSize({ minWidth: isTvMetrics() ? 0 : phoneMinWidth })
-    .height(isTvMetrics() ? tv(ENTRY_HEIGHT) : (itemSubtitle(item).length > 0 ? PHONE_ENTRY_HEIGHT : PHONE_ENTRY_HEIGHT_NO_SUBTITLE))
+    .height(isTvMetrics() ? tv(itemSubtitle(item).length > 0 ? ENTRY_HEIGHT : ENTRY_HEIGHT_NO_SUBTITLE) : (itemSubtitle(item).length > 0 ? PHONE_ENTRY_HEIGHT : PHONE_ENTRY_HEIGHT_NO_SUBTITLE))
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))

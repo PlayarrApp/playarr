@@ -40,13 +40,12 @@ namespace Playarr.Xbox.Views
         private readonly Rectangle _horizontalWash = new Rectangle { Width = 960, HorizontalAlignment = HorizontalAlignment.Left };
         private readonly Rectangle _verticalWash = new Rectangle
         {
-            Width = 1920,
+            Width = 998.4, // the key-art box only: the web's right half is the plain tinted ground
             Height = 1080,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
         };
         private readonly Rectangle _stageWashLeft = new Rectangle { IsHitTestVisible = false };
-        private readonly Rectangle _stageWashRight = new Rectangle { IsHitTestVisible = false };
         private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12, FontWeight = FontWeights.Bold, CharacterSpacing = 120 };
         private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69, FontWeight = FontWeights.SemiBold, CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 34, 0, 0) };
         private readonly TextBlock _meta = new TextBlock { FontSize = 14, Margin = new Thickness(0, 12, 0, 0) };
@@ -69,8 +68,6 @@ namespace Playarr.Xbox.Views
             Children.Add(_horizontalWash);
             _verticalWash.Fill = Theme.KeyArtVerticalWash();
             Children.Add(_verticalWash);
-            _stageWashRight.Fill = Theme.KeyArtStageWashRight();
-            Children.Add(_stageWashRight);
             _stageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             Children.Add(_stageWashLeft);
             _panel = new StackPanel

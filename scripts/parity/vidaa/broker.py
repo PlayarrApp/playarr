@@ -4,6 +4,7 @@ One JSON object per line each way. Request {"op": ..., ...args}; reply {"ok": tr
 {"ok": false, "error": <text>}. The broker owns the single MQTT session to the TV; callers that cannot reach it
 (socket missing or refused) get None from call() and connect directly instead.
 """
+import fcntl
 import json
 import os
 import socket
@@ -16,6 +17,33 @@ DATA = Path(os.environ.get("PLAYARR_DATA_DIR") or Path(__file__).resolve().paren
 
 def sock_path():
     return os.environ.get("VIDAA_SOCK") or str(DATA / "vidaa.sock")
+
+
+def lock_path():
+    return os.environ.get("VIDAA_KEEPALIVE_LOCK") or str(DATA / "vidaa-keepalive.lock")
+
+
+def hold_lock():
+    """Keepalive only: take the lock for the life of the process (the returned fd). None when another keepalive already holds it."""
+    fd = os.open(lock_path(), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        return None
+    return fd
+
+
+def keepalive_running():
+    """True while a keepalive holds the lock. A second MQTT session next to its one makes the TV leak sessions and freeze."""
+    fd = os.open(lock_path(), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return False
+    except BlockingIOError:
+        return True
+    finally:
+        os.close(fd)
 
 
 def call(req, path=None, timeout=180):
