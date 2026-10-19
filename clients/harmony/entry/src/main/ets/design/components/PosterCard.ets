@@ -132,7 +132,7 @@ const HOME_SHADOW_REST: ShadowLayerSpec[] = [
 ];
 // Phone only: ArkUI's blur draws lighter than CSS's, so the wide layer is stronger and wider (measured on the light static refs).
 const PHONE_HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
-  { offsetY: 26, radius: 68, alpha: 0.55 },
+  { offsetY: 34, radius: 100, alpha: 0.7 },
   { offsetY: 11, radius: 22, alpha: 0.22 },
 ];
 const HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
