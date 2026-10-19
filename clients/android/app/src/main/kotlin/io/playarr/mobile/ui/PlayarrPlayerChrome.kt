@@ -1225,11 +1225,12 @@ internal fun PlayarrTelevisionControlBar(
                 tint = if (canNext && !controls.switching) Color.White else dimmed,
                 focusKey = "next",
             )
-            Text(
-                "${formatPlayarrPlayerTime(displayedPositionMs)} / ${formatPlayarrPlayerTime(durationMs)}",
-                color = Color.White,
-                fontSize = 10.88.sp,
-            )
+            // Web `.player-time`: three spans, 0.35rem apart, tabular digits, a fainter slash.
+            Row(horizontalArrangement = Arrangement.spacedBy(5.6.dp)) {
+                Text(formatPlayarrPlayerTime(displayedPositionMs), color = Color.White, fontSize = 10.88.sp, fontFeatureSettings = "tnum")
+                Text("/", color = Color(0xFFA5969E), fontSize = 10.88.sp)
+                Text(formatPlayarrPlayerTime(durationMs), color = Color.White, fontSize = 10.88.sp, fontFeatureSettings = "tnum")
+            }
             Spacer(Modifier.weight(1f))
             if (controls.audioTracks.isNotEmpty()) {
                 PlayerRoundButton(
