@@ -115,7 +115,7 @@ internal sealed class MediaCard
             _outerRing = new View { Size = new Size(W + 6, H + 6), CornerRadius = 15.48f, BorderlineWidth = 3, BorderlineColor = rc, BorderlineOffset = -1 };
             Box.Add(_outerRing);
             // web: the focus ring carries a soft ring-coloured glow, as the rail rings do; it sits on its own view behind the art
-            _outerGlow = new View { Size = new Size(W, H), CornerRadius = 12.48f, BoxShadow = new Shadow(14, new Color(rc.R, rc.G, rc.B, 0.4f), new Vector2(0, 4), new Vector2(0, 0)) };
+            _outerGlow = new View { Size = new Size(W, H), CornerRadius = 12.48f, BoxShadow = new Shadow(22, new Color(rc.R, rc.G, rc.B, 0.5f), new Vector2(0, 1), new Vector2(0, 0)) };
             Box.Add(_outerGlow); _outerGlow.LowerToBottom();
         }
         _outerGlow!.PositionX = Art.PositionX; _outerGlow.PositionY = Art.PositionY; _outerGlow.Scale = Art.Scale; _outerGlow.Show(show);
