@@ -519,7 +519,7 @@ export struct PosterCard {
     .width(this.cardWidth)
     .alignItems(HorizontalAlign.Start)
     .translate({ y: this.cardTranslateY() })
-    .focusable(true)
+    .focusable(isTvMetrics()) // web touch refs draw no focus ring: the phone's first card must not take the Previewer's default focus
     .onFocus(() => {
       this.setFocused(true);
       this.onFocused();
