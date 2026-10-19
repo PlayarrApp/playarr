@@ -919,8 +919,8 @@ struct CalendarView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text("\(dayNumber)")
-                        .font(.custom("Avenir Next", fixedSize: 13).weight(day == viewModel.today ? .heavy : .medium))
-                        .foregroundStyle(day == viewModel.today ? PlayarrStyle.pink : (inMonth ? PlayarrStyle.ink : PlayarrStyle.muted))
+                        .font(.custom("Avenir Next", fixedSize: 13).weight(.medium))
+                        .foregroundStyle(PlayarrStyle.ink) // web: today and out-of-month numbers read as plain ink
                     let hidden = max(0, items.count - shownCount)
                     Spacer(minLength: 0)
                     if hidden > 0 {
@@ -935,11 +935,11 @@ struct CalendarView: View {
         }
         .padding(.horizontal, 10.9)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(inMonth ? Color.clear : PlayarrStyle.surfaceStrong)
+        .background(inMonth ? Color.clear : WM.adaptive(light: (239, 238, 237), dark: (36, 31, 35)))
         .overlay(Rectangle().stroke(WM.line.opacity(0.23), lineWidth: 1))
         .overlay {
             if day == viewModel.today {
-                Rectangle().stroke(PlayarrStyle.pink, lineWidth: 2).padding(1)
+                Rectangle().stroke(PlayarrStyle.ink, lineWidth: 3).padding(1.5) // web focus ring on today
             }
         }
         .accessibilityElement(children: .contain)
