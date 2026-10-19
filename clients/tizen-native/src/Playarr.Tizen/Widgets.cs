@@ -105,7 +105,7 @@ internal sealed class MediaCard
 
     /// <summary>Web Library: the 3 px focus ring sits outside the scaled art (not clipped inside it).</summary>
     public bool OuterRing { get; init; }
-    private View? _outerRing;
+    private View? _outerRing, _outerGlow;
 
     private void SetOuterRing(bool show)
     {
@@ -114,7 +114,11 @@ internal sealed class MediaCard
             var rc = _t.Name == "dark" ? new Color(_t.BrandInk.R, _t.BrandInk.G, _t.BrandInk.B, 0.95f) : new Color(0.647f, 0.153f, 0.271f, 1);
             _outerRing = new View { Size = new Size(W + 6, H + 6), CornerRadius = 15.48f, BorderlineWidth = 3, BorderlineColor = rc, BorderlineOffset = -1 };
             Box.Add(_outerRing);
+            // web: the focus ring carries a soft ring-coloured glow, as the rail rings do; it sits on its own view behind the art
+            _outerGlow = new View { Size = new Size(W, H), CornerRadius = 12.48f, BoxShadow = new Shadow(14, new Color(rc.R, rc.G, rc.B, 0.4f), new Vector2(0, 4), new Vector2(0, 0)) };
+            Box.Add(_outerGlow); _outerGlow.LowerToBottom();
         }
+        _outerGlow!.PositionX = Art.PositionX; _outerGlow.PositionY = Art.PositionY; _outerGlow.Scale = Art.Scale; _outerGlow.Show(show);
         _outerRing.PositionX = Art.PositionX - 3; _outerRing.PositionY = Art.PositionY - 3; _outerRing.Scale = Art.Scale;
         _outerRing.Show(show);
         if (show) _outerRing.RaiseToTop();
