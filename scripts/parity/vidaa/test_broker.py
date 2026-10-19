@@ -68,6 +68,51 @@ class Socket(unittest.TestCase):
         tv.close.assert_called_once()
 
 
+class NoDirectSession(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        env = {"VIDAA_KEEPALIVE_LOCK": os.path.join(self.dir.name, "k.lock"), "VIDAA_SOCK": os.path.join(self.dir.name, "none.sock")}
+        self.patch = mock.patch.dict(os.environ, env)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        self.dir.cleanup()
+
+    def test_lock_is_exclusive_and_visible(self):
+        self.assertFalse(broker.keepalive_running())
+        fd = broker.hold_lock()
+        self.assertIsNotNone(fd)
+        self.assertTrue(broker.keepalive_running())
+        self.assertIsNone(broker.hold_lock())  # a second keepalive is refused
+        os.close(fd)
+        self.assertFalse(broker.keepalive_running())
+
+    def test_cli_refuses_direct_session_while_keepalive_runs(self):
+        fd = broker.hold_lock()
+        try:
+            with mock.patch.object(vidaa, "Tv") as tv, self.assertRaises(SystemExit) as e:
+                vidaa.via_broker("state", None)  # socket missing but keepalive holds the lock
+            self.assertIn("keepalive owns the TV session", str(e.exception.code))
+            tv.assert_not_called()
+            with mock.patch.object(vidaa, "Tv") as tv, self.assertRaises(SystemExit):
+                vidaa.connect()  # volume / events use connect() directly
+            tv.assert_not_called()
+        finally:
+            os.close(fd)
+
+    def test_keepalive_itself_and_the_override_may_connect(self):
+        fd = broker.hold_lock()
+        try:
+            with mock.patch.object(vidaa, "Tv") as tv:
+                vidaa.connect(owner=True)
+                with mock.patch.dict(os.environ, {"VIDAA_ALLOW_DIRECT": "1"}):
+                    vidaa.connect()
+            self.assertEqual(tv.call_count, 2)
+        finally:
+            os.close(fd)
+
+
 class KeyPacing(unittest.TestCase):
     def test_keys_keep_the_minimum_gap(self):
         sent = []
