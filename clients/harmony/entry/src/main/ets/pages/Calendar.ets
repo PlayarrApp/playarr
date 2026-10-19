@@ -1147,7 +1147,7 @@ export struct ReleaseCalendar {
     .constraintSize({
       minWidth: minWidth,
       minHeight: fixedHeight > 0 ? fixedHeight : PHONE_WEEK_CARD_MIN_HEIGHT,
-      maxHeight: fixedHeight > 0 ? fixedHeight : PHONE_CARD_NO_MAX,
+      maxHeight: PHONE_CARD_NO_MAX, // web: a card whose pill wraps grows, it does not clip
     })
     .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: 8, bottom: 8 })
     .borderRadius(tv(ENTRY_RADIUS))
