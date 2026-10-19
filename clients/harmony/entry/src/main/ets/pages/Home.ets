@@ -421,6 +421,9 @@ function heroKickerFor(hero: HomeCardItem | undefined): string {
   return hero.genres.length > 0 ? `${workKindKicker(hero.kind)} · ${hero.genres[0]}` : workKindKicker(hero.kind);
 }
 
+/** The TV rails' list ends this far short of the screen edge; web's rails run on to it (the edge fade is drawn at the screen edge). */
+const TV_RAIL_BLEED: number = 9;
+
 function heroTitleFor(hero: HomeCardItem | undefined): string {
   if (hero === undefined) {
     return '';
@@ -910,6 +913,7 @@ export struct Home {
         ForEach([railKey('continue', this.continueWatchingItems)], (_key: string) => {
         MediaRail({
           railId: 'home-continue-watching-tv',
+          bleedEnd: TV_RAIL_BLEED,
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
           listHeight: this.railListHeight(),
           heading: t('pages.home.rail.onDeck', 'On deck'),
@@ -925,6 +929,7 @@ export struct Home {
       ForEach(this.serverRails, (rail: HomeServerRail) => {
         MediaRail({
           railId: `home-${rail.id}-tv`,
+          bleedEnd: TV_RAIL_BLEED,
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
           listHeight: this.railListHeight(),
           heading: rail.title,
@@ -937,6 +942,7 @@ export struct Home {
       if (this.serverRails.length === 0 && this.newMovieItems.length > 0) {
         MediaRail({
           railId: 'home-new-movies-tv',
+          bleedEnd: TV_RAIL_BLEED,
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
           listHeight: this.railListHeight(),
           heading: 'New Movies',
@@ -949,6 +955,7 @@ export struct Home {
       if (this.serverRails.length === 0 && this.newSeriesItems.length > 0) {
         MediaRail({
           railId: 'home-new-series-tv',
+          bleedEnd: TV_RAIL_BLEED,
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
           listHeight: this.railListHeight(),
           heading: 'New Series',
@@ -961,6 +968,7 @@ export struct Home {
       if (this.serverRails.length === 0 && this.moreMovieItems.length > 0) {
         MediaRail({
           railId: 'home-more-movies-tv',
+          bleedEnd: TV_RAIL_BLEED,
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
           listHeight: this.railListHeight(),
           heading: 'More Movies',
@@ -973,6 +981,7 @@ export struct Home {
       if (this.serverRails.length === 0 && this.moreSeriesItems.length > 0) {
         MediaRail({
           railId: 'home-more-series-tv',
+          bleedEnd: TV_RAIL_BLEED,
           headingGap: tv(TvGeometry.homeRailsHeadingGap),
           listHeight: this.railListHeight(),
           heading: 'More Series',
