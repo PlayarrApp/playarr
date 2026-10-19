@@ -712,7 +712,7 @@ export struct PlayerChrome {
     .width('100%')
     .height('100%')
     // web .player-scrim: the bottom 48% fades to black (0.92) under the controls
-    .linearGradient({ direction: GradientDirection.Bottom, colors: [[0x00000000, 0.0], [0x00000000, 0.52], [0xEB000000, 1.0]] })
+    .linearGradient({ direction: GradientDirection.Bottom, colors: [['#00000000', 0.0], ['#00000000', 0.52], ['#EB000000', 1.0]] })
     .opacity(this.chromeOpacity)
     .hitTestBehavior(this.visible ? HitTestMode.Default : HitTestMode.Transparent)
   }
