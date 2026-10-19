@@ -712,7 +712,10 @@ struct TVHomeCardFocusRequest: Equatable, Identifiable {
 
 enum TVHomeNavFocusGeometry {
     static func nearestTarget(from source: CGRect, navFrames: [TVNavTab: CGRect]) -> TVNavTab? {
-        navFrames.compactMap { tab, frame -> (tab: TVNavTab, score: CGFloat)? in
+        // The web lands on Home from the first rail's leading card (static D-pad `home-left-nav`); a hosted run reached
+        // Downloads from this card by the geometry below, so the first rail (centre above y 520) is pinned to Home.
+        if let home = navFrames[.home], home.width > 0, source.midY < 520 { return .home }
+        return navFrames.compactMap { tab, frame -> (tab: TVNavTab, score: CGFloat)? in
             guard frame.width > 0, frame.height > 0,
                   let score = scoreLeftCandidate(from: source, to: frame) else { return nil }
             return (tab, score)
