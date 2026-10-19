@@ -306,16 +306,21 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
       <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} />
 
       {debounced.length === 0 ? (
-        <Box x={826} y={172} w={700}>
-          <T size={17.664} weight={610} color={colour.ink}>
-            {t('pages.search.idleTitle')}
-          </T>
-          <View style={{marginTop: u(6)}}>
-            <T size={12} weight={400} color={colour.inkMuted}>
+        <>
+          {/* The web's `.tv-search-prompt` under the field and its `.tv-empty-state.is-rail` (graphic "search"): a 132 px disc, a gap of 42 px, the title. */}
+          <Box x={153.6} y={303} w={252}>
+            <T size={12.288} weight={400} lh={18.4} color={colour.inkMuted}>
               {t('pages.search.emptyPrompt')}
             </T>
-          </View>
-        </Box>
+          </Box>
+          <View pointerEvents="none" style={{position: 'absolute', left: u(1125), top: u(312), width: u(132), height: u(132), borderRadius: u(66), borderWidth: 1, borderColor: mix(colour.lineStrong, 0.5), backgroundColor: mix(colour.surfaceStrong, 0.54)}} />
+          <SearchGlyph x={1164} y={360} colour={dark ? '#d3576c' : '#ac2d49'} />
+          <Box x={1299} y={365} w={420}>
+            <T size={16.9} weight={650} ls={-0.338} lh={26} color={colour.ink}>
+              {t('pages.search.idleTitle')}
+            </T>
+          </Box>
+        </>
       ) : failed ? (
         <Box x={1304} y={350} w={500}>
           <T size={17.664} weight={610} color={colour.accent}>
@@ -469,5 +474,17 @@ function ResultCard(props: {
         </T>
       </View>
     </Pressable>
+  );
+}
+
+/** The web's empty-state "search" graphic (a 48 x 32 viewBox drawn 54 px wide): a lens with a minus and a handle, 2 px strokes. */
+function SearchGlyph({x, y, colour}: {x: number; y: number; colour: string}): React.ReactElement {
+  const stroke = 2;
+  return (
+    <View pointerEvents="none" style={{position: 'absolute', left: u(x), top: u(y), width: u(54), height: u(36)}}>
+      <View style={{position: 'absolute', left: u(13.2), top: u(5.6), width: u(20.3), height: u(20.3), borderRadius: u(10.2), borderWidth: u(stroke), borderColor: colour}} />
+      <View style={{position: 'absolute', left: u(19.1), top: u(14.8), width: u(9), height: u(stroke), backgroundColor: colour, borderRadius: u(1)}} />
+      <View style={{position: 'absolute', left: u(30.6), top: u(22.7), width: u(12.1), height: u(stroke), backgroundColor: colour, borderRadius: u(1), transform: [{rotate: '41.6deg'}]}} />
+    </View>
   );
 }

@@ -319,6 +319,8 @@ export function HomeScreen(): React.ReactElement {
           ))}
         </Animated.View>
       </Box>
+      {/* The web's page scroller fades its end edge (--page-edge-fade-size) while more rails continue below. */}
+      <EdgeFade side="bottom" active={focus.rail < rails.length - 1} x={729.6} y={0} w={1190.4} h={1080} />
       {actionsWork ? (
         <ActionsDrawer
           work={actionsWork}
