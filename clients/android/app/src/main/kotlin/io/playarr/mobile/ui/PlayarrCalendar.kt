@@ -584,7 +584,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val fill = WebSurfaceStrong
     Surface(
         // Material's clickable Surface paints a focus state layer (a fill); web's focus state is the ring alone.
-        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === PhoneCalendarMetrics && LocalStageScale.current == 1f && rowSubtitle.isEmpty()) 76.5f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
+        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === PhoneCalendarMetrics && LocalStageScale.current == 1f && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
@@ -668,7 +668,7 @@ internal fun TvCalendarAgenda(
     val tablet = stage != 1f
     val stagedConfig = androidx.compose.ui.platform.LocalConfiguration.current
     UnstagedForWebCssPx {
-    androidx.compose.runtime.CompositionLocalProvider(LocalCalendarMetrics provides (if (tablet) PhoneCalendarMetrics else TvCalendarMetrics), LocalCalendarToday provides today) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalCalendarMetrics provides (if (tablet) PhoneCalendarMetrics else TvCalendarMetrics), LocalCalendarToday provides today, LocalCalendarTabletAgenda provides tablet) {
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
             // Web: the date range lives in the header group; the details panel takes the library stage (eyebrow at y 259)
             // and the day list starts under the header. Both panes end at the bottom of the screen.
@@ -732,7 +732,7 @@ internal fun TvCalendarAgenda(
                     rows.forEachIndexed { index, (day, item) ->
                         if (day != null) {
                             item(key = "day-$day") {
-                                Row(Modifier.padding(top = if (index > 0) (if (tablet) 25.dp else 27.dp) else 0.dp, bottom = if (tablet) 45.dp else 39.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(Modifier.padding(top = if (index > 0) (if (tablet) 25.dp else 27.dp) else 0.dp, bottom = if (tablet) 43.dp else 39.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Text(
                                         phoneCalendarDayHeading(day, locale), color = WebInk, fontSize = dayFont.dayHeading.sp, lineHeight = dayFont.dayHeadingLine.sp, fontWeight = FontWeight(560),
                                         style = WebTextStyle, modifier = Modifier.semantics { heading() },
@@ -747,7 +747,7 @@ internal fun TvCalendarAgenda(
                                     // The details panel follows focus: UP/DOWN selects, SELECT is not needed.
                                     modifier = Modifier.calendarListRow(focus, "agenda-${item.key}", onFocused = { onSelect(item) }),
                                 )
-                                Spacer(Modifier.height(13.dp))
+                                Spacer(Modifier.height(if (tablet) 18.dp else 13.dp))
                             }
                         }
                     }
@@ -1443,7 +1443,7 @@ internal fun CalendarMonth(
             if (isTelevision && LocalStageScale.current != 1f) {
                 // Tablet web at 1280 x 800 draws the month grid in css px (12.48 px lines, 106 px rows): grid at x 131 to 1167, y 134 to 691.
                 UnstagedForWebCssPx {
-                    CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().padding(top = 53.25.dp, end = 35.dp, bottom = 26.dp), true, tabletCss = true)
+                    CalendarMonthChips(state, entries, loading, today, zone, locale, onSelect, onMore, Modifier.fillMaxSize().padding(top = 53.25.dp, end = 35.dp, bottom = 28.dp), true, tabletCss = true)
                 }
                 return@BoxWithConstraints
             }
@@ -1567,7 +1567,7 @@ private fun CalendarMonthChips(
         entries.groupBy { it.date }.mapValues { (_, day) -> groupSeriesEpisodes(day.sortedBy { it.releaseAt }, zone) }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val headerHeight = if (phoneStrip) 34.dp else if (tabletCss) 29.75.dp else 26.dp
+        val headerHeight = if (phoneStrip) 34.dp else if (tabletCss) 27.75.dp else 26.dp
         val cellHeight = (maxHeight - headerHeight) / rows.size
         // Web: chips that fit = (cell height - 52) / 26, between 1 and 5; when more exist the last slot is "+N more".
         // Web TV text lines: 25 dp lines above a footer with the day number and "+N more", so the count never takes a line.
@@ -1610,7 +1610,7 @@ private fun CalendarMonthChips(
                                     .background(if (inMonth) Color.Transparent else WebSurfaceSoft.copy(alpha = 0.4f))
                                     .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.11f, 0.13f))
                                     .then(if (day == today) Modifier.border(2.dp, WebInk) else Modifier)
-                                    .padding(start = 4.8.dp, end = 4.8.dp, top = 0.8.dp + (if (tabletCss) 7.5.dp else 0.dp), bottom = 0.8.dp + (if (tabletCss) 14.dp else 0.dp)),
+                                    .padding(start = 4.8.dp, end = 4.8.dp, top = 0.8.dp + (if (tabletCss) 7.5.dp else 0.dp), bottom = 0.8.dp + (if (tabletCss) 9.dp else 0.dp)),
                             ) {
                                 Column(Modifier.weight(1f).padding(top = 1.dp)) {
                                     shown.forEachIndexed { slot, item ->
@@ -1620,7 +1620,7 @@ private fun CalendarMonthChips(
                                         )
                                     }
                                 }
-                                Row(Modifier.height(30.dp).padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Row(Modifier.height(30.dp).padding(start = if (tabletCss) 3.5.dp else 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                     Text(day.dayOfMonth.toString(), color = if (inMonth) WebInk else WebInkSoft, fontSize = 13.44.sp, fontWeight = FontWeight(640))
                                     if (hidden > 0) {
                                         val source = remember { MutableInteractionSource() }
@@ -2029,6 +2029,8 @@ internal fun calendarItemTone(item: CalendarItem, today: LocalDate, zone: ZoneId
     return listOf(CalendarPillTone.Missing, CalendarPillTone.Upcoming, CalendarPillTone.Neutral).firstOrNull { it in tones } ?: CalendarPillTone.Available
 }
 
+/** Tablet agenda day list (css px): the web card is 89.9 px tall with a 43 px heading gap, not the phone 92.9 px. */
+internal val LocalCalendarTabletAgenda = androidx.compose.runtime.compositionLocalOf { false }
 internal val LocalCalendarToday = androidx.compose.runtime.compositionLocalOf { playarrToday() }
 
 /** Web `.status-pill`: the tone at 60% as the border and 14% over the surface as the fill, ink text at weight 750. */
