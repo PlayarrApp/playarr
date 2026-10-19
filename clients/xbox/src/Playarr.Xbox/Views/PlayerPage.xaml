@@ -87,8 +87,8 @@
                 CornerRadius="24"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"
-                Background="Transparent"
-                BorderBrush="#40FFFFFF"
+                Background="#9E0C0A0B"
+                BorderBrush="#47FFFFFF"
                 BorderThickness="1"
                 FocusVisualPrimaryBrush="White"
                 FocusVisualPrimaryThickness="3"
@@ -97,6 +97,14 @@
                 Click="BackButton_Click">
                 <FontIcon Glyph="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="White" />
             </Button>
+            <!-- Web .player-minimise: a 124 x 48 dark pill left of Close (drawn for parity; Close is the one control). -->
+            <Border Width="124" Height="48" Margin="0,38,118,0" CornerRadius="24" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Background="#D10C0A0B" BorderBrush="#47FFFFFF" BorderThickness="1" IsHitTestVisible="False">
+                <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <FontIcon Glyph="&#xE73F;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="White" />
+                    <TextBlock Text="Minimise" FontSize="11.2" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
             <Slider
                 x:Name="Scrubber"
                 Margin="70,0,70,132"

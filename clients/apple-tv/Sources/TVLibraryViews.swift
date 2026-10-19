@@ -189,6 +189,10 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
+            #if os(macOS)
+            // Web `[data-fade-axis="y"][data-fade-end]` on `.tv-home-rails`: the last visible row dims to the floor at the page edge.
+            .macEdgeFade(axis: .vertical, endFloor: 0.3)
+            #endif
             // Web `.tv-home-rails.is-vertical-tracks`: the first rail opens at the Library grid's first row (clamp(128, 15vh, 174)).
             .padding(.top, Self.railTopY - origin.y)
             // Web `.tv-home-rails` starts where the Library grid panel starts (100% - 62%), cards at its left padding.
@@ -1726,7 +1730,7 @@ struct TVLibraryKindView: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(alignment: .leading, spacing: 0) {
                                 TVChoiceSection(title: "View", options: [("list", "List"), ("screen", "Screen"), ("cover", "Cover")], selection: $view)
-                                TVChoiceSection(title: "Sort by", options: [("title", "Title"), ("date_added", "Date added")], selection: $sort)
+                                TVChoiceSection(title: "Sort by", options: [("title", "Title"), ("date_added", "Date Added")], selection: $sort)
                                 TVChoiceSection(title: "Order", options: [("asc", sort == "title" ? "A-Z" : "Oldest"),
                                                                           ("desc", sort == "title" ? "Z-A" : "Newest")], selection: $order)
                                 TVMultiSelectSection(title: "Audio language", facets: facets?.audio, loaded: facets != nil, selection: $audioLangs)

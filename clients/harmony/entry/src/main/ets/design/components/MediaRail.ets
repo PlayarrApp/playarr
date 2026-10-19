@@ -168,6 +168,8 @@ const RAIL_CLIP_INSET_TOP: number = 24;
  * applied as `headingSize * RAIL_HEADING_TRACKING_EM` since ArkUI's
  * `.letterSpacing()` takes a length, not an `em` unit directly. */
 const RAIL_HEADING_TRACKING_EM: number = -0.03;
+/** TV: the Nunito instance renders the heading about 2.5% wider than web's, so tighten by a further 0.012em. */
+const RAIL_HEADING_TRACKING_TV_EM: number = -0.042;
 
 /** `design/components/FocusLift.ets`'s own documented contract for
  * `activeRailFactor` is exactly "1 while the rail itself holds focus, 0
@@ -412,7 +414,7 @@ export struct MediaRail {
           .fontSize(this.headingSize)
           .fontWeight(this.headingWeight)
           .fontColor(toResourceColor(activeColors().ink))
-          .letterSpacing(this.headingSize * RAIL_HEADING_TRACKING_EM)
+          .letterSpacing(this.headingSize * (isTvMetrics() ? RAIL_HEADING_TRACKING_TV_EM : RAIL_HEADING_TRACKING_EM))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .translate({ y: ((FOCUS_LIFT.railHeading.translateY ?? 0) * this.headingEffective()) })

@@ -22,7 +22,7 @@ private struct WMPanelFrame<Content: View>: View {
                 .overlay(WM.chip.opacity(0.94))
                 .ignoresSafeArea()
         } else {
-            WM.page.opacity(0.97).ignoresSafeArea()
+            WM.page.ignoresSafeArea() // web phone panels are opaque: the library behind does not show through
         }
     }
 
@@ -51,7 +51,7 @@ private struct WMPanelFrame<Content: View>: View {
                 WMText(title, 24, 520, lh: 34, ls: -1).offset(x: 21, y: 33 + WM.safeTop)
                 HStack { Spacer(); WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose) }
                     // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
-                    .overlay(alignment: .trailing) { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) }
+                    .overlay(alignment: .trailing) { if closeFocused { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) } }
                     .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
             }
             // The whole panel scrolls (web: the drawer body scrolls to its last row, clear of the floating nav).
@@ -268,9 +268,7 @@ struct WMTitleActionsPanel: View {
             .padding(.horizontal, isPad ? 18 : 17)
             .frame(minHeight: isPad ? 68 : 67, maxHeight: isPad ? nil : 67)
             .background(
-                isPad
-                    ? WM.artFill
-                    : (scheme == .light ? WM.ink.opacity(0.17) : WM.chip.opacity(0.66)),
+                WM.artFill,
                 in: RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous)
             )
             .overlay(RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
@@ -291,9 +289,9 @@ struct WMTitleActionsPanel: View {
     }
 
     var body: some View {
-        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, closeFocused: !isPad) {
+        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, closeFocused: false) {
             VStack(spacing: isPad ? 14 : 15) {
-                row("▶\u{FE0E}", "Play", focused: isPad, action: onPlay)
+                row("▶\u{FE0E}", "Play", focused: true, action: onPlay)
                 row("⇩", "Download", action: onDownload)
                 row("+", "Add to Playlist", action: onPlay)
                 row("✓", "Mark as Watched") { mark(watched: true) }

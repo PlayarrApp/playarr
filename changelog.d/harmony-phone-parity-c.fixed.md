@@ -1,0 +1,1 @@
+- HarmonyOS phone: the film Chapters rail follows the web layout, the nav bar glass and saved avatar match the web, series titles wrap like the web, the Profiles avatar glows and agenda cards grow with a wrapped pill.

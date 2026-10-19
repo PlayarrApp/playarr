@@ -31,6 +31,45 @@ for line in (Path.home() / ".secrets").read_text().splitlines():
         TOKEN = line.split("=", 1)[1].strip().strip("\"'")
 if not TOKEN:
     sys.exit("PLAYARR_VIDAA_MIRROR_TOKEN missing")
+def load_secrets(env=os.environ):
+    """~/.secrets as a dict. With the static parity server configured (PARITY_SERVER_URL and PARITY_ACCOUNT_NAME in the environment, from
+    scripts/parity/parity.env) the trusted server and the allowed account are the static server and its seeded account, as for the node tools."""
+    secrets = {}
+    for line in (Path.home() / ".secrets").read_text().splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            key, value = line.split("=", 1)
+            secrets[key.strip()] = value.strip().strip("\"'")
+    url, user = env.get("PARITY_SERVER_URL", "").rstrip("/"), env.get("PARITY_ACCOUNT_NAME", "")
+    if url and user and secrets.get("PLAYARR_PARITY_STATIC_PASSWORD"):
+        secrets.update(PLAYARR_DEVICE_TEST_SERVER_URL=url, PLAYARR_TEST_SERVER_URL=url,
+                       PLAYARR_DEVICE_TEST_USERNAME=user, PLAYARR_DEVICE_TEST_DPAD_USERNAME=user)
+    return secrets
+
+
+def seed_page(secrets):
+    """HTML that replaces the TV page's saved sign-in with a fresh login of the static parity account, then opens `next`.
+    The login happens here (the password never reaches the TV); the page receives only the session tokens."""
+    import urllib.request, uuid
+    url = secrets["PLAYARR_DEVICE_TEST_SERVER_URL"].rstrip("/")
+    device = str(uuid.uuid4())
+    def post(path, body, auth=None):
+        h = {"content-type": "application/json"}
+        if auth:
+            h["authorization"] = "Bearer " + auth
+        return json.load(urllib.request.urlopen(urllib.request.Request(url + path, json.dumps(body).encode(), h), timeout=20))
+    login = post("/api/v1/auth/login", {"username": secrets["PLAYARR_DEVICE_TEST_USERNAME"], "password": secrets["PLAYARR_PARITY_STATIC_PASSWORD"],
+                                       "device_id": device, "device_name": "vidaa-parity", "client_platform": "web", "client_version": "parity"})
+    sub = json.loads(base64.urlsafe_b64decode(login["access_token"].split(".")[1] + "==")).get("sub")
+    session = {"accessToken": login["access_token"], "refreshToken": login["refresh_token"], "tokenType": login.get("token_type", "Bearer"),
+               "expiresAt": int(time.time() * 1000) + int(login.get("expires_in", 900)) * 1000}
+    data = {"base": url, "userId": sub, "deviceId": device, "session": session}
+    return ("<!doctype html><meta charset=utf-8><script>const d=%s;localStorage.clear();sessionStorage.clear();"
+            "localStorage.setItem('playarr:apiBaseUrl',d.base);"
+            "localStorage.setItem('playarr.profileSessions.v4',JSON.stringify([{profileKey:'parity',apiBaseUrl:d.base,userId:d.userId,name:'parity',deviceId:d.deviceId,session:d.session}]));"
+            "localStorage.setItem('playarr.activeProfile.v1',JSON.stringify({profileKey:'parity',apiBaseUrl:d.base,userId:d.userId}));"
+            "const n=new URLSearchParams(location.search).get('next')||'/';location.replace(/^\\/(?!\\/)/.test(n)?n:'/');</script>" % json.dumps(data)).encode()
+
+
 lock = threading.Lock()
 STATS_LOCK = threading.Lock()
 STATS = {}
@@ -298,11 +337,7 @@ class H(BaseHTTPRequestHandler):
         global LAST_FRAME_DIAGNOSTIC
         with STATS_LOCK:
             LAST_FRAME_DIAGNOSTIC = diagnostic
-        secrets = {}
-        for line in (Path.home() / ".secrets").read_text().splitlines():
-            if "=" in line and not line.lstrip().startswith("#"):
-                key, value = line.split("=", 1)
-                secrets[key.strip()] = value.strip().strip("\"'")
+        secrets = load_secrets()
         reason = identity_rejection(identity, secrets, now_ms)
         if reason != "accepted" or not identity_allowed(identity, secrets, now_ms):
             count_stat("frame_post_rejected_" + reason)
@@ -341,6 +376,12 @@ class H(BaseHTTPRequestHandler):
                 with STATS_LOCK:
                     hb = dict(HEARTBEAT)
                 return self._ok(200, json.dumps(hb).encode())
+            if u.path == "/__mirror/seed":
+                # Test tooling for the static parity server only; refused unless the account and server come from parity.env.
+                sec = load_secrets()
+                if sec.get("PLAYARR_DEVICE_TEST_SERVER_URL") != os.environ.get("PARITY_SERVER_URL", "").rstrip("/") or not os.environ.get("PARITY_SERVER_URL"):
+                    return self._ok(503, b'{"error":"static_server_not_configured"}')
+                return self._ok(200, seed_page(sec), "text/html")
             if u.path == "/__mirror/img":
                 return self._proxy_image(parse_qs(u.query).get("u", [""])[0])
             if u.path == "/__mirror/diagnostics":
@@ -350,11 +391,7 @@ class H(BaseHTTPRequestHandler):
                     frame = dict(LAST_FRAME_DIAGNOSTIC)
                 return self._ok(200, json.dumps({"counts": stats_snapshot(), "identity": identity, "lastFrame": frame}).encode())
             if u.path == "/__mirror/trusted":
-                secrets = {}
-                for line in (Path.home() / ".secrets").read_text().splitlines():
-                    if "=" in line and not line.lstrip().startswith("#"):
-                        key, value = line.split("=", 1)
-                        secrets[key.strip()] = value.strip().strip("\"'")
+                secrets = load_secrets()
                 server = secrets.get("PLAYARR_DEVICE_TEST_SERVER_URL", "").rstrip("/")
                 if not server.startswith(("https://", "http://")):
                     return self._ok(503, b'{"error":"identity_configuration"}')

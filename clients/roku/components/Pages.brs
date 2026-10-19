@@ -1966,7 +1966,7 @@ sub renderCalendarAgenda(entries as Object)
     pgTrackedText(m.pageHead, 153.6, 263.2, 0, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12, 800, 0.983, "brandInk", true)
     stageTitle = CreateObject("roSGNode", "TrackedText")
     stageTitle.translation = [153.6, 292.5]
-    stageTitle.spec = { text: selected.title, size: 69, weight: 560, tracking: -4.977, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    stageTitle.spec = { text: selected.title, size: 69, weight: 560, tracking: -4.53, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
     m.pageHead.AppendChild(stageTitle)
     titleLines = stageTitle.lineCount
     if titleLines < 1 then titleLines = 1
