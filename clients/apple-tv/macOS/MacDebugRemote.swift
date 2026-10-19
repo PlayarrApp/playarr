@@ -99,14 +99,22 @@ enum MacDebugRemote {
                                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
         // The stage sits at the top left, scaled to fit (MacTVStage); render just the stage at 1920x1080.
         let scale = 1 / min(view.bounds.width / 1920, view.bounds.height / 1080)
-        if layer.isGeometryFlipped || view.isFlipped {
-            ctx.translateBy(x: 0, y: CGFloat(height))
-            ctx.scaleBy(x: scale, y: -scale)
-        } else {
-            ctx.scaleBy(x: scale, y: scale)
-        }
+        // Render with a plain y-up context and flip the finished bitmap: Core Animation draws shadows in device space, so flipping
+        // the context first (the old path) mirrored every card shadow above its card, which the window server never does.
+        // The stage is the view's top-left 1920x1080 area; bring the view's top edge to the bitmap's top.
+        ctx.translateBy(x: 0, y: CGFloat(height) - view.bounds.height * scale)
+        ctx.scaleBy(x: scale, y: scale)
         layer.render(in: ctx)
-        guard let image = ctx.makeImage(),
+        guard let drawn = ctx.makeImage(),
+              let out = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+        if layer.isGeometryFlipped || view.isFlipped {
+            out.translateBy(x: 0, y: CGFloat(height))
+            out.scaleBy(x: 1, y: -1)
+        }
+        out.draw(drawn, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let image = out.makeImage(),
               let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else { return }
         try? data.write(to: url)
         NSLog("PlayarrMac debug: snapshot %@", url.path)
