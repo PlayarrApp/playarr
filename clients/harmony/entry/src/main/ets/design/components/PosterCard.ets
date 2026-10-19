@@ -253,7 +253,7 @@ export struct PosterCard {
   }
 
   /** Phone captions: web draws the title and detail lines in the page's pure black / white. */
-  private captionInk(title: boolean): ResourceColor {
+  private captionInk(title: boolean): string {
     if (!this.softCaption) {
       return toResourceColor(activeColors().ink);
     }
