@@ -298,7 +298,7 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
     val metrics = PlayarrPageTokens.Tv
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
-    // Settings opens with the back button focused: web fills it with the ink colour, scales it 1.056 and draws the
+    // Settings opens with the back button focused: web keeps its surface fill (static ref), scales it 1.056 and draws the
     // 3 px ink outline 2 px outside it (`.ui-btn:focus-visible`).
     val scale = if (active) 1.056f else if (focused) 1.1f else 1f
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -307,8 +307,8 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
             interactionSource = source,
             shape = CircleShape,
             // Web `a.ui-btn--icon`: rgba(33,29,33,.7) fill with a 1px ring and a text arrow.
-            color = if (active) palette.ink else palette.surfaceStrong.copy(alpha = 0.7f),
-            contentColor = if (active) palette.background else palette.inkSoft,
+            color = if (active) palette.surfaceStrong else palette.surfaceStrong.copy(alpha = 0.7f),
+            contentColor = if (active) palette.ink else palette.inkSoft,
             border = if (active) null else BorderStroke(1.dp, palette.pillBorder),
             modifier = Modifier
                 .size(metrics.controlWidth, metrics.control)
