@@ -1,0 +1,1 @@
+- Roku: the parity driver captures player-controls itself (opt-in, pauses the static clip at 2 s), and the stage title tracking and Actions drawer glyph sizes follow the web.

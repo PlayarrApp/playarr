@@ -29,14 +29,23 @@ const CHOICE_LABEL_SIZE: number = 10.56;
 const DESCRIPTION_SIZE: number = 13.824;
 const SECTION_GAP: number = 30;
 // Web phone drawer choices: 46.7 high, 11.5 type, sections 8 vp closer than the TV's.
-const TOUCH_CHOICE_HEIGHT: number = 46.7;
+const TOUCH_CHOICE_HEIGHT: number = 48; // web: 144 px inactive; the selected choice is 1.025 scaled
 const TOUCH_CHOICE_LABEL_SIZE: number = 11.5;
-const TOUCH_SECTION_GAP: number = 22;
+const TOUCH_SECTION_GAP: number = 23.7;
 const LARGE_HEADING_SIZE: number = 26.4;
 const LARGE_HEADING_LETTER_SPACING: number = -0.924;
 const LARGE_HEADING_GAP: number = 16;
 // Web inactive choice: surface-soft at 0.64.
 const INACTIVE_BG_ALPHA: number = 0.64;
+
+/** Web phone: the choice buttons capitalise each word ("Date added" reads "Date Added"). */
+function capitalWords(label: string): string {
+  let out = '';
+  for (let i = 0; i < label.length; i++) {
+    out += i === 0 || label.charAt(i - 1) === ' ' ? label.charAt(i).toUpperCase() : label.charAt(i);
+  }
+  return out;
+}
 
 @Component
 export struct ChoiceSegments {
@@ -86,7 +95,7 @@ export struct ChoiceSegments {
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
-          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + choice.label).fontFamily(nunito(700))
+          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? choice.label : capitalWords(choice.label))).fontFamily(nunito(700))
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)
@@ -97,6 +106,7 @@ export struct ChoiceSegments {
               toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
             .borderRadius(tv(CHOICE_RADIUS))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
+            .scale(!isTvMetrics() && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
             .focusable(true)
             .onClick(() => {
               this.onChoose(choice.value);

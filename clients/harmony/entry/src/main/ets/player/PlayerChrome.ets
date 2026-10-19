@@ -193,15 +193,15 @@ const TV_CLOSE_SIZE: number = 48;
 const TV_CLOSE_RIGHT: number = 58;
 const TV_CLOSE_TOP: number = 38;
 const TV_BAR_SIDE: number = 70;
-const TV_BAR_BOTTOM: number = 42;
+const TV_BAR_BOTTOM: number = 58;
 const TV_TRACK_HEIGHT: number = 6;
-const TV_PLAY_SIZE: number = 72;
-const TV_SEEK_SIZE: number = 48;
-const TV_ROW_GAP: number = 24;
-const TV_BAR_GAP: number = 28;
+const TV_PLAY_SIZE: number = 64;
+const TV_SEEK_SIZE: number = 64;
+const TV_ROW_GAP: number = 13.6;
+const TV_BAR_GAP: number = 20;
 const TV_TIME_FONT_SIZE: number = 12;
 const TV_QUALITY_WIDTH: number = 120;
-const TV_VOLUME_WIDTH: number = 76;
+const TV_VOLUME_WIDTH: number = 64;
 const BACK_BUTTON_WIDTH_TV: number = 96;
 
 function defaultChromePaddingH(): number {
@@ -612,6 +612,8 @@ export struct PlayerChrome {
           ChromeButton({
             label: '\u23EE',
             circle: true,
+            fillAlpha: 0,
+            ringAlpha: 0,
             active: this.canPrevious,
             buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
@@ -624,7 +626,8 @@ export struct PlayerChrome {
           ChromeButton({
             showGlyph: true,
             circle: true,
-            ringWidth: 2,
+            fillAlpha: 0.14,
+            ringAlpha: 0,
             isPlaying: this.isPlaying,
             glyphSize: tv(TV_PLAY_SIZE / 2.4),
             buttonWidth: tv(TV_PLAY_SIZE),
@@ -637,6 +640,8 @@ export struct PlayerChrome {
           ChromeButton({
             label: '\u23ED',
             circle: true,
+            fillAlpha: 0,
+            ringAlpha: 0,
             active: this.canNext,
             buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
@@ -657,6 +662,8 @@ export struct PlayerChrome {
           ChromeButton({
             label: this.muted ? 'Muted' : 'Vol',
             circle: true,
+            fillAlpha: 0,
+            ringAlpha: 0,
             buttonWidth: tv(TV_VOLUME_WIDTH),
             buttonHeight: tv(TV_SEEK_SIZE),
             fontSize: tv(13),
@@ -669,6 +676,8 @@ export struct PlayerChrome {
             ChromeButton({
               label: this.qualityLabel,
               circle: true,
+            fillAlpha: 0,
+            ringAlpha: 0,
               buttonWidth: tv(TV_QUALITY_WIDTH),
               buttonHeight: tv(TV_SEEK_SIZE),
               fontSize: tv(13),
@@ -682,6 +691,8 @@ export struct PlayerChrome {
             ChromeButton({
               label: 'CC',
               circle: true,
+            fillAlpha: 0,
+            ringAlpha: 0,
               buttonWidth: tv(TV_SEEK_SIZE),
               buttonHeight: tv(TV_SEEK_SIZE),
               fontSize: tv(13),
@@ -694,6 +705,8 @@ export struct PlayerChrome {
           ChromeButton({
             label: 'i',
             circle: true,
+            fillAlpha: 0,
+            ringAlpha: 0,
             buttonWidth: tv(TV_SEEK_SIZE),
             buttonHeight: tv(TV_SEEK_SIZE),
             fontSize: tv(16),
@@ -711,6 +724,8 @@ export struct PlayerChrome {
     }
     .width('100%')
     .height('100%')
+    // web .player-scrim: the bottom 48% fades to black (0.92) under the controls
+    .linearGradient({ direction: GradientDirection.Bottom, colors: [['#00000000', 0.0], ['#00000000', 0.52], ['#EB000000', 1.0]] })
     .opacity(this.chromeOpacity)
     .hitTestBehavior(this.visible ? HitTestMode.Default : HitTestMode.Transparent)
   }

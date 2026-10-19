@@ -1,0 +1,1 @@
+- HarmonyOS phone: Library grids draw the card row under the translucent nav bar like the web, the agenda text offset is closer and the Profiles avatar glow is round.

@@ -1187,21 +1187,20 @@ export struct Home {
       .width('100%')
       .height('100%')
       .hitTestBehavior(HitTestMode.Transparent)
-      Column() {
-        Stack({ alignContent: Alignment.TopStart }) {
-          Scroll() {
-            this.touchRailsColumn()
-          }
-          .scrollBar(BarState.Off)
-          .width('100%')
-          // Web scrolls the rails under the translucent nav bar: run the Scroll over the bar's slot (a Stack does not clip its children).
-          .height(`calc(100% + ${touchNavBarBox(this.safeBottom)}vp)`)
+      Stack({ alignContent: Alignment.TopStart }) {
+        // Web scrolls the rails under the translucent nav bar: the Scroll runs to the screen bottom (the rails column ends
+        // in its own nav clearance) and the bar is laid over it, as in PageShell.
+        Scroll() {
+          this.touchRailsColumn()
         }
+        .scrollBar(BarState.Off)
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
 
         // Web phone shell: the full-width bottom bar, not a floating pill.
         TouchNavBar({ selectedId: HOME_NAV_ID })
+          .position({ x: 0, y: '100%' })
+          .markAnchor({ x: 0, y: touchNavBarBox(this.safeBottom) })
       }
       .width('100%')
       .height('100%')
