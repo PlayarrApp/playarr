@@ -1870,16 +1870,19 @@ struct TVLibraryKindView: View {
 
     private func previewMeta(_ work: Work) -> some View {
         let genreLine = work.genres.prefix(2).joined(separator: " · ")
-        return HStack(spacing: 0) {
-            Text(yearString(for: work))
-                .foregroundStyle(DesignTokens.Color.textSecondary)
+        let year = yearString(for: work)
+        // Web `.tv-preview-meta`: flex row, gap 0.8rem; a title without a year starts flush left (music).
+        return HStack(spacing: 12.8) {
+            if !year.isEmpty {
+                Text(year)
+                    .foregroundStyle(DesignTokens.Color.textSecondary)
+            }
             if !genreLine.isEmpty {
-                // Web: the gap belongs to the year; a title without one starts flush left (music).
-                Text((yearString(for: work).isEmpty ? "" : "  ") + genreLine)
+                Text(genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
             }
             if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
-                Text("  " + text)
+                Text(text)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
             }
         }
