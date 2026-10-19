@@ -62,6 +62,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,6 +81,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.drawBehind
@@ -95,6 +98,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import android.graphics.Rect
+import android.os.Build
+import android.view.Gravity
+import android.view.ViewGroup
+import android.view.WindowManager
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.InsetDrawable
+import java.util.function.Consumer
+import androidx.activity.ComponentDialog
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.findViewTreeViewModelStoreOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.findViewTreeSavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 /*
  * Screens render through `PlayarrPageLayout` in `core-designsystem` (docs/design/page-layout.md section 8): they name their
@@ -394,17 +414,10 @@ private fun PlayarrTvDrawer(
 ) {
     val captureToken = parityCaptureGenerationToken()
     val dismiss = if (dismissible) onClose else ({})
-    Dialog(
-        onDismissRequest = dismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = dismissible,
-            dismissOnClickOutside = dismissible,
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-        ),
-    ) {
-        (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setDimAmount(0f)
-        val tablet = LocalStageScale.current != 1f
+    val tablet = LocalStageScale.current != 1f
+    val panelWindow = !tablet && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val blurEnabled = if (panelWindow) rememberApi31TvDrawerBlurEnabled() else false
+    val drawerContent: @Composable () -> Unit = {
         androidx.compose.runtime.CompositionLocalProvider(LocalTabletDrawerCssPx provides tablet) {
         UnstagedForWebCssPx(densityIsReal = true) {
         // Web `.tv-filter-drawer`: width min(360, 27 vw), padding clamp(38, 5 vu, 62) x clamp(26, 2.5 vw, 46), title clamp(22.4, 2 vw, 38.4), gap clamp(22, 2.8 vu, 34).
@@ -425,7 +438,7 @@ private fun PlayarrTvDrawer(
                             size = androidx.compose.ui.geometry.Size(122.dp.toPx(), size.height),
                         )
                     }
-                    .background(WebSurfaceStrong.copy(alpha = 0.94f))
+                    .background(if (panelWindow) Color.Transparent else WebSurfaceStrong.copy(alpha = 0.94f))
                     .clickable(interactionSource = null, indication = null, enabled = false) {},
             ) {
                 Column(
@@ -467,7 +480,150 @@ private fun PlayarrTvDrawer(
         }
         }
     }
-    LaunchedEffect(Unit) { runCatching { (initialFocus ?: focus).requestFocus() } }
+    if (panelWindow) {
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        PlayarrTvDrawerWindow(
+            dismissible = dismissible,
+            onDismissRequest = dismiss,
+            panelWidthPx = with(density) { 360.dp.roundToPx() },
+            blurRadiusPx = with(density) { 16.dp.roundToPx() },
+            blurEnabled = blurEnabled,
+            panelSurface = WebSurfaceStrong.copy(alpha = 0.94f).toArgb(),
+            hideSystemBars = parityNoInsets,
+            focus = focus,
+            initialFocus = initialFocus,
+            content = drawerContent,
+        )
+    } else {
+        Dialog(
+            onDismissRequest = dismiss,
+            properties = DialogProperties(
+                dismissOnBackPress = dismissible,
+                dismissOnClickOutside = dismissible,
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
+        ) {
+            val view = androidx.compose.ui.platform.LocalView.current
+            SideEffect {
+                (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let { window ->
+                    window.setDimAmount(0f)
+                    if (parityNoInsets) androidx.core.view.WindowCompat.getInsetsController(window, view).hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                }
+            }
+            drawerContent()
+        }
+    }
+    LaunchedEffect(panelWindow, initialFocus, focus) {
+        if (!panelWindow) runCatching { (initialFocus ?: focus).requestFocus() }
+    }
+}
+
+/** A drawer-scoped floating dialog. Its full-screen Compose surface preserves outside dismissal and D-pad routing. */
+@Composable
+private fun PlayarrTvDrawerWindow(
+    dismissible: Boolean,
+    onDismissRequest: () -> Unit,
+    panelWidthPx: Int,
+    blurRadiusPx: Int,
+    blurEnabled: Boolean,
+    panelSurface: Int,
+    hideSystemBars: Boolean,
+    focus: FocusRequester,
+    initialFocus: FocusRequester?,
+    content: @Composable () -> Unit,
+) {
+    val hostView = androidx.compose.ui.platform.LocalView.current
+    val context = hostView.context
+    val parentComposition = rememberCompositionContext()
+    val currentOnDismiss = rememberUpdatedState(onDismissRequest)
+    val currentContent = rememberUpdatedState(content)
+    val currentFocus = rememberUpdatedState(focus)
+    val currentInitialFocus = rememberUpdatedState(initialFocus)
+    val dialog = remember(context) {
+        ComponentDialog(context, R.style.Theme_Playarr_TvDrawerDialog)
+    }
+    val composeView = remember(dialog) {
+        ComposeView(dialog.context).apply {
+            setParentCompositionContext(parentComposition)
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            hostView.findViewTreeLifecycleOwner()?.let { setViewTreeLifecycleOwner(it) }
+            hostView.findViewTreeViewModelStoreOwner()?.let { setViewTreeViewModelStoreOwner(it) }
+            hostView.findViewTreeSavedStateRegistryOwner()?.let { setViewTreeSavedStateRegistryOwner(it) }
+        }
+    }
+
+    val displayWidth = (hostView.rootView.width.takeIf { it > 0 } ?: hostView.resources.displayMetrics.widthPixels)
+    fun configureWindow(window: android.view.Window) {
+        window.setDimAmount(0f)
+        window.setBackgroundDrawable(PanelBlurInsetDrawable(panelSurface, (displayWidth - panelWidthPx).coerceAtLeast(0)))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            window.setBackgroundBlurRadius(if (blurEnabled) blurRadiusPx else 0)
+        }
+        window.setGravity(Gravity.RIGHT or Gravity.TOP)
+        window.attributes = window.attributes.apply {
+            width = WindowManager.LayoutParams.MATCH_PARENT
+            height = WindowManager.LayoutParams.MATCH_PARENT
+            x = 0
+            y = 0
+        }
+        if (hideSystemBars) {
+            androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                .hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    SideEffect {
+        dialog.setCancelable(dismissible)
+        dialog.setCanceledOnTouchOutside(dismissible)
+        dialog.window?.let(::configureWindow)
+    }
+
+    DisposableEffect(dialog, composeView) {
+        dialog.setOnCancelListener { currentOnDismiss.value() }
+        dialog.setOnDismissListener { composeView.disposeComposition() }
+        dialog.setCancelable(dismissible)
+        dialog.setCanceledOnTouchOutside(dismissible)
+        dialog.setContentView(composeView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val window = requireNotNull(dialog.window)
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        configureWindow(window)
+        composeView.setContent {
+            currentContent.value()
+            LaunchedEffect(currentInitialFocus.value, currentFocus.value) {
+                runCatching { (currentInitialFocus.value ?: currentFocus.value).requestFocus() }
+            }
+        }
+        dialog.show()
+        onDispose {
+            dialog.setOnCancelListener(null)
+            dialog.setOnDismissListener(null)
+            dialog.dismiss()
+            composeView.disposeComposition()
+        }
+    }
+}
+
+@androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
+@Composable
+private fun rememberApi31TvDrawerBlurEnabled(): Boolean {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val windowManager = context.getSystemService(WindowManager::class.java) ?: return false
+    var enabled by remember(windowManager) { mutableStateOf(windowManager.isCrossWindowBlurEnabled) }
+    DisposableEffect(windowManager, context.mainExecutor) {
+        val listener = Consumer<Boolean> { enabled = it }
+        windowManager.addCrossWindowBlurEnabledListener(context.mainExecutor, listener)
+        onDispose { windowManager.removeCrossWindowBlurEnabledListener(listener) }
+    }
+    return enabled
+}
+
+private class PanelBlurInsetDrawable(color: Int, insetLeft: Int) :
+    InsetDrawable(ColorDrawable(color), insetLeft, 0, 0, 0) {
+    override fun getPadding(padding: Rect): Boolean {
+        padding.set(0, 0, 0, 0)
+        return false
+    }
 }
 
 @Composable

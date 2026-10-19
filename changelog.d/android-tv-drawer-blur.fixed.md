@@ -1,0 +1,1 @@
+- Enable a drawer-scoped native backdrop blur for the Android TV filter drawer on supported Android versions, with the existing translucent surface retained when blur is unavailable.
