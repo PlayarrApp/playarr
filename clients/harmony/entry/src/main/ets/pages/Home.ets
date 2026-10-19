@@ -183,7 +183,7 @@ const TOP_RAIL_MORE_SERIES: string = 'moreSeries';
  * (12/10) -- `design/components/PosterCard.ets`'s own header comment names
  * these as the documented touch override, matching `pages/DesignGallery.ets`'s
  * `touchRailItem` demo exactly. */
-const TOUCH_CARD_TITLE_FONT_SIZE: number = 8;
+const TOUCH_CARD_TITLE_FONT_SIZE: number = 8.3;
 const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 7;
 
 /** `TouchGeometryTokens` has no dedicated rail-to-rail spacing field (only
