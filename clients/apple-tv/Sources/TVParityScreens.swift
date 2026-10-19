@@ -468,7 +468,8 @@ enum TVParityState {
 
     /// The route in web terms: the base path plus the suite's query items (`view` on the Calendar, `panel=filters`).
     private static var route: String {
-        base + (query.isEmpty ? "" : "?" + query.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
+        if let player { return "/player/\(player.uuidString.lowercased())" }
+        return base + (query.isEmpty ? "" : "?" + query.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"))
     }
 
     private static var tag: String?
@@ -514,6 +515,13 @@ enum TVParityState {
     /// An open drawer: `filters` for the Filters drawer, `actions` for any other.
     static func setPanel(_ title: String?) {
         query["panel"] = title.map { $0.lowercased() == "filters" ? "filters" : "actions" }
+        write()
+    }
+
+    /// The web's `/player/:id` while the player page is showing (the suite's player-controls screen checks it).
+    private static var player: UUID?
+    static func setPlayer(_ id: UUID?) {
+        player = id
         write()
     }
 
