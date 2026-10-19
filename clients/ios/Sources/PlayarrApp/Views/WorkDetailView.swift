@@ -1779,7 +1779,7 @@ private struct TabletDetailFrameDiagnostic: View {
 
 /// Title with the web's CSS line box (`line-height: .9`). SwiftUI's negative `lineSpacing` does not tighten the
 /// rendered line pitch, so UIKit draws it: fixed line height, glyphs centred in the line like CSS half-leading.
-private struct TabletTitleLabel: UIViewRepresentable {
+struct TabletTitleLabel: UIViewRepresentable {
     let text: String
     let fontSize: CGFloat
     let nativeLineHeight: CGFloat

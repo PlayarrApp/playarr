@@ -1,0 +1,1 @@
+- Android phone: Home draws no default-focus ring on the first card (touch), and a phone detail title that wraps breaks where its longer line is shortest, like the web's `text-wrap: balance`.

@@ -212,7 +212,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         before_frame()
     img = png()
     debug('snap-' + name, img)
-    if device == "tv" and not os.environ.get("CALIBRATE"):
+    if device == "tv" and name != "player-controls" and not os.environ.get("CALIBRATE"):  # the player shows a video frame, not posters
         try:
             completes = (json.loads(get("/state")).get("dbgcount") or {}).get("poster-image-complete", 0)
         except (ValueError, OSError, SystemExit):

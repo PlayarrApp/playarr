@@ -136,39 +136,34 @@ struct SettingsView: View {
     /// Web mobile "Preferences" index: back arrow, title and numbered rows of 88pt.
     private var phoneIndex: some View {
         ZStack(alignment: .topLeading) {
-            Button { goHome() } label: {
-                Text("←")
-                    .font(WM.font(12.8, 720))
-                    .foregroundStyle(WM.shell)
-                    .frame(width: 44, height: 40)
-                    .background(WM.ink, in: Ellipse())
-            }
-            .buttonStyle(.plain)
-            .offset(x: 15, y: WM.topInset + 1)
+            // Web: the shared header circle, carrying the focus ring the page puts on it.
+            PlayarrBackButton(action: goHome)
+                .overlay(Circle().stroke(WM.ink, lineWidth: 3).padding(-3.7))
+                .offset(x: 16, y: WM.topInset + 2)
             WMText("Preferences", 21.6, 580, lh: 32.4, ls: -0.972)
                 .offset(x: 68, y: WM.topInset + 5)
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
-                    ForEach(Array(Section.allCases.enumerated()), id: \.element.id) { index, section in
+                    ForEach(Array(Section.allCases.filter { $0 != .requestLatency }.enumerated()), id: \.element.id) { index, section in
                         let rowFocused = focusedSection.map { $0 == section } ?? (index == 0)
                         Button { selected = section } label: {
                             ZStack(alignment: .topLeading) {
                                 if rowFocused { WM.artFill }
-                                WMText(section.number, 8.96, 760, color: WM.muted, lh: 13.44).offset(x: 12, y: 15.4)
+                                WMText(section.number, 8.96, 760, color: WM.inkSoft, lh: 13.44).offset(x: 12, y: 15.4)
                                 WMText(section.title, 16, 480, lh: 18.4, ls: -0.56)
                                     .frame(width: 257, alignment: .leading)
                                     .offset(x: 56, y: 24.4)
                                 Text(section.description)
                                     .font(WM.font(10.88))
-                                    .foregroundStyle(WM.muted)
+                                    .foregroundStyle(WM.inkSoft)
                                     .lineLimit(1)
                                     .truncationMode(.tail)
-                                    .frame(width: 257, height: 15.776, alignment: .leading)
+                                    .frame(width: 275, height: 15.776, alignment: .leading)
                                     .offset(x: 56, y: 46.4)
                                 Text("→")
-                                    .font(WM.font(20.8))
-                                    .foregroundStyle(rowFocused ? WM.ink : WM.muted)
-                                    .offset(x: rowFocused ? 330 : 325, y: 28)
+                                    .font(WM.font(18))
+                                    .foregroundStyle(WM.ink)
+                                    .offset(x: rowFocused ? 332 : 329, y: 32)
                             }
                             .frame(width: 358, height: 88, alignment: .topLeading)
                             .contentShape(Rectangle())

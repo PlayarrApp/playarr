@@ -250,7 +250,7 @@ export function validateRunArgs(args) {
   if (only.includes("screens")) {
     const screens = option(args, "screens").split(",").filter(Boolean);
     if (!screens.length) throw new Error("Roku driver requires an explicit non-player --screens allowlist");
-    const unsafe = screens.filter((x) => !SAFE_SCREENS.has(x));
+    const unsafe = screens.filter((x) => !SAFE_SCREENS.has(x) && !(x === "player-controls" && process.env.ROKU_PARITY_PLAYER_FRAME === "1"));
     if (unsafe.length) throw new Error(`Roku driver refuses unsupported screen(s): ${unsafe.join(", ")}`);
   }
   if (only.includes("dpad")) {
@@ -712,6 +712,7 @@ export function createDriver({ out, args = [] } = {}) {
     }
   };
 
+  let playerShot = false;
   const toHome = async () => {
     await launchProfiles();
     const beforeHomeScreenSeq = screenSeq;
@@ -836,7 +837,30 @@ export function createDriver({ out, args = [] } = {}) {
     lastRoute = routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind);
   };
 
+  // player-controls (opt-in, ROKU_PARITY_PLAYER_FRAME=1, parity channel only): open the pinned film by route, press Play, pause at about 2 s
+  // (the web ref pauses the static clip there) and raise the controls. The channel draws the clip frame behind them in parity mode.
+  const openPlayerControls = async () => {
+    const film = SUITE_SCREENS.find((item) => item.id === "film-detail")?.open;
+    if (!film) throw new Error("suite has no pinned film for player-controls");
+    await openDetailRoute(film);
+    await sendEcp("keypress/Select");
+    const deadline = Date.now() + 40000;
+    for (;;) {
+      if (Date.now() > deadline) throw new Error("Roku player did not reach 1.9 s within 40 s");
+      const xml = await (await sendEcp("query/media-player", "GET")).text();
+      const ms = Number(/<position>(\d+) ms/.exec(xml)?.[1] ?? "0");
+      if (/<player\b[^>]*\bstate="play"/i.test(xml) && ms >= 1900) break;
+      await sleep(100);
+    }
+    await sendEcp("keypress/Play");
+    await sleep(700);
+    await sendEcp("keypress/Down");
+    await sleep(1500);
+    playerShot = true;
+  };
+
   const safeRoute = async (path) => {
+    if (path.startsWith("/player/") && process.env.ROKU_PARITY_PLAYER_FRAME === "1" && artEnabled) { await openPlayerControls(); return; }
     if (path === "/player" || path.startsWith("/player/")) throw new Error("Roku parity driver refuses player routes");
     if (/^\/(movies|series)\/[^/?]+$/.test(path)) { await openDetailRoute(path); return; }
     const entry = exactSuiteScreen(path);
@@ -871,6 +895,9 @@ export function createDriver({ out, args = [] } = {}) {
         // The grid still loads its first page and artwork after it reports focus; Info pressed early is dropped.
         if (artEnabled) await waitForArt("movies");
         await sleep(1500);
+        // The web path walks Right along the first row to Amber Thicket 3 before the Filters button, so its hero stays on that title.
+        await traceFilterKey("right");
+        await traceFilterKey("right");
         drawerSource = "filters";
         parityState.drawerSource = "filters";
         await traceFilterKey("info", async () => {
@@ -1096,7 +1123,7 @@ export function createDriver({ out, args = [] } = {}) {
       assertDebug();
       if (!out) throw new Error("suite runner output path is required");
       if (!screen || ["pairing", "status"].includes(screen)) throw new Error(`Roku screenshot refused on ${screen || "unknown"} screen`);
-      if (screen === "playback") throw new Error("Roku parity driver refuses player screenshots");
+      if (screen === "playback" && !playerShot) throw new Error("Roku parity driver refuses player screenshots");
       if (artEnabled && screen === "home") { await waitForArt("home"); await sleep(1000); }
       if (artEnabled && screen === "browse" && ["movie", "movies"].includes(browse)) await waitForArt("movies");
       if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
@@ -1120,6 +1147,13 @@ export function createDriver({ out, args = [] } = {}) {
         route: routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind),
         focus,
       }, null, 2));
+      if (playerShot) { // leave the player so the next screen starts from the channel's own screens
+        playerShot = false;
+        await sendEcp("keypress/Back");
+        await sleep(2500);
+        await sendEcp("keypress/Back");
+        await sleep(1500);
+      }
     },
     async download() { throw new Error("Roku parity driver does not support Downloads"); },
     async cleanupDownloads() {},

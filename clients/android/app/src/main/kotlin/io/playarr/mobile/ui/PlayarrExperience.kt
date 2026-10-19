@@ -143,6 +143,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -433,15 +434,38 @@ internal val WebKicker = Color(0xFFCF3157)
 
 /** Fraction-sized hero backdrop pinned top-start: `fillMaxSize()` first would make the later fraction a no-op. */
 internal fun Modifier.heroBackdrop(isTelevision: Boolean, tvWidthFraction: Float, phoneHeightFraction: Float): Modifier =
-    if (isTelevision) {
+    if (isTelevision) composed {
+        val stage = LocalStageScale.current
+        if (stage == 1f) this.tvHeroBackdrop() else this.tabletHeroBackdrop(stage)
+    } else {
+        fillMaxWidth().fillMaxHeight(phoneHeightFraction).heroBackdropFade(false)
+    }
+
+/**
+ * Web `.tv-key-art img` at a tablet viewport: it starts at the nav clearance (`--tv-nav-edge` + 64 px item + 2 x 0.4rem
+ * + 2 px + 12 px), is `52vw` minus that clearance wide and 106% of the viewport height tall, scaled 1.04 from its left centre.
+ */
+private fun Modifier.tabletHeroBackdrop(stage: Float): Modifier = layout { measurable, constraints ->
+    val density = this
+    val widthCss = 1920f * stage
+    val clearanceCss = (widthCss * 0.022f).coerceIn(18f, 44f) + 64f + 12.8f + 2f + 12f
+    val start = (clearanceCss / stage * density.density).toInt()
+    val width = ((0.52f * widthCss - clearanceCss) / stage * density.density).toInt()
+    val height = (constraints.maxHeight * 1.06f).toInt()
+    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(width, height))
+    layout(width + start, constraints.maxHeight) { placeable.place(start, 0) }
+}
+    .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
+    .heroBackdropFade(true)
+
+private fun Modifier.tvHeroBackdrop(): Modifier =
+    run {
         // Web `.tv-key-art img`: 52% wide, 106% tall, scaled 1.04, masked to fade out over the last 28%.
         fillMaxWidth(0.52f)
             .wrapContentHeight(Alignment.Top, unbounded = true)
             .height(1144.8.dp)
             .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f }
             .heroBackdropFade(true)
-    } else {
-        fillMaxWidth().fillMaxHeight(phoneHeightFraction).heroBackdropFade(false)
     }
 
 /**
@@ -3086,8 +3110,7 @@ private fun ExperienceHomeScreen(
                                 homeView = homeView,
                                 selectedId = selectedId,
                                 active = rail.key == activeRailKey && (isTelevision || savedSelectedId != null),
-                                // Web phone Home (refs of 2026-10-17) draws the first On deck card selected from the start, its heading unscaled.
-                                markSelected = rail.key == activeRailKey,
+                                // Web touch Home refs (republished 2026-10-19) blur the default focus: no card is selected until one is touched.
                                 progressByWork = progressByWork,
                                 onSelected = { savedSelectedId = it.id; savedRailKey = rail.key },
                                 onClick = { work, onDeck ->
@@ -4102,7 +4125,7 @@ private fun LibraryFiltersDialog(
         onClose = onDismiss,
     ) {
         run {
-            Column(verticalArrangement = Arrangement.spacedBy(if (playarrTvDrawer()) 30.dp else 23.1.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(if (!playarrTvDrawer()) 23.1.dp else if (LocalTabletDrawerCssPx.current) webVu(22f, 2.8f, 34f) else 30.dp)) {
                 LibraryFilterChoices(
                     playarrString(PlayarrString.LibraryView),
                     availableViewModes,
@@ -4216,7 +4239,8 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
         focusedLanguageCode = null
         runCatching { triggerFocus.requestFocus() }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+    val summarySize = if (LocalTabletDrawerCssPx.current) webVw(8.96f, 0.62f, 11.84f).value else 11.84f
+    Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 13.dp)) {
         PlayarrTvDrawerHeading(title)
         Column(
             Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
@@ -4230,7 +4254,7 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
                     }.webFocusRing(triggerFocused, radius = 10.dp, offset = 2.dp).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
             ) {
-                Text(summary, color = WebInk, fontSize = 11.84.sp, lineHeight = 17.76.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(summary, color = WebInk, fontSize = summarySize.sp, lineHeight = (summarySize * 1.5f).sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(if (open) "⌃" else "⌄", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680))
             }
             if (open) {
@@ -4388,7 +4412,7 @@ private fun <T> LibraryFilterChoices(
     val language = LocalPlayarrLanguage.current
     if (playarrTvDrawer()) {
         // Web drawer segmented control: the segments share the row equally.
-        Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 13.dp)) {
             PlayarrTvDrawerHeading(title)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 values.forEach { value -> PlayarrChoice(label(value), value == selected, Modifier.weight(1f), icon = icon?.let { draw -> { colour -> draw(value, colour) } }) { onSelected(value) } }
@@ -6616,16 +6640,21 @@ private fun PhoneVideoDetailBody(
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
                 // the box to the font height, so pin the height and lift the text the way CSS centres it.
                 // Web phone `.tv-detail-title`: max-width 12ch, so a long title wraps to a second 36.66 px line (the stage-scaled tablet keeps one line).
-                // shortcut: no `text-wrap: balance`, so a three-word title may break unevenly; add a balancing pass if one shows up in the refs.
                 val phoneTitle = LocalStageScale.current == 1f
                 val titleStyle = WebTextStyle.merge(androidx.compose.ui.text.TextStyle(fontSize = 39.sp, fontWeight = FontWeight(560)))
                 val measurer = androidx.compose.ui.text.rememberTextMeasurer()
                 val density = LocalDensity.current
-                val titleMax = with(density) { (measurer.measure("0", titleStyle).size.width * 12).toDp() }
+                val titleMaxPx = measurer.measure("0", titleStyle).size.width * 12
+                val titleMax = with(density) { titleMaxPx.toDp() }
+                val spacedTitleStyle = titleStyle.merge(androidx.compose.ui.text.TextStyle(letterSpacing = (-2.808).sp))
+                val shownTitle = remember(work.title, titleMaxPx, phoneTitle) {
+                    if (!phoneTitle) work.title
+                    else balanceTitleWrap(work.title, titleMaxPx) { measurer.measure(it, spacedTitleStyle).size.width }
+                }
                 var titleLines by remember(work.title) { mutableStateOf(1) }
                 Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
                     Text(
-                        work.title, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
+                        shownTitle, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
                         onTextLayout = { titleLines = it.lineCount },
                         modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() },

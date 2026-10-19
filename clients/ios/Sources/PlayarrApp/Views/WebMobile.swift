@@ -719,9 +719,11 @@ struct WMHeaderCircleButton: View {
 
     var body: some View {
         Button(action: action) {
+            // The web draws the arrow glyph about 0.65 times the size of the app's fallback glyph, 1.3 pt lower.
             Text(glyph)
-                .font(WM.font(12.8, weight))
+                .font(WM.font(glyph == "\u{2190}" ? 8.3 : 12.8, weight))
                 .foregroundStyle(WM.inkSoft)
+                .offset(y: glyph == "\u{2190}" ? 1.3 : 0)
                 .frame(width: width, height: height)
                 .background(WM.chip.opacity(0.66), in: Ellipse())
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))

@@ -2900,7 +2900,7 @@ sub updateBrowsePreview(work as Object)
         kicker = UCase(work.genres[0])
     end if
     m.browsePreviewKind.spec = { text: kicker, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true }
-    m.browsePreviewTitle.spec = { text: work.title, size: 69, weight: 560, tracking: -4.977, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    m.browsePreviewTitle.spec = { text: work.title, size: 69, weight: 560, tracking: -4.53, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
     year = ""
     ' Web LibraryPreview: release year only (never the added date).
     if work.release_date <> invalid and work.release_date.Len() >= 4 then year = work.release_date.Left(4)
