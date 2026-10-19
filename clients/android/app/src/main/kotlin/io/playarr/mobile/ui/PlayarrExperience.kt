@@ -143,6 +143,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -433,15 +434,38 @@ internal val WebKicker = Color(0xFFCF3157)
 
 /** Fraction-sized hero backdrop pinned top-start: `fillMaxSize()` first would make the later fraction a no-op. */
 internal fun Modifier.heroBackdrop(isTelevision: Boolean, tvWidthFraction: Float, phoneHeightFraction: Float): Modifier =
-    if (isTelevision) {
+    if (isTelevision) composed {
+        val stage = LocalStageScale.current
+        if (stage == 1f) this.tvHeroBackdrop() else this.tabletHeroBackdrop(stage)
+    } else {
+        fillMaxWidth().fillMaxHeight(phoneHeightFraction).heroBackdropFade(false)
+    }
+
+/**
+ * Web `.tv-key-art img` at a tablet viewport: it starts at the nav clearance (`--tv-nav-edge` + 64 px item + 2 x 0.4rem
+ * + 2 px + 12 px), is `52vw` minus that clearance wide and 106% of the viewport height tall, scaled 1.04 from its left centre.
+ */
+private fun Modifier.tabletHeroBackdrop(stage: Float): Modifier = layout { measurable, constraints ->
+    val density = this
+    val widthCss = 1920f * stage
+    val clearanceCss = (widthCss * 0.022f).coerceIn(18f, 44f) + 64f + 12.8f + 2f + 12f
+    val start = (clearanceCss / stage * density.density).toInt()
+    val width = ((0.52f * widthCss - clearanceCss) / stage * density.density).toInt()
+    val height = (constraints.maxHeight * 1.06f).toInt()
+    val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(width, height))
+    layout(width + start, constraints.maxHeight) { placeable.place(start, 0) }
+}
+    .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
+    .heroBackdropFade(true)
+
+private fun Modifier.tvHeroBackdrop(): Modifier =
+    run {
         // Web `.tv-key-art img`: 52% wide, 106% tall, scaled 1.04, masked to fade out over the last 28%.
         fillMaxWidth(0.52f)
             .wrapContentHeight(Alignment.Top, unbounded = true)
             .height(1144.8.dp)
             .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f }
             .heroBackdropFade(true)
-    } else {
-        fillMaxWidth().fillMaxHeight(phoneHeightFraction).heroBackdropFade(false)
     }
 
 /**
@@ -3086,8 +3110,7 @@ private fun ExperienceHomeScreen(
                                 homeView = homeView,
                                 selectedId = selectedId,
                                 active = rail.key == activeRailKey && (isTelevision || savedSelectedId != null),
-                                // Web phone Home (refs of 2026-10-17) draws the first On deck card selected from the start, its heading unscaled.
-                                markSelected = rail.key == activeRailKey,
+                                // Web touch Home refs (republished 2026-10-19) blur the default focus: no card is selected until one is touched.
                                 progressByWork = progressByWork,
                                 onSelected = { savedSelectedId = it.id; savedRailKey = rail.key },
                                 onClick = { work, onDeck ->
@@ -4102,7 +4125,7 @@ private fun LibraryFiltersDialog(
         onClose = onDismiss,
     ) {
         run {
-            Column(verticalArrangement = Arrangement.spacedBy(if (playarrTvDrawer()) 30.dp else 23.1.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(if (!playarrTvDrawer()) 23.1.dp else if (LocalTabletDrawerCssPx.current) webVu(22f, 2.8f, 34f) else 30.dp)) {
                 LibraryFilterChoices(
                     playarrString(PlayarrString.LibraryView),
                     availableViewModes,
@@ -6616,16 +6639,26 @@ private fun PhoneVideoDetailBody(
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
                 // the box to the font height, so pin the height and lift the text the way CSS centres it.
                 // Web phone `.tv-detail-title`: max-width 12ch, so a long title wraps to a second 36.66 px line (the stage-scaled tablet keeps one line).
-                // shortcut: no `text-wrap: balance`, so a three-word title may break unevenly; add a balancing pass if one shows up in the refs.
                 val phoneTitle = LocalStageScale.current == 1f
                 val titleStyle = WebTextStyle.merge(androidx.compose.ui.text.TextStyle(fontSize = 39.sp, fontWeight = FontWeight(560)))
                 val measurer = androidx.compose.ui.text.rememberTextMeasurer()
                 val density = LocalDensity.current
-                val titleMax = with(density) { (measurer.measure("0", titleStyle).size.width * 12).toDp() }
+                val titleMaxPx = measurer.measure("0", titleStyle).size.width * 12
+                val titleMax = with(density) { titleMaxPx.toDp() }
+                // Web `text-wrap: balance`: a title that wraps breaks where its longer line is shortest.
+                val spacedTitleStyle = titleStyle.merge(androidx.compose.ui.text.TextStyle(letterSpacing = (-2.808).sp))
+                val shownTitle = remember(work.title, titleMaxPx, phoneTitle) {
+                    val words = work.title.split(' ')
+                    fun width(text: String) = measurer.measure(text, spacedTitleStyle).size.width
+                    if (!phoneTitle || words.size < 2 || width(work.title) <= titleMaxPx) work.title
+                    else (1 until words.size)
+                        .minBy { maxOf(width(words.take(it).joinToString(" ")), width(words.drop(it).joinToString(" "))) }
+                        .let { words.take(it).joinToString(" ") + "\n" + words.drop(it).joinToString(" ") }
+                }
                 var titleLines by remember(work.title) { mutableStateOf(1) }
                 Box(Modifier.height((36.66f * titleLines).dp).wrapContentHeight(align = Alignment.Top, unbounded = true)) {
                     Text(
-                        work.title, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
+                        shownTitle, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
                         onTextLayout = { titleLines = it.lineCount },
                         modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() },
@@ -9847,7 +9880,8 @@ private fun ExperiencePlayerScreen(
         val pauseAt = parityPauseAtMs ?: return@LaunchedEffect
         if (state !is ExperienceLoad.Ready) return@LaunchedEffect
         // Parity captures: wait until playback has advanced past the first frame, then pause in place (a seek re-buffers).
-        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(100)
+        // Polled every 5 ms so the pause lands at the target, not up to 100 ms late (the web ref pauses at 0:02 exactly).
+        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(5)
         viewModel.player.pause()
     }
     LaunchedEffect(state, activeMediaFileId) {

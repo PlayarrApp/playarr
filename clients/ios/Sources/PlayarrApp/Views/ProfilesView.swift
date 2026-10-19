@@ -236,7 +236,7 @@ struct ProfilesView: View {
 
     private func phoneProfile(
         _ profile: AvailableProfile, selectedSize: CGFloat = 169, otherSize: CGFloat = 163,
-        column: CGFloat = 163, namePad: CGFloat = 10, centredActions: Bool = false
+        column: CGFloat = 163, namePad: CGFloat = 10, centredActions: Bool = false, webRing: Bool = true
     ) -> some View {
         let selected = profile.isCurrent
         return VStack(spacing: 0) {
@@ -250,7 +250,13 @@ struct ProfilesView: View {
                     )
                     .overlay {
                         if selected {
-                            Circle().stroke(WM.pink.opacity(0.42), lineWidth: 4).padding(-2)
+                            if webRing {
+                                // Web focus ring (--card-glow): 3 pt ring flush outside the avatar plus a 20 px glow at 45%.
+                                Circle().stroke(WM.cardRingColor, lineWidth: 3).padding(-1.5)
+                                    .shadow(color: WM.cardGlowColor.opacity(0.45), radius: 10)
+                            } else {
+                                Circle().stroke(WM.pink.opacity(0.42), lineWidth: 4).padding(-2)
+                            }
                         }
                     }
                 }
@@ -353,7 +359,7 @@ struct ProfilesView: View {
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: 20) {
                     ForEach(Array(viewModel.profiles.enumerated()), id: \.element.id) { _, profile in
-                        phoneProfile(profile, selectedSize: 198, otherSize: 190, column: 198, namePad: 1, centredActions: true)
+                        phoneProfile(profile, selectedSize: 198, otherSize: 190, column: 198, namePad: 1, centredActions: true, webRing: false)
                     }
                     phoneSignIn(size: 178, top: 19)
                 }

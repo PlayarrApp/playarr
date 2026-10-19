@@ -186,7 +186,8 @@ struct HomeView: View {
         #if DEBUG
         if let focus = ParityLaunch.focus { return focus == "last" ? index == count - 1 : index == 0 }
         #endif
-        return first && index == 0
+        // A touch screen has no focus: the web refs for phones are captured without the On deck ring.
+        return false
     }
 
     /// Resume fraction for the card's progress bar: only a part-watched title with a known duration has one.
@@ -198,7 +199,7 @@ struct HomeView: View {
     private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool, index railIndex: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
-            WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), scrollAnchor: keyFocus != nil ? .center : parityRailAtEnd(railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
+            WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), count: rail.works.count, itemWidth: WMArtwork.railCardWidth, scrollAnchor: keyFocus != nil ? .center : parityRailAtEnd(railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
                         workLink(work) {
@@ -457,6 +458,10 @@ struct HomeView: View {
 /// vanish under it rather than hard-cutting. `scrollTo` moves the track to that card on appear (parity captures).
 struct WMFadingRail<Content: View>: View {
     var scrollTo: UUID?
+    /// Card count and width: the end fade needs to know the track overflows, and the measured width of a lazy stack is not
+    /// reliable until every card is realised, so the width is also estimated from these (16 pt padding, 12 pt gaps).
+    var count = 0
+    var itemWidth: CGFloat = 0
     var scrollAnchor: UnitPoint = .leading
     @ViewBuilder var content: () -> Content
     @State private var offset: CGFloat = 0
@@ -474,7 +479,8 @@ struct WMFadingRail<Content: View>: View {
             stops.append(.init(color: .black, location: 0))
             stops.append(.init(color: .black, location: 16 / w))
         }
-        if contentWidth - offset > w + 1 {
+        let estimated = count > 0 ? 32 + CGFloat(count) * (itemWidth + 12) - 12 : 0
+        if max(contentWidth, estimated) - offset > w + 1 {
             stops += ease.reversed().map { .init(color: .black.opacity(0.3 + 0.7 * $0.1), location: 1 - 38 * $0.0 / w) }
         } else {
             stops.append(.init(color: .black, location: 1))

@@ -1022,6 +1022,7 @@ export struct Library {
           .columnsTemplate(columnsTemplateFor(this.touchColumns()))
           .columnsGap(TOUCH_CARD_GAP)
           .rowsGap(TOUCH_ROW_GAP)
+          .cachedCount(4) // tried for the row web draws under the nav bar: no effect on the capture, the blank row has another cause
           .edgeEffect(EdgeEffect.Spring)
           .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg + touchNavBarBox(this.safeBottom) })
           .onAreaChange((_oldValue: Area, newValue: Area) => {
@@ -1128,6 +1129,7 @@ export struct Library {
                 this.setHero(focused);
               },
               onLongPress: (pressed: Work) => {
+                this.setHero(pressed); // web: the pressed card holds focus, so the hero shows it behind the drawer
                 this.actionsWork = pressed;
               },
             })
@@ -1239,6 +1241,7 @@ export struct Library {
                 this.setHero(focused);
               },
               onLongPress: (pressed: Work) => {
+                this.setHero(pressed); // web: the pressed card holds focus, so the hero shows it behind the drawer
                 this.actionsWork = pressed;
               },
             })
