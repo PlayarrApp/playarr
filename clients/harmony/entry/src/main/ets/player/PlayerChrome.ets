@@ -652,7 +652,9 @@ export struct PlayerChrome {
           this.onBack();
         })
         ChromeButton({
-          label: '\u00D7',
+          label: '',
+          icon: $r('app.media.player_close'),
+          iconSize: tv(20),
           circle: true,
           glassAlpha: 0.55,
           ringAlpha: 0.2,
