@@ -45,6 +45,18 @@ namespace Playarr.Xbox.Views
                     sv.LayoutUpdated += (s, e) => Update(sv);
                     Update(sv);
                 }
+                else
+                {
+                    // A list's template (and so its ScrollViewer) can be applied after Loaded: look again on each layout until it exists.
+                    void Retry(object? s, object e)
+                    {
+                        if (Find(scroller) == null) return;
+                        scroller.LayoutUpdated -= Retry;
+                        Hook();
+                    }
+
+                    scroller.LayoutUpdated += Retry;
+                }
             }
 
             if (scroller.IsLoaded)
