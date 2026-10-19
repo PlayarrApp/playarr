@@ -20,7 +20,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .css_classes(["pa-search"])
         .margin_start(16)
         .margin_end(16)
-        .margin_top(7)
+        .margin_top(26)
         .build();
     // The web's empty state: a ring with a search-minus icon, then the prompt beside it.
     let status = gtk4::Label::builder()
@@ -36,14 +36,16 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .build();
     ring.set_size_request(86, 86);
     let icon = crate::icons::image("search-minus", 20, crate::icons::Tone::Brand);
+    // Centred, not expanding: an expanding icon would stretch the ring to a pill and push it down the page.
     icon.set_hexpand(true);
-    icon.set_vexpand(true);
+    icon.set_valign(gtk4::Align::Center);
+    ring.set_halign(gtk4::Align::Start);
     ring.append(&icon);
     let empty = gtk4::Box::builder()
         .spacing(19)
         .margin_start(16)
         .margin_end(16)
-        .margin_top(17)
+        .margin_top(19)
         .build();
     empty.append(&ring);
     empty.append(&status);
