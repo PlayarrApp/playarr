@@ -8,9 +8,10 @@ p = sys.argv[1]
 s = open(p).read()
 if "parity-player-still" in s:
     sys.exit(0)
-pat = re.compile(r"(        XComponent\(\{\n          id: 'playarr-player-surface',.*?\n          \.height\('100%'\)\n)", re.S)
+# patch_state.py has already swapped the SURFACE XComponent for an empty Column (the Previewer draws a grey placeholder for it)
+pat = re.compile(r"        Column\(\)\.width\('100%'\)\.height\('100%'\)\n")
 m = pat.search(s)
-assert m, p + ": player surface not found"
+assert m, p + ": the patched player surface placeholder is not found"
 still = ("\n        Image($rawfile('parity-player-still.png'))\n          .width('100%')\n          .height('100%')\n"
          "          .objectFit(ImageFit.Fill)\n          .interpolation(ImageInterpolation.High)\n          .hitTestBehavior(HitTestMode.None)\n")
 open(p, "w").write(s[:m.end()] + still + s[m.end():])
