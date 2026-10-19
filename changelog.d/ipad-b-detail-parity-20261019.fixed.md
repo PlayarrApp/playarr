@@ -1,1 +1,0 @@
-- iPad film and series detail: web background fade, title line pitch, 16:9 Similar Titles rail and page-top parity captures.
