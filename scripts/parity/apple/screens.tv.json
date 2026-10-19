@@ -76,11 +76,11 @@
     },
     {
       "id": "player-controls",
-      "native": "player:Test Movie A"
+      "native": "player:Silent Meridian 1"
     },
     {
       "id": "player-quality-menu",
-      "native": "player:Test Movie A:quality"
+      "native": "player:Silent Meridian 1:quality"
     },
     {
       "id": "household-blocked",
