@@ -520,7 +520,7 @@ struct TVDrawer<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 0) {
-                VStack(alignment: .leading, spacing: 3.2) {
+                VStack(alignment: .leading, spacing: 5.2) {
                     Text(kicker.uppercased())
                         .font(TVTheme.font(size: 9.6, css: 720))
                         .tracking(0.672)
@@ -560,8 +560,9 @@ struct TVDrawer<Content: View>: View {
                 .accessibilityLabel("Close")
             }
             .padding(.top, 54)
+            // Static refs (2026-10-19): the web title sits 2 pt and the sections 4 pt lower than the earlier live-server refs.
             content()
-                .padding(.top, 34)
+                .padding(.top, 36)
             Spacer(minLength: 0)
         }
         .padding(.leading, 46)

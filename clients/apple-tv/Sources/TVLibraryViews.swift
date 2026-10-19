@@ -1726,7 +1726,7 @@ struct TVLibraryKindView: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(alignment: .leading, spacing: 0) {
                                 TVChoiceSection(title: "View", options: [("list", "List"), ("screen", "Screen"), ("cover", "Cover")], selection: $view)
-                                TVChoiceSection(title: "Sort by", options: [("title", "Title"), ("date_added", "Date added")], selection: $sort)
+                                TVChoiceSection(title: "Sort by", options: [("title", "Title"), ("date_added", "Date Added")], selection: $sort)
                                 TVChoiceSection(title: "Order", options: [("asc", sort == "title" ? "A-Z" : "Oldest"),
                                                                           ("desc", sort == "title" ? "Z-A" : "Newest")], selection: $order)
                                 TVMultiSelectSection(title: "Audio language", facets: facets?.audio, loaded: facets != nil, selection: $audioLangs)
