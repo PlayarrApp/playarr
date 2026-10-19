@@ -114,6 +114,7 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       await readState();
       if (state.playing) throw new Error("player did not pause");
       await request("POST", "/blur");
+      await delay(2500); // a paused frame can still repaint (seek settle) for a moment
     },
     async home() { await verifyAccount(); await request("POST", "/route?path=/"); await this.settle(5000); },
     async route(p) { await verifyAccount(); await request("POST", `/route?path=${encodeURIComponent(p)}`); await this.settle(4000); },
