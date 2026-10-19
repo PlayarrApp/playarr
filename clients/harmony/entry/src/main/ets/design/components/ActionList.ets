@@ -41,22 +41,22 @@ export struct ActionList {
     Column({ space: tv(ROW_GAP) }) {
       ForEach(this.actions, (action: ActionItem) => {
         Column() {
-        Row() {
-          Text(action.glyph).fontFamily(nunito(400))
-            .width(tv(GLYPH_COLUMN))
-            .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))
-            .fontColor(toResourceColor(BRAND_PINK))
-          Text(action.label).fontFamily(nunito(700))
-            .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().ink))
+          Row() {
+            Text(action.glyph).fontFamily(nunito(400))
+              .width(tv(GLYPH_COLUMN))
+              .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))
+              .fontColor(toResourceColor(BRAND_PINK))
+            Text(action.label).fontFamily(nunito(700))
+              .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(toResourceColor(activeColors().ink))
+          }
+          .width('100%')
+          .height(tv(ROW_HEIGHT))
+          .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
+          .borderRadius(tv(ROW_RADIUS))
+          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
         }
-        .width('100%')
-        .height(tv(ROW_HEIGHT))
-        .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
-        .borderRadius(tv(ROW_RADIUS))
-        .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-                }
         // Phone: web's ring sits 2 vp clear of the row (the wrapper's padding), without moving the layout.
         .width(isTvMetrics() ? '100%' : 'calc(100% + 4vp)')
         .padding(isTvMetrics() ? 0 : 2)
