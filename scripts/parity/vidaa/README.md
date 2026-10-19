@@ -8,7 +8,7 @@ It is also the session broker. The TV leaks sessions on connection churn and the
 handshake, so the `vidaa` CLI (and through it the parity driver) sends `state`, `apps`, `key`, `launch` and
 `open-debug` over the Unix socket `$PLAYARR_DATA_DIR/vidaa.sock` (`VIDAA_SOCK` overrides) instead of connecting.
 Only if nothing listens on the socket does the CLI open one direct session. Key sends keep at least 150 ms apart.
-Other commands (`volume`, `events`, `pair`) stay direct. Protocol: `broker.py` (one JSON line each way).
+While the keepalive runs (it holds `$PLAYARR_DATA_DIR/vidaa-keepalive.lock`) the CLI never opens its own session: if the socket does not answer it refuses (`VIDAA_ALLOW_DIRECT=1` overrides, for the owner). So `volume` and `events` are refused too, as a second session next to the keepalive's makes the TV freeze; `pair` is the owner's own flow. Two missed liveness checks drop the session and the reconnect backs off 15 s, 30 s, .. 300 s, reset only by a healthy check. Protocol: `broker.py` (one JSON line each way).
 
 Log: `.data/PlayarrApp/playarr/scratch/20261017-parity-vidaa/keepalive.log`.
 

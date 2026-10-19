@@ -274,8 +274,12 @@ class Tv:
         return json.loads(p) if p else None
 
 
-def connect():
-    """Open a session with the stored token; refresh once if the TV refuses it."""
+def connect(owner=False):
+    """Open a session with the stored token; refresh once if the TV refuses it. Only the keepalive (owner=True) may connect while it
+    is running: any other session next to its one makes the TV leak sessions and freeze, so tools go through its socket instead.
+    VIDAA_ALLOW_DIRECT=1 overrides this for the owner."""
+    if not owner and not os.environ.get("VIDAA_ALLOW_DIRECT") and broker.keepalive_running():
+        sys.exit("refused: the keepalive owns the TV session and its socket is not answering; no direct session (stop the keepalive or set VIDAA_ALLOW_DIRECT=1)")
     try:
         return Tv().open()
     except TransportError:

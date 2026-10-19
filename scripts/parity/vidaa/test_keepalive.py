@@ -14,6 +14,19 @@ class Backoff(unittest.TestCase):
         self.assertEqual(seq, [15, 30, 60, 120, 240, 300, 300])
 
 
+class AfterMiss(unittest.TestCase):
+    def test_one_miss_keeps_the_session(self):
+        self.assertEqual(keepalive.after_miss(1, 0, 100.0), (False, 0, 0.0))
+
+    def test_repeated_flapping_backs_off_instead_of_retrying_every_15_s(self):
+        backoff, waits = 0, []
+        for _ in range(4):
+            gone, backoff, due = keepalive.after_miss(2, backoff, 1000.0)
+            self.assertTrue(gone)
+            waits.append(due - 1000.0)
+        self.assertEqual(waits, [15, 30, 60, 120])
+
+
 class Probe(unittest.TestCase):
     def test_alive_follows_applist_not_state(self):
         from unittest import mock
