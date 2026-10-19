@@ -18,7 +18,7 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .halign(gtk4::Align::Start)
             .width_request(44)
             .xalign(0.0)
-            .margin_top(20)
+            .margin_top(16)
             .build(),
     );
     let col = gtk4::Box::builder()

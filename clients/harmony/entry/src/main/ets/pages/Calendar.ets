@@ -105,7 +105,7 @@ const ENTRY_TITLE_SIZE: number = 19.2;
 const ENTRY_META_SIZE: number = 12.8;
 /** Web phone agenda card, measured on the 360 vp reference: smaller type and a 92 vp card than the TV's. */
 const PHONE_ENTRY_TITLE_SIZE: number = 16;
-const PHONE_ENTRY_META_SIZE: number = 14;
+const PHONE_ENTRY_META_SIZE: number = 13;
 const PHONE_ENTRY_HEIGHT: number = 92;
 /** A card without a subtitle line (a movie) is 15 vp shorter on web. */
 const PHONE_ENTRY_HEIGHT_NO_SUBTITLE: number = 77;
