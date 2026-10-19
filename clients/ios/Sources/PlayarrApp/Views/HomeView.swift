@@ -186,7 +186,8 @@ struct HomeView: View {
         #if DEBUG
         if let focus = ParityLaunch.focus { return focus == "last" ? index == count - 1 : index == 0 }
         #endif
-        return first && index == 0
+        // A touch screen has no focus: the web refs for phones are captured without the On deck ring.
+        return false
     }
 
     /// Resume fraction for the card's progress bar: only a part-watched title with a known duration has one.
