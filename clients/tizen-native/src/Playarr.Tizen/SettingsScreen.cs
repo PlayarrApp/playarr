@@ -22,6 +22,8 @@ internal sealed class SettingsScreen : IPage
     private readonly View _listClip = new() { PositionX = 140, PositionY = 140, Size = new Size(520, 940), ClippingMode = ClippingModeType.ClipChildren }; // scrolled rows never run under the page header
     private float _scroll;
     private int _listCount;
+    private bool _backFocused; // web: the Preferences back button is the page's default focus (data-tv-focus-default)
+    private View? _backRing;
     // web scrolls the option list so the focused row, its ring and its glow stay clear of the bottom edge (last row ends 153 px above the screen edge)
     private const float ListBottomLimit = 927f;
 
@@ -74,7 +76,7 @@ internal sealed class SettingsScreen : IPage
 
     public View Root => _root;
     public string Route => "/settings";
-    public string? FocusedLabel => _focus.Item?.Label;
+    public string? FocusedLabel => _backFocused ? "back" : _focus.Item?.Label;
     public float FocusCentreY => _focus.CurrentRect is { Height: > 0 } r ? r.CentreY : 540;
 
     public SettingsScreen(AppEnv env)
@@ -85,6 +87,7 @@ internal sealed class SettingsScreen : IPage
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
+        _backRing = Ring.Make(50, 50, 25, new Rgba(1, 1, 1)); back.Add(_backRing);
         _root.Add(back);
         _root.Add(Ui.Text("Preferences", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _root.Add(Ui.Box(226.6f, 112f, Ui.TextWidth("Preferences", 33.6f, 600, -1.51f), 1, new Rgba(_t.Ink.R, _t.Ink.G, _t.Ink.B, 0.2f)));
@@ -95,6 +98,14 @@ internal sealed class SettingsScreen : IPage
         BuildAppearance();
         for (var i = 0; i < _listCount; i++) _focus.Overrides[(i, RemoteKey.Right)] = _listCount;
         _focus.Set(0);
+        SetBackFocus(true);
+    }
+
+    private void SetBackFocus(bool on)
+    {
+        _backFocused = on;
+        _backRing?.Show(on);
+        _focus.Item?.Style(!on);
     }
 
     private void BuildList()
@@ -197,6 +208,13 @@ internal sealed class SettingsScreen : IPage
 
     public bool OnKey(RemoteKey key)
     {
+        if (_backFocused)
+        {
+            if (key == RemoteKey.Down) { SetBackFocus(false); return true; }
+            if (key == RemoteKey.Select) { _env.NavigateBack(); return true; }
+            return key != RemoteKey.Left && key != RemoteKey.Back; // Left goes to the nav rail and Back leaves, both through the shell
+        }
+        if (key == RemoteKey.Up && _focus.Current == 0) { SetBackFocus(true); return true; }
         switch (key)
         {
             case RemoteKey.Select: _focus.Item?.Select?.Invoke(); return true;
