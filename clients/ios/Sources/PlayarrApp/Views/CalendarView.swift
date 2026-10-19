@@ -507,7 +507,7 @@ struct CalendarView: View {
             }
             .scrollIndicators(.hidden)
             .frame(width: 713)
-            .padding(.top, -10)
+            .padding(.top, -6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -522,7 +522,7 @@ struct CalendarView: View {
                     family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName,
                     size: 49.2, weight: 560, fixedAxes: DesignFont.nunitoAxes
                 )?.lineHeight ?? 49.2 * 1.36,
-                lineHeight: 49.2 * 0.9, width: 330
+                lineHeight: 49.2 * 0.9, width: 247
             )
             .padding(.top, 20)
             HStack(spacing: 16) {
@@ -545,7 +545,7 @@ struct CalendarView: View {
         let entry = item.entries.first
         let subtitle = entry.map { [$0.episodeCode, $0.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} ") } ?? ""
         // The web card has no subtitle row for a film release: it is 76.6 pt tall instead of 91.
-        let height: CGFloat = subtitle.isEmpty ? 76.6 : 91
+        let height: CGFloat = subtitle.isEmpty ? 76.6 : (tablet ? 88 : 91)
         return Button {
             viewModel.select(item)
         } label: {
@@ -568,13 +568,13 @@ struct CalendarView: View {
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .offset(x: 16, y: (height - 60) / 2)
-                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: subtitle.isEmpty ? 13 : 7.7)
+                WMText(item.title, 16, 640, lh: 24).frame(width: tablet ? 400 : 220, alignment: .leading).offset(x: 70, y: subtitle.isEmpty ? 13 : (tablet ? 7 : 7.7))
                 if let entry {
                     if !subtitle.isEmpty {
                         WMText(subtitle, 16, 400, color: WM.inkSoft, lh: 24)
                             .fixedSize() // the web agenda subtitle never truncates
-                            .frame(width: 220, alignment: .leading)
-                            .offset(x: 70, y: 33.7)
+                            .frame(width: tablet ? 400 : 220, alignment: .leading)
+                            .offset(x: 70, y: tablet ? 31 : 33.7)
                     }
                     HStack(alignment: .top, spacing: 12) {
                         let time = calendarTimeLabel24(entry)
@@ -583,10 +583,10 @@ struct CalendarView: View {
                         WMText(kindLabel(entry.mediaKind), 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
                         agendaBadge(entry)
                     }
-                    .offset(x: 70, y: subtitle.isEmpty ? 38.5 : 60.6)
+                    .offset(x: 70, y: subtitle.isEmpty ? 38.5 : (tablet ? 56.5 : 60.6))
                 }
             }
-            .frame(width: screenWidth - 32, height: height, alignment: .topLeading)
+            .frame(width: tablet ? 713 : screenWidth - 32, height: height, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)

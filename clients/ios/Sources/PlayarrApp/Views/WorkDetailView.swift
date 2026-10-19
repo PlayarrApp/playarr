@@ -573,13 +573,6 @@ struct WorkDetailView: View {
                                 .frame(minWidth: 116.109 * tabletScale, minHeight: 57.359 * tabletScale)
                                 .background(PlayarrStyle.ink, in: Capsule())
                                 .foregroundStyle(PlayarrStyle.background)
-                                // Web: the film page opens with Play focused, drawn as a 3 px ring a few points off the pill.
-                                .overlay {
-                                    if playFocused {
-                                        Capsule().stroke(scheme == .dark ? Color.white : PlayarrStyle.ink, lineWidth: 3 * tabletScale)
-                                            .padding(-6 * tabletScale)
-                                    }
-                                }
                         }
                         .buttonStyle(.plain)
                         .focused($playFocused)
@@ -1536,12 +1529,12 @@ struct WorkDetailView: View {
             .overlay {
                 RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
                     .stroke(
-                        tabletScale == nil ? (selected ? PlayarrStyle.pink : PlayarrStyle.lineStrong) : (selected ? focusColor : .clear),
+                        tabletScale == nil ? (selected ? PlayarrStyle.pink : PlayarrStyle.lineStrong) : .clear, // a touch web page draws no focus ring (owner 2026-10-19)
                         lineWidth: tabletScale == nil ? (selected ? 3 : 1) : (selected ? 3 * scale : 0)
                     )
             }
             .scaleEffect(selected && tabletScale != nil ? 1.025 : 1)
-            .shadow(color: selected && tabletScale != nil ? focusColor.opacity(0.45) : .clear, radius: selected ? 10 * scale : 0)
+            .shadow(color: .clear, radius: 0)
             if let tabletScale {
                 HStack(alignment: .firstTextBaseline, spacing: 8.8 * tabletScale) {
                     Text(label)
