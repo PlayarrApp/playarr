@@ -132,7 +132,7 @@ const HOME_SHADOW_REST: ShadowLayerSpec[] = [
 ];
 // Phone only: ArkUI's blur draws lighter than CSS's, so the wide layer is stronger and wider (measured on the light static refs).
 const PHONE_HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
-  { offsetY: 26, radius: 68, alpha: 0.55 },
+  { offsetY: , radius: , alpha:  },
   { offsetY: 11, radius: 22, alpha: 0.22 },
 ];
 const HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
@@ -423,7 +423,7 @@ export struct PosterCard {
           }
           .width('100%')
           .height(PROGRESS_BAR_HEIGHT)
-          .backgroundColor(toResourceColor(activeColors().line))
+          .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().line) : 'rgba(255, 255, 255, 0.2)') // web phone: a white 20% track in both themes
           .justifyContent(FlexAlign.Start)
         }
 
