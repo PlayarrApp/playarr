@@ -157,6 +157,7 @@ const TITLE_EPISODE_SHADOW_FOCUSED: ShadowLayerSpec[] = [
 const CARD_TITLE_FONT_SIZE_TV: number = 11.904;
 const CARD_SUBTITLE_FONT_SIZE_TV: number = 8.832;
 const CARD_TITLE_FONT_WEIGHT: number = 600;
+const PURE_DARK_TITLE: boolean = true;
 
 /** Not in the brief at all -- see this file's header comment. */
 const PROGRESS_BAR_HEIGHT: number = 3;
@@ -249,6 +250,17 @@ export struct PosterCard {
 
   private dotInset(): number {
     return this.softCaption || !isTvMetrics() ? 6 : tv(UNSEEN_DOT_INSET);
+  }
+
+  /** Phone captions: web draws the title and detail lines in the page's pure black / white. */
+  private captionInk(title: boolean): ResourceColor {
+    if (!this.softCaption) {
+      return toResourceColor(activeColors().ink);
+    }
+    if (title && resolvedThemeMode() === 'dark' && !PURE_DARK_TITLE) {
+      return toResourceColor(activeColors().inkSoft);
+    }
+    return resolvedThemeMode() === 'dark' ? '#FFFFFF' : '#000000';
   }
 
   @State private focusPercent: number = 0;
@@ -496,7 +508,7 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
-          .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
+          .fontColor(this.captionInk(true))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
@@ -508,7 +520,7 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.subtitleFontSize)
           .fontWeight(FontWeight.Normal)
-          .fontColor(toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
+          .fontColor(this.captionInk(false))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .padding({ left: this.softCaption ? 2.3 : tv(TV_CAPTION_INSET) })
