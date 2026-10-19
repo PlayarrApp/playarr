@@ -253,7 +253,7 @@ struct WorkDetailView: View {
                                 tabletMovieRails(detail, tabletScale: proxy.size.width / 1366)
                             }
                             if detail.work.kind == .movie || detail.work.kind == .series {
-                                tabletSimilarRail(tabletScale: proxy.size.width / 1366)
+                                tabletSimilarRail(tabletScale: proxy.size.width / 1366, gap: detail.work.kind == .series ? -46 : 53)
                             } else {
                                 discoveryContent
                             }
@@ -628,7 +628,7 @@ struct WorkDetailView: View {
 
     /// The web's "Similar Titles" rail: 16:9 art cards with the title underneath.
     @ViewBuilder
-    private func tabletSimilarRail(tabletScale: CGFloat) -> some View {
+    private func tabletSimilarRail(tabletScale: CGFloat, gap: CGFloat) -> some View {
         if !viewModel.similarWorks.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Similar Titles")
@@ -639,7 +639,7 @@ struct WorkDetailView: View {
                     .foregroundStyle(PlayarrStyle.muted)
                     .padding(.top, 4 * tabletScale)
                 ScrollView(.horizontal) {
-                    LazyHStack(alignment: .top, spacing: 9 * tabletScale) {
+                    LazyHStack(alignment: .top, spacing: 18 * tabletScale) {
                         ForEach(viewModel.similarWorks) { other in
                             NavigationLink {
                                 WorkDetailView(
@@ -648,25 +648,25 @@ struct WorkDetailView: View {
                                     downloadRepository: downloadRepository
                                 )
                             } label: {
-                                VStack(alignment: .leading, spacing: 6 * tabletScale) {
+                                VStack(alignment: .leading, spacing: 8 * tabletScale) {
                                     PlayarrArtwork(work: other, kind: .backdrop, apiClient: apiClient)
-                                        .frame(width: 114.4 * tabletScale, height: 64.35 * tabletScale)
-                                        .clipShape(RoundedRectangle(cornerRadius: 5 * tabletScale, style: .continuous))
+                                        .frame(width: 229 * tabletScale, height: 129 * tabletScale)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10 * tabletScale, style: .continuous))
                                     Text(other.title)
-                                        .font(DesignFont.font(7.36 * tabletScale, 400))
+                                        .font(DesignFont.font(8 * tabletScale, 400))
                                         .foregroundStyle(PlayarrStyle.muted)
                                         .lineLimit(1)
-                                        .frame(width: 114.4 * tabletScale, alignment: .leading)
+                                        .frame(width: 229 * tabletScale, alignment: .leading)
                                 }
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.top, 14 * tabletScale)
+                    .padding(.top, 26 * tabletScale)
                 }
                 .scrollIndicators(.hidden)
             }
-            .padding(.top, 9 * tabletScale)
+            .padding(.top, gap * tabletScale)
         }
     }
 
