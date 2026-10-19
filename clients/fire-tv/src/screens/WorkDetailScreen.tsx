@@ -36,7 +36,7 @@ import {useAccessToken} from './LibraryScreen';
 
 /** Where the first track's heading sits at rest, and where the focused track's heading sits. */
 const REST_Y_MOVIE = 540;
-const REST_Y_SERIES = 410;
+const REST_Y_SERIES = 540;
 
 // ----------------------------------------------------------------------------------------------- data helpers
 
@@ -144,9 +144,27 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
   const workId = route.params.workId;
   const state = useWorkDetail(client, workId);
   const credits = useAsyncData(() => client.getWorkCredits(workId), [client, workId]);
-  const similar = useAsyncData(() => client.getSimilarWorks(workId), [client, workId]);
   const progressState = useAsyncData(() => client.listWatchProgress(), [client, workId]);
   const detailWork = state.status === 'ready' ? state.data.work : null;
+  // The static and cache-less servers return no similar titles: like the web, rank library titles by shared genres, same kind and release year.
+  const similar = useAsyncData<Work[]>(async () => {
+    const visible = (list: Work[]) => list.filter((entry) => entry.id !== workId && (entry.kind === 'movie' || entry.kind === 'series' || entry.kind === 'site'));
+    const found = visible(await client.getSimilarWorks(workId).catch(() => [] as Work[]));
+    if (found.length > 0 || detailWork === null) return found;
+    const genres = detailWork.genres.slice(0, 3);
+    const pages = await Promise.all((genres.length > 0
+      ? genres.map((genre) => ({genre, available_only: true, limit: 100}))
+      : [{kind: detailWork.kind, available_only: true, sort: 'date_added', order: 'desc', limit: 100}]).map((query) => client.browseCatalog(query).catch(() => ({items: [] as Work[]}))));
+    const pool = new Map<string, Work>();
+    for (const page of pages) for (const entry of visible(page.items ?? [])) pool.set(entry.id, entry);
+    const lower = new Set(detailWork.genres.map((genre) => genre.trim().toLocaleLowerCase()));
+    const year = (entry: Work) => new Date(entry.release_date ?? '').getUTCFullYear();
+    const score = (entry: Work) => {
+      const proximity = Number.isFinite(year(detailWork)) && Number.isFinite(year(entry)) ? Math.max(0, 5 - Math.abs(year(detailWork) - year(entry)) / 5) : 0;
+      return entry.genres.filter((genre) => lower.has(genre.trim().toLocaleLowerCase())).length * 100 + (entry.kind === detailWork.kind ? 10 : 0) + proximity;
+    };
+    return [...pool.values()].sort((a, b) => score(b) - score(a) || a.sort_title.localeCompare(b.sort_title)).slice(0, 20);
+  }, [client, workId, detailWork?.id], {enabled: state.status === 'ready'});
   const setRailTarget = useContext(DetailRailContext);
   const railKind = detailWork?.kind;
   useEffect(() => {
@@ -501,9 +519,10 @@ function PillRow({top, children}: {top: number; children: React.ReactNode}): Rea
 function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, focusable = true}: {label: string; glyph?: string; primary?: boolean; disabled?: boolean; onPress?: () => void; hasTVPreferredFocus?: boolean; focusable?: boolean}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
-  // Focus is the control ring only (owner rule; web .tv-detail-play keeps its ink fill when focused).
-  const bg = primary ? colour.ink : mix(colour.surfaceStrong, 0.72);
-  const fg = primary ? colour.bg : colour.ink;
+  // The web's .tv-detail-play turns --brand-strong with white text and scales to 1.06 when focused.
+  const lit = primary && focused;
+  const bg = lit ? '#a52745' : primary ? colour.ink : mix(colour.surfaceStrong, 0.72);
+  const fg = lit ? '#ffffff' : primary ? colour.bg : colour.ink;
   const glyphColour = primary ? fg : '#cf3157';
   return (
     <Pressable
@@ -526,6 +545,7 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
         justifyContent: 'center',
         backgroundColor: bg,
         opacity: disabled ? 0.45 : 1,
+        transform: [{scale: lit ? 1.06 : 1}],
       }}
     >
       {focused ? <FocusRing /> : null}

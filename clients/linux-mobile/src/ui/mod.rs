@@ -161,6 +161,14 @@ impl App {
                 me.show("shell", &me.nav);
                 me.layer.add_overlay(&nav_bar);
                 me.nav_bar.replace(Some(nav_bar));
+                let app = me.clone();
+                me.nav.connect_popped(move |nav, page| {
+                    if page.title() == "Settings" && nav.navigation_stack().n_items() == 1 {
+                        if let Some(f) = app.select_tab.borrow().clone() {
+                            f("<");
+                        }
+                    }
+                });
                 // The player is full screen: hide the navigation while it is the visible page.
                 let m2 = me.clone();
                 me.nav.connect_visible_page_notify(move |n| {
@@ -213,6 +221,9 @@ impl App {
     }
 
     pub fn push_settings(self: &Rc<Self>, client: Client) {
+        if let Some(f) = self.select_tab.borrow().clone() {
+            f("");
+        }
         self.push_bare("Settings", &settings::build(self.clone(), client));
     }
 
