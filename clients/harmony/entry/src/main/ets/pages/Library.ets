@@ -1128,6 +1128,7 @@ export struct Library {
                 this.setHero(focused);
               },
               onLongPress: (pressed: Work) => {
+                this.setHero(pressed); // web: the pressed card holds focus, so the hero shows it behind the drawer
                 this.actionsWork = pressed;
               },
             })
@@ -1239,6 +1240,7 @@ export struct Library {
                 this.setHero(focused);
               },
               onLongPress: (pressed: Work) => {
+                this.setHero(pressed); // web: the pressed card holds focus, so the hero shows it behind the drawer
                 this.actionsWork = pressed;
               },
             })
