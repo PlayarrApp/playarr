@@ -9847,7 +9847,8 @@ private fun ExperiencePlayerScreen(
         val pauseAt = parityPauseAtMs ?: return@LaunchedEffect
         if (state !is ExperienceLoad.Ready) return@LaunchedEffect
         // Parity captures: wait until playback has advanced past the first frame, then pause in place (a seek re-buffers).
-        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(100)
+        // Polled every 5 ms so the pause lands at the target, not up to 100 ms late (the web ref pauses at 0:02 exactly).
+        while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(5)
         viewModel.player.pause()
     }
     LaunchedEffect(state, activeMediaFileId) {
