@@ -34,6 +34,9 @@ const RATINGS = ["G", "PG", "PG-13", "R", "PG", "PG-13"];
 const TV_RATINGS = ["TV-Y7", "TV-PG", "TV-14", "TV-MA", "TV-G"];
 const name = (i, salt) => `${ADJ[(i * 7 + salt) % ADJ.length]} ${NOUN[(i * 4 + salt * 3 + Math.floor(i / 15)) % NOUN.length]}`;
 
+/** The one playable clip every file points at: mp4 + faststart, so Apple clients direct-play it. */
+export const CLIP = { file: "clip.mp4", container: "mp4" };
+
 export const MOVIE_COUNT = 30, SERIES_COUNT = 20;
 
 // Newest first: item n of the interleaved order was added n*7+3 hours before the clock, so Recently Added is fixed.
