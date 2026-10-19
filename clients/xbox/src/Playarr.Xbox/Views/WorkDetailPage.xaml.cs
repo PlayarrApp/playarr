@@ -125,7 +125,7 @@ namespace Playarr.Xbox.Views
                 if (_viewModel.RuntimeMs is { } runtime && runtime > 0)
                 {
                     var totalMinutes = Math.Max(1, (int)Math.Round(runtime / 60000.0)); // web formatRuntime rounds
-                    meta.Add(totalMinutes >= 60 ? (totalMinutes % 60 > 0 ? $"{totalMinutes / 60}h {totalMinutes % 60}m" : $"{totalMinutes / 60}h") : $"{totalMinutes}m");
+                    meta.Add(totalMinutes >= 60 ? (totalMinutes % 60 > 0 ? $"{totalMinutes / 60}h {totalMinutes % 60}m" : $"{totalMinutes / 60}h") : $"{totalMinutes} min");
                 }
 
                 if (WorkLabels.YearRange(work) is { } years)

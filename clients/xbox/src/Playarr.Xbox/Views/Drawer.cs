@@ -35,7 +35,7 @@ namespace Playarr.Xbox.Views
             {
                 Width = Width,
                 HorizontalAlignment = HorizontalAlignment.Right,
-                Background = Ui.Res("PlayarrSurfaceStrong"),
+                Background = Theme.IsLight ? LightDrawerGround() : Ui.Res("PlayarrSurfaceStrong"),
                 BorderBrush = Ui.Res("PlayarrLine"),
                 BorderThickness = new Thickness(1, 0, 0, 0),
                 Padding = new Thickness(46, 54, 46, 40),
@@ -86,6 +86,20 @@ namespace Playarr.Xbox.Views
                 (first ?? close).Focus(FocusState.Keyboard);
             };
         }
+
+        /// <summary>The web drawer is 94 % surface over a 38 px blur of the page behind it: white at the top, a soft grey where the cards sit (measured on the light ref).</summary>
+        private static Brush LightDrawerGround() => new LinearGradientBrush
+        {
+            StartPoint = new Windows.Foundation.Point(0, 0),
+            EndPoint = new Windows.Foundation.Point(0, 1),
+            GradientStops =
+            {
+                new GradientStop { Color = Color.FromArgb(255, 255, 254, 254), Offset = 0 },
+                new GradientStop { Color = Color.FromArgb(255, 244, 243, 243), Offset = 0.12 },
+                new GradientStop { Color = Color.FromArgb(255, 242, 241, 244), Offset = 0.65 },
+                new GradientStop { Color = Color.FromArgb(255, 247, 247, 248), Offset = 1 },
+            },
+        };
 
         public static Drawer? Current { get; private set; }
 
