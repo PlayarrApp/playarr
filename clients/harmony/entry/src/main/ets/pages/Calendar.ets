@@ -17,6 +17,7 @@ import { nunito } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
+import { touchNavBarBox } from '../design/components/TouchNavBar';
 import { CalendarLinkPanel } from '../design/components/CalendarLinkPanel';
 import { PeriodPicker } from '../design/components/PeriodPicker';
 import { ChoiceSegments } from '../design/components/ChoiceSegments';
@@ -1100,6 +1101,11 @@ export struct ReleaseCalendar {
             .alignItems(HorizontalAlign.Start)
           }
         }, (group: DayGroup): string => group.day + ':' + group.entries.map((entry: CalendarEntry): string => entry.id).join(','))
+        // web scrolls the agenda under the translucent nav bar: the list runs to the screen bottom and ends in a nav-high spacer row
+        // (list padding would clip the cards under the bar)
+        ListItem() {
+          Column().width('100%').height(touchNavBarBox(this.safeBottom))
+        }
       }
       .width('100%')
       .layoutWeight(1)
@@ -1141,14 +1147,19 @@ export struct ReleaseCalendar {
           if (!item.grouped) {
             Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkSoft))
           }
-          this.statusPill(itemPillTone(item, this.today))
+          if (fixedHeight === PHONE_ENTRY_HEIGHT) {
+            // the text block moved up 2 vp with its lines; web's pill sits 1.6 vp below the meta line's centre, so 3.6 down again
+            Column() { this.statusPill(itemPillTone(item, this.today)) }.offset({ y: 3.6 })
+          } else {
+            this.statusPill(itemPillTone(item, this.today))
+          }
         }
         .width('100%')
         .margin({ top: fixedHeight > 0 ? -1 : 0 })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 13.1 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
+      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 17.1 : 5) }) // web's text block sits 4.5 vp higher in the card than the centred one (a grown movie card has no spare height)
     }
     .width('100%')
     .constraintSize({
@@ -1351,6 +1362,7 @@ export struct ReleaseCalendar {
         railFrostWidthPct: this.view === 'agenda' ? -1 : 0,
         title: t('pages.calendar.title', 'Calendar'),
         touch: true,
+        contentUnderNav: this.view === 'agenda',
         touchContent: (): void => {
           this.touchContentBody();
         },

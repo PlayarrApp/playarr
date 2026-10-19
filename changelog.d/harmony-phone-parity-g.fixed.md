@@ -1,0 +1,1 @@
+- HarmonyOS phone: the Calendar agenda scrolls under the translucent nav bar like the web, its text sits at the web offsets and the selected nav tile is 42 vp wide.
