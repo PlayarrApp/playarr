@@ -1,1 +1,0 @@
-- HarmonyOS phone: library and Home card captions use the web's weight and tracking, Search shows the focused field ring and web empty state, title actions use web glyph sizes and ring gap, and the focused card glow is wider.

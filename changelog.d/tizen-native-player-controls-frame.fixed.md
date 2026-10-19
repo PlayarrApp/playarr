@@ -1,1 +1,0 @@
-- Tizen native parity capture: the paused player-controls capture shows the static clip's 2 s frame behind the controls (debug builds only), matching the web reference.

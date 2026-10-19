@@ -1,1 +1,0 @@
-- HarmonyOS phone: Home rails scroll under the translucent nav bar like the web and the Profiles avatar glow matches the web's wide falloff.

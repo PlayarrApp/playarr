@@ -1,1 +1,0 @@
-- HarmonyOS phone: the calendar agenda, Filters drawer and month cells follow the web's sizes, film and series action pills carry the web shadow and the Profiles page has the web wash.

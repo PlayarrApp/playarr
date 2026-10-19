@@ -1,1 +1,0 @@
-- Android TV film detail: the Similar Titles track fades at the bottom like the web and sits 1 px higher, so the light film detail matches the static refs more closely.

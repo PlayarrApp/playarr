@@ -1,1 +1,0 @@
-- Roku: Chapters thumbnails carry the web's dark wash, the calendar Filters drawer header matches the library one, and parity captures show the static clip frame behind the player controls (capture mode only).

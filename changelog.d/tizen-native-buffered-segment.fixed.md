@@ -1,1 +1,0 @@
-- Tizen native parity capture: the paused player-controls capture draws the web buffered segment on the seek track (debug builds only).
