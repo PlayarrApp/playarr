@@ -142,9 +142,12 @@ internal sealed class SeriesDetailScreen : IPage
                 art.Add(dot);
             }
             var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
-            box.Add(Ui.Text(code, 0, 165.3f, 8.832f, 700, _t.InkMuted, 46, 13.248f));
+            var codeLabel = Ui.Text(code, 0, 165.3f, 8.832f, 700, _t.InkMuted, 46, 13.248f);
+            box.Add(codeLabel);
+            var codeY = codeLabel.PositionY;
             var tt = Ui.Text(ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}", 45.8f, 162.3f, 11.52f, 700, _t.Ink, 222, 17.28f, spacing: -0.17f);
             box.Add(tt);
+            var titleY = tt.PositionY;
             rail.Row.Add(box);
             var railIdx = si; var col = ci; var epc = ep; var seasonc = season;
             _episodes.Add((si, ci, ep, season));
@@ -154,7 +157,7 @@ internal sealed class SeriesDetailScreen : IPage
                 Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
                 Label = $"play {code}".ToLowerInvariant(),
                 Select = () => PlayEpisode(epc),
-                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(_t.Ink); },
+                Style = f => { art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(_t.Ink); codeLabel.PositionY = codeY + (f ? -7.5f : 0); tt.PositionY = titleY + (f ? -7.5f : 0); },
                 Focused = () => OnEpisodeFocused(railIdx, col, epc, seasonc),
             });
         }
