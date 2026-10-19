@@ -1149,8 +1149,8 @@ export struct ReleaseCalendar {
             Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkSoft))
           }
           if (fixedHeight === PHONE_ENTRY_HEIGHT) {
-            // the text block moved up 2 vp with its lines; web's pill sits 1.6 vp below the meta line's centre, so 3.6 down again
-            Column() { this.statusPill(itemPillTone(item, this.today)) }.offset({ y: 3.6 })
+            // measured against web: after the 2 vp lift the pill still sits 4 vp too high
+            Column() { this.statusPill(itemPillTone(item, this.today)) }.offset({ y: 4 })
           } else {
             this.statusPill(itemPillTone(item, this.today))
           }
@@ -1160,7 +1160,8 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 17.1 : 5) }) // web's text block sits 4.5 vp higher in the card than the centred one (a grown movie card has no spare height)
+      .offset({ y: fixedHeight === PHONE_ENTRY_HEIGHT ? -2 : 0 }) // measured: the agenda's subtitle card text sits 2 vp above web's
+      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 13.1 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
     }
     .width('100%')
     .constraintSize({
