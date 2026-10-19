@@ -10,8 +10,6 @@ private struct WMPanelFrame<Content: View>: View {
     let onClose: () -> Void
     /// The actions drawer on iPad focuses its Play row on open, so the close button carries no ring there.
     var closeFocused = true
-    /// Actions drawer on the phone: the web paints it opaque (the library behind does not show through).
-    var solid = false
     @ViewBuilder let content: () -> Content
 
     private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
@@ -24,7 +22,7 @@ private struct WMPanelFrame<Content: View>: View {
                 .overlay(WM.chip.opacity(0.94))
                 .ignoresSafeArea()
         } else {
-            WM.page.opacity(solid ? 1 : 0.97).ignoresSafeArea()
+            WM.page.ignoresSafeArea() // web phone panels are opaque: the library behind does not show through
         }
     }
 
@@ -291,7 +289,7 @@ struct WMTitleActionsPanel: View {
     }
 
     var body: some View {
-        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, closeFocused: false, solid: !isPad) {
+        WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, closeFocused: false) {
             VStack(spacing: isPad ? 14 : 15) {
                 row("▶\u{FE0E}", "Play", focused: true, action: onPlay)
                 row("⇩", "Download", action: onDownload)

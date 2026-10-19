@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { FIXTURE_FILM, staticRoute } from "../apple/static-route.mjs";
 
 // IDB (path of the idb client, with its companion running): headless keys as USB HID usages, no Simulator window, no host keyboard.
 const HID = { up: 82, down: 81, left: 80, right: 79, select: 40, back: 41 };
@@ -350,7 +351,14 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
     async setTheme(t) { if (t !== theme) { theme = t; await launch(); } },
     async home() { await launch(); },
     // Only the pinned detail screens (/movies/<id>, /series/<id>) open by id; every other screen is reached by keys.
-    async route(path) {
+    deepLinks: mac ? new Set(["player-controls"]) : undefined, // screens the suite opens by route although it has keys
+    async route(path, { screenId } = {}) {
+      // The Mac opens the player through its native route (TVParityLaunch.livePlayer): the pinned static film, as the tvOS route swap does.
+      if (mac && screenId === "player-controls") {
+        const title = staticRoute("player:" + FIXTURE_FILM).slice("player:".length);
+        await launch(["-PlayarrParityRoute", `player:${encodeURIComponent(title)}`], 22000);
+        return;
+      }
       const id = /^\/(?:movies|series)\/([0-9a-f-]{36})$/.exec(path)?.[1];
       if (!id) throw new Error(`the Apple driver cannot deep link ${path}`);
       await launch(["-PlayarrOpenWork", id], 22000);
