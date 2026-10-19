@@ -7546,7 +7546,7 @@ internal fun SeriesEpisodeBrowser(
         }
         if (isTelevision) {
             // Tablet: the taller card block (art 8.25 dp lower, 270 dp card, 36.7 dp copy row) takes 17.25 dp from the gap, so the season headings stay where web puts them.
-            LazyColumn(Modifier.weight(1f).then(if (tabletDetail == 1f) Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) }) else Modifier), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
+            LazyColumn(Modifier.weight(1f).then(if (tabletDetail == 1f) Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = PlayarrWebTheme.palette.let { if (it.dark) Color(0xFF1A171A) else Color(0xFFF2F0F0) }) else Modifier.playarrEdgeFades(columnState.canScrollBackward, columnState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical)), state = columnState, verticalArrangement = Arrangement.spacedBy(54.dp - 17.25.dp * tabletDetail), contentPadding = PaddingValues(top = if (tabletDetail == 0f) 182.dp else 0.dp, bottom = 80.dp)) {
                 items(seasons, key = { it.season.id }) { content(it) }
                 if (credits.cast.isNotEmpty()) {
                     item { Box(Modifier.padding(top = 55.dp * tabletDetail)) { DetailCreditsRail(credits.cast) } }
