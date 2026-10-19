@@ -4239,7 +4239,8 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
         focusedLanguageCode = null
         runCatching { triggerFocus.requestFocus() }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+    val summarySize = if (LocalTabletDrawerCssPx.current) webVw(8.96f, 0.62f, 11.84f).value else 11.84f
+    Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 13.dp)) {
         PlayarrTvDrawerHeading(title)
         Column(
             Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
@@ -4253,7 +4254,7 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
                     }.webFocusRing(triggerFocused, radius = 10.dp, offset = 2.dp).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.2.dp),
             ) {
-                Text(summary, color = WebInk, fontSize = 11.84.sp, lineHeight = 17.76.sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(summary, color = WebInk, fontSize = summarySize.sp, lineHeight = (summarySize * 1.5f).sp, fontWeight = FontWeight(680), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Text(if (open) "⌃" else "⌄", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680))
             }
             if (open) {
@@ -4411,7 +4412,7 @@ private fun <T> LibraryFilterChoices(
     val language = LocalPlayarrLanguage.current
     if (playarrTvDrawer()) {
         // Web drawer segmented control: the segments share the row equally.
-        Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 13.dp)) {
             PlayarrTvDrawerHeading(title)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 values.forEach { value -> PlayarrChoice(label(value), value == selected, Modifier.weight(1f), icon = icon?.let { draw -> { colour -> draw(value, colour) } }) { onSelected(value) } }
