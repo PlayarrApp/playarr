@@ -157,7 +157,7 @@ const TITLE_EPISODE_SHADOW_FOCUSED: ShadowLayerSpec[] = [
 const CARD_TITLE_FONT_SIZE_TV: number = 11.904;
 const CARD_SUBTITLE_FONT_SIZE_TV: number = 8.832;
 const CARD_TITLE_FONT_WEIGHT: number = 600;
-const PURE_DARK_TITLE: boolean = true;
+const PURE_DARK_TITLE: boolean = false;
 
 /** Not in the brief at all -- see this file's header comment. */
 const PROGRESS_BAR_HEIGHT: number = 3;
