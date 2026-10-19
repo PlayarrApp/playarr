@@ -16,6 +16,19 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.
 - Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
 - Android phone Settings index: the numbered rows are spread over whole pixels (162, 162 and 163 px) instead of a rounded 162 px, so the list pitch matches the web.
+- Android tablet: a series detail with few tracks centres its first season like the web, and Similar Titles use the web's wider 16:9 cards.
+- Android tablet: film detail shows the web's scene-marker count under Chapters, the Similar Titles track uses 320 x 180 cards, and the agenda list ends clear of the action column.
+- Fire TV (Vega): the Search grid starts at the web's x (777 px), the detail page kicker takes the web's theme colours (dark rose, light maroon) and the Calendar month grid is as wide as the web's (1663 px, with the right-hand action column).
+- HarmonyOS phone: series-detail text block, title wrap and synopsis height match web, series year chip uses the end date, Profiles selects no longer wrap their label, Library filter language sections have web's gap.
+- HarmonyOS phone: film action pills share the row width, episode ring glow is no longer cut at the rail edge, Library filter language selects use web's smaller regular label, the preview build pins the parity clock (Calendar agenda), the preview contract test follows the static-server workflow env.
+- HarmonyOS phone: the agenda card fits the page width (328 vp) instead of scrolling sideways.
+- HarmonyOS phone: the detail hero is drawn as the web does (58 vh box, greyscale art under a per-theme veil and two surface washes).
+- Sailfish: agenda cards end at the page padding, loopback poster URLs fall back to the work art, the edge fade is limited to the active calendar view, and the Profiles header and select styling match the web.
+- Sailfish: nav icons 21 px as on the web, Actions page rows use the web's weight, glyphs and title position.
+- Sailfish: Home rails use the web's 170 px cards, title pages lead with the next-up episode on series, wrap long titles like the web and show Chapters (generated "Chapter 1" fallback) and Similar Titles (genre-ranked library fallback) when the server returns none.
+- Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.
+- Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
+- Android phone Settings index: the numbered rows are spread over whole pixels (162, 162 and 163 px) instead of a rounded 162 px, so the list pitch matches the web.
 - Fire TV (Vega): the Search grid starts at the web's x (777 px), the detail page kicker takes the web's theme colours (dark rose, light maroon) and the Calendar month grid is as wide as the web's (1663 px, with the right-hand action column).
 - HarmonyOS phone: series-detail text block, title wrap and synopsis height match web, series year chip uses the end date, Profiles selects no longer wrap their label, Library filter language sections have web's gap.
 - HarmonyOS phone: film action pills share the row width, episode ring glow is no longer cut at the rail edge, Library filter language selects use web's smaller regular label, the preview build pins the parity clock (Calendar agenda), the preview contract test follows the static-server workflow env.
