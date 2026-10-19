@@ -509,7 +509,7 @@ struct CalendarView: View {
             }
             .scrollIndicators(.hidden)
             .frame(width: 713)
-            .padding(.top, -10)
+            .padding(.top, -6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -524,7 +524,7 @@ struct CalendarView: View {
                     family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName,
                     size: 49.2, weight: 560, fixedAxes: DesignFont.nunitoAxes
                 )?.lineHeight ?? 49.2 * 1.36,
-                lineHeight: 49.2 * 0.9, width: 330
+                lineHeight: 49.2 * 0.9, width: 247
             )
             .padding(.top, 20)
             HStack(spacing: 16) {
