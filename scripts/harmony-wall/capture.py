@@ -454,6 +454,7 @@ def walk(folder, suffix):
         print("dbgsum", {k: sum(1 for event in events if event.get("category") == k)
                           for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
     route("library:movie", 15); focus_first_card((946, 254)); snap(n("movies"), folder, 150000)
+    route("library:movie", 15)  # a fresh page: the web filters ref has no card ring (the drawer holds the focus), movies above keeps its own
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
     static = os.environ.get("PARITY_STATIC_SERVER") == "1"  # pinned details open through the route mailbox, last: later library pages lose their focus ack after one
     if not static:
