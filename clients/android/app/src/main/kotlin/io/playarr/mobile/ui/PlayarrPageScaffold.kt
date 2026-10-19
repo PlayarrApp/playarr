@@ -434,7 +434,8 @@ private fun PlayarrTvDrawer(
                     Row(verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f).padding(end = 12.dp)) {
                             if (kicker != null) {
-                                Text(kicker.uppercase(), color = WebInkSoft, fontSize = 9.6.sp, lineHeight = 14.4.sp, fontWeight = FontWeight(720), letterSpacing = 0.672.sp)
+                                val kickerSize = if (tablet) webVw(7.04f, 0.5f, 9.92f).value else 9.6f
+                                Text(kicker.uppercase(), color = if (tablet) WebInkMuted else WebInkSoft, fontSize = kickerSize.sp, lineHeight = (kickerSize * 1.5f).sp, fontWeight = FontWeight(720), letterSpacing = (0.07f * kickerSize).sp)
                             }
                             androidx.compose.material3.ProvideTextStyle(
                                 androidx.compose.ui.text.TextStyle(color = WebInk, fontSize = titleSize.sp, lineHeight = (titleSize * 1.5f).sp, fontWeight = FontWeight(590), letterSpacing = (-0.055f * titleSize).sp),
@@ -502,7 +503,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
                 verticalArrangement = Arrangement.spacedBy(if (icon == null) 0.dp else 4.dp, Alignment.CenterVertically),
             ) {
                 icon?.invoke(if (selected) WebBackground else WebInkSoft)
-                Text(label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(680), maxLines = 1)
+                Text(if (LocalTabletDrawerCssPx.current) label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } } else label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(680), maxLines = 1)
             }
         }
         return
@@ -661,5 +662,11 @@ internal fun playarrErrorState(message: PlayarrMessage, onRetry: () -> Unit): Pl
 /** Web drawer section heading (`h3`): 9.6 px, weight 720, 0.07em, uppercase, `--ink-soft`. */
 @Composable
 internal fun PlayarrTvDrawerHeading(title: String) {
+    if (LocalTabletDrawerCssPx.current) {
+        // Web `.tv-filter-drawer section h3` at a tablet viewport: clamp(7.04, 0.5 vw, 9.92) css px, 0.07em, muted.
+        val size = webVw(7.04f, 0.5f, 9.92f).value
+        Text(title.uppercase(), color = WebInkMuted, fontSize = size.sp, lineHeight = (size * 1.5f).sp, fontWeight = FontWeight(720), letterSpacing = (0.07f * size).sp, modifier = Modifier.semantics { heading() })
+        return
+    }
     Text(title.uppercase(), color = WebInkSoft, fontSize = 9.6.sp, lineHeight = 14.4.sp, fontWeight = FontWeight(720), letterSpacing = 0.672.sp, modifier = Modifier.semantics { heading() })
 }
