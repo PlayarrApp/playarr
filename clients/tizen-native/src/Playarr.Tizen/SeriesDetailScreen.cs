@@ -138,7 +138,7 @@ internal sealed class SeriesDetailScreen : IPage
             if (unseen)
             {
                 var dot = Ui.Box(268 - 23.6f, 10.6f, 13, 13, _t.Brand, 6.5f);
-                dot.BorderlineWidth = 2; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
+                dot.BorderlineWidth = 3; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
                 art.Add(dot);
             }
             var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
