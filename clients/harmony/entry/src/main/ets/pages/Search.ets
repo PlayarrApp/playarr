@@ -156,6 +156,7 @@ export struct SearchScreen {
   @State private query: string = '';
   @State private results: Work[] = [];
   @State private searched: boolean = false;
+  @State private fieldFocused: boolean = false;
   /** Web's Type filter (Filters drawer): 'all' or a work kind. */
   @State private mediaType: string = 'all';
   @State private availableKinds: string[] = [];
@@ -433,6 +434,7 @@ export struct SearchScreen {
   @Builder
   private touchContentBody(): void {
     Column({ space: 16 }) {
+      Column() {
       Row({ space: 12 }) {
         Image($r('app.media.nav_search'))
           .width(20)
@@ -448,6 +450,9 @@ export struct SearchScreen {
           .padding(0)
           .caretColor(toResourceColor(activeColors().ink))
           .layoutWeight(1)
+          .defaultFocus(true)
+          .onFocus(() => { this.fieldFocused = true; })
+          .onBlur(() => { this.fieldFocused = false; })
           .onChange((value: string) => {
             this.onQueryChange(value);
           })
@@ -458,6 +463,13 @@ export struct SearchScreen {
       .borderRadius(28)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
+      }
+      // Web focuses the field on open: a 2 vp ring 3 vp outside it, without moving the layout.
+      .width('calc(100% + 6vp)')
+      .padding(3)
+      .margin({ left: -3, right: -3, top: -3, bottom: -3 })
+      .borderRadius(31)
+      .outline({ width: this.fieldFocused ? 2 : 0, color: toResourceColor(activeColors().ink), radius: 33 })
       if (this.shownResults().length > 0) {
         Grid() {
           ForEach(this.shownResults(), (work: Work) => {
