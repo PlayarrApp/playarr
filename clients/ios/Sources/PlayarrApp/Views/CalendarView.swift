@@ -314,8 +314,6 @@ struct CalendarView: View {
                         .frame(width: 74, height: 44)
                         .background(WM.page, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
-                        // The web draws a 3 px focus ring 2 px outside the button.
-                        .overlay(Capsule().stroke(WM.ink, lineWidth: 3).padding(-3.7))
                 }
                 .buttonStyle(.plain)
                 roundButton("\u{2192}", label: "Next period") { Task { await viewModel.step(1) } }
@@ -1002,7 +1000,7 @@ struct CalendarView: View {
         .overlay(alignment: .top) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(height: 1) }
         .overlay {
             if day == viewModel.today {
-                Rectangle().stroke(PlayarrStyle.ink, lineWidth: 3).padding(1.5) // web focus ring on today
+                Rectangle().stroke(WM.inkSoft, lineWidth: 2).padding(1) // web today cell: 2 pt ink-soft border
             }
         }
         .accessibilityElement(children: .contain)

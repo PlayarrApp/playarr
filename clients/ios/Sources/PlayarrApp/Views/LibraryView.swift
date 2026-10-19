@@ -386,9 +386,7 @@ struct LibraryView: View {
     /// Web phone letter rail: 27 letters share the height between the page header and the bottom nav, in the 15 pt gutter.
     private func alphabetRail(_ proxy: ScrollViewProxy) -> some View {
         let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
-        // Web marks the letter of the focused tile, which is the first one on arrival.
-        let initial = viewModel.works.first?.title.first.map { String($0).uppercased() } ?? "#"
-        let activeLetter = ("A"..."Z").contains(initial) ? initial : "#"
+        let activeLetter: String? = nil // touch refs show no focused letter
         return GeometryReader { geo in
             ScrollView(.vertical) { VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
@@ -427,7 +425,7 @@ struct LibraryView: View {
         default: break
         }
         #endif
-        return index == 0
+        return false // a touch web page draws no focus ring (refs recaptured with focus blurred)
     }
 
     private var phoneGridScroll: some View {
