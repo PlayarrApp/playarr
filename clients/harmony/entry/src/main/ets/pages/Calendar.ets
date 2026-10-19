@@ -1043,9 +1043,10 @@ export struct ReleaseCalendar {
   @Builder
   private touchControl(label: string, width: number, onTap: () => void): void {
     Stack() {
-      Text(label).fontFamily(nunito(700))
-        .fontSize(PHONE_CONTROL_FONT)
-        .fontWeight(FontWeight.Bold)
+      // web: the arrows are thin, smaller glyphs than the bold labels
+      Text(label).fontFamily(nunito(label.length === 1 ? 400 : 700))
+        .fontSize(label.length === 1 ? 9 : PHONE_CONTROL_FONT)
+        .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .textAlign(TextAlign.Center)
         .width(width)
@@ -1149,7 +1150,7 @@ export struct ReleaseCalendar {
     .constraintSize({
       minWidth: minWidth,
       minHeight: fixedHeight > 0 ? fixedHeight : PHONE_WEEK_CARD_MIN_HEIGHT,
-      maxHeight: fixedHeight > 0 ? fixedHeight : PHONE_CARD_NO_MAX,
+      maxHeight: PHONE_CARD_NO_MAX, // web: a movie's pill wraps under the meta line and the card grows with it
     })
     .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: 8, bottom: 8 })
     .borderRadius(tv(ENTRY_RADIUS))
