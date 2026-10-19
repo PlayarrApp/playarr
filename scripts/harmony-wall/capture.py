@@ -22,7 +22,6 @@ SKIP_PLAYER_REQUESTED = os.environ.get("SKIP_PLAYER", "false").lower() == "true"
 PHONE_CORE_ONLY_REQUESTED = os.environ.get("PHONE_CORE_ONLY", "false").lower() == "true"
 PLAYER_FIXTURE_OVERRIDE = os.environ.get("HARMONY_PLAYER_FIXTURE_ID", "")
 PLAYER_FIXTURE_SOURCE = None
-STATIC = os.environ.get("PARITY_STATIC_SERVER") == "1"
 CTL = "http://127.0.0.1:" + ("40117" if device == "phone" else "40017")
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(out, exist_ok=True)
@@ -324,33 +323,30 @@ def extra_screens(folder):
             print("player-controls not captured", flush=True)
 
 
-STATIC_PLAYER_WORK = "ca309574-c0f4-4564-bb54-4512eab7e531"  # the pinned film "Silent Meridian 1" (scripts/parity/suite.json, open)
-
-
-def static_player_file():
-    """The media file of the static server's one playable clip: the pinned film's own file, read through the API."""
-    import urllib.request, uuid
-    base = os.environ["SERVER_URL"].strip().rstrip("/")
-
-    def call(method, path, body=None, token=None):
-        headers = {"content-type": "application/json", "accept": "application/json", "user-agent": "playarr-harmony-wall"}
-        if token:
-            headers["authorization"] = "Bearer " + token
-        req = urllib.request.Request(base + path, data=json.dumps(body).encode() if body is not None else None, headers=headers, method=method)
+def static_player_file(suite):
+    """The media file of the pinned film on the static parity server (the web ref opens its player)."""
+    import urllib.request  # noqa: PLC0415
+    server = os.environ["SERVER_URL"].strip().rstrip("/")
+    headers = {"User-Agent": "playarr-parity-harmony", "content-type": "application/json"}  # Cloudflare refuses the default urllib agent
+    def call(path, body=None, token=None):
+        h = dict(headers, **({"authorization": "Bearer " + token} if token else {}))
+        req = urllib.request.Request(server + path, data=json.dumps(body).encode() if body is not None else None, headers=h)
         with urllib.request.urlopen(req, timeout=30) as response:
-            return json.loads(response.read().decode())
-
-    login = call("POST", "/api/v1/auth/login", {"username": os.environ["TEST_USERNAME"], "password": os.environ["TEST_PASSWORD"],
-                                                "device_id": str(uuid.uuid4()), "device_name": "harmony-wall player", "client_platform": "web",
-                                                "client_version": "parity"})
-    return call("GET", "/api/v1/catalog/" + STATIC_PLAYER_WORK, token=login["access_token"])["media_file_id"]
+            return json.load(response)
+    login = call("/api/v1/auth/login", {"client_platform": "web", "client_version": "parity", "device_id": "00000000-0000-4000-8000-000000000042",
+                                        "device_name": "parity-harmony-player", "username": os.environ["TEST_USERNAME"], "password": os.environ["TEST_PASSWORD"]})
+    film = next(x for x in suite["screens"] if x.get("id") == "film-detail")["open"].rsplit("/", 1)[-1]
+    return call("/api/v1/catalog/" + film, token=login["access_token"])["media_file_id"]
 
 
 def configured_player_route():
     global PLAYER_FIXTURE_SOURCE
     suite = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))
     try:
-        file_path, PLAYER_FIXTURE_SOURCE = player_fixture_selection(suite, PLAYER_FIXTURE_OVERRIDE if not STATIC else static_player_file())
+        override = PLAYER_FIXTURE_OVERRIDE
+        if os.environ.get("PARITY_STATIC_SERVER") == "1":
+            override = static_player_file(suite)  # the static server's pinned film clip; the live fixture secret names a file it does not have
+        file_path, PLAYER_FIXTURE_SOURCE = player_fixture_selection(suite, override)
         return "player:" + file_path
     except ValueError as error:
         raise SystemExit(str(error)) from error
@@ -458,6 +454,7 @@ def walk(folder, suffix):
         print("dbgsum", {k: sum(1 for event in events if event.get("category") == k)
                           for k in ("home-card-artwork-ok", "poster-image-complete", "poster-image-error")}, flush=True)
     route("library:movie", 15); focus_first_card((946, 254)); snap(n("movies"), folder, 150000)
+    route("library:movie", 15)  # a fresh page: the web filters ref has no card ring (the drawer holds the focus), movies above keeps its own
     click(1877, 187); time.sleep(5); snap(n("filters"), folder); click(1850, 78); time.sleep(3)
     static = os.environ.get("PARITY_STATIC_SERVER") == "1"  # pinned details open through the route mailbox, last: later library pages lose their focus ack after one
     if not static:
