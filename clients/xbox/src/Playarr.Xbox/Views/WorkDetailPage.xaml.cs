@@ -54,7 +54,6 @@ namespace Playarr.Xbox.Views
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
             BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
-            BackdropStageWashRight.Fill = Theme.KeyArtStageWashRight();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
             PlaybackButton.Height = 64;
