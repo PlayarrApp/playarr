@@ -95,6 +95,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -230,9 +232,19 @@ private fun ExperienceCalendarScreen(
         // Web phone agenda sits on the key-art stack like the library pages (art needs a Work, which calendar entries lack).
         backdrop = if (!isTelevision && state.mode == CalendarViewMode.Agenda) {
             {
-                PhoneKeyArt(null, "", null, Modifier.fillMaxSize())
-                PhoneStageWash(Modifier.fillMaxSize())
-                Box(Modifier.fillMaxSize().background(phonePanelBrush()))
+                // The page box is padded by the 14 dp top inset; the web's panel reaches the screen top, so grow the backdrop upwards.
+                val topInset = webPhoneInsets().asPaddingValues().calculateTopPadding()
+                Box(
+                    Modifier.fillMaxSize().layout { measurable, constraints ->
+                        val extra = topInset.roundToPx()
+                        val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(constraints.maxWidth, constraints.maxHeight + extra))
+                        layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(0, -extra) }
+                    },
+                ) {
+                    PhoneKeyArt(null, "", null, Modifier.fillMaxSize())
+                    PhoneStageWash(Modifier.fillMaxSize())
+                    Box(Modifier.fillMaxSize().background(phonePanelBrush()))
+                }
             }
         } else null,
     ) {
@@ -432,7 +444,7 @@ private fun PhoneCalendarAgenda(
                     Spacer(Modifier.height(13.dp))
                 }
                 items(dayItems[index], key = { "${group.date}-${it.key}" }) { item ->
-                    PhoneCalendarEntry(item, selected = false, zone = zone, onClick = { onSelect(item) }, modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true).requiredWidth(entryWidth))
+                    PhoneCalendarEntry(item, selected = false, zone = zone, onClick = { onSelect(item) }, modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true).requiredWidth(entryWidth), agenda = true)
                     Spacer(Modifier.height(13.5.dp))
                 }
             }
@@ -445,7 +457,7 @@ private fun PhoneCalendarAgenda(
 @Composable
 private fun AgendaEntryWidth(modifier: Modifier, items: List<CalendarItem>, zone: ZoneId, content: @Composable (androidx.compose.ui.unit.Dp) -> Unit) {
     androidx.compose.ui.layout.SubcomposeLayout(modifier) { constraints ->
-        val widest = subcompose("agenda-measure") { items.forEach { PhoneCalendarEntry(it, selected = false, zone = zone, onClick = {}, measureOnly = true) } }
+        val widest = subcompose("agenda-measure") { items.forEach { PhoneCalendarEntry(it, selected = false, zone = zone, onClick = {}, measureOnly = true, agenda = true) } }
             .maxOfOrNull { it.maxIntrinsicWidth(0) } ?: 0
         val width = maxOf(widest, constraints.maxWidth).toDp()
         val placeable = subcompose("agenda-content") { content(width) }.map { it.measure(constraints) }
@@ -545,7 +557,7 @@ private fun PhoneCalendarPill(label: String, glyph: String? = null, enabled: Boo
 internal val LocalCalendarWrapTitles = androidx.compose.runtime.compositionLocalOf { false }
 
 @Composable
-private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: ZoneId, onClick: () -> Unit, modifier: Modifier = Modifier, measureOnly: Boolean = false) {
+private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: ZoneId, onClick: () -> Unit, modifier: Modifier = Modifier, measureOnly: Boolean = false, agenda: Boolean = false) {
     val entry = item.first
     val state = when (item) {
         is CalendarItem.Series -> item.entries.let { all ->
@@ -610,12 +622,15 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
         ) {
             if (measureOnly) Spacer(Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp))
             else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp).clip(RoundedCornerShape(6.dp)))
-            Column(Modifier.weight(1f).padding(start = 14.4.dp)) {
+            // Phone agenda only (static refs; the week keeps its pitch): the lines sit 1.9 dp apart, not 2.4, and the block 1 dp higher than the row centre gives.
+            val phoneEntry = agenda && m === PhoneCalendarMetrics
+            val lineGap = if (phoneEntry) 1.9.dp else 2.4.dp
+            Column(Modifier.weight(1f).padding(start = 14.4.dp).then(if (phoneEntry) Modifier.offset(y = (-1).dp) else Modifier)) {
                 Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(2.4.dp))
+                Spacer(Modifier.height(lineGap))
                 if (rowSubtitle.isNotEmpty()) {
                     Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.height(2.4.dp))
+                    Spacer(Modifier.height(lineGap))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(time, color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
