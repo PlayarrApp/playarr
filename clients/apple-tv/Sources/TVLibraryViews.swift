@@ -1717,7 +1717,8 @@ struct TVLibraryKindView: View {
 
                 if playlistID == nil, !listsPlaylists {
                     filterLauncher
-                        .disabled(filtersOpen)
+                        // Until the grid has titles Filters must not take the first focus (a light D-pad run began on it and every key missed).
+                        .disabled(filtersOpen || items.isEmpty)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                         // The shell action column (page-layout spec, rule 2.3): right edge 12.48 px, top 151.2 px, 62 wide.
                         .padding(.trailing, TVShellActionColumn.edge)
