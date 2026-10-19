@@ -123,7 +123,7 @@ interface ShadowLayerSpec {
 /** Brief 5.6, "Card art at rest (home)" / "Card art focused (home)". */
 /** Web `.tv-title-card-copy` / `.tv-home-card` caption: 0.72rem under the art and 0.12rem in from the card edge (measured on the 2026-10-15
  * refs: caption rows 10 vp lower, text 2 vp further right than before). */
-const TV_CAPTION_TOP_GAP: number = 10;
+const TV_CAPTION_TOP_GAP: number = 8; // web caption ink sits 2 px higher; the subtitle below gets 3 px back
 const TV_CAPTION_INSET: number = 2;
 const FOCUS_RING_WIDTH: number = 3;
 const HOME_SHADOW_REST: ShadowLayerSpec[] = [
@@ -496,7 +496,7 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.softCaption ? 0.15 : 0)
+          .letterSpacing(this.softCaption ? 0.15 : tv(this.titleFontSize * -0.02)) // web is about 4% narrower than the Nunito instance
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -512,7 +512,8 @@ export struct PosterCard {
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .padding({ left: this.softCaption ? 2.3 : tv(TV_CAPTION_INSET) })
+          .letterSpacing(this.softCaption ? 0 : tv(this.subtitleFontSize * -0.02))
+          .padding(this.softCaption ? { left: 2.3 } : { left: tv(TV_CAPTION_INSET), top: tv(3) })
       }
     }
     .width(this.cardWidth)
