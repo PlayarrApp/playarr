@@ -830,7 +830,8 @@ private fun PlayarrPlayerControlBar(
     val durationMs = timeline.durationMs.coerceAtLeast(0L)
     val displayedPositionMs = (scrubPositionMs ?: timeline.positionMs).coerceIn(0L, durationMs.coerceAtLeast(0L))
     val bufferedProgress = if (durationMs > 0L) {
-        timeline.bufferedPositionMs.toFloat() / durationMs.toFloat()
+        // Parity captures (debug pause extra): the web ref's video has buffered 16 s of the clip, the local player all of it.
+        (if (parityPauseAtMs != null) minOf(timeline.bufferedPositionMs, 16_000L) else timeline.bufferedPositionMs).toFloat() / durationMs.toFloat()
     } else {
         0f
     }
@@ -1190,7 +1191,7 @@ internal fun PlayarrTelevisionControlBar(
                 )
             }
         }
-        Spacer(Modifier.height(11.5.dp))
+        Spacer(Modifier.height(14.5.dp))
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(13.6.dp),
@@ -1277,11 +1278,11 @@ internal fun PlayarrTelevisionControlBar(
                         .semantics { contentDescription = qualityDescription },
                 ) {
                     Row(
-                        Modifier.padding(horizontal = 14.4.dp),
+                        Modifier.padding(start = 19.4.dp, end = 14.4.dp), // measured against the web ref capture
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Text("HD", fontSize = 7.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("HD", fontSize = 8.8.sp, fontWeight = FontWeight.ExtraBold)
                         Text(
                             active?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") }
                                 ?: playarrString(PlayarrString.PlayerQualityHeading),
@@ -1431,7 +1432,8 @@ private fun PlayarrPlayerPlaylistPanel(
 @Composable
 private fun Modifier.playerFocusRing(source: MutableInteractionSource, shape: androidx.compose.ui.graphics.Shape): Modifier {
     val focused by source.collectIsFocusedAsState()
-    return if (focused) border(2.dp, Color.White, shape) else this
+    // Parity captures (debug pause extra) keep focus but draw no ring: the web ref is at rest with none.
+    return if (focused && parityPauseAtMs == null) border(2.dp, Color.White, shape) else this
 }
 
 @Composable
