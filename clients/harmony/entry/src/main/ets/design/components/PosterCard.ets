@@ -130,6 +130,11 @@ const HOME_SHADOW_REST: ShadowLayerSpec[] = [
   { offsetY: 10, radius: 22, alpha: 0.16 },
   { offsetY: 3, radius: 9, alpha: 0.1 },
 ];
+// Phone only: the rest shadow, stronger than CSS's for the same reason (measured below the Home cards on the light static refs).
+const PHONE_HOME_SHADOW_REST: ShadowLayerSpec[] = [
+  { offsetY: 10, radius: 22, alpha: 0.16 },
+  { offsetY: 3, radius: 9, alpha: 0.1 },
+];
 // Phone only: ArkUI's blur draws lighter than CSS's, so the wide layer is stronger and wider (measured on the light static refs).
 const PHONE_HOME_SHADOW_FOCUSED: ShadowLayerSpec[] = [
   { offsetY: 34, radius: 100, alpha: 0.7 },
@@ -324,7 +329,7 @@ export struct PosterCard {
   }
 
   private shadowAt(layer: number): ShadowOptions {
-    const rest = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_REST : HOME_SHADOW_REST;
+    const rest = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_REST : (isTvMetrics() ? HOME_SHADOW_REST : PHONE_HOME_SHADOW_REST);
     const focused = this.isTitleEpisode() ? TITLE_EPISODE_SHADOW_FOCUSED : (isTvMetrics() ? HOME_SHADOW_FOCUSED : PHONE_HOME_SHADOW_FOCUSED);
     const t = this.visualFocus();
     // Every lerp result is read into a local first, then referenced by
