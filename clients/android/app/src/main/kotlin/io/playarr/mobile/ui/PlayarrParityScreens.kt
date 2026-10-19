@@ -4283,7 +4283,7 @@ private fun TvSettingsBody(
         val isAdmin by viewModel.isAdmin.collectAsState()
         LazyColumn(
             // Padding, not offset: the list must end at the screen edge so rows past it (11 sections) scroll into view.
-            Modifier.padding(start = playarrPageMetrics(true).start, top = listTop).width(480.dp).fillMaxHeight(),
+            Modifier.padding(start = playarrPageMetrics(true).start + (if (tablet) 23.dp else 0.dp), top = listTop).width(if (tablet) 432.dp else 480.dp).fillMaxHeight(),
         ) {
             // Web lists the admin-only sections (request latency) only for administrators and keeps every section's number.
             val rows = entries.mapIndexed { number, row -> number to row.first }
@@ -4304,17 +4304,17 @@ private fun TvSettingsBody(
                     Text(
                         settingsSectionNumber(number),
                         color = WebInkMuted, fontSize = 9.92.sp, fontWeight = FontWeight(760), lineHeight = 11.sp, style = cssLine(),
-                        modifier = Modifier.offset(x = 32.dp, y = 27.dp),
+                        modifier = Modifier.offset(x = if (tablet) 15.5.dp else 32.dp, y = 27.dp),
                     )
                     Text(
                         playarrString(candidate.label),
-                        color = WebInk, fontSize = 29.6.sp, fontWeight = FontWeight(480), lineHeight = 33.sp, letterSpacing = (-0.9).sp, style = cssLine(),
-                        modifier = Modifier.align(Alignment.CenterStart).padding(start = 92.dp).offset(y = (-1).dp),
+                        color = WebInk, fontSize = if (tablet) 30.5.sp else 29.6.sp, fontWeight = FontWeight(480), lineHeight = 33.sp, letterSpacing = (-0.9).sp, style = cssLine(),
+                        modifier = Modifier.align(Alignment.CenterStart).padding(start = if (tablet) 94.3.dp else 92.dp).offset(y = (-1).dp),
                     )
                     Text(
                         "\u2192",
                         color = if (selected) WebInk else WebInkMuted, fontSize = 20.8.sp, lineHeight = 23.sp, style = cssLine(),
-                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = if (selected) 27.dp else 32.dp).offset(y = (-2).dp),
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = (if (selected) 27.dp else 32.dp) + (if (tablet) 6.dp else 0.dp)).offset(y = (-2).dp),
                     )
                 }
             }
