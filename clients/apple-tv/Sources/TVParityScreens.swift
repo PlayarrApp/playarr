@@ -517,6 +517,20 @@ enum TVParityState {
         write()
     }
 
+    /// The suite's `/player/<id>` route while the player is on screen (it is pushed inside the detail, not on the path).
+    private static var routeBeforePlayer: String?
+    static func setPlayer(_ id: UUID?) {
+        if let id {
+            if routeBeforePlayer == nil { routeBeforePlayer = base }
+            base = "/player/\(id.uuidString.lowercased())"
+            query = [:]
+        } else if let previous = routeBeforePlayer {
+            base = previous
+            routeBeforePlayer = nil
+        }
+        write()
+    }
+
     static func setProfiles(_ open: Bool) {
         base = open ? "/profiles" : base
         write()
