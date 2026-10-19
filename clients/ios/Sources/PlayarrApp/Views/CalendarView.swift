@@ -890,8 +890,9 @@ struct CalendarView: View {
     private func phoneMonthCell(day: String, items: [CalendarItem], height: CGFloat) -> some View {
         let dayNumber = Int(day.suffix(2)) ?? 0
         let inMonth = String(day.prefix(7)) == String(viewModel.anchor.prefix(7))
-        let shownCount = max(0, min(items.count, Int((height - 48) / 22.6)))
+        let shownCount = max(0, min(items.count, Int((height - 60) / 22.6)))
         return VStack(alignment: .leading, spacing: 0) {
+            Color.clear.frame(height: 11.9) // web rows start 12 pt below the cell top
             ForEach(items.prefix(shownCount)) { item in
                 Button {
                     viewModel.select(item)
@@ -927,7 +928,7 @@ struct CalendarView: View {
                         Text("+\(hidden) more").font(.custom("Avenir Next", fixedSize: 12)).foregroundStyle(PlayarrStyle.muted)
                     }
                 }
-                .padding(.leading, 0.9).padding(.trailing, -2.9) // web footer: number at 12.3 pt, "+N more" ends 13 pt from the edge
+                .padding(.leading, -2.1).padding(.trailing, -2.9) // web footer: number at 12.3 pt, "+N more" ends 13 pt from the edge
                 .frame(maxWidth: .infinity, minHeight: 49, alignment: .leading)
                 .contentShape(Rectangle())
             }
@@ -936,7 +937,9 @@ struct CalendarView: View {
         .padding(.horizontal, 10.9)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(inMonth ? Color.clear : WM.adaptive(light: (239, 238, 237), dark: (36, 31, 35)))
-        .overlay(Rectangle().stroke(WM.line.opacity(0.23), lineWidth: 1))
+        .overlay(alignment: .leading) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(width: 1) } // web cell borders: 1 pt each side, 1 pt on top
+        .overlay(alignment: .trailing) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(width: 1) }
+        .overlay(alignment: .top) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(height: 1) }
         .overlay {
             if day == viewModel.today {
                 Rectangle().stroke(PlayarrStyle.ink, lineWidth: 3).padding(1.5) // web focus ring on today
