@@ -40,6 +40,7 @@ export struct ActionList {
   build() {
     Column({ space: tv(ROW_GAP) }) {
       ForEach(this.actions, (action: ActionItem) => {
+        Column() {
         Row() {
           Text(action.glyph).fontFamily(nunito(400))
             .width(tv(GLYPH_COLUMN))
@@ -55,7 +56,13 @@ export struct ActionList {
         .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
         .borderRadius(tv(ROW_RADIUS))
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-        .outline(action.id === this.actions[0].id ? { width: isTvMetrics() ? tv(3) : 2, color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) } : { width: 0 }) // web: the first action starts focused
+                }
+        // Phone: web's ring sits 2 vp clear of the row (the wrapper's padding), without moving the layout.
+        .width(isTvMetrics() ? '100%' : 'calc(100% + 4vp)')
+        .padding(isTvMetrics() ? 0 : 2)
+        .margin(isTvMetrics() ? 0 : { left: -2, right: -2, top: -2, bottom: -2 })
+        .borderRadius(tv(ROW_RADIUS + (isTvMetrics() ? 0 : 2)))
+        .outline(action.id === this.actions[0].id ? { width: isTvMetrics() ? tv(3) : 2, color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) + (isTvMetrics() ? 0 : 2) } : { width: 0 }) // web: the first action starts focused
         .opacity(this.busyId.length > 0 && this.busyId !== action.id ? 0.5 : 1)
         .focusable(this.busyId.length === 0)
         .defaultFocus(action.id === this.actions[0].id)
