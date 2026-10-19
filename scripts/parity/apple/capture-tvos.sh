@@ -21,6 +21,7 @@ node -e '
   const s = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
   for (const x of s.screens) if (x.native) console.log([x.id, x.native, x.user || ""].join("\t"));
 ' "$screens" | while IFS=$'\t' read -r id route user; do
+  route="$(node "$here/static-route.mjs" "$route")" # static parity server: the pinned static film instead of the fixture title
   tok="$token"
   if [[ -n "$user" ]]; then tok="$(user_token "$user")"; fi
   echo "token subject: $(echo "$tok" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | sed -E 's/.*"sub":"([^"]*)".*/\1/' | head -c 40)"

@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readSecrets } from "../dpad-account.mjs";
 import { loadParityConfig } from "../parity-config.mjs";
-import { ARTISTS, CALENDAR, CLOCK, FROZEN_AT, MOVIES, ON_DECK, PROFILES, SERIES, WATCHED, WATCHLIST, uid } from "./catalogue.mjs";
+import { ARTISTS, CALENDAR, CLIP, CLOCK, FROZEN_AT, MOVIES, ON_DECK, PROFILES, SERIES, WATCHED, WATCHLIST, uid } from "./catalogue.mjs";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const arg = (n) => { const i = process.argv.indexOf(`--${n}`); return i >= 0 ? process.argv[i + 1] : undefined; };
@@ -24,7 +24,7 @@ if (!password) throw new Error("PLAYARR_PARITY_STATIC_PASSWORD is missing from ~
 // Image URLs stored in the DB. Clients that fetch images[].url directly (the Apple apps) need one they can reach: the hosted
 // instance sets PARITY_ART_BASE to the public tunnel path (https://<host>/art); the default is the loopback artwork server.
 const artBase = process.env.PARITY_ART_BASE ?? `http://127.0.0.1:${cfg.PARITY_ART_PORT}/art`;
-const artDir = join(home, "art"), mediaDir = join(home, "media"), clip = join(mediaDir, "clip.mkv");
+const artDir = join(home, "art"), mediaDir = join(home, "media"), clip = join(mediaDir, CLIP.file);
 const CLIP_SECONDS = 60, FONT = join(here, "../../fixtures/fonts/NunitoSans-Bold-art.ttf");
 mkdirSync(artDir, { recursive: true }); mkdirSync(mediaDir, { recursive: true });
 
@@ -53,12 +53,12 @@ function art(file, w, h, [c0, c1], title, seed) {
 });
 writeFileSync(stampFile, stamp);
 
-// --- the one playable clip every movie and episode points at (h264, English and French audio, English subtitles).
+// --- the one playable clip every movie and episode points at (h264/aac in mp4, English and French audio, English subtitles).
 if (!existsSync(clip)) {
   const srt = join(mediaDir, "clip.en.srt");
   writeFileSync(srt, [1, 2, 3].map((n) => `${n}\n00:00:0${(n - 1) * 2},000 --> 00:00:0${(n - 1) * 2 + 1},500\n[English] placeholder cue ${n}\n`).join("\n"));
   ffmpeg(["-f", "lavfi", "-i", `testsrc2=size=320x180:rate=15:duration=${CLIP_SECONDS}`, "-f", "lavfi", "-i", `sine=frequency=440:duration=${CLIP_SECONDS}`, "-f", "lavfi", "-i", `sine=frequency=523:duration=${CLIP_SECONDS}`, "-i", srt,
-    "-map", "0:v", "-map", "1:a", "-map", "2:a", "-map", "3:s", "-t", String(CLIP_SECONDS), "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-g", "30", "-c:a", "aac", "-b:a", "48k", "-c:s", "srt",
+    "-map", "0:v", "-map", "1:a", "-map", "2:a", "-map", "3:s", "-t", String(CLIP_SECONDS), "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-g", "30", "-c:a", "aac", "-b:a", "48k", "-c:s", "mov_text", "-movflags", "+faststart",
     "-metadata:s:a:0", "language=eng", "-metadata:s:a:1", "language=fra", "-metadata:s:s:0", "language=eng", "-disposition:a:0", "default", clip]);
   rmSync(srt);
 }
@@ -116,7 +116,7 @@ const insertWork = (w, kind, tags, availability, releaseDate) =>
     w.workId, kind, w.title, w.title.toLowerCase(), w.overview ?? null, images(w.workId), j(w.genres ?? []), j(tags), w.addedAt, availability, releaseDate);
 const insertFile = (fileId, workId, leaf, source, n) => {
   run("insert into media_files (id, work_id, leaf_ref, path, container, codec, bitrate, size_bytes, source_instance_id, source_file_id, duration_ms) values (?,?,?,?,?,?,?,?,?,?,?)",
-    fileId, workId, leaf, clip, "mkv", "x264", 300000, clipSize, source, String(n), CLIP_SECONDS * 1000);
+    fileId, workId, leaf, clip, CLIP.container, "x264", 300000, clipSize, source, String(n), CLIP_SECONDS * 1000);
   for (const [kind, lang] of [["audio", "en"], ["audio", "fr"], ["subtitle", "en"]]) run("insert into media_file_languages (media_file_id, kind, lang, source) values (?,?,?,'arr')", fileId, kind, lang);
 };
 let fileNo = 0;
