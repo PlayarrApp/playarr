@@ -506,7 +506,8 @@ class PreviewFocusLookTests(unittest.TestCase):
         poster = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/design/components/PosterCard.ets").read_text(encoding="utf-8")
         patched = patch_state.card(poster)
         self.assertIn("previewRegisterCard", patched)
-        self.assertIn("return Math.max(this.effective(), this.ringOn ? 1 : 0, !isTvMetrics() && this.previewRingOn ? 1 : 0);", patched)
+        self.assertIn("return Math.max(this.effective(), this.ringOn ? 1 : 0);", patched)
+        self.assertNotIn("!isTvMetrics() && this.previewRingOn", patched)  # touch refs carry no focus ring
         self.assertIn("private effective(): number {\n    return Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), isTvMetrics() && this.previewRingOn ? 1 : 0);", patched)
         self.assertIn(".opacity(this.visualFocus())", patched)
         self.assertNotIn(".border({ width: isTvMetrics() ? 0 : 3", patched)

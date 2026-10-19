@@ -28,7 +28,7 @@ def card(s):
     s = s.replace(focus, "return Math.max(effectiveFocusPercent(this.focusPercent, this.activeRailFactor), isTvMetrics() && this.previewRingOn ? 1 : 0);", 1)
     ring = "return Math.max(this.effective(), this.ringOn ? 1 : 0);"
     assert s.count(ring) == 1
-    s = s.replace(ring, "return Math.max(this.effective(), this.ringOn ? 1 : 0, !isTvMetrics() && this.previewRingOn ? 1 : 0);", 1)
+    # the phone keeps its focus acknowledgement but draws no ring: the touch web refs are taken with focus blurred (#488)
     image_ctor = re.compile(r"(?m)^(?P<indent>[ \t]*)Image\(this\.artwork\)\n")
     assert len(list(image_ctor.finditer(s))) == 1
     image_hooks = """            .onAppear(() => { previewReport('dbg=' + encodeURIComponent('img+' + this.title)); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'poster-render-artwork-present'); reportDetailRowImageStageForScope(this.previewRoute, this.previewWorkId, this.previewRowId, this.previewGeneration, 'image-source'); })
