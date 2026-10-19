@@ -486,6 +486,8 @@ struct Profiles {
               // web phone: the current profile's avatar is lifted and enlarged (measured 1.13x, 8.6 vp up on the pinned reference)
               .scale(profile.is_current && !isTvMetrics() ? { x: 1.13, y: 1.13 } : { x: 1, y: 1 })
               .translate({ y: profile.is_current && !isTvMetrics() ? -8.6 : 0 })
+              // web phone: the current avatar throws a crimson glow (measured on the pinned reference, light theme)
+              .shadow(profile.is_current && !isTvMetrics() ? { radius: 22, color: 'rgba(158, 35, 70, 0.32)', offsetY: 8 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
             Text(profile.display_name).fontFamily(nunito(700))
               .fontSize(this.pick(17.28, 12))
               .fontWeight(FontWeight.Bold)

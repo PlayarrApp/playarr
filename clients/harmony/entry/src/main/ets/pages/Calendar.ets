@@ -1043,9 +1043,10 @@ export struct ReleaseCalendar {
   @Builder
   private touchControl(label: string, width: number, onTap: () => void): void {
     Stack() {
-      Text(label).fontFamily(nunito(700))
-        .fontSize(PHONE_CONTROL_FONT)
-        .fontWeight(FontWeight.Bold)
+      // web: the arrows are thin, smaller glyphs than the bold labels
+      Text(label).fontFamily(nunito(label.length === 1 ? 400 : 700))
+        .fontSize(label.length === 1 ? 9 : PHONE_CONTROL_FONT)
+        .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .textAlign(TextAlign.Center)
         .width(width)
@@ -1143,13 +1144,13 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-      .margin({ bottom: 5 }) // web's text block sits 2.5 vp higher in the card than the centred one
+      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : 5 }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
     }
     .width('100%')
     .constraintSize({
       minWidth: minWidth,
       minHeight: fixedHeight > 0 ? fixedHeight : PHONE_WEEK_CARD_MIN_HEIGHT,
-      maxHeight: fixedHeight > 0 ? fixedHeight : PHONE_CARD_NO_MAX,
+      maxHeight: fixedHeight === PHONE_ENTRY_HEIGHT ? fixedHeight : PHONE_CARD_NO_MAX, // web: a movie's pill wraps under the meta line and the card grows with it
     })
     .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: 8, bottom: 8 })
     .borderRadius(tv(ENTRY_RADIUS))
