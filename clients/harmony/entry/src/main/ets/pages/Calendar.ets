@@ -231,6 +231,7 @@ export struct ReleaseCalendar {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('tvScaleFactor') private trackedTvScale: number = 1;
+  @StorageProp('safeBottom') private safeBottom: number = 0;
 
   @State private today: string = localDayOf(new Date());
   @State private anchor: string = localDayOf(new Date());
