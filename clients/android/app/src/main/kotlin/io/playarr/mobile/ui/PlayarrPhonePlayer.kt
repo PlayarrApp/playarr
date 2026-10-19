@@ -111,13 +111,14 @@ private fun PhonePlayerButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     primary: Boolean = false,
+    dimWhenDisabled: Boolean = false,
     onClick: () -> Unit,
 ) {
     Box(
         modifier
-            .size(42.dp)
-            // Web styles no disabled state on `.player-btn`: a single-item queue shows Previous and Next at full strength, inert.
-            .alpha(1f)
+            .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
+            // Web `.player-btn:disabled { opacity: 0.28 }`: a single-item queue dims Previous and Next (the other buttons are never disabled on web).
+            .alpha(if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
             .clip(CircleShape)
             .then(if (primary) Modifier.background(Color.White.copy(alpha = 0.14f)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
@@ -233,11 +234,11 @@ internal fun BoxScope.PhonePlayerOverlay(
             FlowRow(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current == 1f) 3.4.dp else 2.dp),
             ) {
                 // `.player-time` leads the first line (order -1, full width) with 2 px of padding below.
                 Row(
-                    Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                    Modifier.fillMaxWidth().padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -246,13 +247,13 @@ internal fun BoxScope.PhonePlayerOverlay(
                     Text("/", color = PlayerSeparator, style = WebTextStyle.merge(time))
                     Text(formatPlayarrPlayerTime(durationMs), color = Color.White, style = WebTextStyle.merge(time))
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerPrevious, playarrString(PlayarrString.PlayerPreviousEpisode), enabled = canPrevious && !controls.switching) { onPrevious() }
+                PhonePlayerButton(PlayarrWebIcons.PlayerPrevious, playarrString(PlayarrString.PlayerPreviousEpisode), enabled = canPrevious && !controls.switching, dimWhenDisabled = true) { onPrevious() }
                 PhonePlayerButton(
                     if (playbackState.playWhenReady) PlayarrWebIcons.PlayerPause else PlayarrWebIcons.PlayerPlay,
                     playarrString(if (playbackState.playWhenReady) PlayarrString.PlayerPause else PlayarrString.PlayerPlay),
                     enabled = !controls.switching, primary = true,
                 ) { onTogglePlayback() }
-                PhonePlayerButton(PlayarrWebIcons.PlayerNext, playarrString(PlayarrString.PlayerNextEpisode), enabled = canNext && !controls.switching) { onNext() }
+                PhonePlayerButton(PlayarrWebIcons.PlayerNext, playarrString(PlayarrString.PlayerNextEpisode), enabled = canNext && !controls.switching, dimWhenDisabled = true) { onNext() }
                 PhonePlayerButton(
                     if (muted) PlayarrWebIcons.PlayerVolumeMuted else PlayarrWebIcons.PlayerVolumeHigh,
                     playarrString(if (muted) PlayarrString.PlayerUnmute else PlayarrString.PlayerMute),

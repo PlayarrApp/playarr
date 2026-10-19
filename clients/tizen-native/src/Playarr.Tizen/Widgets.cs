@@ -96,7 +96,7 @@ internal sealed class MediaCard
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         var drop = card.StackOptions > 1 ? StackDrop : 0;
-        Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 700, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
+        Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 610, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
         _titleY = Title.PositionY; _subY = H + 31.9f + drop;
         if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }

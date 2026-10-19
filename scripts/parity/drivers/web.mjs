@@ -725,6 +725,34 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     },
     async playhead() { await guard(); const value = await page.evaluate(() => document.querySelector("video")?.currentTime ?? null); await guard(); return value; },
     async panelOpen() { await guard(); const value = await page.evaluate(() => [...document.querySelectorAll(".player-quality-menu")].some((m) => m.getBoundingClientRect().width > 0)); await guard(); return value; },
+    // Player chrome for the refs: the clip paused at 2 s, controls revealed, focus dropped (same state as screens.json player-controls).
+    async playerControls(file) {
+      await guard();
+      await page.goto(web + "/player/" + file, { waitUntil: "load" });
+      await waitReady({ screen: "player-controls", phase: "route" });
+      // Headless has no user gesture: nudge playback until frames are buffered; play() is never awaited (it can stay pending).
+      await page.waitForFunction(() => { const v = document.querySelector("video"); if (v?.paused) v.play().catch(() => {}); return (v?.readyState ?? 0) >= 2; }, null, { timeout: 60000, polling: 500 });
+      const pin = (t) => page.evaluate(async (t) => {
+        const v = document.querySelector("video");
+        v.pause();
+        if (Math.abs(v.currentTime - t) > 0.01) await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = t; setTimeout(res, 8000); });
+        v.pause();
+        // Wait for the sought frame to be presented: a paused seek can leave the previous frame on screen.
+        if (v.requestVideoFrameCallback) await new Promise((res) => { v.requestVideoFrameCallback(() => res()); setTimeout(res, 3000); });
+        return v.paused && Math.abs(v.currentTime - t) < 0.05;
+      }, t);
+      const vp = page.viewportSize();
+      await page.mouse.move(vp.width / 2, vp.height / 2);
+      if (mobile && !(await page.locator(".player-controls:visible").count())) await page.touchscreen.tap(vp.width / 2, vp.height / 2);
+      await page.waitForSelector(".player-controls", { state: "visible", timeout: 10000 });
+      // The nudged play() can resolve late, and a tap or a timer can resume playback: pin the frame until it holds for two checks 0.7 s apart.
+      let held = 0;
+      for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2)) ? held + 1 : 0; await page.waitForTimeout(700); }
+      if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
+      await page.waitForTimeout(600); // the player moves focus to play/pause on a timer: let it, then drop it
+      await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
+      await guard();
+    },
     async route(r, { requireHeroAction = false } = {}) {
       await guard();
       await page.goto(web + r, { waitUntil: "load" });
@@ -748,6 +776,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // { label, position } of the focused item, or null when the page body has focus (a check then fails).
     // position: { rail, index } = Home rail number and card number in it, or { rail: "nav", index } for a nav item; null elsewhere.
     async focused() { await guard(); return stableFocus(); },
+    // Touch groups: the web focuses the first card on mount, a touch device has no focus ring at rest. Called by capture-refs on Home only.
+    async blurFocus() { await guard(); await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); }); },
     async screenshot(file) {
       await guard();
       await page.mouse.move(-1, -1); // a pointer left over a control (the "#" alphabet-rail hover disc) draws a state no device can match
