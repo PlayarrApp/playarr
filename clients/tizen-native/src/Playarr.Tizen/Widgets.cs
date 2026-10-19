@@ -437,7 +437,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.Library(false, "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f };
     }
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>
