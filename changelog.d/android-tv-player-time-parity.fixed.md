@@ -1,1 +1,0 @@
-- Android TV player controls: the parity capture draws the time as three spans like the web (tabular digits, fainter slash) and pauses at 0:02 within 5 ms, so the paused frame and the playhead match the web ref.

@@ -1,1 +1,0 @@
-- Parity capture on a real LG TV shows the paused static clip frame behind the player controls (the inspector screenshot has no video plane); the app is unchanged.

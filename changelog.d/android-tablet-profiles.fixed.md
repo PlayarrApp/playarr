@@ -1,1 +1,0 @@
-- Android tablet: the profile picker follows the static web (chrome and action pills in css px, heading and row positions, no Clients link).
