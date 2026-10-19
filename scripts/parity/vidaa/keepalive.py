@@ -60,6 +60,11 @@ class Session:
     lock = threading.RLock()
 
 
+def probe(vidaa, tv):
+    """(alive, foreground ok, state). Liveness is an applist reply: the TV answers that reliably but often ignores gettvstate."""
+    return tv.apps() is not None, *vidaa.foreground_ok(tv)
+
+
 def make_handler(vidaa, session):
     ops = {"state": lambda tv, r: vidaa.op_state(tv),
            "apps": lambda tv, r: vidaa.op_apps(tv),
@@ -130,8 +135,7 @@ def main():
                         log(f"connect failed: {msg}; retry in {backoff}s")
             elif S.tv is not None:
                 with S.lock:
-                    alive = S.tv.apps() is not None  # the TV answers applist reliably; gettvstate it often ignores
-                    fg, st = vidaa.foreground_ok(S.tv)
+                    alive, fg, st = probe(vidaa, S.tv)
                 if not alive:
                     misses += 1
                     log(f"applist query got no reply ({misses})")
