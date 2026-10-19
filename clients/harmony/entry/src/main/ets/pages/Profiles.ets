@@ -486,6 +486,9 @@ struct Profiles {
               // web phone: the current profile's avatar is lifted and enlarged (measured 1.13x, 8.6 vp up on the pinned reference)
               .scale(profile.is_current && !isTvMetrics() ? { x: 1.13, y: 1.13 } : { x: 1, y: 1 })
               .translate({ y: profile.is_current && !isTvMetrics() ? -8.6 : 0 })
+              // web phone: the current avatar throws a wide crimson glow (0.28 at the ring, 0.11 at 17 vp out on the static ref, light theme; none above it)
+              .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
+              .shadow(profile.is_current && !isTvMetrics() ? { radius: 40, color: 'rgba(130, 40, 66, 0.56)', offsetY: 16 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
             Text(profile.display_name).fontFamily(nunito(700))
               .fontSize(this.pick(17.28, 12))
               .fontWeight(FontWeight.Bold)
@@ -607,6 +610,17 @@ struct Profiles {
   @Builder
   private pageBody(): void {
       Stack() {
+        if (!isTvMetrics()) {
+          // web `.profiles-page`: linear-gradient(145deg, surface, bg 72%) under a brand wash at 50% 48% (about 13 to 15%, out to 34% of the far corner)
+          Column()
+            .width('100%')
+            .height('100%')
+            .linearGradient({ angle: 145, colors: [[toResourceColor(activeColors().surface), 0], [toResourceColor(activeColors().bg), 0.72]] })
+          Column()
+            .width('100%')
+            .height('100%')
+            .radialGradient({ center: ['50%', '48%'], radius: 151, colors: [['rgba(207, 49, 87, 0.15)', 0], ['rgba(207, 49, 87, 0)', 1]] })
+        }
         if (this.viewState === ProfilesViewState.Ready && this.profiles.length > 0) {
           this.tvPicker()
         } else {
