@@ -157,6 +157,7 @@ import { FOCUS_LIFT, effectiveFocusPercent, DEFAULT_ACTIVE_RAIL_FACTOR } from '.
 const CHROME_GRADIENT_TOP: RgbaColor = { r: 34, g: 25, b: 31, a: 0.98 };
 const CHROME_GRADIENT_BOTTOM: RgbaColor = { r: 12, g: 9, b: 12, a: 0.99 };
 const CHROME_TEXT_PRIMARY: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
+const CHROME_GLASS: RgbaColor = { r: 12, g: 9, b: 12, a: 1 };
 const CHROME_TEXT_SECONDARY: RgbaColor = { r: 255, g: 255, b: 255, a: 0.7 };
 const CHROME_TRACK_ALPHA: number = 0.28;
 const CHROME_BUFFERED_ALPHA: number = 0.46;
@@ -342,6 +343,8 @@ struct ChromeButton {
   /** Phone: web's lighter circle fill and ring, and an icon in place of a text label. */
   fillAlpha: number = CIRCLE_FILL_ALPHA;
   ringAlpha: number = CIRCLE_RING_ALPHA;
+  /** TV top buttons: web's glass fill, near-black at this alpha (0 = use the white fill above). */
+  glassAlpha: number = 0;
   icon: Resource | undefined = undefined;
   iconSize: number = 20;
 
@@ -380,7 +383,7 @@ struct ChromeButton {
     .width(this.buttonWidth)
     .height(this.buttonHeight)
     .borderRadius(this.circle ? this.buttonHeight / 2 : 0)
-    .backgroundColor(this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.fillAlpha) : Color.Transparent)
+    .backgroundColor(this.glassAlpha > 0 ? toResourceColorWithAlpha(CHROME_GLASS, this.glassAlpha) : (this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.fillAlpha) : Color.Transparent))
     .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.ringAlpha) } : { width: 0 })
     .scale({ x: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)), y: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)) })
     .opacity(this.active ? 1 : 0.35)
@@ -581,14 +584,80 @@ export struct PlayerChrome {
     .width('100%')
   }
 
+  /** One bare TV control icon in web's 64 px round slot. */
+  @Builder
+  private tvIcon(icon: Resource, onTap: () => void, active: boolean): void {
+    ChromeButton({
+      label: '',
+      icon: icon,
+      iconSize: tv(17),
+      circle: true,
+      fillAlpha: 0,
+      ringAlpha: 0,
+      active: active,
+      buttonWidth: tv(TV_SEEK_SIZE),
+      buttonHeight: tv(TV_SEEK_SIZE),
+      onActivate: onTap,
+      notifyFocusChanged: ((focused: boolean): void => {
+        this.setChildFocused(focused);
+      }),
+    })
+  }
+
+  /** Previous / next as web draws them: a bar and a triangle in the 64 px slot, dimmed while there is nothing to skip to. */
+  @Builder
+  private tvSkip(previous: boolean, active: boolean, onTap: () => void): void {
+    Row({ space: 1 }) {
+      if (!previous) {
+        Polygon({ width: tv(11), height: tv(13) }).points([[0, 0], [0, 13], [11, 6.5]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(tv(11)).height(tv(13))
+      }
+      Row().width(tv(2.6)).height(tv(13)).backgroundColor(toResourceColor(CHROME_TEXT_PRIMARY))
+      if (previous) {
+        Polygon({ width: tv(11), height: tv(13) }).points([[11, 0], [11, 13], [0, 6.5]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(tv(11)).height(tv(13))
+      }
+    }
+    .width(tv(TV_SEEK_SIZE))
+    .height(tv(TV_SEEK_SIZE))
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
+    .opacity(active ? 1 : 0.35)
+    .focusable(active)
+    .onClick(() => {
+      if (active) {
+        onTap();
+      }
+    })
+  }
+
   /** Web TV player: close at the top right; at the bottom a thin progress track over one row of transport controls and the time. */
   @Builder
   private tvBar(): void {
     Column() {
-      Row() {
+      Row({ space: tv(12) }) {
+        // web: the Minimise pill (glass, hairline) beside the round close button
+        Row({ space: tv(10) }) {
+          Image($r('app.media.player_minimize')).width(tv(15)).height(tv(15))
+          Text('Minimise').fontFamily(nunito(700)).fontSize(tv(12.5)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+        }
+        .width(tv(124))
+        .height(tv(TV_CLOSE_SIZE))
+        .justifyContent(FlexAlign.Center)
+        .alignItems(VerticalAlign.Center)
+        .borderRadius(tv(TV_CLOSE_SIZE / 2))
+        .backgroundColor(toResourceColorWithAlpha(CHROME_GLASS, 0.78))
+        .border({ width: 1, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.2) })
+        .shadow({ radius: tv(24), color: toResourceColorWithAlpha(CHROME_GLASS, 0.35), offsetY: tv(8) })
+        .focusable(true)
+        .onClick(() => {
+          this.onBack();
+        })
         ChromeButton({
-          label: '\u00D7',
+          label: '',
+          icon: $r('app.media.player_close'),
+          iconSize: tv(20),
           circle: true,
+          glassAlpha: 0.55,
+          ringAlpha: 0.2,
           buttonWidth: tv(TV_CLOSE_SIZE),
           buttonHeight: tv(TV_CLOSE_SIZE),
           fontSize: tv(22),
@@ -609,20 +678,7 @@ export struct PlayerChrome {
           this.progressTrack(tv(TV_TRACK_HEIGHT))
         }
         Row({ space: tv(TV_ROW_GAP) }) {
-          ChromeButton({
-            label: '\u23EE',
-            circle: true,
-            fillAlpha: 0,
-            ringAlpha: 0,
-            active: this.canPrevious,
-            buttonWidth: tv(TV_SEEK_SIZE),
-            buttonHeight: tv(TV_SEEK_SIZE),
-            fontSize: tv(16),
-            onActivate: this.onPrevious,
-            notifyFocusChanged: ((focused: boolean): void => {
-              this.setChildFocused(focused);
-            }),
-          })
+          this.tvSkip(true, this.canPrevious, this.onPrevious)
           ChromeButton({
             showGlyph: true,
             circle: true,
@@ -637,20 +693,7 @@ export struct PlayerChrome {
               this.setChildFocused(focused);
             }),
           })
-          ChromeButton({
-            label: '\u23ED',
-            circle: true,
-            fillAlpha: 0,
-            ringAlpha: 0,
-            active: this.canNext,
-            buttonWidth: tv(TV_SEEK_SIZE),
-            buttonHeight: tv(TV_SEEK_SIZE),
-            fontSize: tv(16),
-            onActivate: this.onNext,
-            notifyFocusChanged: ((focused: boolean): void => {
-              this.setChildFocused(focused);
-            }),
-          })
+          this.tvSkip(false, this.canNext, this.onNext)
           if (this.isLive()) {
             Text('LIVE').fontFamily(nunito(700)).fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           } else {
@@ -659,62 +702,24 @@ export struct PlayerChrome {
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           Blank()
-          ChromeButton({
-            label: this.muted ? 'Muted' : 'Vol',
-            circle: true,
-            fillAlpha: 0,
-            ringAlpha: 0,
-            buttonWidth: tv(TV_VOLUME_WIDTH),
-            buttonHeight: tv(TV_SEEK_SIZE),
-            fontSize: tv(13),
-            onActivate: this.onToggleMute,
-            notifyFocusChanged: ((focused: boolean): void => {
-              this.setChildFocused(focused);
-            }),
-          })
+          this.tvIcon($r('app.media.player_volume'), this.onToggleMute, true)
+          this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true)
+          this.tvIcon($r('app.media.player_queue'), (): void => {}, true)
           if (this.qualityLabel.length > 0) {
-            ChromeButton({
-              label: this.qualityLabel,
-              circle: true,
-            fillAlpha: 0,
-            ringAlpha: 0,
-              buttonWidth: tv(TV_QUALITY_WIDTH),
-              buttonHeight: tv(TV_SEEK_SIZE),
-              fontSize: tv(13),
-              onActivate: this.onOpenQuality,
-              notifyFocusChanged: ((focused: boolean): void => {
-                this.setChildFocused(focused);
-              }),
+            // web: the HD badge and the negotiated quality's name, between the queue and info buttons
+            Row({ space: tv(12) }) {
+              Text('HD').fontFamily(nunito(600)).fontSize(tv(7.5)).fontWeight(FontWeight.Medium).fontColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.85))
+              Text(this.qualityLabel).fontFamily(nunito(700)).fontSize(tv(10.4)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+            }
+            .width(tv(161))
+            .padding({ left: tv(10) })
+            .justifyContent(FlexAlign.Center)
+            .onClick(() => {
+              this.onOpenQuality();
             })
           }
-          if (this.hasTracks) {
-            ChromeButton({
-              label: 'CC',
-              circle: true,
-            fillAlpha: 0,
-            ringAlpha: 0,
-              buttonWidth: tv(TV_SEEK_SIZE),
-              buttonHeight: tv(TV_SEEK_SIZE),
-              fontSize: tv(13),
-              onActivate: this.onOpenTracks,
-              notifyFocusChanged: ((focused: boolean): void => {
-                this.setChildFocused(focused);
-              }),
-            })
-          }
-          ChromeButton({
-            label: 'i',
-            circle: true,
-            fillAlpha: 0,
-            ringAlpha: 0,
-            buttonWidth: tv(TV_SEEK_SIZE),
-            buttonHeight: tv(TV_SEEK_SIZE),
-            fontSize: tv(16),
-            onActivate: this.onOpenInfo,
-            notifyFocusChanged: ((focused: boolean): void => {
-              this.setChildFocused(focused);
-            }),
-          })
+          this.tvIcon($r('app.media.player_info'), this.onOpenInfo, true)
+          this.tvIcon($r('app.media.player_cast'), (): void => {}, true)
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)

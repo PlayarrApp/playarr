@@ -14,4 +14,8 @@ m = pat.search(s)
 assert m, p + ": the patched player surface placeholder is not found"
 still = ("\n        Image($rawfile('parity-player-still.png'))\n          .width('100%')\n          .height('100%')\n"
          "          .objectFit(ImageFit.Fill)\n          .interpolation(ImageInterpolation.High)\n          .hitTestBehavior(HitTestMode.None)\n")
-open(p, "w").write(s[:m.end()] + still + s[m.end():])
+s = s[:m.end()] + still + s[m.end():]
+# The Previewer's mocked player never reports a negotiated quality; web's ref shows the static clip's "Original · 0.3 Mbps".
+old = "@State private qualityLabel: string = '';"
+assert old in s, p + ": qualityLabel state not found"
+open(p, "w").write(s.replace(old, "@State private qualityLabel: string = 'Original \\u00b7 0.3 Mbps';", 1))

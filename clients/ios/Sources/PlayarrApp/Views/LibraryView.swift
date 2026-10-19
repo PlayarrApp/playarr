@@ -386,9 +386,7 @@ struct LibraryView: View {
     /// Web phone letter rail: 27 letters share the height between the page header and the bottom nav, in the 15 pt gutter.
     private func alphabetRail(_ proxy: ScrollViewProxy) -> some View {
         let letters = ["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)
-        // Web marks the letter of the focused tile, which is the first one on arrival.
-        let initial = viewModel.works.first?.title.first.map { String($0).uppercased() } ?? "#"
-        let activeLetter = ("A"..."Z").contains(initial) ? initial : "#"
+        let activeLetter: String? = nil // touch refs show no focused letter
         return GeometryReader { geo in
             ScrollView(.vertical) { VStack(spacing: 0) {
                 ForEach(letters, id: \.self) { letter in
@@ -427,7 +425,7 @@ struct LibraryView: View {
         default: break
         }
         #endif
-        return index == 0
+        return false // a touch web page draws no focus ring (refs recaptured with focus blurred)
     }
 
     private var phoneGridScroll: some View {
@@ -589,28 +587,18 @@ struct LibraryView: View {
                             if viewModel.viewMode == .list {
                                 libraryListRow(work, width: cardWidth)
                             } else {
-                                let focused = (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
+                                // A touch web page draws no focus ring, lift or scale on the first tile (owner 2026-10-19).
                                 PlayarrMediaCard(
                                     work: work,
                                     apiClient: apiClient,
                                     width: cardWidth,
                                     showsSubtitle: false,
-                                    focused: !phone && focused,
+                                    focused: false,
                                     screenGridViewportWidth: matchesWebScreenGrid ? viewportWidth : nil
                                 )
                                     .overlay(alignment: .topTrailing) {
                                         if !phone, let seen = progressedWorkIDs, !seen.contains(work.id) {
                                             WMUnseenDot().padding(.top, 7).padding(.trailing, 7)
-                                        }
-                                    }
-                                    .overlay(alignment: .top) {
-                                        if focused {
-                                            WMFocusRing(
-                                                width: phone ? cardWidth : cardWidth * LibraryFocusMetrics.tabletArtworkScale,
-                                                height: phone ? cardWidth * 9 / 16 : cardWidth * 9 / 16 * LibraryFocusMetrics.tabletArtworkScale,
-                                                cornerRadius: min(13, max(8, cardWidth * 0.058)) * (phone ? 1 : LibraryFocusMetrics.tabletArtworkScale)
-                                            )
-                                                .frame(width: cardWidth, height: cardWidth * 9 / 16)
                                         }
                                     }
                             }
@@ -625,15 +613,6 @@ struct LibraryView: View {
                                 )
                             }
                         }
-                        .scaleEffect(
-                            !phone && viewModel.viewMode != .list && (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
-                                ? LibraryFocusMetrics.tabletCardScale : 1,
-                            anchor: .center
-                        )
-                        .offset(
-                            y: !phone && viewModel.viewMode != .list && (!drawerOpen && work.id == (focusedWork ?? viewModel.works.first?.id))
-                                ? LibraryFocusMetrics.tabletLift : 0
-                        )
                         .buttonStyle(.plain)
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                         .task {

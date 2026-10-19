@@ -4283,7 +4283,7 @@ private fun TvSettingsBody(
         val isAdmin by viewModel.isAdmin.collectAsState()
         LazyColumn(
             // Padding, not offset: the list must end at the screen edge so rows past it (11 sections) scroll into view.
-            Modifier.padding(start = playarrPageMetrics(true).start + (if (tablet) 23.dp else 0.dp), top = listTop).width(if (tablet) 432.dp else 480.dp).fillMaxHeight(),
+            Modifier.padding(start = playarrPageMetrics(true).start + (if (tablet) 23.dp else 0.dp), top = listTop).width(if (tablet) 432.dp else 470.dp).fillMaxHeight(),
         ) {
             // Web lists the admin-only sections (request latency) only for administrators and keeps every section's number.
             val rows = entries.mapIndexed { number, row -> number to row.first }
@@ -4308,7 +4308,7 @@ private fun TvSettingsBody(
                     )
                     Text(
                         playarrString(candidate.label),
-                        color = WebInk, fontSize = if (tablet) 30.5.sp else 29.6.sp, fontWeight = FontWeight(480), lineHeight = 33.sp, letterSpacing = (-0.9).sp, style = cssLine(),
+                        color = WebInk, fontSize = if (tablet) 30.5.sp else 29.6.sp, fontWeight = FontWeight(480), lineHeight = 33.sp, letterSpacing = (if (tablet) -0.9f else -1.05f).sp, style = cssLine(),
                         modifier = Modifier.align(Alignment.CenterStart).padding(start = if (tablet) 94.3.dp else 92.dp).offset(y = (-1).dp),
                     )
                     Text(
@@ -4333,7 +4333,7 @@ private fun TvSettingsBody(
         ) {
         androidx.compose.material3.ProvideTextStyle(outerTextStyle) {
         Column(
-            Modifier.offset(x = if (tablet) 817.dp else 774.dp, y = if (tablet) 248.dp else 212.dp).width(995.dp),
+            Modifier.offset(x = if (tablet) 817.dp else 774.dp, y = if (tablet) 248.dp else 212.dp).width(if (tablet) 995.dp else 1042.dp),
         ) {
             when (val current = state) {
                 ParityLoad.Loading -> CircularProgressIndicator(color = WebAccent)

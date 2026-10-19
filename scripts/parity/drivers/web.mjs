@@ -776,7 +776,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // { label, position } of the focused item, or null when the page body has focus (a check then fails).
     // position: { rail, index } = Home rail number and card number in it, or { rail: "nav", index } for a nav item; null elsewhere.
     async focused() { await guard(); return stableFocus(); },
-    // Touch groups: the web focuses the first card on mount, a touch device has no focus ring at rest. Called by capture-refs on Home only.
+    // Touch groups: the web focuses the first card on mount, a touch device has no focus ring at rest. Called by capture-refs before each shot.
     async blurFocus() { await guard(); await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); }); },
     async screenshot(file) {
       await guard();
