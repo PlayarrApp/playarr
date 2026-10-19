@@ -133,7 +133,8 @@ import type { Choice } from '../design/components/ChoiceSegments';
 import { alphabetFor, firstIndexAtOrAfter, workLetter } from '../core/AlphabetIndex';
 import { Spacing, Radii } from '../core/Tokens';
 
-import { getCatalog, getCatalogKinds, getLanguageFacets, listWatchProgress } from '../data/CatalogRepository';
+import { getCatalog, getCatalogKinds, getLanguageFacets, getWorkDetail, listWatchProgress } from '../data/CatalogRepository';
+import { formatRuntimeLabel } from '../core/RuntimeLabel';
 import type { LanguageFacet } from '../core/Types/Catalog';
 import { MultiSelect } from '../design/components/MultiSelect';
 import { indexWatchProgressByWork, watchMarkFor } from '../core/WatchState';
@@ -495,6 +496,9 @@ export struct Library {
   @State private hero: Work | undefined = undefined;
   @State private heroArtwork: image.PixelMap | undefined = undefined;
   private heroArtworkGeneration: number = 0;
+  /** The hero's runtime label (web's third meta chip), '' until its work detail loads. */
+  @State private heroRuntime: string = '';
+  private heroRuntimeId: string = '';
   private heroArtworkWorkId: string = '';
   private pendingHeroArtworkWorkId: string = '';
   /** The A-Z rail's current letter: the hero's (web `activeLetter`). */
@@ -583,6 +587,9 @@ export struct Library {
 
     const sameWork = this.hero !== undefined && this.hero.id === work.id;
     this.hero = work;
+    if (isTvMetrics() && this.heroRuntimeId !== work.id) {
+      this.loadHeroRuntime(work.id);
+    }
     this.activeLetter = workLetter(work.sort_title, work.title);
     if (!isTvMetrics()) {
       return;
@@ -594,6 +601,15 @@ export struct Library {
     const generation = ++this.heroArtworkGeneration;
     this.pendingHeroArtworkWorkId = work.id;
     this.loadHeroArtwork(work.id, generation);
+  }
+
+  private async loadHeroRuntime(workId: string): Promise<void> {
+    this.heroRuntimeId = workId;
+    this.heroRuntime = '';
+    const result = await getWorkDetail(workId);
+    if (result.kind === 'ok' && this.heroRuntimeId === workId) {
+      this.heroRuntime = formatRuntimeLabel(result.value.runtime_ms ?? null, true);
+    }
   }
 
   private async loadHeroArtwork(workId: string, generation: number): Promise<void> {
@@ -1284,7 +1300,7 @@ export struct Library {
       keyArt: this.heroArtwork ?? '',
       kicker: this.hero !== undefined && this.hero.genres.length > 0 ? this.hero.genres[0] : '',
       title: this.hero !== undefined ? this.hero.title : '',
-      metaLines: this.hero !== undefined ? heroMetaLines(this.hero) : [],
+      metaLines: this.hero !== undefined ? heroMetaLines(this.hero, this.heroRuntime) : [],
       synopsis: this.hero !== undefined && this.hero.overview !== null ? this.hero.overview : '',
       scrollRails: false,
       railFrost: true,
@@ -1424,7 +1440,7 @@ function yearRangeOf(work: Work): string {
 }
 
 /** Web library hero meta: "2003  Action · Crime" (year, then genres). */
-function heroMetaLines(work: Work): string[] {
+function heroMetaLines(work: Work, runtime: string): string[] {
   const parts: string[] = [];
   const year = yearRangeOf(work);
   if (year.length > 0) {
@@ -1432,6 +1448,9 @@ function heroMetaLines(work: Work): string[] {
   }
   if (work.genres.length > 0) {
     parts.push(work.genres.slice(0, 2).join(' · '));
+  }
+  if (runtime.length > 0) {
+    parts.push(runtime);
   }
   return parts.length > 0 ? [parts.join('    ')] : [];
 }
