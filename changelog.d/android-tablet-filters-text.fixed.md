@@ -1,0 +1,1 @@
+- Android tablet: the Filters drawer headings, kicker and language field text use the web's css sizes and 12 px label gap, and segment labels are capitalised per word (filters 2.99 to 2.17 % raw mismatch dark, 3.09 to 2.27 light).

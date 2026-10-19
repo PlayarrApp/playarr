@@ -91,8 +91,8 @@ internal sealed class MediaCard
         }
         if (card.Unseen)
         {
-            var dot = Ui.Box(W - 23.6f, 10.6f, 13, 13, t.Brand, 6.5f);
-            dot.BorderlineWidth = 3; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
+            var dot = Ui.Box(W - 23.6f, 11.1f, 13, 13, t.Brand, 6.5f);
+            dot.BorderlineWidth = 2; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         var drop = card.StackOptions > 1 ? StackDrop : 0;

@@ -480,8 +480,8 @@ export async function createDriver() {
         await ev(`(/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash) && ([document.scrollingElement, ...document.querySelectorAll("*")].forEach((e) => { if (e && e.scrollTop > 0) e.scrollTop = 0; }), true))`);
         await settleVisibleImages();
         await guard();
-        // The inspector screenshot has no video plane, so the translucent controls sit on white. Stand in for the paused static clip frame (2 s, BT.709 like Chromium) so the control fills blend as they do over real video.
-        if (await ev(`(() => { const v = document.querySelector("video"); return /^#\\/player\\//.test(location.hash) && !!v && v.paused && Math.abs(v.currentTime - 2) < 0.5; })()`)) {
+        // Tizen plays through AVPlay, so the <video> element stays at 0: the AVPlay state and position count too. The inspector screenshot has no video plane, so the translucent controls sit on white. Stand in for the paused static clip frame (2 s, BT.709 like Chromium) so the control fills blend as they do over real video.
+        if (await ev(`(() => { const v = document.querySelector("video"); const a = window.webapis && window.webapis.avplay; const av = !!a && a.getState() === "PAUSED" && Math.abs(a.getCurrentTime() - 2000) < 500; return /^#\\/player\\//.test(location.hash) && !!v && ((v.paused && Math.abs(v.currentTime - 2) < 0.5) || av); })()`)) {
           const frame = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../fixtures/static-clip-2s.png")).toString("base64");
           await ev(`(() => { const v = document.querySelector("video"); if (document.getElementById("parity-video-frame")) return true; const i = document.createElement("img"); i.id = "parity-video-frame"; i.src = "data:image/png;base64,${frame}"; i.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none"; v.parentNode.insertBefore(i, v); return true; })()`);
           await sleep(800);

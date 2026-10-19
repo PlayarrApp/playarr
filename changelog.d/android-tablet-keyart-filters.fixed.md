@@ -1,0 +1,1 @@
+- Android tablet: the hero key art starts at the nav clearance and is 106% of the viewport tall as on the web, and the Filters drawer groups use the web's `clamp(22, 2.8vu, 34)` gap (filters 3.56 to 2.99 % mismatch dark, 3.66 to 3.09 light).

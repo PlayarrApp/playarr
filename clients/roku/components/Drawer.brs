@@ -17,21 +17,24 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
     m.global.cardFocusOff = true
     ' Web draws the drawer over the page with no scrim: the page behind keeps its full strength.
     pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
-    pgLabel(g, 1606, 56, 190, 16, UCase(kicker), 11, 700, "inkMuted")
-    pgLabel(g, 1606, 75, 214, 120, title, 36, 600, "ink", { wrap: true, maxLines: 2, lineSpacing: -8 })
-    pgRound(g, 1825.5, 53.5, 49, 49, 25, "surface", 179)
-    pgRound(g, 1825.5, 53.5, 49, 49, 25, "line", -1, true)
-    pgIcon(g, 1838, 66, 24, "player-close.png", "ink")
+    pgLabel(g, 1606, 52, 190, 16, UCase(kicker), 11, 700, "inkMuted")
+    pgLabel(g, 1606, 75, 214, 120, title, 36, 600, "ink", { wrap: true, maxLines: 2, lineSpacing: 7 })
+    pgRound(g, 1826.5, 54.5, 49, 49, 25, "surfaceSoft")
+    pgRound(g, 1826.5, 54.5, 49, 49, 25, "line", -1, true)
+    pgIcon(g, 1839, 67, 24, "player-close.png", "ink")
     m.drawerRings = []
     for i = 0 to items.Count() - 1
         y = 221 + 82 * i
         pgRound(g, 1602, y, 276, 68, 14, "surfaceSoft")
         icon = items[i].icon
         if icon = "plus"
-            pgRect(g, 1625, y + 33, 18, 2, "brand")
-            pgRect(g, 1633, y + 25, 2, 18, "brand")
+            pgRect(g, 1626, y + 31, 14, 2, "brand")
+            pgRect(g, 1632, y + 25, 2, 14, "brand")
         else if icon = "circle"
             pgIcon(g, 1625, y + 29, 10, "circle-outline.png", "brand")
+        else if icon = "player-play.png"
+            ' The web's play glyph is 14 px wide; the bitmap carries padding, so it is drawn larger.
+            pgIcon(g, 1614.5, y + 18.5, 32, icon, "brand")
         else if icon <> invalid and icon <> ""
             pgIcon(g, 1624, y + 24, 20, icon, "brand")
         end if

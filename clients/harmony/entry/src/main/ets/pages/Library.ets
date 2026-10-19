@@ -1018,12 +1018,18 @@ export struct Library {
               },
               (work: Work): string => work.id
             )
+            // Web scrolls the grid under the translucent nav bar. A scrollable clips at its padding, so the end room is
+            // a last row of spacers instead of bottom padding: the filler cells close the open row at no height.
+            ForEach(this.endSpacers(), (spacer: number) => {
+              GridItem()
+                .height(spacer < this.endFillers() ? 0 : Spacing.lg + touchNavBarBox(this.safeBottom) - TOUCH_ROW_GAP)
+            }, (spacer: number): string => 'end-' + spacer.toString())
           }
           .columnsTemplate(columnsTemplateFor(this.touchColumns()))
           .columnsGap(TOUCH_CARD_GAP)
           .rowsGap(TOUCH_ROW_GAP)
           .edgeEffect(EdgeEffect.Spring)
-          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP, bottom: Spacing.lg + touchNavBarBox(this.safeBottom) })
+          .padding({ left: atLeast(TOUCH_GUTTER, this.safeLeft), right: TOUCH_ALPHA_RAIL + this.safeRight, top: TOUCH_GRID_TOP })
           .onAreaChange((_oldValue: Area, newValue: Area) => {
             this.measuredWidthVp = lengthToVp(newValue.width);
           })
@@ -1058,6 +1064,21 @@ export struct Library {
     const w = this.measuredWidthVp > 0 ? this.measuredWidthVp : FALLBACK_TOUCH_GRID_WIDTH_VP;
     const cols = this.touchColumns();
     return (w - atLeast(TOUCH_GUTTER, this.safeLeft) - TOUCH_ALPHA_RAIL - this.safeRight - TOUCH_CARD_GAP * (cols - 1)) / cols;
+  }
+
+  /** Empty cells that finish the grid's last row. */
+  private endFillers(): number {
+    const cols = this.touchColumns();
+    return (cols - (this.items.length % cols)) % cols;
+  }
+
+  /** The fillers, then one row of cells that holds the nav bar's end room. */
+  private endSpacers(): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < this.endFillers() + this.touchColumns(); i++) {
+      out.push(i);
+    }
+    return out;
   }
 
   private touchCardHeightVp(): number {

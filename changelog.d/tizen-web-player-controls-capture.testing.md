@@ -1,0 +1,1 @@
+- Parity capture on a real Samsung TV also stands in the static clip frame behind the player controls: the Tizen player runs through AVPlay, so the driver recognises a paused AVPlay at 2 s as well as a paused video element; the app is unchanged.
