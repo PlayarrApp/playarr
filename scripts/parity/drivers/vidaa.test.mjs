@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDriver, launchPath, sameState, suiteRoute, usableFrame } from "./vidaa.mjs";
+import { cliFailure, createDriver, launchPath, sameState, suiteRoute, usableFrame } from "./vidaa.mjs";
 
 const trusted = "https://test.example";
 const secrets = { token: "tok", device: { PLAYARR_DEVICE_TEST_USERNAME: "device-test", PLAYARR_DEVICE_TEST_SERVER_URL: trusted } };
@@ -72,4 +72,9 @@ test("a stale-image frame is skipped: settles only on two distinct matching fram
   const { driver } = harness([frame({ route: "/movies", receivedAt: 1000 }), frame({ route: "/movies", receivedAt: 1010 })]);
   const d = await driver;
   assert.equal(await d.location(), "/movies");
+});
+
+test("a failed CLI call reports the CLI's own message on one line", () => {
+  assert.equal(cliFailure(["key", "KEY_DOWN"], { stderr: "abort: identity heartbeat is stale\n", status: 1 }), "vidaa key failed: abort: identity heartbeat is stale");
+  assert.equal(cliFailure(["state"], { stderr: "", status: 1 }), "vidaa state failed (exit 1)");
 });
