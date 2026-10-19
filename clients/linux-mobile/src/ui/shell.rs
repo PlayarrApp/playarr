@@ -83,10 +83,21 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .margin_end(10)
         .margin_bottom(8)
         .build();
+    // "" lights no tab (the web highlights none on Preferences); "<" lights the last chosen one again.
     let select = {
         let (pages, items) = (pages.clone(), items.clone());
+        let last = Rc::new(std::cell::RefCell::new(String::from("home")));
         Rc::new(move |name: &str| {
-            pages.set_visible_child_name(name);
+            let name = if name == "<" {
+                last.borrow().clone()
+            } else {
+                name.to_string()
+            };
+            let name = name.as_str();
+            if !name.is_empty() {
+                pages.set_visible_child_name(name);
+                last.replace(name.to_string());
+            }
             for it in items.iter() {
                 let active = it.name == name;
                 if active {

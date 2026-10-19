@@ -263,8 +263,11 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         release_label(&e.release_type).to_string(),
         kind_label(&e.media_kind).to_string(),
     ];
+    let mut meta_width = 0.0;
     for t in &texts {
-        meta.append(&gtk4::Label::builder().label(t).css_classes(["pa-entry-meta"]).build());
+        let l = gtk4::Label::builder().label(t).css_classes(["pa-entry-meta"]).build();
+        meta_width += f64::from(l.measure(gtk4::Orientation::Horizontal, -1).1) + 12.0;
+        meta.append(&l);
     }
     let (text, class) = status_chip(e, today());
     let chip = gtk4::Label::builder()
@@ -272,18 +275,13 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         .css_classes(["pa-chip-status", class])
         .halign(gtk4::Align::Start)
         .build();
-    if week {
-        col.append(&meta);
-        col.append(&chip);
-    } else {
+    {
         // The web's agenda chip is 21 px tall, sitting 1.5 px below the meta text.
         chip.add_css_class("agenda");
         chip.set_valign(gtk4::Align::Center);
-        // shortcut: the web wraps the chip to its own line when the row is full; a FlowBox would do it but its minimum
-        // width is the whole row, so the text width is estimated (about 6.4 css px a character) against the 245 px column.
-        let width: f64 = texts.iter().map(|t| t.chars().count() as f64 * 6.4 + 12.0).sum::<f64>()
-            + text.chars().count() as f64 * 6.6
-            + 24.0;
+        // The web wraps the chip to its own line when the row is full (the week card's column is 32 px narrower); a FlowBox would do it but its minimum width is
+        // the whole row, so the measured natural widths are compared with the column.
+        let width = meta_width + f64::from(chip.measure(gtk4::Orientation::Horizontal, -1).1);
         // A scroller reports no minimum width, so a long meta row cannot push the entry past the page.
         let clip = |m: &gtk4::Box| {
             gtk4::ScrolledWindow::builder()
@@ -293,7 +291,7 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
                 .propagate_natural_height(true)
                 .build()
         };
-        if width > 245.0 {
+        if width > if week { 213.0 } else { 245.0 } {
             col.append(&clip(&meta));
             chip.set_margin_top(4);
             col.append(&chip);
@@ -526,9 +524,15 @@ impl Cal {
 
     fn render(self: &Rc<Self>) {
         let days = self.by_day();
-        // The web lays the month out 720 px wide and the other views 510 px, inside a 360 px page.
-        self.body
-            .set_size_request(if self.view.get() == View::Month { 720 } else { 510 }, -1);
+        // The web lays the month out 720 px wide, the week 510 px and the agenda to the page gutter, inside a 360 px page.
+        self.body.set_size_request(
+            match self.view.get() {
+                View::Month => 720,
+                View::Week => 510,
+                View::Agenda => 328,
+            },
+            -1,
+        );
         if self.view.get() != View::Week {
             self.days_view.hadjustment().set_value(0.0);
         }
@@ -597,9 +601,17 @@ impl Cal {
         }
         let today_date = today();
         // The web's body fills the page; on the phone five rows come to about 82 px each.
-        let cell_h = 410 / weeks as i32;
-        let chips = ((cell_h - 2 - 44 - 2) / 22).max(0) as usize;
+        // The web's five rows are 160, 164, 164, 164 and 162 device px apart.
+        let row_h = |w: i64| {
+            if weeks == 5 {
+                [81, 82, 82, 82, 81][w as usize]
+            } else {
+                410 / weeks as i32
+            }
+        };
         for w in 0..weeks {
+            let cell_h = row_h(w);
+            let chips = ((cell_h - 2 - 44 - 2) / 22).max(0) as usize;
             for c in 0..7 {
                 let d = add_days(start, w * 7 + c);
                 let cell = gtk4::Box::builder()
@@ -716,9 +728,14 @@ impl Cal {
         } else {
             self.page.remove_css_class("pa-agenda-bg");
         }
-        for f in &self.fades {
-            f.set_visible(week);
+        // The web fades the month's right edge as well; only the week list also fades its bottom.
+        for (i, f) in self.fades.iter().enumerate() {
+            f.set_visible(week || (i == 1 && v == View::Month));
         }
+        // On the month the fade sits over the last 19 px of the grid, inside the 16 px gutter.
+        let month = v == View::Month;
+        self.fades[1].set_margin_end(if month { 16 } else { 0 });
+        self.fades[1].set_size_request(if month { 19 } else { 38 }, -1);
         self.refresh();
     }
 

@@ -65,11 +65,13 @@ function mockDetailFetch(options: {
   work: WorkDetail | {error: string; message: string};
   credits?: unknown;
   similar?: unknown;
+  browse?: unknown;
 }): jest.SpyInstance {
   return jest.spyOn(global, 'fetch').mockImplementation(async (input: unknown) => {
     const url = input instanceof Request ? input.url : String(input);
     if (url.includes('/credits')) return jsonResponse(options.credits ?? {cast: [], crew: []});
     if (url.includes('/similar')) return jsonResponse(options.similar ?? []);
+    if (options.browse && /\/catalog\?/.test(url)) return jsonResponse(options.browse);
     // Progress, chapters, resume plans and the watchlist lookups are not under test: empty answers keep them quiet.
     if (!/\/catalog\/[^/]+$/.test(url.split('?')[0]!)) return jsonResponse([]);
     const status = 'error' in options.work ? 404 : 200;
@@ -211,6 +213,24 @@ describe('WorkDetailScreen', () => {
     });
 
     expect(navigation.navigate).toHaveBeenCalledWith(ROUTES.workDetail, {workId: 'w3'});
+  });
+
+  it('falls back to library titles ranked by shared genre when the server has no similar titles', async () => {
+    mockDetailFetch({
+      work: {
+        available_on: [],
+        children: 'Movie',
+        media_file_id: 'mf-1',
+        runtime_ms: 5_400_000,
+        work: work({id: 'w1', title: 'The First Film', genres: ['Drama']}),
+      },
+      browse: {items: [work({id: 'w1', title: 'The First Film'}), work({id: 'w4', title: 'Same Genre Film', genres: ['Drama']})], total: 2},
+    });
+
+    const renderer = await renderDetail(fakeNavigation());
+
+    expect(renderer.root.findAllByProps({accessibilityLabel: 'Same Genre Film'}).length).toBeGreaterThan(0);
+    expect(renderer.root.findAllByProps({accessibilityLabel: 'The First Film'}).filter((node) => typeof node.props.onPress === 'function')).toHaveLength(0);
   });
 
   it('calls onPlay with the movie\'s media file id when Play is pressed', async () => {
