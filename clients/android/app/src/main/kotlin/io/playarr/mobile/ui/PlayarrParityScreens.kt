@@ -4555,6 +4555,16 @@ private fun <T> TvSegmented(choices: List<Pair<T, String>>, selected: T, onSelec
 
 @Composable
 private fun TvAppearancePanel(display: PlayarrDisplayPreferences) {
+    // Tablet web at 1280 x 800 draws this panel's text and gaps 6.9 % larger than the stage scale gives (measured on the static refs); widths stay.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val panelDensity = if (LocalStageScale.current != 1f) androidx.compose.ui.unit.Density(density.density * 1.069f, density.fontScale) else density
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides panelDensity) {
+    TvAppearanceBody(display)
+    }
+}
+
+@Composable
+private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
     Text(playarrString(PlayarrString.SettingsColourTheme), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 34.sp, letterSpacing = (-0.5).sp)
     Spacer(Modifier.height(20.dp))
     TvSegmented(
