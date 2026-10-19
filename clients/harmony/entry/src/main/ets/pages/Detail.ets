@@ -497,7 +497,7 @@ function buildMetaLines(detail: WorkDetail): string[] {
   if (work.genres.length > 0) {
     parts.push(work.genres[0]);
   }
-  const runtime = formatRuntimeLabel(detail.runtime_ms);
+  const runtime = formatRuntimeLabel(detail.runtime_ms, isTvMetrics());
   if (runtime.length > 0) {
     parts.push(runtime);
   }

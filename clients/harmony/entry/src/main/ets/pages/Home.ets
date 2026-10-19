@@ -775,7 +775,7 @@ export struct Home {
     this.heroRuntime = '';
     const result = await getWorkDetail(workId);
     if (result.kind === 'ok' && this.heroRuntimeId === workId) {
-      this.heroRuntime = formatRuntimeLabel(result.value.runtime_ms ?? null);
+      this.heroRuntime = formatRuntimeLabel(result.value.runtime_ms ?? null, isTvMetrics());
     }
   }
 

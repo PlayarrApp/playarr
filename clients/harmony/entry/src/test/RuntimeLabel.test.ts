@@ -9,6 +9,9 @@ describe("formatRuntimeLabel", () => {
     assert.equal(formatRuntimeLabel(112 * 60000), "1h 52m");
     assert.equal(formatRuntimeLabel(45 * 60000), "45m");
     assert.equal(formatRuntimeLabel(120 * 60000), "2h");
+    assert.equal(formatRuntimeLabel(45 * 60000, true), "45 min");
+    assert.equal(formatRuntimeLabel(60000, true), "1 min");
+    assert.equal(formatRuntimeLabel(112 * 60000, true), "1h 52m");
     assert.equal(formatRuntimeLabel(null), "");
     assert.equal(formatRuntimeLabel(0), "");
   });
