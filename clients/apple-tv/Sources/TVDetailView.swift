@@ -199,7 +199,7 @@ struct TVWorkDetailView: View {
         let season = ordered.first
         let episode = season?.episodes.first
         let seasonNumber = season?.season.seasonNumber ?? 1
-        let code = episode.map { "S \(String(format: "%02d", seasonNumber)) \u{00B7} E \(String(format: "%02d", $0.episode.episodeNumber))" }
+        let code = episode.map { "S\(String(format: "%02d", seasonNumber)) \u{00B7} E\(String(format: "%02d", $0.episode.episodeNumber))" }
         let lines = titleLines(work.title)
         let bottom = 303.5 + 62.2 * CGFloat(lines.count)
         let episodeTitle = episode.map { $0.episode.title ?? "Episode \($0.episode.episodeNumber)" }
@@ -457,33 +457,41 @@ struct TVWorkDetailView: View {
             if !viewModel.cast.isEmpty {
                 castRail(viewModel.cast)
             } else if !viewModel.similar.isEmpty {
-                railHeading("Similar Titles", count: "\(viewModel.similar.count) titles", y: 854.3)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 25) {
-                        ForEach(viewModel.similar) { other in
-                            NavigationLink {
-                                TVWorkDetailView(work: other, apiClient: apiClient)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    episodeArt(width: 268, height: 150.8) {
-                                        TVWorkArt(work: other, apiClient: apiClient)
-                                    }
-                                    Text(other.title)
-                                        .font(TVTheme.font(size: 11.52, weight: .semibold))
-                                        .foregroundStyle(DesignTokens.Color.textPrimary)
-                                        .lineLimit(1)
-                                        .frame(width: 268, alignment: .leading)
-                                }
-                            }
-                            .buttonStyle(TVFocusableCardButtonStyle())
-                            .disabled(frozen) // not .focusable: on a Button it adds a second, inert focus target
-                        }
-                    }
-                    .padding(.trailing, 80)
-                }
-                .frame(width: 1038.4, height: 190, alignment: .topLeading)
-                .placed(x: 881.6, y: 935, w: 1038.4, h: 190, alignment: .topLeading)
+                similarRail(y: 854.3)
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// Web "Similar Titles" rail (the library fallback fills it): heading at `y`, cards 80.7 below.
+    private func similarRail(y: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            railHeading("Similar Titles", count: "\(viewModel.similar.count) titles", y: y)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 25) {
+                    ForEach(viewModel.similar) { other in
+                        NavigationLink {
+                            TVWorkDetailView(work: other, apiClient: apiClient)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 8) {
+                                episodeArt(width: 268, height: 150.8) {
+                                    TVWorkArt(work: other, apiClient: apiClient)
+                                }
+                                Text(other.title)
+                                    .font(TVTheme.font(size: 11.52, weight: .semibold))
+                                    .foregroundStyle(DesignTokens.Color.textPrimary)
+                                    .lineLimit(1)
+                                    .frame(width: 268, alignment: .leading)
+                            }
+                        }
+                        .buttonStyle(TVFocusableCardButtonStyle())
+                        .disabled(frozen) // not .focusable: on a Button it adds a second, inert focus target
+                    }
+                }
+                .padding(.trailing, 80)
+            }
+            .frame(width: 1038.4, height: 190, alignment: .topLeading)
+            .placed(x: 881.6, y: y + 80.7, w: 1038.4, h: 190, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -558,18 +566,24 @@ struct TVWorkDetailView: View {
         return (playable.first ?? ordered.first?.episodes.first)?.episode.id
     }
 
+    /// Web page-top capture: the first season block starts at y 539.3 (Similar Titles follows it).
+    private let seasonTop: CGFloat = 539.3
+
     private func seriesRail(_ detail: WorkDetail, seasons: [SeasonDetail]) -> some View {
         let ordered = seasons.sorted { $0.season.seasonNumber < $1.season.seasonNumber }
         let nextUp = nextUpEpisodeID(ordered)
         // The focused episode (the next-up one until focus moves) decides which season is scrolled into view.
         let activeID = frozen ? nextUp : (focusedEpisodeID ?? nextUp)
         let activeSeason = ordered.firstIndex { season in season.episodes.contains { $0.episode.id == activeID } } ?? 0
-        let shift = max(0, 358 + CGFloat(activeSeason) * 314.3 + 270 - 1020)
+        let shift = max(0, seasonTop + CGFloat(activeSeason) * 314.3 + 270 - 1020)
         return ZStack(alignment: .topLeading) {
             TVRailPanelGradient(width: 1190.4)
             Group {
+                if !viewModel.similar.isEmpty {
+                    similarRail(y: seasonTop + CGFloat(ordered.count - 1) * 314.3 + 351)
+                }
                 ForEach(Array(ordered.enumerated()), id: \.element.season.id) { seasonIndex, season in
-                    let top = 358 + CGFloat(seasonIndex) * 314.3
+                    let top = seasonTop + CGFloat(seasonIndex) * 314.3
                     railHeading(
                         season.season.title ?? "Season \(season.season.seasonNumber)",
                         count: "\(season.episodes.count) episodes",
@@ -611,7 +625,7 @@ struct TVWorkDetailView: View {
     ) -> some View {
         let ep = episode.episode
         let title = ep.title ?? "Episode \(ep.episodeNumber)"
-        let code = "S \(String(format: "%02d", season.season.seasonNumber)) \u{00B7} E \(String(format: "%02d", ep.episodeNumber))"
+        let code = "S\(String(format: "%02d", season.season.seasonNumber)) \u{00B7} E\(String(format: "%02d", ep.episodeNumber))"
         let card = ZStack(alignment: .topLeading) {
             episodeArt(width: 268, height: 150.8, heavy: selected) {
                 // Web `MediaThumbnailArtwork`: the episode's still when it has one, else its own frame at 30 s; the

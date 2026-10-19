@@ -171,13 +171,14 @@ struct TVPageHeader: View {
                         subtitle
                     }
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    // Web: a hairline under the title where the subtitle wraps below it.
-                    titleText.overlay(alignment: .bottom) {
-                        Rectangle().fill(lineStrong).frame(height: 1).offset(y: 8)
+                // Title keeps its single-row centre (y 81); the hairline sits 6 below its 50 pt box, the subtitle 13 further down.
+                VStack(alignment: .leading, spacing: 0) {
+                    titleText.frame(height: 50).overlay(alignment: .bottom) {
+                        Rectangle().fill(lineStrong).frame(height: 1).offset(y: 5.8)
                     }
-                    if let subtitle { subtitle }
+                    if let subtitle { subtitle.padding(.top, 13) }
                 }
+                .frame(height: 50, alignment: .top)
             }
             .frame(width: 466 - 226.6, alignment: .leading)
             .placed(x: 226.6, y: 56.2, h: 50)
