@@ -1,0 +1,1 @@
+- Android tablet: the calendar month grid sits 2 px higher with the day number and card text positions of the web (month light 3.04 to 1.07 % raw mismatch), and the agenda cards are 89.9 px tall with the web heading gap (agenda 2.26 to 1.92 % dark, 2.50 to 1.98 % light).
