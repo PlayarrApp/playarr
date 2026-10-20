@@ -747,6 +747,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Helm chart `playarr-dev` 0.6.0 can render its release Namespace with labels and annotations from values (`namespace.create`, off by default).
 - Parity: a static, seeded, frozen reference server (`scripts/parity/static-server.sh`, `PLAYARR_STATIC=1`) and one shared capture config (`scripts/parity/parity.env`), so web refs and device captures stop drifting with a live library.
 - Validate the configured fixture server and Device Test profile before the Apple iOS wall builds or captures.
 - HarmonyOS: a string layer from the web's English, Thai and Japanese tables and Settings > Language; navigation labels and Settings text follow it.

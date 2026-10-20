@@ -1,1 +1,0 @@
-- Helm chart `playarr-dev` 0.6.0 can render its release Namespace with labels and annotations from values (`namespace.create`, off by default).
