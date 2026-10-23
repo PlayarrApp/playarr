@@ -1765,7 +1765,7 @@ struct Detail {
     .backgroundColor((enabled ? (this.playFocused && !isTvMetrics() ? PLAY_FOCUS_FILL : toResourceColor(isTvMetrics() ? activeColors().accent : activeColors().ink)) : toResourceColor(activeColors().inkMuted)))
     .opacity((enabled ? 1 : 0.6))
     .focusable(enabled)
-    .defaultFocus(enabled && !isTvMetrics())
+    // web's touch layout opens with no pill focused (static-server refs show the unfocused white Play)
     .scale(this.playFocused && !isTvMetrics() ? { x: 1.06, y: 1.06 } : { x: 1, y: 1 })
     .onFocus((): void => {
       this.playFocused = true;
