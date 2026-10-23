@@ -79,7 +79,7 @@ trap _cleanup_stage_dirs EXIT
 
 new_stage_dir() {
     local d
-    d="$(mktemp -d)"
+    d="$(mktemp -d "$OHOS_SDK_CACHE/stage.XXXXXX")" # same filesystem as the cache, so hard links work
     _TMP_STAGE_DIRS+=("$d")
     echo "$d"
 }
