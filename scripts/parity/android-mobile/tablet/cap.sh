@@ -2,8 +2,9 @@
 HERE=$(cd "$(dirname "$0")" && pwd)
 # Tablet capture driver (emulator-5568, 2560x1600, sideload debug build): cap.sh <outdir> <Dark|Light> <screen...>. Home-focus screens (home-last, movies-last, nav-focus ...) drive focus with keys. Reset the Device Test account progress (reset-deck-canonical.mjs) before capturing home.
 S_STATE=/dev/null
-set -a; eval "$(grep -E "^PLAYARR_DEVICE_TEST_(USERNAME|PASSWORD|SERVER_URL)=" ~/.secrets)"; set +a
-export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=emulator-5568
+# The web refs freeze the clock at the fixture instant; the app clock must match (debug launch extra parity_clock).
+CLOCK=${PARITY_CLOCK:-$(sed -n 's/.*"clock": *"\([^"]*\)".*/\1/p' "$HERE/../../screens.json" | head -1)}
+export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5568}
 O=$1; T=$2; shift 2; pkg=io.playarr.mobile; mkdir -p "$O"
 adb shell am force-stop $pkg
 # Web refs format dates as en-GB ("THU 15 OCTOBER"); the app follows the device region, so pin it for captures.
@@ -12,7 +13,7 @@ adb shell "run-as $pkg sh -c 'mkdir -p shared_prefs; echo \"<?xml version=\\\"1.
 # A tap (player, card and actions flows) leaves the emulator in touch mode, where the app's default focus is not requested and a modifier key
 # (shift) does not leave it. A D-pad key does, but only when the app window receives it, so start the app, press one, then relaunch on the route;
 # without it the Play pill and focus rings capture unfocused.
-open() { adb shell am start -n $pkg/.MainActivity >/dev/null; sleep 6; adb shell input keyevent 20; sleep 1; adb shell am force-stop $pkg; adb shell am start -n $pkg/.MainActivity --ez parity_no_insets true --es parity_route "$1" --el parity_pause_at_ms 2000 >/dev/null; sleep "${2:-20}"; adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { adb shell am start -n $pkg/.MainActivity --ez parity_no_insets true --es parity_route "$1" >/dev/null; sleep 20; }; }
+open() { adb shell am start -n $pkg/.MainActivity >/dev/null; sleep 6; adb shell input keyevent 20; sleep 1; adb shell am force-stop $pkg; adb shell am start -n $pkg/.MainActivity --ez parity_no_insets true --es parity_route "$1" --es parity_clock "$CLOCK" --el parity_pause_at_ms 2000 >/dev/null; sleep "${2:-20}"; adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { adb shell am start -n $pkg/.MainActivity --ez parity_no_insets true --es parity_route "$1" --es parity_clock "$CLOCK" >/dev/null; sleep 20; }; }
 tap_text() { python3 -I $HERE/uitap.py "$1" "${3:-tap}"; sleep "${2:-1.5}"; }
 tap() { adb shell input tap "$1" "$2"; sleep "${3:-1.5}"; }
 shot() { sleep "${2:-2}"; for i in 1 2 3; do adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { echo "not foreground"; sleep 4; continue; }; adb exec-out screencap -p > "$O/$1.png"; if [ "$(stat -c%s "$O/$1.png")" -gt 20000 ] && python3 -I -c "import sys;d=open(sys.argv[1],'rb').read();assert d[:8]==b'\\x89PNG\\r\\n\\x1a\\n' and d[-8:-4]==b'IEND'" "$O/$1.png" 2>/dev/null; then
