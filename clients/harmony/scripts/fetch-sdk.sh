@@ -184,6 +184,7 @@ fetch_cli_tools() {
 
     log "Extracting Command Line Tools"
     unzip -q "$zipfile" -d "$stage"
+    rm -f "$zipfile" # free the disk before the move
 
     local src="$stage"
     if [ -d "$stage/command-line-tools" ]; then
@@ -194,7 +195,8 @@ fetch_cli_tools() {
     fi
 
     mkdir -p "$CLI_HOME"
-    cp -a "$src/." "$CLI_HOME/"
+    # same filesystem, so a move needs no second copy of the tree
+    cp -al "$src/." "$CLI_HOME/"
 
     if ! cli_populated; then
         warn "Unpacked Command Line Tools do not contain ohpm/bin/ohpm at $CLI_HOME as expected."
