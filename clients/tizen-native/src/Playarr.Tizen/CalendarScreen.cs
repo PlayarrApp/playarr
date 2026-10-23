@@ -333,20 +333,23 @@ internal sealed class CalendarScreen : IPage
         card.Add(surface);
         var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
         poster.ClippingMode = ClippingModeType.ClipChildren;
-        if (e.PosterUrl is { Length: > 0 } pu) LoadPoster(poster, pu);
+        // A poster URL on the server's own loopback (the seeded static server) is unreachable from the TV: ask the server's artwork route instead.
+        if (e.PosterUrl is { Length: > 0 } pu) LoadPoster(poster, e.WorkId is { } posterWork && Uri.TryCreate(pu, UriKind.Absolute, out var posterUri) && posterUri.IsLoopback ? $"/api/v1/artwork/work/{posterWork:D}/poster?w=185" : pu);
         card.Add(poster);
         card.Add(Ui.Text(e.Title, 70.4f, 9, 19.2f, 640, _t.Ink, textW, 28.8f));
         if (sub.Length > 0) card.Add(Ui.Text(sub, 70.4f, 40.2f, 19.2f, 400, _t.InkSoft, textW, 28.8f, multiline: sub.Length * 9.6f > textW, maxLines: 2));
         var my = h - 106.9f + 71.4f;
         var instant = CalendarRules.ReleaseInstant(e);
         var parts = new List<string> { instant is { } at ? at.ToLocalTime().ToString("HH:mm") : "All day", e.ReleaseType is "digital" ? "Digital release" : "Airs", e.MediaKind == "movie" ? "Movies" : "Episodes" };
-        card.Add(Ui.Text(string.Join("    ", parts), 70.4f, my, 12.8f, 400, _t.InkMuted, 260, 26.6f));
+        // web .calendar-entry-meta: one span per part, 12 px apart (a run of spaces would drift from the span edges)
+        var mx = 70.4f;
+        foreach (var part in parts) { var partW = Ui.TextWidth(part, 12.8f, 400, 0); card.Add(Ui.Text(part, mx, my, 12.8f, 400, _t.InkMuted, partW + 4, 26.6f)); mx += partW + 12; }
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
-        var pw = Ui.TextWidth(label, 13.44f, 800, 0) + 17;
-        var pill = Ui.Box(70.4f + Ui.TextWidth(string.Join("    ", parts), 12.8f, 400, 0) + 12, my, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
+        var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 17;
+        var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Ui.Text(label, 0, 4, 13.44f, 800, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
+        pill.Add(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
         card.Add(pill);
         var ring = Ring.Make(w, h, 12, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
         parent.Add(card);
@@ -375,10 +378,10 @@ internal sealed class CalendarScreen : IPage
             : CalendarRules.LocalDay(e).ToString("dddd d MMMM", gb) + " \u00b7 All day";
         _panel.Add(Ui.Text(string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, _t.InkSoft, 700, 19.584f));
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
-        var pw = Ui.TextWidth(label, 13.44f, 800, 0) + 17;
+        var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 17;
         var pill = Ui.Box(153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Ui.Text(label, 0, 4, 13.44f, 800, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
+        pill.Add(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
         _panel.Add(pill);
         var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, _t.InkSoft, 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
