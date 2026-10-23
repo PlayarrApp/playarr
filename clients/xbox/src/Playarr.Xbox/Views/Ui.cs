@@ -153,17 +153,20 @@ namespace Playarr.Xbox.Views
             return button;
         }
 
-        /// <summary>The web's three-slider Filters icon (one drawing for every page's Filters tile).</summary>
+        /// <summary>The web's Filters icon (icons.tsx "filters": 24 unit viewBox, 1.5 stroke, round caps, knobs filled with the strong surface).</summary>
         public static FrameworkElement FiltersIcon()
         {
-            var ink = Res("PlayarrInk");
-            var icon = new Windows.UI.Xaml.Controls.Canvas { Width = 16, Height = 16, HorizontalAlignment = HorizontalAlignment.Center };
-            icon.Children.Add(new Windows.UI.Xaml.Shapes.Path { Stroke = ink, StrokeThickness = 1.4, Data = Rails() });
-            foreach (var (x, y) in new[] { (2, 1), (10, 6), (5, 11) })
+            var ink = Res("PlayarrInkMuted");
+            var icon = new Windows.UI.Xaml.Controls.Canvas { Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Center };
+            icon.Children.Add(new Windows.UI.Xaml.Shapes.Path
             {
-                var dot = new Windows.UI.Xaml.Shapes.Ellipse { Width = 4, Height = 4, Fill = ink };
-                Windows.UI.Xaml.Controls.Canvas.SetLeft(dot, x);
-                Windows.UI.Xaml.Controls.Canvas.SetTop(dot, y);
+                Stroke = ink, StrokeThickness = 1.5, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Data = Rails(),
+            });
+            foreach (var (cx, cy) in new[] { (8.0, 6.0), (15.0, 12.0), (12.0, 18.0) })
+            {
+                var dot = new Windows.UI.Xaml.Shapes.Ellipse { Width = 3, Height = 3, Fill = Res("PlayarrSurfaceStrong"), Stroke = ink, StrokeThickness = 1.5 };
+                Windows.UI.Xaml.Controls.Canvas.SetLeft(dot, cx - 1.5);
+                Windows.UI.Xaml.Controls.Canvas.SetTop(dot, cy - 1.5);
                 icon.Children.Add(dot);
             }
 
@@ -173,9 +176,9 @@ namespace Playarr.Xbox.Views
         private static Geometry Rails()
         {
             var group = new GeometryGroup();
-            foreach (var y in new[] { 3.0, 8.0, 13.0 })
+            foreach (var (x1, x2, y) in new[] { (4.0, 20.0, 6.0), (7.0, 17.0, 12.0), (10.0, 14.0, 18.0) })
             {
-                group.Children.Add(new LineGeometry { StartPoint = new Windows.Foundation.Point(1, y), EndPoint = new Windows.Foundation.Point(15, y) });
+                group.Children.Add(new LineGeometry { StartPoint = new Windows.Foundation.Point(x1, y), EndPoint = new Windows.Foundation.Point(x2, y) });
             }
 
             return group;
@@ -184,14 +187,14 @@ namespace Playarr.Xbox.Views
         /// <summary>Shell action column tile (web .tv-filter-launcher look): 58x70 at the right edge, icon over a 9 px label.</summary>
         public static Button ActionTile(FrameworkElement icon, string label, double top, Action onClick)
         {
-            var tile = new StackPanel { Spacing = 8 };
+            var tile = new StackPanel { Spacing = 5.6 };
             tile.Children.Add(icon);
-            tile.Children.Add(new TextBlock { Text = label, FontSize = 9, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center });
+            tile.Children.Add(new TextBlock { Text = label, FontSize = 8.3, FontWeight = FontWeights.Bold, CharacterSpacing = 20, Foreground = Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Center });
             var button = new Button
             {
-                Width = 58, Height = 70, Margin = new Thickness(0, top, 14, 0), Padding = new Thickness(0), CornerRadius = new CornerRadius(12),
+                Width = 58, Height = 70, Margin = new Thickness(0, top, 14, 0), Padding = new Thickness(0), CornerRadius = new CornerRadius(14),
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
-                Background = Res("PlayarrSurface"), BorderBrush = Res("PlayarrLine"), BorderThickness = new Thickness(1),
+                Background = Res("PlayarrSurfaceStrong"), BorderBrush = Res("PlayarrLine"), BorderThickness = new Thickness(1),
                 Content = tile,
                 FocusVisualPrimaryBrush = Theme.FocusRing, FocusVisualPrimaryThickness = new Thickness(3), FocusVisualSecondaryThickness = new Thickness(0),
             };
