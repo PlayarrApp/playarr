@@ -354,7 +354,7 @@ namespace Playarr.Xbox.Views
 
         private void UpdateClock()
         {
-            var now = DateTime.Now;
+            var now = ParityClock.Now;
             _time.Text = now.ToString("HH:mm");
             _date.Text = now.ToString("ddd d MMMM").ToUpperInvariant();
         }
