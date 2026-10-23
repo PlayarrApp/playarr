@@ -151,7 +151,8 @@ fetch_sdk() {
         # Merge whatever the tarball put under linux/ into SDK_HOME. This
         # may already be a full SDK tree, or a flat pile of per-component
         # zips: unzip_nested handles the latter.
-        cp -a "$stage/linux/." "$SDK_HOME/"
+        cp -al "$stage/linux/." "$SDK_HOME/" # hard links: no second copy on a small runner disk
+        rm -rf "$stage"
     else
         echo "ERROR: expected a linux/ directory inside $tarball, found none." >&2
         exit 1
@@ -197,6 +198,7 @@ fetch_cli_tools() {
     mkdir -p "$CLI_HOME"
     # same filesystem, so a move needs no second copy of the tree
     cp -al "$src/." "$CLI_HOME/"
+    rm -rf "$stage"
 
     if ! cli_populated; then
         warn "Unpacked Command Line Tools do not contain ohpm/bin/ohpm at $CLI_HOME as expected."
