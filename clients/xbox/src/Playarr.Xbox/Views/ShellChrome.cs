@@ -256,11 +256,11 @@ namespace Playarr.Xbox.Views
             var button = new Button
             {
                 Content = content,
-                Width = RailWidth - 10,
-                Height = ItemHeight - 4,
-                Margin = new Thickness(0, 2, 0, 2),
+                Width = 64, // the web's --tv-nav-item-size
+                Height = 64,
+                Margin = new Thickness(0, 4, 0, 4),
                 Padding = new Thickness(0),
-                CornerRadius = new CornerRadius(18),
+                CornerRadius = new CornerRadius(16),
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 Background = new SolidColorBrush(Colors.Transparent),
@@ -286,7 +286,7 @@ namespace Playarr.Xbox.Views
 
         private readonly HashSet<Button> _current = new HashSet<Button>();
 
-        /// <summary>The focused item takes the web's 14 % ink fill at scale 1.1; the current page keeps its 9 % fill at 1.05.</summary>
+        /// <summary>The focused item takes the web's 14 % ink fill at scale 1.1; the current page keeps its 9 % fill at 1.04.</summary>
         private void ShowRailFocus(Button button, bool focused)
         {
             var ink = ((SolidColorBrush)Application.Current.Resources["PlayarrInk"]).Color;
@@ -295,7 +295,7 @@ namespace Playarr.Xbox.Views
                 ? new SolidColorBrush(Color.FromArgb(36, ink.R, ink.G, ink.B))
                 : current ? new SolidColorBrush(Color.FromArgb(23, ink.R, ink.G, ink.B)) : new SolidColorBrush(Colors.Transparent);
             var scale = (ScaleTransform)button.RenderTransform;
-            scale.ScaleX = scale.ScaleY = focused ? 1.1 : current ? 1.05 : 1;
+            scale.ScaleX = scale.ScaleY = focused ? 1.1 : current ? 1.04 : 1;
         }
 
         private void Sync(NavigationEventArgs e)
