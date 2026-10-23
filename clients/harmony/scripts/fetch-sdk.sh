@@ -146,6 +146,7 @@ fetch_sdk() {
     tar -xzf "$tarball" -C "$stage" linux/
 
     mkdir -p "$SDK_HOME"
+    rm -f "$tarball" # 2 GB; the extracted tree is what the cache keeps
     if [ -d "$stage/linux" ]; then
         # Merge whatever the tarball put under linux/ into SDK_HOME. This
         # may already be a full SDK tree, or a flat pile of per-component
