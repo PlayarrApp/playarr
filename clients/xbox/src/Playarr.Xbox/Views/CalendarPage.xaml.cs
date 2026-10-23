@@ -35,7 +35,7 @@ namespace Playarr.Xbox.Views
 
         /// <summary>The open view; read by the parity trace.</summary>
         internal CalendarView View => _view;
-        private DateTime _anchor = DateTime.Today;
+        private DateTime _anchor = ParityClock.Today;
         private IList<CalendarEntry> _entries = new List<CalendarEntry>();
         private int _loadVersion;
 
@@ -59,14 +59,14 @@ namespace Playarr.Xbox.Views
             foreach (var (label, view) in new[] { ("Agenda", CalendarView.Agenda), ("Week", CalendarView.Week), ("Month", CalendarView.Month) })
             {
                 var item = new MenuFlyoutItem { Text = label };
-                item.Click += (s, e) => { _view = view; _anchor = DateTime.Today; Load(); };
+                item.Click += (s, e) => { _view = view; _anchor = ParityClock.Today; Load(); };
                 picker.Items.Add(item);
             }
 
             _rangeButton.Flyout = picker;
             controls.Children.Add(_rangeButton);
             controls.Children.Add(Ui.RoundButton("", () => { _anchor = CalendarRules.Step(_view, _anchor, -1); Load(); }));
-            controls.Children.Add(Ui.Pill("Today", () => { _anchor = DateTime.Today; Load(); }, 90));
+            controls.Children.Add(Ui.Pill("Today", () => { _anchor = ParityClock.Today; Load(); }, 90));
             controls.Children.Add(Ui.RoundButton("", () => { _anchor = CalendarRules.Step(_view, _anchor, 1); Load(); }));
             _root.Children.Add(controls);
 
@@ -180,7 +180,7 @@ namespace Playarr.Xbox.Views
             body.Children.Add(Drawer.Segmented("View", new[] { "Agenda", "Week", "Month" }, ViewOptionIndex(_view), i =>
             {
                 _view = ViewFromOptionIndex(i);
-                _anchor = DateTime.Today;
+                _anchor = ParityClock.Today;
                 Load();
                 Drawer.TryCloseCurrent();
             }));
@@ -287,7 +287,7 @@ namespace Playarr.Xbox.Views
             var day = CalendarRules.LocalDay(entry);
             bool MatchesStatus(bool hasFile, bool monitored)
             {
-                var aired = day <= DateTime.Today;
+                var aired = day <= ParityClock.Today;
                 var matchesStatus = _statuses.Count == 0
                     || (_statuses.Contains("aired") && aired)
                     || (_statuses.Contains("upcoming") && !aired)
@@ -384,7 +384,7 @@ namespace Playarr.Xbox.Views
 
         private FrameworkElement MonthCell(DateTime day, List<CalendarEntry> entries, double width, double height)
         {
-            var isToday = day == DateTime.Today;
+            var isToday = day == ParityClock.Today;
             var cell = new Grid
             {
                 Width = width,
@@ -441,7 +441,7 @@ namespace Playarr.Xbox.Views
                 var column = new StackPanel { Width = 440, Spacing = 15 };
                 var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
                 heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 16.6, FontWeights.SemiBold, "PlayarrInk"));
-                if (day == DateTime.Today)
+                if (day == ParityClock.Today)
                 {
                     heading.Children.Add(Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color));
                 }
@@ -486,7 +486,7 @@ namespace Playarr.Xbox.Views
 
                 var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, list.Children.Count == 0 ? 0 : 22, 0, 6) };
                 heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 14, FontWeights.SemiBold, "PlayarrInk"));
-                if (day == DateTime.Today)
+                if (day == ParityClock.Today)
                 {
                     heading.Children.Add(Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color));
                 }
@@ -615,7 +615,7 @@ namespace Playarr.Xbox.Views
             return accent;
         }
 
-        private static FrameworkElement TonePill(CalendarEntry entry, bool web = false) => CalendarRules.Tone(entry, DateTime.Today) switch
+        private static FrameworkElement TonePill(CalendarEntry entry, bool web = false) => CalendarRules.Tone(entry, ParityClock.Today) switch
         {
             CalendarTone.Available => Ui.StatusPill("Available", Available, web),
             CalendarTone.Upcoming => Ui.StatusPill("Upcoming", Theme.BrandInk, web),
