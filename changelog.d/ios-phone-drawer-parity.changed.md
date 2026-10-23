@@ -1,0 +1,1 @@
+- Align the iPhone Filters panel and Title actions drawer type sizes, weights and spacing with the web drawer CSS.
