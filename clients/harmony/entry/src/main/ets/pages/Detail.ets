@@ -837,12 +837,12 @@ struct Detail {
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
   @State private touchActionsOpen: boolean = false;
   /** Phone Play: web's focus style (`.tv-detail-play:focus-visible`: brand-strong fill, white label, 1.06 scale). */
-  // starts true on the phone: web opens with Play focused, and the Previewer window never reports the focus
+  // the phone starts with Play unfocused (web's touch layout; the static-server ref shows the white pill)
   /** Web's unseen dot on episode cards: the viewer's progress rows by media file, once loaded. */
   @State private episodeProgress: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private episodeProgressLoaded: boolean = false;
-  // true from the start on both: web opens a film with Play focused (the Previewer never reports focus); only the TV film Play pill and the phone Play read it
-  @State private playFocused: boolean = true;
+  // true from the start on the TV: web opens a film with Play focused (the Previewer never reports focus); only the TV film Play pill and the phone Play read it
+  @State private playFocused: boolean = isTvMetrics();
   @State private optionsOpen: boolean = false;
   /** On this profile's watchlist: null until the server has answered. */
   @State private listed: boolean | null = null;
