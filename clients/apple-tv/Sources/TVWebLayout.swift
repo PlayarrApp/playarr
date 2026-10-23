@@ -524,6 +524,15 @@ struct TVDrawer<Content: View>: View {
     /// The web close button is a circle (the 2026-10-15 refs of every Apple device).
     private static var closeRadius: CGFloat { 25 }
 
+    /// macOS: the web sections start 2 pt lower than the shared measure (Filters and Actions refs, 2026-10-19).
+    private var drawerContentTop: CGFloat {
+        #if os(macOS)
+        38
+        #else
+        36
+        #endif
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 0) {
@@ -551,7 +560,7 @@ struct TVDrawer<Content: View>: View {
                         // Web `.drawer-close`: a round button with the shared dark focus ring; the frozen capture draws the ring of
                         // the focused close button too (the web reference opens with it focused).
                         .overlay {
-                            if TVParityLaunch.frozen, !focusesContent {
+                            if TVParityLaunch.pinnedClock, !focusesContent {
                                 RoundedRectangle(cornerRadius: Self.closeRadius + 3.5, style: .continuous)
                                     .stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5)
                             }
@@ -569,7 +578,7 @@ struct TVDrawer<Content: View>: View {
             .padding(.top, 54)
             // Static refs (2026-10-19): the web title sits 2 pt and the sections 4 pt lower than the earlier live-server refs.
             content()
-                .padding(.top, 36)
+                .padding(.top, drawerContentTop)
             Spacer(minLength: 0)
         }
         .padding(.leading, 46)
@@ -591,7 +600,16 @@ struct TVDrawer<Content: View>: View {
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)
         #endif
         .onExitCommand(perform: onClose)
-        .task { if !focusesContent { closeFocused = true } }
+        .task {
+            if !focusesContent { closeFocused = true }
+            #if os(macOS)
+            // The grid card may still hold the key window's focus on the first frames: ask again once the layer has settled.
+            for _ in 0..<3 where !focusesContent {
+                try? await Task.sleep(for: .milliseconds(500))
+                closeFocused = true
+            }
+            #endif
+        }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onAppear { TVParityState.setPanel(title) }
         .onDisappear { TVParityState.setPanel(nil) }
