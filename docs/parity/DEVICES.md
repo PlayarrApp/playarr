@@ -60,6 +60,10 @@ this note.
   it is left as an engine difference.
 - **On-screen keyboard.** A focused text field opens the platform keyboard; the suite captures search with it dismissed.
 
+### Roku: one command for the full run
+
+`ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pw> scripts/parity/roku/run.sh <legend>/roku/dev` runs the 14 screens in dark and light and the 12 non-player D-pad checks against the static server (`drivers/roku.mjs`, `--via route`). Sideload the channel first (`make package deploy` in `clients/roku`) and pair it once: the pairing screen shows a code, approve it on the static server's `/tv/link` as `parity`. The channel clock is pinned through the `parityNow` launch argument, so the shell clock reads 12:00 on 7 October. The driver has no stable-mode hooks, so `run.sh` sets `PARITY_STABLE=0`. Player controls need a playing title: add `ROKU_PARITY_PLAYER_FRAME=1` and `--only screens --screens player-controls`.
+
 ### Roku player chrome: what is native and what is a platform limit
 
 The Roku bar follows the web order: previous, play, next, audio, subtitles, queue, quality, info. Subtitles use the Video node's caption tracks (the server's WebVTT sidecars), the queue lists the episodes or tracks of the title, and info shows the playback facts the Video node reports.
