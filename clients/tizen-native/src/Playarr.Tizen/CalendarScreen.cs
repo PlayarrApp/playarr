@@ -33,6 +33,7 @@ internal sealed class CalendarScreen : IPage
     private IList<CalendarEntry> _entries = new List<CalendarEntry>();
     private float _scrollY;
     private readonly View _panel = new();
+    private readonly KeyArt _keyArt;
     private View? _weekTrack;
     private readonly View?[] _weekContents = new View?[7];
     private readonly float[] _weekContentHeights = new float[7];
@@ -47,10 +48,11 @@ internal sealed class CalendarScreen : IPage
 
     public CalendarScreen(AppEnv env, CalendarView view)
     {
-        _env = env; _t = env.Theme; _view = view; _today = env.ClockNow().Date;
+        _env = env; _t = env.Theme; _view = view; _today = env.ClockNow().Date; _keyArt = new KeyArt(env, armed: true);
         _anchor = view == CalendarView.Month ? new DateTime(_today.Year, _today.Month, 1) : view == CalendarView.Week ? CalendarRules.StartOfWeek(_today) : _today;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); } // web: the focused entry's backdrop under the agenda panel's frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
@@ -329,7 +331,7 @@ internal sealed class CalendarScreen : IPage
         var h = 106.9f + (sub.Length * 9.6f > textW ? 28.8f : 0) - (sub.Length == 0 ? 29f : 0); // web: an entry without a subtitle line is 29 px shorter
         // web .calendar-entry: --surface-strong with a 4 px left border (--success when available, else --ink-muted); the border colour is the card, the surface sits 4 px in
         var card = Ui.Box(x, y, w, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 12);
-        var surface = Ui.Box(4, 0, w - 4, h, _t.SurfaceStrong, 12); surface.BorderlineWidth = 1; surface.BorderlineColor = Ui.C(_t.Line);
+        var surface = Ui.Box(4, 0, w - 4, h, _t.SurfaceStrong, 12); surface.BorderlineWidth = 1; surface.BorderlineColor = Ui.C(_t.LineStrong); // web --line-strong
         card.Add(surface);
         var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
         poster.ClippingMode = ClippingModeType.ClipChildren;
@@ -367,6 +369,7 @@ internal sealed class CalendarScreen : IPage
     private void ShowEntry(CalendarEntry e)
     {
         foreach (var c in _panel.Children.ToArray()) { _panel.Remove(c); c.Dispose(); }
+        _keyArt.Set(e.WorkId is { } work ? $"/api/v1/artwork/work/{work:D}/backdrop?w=780" : null);
         var tone = CalendarRules.Tone(e, _today);
         _panel.Add(Ui.Text($"{(e.MediaKind == "movie" ? "Movies" : "Episodes")} \u00b7 {(e.ReleaseType is "digital" ? "Digital release" : "Airs")}", 153.6f, 263.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
         var lines = Ui.Paragraph(_panel, e.Title, 153.6f, 308.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);

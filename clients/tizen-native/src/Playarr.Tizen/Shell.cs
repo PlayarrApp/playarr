@@ -32,6 +32,15 @@ internal sealed class Shell : View
     private readonly Dictionary<string, object> _saved = new();
     private readonly View _chrome = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
     private TextLabel? _clockTime, _clockDate;
+    private float _clockLeft = 481f;
+
+    /// <summary>Web .app-clock: the time, then the date 11.1 px after the time's own width.</summary>
+    private void PlaceClock()
+    {
+        if (_clockTime is null || _clockDate is null) return;
+        _clockTime.PositionX = _clockLeft;
+        _clockDate.PositionX = _clockLeft + Ui.TextWidth(_clockTime.Text, 17.28f, 760, -0.5184f) + 11.1f;
+    }
     public void SetCaptureClock(DateTime? now)
     {
         // The parity suite pins UTC (screens.json determinism.timezone) and hands over UTC wall time; show release times (ToLocalTime) in the same zone.
@@ -42,7 +51,7 @@ internal sealed class Shell : View
     private void UpdateClock()
     {
         var now = _env.ClockNow();
-        if (_clockTime is not null) _clockTime.Text = now.ToString("HH:mm");
+        if (_clockTime is not null) { _clockTime.Text = now.ToString("HH:mm"); PlaceClock(); }
         if (_clockDate is not null) _clockDate.Text = now.ToString("ddd d MMMM", System.Globalization.CultureInfo.GetCultureInfo("en-GB")).ToUpperInvariant();
     }
     private TextLabel? _profileLabel;
@@ -71,14 +80,14 @@ internal sealed class Shell : View
     {
         _env = env; _theme = env.Theme; _exit = exit;
         env.Navigate = route => Navigate(route);
-        env.SetClockX = x => { var cx = Math.Max(x, 476.1f); if (_clockTime is not null) _clockTime.PositionX = cx; if (_clockDate is not null) _clockDate.PositionX = cx + 52.7f; };
+        env.SetClockX = x => { _clockLeft = Math.Max(x, 481f); PlaceClock(); };
         env.NavigateBack = () => { if (_history.Count > 0) Navigate(_history.Pop(), push: false); else Navigate("/", push: false); };
         Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         BackgroundColor = Ui.C(_theme.Bg);
         BuildRail();
         _chrome.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
-        _clockTime = Ui.Text("", 476.1f, 68.2f, 17.28f, 800, _theme.Ink, 60, 25.92f, spacing: -0.52f);
-        _clockDate = Ui.Text("", 528.8f, 75f, 11.136f, 700, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.445f);
+        _clockTime = Ui.Text("", 481f, 68.2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f);
+        _clockDate = Ui.Text("", 535.4f, 75f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f);
         _chrome.Add(_clockTime); _chrome.Add(_clockDate);
         UpdateClock();
         var tick = new global::Tizen.NUI.Timer(15000);
