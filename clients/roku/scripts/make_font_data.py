@@ -36,6 +36,9 @@ def width(text: str) -> int:
 
 for weight in WEIGHTS:
     instancer.instantiateVariableFont(TTFont(src), {"wght": weight}).save(out / f"NunitoSans-{weight}.ttf")
+
+# Advance tables at every 10 of 300 to 900: glyphs come from the nearest instance, positions from the exact weight.
+for weight in range(300, 901, 10):
     font.set_variations({"wght": weight})
     # Keys are code points: BrightScript associative arrays ignore case, so "e" and "E" would collide.
     adv = {str(ord(c)): width(c) for c in CHARS}

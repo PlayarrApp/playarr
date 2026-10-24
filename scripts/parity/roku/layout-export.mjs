@@ -55,9 +55,9 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
       if (it.k === "label") {
         if (it.align === "center") x = it.x + (it.w - textW) / 2; else if (it.align === "right") x = it.x + it.w - textW;
       }
-      let y = it.y + 0.03 * it.size; // Roku draws the line box 0.03 em higher than the web, for the same ink
+      let y = it.y;
       if (it.k === "label" && it.vert === "center") y = it.y + (it.h - lineH) / 2;
-      const h = it.k === "label" && (it.wrap || it.lines > 1) ? it.h : lineH;
+      const h = it.k === "tracked" ? it.h : Math.round(it.size * 1.011) + Math.round(it.size * 0.353);
       const colour = it.color;
       elements.push({
         text: it.text.replace(/\s+/g, " ").trim(), role: it.role === "ink" && it.k === "tracked" && it.size >= 30 ? "heading" : "text",
@@ -73,5 +73,7 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
       elements.push({ text: "", role: "container", rect: { x: it.x, y: it.y, w: it.w, h: it.h }, color: null, background: hex(it.color), fontSize: null, fontWeight: null, _id: it.id });
     }
   }
+  const inView = (e) => e.rect.x < 1920 && e.rect.y < 1080 && e.rect.x + e.rect.w > 0 && e.rect.y + e.rect.h > 0;
+  elements.splice(0, elements.length, ...elements.filter(inView));
   return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements };
 }

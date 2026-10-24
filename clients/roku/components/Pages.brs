@@ -137,6 +137,19 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     return poster
 end function
 
+' Layout-score annotation: an invisible box carrying what the web exports for this element (docs/parity/LAYOUT.md): role, accessible
+' name, radius and the colour behind it. Costs nothing on screen; source/LayoutDump.brs prints it with the box's scene position.
+function pgMark(parent as Object, role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius = 0 as Float, bg = "surface" as String) as Object
+    mark = CreateObject("roSGNode", "Rectangle")
+    mark.translation = [x, y]
+    mark.width = w
+    mark.height = h
+    mark.color = "0x00000000"
+    mark.addFields({ parityRole: role, parityName: name, parityRadius: radius, parityBg: bg })
+    parent.AppendChild(mark)
+    return mark
+end function
+
 function pgIcon(parent as Object, x as Float, y as Float, size as Integer, file as String, role as String, alpha = -1 as Integer) as Object
     poster = CreateObject("roSGNode", "Poster")
     poster.uri = "pkg:/images/" + file
@@ -358,22 +371,28 @@ end function
 ' tiny label. Used for every header action (Calendar link, Filters).
 ' Shared page header pieces (web PageHeader): the round Back button, the title spec and the right-hand action tile. Every page
 ' (Pages, Library, Detail, Search) draws these here and nowhere else; clients/roku/tests/test_page_anatomy.py enforces it.
-sub pgBackButton(parent as Object, x as Float)
+sub pgBackButton(parent as Object, x as Float, name = "Back to Home" as String)
     pgRound(parent, x, 56.3, 50, 50, 25, "surface", 179)
     pgRound(parent, x, 56.3, 50, 50, 25, "line", -1, true)
     pgIcon(parent, x + 16.4, 73, 17, "arrow-left.png", "inkSoft")
+    pgMark(parent, "link", name, x, 56.2, 50, 50, 50)
+    ' The web draws the arrow as a text glyph: the same box, reported as the text it is.
+    arrow = pgMark(parent, "text", "←", x + 16.4, 69.2, 17.3, 23, 0)
+    arrow.addFields({ parityText: "←", paritySize: 17.28, parityWeight: 720, parityColor: "inkSoft" })
 end sub
 
 function PageTitleSpec(text as String) as Object
-    return { text: text, size: 34, weight: 600, tracking: -1.512, role: "ink" }
+    return { text: text, size: 33.6, weight: 580, tracking: -1.512, role: "ink" }
 end function
 
 ' The action tile's visuals only (Library draws its own focus ring); pgTile adds the focus target.
 sub pgShellTile(parent as Object, x as Float, y as Float, label as String, icon as String)
     pgRound(parent, x, y, 62, 72, 14, "surfaceStrong", 199)
     pgRound(parent, x, y, 62, 72, 14, "line", -1, true)
-    pgIcon(parent, x + 20, y + 15, 22, icon, "inkMuted")
-    pgLabel(parent, x, y + 44, 62, 14, label, 8, 800, "inkMuted", { horizAlign: "center" })
+    pgIcon(parent, x + 19, y + 15, 24, icon, "inkMuted")
+    pgLabel(parent, x, y + 43.6, 62, 14, label, 8.26, 700, "inkMuted", { horizAlign: "center" })
+    pgMark(parent, "button", label, x, y, 62, 72, 14, "bg")
+    pgMark(parent, "image", "", x + 19, y + 15, 24, 24, 0, "bg")
 end sub
 
 sub pgTile(parent as Object, x as Float, y as Float, label as String, icon as String, action as String, data = invalid as Dynamic)
@@ -2573,7 +2592,7 @@ end sub
 ' Web page header: the subtitle sits beside the title after a thin vertical divider (not pink); it wraps under the title,
 ' above a hairline as wide as the title, only when it does not fit before the clock.
 sub layoutHeaderSub(titleW as Float, label as Object, divider as Object, rule as Object, text as String)
-    label.spec = { text: text, size: 12, weight: 700, tracking: 0.501, role: "ink", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
+    label.spec = { text: text, size: 11.14, weight: 680, tracking: 0.495, role: "ink", upper: true, width: 520, lineHeight: 16.7, maxLines: 1 }
     x = 226.6 + titleW + 24
     if x + 1 + 24 + label.textWidth <= 462
         divider.translation = [x, 73]
@@ -2581,7 +2600,7 @@ sub layoutHeaderSub(titleW as Float, label as Object, divider as Object, rule as
         divider.height = 16
         divider.visible = true
         rule.visible = false
-        label.translation = [x + 25, 71.7]
+        label.translation = [x + 23, 72.8]
     else
         divider.visible = false
         rule.translation = [226.6, 112]

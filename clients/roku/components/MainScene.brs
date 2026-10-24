@@ -2700,17 +2700,17 @@ sub buildAlphabetStrip()
     m.browseAlphabet.AppendChild(m.alphabetDot)
     y = 0
     for each letter in letters
-        label = CreateObject("roSGNode", "Label")
-        label.translation = [0, y]
-        label.width = 44
-        label.height = 44
+        ' Web: a 44 px button, the letter 9.22 px, its text box 15.2 px below the button top.
+        label = CreateObject("roSGNode", "WebLabel")
+        label.translation = [0, y + 16.2]
+        label.setFields({ size: 9.22, weight: 400, width: 44, height: 12, horizAlign: "center" })
         label.text = letter
-        label.horizAlign = "center"
-        label.vertAlign = "center"
         label.color = ThemeColor("inkMuted")
-        label.font = PlayarrMakeFont(400, 9)
         m.browseAlphabet.AppendChild(label)
         m.alphabetLabels.Push(label)
+        name = letter
+        if letter = "#" then name = "Numbers and symbols"
+        pgMark(m.browseAlphabet, "button", name, -0.5, y, 44, 44, 50)
         y += 44
     end for
     m.browseLetterIndex = 0
@@ -2900,8 +2900,8 @@ sub updateBrowsePreview(work as Object)
     if work.genres <> invalid and work.genres.Count() > 0
         kicker = UCase(work.genres[0])
     end if
-    m.browsePreviewKind.spec = { text: kicker, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true }
-    m.browsePreviewTitle.spec = { text: work.title, size: 69, weight: 560, tracking: -4.53, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
+    m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
     year = ""
     ' Web LibraryPreview: release year only (never the added date).
     if work.release_date <> invalid and work.release_date.Len() >= 4 then year = work.release_date.Left(4)
@@ -2913,11 +2913,11 @@ sub updateBrowsePreview(work as Object)
     ' Web flows the meta line (year in ink-soft, genres in ink-muted) and the synopsis under the title.
     titleLines = m.browsePreviewTitle.lineCount
     if titleLines < 1 then titleLines = 1
-    metaY = 303.5 + 62.208 * titleLines + 26
+    metaY = 303.5 + 62.208 * titleLines + 27
     m.browsePreviewMeta.translation = [153.6, metaY]
     m.browsePreviewMeta.spec = { text: year, size: 13.06, weight: 600, tracking: 0, role: "inkSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
     metaX = 153.6
-    if year <> "" then metaX = 153.6 + m.browsePreviewMeta.textWidth + 14.4
+    if year <> "" then metaX = 153.6 + m.browsePreviewMeta.textWidth + 12.8
     m.browsePreviewMeta2.translation = [metaX, metaY]
     m.browsePreviewMeta2.spec = { text: genreLine, size: 13.06, weight: 600, tracking: 0, role: "inkMuted", width: 300, lineHeight: 18.144, maxLines: 1 }
     m.browseMetaY = metaY
@@ -2926,7 +2926,7 @@ sub updateBrowsePreview(work as Object)
     showBrowsePreviewRuntime(work.id)
     overview = work.overview
     if overview = invalid or overview = "" then overview = "No synopsis available."
-    m.browsePreviewOverview.translation = [153.6, metaY + 42.3]
+    m.browsePreviewOverview.translation = [153.6, metaY + 41.3]
     m.browsePreviewOverview.spec = { text: overview, size: 13.82, weight: 600, tracking: 0, role: "inkMuted", width: 336, lineHeight: 23, maxLines: 5 }
     ' Defer key-art download so acceptBrowseCatalog paints the grid first.
     ' Home hero uses sync GetToFile successfully; here it must not block paint.
@@ -4519,7 +4519,7 @@ end sub
 
 sub placeBrowsePreviewRuntime(runtimeMs as Dynamic)
     label = formatRuntime(runtimeMs)
-    x = m.browsePreviewMeta2.translation[0] + 13.6
+    x = m.browsePreviewMeta2.translation[0] + 12.8
     if m.browseMetaGenreLine <> invalid and m.browseMetaGenreLine <> "" then x = x + m.browsePreviewMeta2.textWidth
     m.browsePreviewMeta3.translation = [x, m.browseMetaY]
     m.browsePreviewMeta3.spec = { text: label, size: 13.06, weight: 600, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
@@ -4872,7 +4872,7 @@ sub layoutNavDock()
     itemSize = 67
     itemStep = 73.6
     groupPad = 5.8
-    groupGap = 13.7
+    groupGap = 13.59
     dockLeft = 42
     ' Groups match web NAV_GROUPS: Downloads+Search | library kinds | Playlists, Watchlist, Requests, Calendar.
     ' Downloads (offline storage) cannot exist on Roku, so the first group is Search alone.
@@ -4893,7 +4893,7 @@ sub layoutNavDock()
     end for
     ' Web's first group starts at y 120 whatever the other groups hold. Roku has no Downloads, so Search sits first in it
     ' (the Roku web reference hides Downloads and packs the group the same way).
-    y = 120
+    y = 119.11
     for g = 0 to groupRanges.Count() - 1
         range = groupRanges[g]
         groupStartY = y
@@ -7027,8 +7027,8 @@ sub showOnly(name as String)
     m.settingsGroup.visible = name = "settings"
     m.pageGroup.visible = name = "page"
     ' Web .app-clock is at the same place on every screen.
-    m.clockTime.translation = [481, 68]
-    m.clockDate.translation = [535, 73]
+    m.clockTime.translation = [481, 68.2]
+    m.clockDate.translation = [535.4, 75]
     m.libraryGroup.visible = name = "library"
     m.homeGroup.visible = name = "home"
     m.browseGroup.visible = name = "browse"
@@ -7762,6 +7762,7 @@ end function
 ' Parity layout dump (source/LayoutDump.brs), requested by the driver through ECP input.
 sub onParityLayoutRequest()
     if m.global.parityArtEnabled <> true then return
+    ParityPrepareCards()
     m.global.parityLayoutSeq = m.global.parityLayoutSeq + 1
     ParityLayoutDump(m.top)
 end sub

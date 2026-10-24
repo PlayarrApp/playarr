@@ -1,5 +1,5 @@
 sub init()
-    PlayarrFontifyTree(m.top)
+    PlayarrFontifyTree(m.top, "PosterCard")
     m.global.observeField("parityLayoutSeq", "onParityLayoutCard")
     ThemeSetRole(m.top.findNode("posterBg"), "surfaceSoft")
     for each id in ["cornerTL", "cornerTR", "cornerBL", "cornerBR"]
@@ -380,10 +380,10 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     if cardScale > 1 then titleGap = 11.5
     m.titleY = artH + titleGap
     m.cardTitleY = m.titleY
-    m.cardTitleX = 0
+    m.cardTitleX = 1.94
     m.cardArtW = artW
-    m.title.translation = [0, m.titleY]
-    m.title.width = artW
+    m.title.translation = [1.94, m.titleY]
+    m.title.width = artW - 3.9
     m.kind.translation = [0, artH + titleGap + 19.5]
     m.kind.width = artW
     if listMode
@@ -427,21 +427,10 @@ end sub
 ' Parity layout dump: a grid item is not reachable from the scene, so each card prints its own boxes and captions on request.
 sub onParityLayoutCard()
     if m.global.parityArtEnabled <> true then return
-    ' The grid places each item itself, so the scene position of an item is its cell origin: add the cell offset here.
-    m.parityDx = 0
-    m.parityDy = 0
-    grid = m.top.getParent()
-    while grid <> invalid and grid.id <> "browseGrid" and grid.id <> "searchGrid"
-        grid = grid.getParent()
-    end while
-    if grid <> invalid
-        cols = grid.numColumns
-        index = m.top.index
-        if cols < 1 or index < 0 or Int(index / cols) >= grid.numRows then return
-        ' The grid takes whole pixels: a 353.5 x 240.5 cell steps 353 x 240.
-        m.parityDx = (index mod cols) * Int(grid.itemSize[0] + grid.itemSpacing[0])
-        m.parityDy = Int(index / cols) * Int(grid.itemSize[1] + grid.itemSpacing[1])
-    end if
+    content = m.top.itemContent
+    if content = invalid or not content.hasField("parityDx") then return
+    m.parityDx = content.parityDx
+    m.parityDy = content.parityDy
     ParityCard(m.top)
     ctx = { measure: CreateObject("roSGNode", "Label"), count: 0 }
     ParityLayoutWalk(m.cardRoot, 1.0, ctx)

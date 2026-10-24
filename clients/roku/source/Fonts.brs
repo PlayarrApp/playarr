@@ -43,7 +43,9 @@ end function
 ' Advance data of one instance (fonts/NunitoSans-<weight>.json: advances and pair kerning in units of 1000 per em).
 function PlayarrFontData(weight as Integer) as Object
     g = GetGlobalAA()
-    w = PlayarrInstanceWeight(weight)
+    w = Int((weight + 5) / 10) * 10
+    if w < 300 then w = 300
+    if w > 900 then w = 900
     key = "playarrFontData_" + w.ToStr()
     if g[key] = invalid
         data = ParseJson(ReadAsciiFile("pkg:/fonts/NunitoSans-" + w.ToStr() + ".json"))
@@ -100,22 +102,26 @@ end function
 
 ' The web type of labels declared in XML, by id: CSS px size, weight and letter-spacing (px) read from the web layout dump
 ' (docs/parity/LAYOUT.md). A label without an entry keeps the size its `scale` implies.
-function PlayarrTypeFor(id as String) as Dynamic
+function PlayarrTypeFor(scope as String, id as String) as Dynamic
     g = GetGlobalAA()
     if g.typeTable = invalid
         g.typeTable = {
-            clockTime: { size: 17.28, weight: 760, tracking: 0 }
-            clockDate: { size: 11.14, weight: 640, tracking: 0 }
-            profileLabel: { size: 8.83, weight: 680, tracking: 0.31 }
-            userVersion: { size: 8, weight: 700, tracking: 0.86 }
+            clockTime: { size: 17.28, weight: 760, tracking: -0.526, boxH: 25.92 }
+            clockDate: { size: 11.14, weight: 640, tracking: 0.435 }
+            profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
+            userVersion: { size: 8, weight: 700, tracking: 0.86, role: "ink" }
+            "PosterCard.title": { size: 11.9, weight: 610, tracking: -0.183 }
+            "PosterCard.kind": { size: 8.83, weight: 400, tracking: 0 }
         }
     end if
-    return g.typeTable[id]
+    entry = g.typeTable[scope + "." + id]
+    if entry = invalid then entry = g.typeTable[id]
+    return entry
 end function
 
 ' Replace an XML Label (sized by `scale`) by a WebLabel of the same id and the geometry the scale produced (scale about
 ' scaleRotateCenter), so text is set at the web's own advances (see components/WebLabel.xml). `weight` < 0 picks from the id.
-function PlayarrFontifyLabel(label as Object, weight = -1 as Integer) as Object
+function PlayarrFontifyLabel(label as Object, scope = "" as String, weight = -1 as Integer) as Object
     s = label.scale
     sx = 1.0
     if s <> invalid then sx = s[0]
@@ -137,15 +143,20 @@ function PlayarrFontifyLabel(label as Object, weight = -1 as Integer) as Object
     web.id = label.id
     web.translation = [x, t[1] + c[1] * (1 - sx)]
     tracking = 0.0
-    typed = PlayarrTypeFor(label.id)
+    typed = PlayarrTypeFor(scope, label.id)
     if typed <> invalid
         size = typed.size
         weight = typed.weight
         tracking = typed.tracking
+        if typed.boxH <> invalid then web.rectH = typed.boxH
     end if
     web.setFields({ size: size, weight: weight, tracking: tracking, width: newW, height: label.height * sx, horizAlign: label.horizAlign, vertAlign: label.vertAlign, wrap: label.wrap, maxLines: label.maxLines, visible: label.visible, opacity: label.opacity })
     if label.lineSpacing <> 0 then web.lineSpacing = label.lineSpacing * sx
     web.color = label.color
+    if typed <> invalid and typed.role <> invalid
+        web.color = ThemeColor(typed.role)
+        ThemeSetRole(web, typed.role)
+    end if
     web.text = label.text
     parent = label.getParent()
     index = 0
@@ -160,7 +171,7 @@ function PlayarrFontifyLabel(label as Object, weight = -1 as Integer) as Object
     return web
 end function
 
-sub PlayarrFontifyTree(node as Object)
+sub PlayarrFontifyTree(node as Object, scope = "" as String)
     children = []
     for i = 0 to node.getChildCount() - 1
         children.Push(node.getChild(i))
@@ -168,9 +179,9 @@ sub PlayarrFontifyTree(node as Object)
     for each child in children
         if child = invalid then continue for
         if child.subtype() = "Label"
-            PlayarrFontifyLabel(child)
+            PlayarrFontifyLabel(child, scope)
         else if child.subtype() <> "WebLabel" and child.subtype() <> "TrackedText"
-            PlayarrFontifyTree(child)
+            PlayarrFontifyTree(child, scope)
         end if
     end for
 end sub
