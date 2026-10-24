@@ -1,0 +1,231 @@
+{
+  "$comment": "Documented capability gaps only (docs/parity/LAYOUT.md, Per-client exclusions). Web elements matched here leave the layout denominator for that client and are listed as excluded. Never for styling or bugs. Every entry needs reason and doc (repo path#heading anchor).",
+  "roku": [
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "button",
+        "textPrefix": "Download "
+      },
+      "reason": "Roku has no offline downloads (real platform limit); the Download tile and the Download row are left out on purpose",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "text",
+        "text": "Download"
+      },
+      "reason": "Roku has no offline downloads (real platform limit); the Download tile and the Download row are left out on purpose",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "button",
+        "text": "⇩ Download"
+      },
+      "reason": "Roku has no offline downloads (real platform limit); the Download tile and the Download row are left out on purpose",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "text",
+        "text": "Download"
+      },
+      "reason": "Roku has no offline downloads (real platform limit); the Download tile and the Download row are left out on purpose",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "*",
+      "match": {
+        "text": "Downloads"
+      },
+      "reason": "Roku has no offline downloads (real platform limit); the Download tile and the Download row are left out on purpose (nav entry)",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "profiles",
+      "match": {
+        "text": "Check for updates"
+      },
+      "reason": "Roku channel updates come from the Roku Channel Store, there is no in-app updater",
+      "doc": "docs/parity/DEVICES.md#check-for-updates-which-clients-have-an-in-app-updater"
+    }
+  ],
+  "firetv": [
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "button",
+        "textPrefix": "Download "
+      },
+      "reason": "Vega app has no downloads route (out of v1: no offline engine, little local storage)",
+      "doc": "docs/architecture/clients/fire-tv.md#screen-inventory"
+    },
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "text",
+        "text": "Download"
+      },
+      "reason": "Vega app has no downloads route (out of v1: no offline engine, little local storage)",
+      "doc": "docs/architecture/clients/fire-tv.md#screen-inventory"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "button",
+        "text": "⇩ Download"
+      },
+      "reason": "Vega app has no downloads route (out of v1: no offline engine, little local storage)",
+      "doc": "docs/architecture/clients/fire-tv.md#screen-inventory"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "text",
+        "text": "Download"
+      },
+      "reason": "Vega app has no downloads route (out of v1: no offline engine, little local storage)",
+      "doc": "docs/architecture/clients/fire-tv.md#screen-inventory"
+    },
+    {
+      "screen": "*",
+      "match": {
+        "text": "Downloads"
+      },
+      "reason": "Vega app has no downloads route (out of v1: no offline engine, little local storage) (nav entry)",
+      "doc": "docs/architecture/clients/fire-tv.md#screen-inventory"
+    },
+    {
+      "screen": "profiles",
+      "match": {
+        "text": "Check for updates"
+      },
+      "reason": "Vega OS app has no in-app update API; a .vpkg only changes when a whole package is installed",
+      "doc": "docs/versioning-policy.md#fire-tv--packaged-vega-os-application"
+    }
+  ],
+  "xbox": [
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "button",
+        "textPrefix": "Download "
+      },
+      "reason": "Xbox native client: DownloadsPage says downloads are not available yet",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "text",
+        "text": "Download"
+      },
+      "reason": "Xbox native client: DownloadsPage says downloads are not available yet",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "button",
+        "text": "⇩ Download"
+      },
+      "reason": "Xbox native client: DownloadsPage says downloads are not available yet",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "text",
+        "text": "Download"
+      },
+      "reason": "Xbox native client: DownloadsPage says downloads are not available yet",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "*",
+      "match": {
+        "text": "Downloads"
+      },
+      "reason": "Xbox native client: DownloadsPage says downloads are not available yet (nav entry)",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "profiles",
+      "match": {
+        "text": "Check for updates"
+      },
+      "reason": "Xbox MSIX has no in-app patch path; updates come from the Microsoft Store or a sideload",
+      "doc": "docs/versioning-policy.md#xbox--packaged-msix-no-ota"
+    }
+  ],
+  "postmarketos": [
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "button",
+        "textPrefix": "Download "
+      },
+      "reason": "Nura has no offline downloads yet (README)",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "text",
+        "text": "Download"
+      },
+      "reason": "Nura has no offline downloads yet (README)",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "button",
+        "text": "⇩ Download"
+      },
+      "reason": "Nura has no offline downloads yet (README)",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "text",
+        "text": "Download"
+      },
+      "reason": "Nura has no offline downloads yet (README)",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "*",
+      "match": {
+        "text": "Downloads"
+      },
+      "reason": "Nura has no offline downloads yet (README) (nav entry)",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    }
+  ],
+  "harmony": [
+    {
+      "screen": "profiles",
+      "match": {
+        "text": "Check for updates"
+      },
+      "reason": "HarmonyOS HAP is immutable once installed; updates come from AppGallery or a sideload",
+      "doc": "docs/versioning-policy.md#harmonyos--appgallery-package"
+    }
+  ],
+  "harmony-phone": [
+    {
+      "screen": "profiles",
+      "match": {
+        "text": "Check for updates"
+      },
+      "reason": "HarmonyOS HAP is immutable once installed; updates come from AppGallery or a sideload",
+      "doc": "docs/versioning-policy.md#harmonyos--appgallery-package"
+    }
+  ]
+}

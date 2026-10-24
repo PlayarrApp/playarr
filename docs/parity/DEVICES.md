@@ -141,6 +141,22 @@ ships its download engine.
 Notifications (a live system notification per download) and the now-playing entry are checked only where the driver sets
 `supports.notifications` and `supports.nowPlaying`; elsewhere the suite records "not supported".
 
+## Check for updates: which clients have an in-app updater
+
+The web profile page shows a "Check for updates" button only where the shell can install a new build itself
+(`isAndroidTv` in `clients/tv-web/web/src/pages/Profiles.tsx`, bridge in `androidTvUpdate.ts`). The layout score drops it
+from the denominator (`scripts/parity/layout-exclusions.json`) for the clients below, whose packages change only through a
+store or a sideload. Native packages and their update paths are in `docs/versioning-policy.md`.
+
+| Client | In-app updater | Evidence |
+| --- | --- | --- |
+| Android TV, Android phone and tablet | Yes | Google Play In-App Updates and the sideload installer bridge |
+| iOS and iPadOS | Yes | `PlayarrKit/Update` module |
+| Roku | No | Channel Store updates only; Roku has no API to install a channel from inside a channel |
+| Fire TV (Vega OS) | No | `.vpkg` is immutable once installed (`docs/versioning-policy.md`) |
+| Xbox | No | MSIX: Microsoft Store or sideload (`docs/versioning-policy.md`) |
+| HarmonyOS TV and phone | No | HAP: AppGallery or sideload (`docs/versioning-policy.md`) |
+
 ## Legend and build.json rules
 
 - After every capture run, unmerged branches included, write captures to the legend dir, refresh `web/` in the same
