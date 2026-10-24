@@ -64,6 +64,7 @@ internal sealed class DetailScreen : IPage
         _detail = detail; _progress = progress; _file = detail.MediaFileId;
         var w = detail.Work;
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
+        Sem.Tag(_root, "container", w.Title);
         BuildHeader(w);
         BuildCopy(w, detail);
         _env.Images.Track(() => LoadChaptersThenCastAsync(detail));
@@ -77,7 +78,7 @@ internal sealed class DetailScreen : IPage
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "button", "Back", radius: 50);
+        Sem.Tag(back, "button", "Back to Movies", radius: 50);
         _content.Add(back);
         _content.Add(Ui.Text("Movies", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         new PageSubtitle(_env, _content, "Movies").Set(w.Title, wrapIfClockBlocks: true);
@@ -93,33 +94,37 @@ internal sealed class DetailScreen : IPage
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
         if (w.ReleaseDate is { Length: > 0 } rel && DateTime.TryParse(rel, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var released)) meta.Add("Released " + released.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(3));
-        _content.Add(Ui.Text(string.Join("     ", meta), 153.6f, bas + 27, 10.56f, 400, _t.InkMuted, 700, 15.84f));
+        { var mx = 153.6f; for (var mi = 0; mi < meta.Count; mi++) { var first = mi == 0; _content.Add(Ui.Text(meta[mi], mx, bas + 27, 10.56f, first ? 680 : 400, first ? _t.InkSoft : _t.InkMuted, 0, 15.84f)); mx += Ui.TextWidth(meta[mi], 10.56f, first ? 680 : 400, 0) + 13.6f; } } // web: one span per part, 13.6 px apart
         var ovLines = Ui.Paragraph(_content, w.Overview ?? "", 153.6f, bas + 64.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
 
         // the action rows follow the overview: 5 lines put them at +203.8 (web), each line fewer lifts them by one line height
         var y1 = bas + 203.8f - (5 - Math.Max(1, ovLines)) * 20.325f; var y2 = y1 + 76f;
         var resume = _progress is { State: WatchState.InProgress } p ? "Resume from " + DetailModel.Clock(p.PositionMs) : "Play";
-        AddButton("Download", "⇩", 153.6f, y1, 142, primary: false, label: "download", select: () => OpenDownload(w));
-        AddButton("Playback", "☷", 311.6f, y1, 142, primary: false, label: "playback settings", select: () => Toast("Playback settings are not available in this app yet."));
+        AddButton("Download", "⇩", 153.6f, y1, 142, primary: false, label: "download", select: () => OpenDownload(w), name: "Download " + w.Title, role: "button");
+        AddButton("Playback", "☷", 311.6f, y1, 142, primary: false, label: "playback settings", select: () => Toast("Playback settings are not available in this app yet."), name: "Playback settings for " + w.Title, role: "button");
         PlayIndex = _focus.Items.Count;
-        AddButton(resume, "▶", 469.6f, y1, Math.Max(156f, resume.Length > 4 ? 160.6f : 0), primary: true, label: $"play {w.Title}".ToLowerInvariant(), select: () => PlayFrom(_progress is { State: WatchState.InProgress } rp ? rp.PositionMs : null));
-        AddButton("Add to watchlist", "+", 153.6f, y2, 142, primary: false, label: "add to watchlist", select: () => Toast("The watchlist is not available in this app yet."));
-        AddButton("Add to Playlist", "+", 311.6f, y2, 142, primary: false, label: "add to playlist", select: () => Toast("Playlists are not available in this app yet."));
+        AddButton(resume, "▶", 469.6f, y1, Math.Max(156f, resume.Length > 4 ? 160.6f : 0), primary: true, label: $"play {w.Title}".ToLowerInvariant(), name: "Play " + w.Title, role: "link", select: () => PlayFrom(_progress is { State: WatchState.InProgress } rp ? rp.PositionMs : null));
+        AddButton("Add to watchlist", "+", 153.6f, y2, 142, primary: false, label: "add to watchlist", select: () => Toast("The watchlist is not available in this app yet."), name: "+ Add to watchlist", role: "button");
+        AddButton("Add to Playlist", "+", 311.6f, y2, 142, primary: false, label: "add to playlist", select: () => Toast("Playlists are not available in this app yet."), name: "+ Add to Playlist", role: "button");
     }
 
-    private void AddButton(string text, string glyph, float x, float y, float w, bool primary, string label, Action select)
+    private static float GlyphWidth(string g) => g switch { "⇩" => 10.7f, "☷" => 11.5f, "+" => 7.7f, _ => 8.2f }; // advances of the fallback-font glyphs as web lays them out
+
+    private void AddButton(string text, string glyph, float x, float y, float w, bool primary, string label, Action select, string? name = null, string role = "button")
     {
         var bg = primary ? _t.Ink : new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f);
         var box = Ui.Box(x, y, w, 64, bg, 32);
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
         else box.BoxShadow = new Shadow(46, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.18f), new Vector2(0, 18), new Vector2(0, 0)); // web .tv-detail-play
         var fg = primary ? _t.OnAccent : _t.Ink;
-        var gw = primary ? 8f : 11f;
-        var textW = text.Length * 6.4f;
-        var startX = (w - (gw + 9.4f + textW)) / 2;
-        var glyphLabel = Ui.Text(glyph, startX, 22.4f, 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, gw + 4, 19.2f);
-        var textLabel = Ui.Text(text, startX + gw + 9.4f, 23.7f, 11.136f, 700, fg, textW + 20, 16.7f);
+        var gw = GlyphWidth(glyph);
+        var tsize = primary ? 11.904f : 11.136f;
+        var textW = Ui.TextWidth(text, tsize, 700, 0);
+        var startX = (w - (gw + 8.8f + textW)) / 2;
+        var glyphLabel = Ui.Text(glyph, startX, 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, gw + 4, 19.2f);
+        var textLabel = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, fg, textW + 20, 16.7f);
         box.Add(glyphLabel); box.Add(textLabel);
+        if (name is not null) Sem.Tag(box, role, name, radius: 999);
         var ring = Ring.Make(w, 64, 32, new Rgba(1, 1, 1));
         ring.Show(false);
         box.Add(ring);
@@ -171,6 +176,7 @@ internal sealed class DetailScreen : IPage
         var stack = _stack = new View { PositionX = -ClipX };
         clip.Add(stack);
         _content.Add(clip);
+        stack.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", d.Work.Title + " chapters and people"));
         stack.Add(Ui.Text("Chapters", RailX, ChaptersHeadingY, 17.664f, 700, _t.Ink, 400, 26.496f, spacing: -0.53f));
         stack.Add(Ui.Text($"{chapters.Count} {(generated ? "scene markers" : "chapters")}", RailX, ChaptersHeadingY + 30.5f, 9.984f, 400, _t.InkMuted, 400, 14.976f));
         _chapterRow.PositionY = 620.7f; _chapterRow.Size = new Size(6000, 230);
@@ -191,8 +197,11 @@ internal sealed class DetailScreen : IPage
             art.Add(Ui.Text((c.Index + 1).ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
             var (ring, glow) = Widgets.RailRing(_t, 268, 150.8f, 13.44f); art.Add(ring);
             box.Add(glow); box.Add(art);
-            box.Add(Ui.Text(DetailModel.Clock(c.StartMs), 0, 165.3f, 8.832f, 700, _t.InkMuted, 40, 13.248f));
-            var tt = Ui.Text(c.Title, 25.8f, 162.3f, 11.52f, 700, _t.Ink, 242, 17.28f, spacing: -0.17f);
+            Sem.Tag(box, "link", $"Play {d.Work.Title} from {c.Title}", (0, 0, 268, 179.5f));
+            var first = c.Index == 0; // web: the first rail item reads as the selected one (full-contrast ink)
+            var maxInk = _t.Name == "dark" ? new Rgba(1, 1, 1) : new Rgba(0, 0, 0);
+            box.Add(Ui.Text(DetailModel.Clock(c.StartMs), 0, 165.3f, 8.832f, 700, first ? maxInk : _t.InkMuted, 40, 13.248f));
+            var tt = Ui.Text(c.Title, 25.8f, 162.3f, 11.52f, 610, first ? maxInk : _t.Ink, 242, 17.28f, spacing: -0.17f);
             box.Add(tt);
             _chapterRow.Add(box);
             var idx = c.Index; var startMs = c.StartMs;

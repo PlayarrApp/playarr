@@ -134,6 +134,9 @@ internal sealed class MediaCard
     /// <summary>Web Library: the focused card's link scales 1.015 and lifts 5 px (the layout export reports it; the art animates itself).</summary>
     public float LinkFocusScale { get; init; } = 1f;
     public float LinkFocusLift { get; init; }
+
+    /// <summary>Renames the link for the layout export (detail rails name cards "Open <title>" and draw no radius on the link).</summary>
+    public void TagLink(string name, float radius) => Sem.Tag(Box, "link", name, (0, 0, W, H + 29.4f), radius, boxNow: () => _focused && LinkFocusScale != 1f ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
     /// <summary>Web Library: the selected card scales 1.015 about its centre, so the caption grows with it.</summary>
     public float FocusCaptionScale { get; init; } = 1f;
     private float _titleX;

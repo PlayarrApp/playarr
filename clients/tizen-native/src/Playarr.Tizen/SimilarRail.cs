@@ -47,6 +47,7 @@ internal sealed class SimilarRail
             var idx = i; var x = i * layout.HomePitchX;
             var work = HomeModel.Card(works[i], empty, false) with { Sub = WorkLabels.KindLabel(works[i].Kind) }; // web caption is the kind only
             var card = MediaCard.Home(env, work, RailX + x, 0, layout);
+            card.TagLink("Open " + work.Title, 0);
             Row.Add(card.Box);
             focus.Items.Add(new Focusable
             {
