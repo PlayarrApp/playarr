@@ -62,7 +62,8 @@ const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
-const SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref: 600 at 13.82, in the copy colour
+const SYNOPSIS_FONT_WEIGHT: number = 400;
+const LIBRARY_SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref (library hero): 600 at 13.82, in the copy colour
 const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
 const SYNOPSIS_MAX_WIDTH: number = 324;
@@ -202,7 +203,7 @@ export struct FeatureCopy {
           )
         }
         .width('100%')
-        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META) })
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : (GAP_TITLE_META - (this.libraryCopy ? 0 : 1.42))) })
       } else if (this.metaRuns.length > 0) {
         Row({ space: tv(12.8) }) {
           ForEach(
@@ -216,7 +217,7 @@ export struct FeatureCopy {
             (run: string, index: number) => `${index}-${run}`
           )
         }
-        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META + this.metaGapAdjust) })
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : (GAP_TITLE_META - (this.libraryCopy ? 0 : 1.42)) + this.metaGapAdjust) })
       } else if (this.metaLines.length > 0) {
         Column() {
           ForEach(
@@ -231,21 +232,21 @@ export struct FeatureCopy {
           )
         }
         .alignItems(HorizontalAlign.Start)
-        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META + this.metaGapAdjust) })
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : (GAP_TITLE_META - (this.libraryCopy ? 0 : 1.42)) + this.metaGapAdjust) })
       }
 
       if (this.synopsis.length > 0) {
         // web `.tv-detail-synopsis`: --ink-muted, no weight set (body 400)
-        Text(this.synopsis).fontFamily(nunitoAt(SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
+        Text(this.synopsis).fontFamily(nunitoAt(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
-          .fontWeight(SYNOPSIS_FONT_WEIGHT)
+          .fontWeight(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
           .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))
-          .letterSpacing(tv(SYNOPSIS_LETTER_SPACING))
-          .fontColor(this.copyTextColor())
+          .letterSpacing(tv(this.libraryCopy ? SYNOPSIS_LETTER_SPACING : -0.24))
+          .fontColor(this.libraryCopy ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : 1.22)) })
+          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : 1.42)) })
       }
     }
     .width('100%')
