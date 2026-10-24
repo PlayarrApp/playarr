@@ -113,7 +113,7 @@ export async function createDriver() {
   const requireTestAccount = async () => {
     const nonce = randomUUID().replaceAll("-", "");
     run("identity", nonce);
-    const deadline = Date.now() + 5000;
+    const deadline = Date.now() + 20000;
     while (Date.now() < deadline) {
       const result = accountProbeResult(trace(), nonce);
       if (result === "match") return;
@@ -172,7 +172,7 @@ export async function createDriver() {
       await requireTestAccount();
       run("move", 1919, 600);
     },
-    async route(path) {
+    async route(path, opts = {}) {
       const [base, query] = path.split("?");
       if (base === "/profiles") { await coldStart(); return; }
       if (base === "/") return;
@@ -242,7 +242,11 @@ export async function createDriver() {
       }
       if (/^\/(movies|series)\/[^/]+\/?$/.test(base) || base.endsWith("/:id")) await click(...FIRST_CARD, 8);
       else if (base.startsWith("/player")) throw new Error("player-controls requires the guarded direct-play route");
-      else if (query?.includes("panel=filters")) {
+      else if (opts.screenId === "actions") {
+        // The web opens the second library card's actions with a long press (suite keys: right, select:long).
+        await this.key("right");
+        await this.key("select", { long: true });
+      } else if (query?.includes("panel=filters")) {
         // The web reaches the Filters button with right,right from the first card, so its details panel shows the third title.
         for (let i = 0; i < 2; i++) { await requireTestAccount(); run("key", "right"); await sleep(1200); }
         await click(1877, 187, 3);
@@ -254,6 +258,7 @@ export async function createDriver() {
       // A page opened with select loads its grid over the network: give it time before the next key.
       await sleep(name === "select" && !long ? 9000 : 1200);
     },
+    async clickAt(x, y, wait = 4) { await click(x, y, wait); },
     async location() { return location(); },
     async focused() { const t = trace(); return t.focus && t.position ? { label: t.focus, position: t.position } : (t.focus ?? null); },
     async screenshot(file) {
