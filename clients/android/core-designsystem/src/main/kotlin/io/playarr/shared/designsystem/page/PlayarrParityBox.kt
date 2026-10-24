@@ -11,7 +11,7 @@ import androidx.compose.ui.semantics.semantics
 /** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
 var parityLayoutEnabled = false
 
-class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
+class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var style: Triple<Float, Int, androidx.compose.ui.graphics.Color>?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
 
 val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
@@ -19,11 +19,11 @@ val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<
  * Records this node's window bounds for the layout export (docs/parity/LAYOUT.md): a painted container, an image, a control
  * (cards are `link` with their accessible name, as the web's `Open <title>` links). A no-op unless the debug build enabled it.
  */
-fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)? = null): Modifier =
+fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)? = null, style: Triple<Float, Int, androidx.compose.ui.graphics.Color>? = null): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
-        val box = remember { ParityBox(view, role, label, radius, opacity, background, fit) }
-        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit
+        val box = remember { ParityBox(view, role, label, radius, opacity, background, fit, style) }
+        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit; box.style = style
         DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
         onGloballyPositioned {
             // Corners through the layers, unclipped: the web exports boxes that run past the viewport edge.
@@ -40,7 +40,13 @@ private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRolePr
 val ParityRadiusKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("ParityRadius")
 private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRadiusProp by ParityRadiusKey
 
+val ParityLineBoxKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Boolean>("ParityLineBox")
+private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityLineBoxProp by ParityLineBoxKey
+
 fun Modifier.parityRole(role: String, radius: Float = 0f): Modifier = semantics { parityRoleProp = role; if (radius > 0f) parityRadiusProp = radius }
+
+/** Layout export: this text's web run box is its CSS line box (the element's own line-height), not the font's content area. */
+fun Modifier.parityLineBox(): Modifier = semantics { parityLineBoxProp = true }
 
 /**
  * `Arrangement.spacedBy` rounds every gap to whole pixels, so a CSS gap of 13.6 px drifts 0.4 px per item. This arrangement keeps the

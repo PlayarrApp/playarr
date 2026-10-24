@@ -6,7 +6,7 @@ import org.junit.Test
 class PlayarrChromeParityTest {
     @Test
     fun `profile version uses the same visible label as Playarr Web`() {
-        assertEquals("v 0.1.0", profileVersionLabel("0.1.0"))
+        assertEquals("v0.1.0", profileVersionLabel("0.1.0"))
     }
 
     @Test

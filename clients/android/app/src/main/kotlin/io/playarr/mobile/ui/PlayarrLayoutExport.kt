@@ -41,19 +41,19 @@ import java.io.File
  */
 /** screen id to (page label, panel label, panel left edge): the aria-labels of the web page's own landmarks (docs/parity/web/layout). */
 private val PAGE_LANDMARKS: Map<String, Triple<String, String?, Double>> = mapOf(
-    "home" to Triple("Home", "Home media tracks", 729.59),
-    "movies" to Triple("Movies library", "Movies titles", 729.61),
-    "filters" to Triple("Movies library", "Movies titles", 729.61),
-    "actions" to Triple("Movies library", "Movies titles", 729.61),
-    "series" to Triple("Series library", "Series titles", 729.61),
-    "music" to Triple("Music library", "Music artists", 729.61),
-    "search" to Triple("Search Playarr", "Search results", 729.61),
-    "calendar-agenda" to Triple("Calendar", "Calendar", 729.61),
-    "calendar-month" to Triple("Calendar", null, 0.0),
-    "calendar-week" to Triple("Calendar", null, 0.0),
-    "film-detail" to Triple("Silent Meridian 1", "Silent Meridian 1 chapters and people", 729.61),
-    "series-detail" to Triple("Golden Cathedral 1", "Golden Cathedral 1 seasons and episodes", 729.61),
-    "settings" to Triple("Settings sections", "Appearance", 672.0),
+    "home" to Triple("", "", 729.59),
+    "movies" to Triple("", "", 729.61),
+    "filters" to Triple("", "", 729.61),
+    "actions" to Triple("", "", 729.61),
+    "series" to Triple("", "", 729.61),
+    "music" to Triple("", "", 729.61),
+    "search" to Triple("", "", 729.61),
+    "calendar-agenda" to Triple("", "", 729.61),
+    "calendar-month" to Triple("", null, 0.0),
+    "calendar-week" to Triple("", null, 0.0),
+    "film-detail" to Triple("", "", 729.61),
+    "series-detail" to Triple("", "", 729.61),
+    "settings" to Triple("", "", 672.0),
 )
 
 /** screen id to the web's (role, accessible name) of the header Back control (the native app names it "Back" everywhere). */
@@ -145,9 +145,9 @@ internal object PlayarrLayoutExport {
                         val back = if (box.role == "link" && box.label == "Back") BACK_CONTROL[screen] ?: ("link" to "Back to Home") else null
                         val e = JSONObject().put("text", back?.second ?: box.label).put("role", back?.first ?: box.role)
                             .put("rect", JSONObject().put("x", r2(x)).put("y", r2(y)).put("w", r2(w)).put("h", r2(h)))
-                            .put("color", JSONObject.NULL)
+                            .put("color", box.style?.let { hex(it.third.toArgb(), true) } ?: JSONObject.NULL)
                             .put("background", if (box.background != androidx.compose.ui.graphics.Color.Unspecified) hex(box.background.toArgb()) else insideColour(bmp, x.toInt(), y.toInt(), w.toInt(), h.toInt()) ?: JSONObject.NULL)
-                            .put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
+                            .put("fontSize", box.style?.first?.toDouble() ?: JSONObject.NULL).put("fontWeight", box.style?.second ?: JSONObject.NULL)
                         if (box.radius > 0f) e.put("radius", box.radius.toDouble())
                         if (box.opacity < 1f) e.put("opacity", box.opacity.toDouble())
                         elements.put(e)
@@ -219,11 +219,21 @@ internal object PlayarrLayoutExport {
                 var l = Float.MAX_VALUE; var r = 0f; var top = Float.MAX_VALUE; var bottom = 0f
                 for (i in 0 until layout.lineCount) {
                     if (layout.getLineEnd(i, true) == layout.getLineStart(i)) continue
-                    l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i) - trailing)
+                    l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
                     top = minOf(top, layout.getLineBaseline(i) - ascent); bottom = maxOf(bottom, layout.getLineBaseline(i) + descent)
                 }
                 if (r > l) {
-                    val rx = x + l; val ry = y + top; val rw = r - l; val rh = bottom - top
+                    // An ancestor's graphicsLayer scale (the selected nav tile's 1.05) shows in the node's bounds but not in the text layout.
+                    val sx = if (layout.size.width > 0) (bounds.right - bounds.left) / layout.size.width else 1f
+                    val sy = if (layout.size.height > 0) (bounds.bottom - bounds.top) / layout.size.height else 1f
+                    val lineBox = config.contains(io.playarr.shared.designsystem.page.ParityLineBoxKey)
+                    val rx = x + l * sx
+                    // CSS line box: the content area centred in the declared line height (Compose cannot draw a line box below the font's own).
+                    val declared = style.lineHeight.takeIf { it.isSp }?.value?.times(density.fontScale * density.density)
+                    val half = if (lineBox && declared != null) (declared - (ascent + descent)) / 2f else 0f
+                    val ry = y + (top - half) * sy
+                    val rw = (r - l) * sx
+                    val rh = if (lineBox && declared != null) declared * sy else (bottom - top) * sy
                     out.put(
                         JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()) } }
                             .put("text", text).put("role", config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey) ?: if (heading) "heading" else "text")

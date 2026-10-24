@@ -1,6 +1,7 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityLineBox
 import io.playarr.shared.designsystem.page.playarrEdgeFades
 import io.playarr.shared.designsystem.page.PlayarrRingShape
 import io.playarr.shared.designsystem.page.playarrFocusRing
@@ -467,6 +468,7 @@ private fun Modifier.tvHeroBackdrop(): Modifier =
             .wrapContentHeight(Alignment.Top, unbounded = true)
             .height(1144.8.dp)
             .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f }
+            .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f, background = WebSurface, fit = { androidx.compose.ui.geometry.Rect(133.03f, -22.9f, 1032.99f, 1167.69f) })
             .heroBackdropFade(true)
     }
 
@@ -1844,7 +1846,7 @@ internal fun PlayarrExperience(
                 )
                 if (isTelevision) {
                     PlayarrLogo(
-                        modifier = Modifier.align(Alignment.TopStart).padding(start = 59.dp, top = 60.dp),
+                        modifier = Modifier.align(Alignment.TopStart).padding(start = 60.6.dp, top = 60.2.dp),
                     )
                     // Web `.app-clock` is right-aligned to x = 710.4 (its left edge moves with the text width).
                     Box(Modifier.align(Alignment.TopStart).padding(top = 68.2.dp).width(634.dp), contentAlignment = Alignment.TopEnd) { ExperienceClock() }
@@ -2386,7 +2388,7 @@ private fun TvNavTile(
                 label,
                 fontSize = web?.labelSize ?: 8.832.sp,
                 lineHeight = web?.labelSize ?: 8.832.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight(680),
+                fontWeight = FontWeight(680),
                 letterSpacing = 0.309.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -2415,7 +2417,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             now = playarrNow()
         }
     }
-    Row(modifier.offset(1.dp, 1.dp).parityBox("container", background = WebBackground), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.2.dp)) {
+    Row(modifier.offset(1.dp, 0.dp).parityBox("container", background = WebBackground), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.2.dp)) {
         Text(
             now.format(DateTimeFormatter.ofPattern("HH:mm")),
             color = WebInk,
@@ -2423,6 +2425,8 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             fontSize = webVw(13.12f, 0.9f, 17.6f).value.sp,
             fontWeight = FontWeight(760),
             letterSpacing = (-0.03f * webVw(13.12f, 0.9f, 17.6f).value).sp,
+            lineHeight = (1.5f * webVw(13.12f, 0.9f, 17.6f).value).sp,
+            modifier = Modifier.parityLineBox(),
         )
         Text(
             dateFormatter.format(now.toLocalDate()).uppercase(locale),
@@ -2430,6 +2434,8 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             fontSize = webVw(8.32f, 0.58f, 11.52f).value.sp,
             fontWeight = FontWeight(640),
             letterSpacing = (0.04f * webVw(8.32f, 0.58f, 11.52f).value).sp,
+            lineHeight = (1.1f * webVw(8.32f, 0.58f, 11.52f).value).sp,
+            modifier = Modifier.offset(y = (-0.4).dp).parityLineBox(),
         )
     }
 }
@@ -2517,7 +2523,7 @@ private fun ProfileControl(
     }
 }
 
-internal fun profileVersionLabel(versionName: String): String = "v $versionName"
+internal fun profileVersionLabel(versionName: String): String = "v$versionName"
 
 @Composable
 internal fun PlayarrLogo(modifier: Modifier = Modifier, iconSize: Dp = 42.dp) {
@@ -2525,7 +2531,7 @@ internal fun PlayarrLogo(modifier: Modifier = Modifier, iconSize: Dp = 42.dp) {
         painter = painterResource(R.drawable.playarr_mark),
         contentDescription = null,
         tint = Color.Unspecified,
-        modifier = modifier.size(iconSize),
+        modifier = modifier.size(iconSize).parityBox("image", background = WebBackground),
     )
 }
 
@@ -3333,7 +3339,7 @@ internal fun WebHeroTitle(title: String, modifier: Modifier = Modifier, maxLines
     }
     val widest = remember(lines, style) { lines.maxOfOrNull { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width.toFloat() + style.letterSpacing.value } ?: 0f }
     // Web run bounds: the glyph box of the first to the last line (the 62.2 px line boxes are shorter than the 94 px glyph box).
-    Column(modifier.parityBox("heading", title, background = WebSurface, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top - 15.84f, r.left + widest, r.bottom + 15.84f) }).semantics(mergeDescendants = true) { contentDescription = title }) {
+    Column(modifier.parityBox("heading", title, background = WebSurface, style = Triple(69.12f, 560, WebInk), fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top - 15.84f, r.left + widest, r.bottom + 15.84f) }).semantics(mergeDescendants = true) { contentDescription = title }) {
         lines.forEach { line ->
             Box(Modifier.height(62.208.dp)) {
                 Text(
@@ -3763,8 +3769,8 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) 3.08.dp else 3.dp).parityBox("img", "${(it.fraction * 100).toInt()}% watched", background = if (webIsDark) Color(0xFF5A5559) else Color(0xFFB6AEB1)).background(Color.White.copy(alpha = 0.28f))) {
-                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBox("container", background = WebAccent).background(WebAccent))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) 3.08.dp else 3.dp).parityBox("img", "", background = if (webIsDark) Color(0xFF5A5559) else Color(0xFFB6AEB1)).background(Color.White.copy(alpha = 0.28f))) {
+                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBox("container", background = Color(0xFFCF3157)).background(WebAccent))
                 }
             }
             if (showUnwatched && stackCount <= 1 && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
@@ -3893,7 +3899,7 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
     Box(
         modifier
             .size(size)
-            .parityBox("img", label, 50f, background = UnwatchedDotColour)
+            .parityBox("img", "", 50f, background = UnwatchedDotColour)
             // Web `.tv-watch-unseen` box-shadow: `0 2px 9px rgba(31,14,20,.45), 0 0 0 1px brand 35%` (phone only for now).
             .then(if (halo) Modifier
                 .shadow(4.dp, CircleShape, clip = false, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
@@ -7716,8 +7722,8 @@ private fun WebEpisodeDetailCard(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
             )
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBox("img", "${(it.fraction * 100).toInt()}% watched", background = if (webIsDark) Color(0xFF5A5559) else Color(0xFFB6AEB1)).background(Color.White.copy(alpha = 0.28f))) {
-                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBox("container", background = WebAccent).background(WebAccent))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBox("img", "", background = if (webIsDark) Color(0xFF5A5559) else Color(0xFFB6AEB1)).background(Color.White.copy(alpha = 0.28f))) {
+                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBox("container", background = Color(0xFFCF3157)).background(WebAccent))
                 }
             }
             if (available && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {

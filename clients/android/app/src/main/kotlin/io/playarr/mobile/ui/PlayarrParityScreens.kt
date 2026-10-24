@@ -1916,7 +1916,7 @@ private fun TelevisionProfilesStage(
     val language = LocalPlayarrLanguage.current
     Box(Modifier.fillMaxSize()) {
         // Web keeps the Playarr mark at the top left of the profile picker, where the shell draws it.
-        PlayarrLogo(Modifier.align(Alignment.TopStart).padding(start = 59.dp, top = 60.dp))
+        PlayarrLogo(Modifier.align(Alignment.TopStart).padding(start = 60.6.dp, top = 60.2.dp))
         // Web's `.profile-clients-link` renders only when the client platform is "web": the Android TV web ref has no Clients pill.
         // `.profiles-heading`
         Column(
