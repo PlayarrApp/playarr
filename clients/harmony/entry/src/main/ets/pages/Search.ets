@@ -345,6 +345,8 @@ export struct SearchScreen {
         .padding(0)
         .caretColor(toResourceColor(activeColors().ink))
         .layoutWeight(1)
+        .height(tv(60)) // web: the textbox fills the 76 px pill less its 8 px insets
+        .id('px:textbox:' + t('pages.search.searchPlaceholder', 'Search your libraries and playlists'))
         .defaultFocus(true)
         .onChange((value: string) => {
           this.onQueryChange(value);
@@ -362,6 +364,7 @@ export struct SearchScreen {
     }
     .width(tv(FORM_WIDTH))
     .height(tv(FORM_HEIGHT))
+    .id('px:search:')
     .padding({ left: tv(FORM_PADDING_LEFT), right: tv(FORM_PADDING_LEFT) })
     .borderRadius(tv(FORM_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))

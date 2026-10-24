@@ -141,6 +141,8 @@ export struct Stage {
   @Prop railFrostWidthPct: number = 62;
   @Prop metaGapAdjust: number = 0;
   @Prop synopsisGapAdjust: number = 0;
+  /** The export role of the hero title (see FeatureCopy). */
+  @Prop titleRole: string = 'heading';
   @Prop libraryCopy: boolean = false;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
@@ -340,6 +342,7 @@ export struct Stage {
         synopsis: this.synopsis,
         metaGapAdjust: this.metaGapAdjust,
         synopsisGapAdjust: this.synopsisGapAdjust,
+        titleRole: this.titleRole,
         libraryCopy: this.libraryCopy,
       })
       this.heroExtraSlot()

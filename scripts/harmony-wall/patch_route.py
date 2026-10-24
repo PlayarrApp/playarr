@@ -41,6 +41,130 @@ methods = """
       });
   }
 
+
+  // Native text metrics for the layout export: every Text node of the inspector tree gets the lines ArkUI lays out for it
+  // (found by asking the framework's own text measurer, never by assuming a font), so the exporter reports measured glyph runs.
+  private previewMeasured(tree: string): string {
+    const root: PvNode = JSON.parse(tree) as PvNode;
+    this.previewMeasureNode(root);
+    return JSON.stringify(root);
+  }
+
+  private previewMeasureNode(node: PvNode): void {
+    const a: PvAttrs | undefined = node.$attrs;
+    if (node.$type === 'Text' && a !== undefined) {
+      try {
+        node.$measured = this.previewMeasureText(node, a);
+      } catch (err) {
+        node.$measureError = JSON.stringify(err);
+      }
+    }
+    const kids: PvNode[] | undefined = node.$children;
+    if (kids !== undefined) {
+      for (const kid of kids) {
+        this.previewMeasureNode(kid);
+      }
+    }
+  }
+
+  private previewNumber(value: string | undefined, fallback: number): number {
+    if (value === undefined) {
+      return fallback;
+    }
+    const n: number = parseFloat(value);
+    return isNaN(n) ? fallback : n;
+  }
+
+  private previewOneLine(st: PvStyle, text: string, constrain: boolean): SizeOptions {
+    const mu: MeasureUtils = this.getUIContext().getMeasureUtils();
+    if (st.family.length > 0) {
+      return mu.measureTextSize({
+        textContent: text, fontSize: st.size, fontFamily: st.family, letterSpacing: st.spacing, maxLines: 1,
+        constraintWidth: constrain ? st.widthVp : undefined
+      });
+    }
+    return mu.measureTextSize({
+      textContent: text, fontSize: st.size, letterSpacing: st.spacing, maxLines: 1, constraintWidth: constrain ? st.widthVp : undefined
+    });
+  }
+
+  private previewBlock(st: PvStyle, text: string): SizeOptions {
+    const mu: MeasureUtils = this.getUIContext().getMeasureUtils();
+    if (st.family.length > 0) {
+      return mu.measureTextSize({
+        textContent: text, fontSize: st.size, fontFamily: st.family, letterSpacing: st.spacing, constraintWidth: st.widthVp,
+        lineHeight: st.lineHeight > 0 ? st.lineHeight : undefined
+      });
+    }
+    return mu.measureTextSize({
+      textContent: text, fontSize: st.size, letterSpacing: st.spacing, constraintWidth: st.widthVp, lineHeight: st.lineHeight > 0 ? st.lineHeight : undefined
+    });
+  }
+
+  private previewMeasureText(node: PvNode, a: PvAttrs): PvLine[] {
+    const ui: UIContext = this.getUIContext();
+    let content: string = a.content !== undefined ? a.content : (a.text !== undefined ? a.text : '');
+    const lines: PvLine[] = [];
+    if (content.length === 0) {
+      return lines;
+    }
+    const tc: string = a.textCase === undefined ? '' : a.textCase;
+    if (tc.indexOf('Upper') >= 0) {
+      content = content.toUpperCase();
+    } else if (tc.indexOf('Lower') >= 0) {
+      content = content.toLowerCase();
+    }
+    const rect: number[] = [];
+    for (const part of String(node.$rect).split(',')) {
+      rect.push(parseFloat(part));
+    }
+    const st: PvStyle = new PvStyle();
+    st.widthVp = ui.px2vp(rect[2]);
+    st.size = this.previewNumber(a.fontSize, 16);
+    st.spacing = this.previewNumber(a.letterSpacing, 0);
+    st.lineHeight = this.previewNumber(a.lineHeight, 0);
+    st.family = a.fontFamily === undefined ? '' : a.fontFamily;
+    const maxLines: number = this.previewNumber(a.maxLines, 0);
+    const natural: SizeOptions = this.previewOneLine(st, 'Hg', false);
+    const contentH: number = natural.height as number;
+    const lineH: number = st.lineHeight > 0 ? ui.vp2px(st.lineHeight) : contentH;
+    for (const paragraph of content.split('\\n')) {
+      if (paragraph.length === 0) {
+        continue;
+      }
+      const whole: SizeOptions = this.previewBlock(st, paragraph);
+      if (maxLines === 1 || (whole.height as number) < lineH * 1.5) {
+        const m: SizeOptions = this.previewOneLine(st, paragraph, true);
+        lines.push(this.previewLine(paragraph, m.width as number, contentH, lineH));
+        continue;
+      }
+      // wrapped: grow the line word by word, asking the measurer when the block no longer fits on one line
+      let cur: string = '';
+      for (const word of paragraph.split(' ')) {
+        const trial: string = cur.length === 0 ? word : cur + ' ' + word;
+        if (cur.length > 0 && (this.previewBlock(st, trial).height as number) > lineH * 1.5) {
+          lines.push(this.previewLine(cur, this.previewOneLine(st, cur, false).width as number, contentH, lineH));
+          cur = word;
+        } else {
+          cur = trial;
+        }
+      }
+      if (cur.length > 0) {
+        lines.push(this.previewLine(cur, this.previewOneLine(st, cur, false).width as number, contentH, lineH));
+      }
+    }
+    return lines;
+  }
+
+  private previewLine(text: string, w: number, h: number, lineH: number): PvLine {
+    const line: PvLine = new PvLine();
+    line.text = text;
+    line.w = w;
+    line.h = h;
+    line.lineH = lineH;
+    return line;
+  }
+
   private previewGo(name: string): void {
     if (name.indexOf('library:') === 0) {
       const params: PreviewRouteParams = new PreviewRouteParams(name.substring(8));
@@ -60,7 +184,7 @@ methods = """
         const tree: string = this.getUIContext().getFilteredInspectorTree(['$rect', 'content', 'text', 'fontSize', 'fontColor', 'fontFamily', 'fontWeight',
           'backgroundColor', 'borderRadius', 'opacity', 'letterSpacing', 'textAlign', 'maxLines', 'lineHeight', 'id', 'visibility', 'textCase']);
         this.previewReq.request('http://127.0.0.1:%s/layout-put?id=' + encodeURIComponent(name.substring(11)),
-          { method: http.RequestMethod.POST, extraData: tree, connectTimeout: 5000, readTimeout: 5000 }).catch((): void => {});
+          { method: http.RequestMethod.POST, extraData: this.previewMeasured(tree), connectTimeout: 5000, readTimeout: 5000 }).catch((): void => {});
       } catch (err) {
         previewReport('dbg=' + encodeURIComponent('dumplayout-failed:' + JSON.stringify(err)));
       }
@@ -99,9 +223,9 @@ methods = """
     }
   }
 """ % (port, port)
-s = s.replace("\n@Entry", "\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
+s = s.replace("\n@Entry", "\nclass PvLine {\n  text: string = '';\n  w: number = 0;\n  h: number = 0;\n  lineH: number = 0;\n}\n\nclass PvStyle {\n  widthVp: number = 0;\n  size: number = 16;\n  spacing: number = 0;\n  lineHeight: number = 0;\n  family: string = '';\n}\n\ninterface PvAttrs {\n  content?: string;\n  text?: string;\n  fontSize?: string;\n  fontFamily?: string;\n  letterSpacing?: string;\n  lineHeight?: string;\n  maxLines?: string;\n  textCase?: string;\n}\n\ninterface PvNode {\n  $type: string;\n  $rect: string;\n  $attrs?: PvAttrs;\n  $children?: PvNode[];\n  $measured?: PvLine[];\n  $measureError?: string;\n}\n\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
-s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
+s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { MeasureUtils } from '@kit.ArkUI';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
 s = s.replace("  aboutToAppear(): void {\n", "  aboutToAppear(): void {\n    this.startPreviewRoutePoll();\n", 1)
 assert 'this.startPreviewRoutePoll();' in s and 'previewPollOnce' in s
 open(p, 'w').write(s)

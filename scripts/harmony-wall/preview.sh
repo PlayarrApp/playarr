@@ -33,6 +33,7 @@ build() {
   python3 "$HERE/patch_pairing.py" entry/src/main/ets/pages/Pairing.ets
   python3 "$HERE/patch_route.py" entry/src/main/ets/pages/Index.ets "$CTL"
   python3 "$HERE/patch_state.py" entry/src/main/ets
+  python3 "$HERE/patch_player_hold.py" entry/src/main/ets/pages/Player.ets # the player is held paused at 2.000 s on both devices
   if [ "$DEVICE" = tv ]; then # web's ref shows the paused static clip frame behind the controls; the Previewer's video is a black mock
     cp "$HERE/../parity/fixtures/static-clip-2s.png" entry/src/main/resources/rawfile/parity-player-still.png
     python3 "$HERE/patch_player_still.py" entry/src/main/ets/pages/Player.ets
@@ -63,7 +64,7 @@ run() {
   local bin="$SDK_MAC_DIR/previewer/common/bin" I="$WORK/app/entry/.preview/default/intermediates"
   cp "$HERE/harmony_vnc.py" "$HERE/../sim-vnc/sim_vnc.py" "$WORK/"
   PLAYARR_VNC_PASSWORD=selftest1 python3 "$WORK/harmony_vnc.py" --bind 127.0.0.1 --port "$((5900 + CTL % 100))" --ws "$WS" --ctl "$CTL" \
-    --debug-port "$DBG" --cmd-name "playarr_cmd_$DEVICE" --password-env PLAYARR_VNC_PASSWORD > "$WORK/bridge-$DEVICE.log" 2>&1 &
+    --debug-port "$DBG" --cmd-name "playarr_cmd_$DEVICE" --password-env PLAYARR_VNC_PASSWORD --no-vnc > "$WORK/bridge-$DEVICE.log" 2>&1 &
   cd "$bin"
   ./Previewer -refresh full -sm dynamic -projectID playarrharmony -ts playarr_trace -j "$I/loader_out/default/ets" \
     -s "playarr_cmd_$DEVICE" -cpm false -shape rect "${DEV_ARGS[@]}" -n entry -av ACE_2_0 \
