@@ -93,7 +93,7 @@ internal sealed class MediaCard
         {
             var dot = Ui.Box(W - 23.6f, 11.1f, 13, 13, t.Brand, 6.5f);
             dot.BorderlineWidth = 2; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
-            Sem.Tag(dot, "img", "Unwatched", radius: 6.5f);
+            Sem.Tag(dot, "img", "Unwatched", radius: 50);
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         var drop = card.StackOptions > 1 ? StackDrop : 0;
@@ -542,12 +542,17 @@ internal sealed class KeyArt
                 if (_path != wanted) return; // focus moved on
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
-                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
-                img.Opacity = dark ? 0.07f : 0.035f; // retain the current low-opacity TV treatment
+                // web .tv-key-art img: 900 px wide from the nav clearance, 106 % tall, grayscale + contrast + brightness, opacity .72 dark / .24 light
+                var img = Ui.FilteredImage(file, 133, -22.9f, 900, 1190.6f, dark ? 0.82f : 0.88f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
+                img.Opacity = dark ? 0.72f : 0.24f;
                 Root.Add(img);
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, s), (0.22f, clear), (1, clear)));
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, false, (0, s), (0.18f, clear), (0.82f, clear), (1, s)));
+                // web .tv-key-art::after (from the nav clearance), then .tv-stage-wash over it
+                Root.Add(Ui.Gradient(133, 0, 1787, 1080, true, (0, s), (0.22f, clear), (1, clear)));
+                Root.Add(Ui.Gradient(133, 0, 1787, 1080, false, (0, s), (0.22f, clear), (0.82f, clear), (1, s)));
+                Rgba A(float a) => new(s.R, s.G, s.B, a);
+                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, A(0.94f)), (0.36f, A(0.90f)), (0.52f, A(0)), (1, A(0))));
+                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, A(0)), (0.66f, A(0)), (1, A(0.5f))));
             });
         });
     }
@@ -619,7 +624,7 @@ internal sealed class DetailsPanel
         var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f) + (_library ? 4f : 0); // library panels: measured 4 px lower on web
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
-        if (meta.Length > 0) Root.Add(Ui.Text(meta, 153.6f, metaY, metaSize, 600, Soft(t), 455, _library ? 19.584f : 18, spacing: 0));
+        if (meta.Length > 0) Ui.MetaRow(Root, meta, 153.6f, metaY, metaSize, 600, Soft(t), _library ? 19.584f : 18);
         var noMetaGap = Math.Clamp(TizenClient.DesignHeight * 0.02f, 16f, 28f); // web .tv-home-feature overview margin: clamp(16px, 2vh, 28px)
         var oy = meta.Length == 0 && _useWebNoMetaOverviewGap
             ? ty + tlh * lines + noMetaGap

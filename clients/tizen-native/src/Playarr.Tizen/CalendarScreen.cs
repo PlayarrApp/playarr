@@ -52,7 +52,8 @@ internal sealed class CalendarScreen : IPage
         _anchor = view == CalendarView.Month ? new DateTime(_today.Year, _today.Month, 1) : view == CalendarView.Week ? CalendarRules.StartOfWeek(_today) : _today;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); } // web: the focused entry's backdrop under the agenda panel's frost
+        Sem.Tag(_root, "container", "Calendar");
+        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container", "Calendar")); } // web: the focused entry's backdrop under the agenda panel's frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
@@ -380,7 +381,7 @@ internal sealed class CalendarScreen : IPage
         var day = CalendarRules.ReleaseInstant(e) is { } when // web: Intl dateStyle full + timeStyle short, or the day heading then All day
             ? when.ToLocalTime().ToString("dddd, d MMMM yyyy", gb) + " at " + when.ToLocalTime().ToString("HH:mm")
             : CalendarRules.LocalDay(e).ToString("dddd d MMMM", gb) + " \u00b7 All day";
-        _panel.Add(Ui.Text(string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, _t.InkSoft, 700, 19.584f));
+        Ui.MetaRow(_panel, string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, _t.InkSoft, 19.584f);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);

@@ -95,7 +95,8 @@ internal sealed class SearchScreen : IPage
         _mediaType = requestedOption.Value is not null ? requestedType : "all";
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        _root.Add(Ui.PanelWash(_t, 1248)); // web .tv-search: the right 65 % carries the library panel frost
+        Sem.Tag(_root, "container", "Search Playarr");
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container", "Search results")); // web .tv-search: the right 65 % carries the library panel frost
         _keyArt = new KeyArt(env);
         _panel = new DetailsPanel(env, library: true, flow: true);
         _root.Add(_keyArt.Root);

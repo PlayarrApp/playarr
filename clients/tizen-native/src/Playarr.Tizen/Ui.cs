@@ -14,8 +14,9 @@ internal static class Ui
     {
         if (_measure is null) { _measure = new TextLabel { MultiLine = false, WidthResizePolicy = ResizePolicyType.UseNaturalSize, HeightResizePolicy = ResizePolicyType.UseNaturalSize }; _measure.Opacity = 0; Window.Default.Add(_measure); }
         (family, weight) = Face(family, weight, size);
-        _measure.PixelSize = size * TextScale; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = spacing * TextScale; _measure.Text = text;
-        return _measure.NaturalSize.Width / TextScale;
+        var k = Math.Min(MeasureScale, Math.Max(1f, 200f / size)); // very large glyph sizes overflow the label texture
+        _measure.PixelSize = size * k; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = spacing * k; _measure.Text = text;
+        return _measure.NaturalSize.Width / k;
     }
 
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, TextMetaInfo> TextMeta = new();
@@ -23,6 +24,16 @@ internal static class Ui
     /// <summary>Greedy word wrap like the browser's, using measured widths; see <see cref="TextWrap"/>.</summary>
     public static List<string> WrapLines(string text, float size, int weight, float spacing, float width, int maxLines = int.MaxValue, string family = Font, bool balance = false) =>
         TextWrap.WrapLines(text, s => TextWidth(s, size, weight, spacing, family), width, maxLines, balance);
+
+    /// <summary>Web .tv-preview-meta: one span per part, 12.8 px apart (a run of spaces would drift from the span edges). Parts are joined by three or more spaces.</summary>
+    public static void MetaRow(View parent, string joined, float x, float y, float size, int weight, Rgba color, float lh, float gap = 12.8f)
+    {
+        foreach (var part in System.Text.RegularExpressions.Regex.Split(joined, " {3,}").Where(p => p.Length > 0))
+        {
+            parent.Add(Text(part, x, y, size, weight, color, 0, lh));
+            x += TextWidth(part, size, weight, 0) + gap;
+        }
+    }
 
     /// <summary>A wrapped paragraph as one single-line label per line (CSS line height <paramref name="lh"/>); returns the number of lines.</summary>
     public static int Paragraph(View parent, string text, float x, float y, float size, int weight, Rgba color, float width, float lh, float spacing = 0, int maxLines = int.MaxValue, bool balance = false, string role = "text")
@@ -66,6 +77,8 @@ internal static class Ui
     /// this multiple of the CSS size and drawn scaled back down, so advances land on 1/TextScale px like the browser's.
     /// </summary>
     internal const float TextScale = 4f;
+    /// <summary>Measuring (never drawing) at 16x: advances land on 1/16 px, as the browser's subpixel layout.</summary>
+    private const float MeasureScale = 16f;
 
     private static readonly Dictionary<int, int[]> WebBySize = WebWeights.BySize.ToDictionary(kv => (int)Math.Round(kv.Key * 1000), kv => kv.Value);
 
@@ -122,7 +135,7 @@ internal static class Ui
         if (spacing != 0) t.CharacterSpacing = spacing * TextScale;
         if (multiline && maxLines > 0) t.Ellipsis = false;
         if (multiline) { t.RelativeLineHeight = line / (size * 1.364f); t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w * TextScale, size * 1.6f * Math.Max(2, maxLines) * TextScale); }
-        else if (w > 0) { t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w * TextScale, boxH * TextScale); }
+        else if (w > 0) { t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size((w + (align == HorizontalAlignment.Begin ? 3 : 0)) * TextScale, boxH * TextScale); } // slack: the drawn advances can exceed the measured ones by a fraction of a pixel, which would ellipsise a line that fits
         else { t.WidthResizePolicy = ResizePolicyType.UseNaturalSize; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(0, boxH * TextScale); }
         t.PivotPoint = global::Tizen.NUI.PivotPoint.TopLeft; t.PositionUsesPivotPoint = true; t.ParentOrigin = global::Tizen.NUI.ParentOrigin.TopLeft;
         t.Scale = new Vector3(1 / TextScale, 1 / TextScale, 1);

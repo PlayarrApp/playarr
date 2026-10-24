@@ -58,11 +58,12 @@ internal sealed class LibraryScreen : IPage
         _env = env; _t = env.Theme; _kind = kind; _layout = CardLayout.Library(env.Store.LibraryView(kind.ToString().ToLowerInvariant()) == "cover", env.Store.Appearance().ArtworkSize); _title = title; _baseRoute = route; _progress = _noProgress;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        Sem.Tag(_root, "container", title + " library");
         _keyArt = new KeyArt(env, armed: true);
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
-        _root.Add(Ui.PanelWash(_t, 1248)); // web .tv-library-grid-panel: the right 65 %
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container", kind == WorkKind.Artist ? "Music artists" : title + " titles")); // web .tv-library-grid-panel: the right 65 %
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _grid.PositionX = -ClipX;
         clip.Add(_grid);

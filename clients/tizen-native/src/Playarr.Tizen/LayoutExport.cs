@@ -96,10 +96,11 @@ internal static class LayoutExport
             if (Sem.Table.TryGetValue(child, out var sem) && child is not TextLabel)
             {
                 var (bx, by, bw, bh) = sem.Box is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
-                outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(bg.R, bg.G, bg.B, 1), null, null, sem.Radius ?? child.CornerRadius.X * csx, cop));
+                var own = child.BackgroundColor; (float R, float G, float B) tbg = own.A > 0.02f ? (bg.R * (1 - own.A) + own.R * own.A, bg.G * (1 - own.A) + own.G * own.A, bg.B * (1 - own.A) + own.B * own.A) : bg;
+                outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(tbg.R, tbg.G, tbg.B, 1), null, null, sem.Radius ?? child.CornerRadius.X * csx, cop));
             }
             if (child is ImageView img && w > 1 && h > 1)
-                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, child.CornerRadius.X * csx, cop));
+                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, 0, cop));
             var bc = child.BackgroundColor;
             if (child is not ImageView && bc.A > 0.02f && w > 1 && h > 1)
             {
