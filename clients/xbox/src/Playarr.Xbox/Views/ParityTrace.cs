@@ -166,7 +166,7 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>Desktop-window tests: a <c>parity.resize</c> file holding "1280x720" resizes the window.</summary>
-        /// <summary>A <c>parity.layout</c> file holding <c>theme|screen|nonce</c> makes the app write <c>layout.json</c> (the layout-score export, see LayoutExport) with that nonce in <c>layoutNonce</c>.</summary>
+        /// <summary>A <c>parity.layout</c> file holding <c>theme,screen,nonce</c> makes the app write <c>layout.json</c> (the layout-score export, see LayoutExport) with that nonce in <c>layoutNonce</c>.</summary>
         private static void LayoutRequested(string folder)
         {
             var file = System.IO.Path.Combine(folder, "parity.layout");
@@ -174,7 +174,7 @@ namespace Playarr.Xbox.Views
             {
                 if (System.IO.File.Exists(file))
                 {
-                    var parts = System.IO.File.ReadAllText(file).Trim().Split('|');
+                    var parts = System.IO.File.ReadAllText(file).Trim().Split(',');
                     System.IO.File.Delete(file);
                     if (parts.Length == 3)
                     {

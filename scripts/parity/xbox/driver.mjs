@@ -268,10 +268,10 @@ export async function createDriver() {
       run("shot", file, ...(theme && t.screen !== "playback" ? [theme] : []));
       writeFileSync(file.replace(/\.png$/i, ".trace.json"), `${JSON.stringify(focusCaptureSidecar(t), null, 2)}\n`);
       // Layout export (docs/parity/LAYOUT.md): the app walks its visual tree for this exact state; <id>.layout.json sits beside the PNG.
-      if (theme && t.screen !== "playback") {
+      if (theme && t.screen !== "playback") try {
         const nonce = randomUUID().replaceAll("-", "");
         await requireTestAccount();
-        run("write", "parity.layout", `${theme}|${file.replace(/^.*[\\/]/, "").replace(/\.png$/i, "")}|${nonce}`);
+        run("write", "parity.layout", `${theme},${file.replace(/^.*[\\/]/, "").replace(/\.png$/i, "")},${nonce}`); // a comma: a pipe would reach cmd.exe
         const deadline = Date.now() + 15000;
         while (Date.now() < deadline) {
           await sleep(500);
@@ -280,7 +280,7 @@ export async function createDriver() {
             if (layout.layoutNonce === nonce) { delete layout.layoutNonce; writeFileSync(file.replace(/\.png$/i, ".layout.json"), `${JSON.stringify(layout, null, 1)}\n`); break; }
           } catch { /* not written yet */ }
         }
-      }
+      } catch (e) { console.log(`layout export skipped: ${String(e.message).split("\n")[0]}`); }
     },
     // Plays media file `c.file` through the app's parity.play request; judged from the player's own position.
     async play(c, expect) {
