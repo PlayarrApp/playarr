@@ -22,6 +22,11 @@ final class TVParityLayoutRegistry {
         var tracking: CGFloat = 0
         var background: String?
         var radius: CGFloat = 0
+        /// The CSS line box of a single-line element, when the web box is not the font's content area (the view's own line frame).
+        var lineHeight: CGFloat?
+        /// A wrapped heading: its lines and the line pitch (the web element spans first ascent to last descent).
+        var lines: [String]?
+        var pitch: CGFloat = 0
     }
 
     private var items: [UUID: Item] = [:]
@@ -121,28 +126,12 @@ final class TVParityLayoutRegistry {
     }
     #endif
 
-    /// Web text boxes are the glyph run: the text width by the font's content-area height (Chromium: rounded ascent plus
-    /// rounded descent of Nunito Sans), centred in the frame the view was given.
-    private func glyphRun(_ item: Item) -> Item {
-        guard let text = item.text, let size = item.size, let weight = item.weight,
-              let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) else { return item }
-        var out = item
-        let width = (text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width
-        let height = (1.011 * size).rounded() + (0.353 * size).rounded()
-        if width > item.rect.width + 0.5 { return item } // wrapped: the view's own box is the text block
-        out.rect = CGRect(x: item.rect.minX, y: item.rect.midY - height / 2, width: min(width, item.rect.width), height: height)
-        return out
-    }
-
+    /// The raw tree, before any mapping to the web's boxes: every reported item with its measured text width, plus the
+    /// accessibility entries. `scripts/parity/apple/layout-map.mjs` maps it (so the mapping iterates without a hosted run).
     private func snapshot() -> Data? {
         let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        let styled = order.compactMap { items[$0] }
-        let plain = accessibilityElements().filter { entry in
-            !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
-        }
-        let elements: [[String: Any]] = (styled.map(glyphRun) + plain).compactMap { item in
-            guard item.rect.width > 0, item.rect.height > 0, item.rect.intersects(screen) else { return nil } // off-viewport lazy items are dropped
-            var element: [String: Any] = [
+        func measure(_ item: Item) -> [String: Any] {
+            var raw: [String: Any] = [
                 "text": item.text ?? "",
                 "role": item.role,
                 "rect": ["x": Double(item.rect.minX), "y": Double(item.rect.minY), "w": Double(item.rect.width), "h": Double(item.rect.height)],
@@ -150,14 +139,29 @@ final class TVParityLayoutRegistry {
                 "background": item.background as Any? ?? NSNull(),
                 "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
+                "tracking": Double(item.tracking),
+                "radius": Double(item.radius),
+                "pitch": Double(item.pitch),
             ]
-            if item.radius > 0 { element["radius"] = Double(item.radius) }
-            return element
+            if let lh = item.lineHeight { raw["lineHeight"] = Double(lh) }
+            if let size = item.size, let weight = item.weight,
+               let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) {
+                func width(_ text: String) -> Double { Double((text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width) }
+                if let lines = item.lines { raw["lines"] = lines; raw["width"] = lines.map(width).max() ?? 0 }
+                else if let text = item.text { raw["width"] = width(text) }
+            }
+            return raw
+        }
+        let styled = order.compactMap { items[$0] }.filter { $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }
+        var raws = styled.map(measure)
+        for var entry in accessibilityElements() where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
+            entry.background = nil
+            var raw = measure(entry); raw["source"] = "ax"; raws.append(raw)
         }
         let document: [String: Any] = [
             "viewport": ["w": 1920.0, "h": 1080.0, "dpr": 1.0],
             "clockPinned": TVParityLaunch.pinnedClock,
-            "elements": elements,
+            "raw": raws,
         ]
         return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
     }
@@ -175,6 +179,10 @@ private struct TVParityLayoutModifier: ViewModifier {
     let weight: Int?
     let color: Color?
     let tracking: CGFloat
+    var lineHeight: CGFloat? = nil
+    var lines: [String]? = nil
+    var pitch: CGFloat = 0
+    var onPage = false
     @Environment(\.self) private var environment
     @State private var id = UUID()
 
@@ -200,7 +208,8 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     private func report(_ frame: CGRect) {
         TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: frame, tracking: tracking,
-                                                 background: hex(frame.minY < 130 ? DesignTokens.Stage.bg : DesignTokens.Stage.surface))) // web: header on the page, content on the surface
+                                                 background: hex(onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface),
+                                                 lineHeight: lineHeight, lines: lines, pitch: pitch)) // web: header on the page, content on the surface
     }
 }
 
@@ -253,9 +262,9 @@ extension View {
 
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0) -> some View {
+    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, lineHeight: CGFloat? = nil, lines: [String]? = nil, pitch: CGFloat = 0, onPage: Bool = false) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking))
+        modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, lineHeight: lineHeight, lines: lines, pitch: pitch, onPage: onPage))
         #else
         self
         #endif

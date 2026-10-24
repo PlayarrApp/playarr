@@ -31,6 +31,8 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   wrappers, nav groups, unstyled link boxes); `display: none`, `visibility: hidden`, effective opacity 0; boxes clipped away by an
   `overflow` ancestor or entirely outside the viewport; descendants of `[inert]`; descendants of `[aria-hidden="true"]` when that
   host contains something focusable (a hidden page region; decorative aria-hidden glyphs such as a "+" icon stay, they are visible);
+  screen-reader-only elements (the element or an ancestor is 1x1 or smaller with `overflow`, `clip` or `clip-path` set, or has
+  `clip: rect(0,0,0,0)` / `clip-path: inset(50%)`; no client can draw them, e.g. the calendar range `status`);
   and elements fully covered by an overlay. Occlusion is sampled deterministically: `elementFromPoint` at a 3x3 grid (20%, 50%, 80%)
   of the element's rect clipped to the viewport; the element is occluded when every sample lands on an element outside its own
   subtree that paints (an image/video/canvas/svg, or a background of alpha 0.5 or more, a background image, or a backdrop filter,

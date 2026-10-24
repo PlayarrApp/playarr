@@ -70,6 +70,40 @@ export struct ChoiceSegments {
     return (total - CHOICE_GAP * (count - 1)) / count;
   }
 
+  /** One outlined shape of a phone View button (web draws them as 1 px bordered boxes). */
+  @Builder
+  private viewShape(w: number, h: number): void {
+    Column()
+      .width(w)
+      .height(h)
+      .borderRadius(1)
+      .backgroundColor('#05000000') // near-transparent: it is an outline in web, yet a visible box for the layout export
+      .border({ width: 1, color: toResourceColor(activeColors().inkMuted) })
+  }
+
+  @Builder
+  private viewShapes(value: string): void {
+    if (value === 'list') {
+      Column({ space: 2 }) {
+        this.viewShape(20, 2)
+        this.viewShape(20, 2)
+        this.viewShape(20, 2)
+      }
+    } else if (value === 'screen') {
+      Row({ space: 2.06 }) {
+        this.viewShape(5.46, 3.86)
+        this.viewShape(5.46, 3.86)
+        this.viewShape(5.48, 3.86)
+      }
+    } else {
+      Row({ space: 2 }) {
+        this.viewShape(4, 13)
+        this.viewShape(4, 13)
+        this.viewShape(4, 13)
+      }
+    }
+  }
+
   build() {
     Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP) }) {
       if (this.large) {
@@ -78,7 +112,8 @@ export struct ChoiceSegments {
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
-          .margin({ bottom: this.description === '' ? tv(5) : 0 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
+          .id('px:heading:' + this.heading)
+          .margin({ top: -2.5, bottom: (this.description === '' ? tv(5) : 0) + 2.5 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE))
@@ -96,8 +131,31 @@ export struct ChoiceSegments {
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
-          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? choice.label : capitalWords(choice.label))).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CHOICE_LABEL_SIZE)) : nunito(680))
-            .id(isTvMetrics() || (choice.icon !== undefined && choice.icon.length > 0) ? '' : 'px:button:' + choice.label)
+         if (!isTvMetrics() && choice.icon !== undefined && choice.icon.length > 0) {
+          // phone View buttons: web draws three outlined bars (list, screen, cover) over a lower-case 900-weight word
+          Column({ space: 6.85 }) {
+            this.viewShapes(choice.value)
+            Text(choice.label.toLowerCase()).fontFamily(nunito(900))
+              .fontSize(TOUCH_CHOICE_LABEL_SIZE)
+              .fontWeight(FontWeight.Bolder)
+              .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
+          }
+          .id('px:button:' + choice.label)
+          .width(tv(this.choiceWidth()))
+          .height(TOUCH_CHOICE_HEIGHT)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
+            toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
+          .borderRadius(CHOICE_RADIUS)
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
+          .scale(choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
+          .focusable(true)
+          .onClick(() => {
+            this.onChoose(choice.value);
+          })
+         } else {
+          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? (this.large ? choice.label.toLowerCase() : choice.label) : capitalWords(choice.label))).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CHOICE_LABEL_SIZE)) : nunito(680))
+            .id((isTvMetrics() && !this.large) || (choice.icon !== undefined && choice.icon.length > 0) ? '' : 'px:button:' + choice.label)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)
@@ -113,6 +171,7 @@ export struct ChoiceSegments {
             .onClick(() => {
               this.onChoose(choice.value);
             })
+         }
         }, (choice: Choice): string => choice.value)
       }
     }

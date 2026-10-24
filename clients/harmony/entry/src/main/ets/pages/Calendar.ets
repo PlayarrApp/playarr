@@ -419,7 +419,7 @@ export struct ReleaseCalendar {
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
       .padding({ left: tv(PILL_PADDING_H), right: tv(PILL_PADDING_H) })
       .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
-      .backgroundColor(toResourceColorWithAlpha(toneColor(tone), 0.14))
+      .backgroundColor(toResourceColorWithAlpha(toneColor(tone), isTvMetrics() ? 0.14 : 0.112))
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
   }
 
@@ -893,7 +893,8 @@ export struct ReleaseCalendar {
       .textAlign(TextAlign.Center)
       .height(tv(HEADER_CONTROL_SIZE))
       .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
-      .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(8) : 0 }) // the arrow glyph sat 4 px above the web's
+      .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(0.2) : 0 })
+      .id('px:button:' + (label === '←' ? 'Previous' : (label === '→' ? 'Next' : label)))
       .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
       .backgroundColor(toResourceColor(activeColors().bg))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -975,6 +976,7 @@ export struct ReleaseCalendar {
   private pageControls(): void {
     Row({ space: tv(HEADER_CONTROL_GAP) }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(700, tv(HEADER_CONTROL_FONT)))
+        .id('px:button:' + rangeLabel(this.view, this.anchor))
         .fontSize(tv(HEADER_CONTROL_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1047,8 +1049,8 @@ export struct ReleaseCalendar {
     .width('100%')
     .backgroundColor(toResourceColor(activeColors().bg)) // the page colour behind the controls (the root fill is darker)
     .justifyContent(FlexAlign.End)
-    .padding({ top: this.view === 'agenda' ? 0 : 14, bottom: this.view === 'month' ? 12 : (this.view === 'week' ? 0 : 19), right: PHONE_CONTROL_RIGHT })
-    .margin({ top: this.view === 'agenda' ? -4 : 0, bottom: this.view === 'week' ? -1.5 : 0 })
+    .padding({ top: this.view === 'agenda' ? 0 : 14, bottom: this.view === 'month' ? 12 : (this.view === 'week' ? 8.2 : 19), right: PHONE_CONTROL_RIGHT })
+    .margin({ top: this.view === 'agenda' ? -4 : 0 })
   }
 
   @Builder
@@ -1167,7 +1169,7 @@ export struct ReleaseCalendar {
       maxHeight: fixedHeight === PHONE_ENTRY_HEIGHT ? fixedHeight : PHONE_CARD_NO_MAX, // web: a movie's pill wraps under the meta line and the card grows with it
     })
     // agenda: web's text starts 1 vp higher (static-ref dump)
-    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 7 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
+    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 8 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
     .id('pcal')
@@ -1195,7 +1197,7 @@ export struct ReleaseCalendar {
     Scroll(this.weekScroller) {
       Row({ space: PHONE_WEEK_GAP }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
-          Column({ space: tv(WEEK_HEADING_GAP) }) {
+          Column({ space: tv(WEEK_HEADING_GAP) - 1.8 }) {
             Text(dayHeading(cell.day)).fontFamily(nunitoAt(640, PHONE_DAY_HEADING_SIZE))
               .fontSize(PHONE_DAY_HEADING_SIZE) // web phone: 14.4
               .fontWeight(FontWeight.Medium)

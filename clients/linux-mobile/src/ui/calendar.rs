@@ -719,19 +719,22 @@ impl Cal {
                         .valign(gtk4::Align::Center)
                         .build();
                     crate::layout::tag(&dot, "container", "", 50.0);
+                    // The web's 7-column grid pitch is 102.86 px; GTK rounds it to 103, so the dot sits 1 px left of its slot (the label is pulled back to keep its place).
+                    dot.set_margin_start(-1);
+                    dot.set_margin_end(1);
                     row.append(&dot);
                     let text = if *n > 1 {
                         format!("{} · {n}×", e.title)
                     } else {
                         e.title.clone()
                     };
-                    row.append(
-                        &gtk4::Label::builder()
-                            .label(text)
-                            .ellipsize(gtk4::pango::EllipsizeMode::End)
-                            .xalign(0.0)
-                            .build(),
-                    );
+                    let name = gtk4::Label::builder()
+                        .label(text)
+                        .ellipsize(gtk4::pango::EllipsizeMode::End)
+                        .xalign(0.0)
+                        .build();
+                    name.set_margin_start(-1);
+                    row.append(&name);
                     cell.append(&row);
                 }
                 let foot = gtk4::Box::builder()

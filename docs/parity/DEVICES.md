@@ -42,6 +42,10 @@ the static parity server once, then run everything (15 screens in both themes pl
 Publish with `scripts/parity/android-tv/publish.sh <out dir> <branch> <pr>`; it deletes the previous candidate captures, keeps
 every JSON result and writes `build.json`. Player D-pad checks need the web ref's exact Play/Pause state and a playback window,
 so they stay out of this run. Fire OS runs the same app and APK.
+### Pausing the player at exactly 2.000 s (every device that captures player-controls)
+
+Playing to about 2 s and pressing pause lands anywhere in a window, so the progress fill, the time label and the video frame differ between runs. The deterministic method: load the clip, seek to exactly 2000 ms, hold it paused (no play-then-pause), read the reported position back, and capture only once the device reports `paused` and a position of exactly 2000 ms. Tizen native does it in the app (`/player/<id>?t=2000&hold=2000`) and the driver refuses the capture when the position is not exactly 2.000 s.
+
 ### Tizen native: the one-command run
 
 `scripts/parity/tizen-native/run.sh <out dir>` runs the 15 screens in both themes and the 12 D-pad checks against the static

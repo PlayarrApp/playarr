@@ -96,6 +96,17 @@ export function layoutPageFn(volatile) {
     var aria = el.closest('[aria-hidden="true"]');
     return !!aria && !!aria.querySelector("a,button,input,select,textarea,[tabindex]");
   };
+  var srOnly = function (el) {
+    for (var n = el; n && n !== document.body; n = n.parentElement) {
+      var s = getComputedStyle(n);
+      var b = n.getBoundingClientRect();
+      var tiny = b.width <= 1 && b.height <= 1;
+      var cut = s.overflowX !== "visible" || s.overflowY !== "visible" || (s.clip && s.clip !== "auto") || (s.clipPath && s.clipPath !== "none");
+      if (tiny && cut) return true;
+      if (/^rect\((0(px)?[, ]*){4}\)$/.test(s.clip || "") || /^inset\((50|100)%\)$/.test(s.clipPath || "")) return true;
+    }
+    return false;
+  };
   var covers = function (hit, el) {
     var tag = hit.tagName.toLowerCase();
     if (tag === "img" || tag === "video" || tag === "canvas" || tag === "svg") return true;
@@ -126,6 +137,7 @@ export function layoutPageFn(volatile) {
     var cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden") continue;
     if (hiddenHost(el)) continue;
+    if (srOnly(el)) continue;
     var texts = [];
     for (var k = 0; k < el.childNodes.length; k++) if (el.childNodes[k].nodeType === 3 && norm(el.childNodes[k].textContent)) texts.push(el.childNodes[k]);
     var own = shown(norm(texts.map(function (n) { return n.textContent; }).join(" ")), cs);

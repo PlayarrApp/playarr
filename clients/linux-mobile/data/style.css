@@ -252,7 +252,7 @@ button.pa-letter { background: transparent; border: none; box-shadow: none; padd
 .pa-mcell.outside { background: #241f23; color: @pa_muted; }
 .pa-mcell.today { box-shadow: inset 0 0 0 2px @pa_accent; }
 .pa-mline { min-height: 32px; padding: 0 6px; border-radius: 4px; font-size: 12.5px; color: @pa_ink; }
-.pa-mline .pa-dot { min-width: 8px; min-height: 8px; border-radius: 4px; }
+.pa-mline .pa-dot { min-width: 9px; min-height: 9px; border-radius: 4.5px; }
 .pa-mfoot { min-height: 44px; padding: 0 0 0 3px; }
 .pa-mdaynum { font-size: 12.8px; font-weight: 640; min-width: 24px; }
 .pa-mcell.outside .pa-mdaynum { color: @pa_muted; }

@@ -1030,6 +1030,7 @@ struct TVWebHomeCard: View {
                         .fill(DesignTokens.Color.brandPrimary)
                         .frame(width: 11.6, height: 11.6)
                         .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
+                        .parityBox("img", radius: 7, fill: DesignTokens.Stage.surfaceSoft)
                         .padding(11.5)
                 }
             }
@@ -1061,7 +1062,7 @@ struct TVWebHomeCard: View {
                 .frame(width: artWidth, alignment: .leading)
                 .padding(.top, 3.6)
         }
-        .parityBox("link", text: "Open \(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", fill: DesignTokens.Stage.surface)
+        .parityBox("link", text: "Open \(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", radius: 12, fill: DesignTokens.Stage.surface)
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
@@ -1915,6 +1916,7 @@ struct TVLibraryKindView: View {
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
                     .lineSpacing(3)
+                    .parityLayout(text: overview, size: 13.82, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
                     .padding(.top, 24)
                     .frame(maxWidth: 348, alignment: .leading)
             }
@@ -1931,14 +1933,17 @@ struct TVLibraryKindView: View {
             if !year.isEmpty {
                 Text(year)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
+                    .parityLayout(text: year, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
             }
             if !genreLine.isEmpty {
                 Text(genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: genreLine, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
             }
             if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
                 Text(text)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: text, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
             }
         }
         .font(TVTheme.font(size: 13, weight: .medium))
@@ -2128,6 +2133,7 @@ struct TVLibraryKindView: View {
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous))
+                    .parityBox("image", radius: 12, fill: DesignTokens.Stage.surfaceSoft)
                     .modifier(TVCardFocusGlow(focused: isSelected && drawsFocusGlow, cornerRadius: DesignTokens.Radius.card))
                     // Pinned web values: rest 0 10 20 .14 + 0 3 8 .10; focused 0 24 48 .30 + 0 10 20 .20.
                     .shadow(

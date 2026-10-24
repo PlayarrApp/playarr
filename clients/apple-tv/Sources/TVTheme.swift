@@ -91,6 +91,7 @@ struct PlayarrLogoMark: View {
 struct TVStageBackground: View {
     var body: some View {
         DesignTokens.Color.backgroundBase.ignoresSafeArea()
+            .parityBox("container", fill: DesignTokens.Stage.bg)
     }
 }
 
@@ -685,6 +686,7 @@ private struct TVNavVectorIcon: View {
             }
             .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
             .accessibilityHidden(true)
+            .parityBox("image", fill: DesignTokens.Stage.surface)
         } else {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 20, weight: .medium))
@@ -973,6 +975,7 @@ struct TVFloatingNav: View {
         }
         .padding(.vertical, DesignTokens.Shell.navGroupPadding)
         .padding(.horizontal, DesignTokens.Shell.navGroupPadding)
+        .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface)
         .modifier(TVNavPanelShadow())
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
@@ -1048,14 +1051,10 @@ struct TVFloatingNav: View {
             VStack(spacing: 5) {
                 TVNavVectorIcon(tab: tab)
                 Text(tab.title)
-                    #if os(macOS)
                     .font(TVTheme.font(size: 8.832, css: 680)) // web .app-nav-label: .46vw / 680 / .035em
                     .tracking(0.31)
-                    #else
-                    .font(TVTheme.font(size: 9, weight: .semibold))
-                    .tracking(0.3)
-                    #endif
                     .lineLimit(1)
+                    .parityLayout(text: tab.title, size: 8.832, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31)
             }
             .foregroundStyle(
                 isActive || isFocused
@@ -1066,6 +1065,7 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
+            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Stage.surfaceSoft : DesignTokens.Stage.surface)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
@@ -1200,12 +1200,12 @@ struct TVShellHeader: View {
                     .font(TVTheme.font(size: 17.28, css: 760))
                     .tracking(-0.52)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: Self.timeString(frozen: frozenClock), role: "text", size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52)
+                    .parityLayout(text: Self.timeString(frozen: frozenClock), role: "text", size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52, lineHeight: 25.92, onPage: true)
                 Text(Self.dateString(frozen: frozenClock))
                     .font(TVTheme.font(size: 11.136, css: 640))
                     .tracking(0.45)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: Self.dateString(frozen: frozenClock), size: 11.136, weight: 640, color: DesignTokens.Color.textPrimary, tracking: 0.45)
+                    .parityLayout(text: Self.dateString(frozen: frozenClock), size: 11.136, weight: 640, color: DesignTokens.Color.textPrimary, tracking: 0.45, lineHeight: 12.25, onPage: true)
             }
             }
             .placed(x: clockLeading, y: 68.2, h: 25.9)

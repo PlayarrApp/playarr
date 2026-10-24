@@ -89,6 +89,7 @@ internal sealed class ProfilesScreen : IPage
         var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, Circle + 120) };
         var art = new ImageView(Ui.ResPath($"avatars/{preset}.png")) { Size = new Size(Circle, Circle), CornerRadius = Circle / 2 };
         var cardFocused = false;
+        float nameBase = 0, subBase = 0;
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
         var ring = Ring.Make(Circle, Circle, Circle / 2, new Rgba(1, 1, 1)); ring.Show(false);
         var nameL = Ui.Text(name, 0, Circle + 8.4f, 17.28f, 700, _t.Ink, Circle, 25.92f, HorizontalAlignment.Center);
@@ -99,13 +100,22 @@ internal sealed class ProfilesScreen : IPage
         // web: the picture keeps its size while the card scales and lifts around it
         holder.Add(Sem.Tag(new View { Size = new Size(1, 1) }, "image", radius: 0, boxNow: () => cardFocused ? (9.45f, 0.1f, 225.1f, 225.1f) : (19.4f, 19.4f, 225.1f, 225.1f)));
         disc.Add(art); disc.Add(ring);
+        nameBase = nameL.PositionY; subBase = subL.PositionY;
         holder.Add(disc); holder.Add(nameL); holder.Add(subL);
         Sem.Tag(holder, "button", label, boxNow: () => cardFocused ? (-5.5f, -8f - 6.8f, Circle * 1.045f, (Circle + 57.6f) * 1.045f) : (0, 0, Circle, Circle + 57.6f));
         _body.Add(holder);
         _focus.Items.Add(new Focusable
         {
             Rect = () => new Box(x, CircleY, Circle, Circle), Label = label.ToLowerInvariant(), Select = select,
-            Style = f => { cardFocused = f; disc.Scale = f ? new Vector3(1.08f, 1.08f, 1) : new Vector3(1, 1, 1); disc.PositionY = f ? -9.4f : 0; ring.Show(f); },
+            Style = f =>
+            {
+                cardFocused = f;
+                // web: the whole card scales 1.045 about its centre and lifts 8 px, its captions with it
+                var k = f ? 1.045f : 1f; var cx = Circle * 0.045f / 2;
+                nameL.Scale = new Vector3(k / Ui.TextScale, k / Ui.TextScale, 1); subL.Scale = nameL.Scale;
+                nameL.PositionX = f ? -cx : 0; subL.PositionX = f ? -cx : 0;
+                nameL.PositionY = nameBase + (f ? (nameBase - 150.8f) * 0.045f - 8 : 0); subL.PositionY = subBase + (f ? (subBase - 150.8f) * 0.045f - 8 : 0);
+                disc.Scale = f ? new Vector3(1.08f, 1.08f, 1) : new Vector3(1, 1, 1); disc.PositionY = f ? -9.4f : 0; ring.Show(f); },
         });
     }
 
