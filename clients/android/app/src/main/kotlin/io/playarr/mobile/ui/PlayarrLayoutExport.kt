@@ -12,6 +12,12 @@ import android.os.Looper
 import android.view.PixelCopy
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -20,6 +26,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.graphics.toArgb
+import io.playarr.shared.designsystem.theme.PlayarrWebTheme
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -30,6 +37,26 @@ import java.io.File
  * colour, glyph-run bounds from the laid-out text), controls and images. Backgrounds are read from a window copy at the
  * element's corners. shortcut: containers with only a painted background are not in the semantics tree, so they are not exported yet.
  */
+/** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
+internal var parityLayoutEnabled = false
+
+private class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
+
+private val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
+
+/**
+ * Records this node's window bounds for the layout export (docs/parity/LAYOUT.md): a painted container, an image, a control
+ * (cards are `link` with their accessible name, as the web's `Open <title>` links). A no-op unless the debug build enabled it.
+ */
+internal fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified): Modifier =
+    if (!parityLayoutEnabled) this else composed {
+        val view = androidx.compose.ui.platform.LocalView.current
+        val box = remember { ParityBox(view, role, label, radius, opacity, background) }
+        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background
+        DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
+        onGloballyPositioned { box.bounds = it.boundsInWindow() }
+    }
+
 internal object PlayarrLayoutExport {
     const val ACTION = "io.playarr.mobile.PARITY_LAYOUT"
 
@@ -67,6 +94,7 @@ internal object PlayarrLayoutExport {
     private fun export(activity: Activity, screen: String, theme: String, file: File) {
         val roots = rootViews(activity)
         val mainView = activity.window.decorView
+        mainOrigin = IntArray(2).also { mainView.getLocationOnScreen(it) }
         val bitmap = Bitmap.createBitmap(mainView.width, mainView.height, Bitmap.Config.ARGB_8888)
         PixelCopy.request(activity.window, bitmap, { result ->
             runCatching {
@@ -79,7 +107,30 @@ internal object PlayarrLayoutExport {
                         // The window's own bounds in the screen (a dialog sits at an offset), so rects are app-viewport px.
                         val loc = IntArray(2).also { view.getLocationOnScreen(it) }
                         val main = IntArray(2).also { mainView.getLocationOnScreen(it) }
-                        walk(owner.rootSemanticsNode, view, loc[0] - main[0], loc[1] - main[1], bitmap.takeIf { result == PixelCopy.SUCCESS }, elements)
+                        walk(owner.unmergedRootSemanticsNode, loc[0] - main[0], loc[1] - main[1], bitmap.takeIf { result == PixelCopy.SUCCESS }, elements)
+                    }
+                }
+                // The two full-viewport fills of the web page: the shell (--bg) and the page surface.
+                fun fill(c: androidx.compose.ui.graphics.Color) = JSONObject().put("text", "").put("role", "container")
+                    .put("rect", JSONObject().put("x", 0).put("y", 0).put("w", mainView.width).put("h", mainView.height))
+                    .put("color", JSONObject.NULL).put("background", hex(c.toArgb())).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
+                elements.put(fill(PlayarrWebTheme.palette.background)); elements.put(fill(PlayarrWebTheme.palette.surface))
+                val bmp = bitmap.takeIf { result == PixelCopy.SUCCESS }
+                val mainLoc = IntArray(2).also { mainView.getLocationOnScreen(it) }
+                synchronized(parityBoxes) {
+                    for (box in parityBoxes.toList()) {
+                        if (!box.view.isShown || box.bounds.width < 1f || box.bounds.height < 1f) continue
+                        val loc = IntArray(2).also { box.view.getLocationOnScreen(it) }
+                        val x = box.bounds.left + loc[0] - mainLoc[0]; val y = box.bounds.top + loc[1] - mainLoc[1]
+                        val w = box.bounds.width; val h = box.bounds.height
+                        val e = JSONObject().put("text", box.label).put("role", box.role)
+                            .put("rect", JSONObject().put("x", r2(x)).put("y", r2(y)).put("w", r2(w)).put("h", r2(h)))
+                            .put("color", JSONObject.NULL)
+                            .put("background", if (box.background != androidx.compose.ui.graphics.Color.Unspecified) hex(box.background.toArgb()) else insideColour(bmp, x.toInt(), y.toInt(), w.toInt(), h.toInt()) ?: JSONObject.NULL)
+                            .put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
+                        if (box.radius > 0f) e.put("radius", box.radius.toDouble())
+                        if (box.opacity < 1f) e.put("opacity", box.opacity.toDouble())
+                        elements.put(e)
                     }
                 }
                 val doc = JSONObject()
@@ -93,6 +144,8 @@ internal object PlayarrLayoutExport {
         }, Handler(Looper.getMainLooper()))
     }
 
+    private fun r2(v: Float) = Math.round(v * 100) / 100.0
+
     private fun hex(argb: Int, withAlpha: Boolean = false): String =
         "#%02x%02x%02x".format((argb shr 16) and 255, (argb shr 8) and 255, argb and 255) + if (withAlpha && (argb ushr 24) < 255) "%02x".format(argb ushr 24) else ""
 
@@ -103,53 +156,58 @@ internal object PlayarrLayoutExport {
         return hex(samples.groupingBy { it }.eachCount().maxByOrNull { it.value }!!.key)
     }
 
-    private fun walk(node: SemanticsNode, view: View, dx: Int, dy: Int, bitmap: Bitmap?, out: JSONArray) {
+    /** The colour of the element itself: a pixel just inside its left edge, mid height (the fill, or what shows through). */
+    private fun insideColour(bitmap: Bitmap?, x: Int, y: Int, w: Int, h: Int): String? {
+        bitmap ?: return null
+        return hex(bitmap.getPixel((x + minOf(3, w / 2)).coerceIn(0, bitmap.width - 1), (y + h / 2).coerceIn(0, bitmap.height - 1)))
+    }
+
+    /** The colour behind a text run: the innermost recorded container that holds it with a declared fill, else the page background. */
+    private fun textBackground(x: Float, y: Float, w: Float, h: Float): String? {
+        val cx = x + w / 2; val cy = y + h / 2
+        val inner = synchronized(parityBoxes) { parityBoxes.toList() }.filter { it.background != androidx.compose.ui.graphics.Color.Unspecified && it.role == "container" }
+            .filter { b -> val loc = IntArray(2).also { b.view.getLocationOnScreen(it) }; val bx = b.bounds.left + loc[0] - mainOrigin[0]; val by = b.bounds.top + loc[1] - mainOrigin[1]; cx in bx..(bx + b.bounds.width) && cy in by..(by + b.bounds.height) }
+            .minByOrNull { it.bounds.width * it.bounds.height }
+        return hex((inner?.background ?: PlayarrWebTheme.palette.surface).toArgb())
+    }
+
+    private var mainOrigin = IntArray(2)
+
+    private fun walk(node: SemanticsNode, dx: Int, dy: Int, bitmap: Bitmap?, out: JSONArray) {
         val config = node.config
         val bounds = node.boundsInRoot
-        val x = bounds.left.toInt() + dx; val y = bounds.top.toInt() + dy
+        val x = bounds.left + dx; val y = bounds.top + dy
         val text = config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()
-        val layout: TextLayoutResult? = if (text.isNotEmpty()) {
+        if (text.isNotEmpty() && node.layoutInfo.isPlaced) {
             val results = mutableListOf<TextLayoutResult>()
             config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
-            results.firstOrNull()
-        } else null
-        val label = config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ").orEmpty()
-        val clickable = config.contains(SemanticsActions.OnClick)
-        val focusable = config.contains(SemanticsProperties.Focused)
-        val role = config.getOrNull(SemanticsProperties.Role)
-        val density = layout?.layoutInput?.density
-        if (layout != null && density != null) {
-            // Glyph-run bounds: the union of the laid-out lines (not the widget box).
-            var l = Float.MAX_VALUE; var t = Float.MAX_VALUE; var r = 0f; var b = 0f
-            for (i in 0 until layout.lineCount) {
-                if (layout.getLineEnd(i) == layout.getLineStart(i)) continue
-                l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
-                t = minOf(t, layout.getLineTop(i)); b = maxOf(b, layout.getLineBottom(i))
-            }
-            if (r > l) {
+            val layout = results.firstOrNull()
+            val density = layout?.layoutInput?.density
+            if (layout != null && density != null) {
+                // Glyph-run bounds as `Range.getBoundingClientRect` gives them: the font's content area of the first to the last
+                // line (ascent 1.011 em above the baseline, descent 0.353 em below it for Nunito Sans), not the line box.
                 val style = layout.layoutInput.style
-                val sp = style.fontSize.value * density.fontScale * density.density
-                val colour = style.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified }
-                val rx = x + l.toInt(); val ry = y + t.toInt(); val rw = (r - l).toInt(); val rh = (b - t).toInt()
-                out.put(
-                    JSONObject().put("text", text).put("role", if (clickable || focusable) "button" else "text")
-                        .put("rect", JSONObject().put("x", rx).put("y", ry).put("w", rw).put("h", rh))
-                        .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)
-                        .put("background", backgroundAround(bitmap, rx, ry, rw, rh) ?: JSONObject.NULL)
-                        .put("fontSize", Math.round(sp * 100) / 100.0).put("fontWeight", style.fontWeight?.weight ?: 400),
-                )
-            }
-        } else if (label.isNotEmpty() || clickable || role == Role.Image) {
-            val w = (bounds.right - bounds.left).toInt(); val h = (bounds.bottom - bounds.top).toInt()
-            if (w > 0 && h > 0 && node.layoutInfo.isPlaced) {
-                out.put(
-                    JSONObject().put("text", label).put("role", if (role == Role.Image) "image" else if (clickable) "button" else "container")
-                        .put("rect", JSONObject().put("x", x).put("y", y).put("w", w).put("h", h))
-                        .put("color", JSONObject.NULL).put("background", backgroundAround(bitmap, x, y, w, h) ?: JSONObject.NULL)
-                        .put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL),
-                )
+                val size = style.fontSize.value * density.fontScale * density.density
+                var l = Float.MAX_VALUE; var r = 0f; var top = Float.MAX_VALUE; var bottom = 0f
+                for (i in 0 until layout.lineCount) {
+                    if (layout.getLineEnd(i, true) == layout.getLineStart(i)) continue
+                    l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
+                    top = minOf(top, layout.getLineTop(i)); bottom = maxOf(bottom, layout.getLineBottom(i))
+                }
+                if (r > l) {
+                    val colour = style.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified }
+                    val rx = x + l; val ry = y + top; val rw = r - l; val rh = bottom - top
+                    val heading = config.contains(SemanticsProperties.Heading)
+                    out.put(
+                        JSONObject().put("text", text).put("role", if (heading) "heading" else "text")
+                            .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
+                            .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)
+                            .put("background", textBackground(rx, ry, rw, rh) ?: JSONObject.NULL)
+                            .put("fontSize", Math.round(size * 100) / 100.0).put("fontWeight", style.fontWeight?.weight ?: 400),
+                    )
+                }
             }
         }
-        node.children.forEach { walk(it, view, dx, dy, bitmap, out) }
+        node.children.forEach { walk(it, dx, dy, bitmap, out) }
     }
 }
