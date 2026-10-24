@@ -234,12 +234,13 @@ internal object PlayarrLayoutExport {
                     val ry = y + (top - half) * sy
                     val rw = (r - l) * sx
                     val rh = if (lineBox && declared != null) declared * sy else (bottom - top) * sy
+                    val bgOverride = config.getOrNull(io.playarr.shared.designsystem.page.ParityBgKey)?.let { androidx.compose.ui.graphics.Color(it.toULong()) }
                     out.put(
                         JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()) } }
-                            .put("text", text).put("role", config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey) ?: if (heading) "heading" else "text")
+                            .put("text", config.getOrNull(io.playarr.shared.designsystem.page.ParityTextKey) ?: text).put("role", config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey) ?: if (heading) "heading" else "text")
                             .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
                             .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)
-                            .put("background", textBackground(rx, ry, rw, rh) ?: JSONObject.NULL)
+                            .put("background", bgOverride?.let { hex(it.toArgb()) } ?: textBackground(rx, ry, rw, rh) ?: JSONObject.NULL)
                             .put("fontSize", Math.round(size * 100) / 100.0).put("fontWeight", style.fontWeight?.weight ?: 400),
                     )
                 }

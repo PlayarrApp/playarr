@@ -43,7 +43,20 @@ private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRadius
 val ParityLineBoxKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Boolean>("ParityLineBox")
 private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityLineBoxProp by ParityLineBoxKey
 
+val ParityTextKey = androidx.compose.ui.semantics.SemanticsPropertyKey<String>("ParityText")
+private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityTextProp by ParityTextKey
+val ParityBgKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Long>("ParityBg")
+private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityBgProp by ParityBgKey
+
 fun Modifier.parityRole(role: String, radius: Float = 0f): Modifier = semantics { parityRoleProp = role; if (radius > 0f) parityRadiusProp = radius }
+
+/** Layout export for a text run: its web role and radius, the raw DOM text where the web shows a CSS-transformed string, and the flat colour behind it. */
+fun Modifier.parityText(text: String? = null, role: String? = null, radius: Float = 0f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified): Modifier = semantics {
+    if (role != null) parityRoleProp = role
+    if (radius > 0f) parityRadiusProp = radius
+    if (text != null) parityTextProp = text
+    if (background != androidx.compose.ui.graphics.Color.Unspecified) parityBgProp = background.value.toLong()
+}
 
 /** Layout export: this text's web run box is its CSS line box (the element's own line-height), not the font's content area. */
 fun Modifier.parityLineBox(): Modifier = semantics { parityLineBoxProp = true }
@@ -78,3 +91,8 @@ private fun over(top: androidx.compose.ui.graphics.Color, alpha: Float, under: a
 fun parityNavGlass(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.surfaceStrong, 0.56f, it.background) }
 fun parityNavSelected(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.ink, 0.09f, parityNavGlass()) }
 fun parityPillGlass(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.surfaceStrong, 0.78f, it.background) }
+
+/** Layout export: the flat colour under the current panel (a drawer is `--surface-strong`, a page `--surface`); translucent fills are composited over it. */
+val LocalParityUnder = androidx.compose.runtime.compositionLocalOf { androidx.compose.ui.graphics.Color.Unspecified }
+
+fun parityOver(top: androidx.compose.ui.graphics.Color, alpha: Float, under: androidx.compose.ui.graphics.Color) = over(top, alpha, under)

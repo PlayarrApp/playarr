@@ -3715,7 +3715,7 @@ internal fun ExperienceLandscapeCard(
             webPhoneRemoteFocus -> Modifier.mediaCardLift(liftActive, webPhoneMotion)
             else -> Modifier
         },
-    ).parityBox("link", if (webTvLibrary) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary) 12f else 0f, background = WebSurface, fit = if (webTvLibrary || !webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
+    ).parityBox("link", if (webTvLibrary) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary) LocalParityLinkRadius.current else 0f, background = WebSurface, fit = if (webTvLibrary || !webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
         WebShadowedBox(
             shadows = if (webPhone) webCardShadows(selected || visualFocus, webHome, webSearch) else if (webTvStyle) (if (visualFocus) (if (webTvLibrary) webCardFocusShadows else webRemoteFocusShadows) else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
@@ -3856,9 +3856,12 @@ internal fun WebDetailPill(
     enabled: Boolean = true,
     /** The ink pill web uses for Start and Resume on series (`.tv-detail-watchlist .tv-detail-play`). */
     ink: Boolean = false,
+    /** The accessible name the web gives this control (layout export only). */
+    exportLabel: String? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
     val scale = rememberPlayarrFocusScale(focused = focused, focusedScale = 1.06f, label = "detailPillFocus")
+    val pillFill = if (focused) (if (ink || primary) Color(0xFFA52745) else WebInk.copy(alpha = 0.88f)) else if (ink) WebInk else if (primary) WebKicker else WebSurfaceStrong.copy(alpha = 0.72f)
     Surface(
         onClick = onClick,
         enabled = enabled,
@@ -3877,21 +3880,26 @@ internal fun WebDetailPill(
                 ambientColor = Color(0xFF382621).copy(alpha = 0.12f), spotColor = Color(0xFF382621).copy(alpha = if (primary) 0.18f else 0.12f),
             ))
             .scale(scale)
+            .parityBox(if (primary) "link" else "button", exportLabel ?: listOfNotNull(glyph?.takeIf { it == "+" }, label).joinToString(" "), 999f, background = Color(
+                red = pillFill.red * pillFill.alpha + WebSurface.red * (1 - pillFill.alpha), green = pillFill.green * pillFill.alpha + WebSurface.green * (1 - pillFill.alpha), blue = pillFill.blue * pillFill.alpha + WebSurface.blue * (1 - pillFill.alpha)))
             .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused },
     ) {
         Row(
-            Modifier.padding(horizontal = if (primary) 21.6.dp else 16.dp),
+            Modifier.offset(y = (-2.7).dp).padding(horizontal = if (primary) 21.6.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (primary) 11.1.dp else 8.9.dp, Alignment.CenterHorizontally),
         ) {
             glyph?.let {
-                Text(it, color = if (focused && (ink || primary)) Color.White else if (ink) WebBackground else if (primary) Color.White else WebKicker, fontSize = if (primary) 10.118.sp else 12.806.sp)
+                Text(it, color = if (focused && (ink || primary)) Color.White else if (ink) WebBackground else if (primary) Color.White else PlayarrWebTheme.palette.brandInk, fontSize = if (primary) 10.118.sp else 12.806.sp)
             }
             Text(label, fontSize = (if (primary) webVw(8.64f, 0.62f, 12.48f) else webVw(8f, 0.58f, 11.52f)).value.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
+/** Layout export: the web gives the library grid's card links a 12 px radius and the detail tracks' none. */
+internal val LocalParityLinkRadius = androidx.compose.runtime.compositionLocalOf { 12f }
+
 /** Web `WatchStateOverlay` crimson; the app's accent is neutral grey, so it cannot be reused here. */
 private val UnwatchedDotColour = Color(0xFFCF3157)
 
@@ -7027,13 +7035,14 @@ private fun VideoDetailCopy(
             }
             androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier.padding(top = 27.dp),
-                horizontalArrangement = Arrangement.spacedBy(13.6.dp),
+                // 13.6 css px between chips; each chip's width is rounded up to a pixel, so the drift is cancelled by a gap 0.5 px shorter.
+                horizontalArrangement = io.playarr.shared.designsystem.page.FractionalSpacedArrangement(13.1.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 chips.forEachIndexed { index, item ->
                     Text(
                         item,
-                        color = WebInkSoft,
+                        color = if (index == 0) WebInkSoft else WebInkMuted,
                         // Web `.tv-detail-meta`: clamp(7.68, 0.55 vw, 10.88) css px (10.56 at 1920).
                         fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp,
                         lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp,
@@ -7048,7 +7057,7 @@ private fun VideoDetailCopy(
                     ?: playarrString(
                         if (episode == null) PlayarrString.DetailNoSynopsis else PlayarrString.DetailNoEpisodeSynopsis,
                     ),
-                color = WebInkSoft,
+                color = WebInkMuted,
                 // Web `.tv-detail-synopsis`: clamp(9.28, 0.67 vw, 13.44) css px, line height 1.58 (12.864 / 20.325 at 1920).
                 fontSize = webVw(9.28f, 0.67f, 13.44f).value.sp,
                 lineHeight = (webVw(9.28f, 0.67f, 13.44f).value * 1.58f).sp,
@@ -7241,6 +7250,7 @@ private fun VideoDetailActions(
                         else -> onPlay(mediaFileId, null, launchSettings)
                     }
                 },
+                exportLabel = smartDescription ?: "Play $title",
                 modifier = Modifier.focusRequester(playFocus).then(
                     if (smartDescription != null) Modifier.semantics { contentDescription = smartDescription } else Modifier,
                 ),
@@ -7261,6 +7271,7 @@ private fun VideoDetailActions(
                         ),
                     )
                 },
+                exportLabel = downloadDescription,
                 modifier = Modifier.semantics { contentDescription = downloadDescription },
             )
         }
@@ -7275,7 +7286,7 @@ private fun VideoDetailActions(
                 ) {
                     if (canDownload) downloadPill()
                     onPlaybackSettings?.let { openSettings ->
-                        WebDetailPill(label = playarrString(PlayarrString.DetailPlayback), glyph = "\u2637", onClick = openSettings)
+                        WebDetailPill(label = playarrString(PlayarrString.DetailPlayback), glyph = "\u2637", onClick = openSettings, exportLabel = "Playback settings for $title")
                     }
                     playPill()
                 }
@@ -7971,9 +7982,10 @@ private fun WebMediaTrack(
     val tabletTrack = if (LocalStageScale.current != 1f) 1f else 0f
     Column {
         Column(Modifier.padding(start = 0.dp).height(45.5.dp)) {
-            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp)
+            Text(title, color = WebInk, fontSize = 17.664.sp, fontWeight = FontWeight(610), letterSpacing = (-0.53).sp, lineHeight = 26.5.sp, modifier = Modifier.semantics { heading() })
             Text(count, color = WebInkMuted, fontSize = 9.984.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp))
         }
+        androidx.compose.runtime.CompositionLocalProvider(LocalParityLinkRadius provides 0f) {
         LazyRow(
             state = state ?: androidx.compose.foundation.lazy.rememberLazyListState(),
             // Measured against web at 1280 x 800: 10 css px more under the heading; the viewport reaches left so a focused first tile is not clipped.
@@ -7983,6 +7995,7 @@ private fun WebMediaTrack(
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             content = cards,
         )
+        }
     }
 }
 
