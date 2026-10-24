@@ -357,11 +357,11 @@ internal val LocalCalendarMetrics = androidx.compose.runtime.compositionLocalOf 
 @Composable
 private fun PhoneCalendarHeader(state: CalendarUiState, locale: Locale, holder: CalendarStateHolder, onJump: () -> Unit) {
     val title = remember(state.window, state.mode, state.anchor, locale) { phoneCalendarRangeTitle(state.mode, state.anchor, state.window, locale) }
-    // Web focuses Today when the calendar opens and shows its focus ring until the first toolbar action. Touch mode does not
-    // give Compose controls focus, so the ring is drawn from this flag instead of from a focus request.
-    var todayRing by remember { mutableStateOf(true) }
+    // The static web refs (2026-10-24, focus dropped before every shot) draw no Today ring on open, so the ring flag starts off
+    // (the earlier live refs showed web's focus ring on Today until the first toolbar action).
+    var todayRing by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().height(44.dp).offset(y = if (state.mode == CalendarViewMode.Agenda) (-19).dp else 0.dp),
+        Modifier.fillMaxWidth().height(44.dp).offset(y = if (state.mode == CalendarViewMode.Agenda) (-18.5).dp else 0.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically,
     ) {
         PhoneCalendarToolbarPill(title, { todayRing = false; onJump() }, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
