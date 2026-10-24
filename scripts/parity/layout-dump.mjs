@@ -15,9 +15,6 @@ export function layoutPageFn(volatile) {
   var round = function (n) { return Math.round(n * 100) / 100; };
   var hex2 = function (n) { var s = Math.round(n).toString(16); return s.length < 2 ? "0" + s : s; };
   var parse = function (c) {
-    // color(srgb r g b / a) is what color-mix() resolves to on current Chromium: components are 0..1.
-    var cs = /color\(srgb ([^)]+)\)/.exec(c);
-    if (cs) { var q = cs[1].split(/[ \/]+/).filter(Boolean).map(Number); return [q[0] * 255, q[1] * 255, q[2] * 255, q.length > 3 ? q[3] : 1]; }
     var m = /rgba?\(([^)]+)\)/.exec(c);
     if (!m) return [0, 0, 0, 0];
     var p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);
@@ -85,8 +82,35 @@ export function layoutPageFn(volatile) {
     }
     return null;
   };
+  var visibleFill = function (cs) {
+    return parse(cs.backgroundColor)[3] > 0 || cs.backgroundImage !== "none" || parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0 || cs.boxShadow !== "none";
+  };
+  var hiddenHost = function (el) {
+    if (el.closest("[inert]")) return true;
+    var aria = el.closest('[aria-hidden="true"]');
+    return !!aria && !!aria.querySelector("a,button,input,select,textarea,[tabindex]");
+  };
+  var covers = function (hit, el) {
+    var tag = hit.tagName.toLowerCase();
+    if (tag === "img" || tag === "video" || tag === "canvas" || tag === "svg") return true;
+    for (var n = hit; n && n.nodeType === 1 && !n.contains(el); n = n.parentElement) {
+      var s = getComputedStyle(n);
+      if (parse(s.backgroundColor)[3] >= 0.5 || s.backgroundImage !== "none" || s.backdropFilter && s.backdropFilter !== "none" || s.webkitBackdropFilter && s.webkitBackdropFilter !== "none") return true;
+    }
+    return false;
+  };
+  var occluded = function (el, r) {
+    if (!document.elementFromPoint || getComputedStyle(el).pointerEvents === "none") return false;
+    var l = Math.max(r.left, 0), t = Math.max(r.top, 0), rt = Math.min(r.right, innerWidth), b = Math.min(r.bottom, innerHeight);
+    var fr = [0.2, 0.5, 0.8];
+    for (var a = 0; a < 3; a++) for (var c = 0; c < 3; c++) {
+      var hit = document.elementFromPoint(l + (rt - l) * fr[a], t + (b - t) * fr[c]);
+      if (!hit || el.contains(hit) || hit.contains(el) || !covers(hit, el)) return false;
+    }
+    return true;
+  };
   var rows = [];
-  var seenHost = [];
+  var dropped = 0;
   var all = document.body.querySelectorAll("*");
   for (var i = 0; i < all.length; i++) {
     var el = all[i];
@@ -95,6 +119,7 @@ export function layoutPageFn(volatile) {
     if (el.closest("svg") && tag !== "svg") continue;
     var cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden") continue;
+    if (hiddenHost(el)) continue;
     var texts = [];
     for (var k = 0; k < el.childNodes.length; k++) if (el.childNodes[k].nodeType === 3 && norm(el.childNodes[k].textContent)) texts.push(el.childNodes[k]);
     var own = shown(norm(texts.map(function (n) { return n.textContent; }).join(" ")), cs);
@@ -119,8 +144,9 @@ export function layoutPageFn(volatile) {
     if (op <= 0) continue;
     var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var media = tag === "img" || tag === "svg" || tag === "canvas" || tag === "video";
-    var painted = cs.backgroundColor !== "rgba(0, 0, 0, 0)" || cs.backgroundImage !== "none" || parseFloat(cs.borderTopWidth) > 0;
+    var painted = visibleFill(cs);
     if (!vol && !own && !control && !media && !painted) continue;
+    if (occluded(el, r)) { dropped++; continue; }
     var label = el.getAttribute("aria-label") || el.getAttribute("alt") || "";
     var text = own || norm(label) || (control ? norm(el.innerText || el.value) : "");
     var zoom = zoomOf(el);
@@ -143,7 +169,7 @@ export function layoutPageFn(volatile) {
     }
     rows.push(row);
   }
-  return { viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio }, elements: rows };
+  return { viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio }, elements: rows, occluded: dropped };
 }
 
 /** Run the page function in a Playwright page and return the schema document. */
