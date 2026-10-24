@@ -143,24 +143,38 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         ),
     }
     if let Some(p) = o.progress {
-        overlay.add_overlay(
-            &gtk4::ProgressBar::builder()
-                .fraction(p.clamp(0.0, 1.0))
-                .valign(gtk4::Align::End)
-                .css_classes(["pa-progress"])
-                .build(),
-        );
+        let bar = gtk4::ProgressBar::builder()
+            .fraction(p.clamp(0.0, 1.0))
+            .valign(gtk4::Align::End)
+            .css_classes(["pa-progress"])
+            .build();
+        // The web's bar is a 3 px track with the watched share drawn inside it as its own box.
+        let width = o.width.unwrap_or(158) as f32;
+        crate::layout::Tag::new("img", "", 0.0)
+            .bg([0.3529, 0.3333, 0.3490], [0.8980, 0.8902, 0.8941])
+            .extra(crate::layout::Extra {
+                role: "container",
+                label: String::new(),
+                radius: 0.0,
+                inset: [0.0, 0.0, width * (1.0 - p.clamp(0.0, 1.0) as f32), 0.0],
+                height: Some(3.0),
+                bg: Some([0.8118, 0.1922, 0.3412]),
+                art: false,
+                font: None,
+            })
+            .apply(&bar);
+        overlay.add_overlay(&bar);
     }
     if o.unseen {
-        overlay.add_overlay(
-            &gtk4::Box::builder()
-                .css_classes(["pa-unseen"])
-                .halign(gtk4::Align::End)
-                .valign(gtk4::Align::Start)
-                .margin_top(7)
-                .margin_end(7)
-                .build(),
-        );
+        let dot = gtk4::Box::builder()
+            .css_classes(["pa-unseen"])
+            .halign(gtk4::Align::End)
+            .valign(gtk4::Align::Start)
+            .margin_top(7)
+            .margin_end(7)
+            .build();
+        crate::layout::tag(&dot, "img", "", 50.0);
+        overlay.add_overlay(&dot);
     }
     // A fixed art height (the web's 16:9 at card width); AspectFrame reported no height inside a button.
     overlay.set_size_request(-1, art_h);
@@ -212,6 +226,11 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         })
         .valign(gtk4::Align::Start)
         .build();
+    // The web's card link: "Open <title>" in a library, "<title> <meta>" on Home.
+    match &o.meta {
+        Some(m) => crate::layout::tag_h(&b, "link", &format!("{} {m}", work.title), 0.0, art_h as f32 + 24.7),
+        None => crate::layout::tag(&b, "link", &format!("Open {}", work.title), 12.0),
+    }
     let w = work.clone();
     b.connect_clicked(move |_| on_open(&w));
     // Long-press opens the actions sheet.
@@ -227,4 +246,20 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
     });
     b.add_controller(press);
     b
+}
+
+/// The web draws the page's first card focused (title in pure white); a touch screen has no focus ring, so only the
+/// caption colour is applied.
+pub fn mark_lead(card: &gtk4::Button) {
+    let caption = card
+        .child()
+        .and_then(|c| c.first_child())
+        .and_then(|art| art.next_sibling())
+        .and_then(|cap| cap.first_child());
+    if let Some(title) = caption {
+        title.add_css_class("lead");
+        if let Some(meta) = title.next_sibling() {
+            meta.add_css_class("lead");
+        }
+    }
 }

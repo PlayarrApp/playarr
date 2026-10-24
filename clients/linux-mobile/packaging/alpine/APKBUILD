@@ -10,6 +10,7 @@ url="https://playarr.app"
 arch="all"
 license="MIT"
 depends="
+	font-dejavu
 	gst-libav
 	gst-plugins-bad
 	gst-plugins-base

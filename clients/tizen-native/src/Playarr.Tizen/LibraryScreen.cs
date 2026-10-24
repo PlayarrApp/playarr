@@ -58,11 +58,13 @@ internal sealed class LibraryScreen : IPage
         _env = env; _t = env.Theme; _kind = kind; _layout = CardLayout.Library(env.Store.LibraryView(kind.ToString().ToLowerInvariant()) == "cover", env.Store.Appearance().ArtworkSize); _title = title; _baseRoute = route; _progress = _noProgress;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        Sem.Tag(_root, "container", title + " library");
         _keyArt = new KeyArt(env, armed: true);
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
-        _root.Add(Ui.PanelWash(_t));
+        _root.Add(Ui.PanelWash(_t, 1248));
+        _root.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", kind == WorkKind.Artist ? "Music artists" : title + " titles")); // web .tv-library-grid-panel: the right 65 %
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _grid.PositionX = -ClipX;
         clip.Add(_grid);
@@ -80,6 +82,7 @@ internal sealed class LibraryScreen : IPage
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
+        Sem.Tag(back, "link", "Back to Home", radius: 50);
         _root.Add(back);
         _root.Add(Ui.Text(_title, 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _subtitle = new PageSubtitle(_env, _root, _title);
@@ -91,7 +94,7 @@ internal sealed class LibraryScreen : IPage
         var tile = Ui.Box(1845.5f, 151.2f, 62, 72, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         tile.Add(Ui.Icon("filters", 19, 15, 24, _t.InkMuted)); // web: the sliders glyph
-        _tile = tile;
+        _tile = tile; Sem.Tag(tile, "button", "Filters", radius: 14);
         tile.Add(Ui.Text("Filters", 0, 44.6f, 8.256f, 700, _t.InkMuted, 62, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));
         var ring = Ring.Make(62, 72, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
         _root.Add(tile);
@@ -104,8 +107,8 @@ internal sealed class LibraryScreen : IPage
             var dot = Ui.Box(1879.5f - 12, cy - 12, 24, 24, _t.Ink, 12); dot.Show(false);
             _root.Add(dot); _letterDots[letter] = dot;
             var l = letter;
-            var lbl = Ui.Text(letter.ToString(), 1869, ly - 2, 9.216f, 400, _t.InkMuted, 21, 13);
-            lbl.HorizontalAlignment = HorizontalAlignment.Center;
+            var lbl = Ui.Text(letter.ToString(), 1869, ly - 2, 9.216f, 400, _t.InkMuted, 21, 13, HorizontalAlignment.Center);
+            _root.Add(Sem.Tag(new View { PositionX = 1857.5f, PositionY = cy - 22, Size = new Size(44, 44) }, "button", letter == '#' ? "Numbers and symbols" : letter.ToString(), radius: 50));
             _root.Add(lbl); _letterLabels[letter] = lbl;
             var ringL = Ring.Make(24, 24, 12, new Rgba(1, 1, 1)); ringL.PositionX = -5; ringL.PositionY = -5; ringL.Show(false); dot.Add(ringL);
             _side.Add(new Focusable
@@ -187,11 +190,11 @@ internal sealed class LibraryScreen : IPage
                 ApplyView(i == 2);
                 return true;
             }),
-            new FilterSection("Sort by", new[] { "Title", "Date Added" }, _sort == "title" ? 0 : 1, i => ApplySort(i == 0 ? "title" : "date_added", _order)),
+            new FilterSection("Sort by", new[] { "Title", "Date added" }, _sort == "title" ? 0 : 1, i => ApplySort(i == 0 ? "title" : "date_added", _order)),
             new FilterSection("Order", new[] { "A-Z", "Z-A" }, _order == "asc" ? 0 : 1, i => ApplySort(_sort, i == 0 ? "asc" : "desc")),
             audioSection, subsSection,
         };
-        _filters = new FiltersDrawer(_env, "Library controls", sections, CloseFilters, Toast);
+        _filters = new FiltersDrawer(_env, "Library controls", sections, CloseFilters, Toast, _title + " display filters");
         LoadFacetsAsync(audioSection, subsSection);
         _root.Add(_filters.Root);
         _tile?.Show(false); // the drawer blurs what is behind it on web; nothing of the tile shows through
@@ -333,7 +336,9 @@ internal sealed class LibraryScreen : IPage
         var card = _items[index];
         _panel.Show(card, kickerOverride: card.Kicker.Contains('·') ? card.Kicker[(card.Kicker.IndexOf('·') + 2)..] : card.Kicker, metaLead: HomeModel.MetaLead(card));
         _keyArt.Set(card.BackdropUrl);
-        SetActiveLetter(_works[index].SortTitle is { Length: > 0 } st ? st : card.Title);
+        // web: the rail follows the first visible row, not the focused card
+        var topIndex = Math.Clamp((int)Math.Floor(_scroll / RowPitch) * Columns, 0, _works.Count - 1);
+        SetActiveLetter(_works[topIndex].SortTitle is { Length: > 0 } st ? st : _items[topIndex].Title);
         if (index > _items.Count - 40 && _items.Count < _total) _ = LoadAsync(_items.Count);
     }
 

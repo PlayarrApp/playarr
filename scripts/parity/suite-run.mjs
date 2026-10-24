@@ -20,6 +20,16 @@ import { assertCaptureManifestTargetAvailable, buildShaFromIdentity, createCaptu
 const here = dirname(fileURLToPath(import.meta.url));
 const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
 const args = process.argv.slice(2);
+// --extra-screens calendar-link: ref-only screens of web-refs.json (a route, no key path) that a device opts into; they join the suite screens for this run
+const extraWanted = (() => { const i = args.indexOf("--extra-screens"); return i >= 0 && args[i + 1] ? args[i + 1].split(",") : []; })();
+if (extraWanted.length) {
+  const refs = JSON.parse(readFileSync(join(here, "web-refs.json"), "utf8"));
+  for (const id of extraWanted) {
+    const extra = (refs.extraScreens ?? []).find((s) => s.id === id);
+    if (!extra) throw new Error(`unknown --extra-screens id: ${id}`);
+    suite.screens.push({ id, route: extra.route, keys: null, match: extra.route.split("?")[0] });
+  }
+}
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : d; };
 const out = resolve(opt("out", "suite-out"));
 const themes = opt("themes", suite.themes.join(",")).split(",");
@@ -66,7 +76,7 @@ if (unknownThemes.length) throw new Error(`unknown --themes value(s): ${unknownT
 const committedExpected = join(here, process.env.PARITY_SERVER_URL && !process.env.PARITY_LIVE && existsSync(join(here, "expected.static.json")) ? "expected.static.json" : "expected.web.json");
 const siblingExpected = join(out, "..", "web", "expected.json");
 const expectedFile = resolve(opt("expected", existsSync(siblingExpected) || !existsSync(committedExpected) ? siblingExpected : committedExpected));
-const problems = validateSuite(suite);
+const problems = validateSuite({ ...suite, screens: suite.screens.filter((s) => !extraWanted.includes(s.id)) });
 if (problems.length) throw new Error(`suite.json invalid: ${problems.join("; ")}`);
 if (!opt("driver")) throw new Error("--driver <module> is required");
 const expSrc = reference ? join(out, "expected.json") : expectedFile;

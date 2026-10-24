@@ -10,22 +10,26 @@ fn glyph(icon: &str) -> &'static str {
     match icon {
         "play" => "▶",
         "downloads" => "⇩",
-        "add" => "+",
+        "add" => "\u{ff0b}",
         "check" => "✓",
         _ => "○",
     }
 }
 
 fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
-    let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 20);
+    let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     content.append(
         &gtk4::Label::builder()
             .label(glyph(icon))
-            .css_classes(["pa-row-glyph"])
+            .css_classes(["pa-row-glyph", icon])
+            .xalign(0.0)
+            .width_request(42)
             .build(),
     );
     content.append(&gtk4::Label::builder().label(label).xalign(0.0).hexpand(true).build());
-    gtk4::Button::builder().child(&content).css_classes(["pa-row"]).build()
+    let b = gtk4::Button::builder().child(&content).css_classes(["pa-row"]).build();
+    crate::layout::tag(&b, "button", &format!("{} {label}", glyph(icon)), 14.0);
+    b
 }
 
 pub fn show(app: &Rc<App>, work: &Work) {
@@ -40,7 +44,6 @@ pub fn show(app: &Rc<App>, work: &Work) {
     col.set_margin_bottom(24);
 
     let play = row("play", "Play", Tone::Brand);
-    play.add_css_class("focus");
     {
         let (app, id, title, kind, client) = (
             app.clone(),

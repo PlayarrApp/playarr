@@ -23,9 +23,11 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
     );
     let col = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .spacing(3)
+        .spacing(2)
         .valign(gtk4::Align::Center)
         .hexpand(true)
+        // The web's text block sits 1.5 px above the row's centre.
+        .margin_bottom(3)
         .build();
     col.append(
         &gtk4::Label::builder()
@@ -45,14 +47,17 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .build(),
     );
     row.append(&col);
-    row.append(
-        &gtk4::Label::builder()
-            .label("→")
-            .css_classes(["pa-muted"])
-            .valign(gtk4::Align::Center)
-            .build(),
-    );
-    gtk4::Button::builder().child(&row).css_classes(["pa-pref"]).build()
+    let arrow = gtk4::Label::builder()
+        .label("→")
+        .css_classes(["pa-pref-arrow"])
+        .valign(gtk4::Align::Center)
+        .build();
+    // The web nudges the first (hovered) row's arrow 5 px right.
+    arrow.set_margin_end(if n == 1 { -7 } else { 0 });
+    row.append(&arrow);
+    let b = gtk4::Button::builder().child(&row).css_classes(["pa-pref"]).build();
+    crate::layout::tag(&b, "link", &format!("{n:02} {title} {desc} \u{2192}"), 0.0);
+    b
 }
 
 pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
@@ -73,7 +78,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         .build();
     page.append(&list);
 
-    let appearance = section_row(1, "Appearance", "Choose this device's theme and home screen layout");
+    let appearance = section_row(1, "Appearance", "Choose this device's theme and home screen artwork.");
     {
         let (app, client) = (app.clone(), client.clone());
         appearance.connect_clicked(move |_| {
@@ -175,7 +180,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
     }
     list.append(&appearance);
 
-    let avatar_row = section_row(2, "Profile avatar", "Choose how your profile appears on this device");
+    let avatar_row = section_row(2, "Profile avatar", "Choose how your profile appears on this device.");
     {
         let (app, client) = (app.clone(), client.clone());
         avatar_row.connect_clicked(move |_| {
@@ -209,12 +214,12 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
     list.append(&section_row(
         3,
         "Language",
-        "Follow this device or keep a language fixed",
+        "Follow this device or keep a language fixed.",
     ));
     let player = section_row(
         4,
         "Player",
-        "Choose how Playarr should start quality, subtitles and audio",
+        "Choose how Playarr should start quality, subtitles and audio.",
     );
     {
         let app = app.clone();
@@ -289,7 +294,7 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
     let server = section_row(
         5,
         "Server connection",
-        "Combine libraries from multiple servers in one view",
+        "Combine libraries from multiple servers in one Playarr interface.",
     );
     {
         let (app, client) = (app.clone(), client.clone());
@@ -329,16 +334,37 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         });
     }
     list.append(&server);
-    list.append(&section_row(
-        6,
-        "About",
-        &format!("Playarr for Linux phones {}", env!("CARGO_PKG_VERSION")),
-    ));
+    // The web's last two sections have no native screen yet: they open a short notice instead of disappearing.
+    for (n, title, desc) in [
+        (6, "Profile lock", "Require a four-digit PIN before switching profiles."),
+        (
+            7,
+            "Invite a friend",
+            "Ask your Playarr Server admin for one friend-invite QR code.",
+        ),
+    ] {
+        let row = section_row(n, title, desc);
+        let app = app.clone();
+        row.connect_clicked(move |_| {
+            let note = gtk4::Label::builder()
+                .label(format!(
+                    "{title} is managed in the web app for now. Playarr for Linux phones {}.",
+                    env!("CARGO_PKG_VERSION")
+                ))
+                .wrap(true)
+                .xalign(0.0)
+                .css_classes(["pa-muted"])
+                .build();
+            app.present_panel("Preferences", title, &note, true);
+        });
+        list.append(&row);
+    }
     let _ = (icons::markup("home"), Tone::Soft);
-    gtk4::ScrolledWindow::builder()
+    let scroller = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)
         .css_classes(["pa-page"])
-        .build()
-        .upcast()
+        .build();
+    crate::layout::tag(&scroller, "page", "|", 0.0);
+    scroller.upcast()
 }

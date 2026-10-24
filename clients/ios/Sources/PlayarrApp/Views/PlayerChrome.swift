@@ -255,7 +255,7 @@ struct PlayerOptionRow: View {
                 }
                 Spacer(minLength: 0)
                 Text(selected ? "✓" : "")
-                    .font(WM.font(13.76))
+                    .wm(13.76)
                     .foregroundStyle(WM.pink)
                     .frame(width: 24)
             }
@@ -323,7 +323,7 @@ struct PlayerQualityMatrix: View {
                                 choice(id: item.id, label: "\(item.mbps) Mbps", detail: item.level, width: choiceColumn)
                             } else {
                                 Text("—")
-                                    .font(WM.font(11.52))
+                                    .wm(11.52)
                                     .foregroundStyle(.white.opacity(0.28))
                                     .frame(width: choiceColumn, height: 48)
                                     .overlay(
@@ -350,7 +350,7 @@ struct PlayerQualityMatrix: View {
                 .offset(y: -1.2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Text(selected ? "✓" : "")
-                    .font(WM.font(11.84))
+                    .wm(11.84)
                     .foregroundStyle(WM.pink)
                     .frame(width: 16)
             }
