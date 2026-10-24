@@ -13,7 +13,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 import { image } from '@kit.ImageKit';
 import { fetchWorkArtwork } from '../data/ArtworkRepository';
 import { t } from '../core/Language';
-import { nunito } from '../design/Typography';
+import { nunito, arrowFont } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
@@ -880,8 +880,8 @@ export struct ReleaseCalendar {
   @Builder
   private headerControl(label: string, round: boolean, onTap: () => void): void {
     // web: the round arrow buttons hold a small regular-weight glyph, the Today pill a bold label
-    Text(label).fontFamily(nunito(round ? 400 : 700))
-      .fontSize(tv(round ? HEADER_CONTROL_FONT * 0.75 : HEADER_CONTROL_FONT))
+    Text(label).fontFamily(round ? arrowFont(720) : nunito(700))
+      .fontSize(tv(round ? HEADER_CONTROL_FONT : HEADER_CONTROL_FONT))
       .fontWeight(round ? FontWeight.Normal : FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .textAlign(TextAlign.Center)
@@ -1048,7 +1048,7 @@ export struct ReleaseCalendar {
   private touchControl(label: string, width: number, onTap: () => void): void {
     Stack() {
       // web: the arrows are thin, smaller glyphs than the bold labels
-      Text(label).fontFamily(nunito(720))
+      Text(label).fontFamily(label.length === 1 ? arrowFont(720) : nunito(720))
         .id(label.length === 1 ? '' : 'px:button:' + label)
         .fontSize(11.52)
         .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)

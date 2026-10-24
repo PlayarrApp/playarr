@@ -8,7 +8,7 @@
  * profile) and Server connection (the address in use). The other web sections land with 13.10018's later steps.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, arrowFont } from '../design/Typography';
 import { activeColors, setThemeModeSetting, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
@@ -294,7 +294,7 @@ export struct SettingsScreen {
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
         .position({ x: tv(TITLE_LEFT), y: 0 })
-      Text('→').fontFamily(nunito(400))
+      Text('→').fontFamily(arrowFont(400))
         .fontSize(tv(ARROW_SIZE))
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
@@ -647,7 +647,7 @@ export struct SettingsScreen {
             .alignItems(HorizontalAlign.Start)
             .width(340) // web dump: the copy is not clipped and runs under the arrow
             .position({ x: 56, y: 22.9 })
-            Text('→').fontFamily(nunito(400))
+            Text('→').fontFamily(arrowFont(400))
               .fontSize(20.8)
               .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
               .height(88)

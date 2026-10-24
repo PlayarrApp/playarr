@@ -1336,7 +1336,7 @@ export struct Library {
       keyArt: this.heroArtwork ?? '',
       kicker: this.hero !== undefined && this.hero.genres.length > 0 ? this.hero.genres[0] : '',
       title: this.hero !== undefined ? this.hero.title : '',
-      metaLines: this.hero !== undefined ? heroMetaLines(this.hero, this.heroRuntime) : [],
+      metaRuns: this.hero !== undefined ? heroMetaRuns(this.hero, this.heroRuntime) : [],
       synopsis: this.hero !== undefined && this.hero.overview !== null ? this.hero.overview : '',
       scrollRails: false,
       railFrost: true,
@@ -1477,7 +1477,7 @@ function yearRangeOf(work: Work): string {
 }
 
 /** Web library hero meta: "2003  Action · Crime  1 min" (year, genres, then the runtime once the detail has loaded). */
-function heroMetaLines(work: Work, runtime: string): string[] {
+function heroMetaRuns(work: Work, runtime: string): string[] {
   const parts: string[] = [];
   const year = yearRangeOf(work);
   if (year.length > 0) {
@@ -1489,7 +1489,7 @@ function heroMetaLines(work: Work, runtime: string): string[] {
   if (runtime.length > 0) {
     parts.push(runtime);
   }
-  return parts.length > 0 ? [parts.join('    ')] : [];
+  return parts;
 }
 
 /**

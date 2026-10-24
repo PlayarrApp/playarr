@@ -100,6 +100,8 @@ export struct FeatureCopy {
   @Prop metaLines: string[] = [];
   /** Detail pages: the meta as web chips (replaces `metaLines` when set). */
   @Prop metaChips: string[] = [];
+  /** Library hero: the meta as separate runs (year, genres, runtime), 12.8 apart, one text element each as on web. */
+  @Prop metaRuns: string[] = [];
   /** Synopsis body copy, clamped to `SYNOPSIS_MAX_LINES` lines with an
    * ellipsis. Empty string hides it entirely -- the home Stage hero
    * renders no synopsis in the source design (only Detail supplies one). */
@@ -200,6 +202,20 @@ export struct FeatureCopy {
         }
         .width('100%')
         .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META) })
+      } else if (this.metaRuns.length > 0) {
+        Row({ space: tv(12.8) }) {
+          ForEach(
+            this.metaRuns,
+            (run: string) => {
+              Text(run).fontFamily(nunito(COPY_TEXT_FONT_WEIGHT))
+                .fontSize(tv(COPY_TEXT_FONT_SIZE))
+                .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
+                .fontColor(this.copyTextColor())
+            },
+            (run: string, index: number) => `${index}-${run}`
+          )
+        }
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META + this.metaGapAdjust) })
       } else if (this.metaLines.length > 0) {
         Column() {
           ForEach(

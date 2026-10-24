@@ -6,7 +6,7 @@
  * between pages.
  */
 
-import { nunito } from '../Typography';
+import { nunito, arrowFont } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry } from '../Metrics';
@@ -116,8 +116,8 @@ export struct PageShell {
 
   @Builder
   private headerBack(): void {
-    Text('←').fontFamily(nunito(400))
-      .fontSize(tv(BACK_GLYPH_SIZE))
+    Text('←').fontFamily(arrowFont(720))
+      .fontSize(17.28) // web dump: 17.28, Liberation Sans bold
       .fontWeight(FontWeight.Normal)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .textAlign(TextAlign.Center)
@@ -239,7 +239,7 @@ export struct PageShell {
     Column() {
       Row({ space: 10 }) {
         if (this.showHeader) {
-          Text('←').fontFamily(nunito(720))
+          Text('←').fontFamily(arrowFont(720))
             .fontSize(12.8) // web dump: 12.8 / 720
             .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))

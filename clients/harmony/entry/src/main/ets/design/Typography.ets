@@ -25,6 +25,8 @@ export function registerNunito(ui: UIContext): void {
   font.registerFont({ familyName: 'NunitoSansW820', familySrc: $rawfile('fonts/NunitoSans-W820.ttf') });
   font.registerFont({ familyName: 'NunitoSansW860', familySrc: $rawfile('fonts/NunitoSans-W860.ttf') });
   font.registerFont({ familyName: 'NunitoSansW900', familySrc: $rawfile('fonts/NunitoSans-W900.ttf') });
+  font.registerFont({ familyName: 'PlayarrArrows', familySrc: $rawfile('fonts/PlayarrArrows.ttf') });
+  font.registerFont({ familyName: 'PlayarrArrowsRegular', familySrc: $rawfile('fonts/PlayarrArrowsRegular.ttf') });
 }
 
 /** The family for a weight: the nearest static instance. Call sites pass the web CSS weight; the nominal ArkUI weights
@@ -37,4 +39,9 @@ export function nunito(weight: number): string {
     }
   }
   return 'NunitoSansW' + best.toString();
+}
+
+/** Web draws the arrow glyphs (U+2190, U+2192) with Chromium's fallback, Liberation Sans (bold from weight 600 up); the subsets bundled here carry the same glyphs. */
+export function arrowFont(weight: number): string {
+  return weight >= 600 ? 'PlayarrArrows' : 'PlayarrArrowsRegular';
 }
