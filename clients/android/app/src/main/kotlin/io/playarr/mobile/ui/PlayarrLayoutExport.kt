@@ -224,8 +224,10 @@ internal object PlayarrLayoutExport {
                 }
                 if (r > l) {
                     // An ancestor's graphicsLayer scale (the selected nav tile's 1.05) shows in the node's bounds but not in the text layout.
-                    val sx = if (layout.size.width > 0) (bounds.right - bounds.left) / layout.size.width else 1f
-                    val sy = if (layout.size.height > 0) (bounds.bottom - bounds.top) / layout.size.height else 1f
+                    // Only a real transform counts (the 1.05 nav tile); a text node narrower than its layout (centred or wrapped) is not scaled.
+                    fun ratio(node: Float, laid: Int) = if (laid > 0 && node / laid in 1.02f..1.12f) node / laid else 1f
+                    val sx = ratio(bounds.right - bounds.left, layout.size.width)
+                    val sy = ratio(bounds.bottom - bounds.top, layout.size.height)
                     val lineBox = config.contains(io.playarr.shared.designsystem.page.ParityLineBoxKey)
                     val rx = x + l * sx
                     // CSS line box: the content area centred in the declared line height (Compose cannot draw a line box below the font's own).

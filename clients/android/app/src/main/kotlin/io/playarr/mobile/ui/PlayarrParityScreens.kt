@@ -1,6 +1,7 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityText
 import io.playarr.shared.designsystem.page.parityRole
 import io.playarr.shared.designsystem.page.mediaCardLift
 import io.playarr.shared.designsystem.page.PlayarrPageBody
@@ -1942,7 +1943,7 @@ private fun TelevisionProfilesStage(
                 fontWeight = FontWeight.Medium,
                 letterSpacing = (-5.806).sp,
                 lineHeight = 76.6.sp,
-                modifier = Modifier.padding(top = 7.2.dp).offset(y = (-16).dp).semantics { heading() },
+                modifier = Modifier.padding(top = 7.2.dp).offset(x = 3.5.dp, y = (-17.25).dp).semantics { heading() },
             )
         }
 
@@ -2085,7 +2086,7 @@ private fun TelevisionProfilesStage(
                         color = WebInkSoft,
                         fontSize = if (tabletUpdate) 8.sp else 10.752.sp,
                         fontWeight = if (tabletUpdate) FontWeight.Bold else FontWeight(720),
-                        modifier = Modifier.parityRole("button", 999f),
+                        modifier = Modifier.parityText(role = "button", radius = 999f, background = io.playarr.shared.designsystem.page.parityPillGlass()),
                     )
                 }
                 if (event is AndroidUpdateEvent.Error) {
@@ -2489,7 +2490,7 @@ private fun ProfileChoice(
                 PlayarrProfileAvatar(
                     userId = profile.id,
                     preference = avatar,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().parityBox("image", background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.center.x - 112.545f, r.center.y - 112.545f, r.center.x + 112.545f, r.center.y + 112.545f) }),
                 )
                 if (profile.pinLocked) {
                     Icon(
@@ -2506,6 +2507,7 @@ private fun ProfileChoice(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(cardWidth)
+            .then(if (isTelevision) Modifier.offset(y = 1.9.dp) else Modifier)
             .then(lift)
             // Web: the button is the avatar plus its two text lines (the actions below are separate controls).
             .parityBox("button", avatarDescription, background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top, r.right, r.top + r.width * 301.6f / 244f) })
@@ -2516,7 +2518,7 @@ private fun ProfileChoice(
                 shadows = avatarShadows,
                 shape = CircleShape,
                 modifier = Modifier.size(avatarSize).graphicsLayer { scaleX = if (selected) 1.035f else 1f; scaleY = scaleX }
-                    .parityBox("container", "", 50f, background = WebBackground, fit = { r -> val e = r.width * 0.0175f; androidx.compose.ui.geometry.Rect(r.left - e, r.top - e, r.right + e, r.bottom + e) }),
+                    .parityBox("container", "", 50f, background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.center.x - 131.95f, r.center.y - 131.95f, r.center.x + 131.95f, r.center.y + 131.95f) }),
                 focusGlow = avatarFocused,
             ) { avatarSurface() }
         } else {
@@ -2531,7 +2533,7 @@ private fun ProfileChoice(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
             modifier = Modifier
-                .padding(top = if (isTelevision) (if (LocalStageScale.current != 1f) 13.6.dp else 8.8.dp) else 12.dp)
+                .padding(top = if (isTelevision) (if (LocalStageScale.current != 1f) 13.6.dp else 9.64.dp) else 12.dp)
                 .fillMaxWidth(),
         )
         if (!serverLabel.isNullOrBlank()) {
@@ -2558,7 +2560,7 @@ private fun ProfileChoice(
             fontSize = if (isTelevision) 9.408.sp else 8.sp,
             fontWeight = if (isTelevision) FontWeight(690) else FontWeight.Bold,
             letterSpacing = if (isTelevision) 0.423.sp else 0.6.sp,
-            modifier = Modifier.padding(top = if (isTelevision) 8.8.dp else 4.dp),
+            modifier = Modifier.padding(top = if (isTelevision) 4.33.dp else 4.dp),
         )
         if (selected) {
           // Tablet web draws the action pills in css px (44 css tall).
@@ -2566,7 +2568,7 @@ private fun ProfileChoice(
           @Composable fun ActionRow() {
             // Web `.profile-actions`
             Row(
-                modifier = Modifier.padding(top = if (tabletActions) 20.dp else if (isTelevision) 11.2.dp else 18.dp),
+                modifier = Modifier.padding(top = if (tabletActions) 20.dp else if (isTelevision) 15.8.dp else 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 8.8.dp else 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -2578,11 +2580,11 @@ private fun ProfileChoice(
                     color = WebSurfaceStrong.copy(alpha = 0.64f),
                     border = BorderStroke(1.dp, WebInkMuted.copy(alpha = 0.35f)),
                     modifier = Modifier.size(44.dp).focusRequester(settingsFocus).focusProperties { down = FocusRequester.Cancel } // web: nothing below the actions
-                        .parityBox("button", settingsLabel, 999f, background = WebBackground)
+                        .parityBox("button", settingsLabel, 999f, background = io.playarr.shared.designsystem.page.parityOver(WebSurfaceStrong, 0.64f, WebBackground))
                         .semantics { contentDescription = settingsLabel },
                 ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        ProfilesSettingsIcon(ProfilesBrandRose, Modifier.parityBox("image", background = WebBackground))
+                        ProfilesSettingsIcon(ProfilesBrandRose, Modifier.parityBox("image", background = io.playarr.shared.designsystem.page.parityOver(WebSurfaceStrong, 0.64f, WebBackground)))
                     }
                 }
                 onSignOut?.let { action ->
@@ -2593,14 +2595,14 @@ private fun ProfileChoice(
                         shape = CircleShape,
                         color = WebSurfaceStrong.copy(alpha = 0.64f),
                         border = BorderStroke(1.dp, WebInkMuted.copy(alpha = 0.35f)),
-                        modifier = Modifier.heightIn(min = 44.dp).parityBox("button", "Sign out ${profile.displayName}", 999f, background = WebBackground),
+                        modifier = Modifier.heightIn(min = 44.dp).parityBox("button", "Sign out ${profile.displayName}", 999f, background = io.playarr.shared.designsystem.page.parityOver(WebSurfaceStrong, 0.64f, WebBackground)),
                     ) {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            ProfilesSignOutIcon(WebInkSoft, Modifier.parityBox("image", background = WebBackground))
+                            ProfilesSignOutIcon(WebInkSoft, Modifier.parityBox("image", background = io.playarr.shared.designsystem.page.parityOver(WebSurfaceStrong, 0.64f, WebBackground)))
                             Text(
                                 playarrString(PlayarrString.ProfilesSignOut),
                                 color = WebInkSoft,
@@ -2687,6 +2689,7 @@ private fun AddProfileChoice(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(cardWidth)
+            .then(if (isTelevision) Modifier.offset(y = 1.2.dp) else Modifier)
             .then(lift)
             .parityBox("button", "+ " + playarrString(PlayarrString.ProfilesSignIn) + " " + playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale), background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top, r.right, r.top + r.width * 301.6f / 244f) })
             .onFocusChanged { addFocused = it.hasFocus; if (it.hasFocus) onFocus() },
@@ -2715,7 +2718,7 @@ private fun AddProfileChoice(
             fontWeight = if (isTelevision) FontWeight(690) else FontWeight.Bold,
             letterSpacing = if (isTelevision) 0.423.sp else 0.6.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = if (isTelevision) 8.8.dp else 4.dp),
+            modifier = Modifier.padding(top = if (isTelevision) 4.5.dp else 4.dp),
         )
     }
 }
