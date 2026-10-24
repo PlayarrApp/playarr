@@ -134,6 +134,18 @@ final class ParityLayoutRegistry {
             out.text = texts.max { overlap($0.rect, item.rect) < overlap($1.rect, item.rect) }.flatMap { overlap($0.rect, item.rect) > 0 ? $0.text : nil }
             return out
         }.filter { $0.text != nil || $0.size == nil }
+        // A plain accessibility entry that encloses a styled text is that text's control: a button with the text's backdrop.
+        let styledTexts = all.filter { $0.size != nil }
+        all = all.map { item in
+            guard item.size == nil, item.role == "text" || item.role == "container", let name = item.text, !name.isEmpty,
+                  let inner = styledTexts.first(where: { item.rect.insetBy(dx: -1, dy: -1).contains($0.rect) && item.rect.height > $0.rect.height + 4 }) else { return item }
+            var out = item
+            out.role = "button"
+            out.background = inner.background
+            out.radius = 50
+            if name == "#" { out.text = "Numbers and symbols" }
+            return out
+        }
         let viewport = CGRect(origin: .zero, size: screen.size)
         all = all.filter { $0.rect.intersects(viewport) && $0.rect.width > 1 && $0.rect.height > 1 }
         all.sort { ($0.rect.minY, $0.rect.minX, $0.text ?? "", $0.role) < ($1.rect.minY, $1.rect.minX, $1.text ?? "", $1.role) }

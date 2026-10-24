@@ -397,9 +397,10 @@ struct LibraryView: View {
                             Circle().stroke(PlayarrStyle.background, lineWidth: 2).frame(width: 24, height: 24).offset(y: 1)
                             Circle().stroke(WM.pink, lineWidth: 2.2).frame(width: 28, height: 28).offset(y: 1)
                         }
-                        Text(letter).wm(9.5, 700).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                        Text(letter).wm(8.96, 700, color: WM.muted).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44).frame(height: 25.27)
+                    .parityBox("button", name: letter == "#" ? "Numbers and symbols" : letter, background: WM.page, radius: 50)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         let first = viewModel.works.first { work in
