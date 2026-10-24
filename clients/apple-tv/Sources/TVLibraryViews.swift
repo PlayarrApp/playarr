@@ -189,6 +189,10 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
+            #if os(tvOS)
+            // The rails' scroll view must end at the screen edge, or the fade below lands past it (the tvOS capture showed none).
+            .frame(height: 1080 - Self.railTopY, alignment: .top)
+            #endif
             #if os(macOS) || os(tvOS)
             // Web `[data-fade-axis="y"][data-fade-end]` on `.tv-home-rails`: the last visible row dims to the floor at the page edge.
             .macEdgeFade(axis: .vertical, endFloor: 0.3)
@@ -317,11 +321,15 @@ struct TVHomeView: View {
                         .onMoveCommand { direction in
                             cancelStageFocusRequest()
                             if direction == .left, index == 0 {
+                                #if os(tvOS)
                                 if (homeCardFrames[focus]?.midY ?? 0) < 520 {
                                     // The first rail's leading card hands over to the active tab (web: Home).
                                     requestNavFocus()
                                     focusedCard = nil
-                                } else if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                    return
+                                }
+                                #endif
+                                if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
                                     focusedCard = nil
                                 }
                             }
