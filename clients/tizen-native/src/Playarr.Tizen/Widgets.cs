@@ -98,7 +98,7 @@ internal sealed class MediaCard
         var drop = card.StackOptions > 1 ? StackDrop : 0;
         Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 610, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
-        _titleY = Title.PositionY; _subY = H + 31.9f + drop;
+        _titleY = Title.PositionY; _titleX = Title.PositionX; _subY = H + 31.9f + drop;
         if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
     }
@@ -124,10 +124,13 @@ internal sealed class MediaCard
         if (show) _outerRing.RaiseToTop();
     }
 
-    private View? _stackNear, _stackFar, _shadow2, _sub;
+    private View? _stackNear, _stackFar, _shadow2; private TextLabel? _sub;
     private float _titleY, _subY;
     /// <summary>Web Home: the focused card's caption rises 8 px with the card (the art's own lift is part of that).</summary>
     public float FocusCaptionLift { get; init; }
+    /// <summary>Web Library: the selected card scales 1.015 about its centre, so the caption grows with it.</summary>
+    public float FocusCaptionScale { get; init; } = 1f;
+    private float _titleX;
     private readonly float _restBlur;
 
     /// <summary>
@@ -165,7 +168,20 @@ internal sealed class MediaCard
         Box.PositionY = _boxY + (focused ? _boxLift : 0);
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
         Art.PositionY = _artDy + (focused ? _lift : 0);
-        if (FocusCaptionLift != 0) { var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d; }
+        if (FocusCaptionLift != 0)
+        {
+            var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d;
+            // web: the selected caption takes --ink-max (white in dark, black in light)
+            var max = _t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1);
+            Title.TextColor = focused ? max : Ui.C(_t.Ink); if (_sub is not null) _sub.TextColor = focused ? max : Ui.C(_t.InkMuted);
+            if (FocusCaptionScale != 1f)
+            {
+                // the whole card scales about its centre in web, the caption with it
+                var k = focused ? FocusCaptionScale : 1f;
+                Title.Scale = new Vector3(k / Ui.TextScale, k / Ui.TextScale, 1);
+                Title.PositionX = _titleX + (focused ? (_titleX - W / 2) * (FocusCaptionScale - 1) : 0);
+            }
+        }
         Art.BoxShadow = _searchPlaylistFocusGlow is not null
             ? focused
                 ? new Shadow(52, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.28f), new Vector2(0, 22), new Vector2(0, 0))
@@ -441,7 +457,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.Library(false, "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f, FocusCaptionScale = 1.0148f };
     }
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>
