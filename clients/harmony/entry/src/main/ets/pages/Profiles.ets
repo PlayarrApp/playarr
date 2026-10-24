@@ -44,7 +44,7 @@
  * established for their own routes in this same slice.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont } from '../design/Typography';
 import type { AvailableProfileResponse } from '../core/Types/Profiles.ts';
 import { resolveAvatarPreset } from '../core/AvatarPreset.ts';
 import { BRAND_PINK, BRAND_PINK_SOFT, Spacing, Radii } from '../core/Tokens';
@@ -353,19 +353,37 @@ struct Profiles {
   /** Web's foot-of-page pills (Check for updates, Clients): a 44 px pill on surface-strong at 0.64, text only. */
   @Builder
   private footerPill(label: string, x: number, y: number, onTap: () => void, phone: boolean = false): void {
-    Text(label).fontFamily(nunitoAt(phone ? 720 : 700, phone ? 7.68 : tv(TV_ACTION_TEXT)))
-      .fontSize(phone ? 7.68 : tv(TV_ACTION_TEXT))
-      .fontWeight(FontWeight.Bold)
-      .fontColor(toResourceColor(activeColors().inkSoft))
+    if (phone) {
+      // web: a pill whose link text and arrow are two elements ("Clients", "→")
+      Row({ space: 8.8 }) {
+        Text('Clients').fontFamily(nunitoAt(720, 7.68)).fontSize(7.68).fontWeight(FontWeight.Bold)
+          .fontColor(toResourceColor(activeColors().inkSoft)).id('px:link:Clients')
+        Text('→').fontFamily(arrowFont(720)).fontSize(7.68).fontWeight(FontWeight.Normal)
+          .fontColor(toResourceColor(activeColors().inkSoft))
+      }
       .height(tv(TV_ACTION_HEIGHT))
-      .padding({ left: tv(17), right: tv(17) })
+      .padding({ left: 17, right: 17 })
       .borderRadius(tv(TV_ACTION_HEIGHT / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
-      .position(phone ? { x: '100%', y: '100%' } : { x: tv(x), y: tv(y) })
-      .markAnchor(phone ? { x: PHONE_FOOTER_RIGHT + 75, y: PHONE_FOOTER_BOTTOM + TV_ACTION_HEIGHT } : { x: 0, y: 0 })
+      .position({ x: 262.5, y: '100%' })
+      .markAnchor({ x: 0, y: PHONE_FOOTER_BOTTOM + TV_ACTION_HEIGHT })
       .focusable(true)
       .onClick(onTap)
+    } else {
+      Text(label).fontFamily(nunitoAt(700, tv(TV_ACTION_TEXT)))
+        .fontSize(tv(TV_ACTION_TEXT))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .height(tv(TV_ACTION_HEIGHT))
+        .padding({ left: tv(17), right: tv(17) })
+        .borderRadius(tv(TV_ACTION_HEIGHT / 2))
+        .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
+        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
+        .position({ x: tv(x), y: tv(y) })
+        .focusable(true)
+        .onClick(onTap)
+    }
   }
 
   /** Web `.profile-action-button`: a 44 px pill on surface-strong at 0.64. */

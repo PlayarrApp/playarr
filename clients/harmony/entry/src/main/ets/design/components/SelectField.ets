@@ -84,8 +84,8 @@ export struct SelectField {
       Row({ space: this.lead.length === 0 ? tv(GAP) : 7.86 }) {
         if (this.lead.length > 0) {
           Image(this.lead === 'sun' ? $r('app.media.select_sun') : $r('app.media.select_globe'))
-            .width(this.labelSize * 1.5)
-            .height(this.labelSize * 1.5)
+            .width(this.lead.length > 0 ? 16 : this.labelSize * 1.5)
+            .height(this.lead.length > 0 ? 16 : this.labelSize * 1.5)
             .margin({ right: 0 })
             .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
         }
@@ -111,7 +111,7 @@ export struct SelectField {
       .width(tv(this.selectWidth))
       .id(this.controlName.length > 0 ? 'px:button:' + this.controlPrefix + this.labelOf(this.value) : '')
       .constraintSize({ minHeight: tv(this.minHeight) })
-      .padding({ left: tv(PADDING_H) + (this.lead.length > 0 ? 3.86 : 0), right: tv(PADDING_H), top: tv(PADDING_V), bottom: tv(PADDING_V) })
+      .padding({ left: tv(PADDING_H) + (this.lead.length > 0 ? 3.86 : 0), right: tv(PADDING_H) + (this.lead.length > 0 ? 3.05 : 0), top: tv(PADDING_V), bottom: tv(PADDING_V) })
       .borderRadius(tv(this.radius))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, LINE_ALPHA * 0.3) })
       .backgroundColor(this.fill(this.highlighted === '#trigger'))
