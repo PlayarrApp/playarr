@@ -422,7 +422,8 @@ private struct AuthenticatedPlayarrShell: View {
                     .zIndex(20)
             }
         }
-        .background(PlayarrStyle.background.ignoresSafeArea())
+        .background(PlayarrStyle.background.ignoresSafeArea().parityBox("container", background: PlayarrStyle.background))
+        .parityBackground(PlayarrStyle.background)
         .environment(visibleDetailRoutes)
         #if DEBUG
         .overlay(alignment: .topLeading) {
@@ -663,6 +664,8 @@ private struct AuthenticatedPlayarrShell: View {
                 }
                 .scrollIndicators(.hidden)
                 .frame(height: 58)
+                .padding(.horizontal, 0)
+                .parityBox("container", background: PlayarrStyle.surfaceStrong, radius: 20)
                 .background(
                     PlayarrStyle.surfaceStrong.opacity(0.88),
                     in: RoundedRectangle(cornerRadius: 20, style: .continuous)

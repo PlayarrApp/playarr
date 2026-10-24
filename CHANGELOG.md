@@ -13,6 +13,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- iOS parity player captures load paused at two seconds and verify AVPlayer's actual position before and after screenshots.
+- iOS title actions use 68 pt rows, 14 pt circular corners, regular action glyphs and bold labels; the panel Close control is a labelled 44 pt circle.
 - Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.
 - Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
 - Android phone player controls: buttons are 44 dp, Previous and Next dim when the queue has one item, and the time and button rows are spaced as on the web.
