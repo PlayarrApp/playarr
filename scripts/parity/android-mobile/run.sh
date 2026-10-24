@@ -29,12 +29,18 @@ for t in Dark Light; do
 done
 mkdir -p "$out"
 node "$here/score.mjs" "$legend/web" "$out" --json "$out/scores.json"
+# Layout score (docs/parity/LAYOUT.md) per screen and theme, from the layout JSON captured with each screenshot.
+for t in dark light; do for f in "$out/$t/layout/"*.json; do
+  [ -f "$f" ] || continue; id=$(basename "$f" .json)
+  node "$here/../layout-score.mjs" --ref "$legend/web/layout/$t/$id.json" --device "$f" --json | python3 -I -c "import json,sys; d=json.load(sys.stdin); print('$t', '$id', d['score'], d['equal'], '/', d['total'])" || true
+done; done | tee "$out/layout-scores.txt"
 [ "${PARITY_PUBLISH:-1}" = 1 ] || exit 0
 sha=$(git -C "$here" rev-parse HEAD); branch=$(git -C "$here" rev-parse --abbrev-ref HEAD)
 mkdir -p "$legend/dev/light"
 rm -f "$legend/dev/"*.png "$legend/dev/light/"*.png
 cp "$out/dark/"*.png "$legend/dev/"; cp "$out/light/"*.png "$legend/dev/light/"
-cp "$out/scores.json" "$legend/dev/scores.json"
+rm -rf "$legend/dev/layout"; for t in dark light; do mkdir -p "$legend/dev/layout/$t"; cp "$out/$t/layout/"*.json "$legend/dev/layout/$t/" 2>/dev/null || true; done
+cp "$out/scores.json" "$legend/dev/scores.json"; cp "$out/layout-scores.txt" "$legend/dev/layout-scores.txt" 2>/dev/null || true
 for d in "$legend/dev" "$legend/dev/light"; do
   printf '{"branch":"%s","sha":"%s","pr":%s,"captured_at":"%s","server":"static server"}\n' "$branch" "$sha" "${PARITY_PR:-null}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$d/build.json"
 done
