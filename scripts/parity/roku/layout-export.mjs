@@ -51,6 +51,7 @@ function sampler(pngFile) {
 export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned }) {
   const bg = sampler(pngFile);
   const elements = [];
+  const FILLSET = ["container", "link", "button", "search", "textbox", "status", "dialog", "group", "heading"];
   const dbg = [];
   const boxes = [];
   const under = (x, y, w, h) => { const cx = x + w / 2, cy = y + h / 2; let best = null; for (const b of boxes) { if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h && (!best || b.w * b.h <= best.w * best.h)) best = b; } return best ? best.bg : null; };
@@ -62,14 +63,14 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
     items.push(it);
     // Text sits on the nearest box drawn beneath it, whatever order the channel printed them in.
     if (it.k === "box" && !it.fixed) it.bg = ""; // sampled below
-    if (it.k === "box" && ["container", "link", "button", "search", "textbox", "status", "dialog", "group"].includes(it.role) && it.w < 1900 && it.bg) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg });
+    if (it.k === "box" && FILLSET.includes(it.role) && it.w < 1900 && it.bg) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg });
   }
   // A box's background is what the device draws inside it: the colour of its own fill over what is beneath (read from the frame).
-  const FILLS = ["container", "link", "button", "search", "textbox", "status", "dialog", "group"];
+  const FILLS = ["container", "link", "button", "search", "textbox", "status", "dialog", "group", "heading"];
   for (const it of items) if (it.k === "box" && !it.fixed && !it.inherit && FILLS.includes(it.role)) it.bg = bg.inside(it.x, it.y, it.w, it.h);
   const encl = (it) => { let best = null; for (const o of items) { if (o === it || o.k !== "box" || !FILLS.includes(o.role) || o.inherit || o.w >= 1900 || !o.bg) continue; if (it.x >= o.x - 0.5 && it.y >= o.y - 0.5 && it.x + it.w <= o.x + o.w + 0.5 && it.y + it.h <= o.y + o.h + 0.5) best = o; } return best?.bg; };
   for (const it of items) if (it.k === "box" && !it.fixed && (it.inherit || !FILLS.includes(it.role))) it.bg = encl(it) || bg.inside(it.x, it.y, it.w, it.h);
-  const sampled = items.filter((it) => it.k === "box" && ["container", "link", "button", "search", "textbox", "status", "dialog", "group"].includes(it.role) && it.w < 1900);
+  const sampled = items.filter((it) => it.k === "box" && FILLSET.includes(it.role) && it.w < 1900);
   boxes.length = 0;
   for (const it of sampled) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg });
   for (const it of items) {
@@ -88,7 +89,7 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
       const colour = it.color;
       elements.push({
         text: it.text.replace(/\s+/g, " ").trim(), role: it.aria ?? it.arole ?? (it.role === "ink" && it.k === "tracked" && it.size >= 30 ? "heading" : "text"),
-        rect: { x, y, w: textW, h }, color: colour ? hex(colour) : null, background: under(x, y, textW, h) || it.bg || bg(x, y, textW, h),
+        rect: { x, y, w: textW, h }, color: colour ? hex(colour) : null, background: (it.fixed ? it.bg : under(x, y, textW, h)) || it.bg || bg(x, y, textW, h),
         fontSize: it.size, fontWeight: f.weight, ...(it.radius ? { radius: it.radius } : {}), ...(it.op < 0.995 ? { opacity: Math.round(it.op * 100) / 100 } : {}), _id: it.id, _tracked: it.k === "tracked" ? it.role : undefined,
       });
     } else if (it.k === "box") {

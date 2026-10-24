@@ -158,7 +158,6 @@ function ParityToken(token as String) as String
         if m.global.themeMode = "light" then return "#" + parts[2]
         return "#" + parts[1]
     end if
-    if token = "accent" then return "#cf3157"
     if token = "progressTrackBg" then return "#5a5559"
     return Left(ParityHex(ThemeColor(token)), 7)
 end function
@@ -167,9 +166,12 @@ end function
 sub ParityBox(role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius as Float, bgToken as String, opacity = 1.0 as Float)
     ' The web reports 999 for a pill and 50 for a circle (border-radius 50 %); a device radius that rounds the whole short side is the same shape.
     r = radius
+    if r >= 999 then r = 998.5
     short = w
     if h < short then short = h
-    if r > 0 and r * 2 >= short - 0.5
+    if radius >= 999
+        r = 999
+    else if r > 0 and r * 2 >= short - 0.5
         r = 999
         if Abs(w - h) < 1 then r = 50
     end if
@@ -241,6 +243,7 @@ sub ParityDock()
 end sub
 
 function ParityTextBg(id as String, x as Float, y as Float) as String
+    if m.top.screenState = "profiles" then return ParityToken("bg")
     if x < 125 or Instr(1, id, "clock") > 0 or (x > 1840 and y < 230) then return ParityToken("bg")
     return ParityToken("surface")
 end function
@@ -335,14 +338,14 @@ sub ParityCard(card as Object)
     if badge <> invalid and badge.visible
         q = badge.translation
         p = ParityArtPoint(ag, q)
-        ParityBox("img", "", p[0] + s, p[1] + s, 13 * s, 13 * s, 50, "accent")
+        ParityBox("img", "", p[0] + s, p[1] + s, 13 * s, 13 * s, 50, "brand")
     end if
     track = card.findNode("progressTrack")
     if track <> invalid and track.visible
         p = ParityArtPoint(ag, track.translation)
         fill = card.findNode("progressFill")
         ParityBox("img", "", p[0], p[1], track.width * s, track.height * s, 0, "progressTrackBg")
-        ParityBox("container", "", p[0], p[1], fill.width * s, fill.height * s, 0, "accent")
+        ParityBox("container", "", p[0], p[1], fill.width * s, fill.height * s, 0, "brand")
     end if
 end sub
 
@@ -356,7 +359,7 @@ sub ParityAnnotated(node as Object, op as Float)
     r = node.sceneBoundingRect()
     if node.hasField("parityText")
         c = ThemeColor(node.parityColor)
-        ParityLayoutEmit({ k: "tracked", bg: ParityToken(node.parityBg), id: "mark", text: node.parityText, x: r.x, y: r.y, w: r.width, h: r.height, op: op, role: "", aria: node.parityRole, color: ParityHex(c), lines: 1, tracking: 0, radius: node.parityRadius, size: node.paritySize, font: PlayarrFontPath(node.parityWeight) })
+        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(node.parityBg), id: "mark", text: node.parityText, x: r.x, y: r.y, w: r.width, h: r.height, op: op, role: "", aria: node.parityRole, color: ParityHex(c), lines: 1, tracking: 0, radius: node.parityRadius, size: node.paritySize, font: PlayarrFontPath(node.parityWeight) })
         return
     end if
     ParityBox(node.parityRole, node.parityName, r.x, r.y, r.width, r.height, node.parityRadius, node.parityBg, op)
@@ -382,6 +385,7 @@ sub ParityPageShell()
         panel = true
     else if state = "page" and m.pageKind = "calendar"
         art = m.calendarView = "agenda"
+        panel = m.calendarView = "agenda"
     else if state = "page" and m.pageKind = "settings"
         panel = true
         panelX = 672
@@ -483,7 +487,7 @@ function ParityItemPoint(item as Object, q as Object) as Object
     s = g.scale[0]
     c = g.scaleRotateCenter
     t = g.translation
-    return [t[0] + c[0] + s * (q[0] - c[0]) + ParityDx(), t[1] + c[1] + s * (q[1] - c[1]) + ParityDy()]
+    return [t[0] + c[0] + s * (q[0] - c[0]), t[1] + c[1] + s * (q[1] - c[1])]
 end function
 
 ' A point of the circle (local q), drawn: the circle scales about its centre inside the item group.

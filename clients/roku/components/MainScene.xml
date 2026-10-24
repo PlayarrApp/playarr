@@ -108,12 +108,12 @@
       <Group id="profilesChromeControls" translation="[1552,50]">
         <Poster id="profilesThemePill" translation="[0,0]" width="144" height="48" uri="pkg:/images/pairing-chrome-dd-theme.png" />
         <Poster id="profilesThemeIcon" translation="[14,16]" width="16" height="16" uri="pkg:/images/pairing-icon-theme.png" />
-        <Label id="profilesThemeLabel" translation="[36,0]" width="84" height="48" text="Dark" horizAlign="left" vertAlign="center" scale="[0.42,0.42]" scaleRotateCenter="[0,24]" color="0xF4F0F1FF" />
+        <Label id="profilesThemeLabel" translation="[44.75,15.03]" width="84" height="20" text="Dark" horizAlign="left" vertAlign="top" scale="[0.42,0.42]" scaleRotateCenter="[0,0]" color="0xF4F0F1FF" />
         <Poster id="profilesThemeChevron" translation="[118,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
         <Rectangle id="profilesThemeHit" translation="[0,0]" width="144" height="48" color="0x00000000" focusable="true" />
         <Poster id="profilesLangPill" translation="[158,0]" width="168" height="48" uri="pkg:/images/pairing-chrome-dd.png" />
         <Poster id="profilesLangIcon" translation="[172,16]" width="16" height="16" uri="pkg:/images/pairing-icon-lang.png" />
-        <Label id="profilesLangLabel" translation="[196,0]" width="100" height="48" text="Auto" horizAlign="left" vertAlign="center" scale="[0.42,0.42]" scaleRotateCenter="[0,24]" color="0xF4F0F1FF" />
+        <Label id="profilesLangLabel" translation="[202.75,15.03]" width="100" height="20" text="Auto" horizAlign="left" vertAlign="top" scale="[0.42,0.42]" scaleRotateCenter="[0,0]" color="0xF4F0F1FF" />
         <Poster id="profilesLangChevron" translation="[300,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
         <Rectangle id="profilesLangHit" translation="[158,0]" width="168" height="48" color="0x00000000" focusable="true" />
       </Group>
