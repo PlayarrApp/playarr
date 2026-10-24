@@ -148,8 +148,8 @@ export async function createDriver() {
 
   return {
     endCrops: true, cropIds: ["filters-language", "filters-list"], // the open language flyout, then the List view (it persists, so it goes last)
-    // The drawer's focus starts on List (web: the Close button). Picking a view reloads the page, so the List crop reopens the drawer.
-    cropKeys: { "filters-language": ["down*3", "select"], "filters-list": ["select"] },
+    // The drawer's focus starts on Close (as web). Picking a view reloads the page, so the List crop reopens the drawer.
+    cropKeys: { "filters-list": ["down", "left*2", "select"] }, // the drawer opens on Close, as on web: the language crop uses the suite keys
     async afterCropKeys(id) { if (id === "filters-list") { await sleep(9000); await click(1877, 187, 3); } },
     async start() { run("write", "parity.on", "1"); },
     async setTheme(t) {
@@ -242,7 +242,11 @@ export async function createDriver() {
       }
       if (/^\/(movies|series)\/[^/]+\/?$/.test(base) || base.endsWith("/:id")) await click(...FIRST_CARD, 8);
       else if (base.startsWith("/player")) throw new Error("player-controls requires the guarded direct-play route");
-      else if (query?.includes("panel=filters")) await click(1877, 187, 3);
+      else if (query?.includes("panel=filters")) {
+        // The web reaches the Filters button with right,right from the first card, so its details panel shows the third title.
+        for (let i = 0; i < 2; i++) { await requireTestAccount(); run("key", "right"); await sleep(1200); }
+        await click(1877, 187, 3);
+      }
     },
     async key(name, { long } = {}) {
       await requireTestAccount();
@@ -263,6 +267,20 @@ export async function createDriver() {
       // Luminance guard (exit 4 from the helper): a light frame is refused in a dark run and the reverse. The player is black in both.
       run("shot", file, ...(theme && t.screen !== "playback" ? [theme] : []));
       writeFileSync(file.replace(/\.png$/i, ".trace.json"), `${JSON.stringify(focusCaptureSidecar(t), null, 2)}\n`);
+      // Layout export (docs/parity/LAYOUT.md): the app walks its visual tree for this exact state; <id>.layout.json sits beside the PNG.
+      if (theme && t.screen !== "playback") try {
+        const nonce = randomUUID().replaceAll("-", "");
+        await requireTestAccount();
+        run("write", "parity.layout", `${theme},${file.replace(/^.*[\\/]/, "").replace(/\.png$/i, "")},${nonce}`); // a comma: a pipe would reach cmd.exe
+        const deadline = Date.now() + 15000;
+        while (Date.now() < deadline) {
+          await sleep(500);
+          try {
+            const layout = JSON.parse(run("read", "layout.json"));
+            if (layout.layoutNonce === nonce) { delete layout.layoutNonce; writeFileSync(file.replace(/\.png$/i, ".layout.json"), `${JSON.stringify(layout, null, 1)}\n`); break; }
+          } catch { /* not written yet */ }
+        }
+      } catch (e) { console.log(`layout export skipped: ${String(e.message).split("\n")[0]}`); }
     },
     // Plays media file `c.file` through the app's parity.play request; judged from the player's own position.
     async play(c, expect) {

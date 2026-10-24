@@ -66,7 +66,7 @@ switch ($Cmd) {
     }
     $out.Save([IO.Path]::GetFullPath($A), [System.Drawing.Imaging.ImageFormat]::Png)
   }
-  'read' { Get-Content (Join-Path (State) 'parity.json') -Raw -Encoding UTF8 }
+  'read' { Get-Content (Join-Path (State) $(if ($A) { $A } else { 'parity.json' })) -Raw -Encoding UTF8 }
   'write' {
     $path = Join-Path (State) $A
     $temporaryPath = "$path.tmp"
