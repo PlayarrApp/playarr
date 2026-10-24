@@ -461,16 +461,18 @@ struct WMDetailPage: View {
         width: CGFloat, height: CGFloat = 44, fill: Color,
         glyph: String, glyphSize: CGFloat, glyphColor: Color,
         label: String, labelSize: CGFloat, labelColor: Color, gap: CGFloat,
-        role: String = "button", name: String? = nil
+        name: String? = nil
     ) -> some View {
         HStack(spacing: gap) {
-            Text(glyph).wm(glyphSize).foregroundStyle(glyphColor)
+            Text(glyph).wm(glyphSize, color: glyphColor).foregroundStyle(glyphColor)
+                .accessibilityHidden(true)
             WMText(label, labelSize, 700, color: labelColor, lh: labelSize * 1.5).fixedSize()
         }
         .frame(width: width, height: height)
         .background(fill, in: Capsule())
-        .parityBackground(fill)
-        .overlay { Color.clear.frame(width: min(width, 120.5), height: 44).parityBox(role, name: name, background: fill, radius: 999) }
+        .parityBox("container", background: fill, radius: min(width, height) / 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(name ?? label)
         .wmPillShadow()
     }
 
@@ -534,7 +536,7 @@ struct WMDetailPage: View {
             } label: {
                 pill(
                     width: 127.7, height: 47, fill: WM.ink, /* web touch Play is the ink fill; the rose is its keyboard-focus state */ glyph: "▶\u{FE0E}", glyphSize: 8.6,
-                    glyphColor: WM.shell, label: "Play", labelSize: 11.2, labelColor: WM.shell, gap: 11, role: "link", name: "Play \(work.title)"
+                    glyphColor: WM.shell, label: "Play", labelSize: 11.2, labelColor: WM.shell, gap: 11, name: "Play \(work.title)"
                 )
             }
             .buttonStyle(.plain)

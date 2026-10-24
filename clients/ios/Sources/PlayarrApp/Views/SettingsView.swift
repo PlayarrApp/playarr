@@ -164,10 +164,11 @@ struct SettingsView: View {
                                     .offset(x: rowFocused ? 332 : 329, y: 32)
                             }
                             .frame(width: 361, height: 88, alignment: .topLeading)
-                            .parityBox("link", name: "\(section.number) \(section.title) \(section.description)", background: rowFocused ? WM.artFill : WM.page)
+                            .parityBox("button", name: "\(section.number) \(section.title) \(section.description)", background: rowFocused ? WM.artFill : nil)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("\(section.number) \(section.title) \(section.description)")
                         .focusable()
                         .focused($focusedSection, equals: section)
                         .focusEffectDisabled()

@@ -648,7 +648,7 @@ private struct AuthenticatedPlayarrShell: View {
                                 )
                                 .offset(x: 0.33, y: 0.5) // measured: web glyphs sit 1 px right and 1.5 px lower (3x)
                                 .frame(width: 44, height: 46)
-                                .parityBox("link", name: destination.title, background: phoneSelectedDestination == destination ? WM.ink : WM.chip, radius: 14)
+                                .parityBox("button", name: destination.title, background: phoneSelectedDestination == destination ? WM.ink : nil, radius: phoneSelectedDestination == destination ? 14 : 0)
                                 .background(
                                     phoneSelectedDestination == destination ? WM.ink : .clear,
                                     in: RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -665,7 +665,7 @@ private struct AuthenticatedPlayarrShell: View {
                 .scrollIndicators(.hidden)
                 .frame(height: 58)
                 .padding(.horizontal, 0)
-                .parityBox("container", background: PlayarrStyle.surfaceStrong, radius: 20)
+                .parityBox("container", background: PlayarrStyle.surfaceStrong.opacity(0.88), radius: 20)
                 .background(
                     PlayarrStyle.surfaceStrong.opacity(0.88),
                     in: RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -753,12 +753,12 @@ private struct AuthenticatedPlayarrShell: View {
                     VStack(spacing: 6) {
                         WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, size: 18)
                         Text(destination.title)
-                            .wm(8.5, 700)
+                            .wm(8.5, 700, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
                             .lineLimit(1)
                     }
                     .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
                     .frame(width: 64, height: 64)
-                    .parityBox("link", name: destination.title, background: PlayarrStyle.surfaceStrong, radius: 16)
+                    .parityBox("button", name: destination.title, background: selected == destination ? PlayarrStyle.ink.opacity(0.09) : nil, radius: selected == destination ? 16 : 0)
                     .background(
                         selected == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -775,6 +775,7 @@ private struct AuthenticatedPlayarrShell: View {
             PlayarrStyle.surfaceStrong,
             in: RoundedRectangle(cornerRadius: 22, style: .continuous)
         )
+        .parityBox("container", background: PlayarrStyle.surfaceStrong, radius: 22)
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(PlayarrStyle.line, lineWidth: 1)

@@ -525,7 +525,7 @@ struct WMUnseenDot: View {
         Circle()
             .fill(WM.pink)
             .frame(width: 9, height: 9)
-            .parityBox("img", background: WM.pink, radius: 50)
+            .parityBox("image", background: WM.pink, radius: 4.5)
             .overlay(Circle().strokeBorder(Color.white.opacity(0.94), lineWidth: 2))
             .shadow(color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(0.45), radius: 4.5, y: 2)
     }
@@ -592,8 +592,6 @@ struct WMRailCard: View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
-                .parityBox("container", background: WM.artFill, radius: 8)
-                .parityBox("image", background: WM.artFill)
                 .background(WM.artFill)
                 .overlay(alignment: .bottomLeading) {
                     if let progress {
@@ -605,6 +603,7 @@ struct WMRailCard: View {
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .parityBox("image", background: WM.artFill, radius: 10)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
@@ -614,8 +613,9 @@ struct WMRailCard: View {
             WMText(work.singularKindYearLabel, 6.88, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
         .frame(height: art + 24.7, alignment: .top)
-        .parityBox("link", name: "\(work.title) \(work.singularKindYearLabel)", radius: 12)
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(work.title) \(work.singularKindYearLabel)")
     }
 }
 
@@ -683,10 +683,9 @@ struct WMLibraryCard: View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
-                .parityBox("container", background: WM.artFill, radius: 8)
-                .parityBox("image", background: WM.artFill)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .parityBox("image", background: WM.artFill, radius: 10)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
@@ -695,8 +694,9 @@ struct WMLibraryCard: View {
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
         }
         .frame(height: art + 24.7, alignment: .top)
-        .parityBox("link", name: "Open \(work.title)", radius: 12)
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Open \(work.title)")
     }
 }
 
@@ -719,9 +719,9 @@ struct WMSearchCard: View {
             WMText(work.singularKindYearLabel.uppercased(), 9.28, 720, color: WM.muted, lh: 13.92, ls: 0.3)
                 .padding(.top, 2)
         }
-        .parityBox("link", name: "Open \(work.title)", radius: 12)
         .frame(width: 173, height: 142.5, alignment: .topLeading)
-
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Open \(work.title)")
     }
 }
 
@@ -743,7 +743,7 @@ struct WMHeaderCircleButton: View {
                 .frame(width: width, height: height)
                 .background(WM.chip.opacity(0.66), in: Ellipse())
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
-                .overlay { Color.clear.frame(width: 44, height: 44).parityBox("link", name: glyph == "\u{2190}" ? "Back" : glyph == "\u{2715}" ? "Close" : nil, background: WM.chip.opacity(0.66), radius: 50) }
+                .parityBox("container", background: WM.chip.opacity(0.66), radius: width == height ? width / 2 : 0)
         }
         .buttonStyle(.plain)
     }
