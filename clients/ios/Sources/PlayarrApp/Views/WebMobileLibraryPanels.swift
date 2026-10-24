@@ -58,7 +58,7 @@ private struct WMPanelFrame<Content: View>: View {
             ScrollView(.vertical) {
                 content()
                     .padding(.horizontal, isPad ? 34 : 21)
-                    .padding(.top, (isPad ? 140 : 92.6) + WM.safeTop)
+                    .padding(.top, (isPad ? 140 : 95) + WM.safeTop)
                     .padding(.bottom, isPad ? 96 : 130)
             }
             .scrollIndicators(.hidden)
@@ -246,6 +246,7 @@ struct WMLibraryFiltersPanel: View {
                     .accessibilityIdentifier("library-filter-languages-clear")
                 }
             }
+            .offset(y: wmIsPad ? 0 : -2.4) // phone: first label centre at 99 pt like the web
         }
         .task { await viewModel.loadLanguageFacets() }
     }
@@ -264,8 +265,8 @@ struct WMTitleActionsPanel: View {
         Button(action: action) {
             HStack(spacing: 0) {
                 // Web `.media-context-actions button`: a 42 px icon column (1.22rem glyph, left-aligned) then the label.
-                Text(glyph).font(WM.font(isPad ? 15 : 19.5, 700)).foregroundStyle(WM.pink).frame(width: 42, alignment: isPad ? .center : .leading)
-                Text(label).font(WM.font(isPad ? 15 : 16, isPad ? 600 : 650)).foregroundStyle(WM.ink)
+                Text(glyph).font(WM.font(isPad ? 15 : 19.5, 700)).foregroundStyle(WM.pink).frame(width: 42, alignment: isPad ? .center : .leading).offset(x: isPad ? 0 : -3)
+                Text(label).font(WM.font(isPad ? 15 : 16, isPad ? 600 : 650)).foregroundStyle(WM.ink).padding(.leading, isPad ? 0 : -1.2)
                 Spacer()
             }
             .padding(.horizontal, 18)
