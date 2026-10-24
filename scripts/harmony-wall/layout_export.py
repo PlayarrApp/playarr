@@ -9,6 +9,7 @@ FONT_FILES = {w: f"NunitoSans-W{w}.ttf" for w in (300, 400, 480, 560, 580, 610, 
 WEIGHT_NAMES = {"lighter": 300, "regular": 400, "normal": 400, "medium": 500, "bold": 700, "bolder": 800}
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "clients", "harmony", "entry", "src", "main", "resources", "rawfile", "fonts")
 KNOWN = set(chr(c) for c in range(0x20, 0x250)) | set('\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u00b7')
+_HB = {}
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
 
 
@@ -55,8 +56,23 @@ def weight_of(attrs):
 
 
 def text_width(text, size, weight, spacing, measure=None):
+    if text and all(ch in "\u2190\u2192" for ch in text):
+        return size * len(text)  # the fallback arrow glyphs advance one em
     if measure is not None:
         return measure(text, size, weight) + spacing * len(text)
+    try:  # HarfBuzz shapes with GPOS kerning as Chrome does (PIL's basic layout drifts by a pixel on long lines)
+        import uharfbuzz as hb  # noqa: PLC0415
+        name = FONT_FILES[min(FONT_FILES, key=lambda w: abs(w - weight))]
+        if name not in _HB:
+            face = hb.Face(hb.Blob.from_file_path(os.path.join(FONT_DIR, name)))
+            _HB[name] = (hb.Font(face), face.upem)
+        font, upem = _HB[name]
+        run = "".join(ch if ch in KNOWN else "\u25a1" for ch in text)
+        buf = hb.Buffer(); buf.add_str(run); buf.guess_segment_properties(); hb.shape(font, buf, {})
+        advance = sum(p.x_advance for p in buf.glyph_positions)
+        return advance * size / upem + spacing * len(text)
+    except ImportError:
+        pass
     from PIL import ImageFont  # noqa: PLC0415
     font = ImageFont.truetype(os.path.join(FONT_DIR, FONT_FILES[min(FONT_FILES, key=lambda w: abs(w - weight))]), 1000)
     advance = sum(font.getlength(ch) if ch in KNOWN else 1000 for ch in text)  # a glyph the font lacks falls back to a 1 em box, as web's fallback font does for arrows
@@ -115,14 +131,19 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             here = root_bg  # web composites the nav bar over the body, not over the page
         if kind in ("Navigation", "NavDestination", "root") or str(attrs.get("id", "")) == "px:navbar":
             bg = None  # system containers and the nav bar's own fill: web composites its children over the page behind (static refs)
+        parent_bg = here  # web's `background` is the composite behind the element; its own fill counts only when opaque
         if bg is not None and bg[3] > 0:
             here = over(bg, under)
+            if bg[3] > 0.99:
+                parent_bg = here
         if box is not None:
             x, y, w, h = (v / dpr for v in box)
-            if str(attrs.get("id", "")).startswith("px:") and kind != "Text":
+            if str(attrs.get("id", "")).startswith("px:") and str(attrs.get("id", "")).count(":") >= 2 and kind != "Text":
                 _, prole, pname = str(attrs["id"]).split(":", 2)  # the app tags controls "px:<web role>:<accessible name>"
+                if pname in ("Filters", "Calendar link"):
+                    parent_bg = root_bg  # fixed-position header actions: web composites them over the body
                 el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None}
+                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:
                     el["radius"] = radius
@@ -135,14 +156,14 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 label = first_text(node)
                 name = ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else (("Open " + label) if nid == "pcard" else label)
                 el = {"text": name, "role": "link", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else 12}
+                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else 12}
                 out.append(el)
             pxid = str(attrs.get("id", ""))
-            if kind == "Text" and pxid.startswith("px:") and w >= 40 and h >= 40:  # a Text drawn as a round control: the control and its glyph are two web elements
+            if kind == "Text" and pxid.count(":") >= 2 and pxid.startswith("px:") and w >= 40 and h >= 40:  # a Text drawn as a round control: the control and its glyph are two web elements
                 _, prole, pname = pxid.split(":", 2)
                 radius = num(attrs.get("borderRadius"), 0.0)
                 el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None}
+                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 if radius:
                     el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
                 out.append(el)
@@ -164,11 +185,11 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     pill = bool(num(attrs.get("borderRadius"), 0.0)) or (bg is not None and bg[3] > 0.01)  # a padded pill: the run is centred in the box
                     rx = x + (w - tw) / 2 if ("center" in align or pill) else (x + w - tw if "end" in align else x)
                     rx, ry, rw, rh = rx, y + (h - ch) / 2, tw, ch
-                here = backdrop(image, rx, ry, rw, rh, dpr, here)
+                parent_bg = backdrop(image, rx, ry, rw, rh, dpr, parent_bg)
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
                 prole = str(attrs.get("id", "")).split(":")[1] if str(attrs.get("id", "")).startswith("px:") else None
                 el = {"text": " ".join(str(text).split()), "role": prole or ("heading" if size >= 21 else "text"), "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
-                      "color": hex_of(over(col, here)), "background": hex_of(here), "fontSize": size, "fontWeight": weight}
+                      "color": hex_of(over(col, parent_bg)), "background": hex_of(parent_bg), "fontSize": size, "fontWeight": weight}
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:
                     el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
@@ -176,7 +197,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "container")
                 el = {"text": "", "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None}
+                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:
                     el["radius"] = radius

@@ -109,6 +109,7 @@ export struct TouchNavBar {
               .focusable(false)
           }
           .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
+          .borderRadius(TILE_RADIUS)
           .flexShrink(0)
           .width(TILE_WIDTH)
           .height(TILE_HEIGHT)
@@ -122,6 +123,7 @@ export struct TouchNavBar {
         }
         .padding({ left: BAR_PADDING, right: BAR_PADDING })
         // web `justify-content: space-around`: spread over the bar when the tiles fit, scroll when they do not
+        .width((this.items.length + 1) * 44 + 8) // every tile at its full width: the Scroll clips, the Row must not shrink them
         .constraintSize({ minWidth: '100%' })
         .justifyContent(FlexAlign.Start) // nine 44 tiles never fit the bar, so web's space-around degenerates to a plain 2 vp gap
       }
