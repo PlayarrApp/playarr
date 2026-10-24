@@ -471,6 +471,7 @@ struct LibraryGridCell {
         this.onLongPress(this.work);
       },
     })
+      .margin({ bottom: isTvMetrics() ? 2.41 : 0 }) // the Grid's rowsGap does not move the rows: this lifts the TV row pitch to web's 240.41
   }
 }
 

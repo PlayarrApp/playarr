@@ -13,6 +13,6 @@ dispatch() { # dispatch <gh -f args...>: print the new run id
 }
 TV=$(dispatch -f device=tv -f parts=screens)
 PH=$(dispatch -f device=phone -f phone_core_only=true -f skip_player=true)
-for id in "$TV" "$PH"; do gh run watch "$id" -R "$R" --exit-status >/dev/null; done
+for id in "$TV" "$PH"; do gh-watcher wait --repo "$R" --run "$id" --timeout 120m --json | grep -q '"state": "success"' || { echo "run $id failed" >&2; exit 1; }; done  # one waiter per run, no polling loops
 bash "$HERE/../../harmony-wall/pull-captures.sh" "$TV" tv "$ROOT/harmony"
 bash "$HERE/../../harmony-wall/pull-captures.sh" "$PH" phone "$ROOT/harmony-phone"
