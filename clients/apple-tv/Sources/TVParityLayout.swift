@@ -18,6 +18,7 @@ final class TVParityLayoutRegistry {
         var rect: CGRect = .zero
         var tracking: CGFloat = 0
         var background: String?
+        var radius: CGFloat = 0
     }
 
     private var items: [UUID: Item] = [:]
@@ -113,7 +114,7 @@ final class TVParityLayoutRegistry {
         #endif
         let elements: [[String: Any]] = (styled.map(glyphRun) + plain).compactMap { item in
             guard item.rect.width > 0, item.rect.height > 0, item.rect.intersects(screen) else { return nil } // off-viewport lazy items are dropped
-            return [
+            var element: [String: Any] = [
                 "text": item.text ?? "",
                 "role": item.role,
                 "rect": ["x": Double(item.rect.minX), "y": Double(item.rect.minY), "w": Double(item.rect.width), "h": Double(item.rect.height)],
@@ -122,6 +123,8 @@ final class TVParityLayoutRegistry {
                 "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
             ]
+            if item.radius > 0 { element["radius"] = Double(item.radius) }
+            return element
         }
         let document: [String: Any] = [
             "viewport": ["w": 1920.0, "h": 1080.0, "dpr": 1.0],
@@ -172,9 +175,54 @@ private struct TVParityLayoutModifier: ViewModifier {
                                                  background: hex(frame.minY < 130 ? DesignTokens.Stage.bg : DesignTokens.Stage.surface))) // web: header on the page, content on the surface
     }
 }
+
+private struct TVParityBoxModifier: ViewModifier {
+    let text: String?
+    let role: String
+    let radius: CGFloat
+    let fill: Color?
+    @Environment(\.self) private var environment
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                GeometryReader { proxy in
+                    let frame = proxy.frame(in: tvScreenSpace)
+                    Color.clear
+                        .onAppear { report(frame) }
+                        .onChange(of: frame) { _, new in report(new) }
+                }
+            )
+            .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
+    }
+
+    private func report(_ frame: CGRect) {
+        var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: frame)
+        if let fill {
+            let r = fill.resolve(in: environment)
+            func byte(_ v: Float) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
+            item.background = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
+        } else {
+            item.background = "#000000"
+        }
+        item.radius = radius
+        TVParityLayoutRegistry.shared.set(id, item)
+    }
+}
 #endif
 
 extension View {
+    /// Reports a box (card link, image, container with a fill and radius) to the parity layout export (debug builds only).
+    @ViewBuilder
+    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil) -> some View {
+        #if DEBUG && (os(tvOS) || os(macOS))
+        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill))
+        #else
+        self
+        #endif
+    }
+
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
     func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0) -> some View {

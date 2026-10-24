@@ -1014,6 +1014,7 @@ struct TVWebHomeCard: View {
             ZStack(alignment: .topTrailing) {
                 TVWorkArt(work: work, apiClient: apiClient, posterFirst: cover)
                     .frame(width: artWidth, height: artHeight)
+                    .parityBox("image", radius: 12.48, fill: DesignTokens.Stage.surfaceSoft)
                     .overlay(alignment: .bottomLeading) {
                         if let progress {
                             ZStack(alignment: .leading) {
@@ -1060,6 +1061,7 @@ struct TVWebHomeCard: View {
                 .frame(width: artWidth, alignment: .leading)
                 .padding(.top, 3.6)
         }
+        .parityBox("link", text: "\(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", fill: DesignTokens.Stage.surface)
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
