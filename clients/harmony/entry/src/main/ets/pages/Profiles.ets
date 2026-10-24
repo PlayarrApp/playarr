@@ -405,7 +405,7 @@ struct Profiles {
     .constraintSize({ minWidth: tv(TV_ACTION_HEIGHT) })
     .justifyContent(FlexAlign.Center)
     .padding({ left: label.length > 0 ? tv(17) : 0, right: label.length > 0 ? tv(17) : 0 })
-    .id(isTvMetrics() ? '' : 'px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
+    .id('px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
     .borderRadius(tv(TV_ACTION_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -595,7 +595,7 @@ struct Profiles {
         })
       }
       .alignItems(VerticalAlign.Top)
-      .margin({ top: this.pick(TV_CHOICES_TOP - 242 - 38.75, PHONE_CHOICES_TOP), left: isTvMetrics() ? 0 : PHONE_CHOICES_LEFT })
+      .margin({ top: this.pick(TV_CHOICES_TOP - 242 - 19.25, PHONE_CHOICES_TOP), left: isTvMetrics() ? 0 : PHONE_CHOICES_LEFT })
       .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       }
       .width('100%')
