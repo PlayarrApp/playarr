@@ -17,7 +17,7 @@ for d in ${devices//,/ }; do
     -q "[.[]|select(.displayTitle|contains(\"[$d]\"))]|sort_by(.createdAt)|last|.databaseId")
 done
 for d in ${devices//,/ }; do
-  gh-watcher wait --run "${ids[$d]}" --timeout 4h --json >"$work/$d.wait.json" || { echo "run ${ids[$d]} ($d) failed" >&2; exit 1; }
+  gh-watcher wait --repo PlayarrApp/playarr --run "${ids[$d]}" --timeout 4h --json >"$work/$d.wait.json" || { echo "run ${ids[$d]} ($d) failed" >&2; exit 1; }
   for t in dark light; do gh run download "${ids[$d]}" -n "apple-wall-$d-${ids[$d]}-$t" -D "$work/$d-$t"; done
   c="$root/${dir[$d]}/dev"; mkdir -p "$c/light"
   cp "$work/$d-dark/dark/"*.png "$c/"; cp "$work/$d-light/light/"*.png "$c/light/"
