@@ -191,7 +191,8 @@ button.pa-action.primary .pa-action-label-s { color: @pa_body; }
 /* Calendar, measured from the web */
 button.pa-pill, .pa-pill { background: @pa_surface; font-size: 11.52px; font-weight: 720; color: @pa_ink_soft; }
 .pa-pill-label { font-size: 11.52px; font-weight: 720; color: @pa_ink_soft; }
-.pa-day-title { font-size: 14.4px; font-weight: 640; color: @pa_day; }
+.pa-day-title { font-size: 14.4px; font-weight: 640; color: @pa_ink; }
+.pa-day-title.today { color: @pa_day; }
 .pa-today-chip { font-size: 11.2px; font-weight: 640; letter-spacing: 0; padding: 0 12px; min-height: 22px; text-transform: none; }
 .pa-entry-title { font-size: 16px; font-weight: 640; }
 .pa-entry-sub { font-size: 16px; font-weight: 400; color: @pa_ink_soft; }
@@ -341,3 +342,5 @@ button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 .pa-mline .pa-dot { margin-top: 2px; }
 .pa-seg-tile { font-kerning: none; }
 .pa-pref-arrow { margin-bottom: 3px; }
+button.pa-entry:not(.week).nosub { padding-bottom: 5px; }
+.pa-cal-controls .pa-pill-label { margin-left: 1px; }

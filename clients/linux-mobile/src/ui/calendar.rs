@@ -331,7 +331,11 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         .css_classes(if week {
             vec!["pa-card", "pa-entry", have, "week"]
         } else {
-            vec!["pa-card", "pa-entry", have]
+            if sub_text.is_none() {
+                vec!["pa-card", "pa-entry", have, "nosub"]
+            } else {
+                vec!["pa-card", "pa-entry", have]
+            }
         })
         .hexpand(true)
         .halign(gtk4::Align::Fill)
@@ -508,7 +512,11 @@ impl Cal {
         head.append(
             &gtk4::Label::builder()
                 .label(name)
-                .css_classes(["pa-day-title"])
+                .css_classes(if dt == today() {
+                    vec!["pa-day-title", "today"]
+                } else {
+                    vec!["pa-day-title"]
+                })
                 .xalign(0.0)
                 .valign(gtk4::Align::Center)
                 .build(),
