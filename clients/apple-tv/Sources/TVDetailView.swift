@@ -9,6 +9,7 @@ struct TVWorkDetailView: View {
     @Environment(\.requestNavFocus) private var requestNavFocus
     @State private var viewModel: TVWorkDetailViewModel
     @State private var showDownloadNote = false
+    @Environment(\.colorScheme) private var scheme
     @FocusState private var focusedEpisodeID: UUID?
     /// Web: the primary action (Play, Start, Resume) holds focus when the page opens.
     @FocusState private var playFocused: Bool
@@ -40,7 +41,7 @@ struct TVWorkDetailView: View {
 
     var body: some View {
         content
-            #if os(macOS)
+            #if os(macOS) || os(tvOS)
             .overlay(alignment: .bottomTrailing) {
                 // Web: the Similar Titles cards fade into the page over the last 55 px (about 70 % at the edge).
                 if !viewModel.similar.isEmpty {
@@ -78,6 +79,8 @@ struct TVWorkDetailView: View {
             }
         }
         .ignoresSafeArea()
+        // The engine opens a film on its first control (Download); the web opens it on Play, so a key-driven Select reaches Play.
+        .defaultFocus($playFocused, work.kind != .series)
         .task {
             if viewModel.state == .idle { await viewModel.load() }
             try? await Task.sleep(for: .milliseconds(200))
@@ -226,7 +229,7 @@ struct TVWorkDetailView: View {
         if let runtime = TVWebFormat.runtime(ms: runtimeMs) { parts.append((runtime, false)) }
         let airDate = episode?.episode.airDate ?? work.releaseDate
         // Web (static refs): the year is the series' own, the date below is the episode's.
-        if let year = TVWebFormat.year(macDetail(work.releaseDate ?? airDate, airDate)) { parts.append((year, false)) }
+        if let year = TVWebFormat.year(work.releaseDate ?? airDate) { parts.append((year, false)) }
         if let date = TVWebFormat.date(airDate) {
             parts.append(("\(episode?.episode.airDate != nil ? "Aired" : "Premiered")  \(date)", false))
         }
@@ -696,6 +699,12 @@ struct TVWorkDetailView: View {
             // The art grows to 1.025 over 240 ms (ease) when focused.
             .scaleEffect(selected ? 1.025 : 1)
             .animation(.easeInOut(duration: 0.24), value: selected)
+            #if os(tvOS)
+            // Static web ref: the next-up episode (focused on load) wears the pink ring.
+            .overlay {
+                if selected { RoundedRectangle(cornerRadius: 13.44, style: .continuous).stroke(scheme == .dark ? Color(red: 0.93, green: 0.63, blue: 0.71) : DesignTokens.Stage.brandPink, lineWidth: 2.5) }
+            }
+            #endif
             .overlay(alignment: .bottomTrailing) {
                 Text(String(format: "%02d", ep.episodeNumber))
                     .font(TVTheme.font(size: 19.2, weight: .semibold))
