@@ -16,6 +16,8 @@ final class ParityLayoutRegistry {
         var weight: Int?
         var color: String?
         var rect: CGRect = .zero
+        var tracking: CGFloat = 0
+        var background: String?
     }
 
     private var items: [UUID: Item] = [:]
@@ -81,6 +83,19 @@ final class ParityLayoutRegistry {
         return found
     }
 
+    /// Web text boxes are the glyph run: the text width by the font's content-area height (1.364 em for Nunito Sans),
+    /// centred in the line frame the view was given.
+    private func glyphRun(_ item: Item) -> Item {
+        guard let text = item.text, let size = item.size, let weight = item.weight,
+              let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) else { return item }
+        var out = item
+        let width = (text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width
+        let height = (1.011 * size).rounded() + (0.353 * size).rounded() // Chromium: rounded ascent plus rounded descent
+        out.rect = CGRect(x: item.rect.minX, y: item.rect.midY - height / 2, width: min(width, item.rect.width), height: height)
+        if size >= 14 && weight >= 560 { out.role = "heading" }
+        return out
+    }
+
     private func write() {
         let screen = UIScreen.main.bounds
         let styled = order.compactMap { items[$0] }
@@ -88,7 +103,7 @@ final class ParityLayoutRegistry {
         let plain = accessibilityElements().filter { entry in
             !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
         }
-        let all = styled + plain
+        let all = styled.map(glyphRun) + plain
         let elements: [[String: Any]] = all.compactMap { item in
             guard item.rect.width > 0, item.rect.height > 0 else { return nil }
             var element: [String: Any] = [
@@ -96,7 +111,7 @@ final class ParityLayoutRegistry {
                 "role": item.role,
                 "rect": ["x": Double(item.rect.minX), "y": Double(item.rect.minY), "w": Double(item.rect.width), "h": Double(item.rect.height)],
                 "color": item.color as Any? ?? NSNull(),
-                "background": NSNull(),
+                "background": item.background as Any? ?? NSNull(),
                 "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
             ]
@@ -120,11 +135,14 @@ private struct ParityLayoutModifier: ViewModifier {
     let size: CGFloat?
     let weight: Int?
     let color: Color?
+    let tracking: CGFloat
     @Environment(\.self) private var environment
     @State private var id = UUID()
 
-    private var hex: String? {
-        guard let color else { return nil }
+    private var hex: String? { color.map { Self.hex($0, environment) } }
+    private var pageHex: String { Self.hex(PlayarrStyle.surface, environment) }
+
+    private static func hex(_ color: Color, _ environment: EnvironmentValues) -> String {
         let r = color.resolve(in: environment)
         func byte(_ value: Float) -> Int { max(0, min(255, Int((value * 255).rounded()))) }
         let base = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
@@ -145,7 +163,7 @@ private struct ParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame))
+        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: pageHex))
     }
 }
 #endif
@@ -153,9 +171,9 @@ private struct ParityLayoutModifier: ViewModifier {
 extension View {
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil) -> some View {
+    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0) -> some View {
         #if DEBUG
-        modifier(ParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color))
+        modifier(ParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking))
         #else
         self
         #endif

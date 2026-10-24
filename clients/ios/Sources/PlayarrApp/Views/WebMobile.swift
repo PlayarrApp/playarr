@@ -11,8 +11,8 @@ enum WM {
     static let shell = PlayarrStyle.background
     static let page = PlayarrStyle.surface
     static let ink = PlayarrStyle.ink
-    static let inkSoft = PlayarrStyle.inkSoft
-    static let muted = PlayarrStyle.muted
+    static let inkSoft = adaptive(light: (68, 58, 64), dark: (205, 193, 198)) // web --ink-soft
+    static let muted = adaptive(light: (77, 66, 72), dark: (194, 181, 187)) // web --ink-muted
     static let detailMuted = adaptive(light: (77, 66, 72), dark: (194, 181, 187))
     /// Detail-page subtitle and bold meta ink, measured from the web (darker than the shared soft ink).
     static let detailInkSoft = adaptive(light: (68, 58, 64), dark: (205, 193, 198))
@@ -138,7 +138,7 @@ struct WMText: View {
             .lineLimit(1)
             .truncationMode(.tail)
             .frame(height: lineHeight, alignment: .leading)
-            .parityLayout(text: text, role: "text", size: size, weight: weight, color: color)
+            .parityLayout(text: text, role: "text", size: size, weight: weight, color: color, tracking: tracking)
     }
 }
 
@@ -745,7 +745,7 @@ struct WMLibraryHeader: View {
         ZStack(alignment: .topLeading) {
             PlayarrBackButton(action: onBack)
                 .offset(x: PlayarrPageTokens.gutter, y: top)
-            WMText(title, 22, 520, lh: 33, ls: -1)
+            WMText(title, 21.6, 580, lh: 33, ls: -1)
                 .offset(x: 71, y: top + 5)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
