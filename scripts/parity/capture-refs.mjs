@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // One command regenerates every web reference screenshot (the pixel reference native clients are scored against).
-//   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--bak <backup dir name>] [--dry] [--allow-stale-web]
+//   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--layout-only] [--bak <backup dir name>] [--dry] [--allow-stale-web]
 //   The capture clock is always FIXTURE_CLOCK (PARITY_FIXED_NOW is ignored).
+//   Every capture also writes <work>/<group>/<theme>/layout/<id>.json (the layout schema, docs/parity/LAYOUT.md) and publishes it to <dir>/web/layout/<theme>/<id>.json.
+//   --layout-only publishes only those layout files (no PNG, no backup, no build.json): the pixel refs stay as they are.
 //   --dry prints the plan (groups, viewports, dirs, Downloads hidden or not, live screens) and the web build sha check, then exits without capturing.
 //   The web build served at PLAYARR_WEB_URL must contain origin/main's web client (no clients/tv-web change between its sha and origin/main), else the run stops (--allow-stale-web overrides).
 //   A group with "noFocusRing": true gets its Home focus dropped before the shot.
@@ -38,6 +40,7 @@ const wantScreens = opt("screens", manifest.screens.join(",")).split(",");
 const work = resolve(opt("work", join(process.cwd(), "web-refs-work")));
 const bakName = opt("bak", `web.bak-${manifest.date}`); // --bak <name>: partial retake, backs up to that name and leaves build.json alone
 const partial = args.includes("--bak");
+const layoutOnly = args.includes("--layout-only");
 const copy = !args.includes("--no-copy");
 if (copy && !root) throw new Error("--parity-root <dir> is required (or --no-copy)");
 
@@ -145,6 +148,9 @@ for (const name of groups) {
             if (s.id === "home" && g.noFocusRing) await driver.blurFocus(); // touch layouts rest with no On deck focus ring (TV groups keep the first-card focus)
             const imagePath = join(work, name, theme, `${s.id}.png`);
             await driver.screenshot(imagePath);
+            const layout = await driver.layoutDump({ screen: s.id, theme });
+            mkdirSync(join(work, name, theme, "layout"), { recursive: true });
+            writeFileSync(join(work, name, theme, "layout", `${s.id}.json`), `${JSON.stringify(layout, null, 1)}\n`);
             const f = await driver.inspect();
             const settled = !f.placeholderCards && !f.skeletons && !f.brokenSrc?.length && !!f.dialogs === manifest.dialogScreens.includes(s.id);
             if (!settled && attempt < 3) { console.log(`retake ${name} ${theme} ${s.id} (attempt ${attempt}: dialogs ${f.dialogs}, placeholder cards ${f.placeholderCards}, skeletons ${f.skeletons})`); continue; }
@@ -208,6 +214,11 @@ if (copy) {
     const g = manifest.groups[name];
     for (const d of g.dirs) {
       const web = join(root, d, "web"), bak = join(root, d, bakName);
+      for (const theme of ["dark", "light"]) {
+        mkdirSync(join(web, "layout", theme), { recursive: true });
+        for (const { id } of screens) cpSync(join(work, name, theme, "layout", `${id}.json`), join(web, "layout", theme, `${id}.json`));
+      }
+      if (layoutOnly) { console.log(`published ${name} -> ${d}/web/layout`); continue; }
       if (existsSync(web) && !existsSync(bak)) cpSync(web, bak, { recursive: true });
       mkdirSync(join(web, "light"), { recursive: true });
       for (const id of screens.map((screen) => screen.id)) {
