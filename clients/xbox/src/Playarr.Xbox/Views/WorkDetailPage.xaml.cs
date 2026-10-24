@@ -51,6 +51,7 @@ namespace Playarr.Xbox.Views
             Background = Theme.PageStage();
             EdgeFade.AttachVertical(Root, RailsScroll, 833, true);
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
+            LayoutExport.SetBox(BackdropImage, new Windows.Foundation.Rect(133.03, -22.9, 899.97, 1190.59));
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
             BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
@@ -984,14 +985,16 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>The detail page's rail title: the web draws it at 16.5 px (Home's rail titles are 19), in the same 26 px line.</summary>
-        private static TextBlock DetailRailTitle(string text) => new TextBlock
+        private static TextBlock DetailRailTitle(string text) => LayoutExport.Tag(new TextBlock
         {
             Text = text,
             Style = (Style)Application.Current.Resources["PlayarrRailTitle"],
-            FontSize = 16.5,
-            LineHeight = 26,
+            FontSize = 17.66,
+            FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610),
+            Margin = new Thickness(0, 0, 0, 2),
+            LineHeight = 24,
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-        };
+        }, "heading");
 
         private static FrameworkElement EpisodeCard(Work? series, int seasonNumber, EpisodeDetail detail, (double? Percent, bool Unwatched) watch)
         {

@@ -46,6 +46,7 @@ struct TVRailPanelGradient: View {
         LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
             .frame(width: width)
             .frame(maxWidth: .infinity, alignment: .trailing)
+            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface) }
     }
 
     private var stops: [Gradient.Stop] {
@@ -146,7 +147,9 @@ struct TVPageHeader: View {
                     Text("\u{2190}")
                         .font(TVTheme.font(size: 17.3, weight: .semibold))
                         .foregroundStyle(DesignTokens.Color.textSecondary)
+                        .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
                 )
+                .parityBox("link", text: "Back to Home", radius: 25, fill: Color(red: 0x1f / 255, green: 0x1b / 255, blue: 0x1f / 255))
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
@@ -155,6 +158,7 @@ struct TVPageHeader: View {
                 .tracking(-1.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .fixedSize()
+                .parityLayout(text: title, role: "heading", size: 33.6, weight: 580, color: DesignTokens.Color.textPrimary, tracking: -1.5, lineHeight: 46)
             let subtitle = detail.map {
                 Text($0.uppercased())
                     .font(TVTheme.font(size: 11.14, css: 680))
@@ -162,6 +166,7 @@ struct TVPageHeader: View {
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
                     .fixedSize()
+                    .parityLayout(text: $0.uppercased(), size: 11.14, weight: 680, color: DesignTokens.Color.textPrimary, tracking: 0.5)
             }
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: headerSpacing) {
@@ -264,12 +269,8 @@ enum TVWebFormat {
         out.timeZone = TimeZone(identifier: "UTC")
         out.dateFormat = "d MMM yyyy"
         let text = out.string(from: date)
-        #if os(macOS)
-        // Chrome's en-GB abbreviates September as "Sept"; the Mac's ICU says "Sep".
+        // Chrome's en-GB abbreviates September as "Sept"; the system ICU says "Sep".
         return text.replacingOccurrences(of: " Sep ", with: " Sept ")
-        #else
-        return text
-        #endif
     }
 
     static func year(_ iso: String?) -> String? {
@@ -345,6 +346,7 @@ struct TVWebProfileChip: View {
                 .tracking(0.22)
                 .foregroundStyle(DesignTokens.Color.textSecondary)
                 .lineLimit(1)
+                .parityLayout(text: name, size: 11.14, weight: Int(690), color: DesignTokens.Color.textSecondary, tracking: 0.22)
                 .fixedSize()
                 .placed(x: 110, y: 1013, w: nameWidth, h: 16.7)
             Text(version)
@@ -473,6 +475,7 @@ struct TVHeroTitle: View {
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
             }
         }
+        .parityLayout(text: title, role: "heading", size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98, lines: lines, pitch: 62.2)
     }
 }
 
@@ -524,6 +527,15 @@ struct TVDrawer<Content: View>: View {
     /// The web close button is a circle (the 2026-10-15 refs of every Apple device).
     private static var closeRadius: CGFloat { 25 }
 
+    /// macOS: the web sections start 2 pt lower than the shared measure (Filters and Actions refs, 2026-10-19).
+    private var drawerContentTop: CGFloat {
+        #if os(macOS)
+        38
+        #else
+        36
+        #endif
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 0) {
@@ -532,12 +544,14 @@ struct TVDrawer<Content: View>: View {
                         .font(TVTheme.font(size: 9.6, css: 720))
                         .tracking(0.672)
                         .foregroundStyle(DesignTokens.Color.textDisabled)
+                        .parityLayout(text: kicker.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                         .frame(height: 14.4)
                     Text(title)
                         .font(TVTheme.font(size: 38.4, css: 590))
                         .tracking(-2.1)
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .lineLimit(2)
+                        .parityLayout(text: title, size: 38.4, weight: Int(590), color: DesignTokens.Color.textPrimary, tracking: -2.1)
                         .frame(width: 204, alignment: .leading)
                 }
                 Spacer(minLength: 0)
@@ -545,13 +559,14 @@ struct TVDrawer<Content: View>: View {
                     Text("\u{00D7}")
                         .font(TVTheme.font(size: 26.88, css: 720))
                         .foregroundStyle(DesignTokens.Color.textPrimary)
+                        .parityLayout(text: "\u{00D7}", size: 26.88, weight: Int(720), color: DesignTokens.Color.textPrimary)
                         .frame(width: 48, height: 50)
                         .background(RoundedRectangle(cornerRadius: Self.closeRadius, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
                         #if os(macOS)
                         // Web `.drawer-close`: a round button with the shared dark focus ring; the frozen capture draws the ring of
                         // the focused close button too (the web reference opens with it focused).
                         .overlay {
-                            if TVParityLaunch.frozen, !focusesContent {
+                            if TVParityLaunch.pinnedClock, !focusesContent {
                                 RoundedRectangle(cornerRadius: Self.closeRadius + 3.5, style: .continuous)
                                     .stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5)
                             }
@@ -569,7 +584,7 @@ struct TVDrawer<Content: View>: View {
             .padding(.top, 54)
             // Static refs (2026-10-19): the web title sits 2 pt and the sections 4 pt lower than the earlier live-server refs.
             content()
-                .padding(.top, 36)
+                .padding(.top, drawerContentTop)
             Spacer(minLength: 0)
         }
         .padding(.leading, 46)
@@ -591,7 +606,16 @@ struct TVDrawer<Content: View>: View {
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)
         #endif
         .onExitCommand(perform: onClose)
-        .task { if !focusesContent { closeFocused = true } }
+        .task {
+            if !focusesContent { closeFocused = true }
+            #if os(macOS)
+            // The grid card may still hold the key window's focus on the first frames: ask again once the layer has settled.
+            for _ in 0..<3 where !focusesContent {
+                try? await Task.sleep(for: .milliseconds(500))
+                closeFocused = true
+            }
+            #endif
+        }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onAppear { TVParityState.setPanel(title) }
         .onDisappear { TVParityState.setPanel(nil) }
@@ -613,6 +637,7 @@ struct TVChoiceSection<Value: Hashable>: View {
                 .font(TVTheme.font(size: 9.6, css: 720))
                 .tracking(0.672)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: title.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                 .frame(height: 14.4)
             HStack(spacing: 8) {
                 ForEach(options, id: \.value) { option in
@@ -754,6 +779,7 @@ struct TVCardButton<Label: View>: View {
         } label: {
             label().parityFocusTag(work.title, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index,
                                    gridPosition: parityGridPosition)
+                .modifier(TVLibraryLinkBox(title: parityGridPosition == nil ? nil : "Open \(work.title)"))
         }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now, id: work.id.uuidString,
@@ -846,11 +872,13 @@ struct TVActionRow: View {
                 Text(glyph)
                     .font(TVTheme.font(size: 19.52, css: 400))
                     .foregroundStyle(DesignTokens.Stage.brandPink)
+                    .parityLayout(text: glyph, size: 19.52, weight: Int(400), color: DesignTokens.Stage.brandPink)
                     .frame(width: 42, alignment: .leading)
                 Text(label)
                     .font(TVTheme.font(size: 19.2, css: 700))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
+                    .parityLayout(text: label, size: 19.2, weight: Int(700), color: DesignTokens.Color.textPrimary)
                 Spacer(minLength: 0)
             }
             .padding(.leading, 18)
@@ -886,6 +914,7 @@ struct TVMultiSelectSection: View {
                 .font(TVTheme.font(size: 9.6, css: 720))
                 .tracking(0.672)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: title.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                 .frame(height: 14.4)
             if !loaded {
                 RoundedRectangle(cornerRadius: 12).fill(DesignTokens.Stage.surfaceSoft.opacity(0.5)).frame(width: 268, height: 58.8)
@@ -893,6 +922,7 @@ struct TVMultiSelectSection: View {
                 Text("No languages to filter by.")
                     .font(TVTheme.font(size: 11.84, css: 400))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: "No languages to filter by.", size: 11.84, weight: Int(400), color: DesignTokens.Color.textDisabled)
             } else {
                 Button { open.toggle() } label: {
                     HStack {
@@ -900,10 +930,12 @@ struct TVMultiSelectSection: View {
                             .font(TVTheme.font(size: 11.84, css: 680))
                             .foregroundStyle(DesignTokens.Color.textPrimary)
                             .lineLimit(1)
+                            .parityLayout(text: summary, size: 11.84, weight: Int(680), color: DesignTokens.Color.textPrimary)
                         Spacer(minLength: 0)
                         Text(open ? "\u{2303}" : "\u{2304}")
                             .font(TVTheme.font(size: 11.84, css: 680))
                             .foregroundStyle(DesignTokens.Color.textSecondary)
+                            .parityLayout(text: open ? "\u{2303}" : "\u{2304}", size: 11.84, weight: Int(680), color: DesignTokens.Color.textSecondary)
                     }
                     .padding(.horizontal, 19.4)
                     .frame(width: 268, height: 58.8)
@@ -967,6 +999,7 @@ struct TVStatusPill: View {
         Text(label)
             .font(TVTheme.font(size: 13.44, css: 750))
             .foregroundStyle(DesignTokens.Color.textPrimary)
+            .parityLayout(text: label, size: 13.44, weight: Int(750), color: DesignTokens.Color.textPrimary)
             .padding(.horizontal, 10.4)
             .frame(height: 26.6)
             .background(Capsule().fill(colour.opacity(0.14)).background(Capsule().fill(DesignTokens.Stage.surface)))
@@ -1002,7 +1035,7 @@ struct TVWorkDetailLoader: View {
     }
 }
 
-#if os(macOS)
+#if os(macOS) || os(tvOS)
 extension View {
     /// Web `[data-fade-axis][data-fade-end]` mask: a smoothstep ramp (0.844 / 0.5 / 0.156 at 25 / 50 / 75 %) over the page's edge-fade
     /// size, down to `endFloor` at the very edge. The start side is left alone: the web fades it only once content has scrolled past.
@@ -1037,3 +1070,11 @@ private struct MacEdgeFade: ViewModifier {
     private func alpha(_ t: Double) -> Double { endFloor + (1 - endFloor) * t }
 }
 #endif
+
+/// Layout export: a library grid card is a link named "Open <title>" (web accessible name).
+private struct TVLibraryLinkBox: ViewModifier {
+    let title: String?
+    func body(content: Content) -> some View {
+        if let title { content.parityBox("link", text: title, radius: 12, fill: DesignTokens.Stage.surface) } else { content }
+    }
+}

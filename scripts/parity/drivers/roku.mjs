@@ -9,6 +9,7 @@ import net from "node:net";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildLayoutDocument } from "../roku/layout-export.mjs";
 import { artReadiness, createArtReadinessState, intersectingSlots, parseArtEvent, reduceArtEvent, resetArtReadinessState } from "../roku/art-readiness.mjs";
 
 const SAFE_SCREENS = new Set([
@@ -606,7 +607,9 @@ export function createDriver({ out, args = [] } = {}) {
     return response;
   };
 
+  let layoutLines = null;
   const ingest = (line) => {
+    if (layoutLines && line.includes("PARITY|layout|")) { layoutLines.push(line.slice(line.indexOf("PARITY|layout|") + 14).replace(/\r$/, "")); return; }
     if (!applyParityLine(parityState, line)) return;
     screen = parityState.screen;
     screenSeq = parityState.screenSeq;
@@ -1129,7 +1132,28 @@ export function createDriver({ out, args = [] } = {}) {
       if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
       if (artEnabled && screen === "browse" && ["artist", "music"].includes(browse)) await waitForArt("music");
       if (artEnabled && screen === "page" && page === "calendar" && ["week", "agenda"].includes(parityState.calendarView)) await waitForArt("calendar");
-      const { jpeg, generation } = captureFrame();
+      // A title page fetches its Similar Titles last: wait until the rail is on the page (up to 30 s) before the frame is taken.
+      if (screen === "detail" && artEnabled && process.env.ROKU_PARITY_LAYOUT !== "0") {
+        for (let i = 0; i < 10; i += 1) {
+          layoutLines = [];
+          await sendEcp("input?parityLayout=1");
+          for (let k = 0; k < 40 && !layoutLines.includes("end"); k += 1) await sleep(250);
+          await sleep(1000);
+          const has = layoutLines.some((l) => l.includes("Similar Titles"));
+          layoutLines = null;
+          if (has) break;
+          await sleep(2000);
+        }
+      }
+      // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).
+      let { jpeg, generation } = captureFrame();
+      for (let i = 0; i < 8; i += 1) {
+        await sleep(700);
+        const next = captureFrame();
+        const same = next.jpeg.equals(jpeg);
+        jpeg = next.jpeg; generation = next.generation;
+        if (same) break;
+      }
       mkdirSync(dirname(resolve(file)), { recursive: true });
       const png = pngFromJpeg(jpeg);
       if (png.length < 24 || png.readUInt32BE(16) !== 1920 || png.readUInt32BE(20) !== 1080) {
@@ -1147,6 +1171,23 @@ export function createDriver({ out, args = [] } = {}) {
         route: routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind),
         focus,
       }, null, 2));
+      // The layout document (docs/parity/LAYOUT.md) of the screen just captured: same state as the screenshot.
+      if (artEnabled && process.env.ROKU_PARITY_LAYOUT !== "0") {
+        layoutLines = [];
+        await sendEcp("input?parityLayout=1");
+        for (let i = 0; i < 40 && !layoutLines.includes("end"); i += 1) await sleep(250);
+        await sleep(1500); // grid cards answer from their own components, after the scene
+        const lines = layoutLines.filter((l) => l !== "end");
+        const done = layoutLines.includes("end");
+        layoutLines = null;
+        if (!done) throw new Error("Roku layout dump did not finish");
+        const themeDir = dirname(resolve(file));
+        const id = resolve(file).split("/").pop().replace(/\.png$/, "");
+        const doc = buildLayoutDocument(lines, { screen: id, theme: themeDir.split("/").pop(), pngFile: file, clockPinned: pinArg !== "" });
+        const layoutDir = resolve(themeDir, "..", "layout", themeDir.split("/").pop());
+        mkdirSync(layoutDir, { recursive: true });
+        writeFileSync(resolve(layoutDir, `${id}.json`), JSON.stringify(doc, null, 1));
+      }
       if (playerShot) { // leave the player so the next screen starts from the channel's own screens
         playerShot = false;
         await sendEcp("keypress/Back");

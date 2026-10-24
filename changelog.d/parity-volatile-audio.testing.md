@@ -1,0 +1,1 @@
+- Parity: the player-controls audio button is volatile in the layout score (web Chromium lacks audioTracks and shows "Audio: Unavailable"); its box and style are still scored, its text is skipped.

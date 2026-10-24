@@ -36,6 +36,14 @@ test("display none, visibility hidden, opacity 0 and clipped elements are droppe
   assert.deepEqual(texts(d), ["shown"]);
 });
 
+test("screen-reader-only elements (1x1 clipped, clip rect 0, clip-path inset) are dropped; a normal heading stays", { skip }, async () => {
+  const d = await dump(`<h1>October 2026</h1>
+    <span class="abs" style="top:50px;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">sr1</span>
+    <div class="abs" role="status" style="top:70px;width:1px;height:1px;overflow:hidden"><span>sr2 status text</span></div>
+    <span class="abs" style="top:90px;clip-path:inset(50%)">sr3</span>`);
+  assert.deepEqual(texts(d), ["October 2026"]);
+});
+
 test("inert hosts and aria-hidden hosts with focusable content are dropped; decorative aria-hidden stays", { skip }, async () => {
   const d = await dump(`<main inert><button>behind</button></main><main aria-hidden="true"><p>hidden page</p><a href="#">link</a></main>
     <button><span aria-hidden="true">+</span> Add</button>`);

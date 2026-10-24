@@ -7,7 +7,7 @@ namespace Playarr.Tizen;
 /// <summary>Web page header: the title with a 1 px divider and the subtitle beside it (not below, not brand-coloured); the clock follows the subtitle.</summary>
 internal sealed class PageSubtitle
 {
-    private const float TitleX = 226.6f, TitleSize = 33.6f, TitleSpacing = -1.51f, DividerGap = 23f, TextGap = 24f, ClockGap = 25f, MaxTextWidth = 640f, WrappedRuleY = 112f, WrappedTextY = 116f, WrappedClockGap = 16f, ClockLeft = 476.1f, FitMargin = 16f;
+    private const float TitleX = 226.6f, TitleSize = 33.6f, TitleSpacing = -1.51f, DividerGap = 23f, TextGap = 23f, ClockGap = 25f, MaxTextWidth = 640f, WrappedRuleY = 112f, WrappedTextY = 117.6f, WrappedClockGap = 16f, ClockLeft = 481f, FitMargin = 16f;
     private readonly AppEnv _env;
     private readonly View _parent;
     private readonly PlayarrTheme _t;
@@ -35,22 +35,22 @@ internal sealed class PageSubtitle
         _divider.Show(text.Length > 0);
         if (text.Length == 0) { _env.SetClockX(0); return; }
         // web PageHeader detailFitsInline: on a detail page the detail wraps under the title when it would end within 16 px of the clock's resting place
-        if (wrapIfClockBlocks && _dividerX + 1 + TextGap + Math.Min(MaxTextWidth, Ui.TextWidth(text.ToUpperInvariant(), 11.136f, 700, 0.5f)) + FitMargin > ClockLeft) wrapped = true;
+        if (wrapIfClockBlocks && _dividerX + 1 + TextGap + Math.Min(MaxTextWidth, Ui.TextWidth(text.ToUpperInvariant(), 11.136f, 680, 0.50112f)) + FitMargin > ClockLeft) wrapped = true;
         if (wrapped)
         {
             var titleWidth = _dividerX - DividerGap - TitleX;
-            var textWidth = Math.Min(MaxTextWidth, Ui.TextWidth(text.ToUpperInvariant(), 11.136f, 700, 0.5f));
+            var textWidth = Math.Min(MaxTextWidth, Ui.TextWidth(text.ToUpperInvariant(), 11.136f, 680, 0.50112f));
             var blockWidth = Math.Max(titleWidth, textWidth);
             _divider.PositionX = TitleX; _divider.PositionY = WrappedRuleY; _divider.Size = new Size(blockWidth, 1);
-            _label = Ui.Text(text, TitleX, WrappedTextY, 11.136f, 700, _t.Ink, MaxTextWidth, 18, upper: true, spacing: 0.5f);
+            _label = Ui.Text(text, TitleX, WrappedTextY, 11.136f, 680, _t.Ink, MaxTextWidth, 18, upper: true, spacing: 0.50112f);
             _parent.Add(_label);
             _env.SetClockX(TitleX + blockWidth + WrappedClockGap);
             return;
         }
         _divider.PositionX = _dividerX; _divider.PositionY = 72f; _divider.Size = new Size(1, 18);
         var x = _dividerX + 1 + TextGap;
-        _label = Ui.Text(text, x, 71f, 11.136f, 700, _t.Ink, MaxTextWidth, 18, upper: true, spacing: 0.5f);
+        _label = Ui.Text(text, x, 71f, 11.136f, 680, _t.Ink, MaxTextWidth, 18, upper: true, spacing: 0.50112f);
         _parent.Add(_label);
-        _env.SetClockX(x + Math.Min(MaxTextWidth, Ui.TextWidth(text.ToUpperInvariant(), 11.136f, 700, 0.5f)) + ClockGap);
+        _env.SetClockX(x + Math.Min(MaxTextWidth, Ui.TextWidth(text.ToUpperInvariant(), 11.136f, 680, 0.50112f)) + ClockGap);
     }
 }

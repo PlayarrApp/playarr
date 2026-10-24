@@ -16,37 +16,58 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     // A plain entry: the web's field has no clear icon, and GtkSearchEntry's cannot be hidden by CSS.
     let entry = gtk4::Entry::builder()
         .placeholder_text("Search your libraries and playlists")
-        .primary_icon_name("edit-find-symbolic")
+        .css_classes(["pa-search-input"])
+        .hexpand(true)
+        .valign(gtk4::Align::Center)
+        .margin_start(8)
+        .margin_end(17)
+        .build();
+    entry.set_size_request(-1, 44);
+    crate::layout::tag(&entry, "textbox", "Search your libraries and playlists", 0.0);
+    // The web's field is a 328 x 60 pill holding the 18 px icon and the input.
+    let field = gtk4::Box::builder()
         .css_classes(["pa-search"])
         .margin_start(16)
         .margin_end(16)
-        .margin_top(26)
+        .margin_top(24)
         .build();
+    let glass = crate::icons::image("search", 18, crate::icons::Tone::Soft);
+    glass.set_margin_start(17);
+    field.append(&glass);
+    field.append(&entry);
+    crate::layout::tag(&field, "search", "", 999.0);
     // The web's empty state: a ring with a search-minus icon, then the prompt beside it.
     let status = gtk4::Label::builder()
         .label("Start typing to search.")
         .css_classes(["pa-empty-text"])
         .xalign(0.0)
-        .wrap(true)
-        .hexpand(true)
+        .halign(gtk4::Align::Start)
+        .margin_start(3)
         .build();
     let ring = gtk4::Box::builder()
         .css_classes(["pa-empty-ring"])
         .valign(gtk4::Align::Center)
         .build();
     ring.set_size_request(86, 86);
-    let icon = crate::icons::image("search-minus", 20, crate::icons::Tone::Brand);
+    let icon = crate::icons::image("search-minus", 34, crate::icons::Tone::Brand);
+    // The web's svg box is the glyph's own bounds: 34 x 22.66 in the 34 px drawing.
+    crate::layout::Tag::new("image", "", 0.0)
+        .adjust([0.0, 5.67, 0.0, 0.0])
+        .height(22.66)
+        .apply(&icon);
     // Centred, not expanding: an expanding icon would stretch the ring to a pill and push it down the page.
     icon.set_hexpand(true);
     icon.set_valign(gtk4::Align::Center);
     ring.set_halign(gtk4::Align::Start);
+    ring.set_hexpand(false);
     ring.append(&icon);
     let empty = gtk4::Box::builder()
         .spacing(19)
         .margin_start(16)
         .margin_end(16)
-        .margin_top(19)
+        .margin_top(21)
         .build();
+    crate::layout::tag(&ring, "container", "", 50.0);
     empty.append(&ring);
     empty.append(&status);
     // Hide the ring with the prompt when results are shown.
@@ -57,7 +78,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let flow = Rc::new(library::CardGrid::new());
     flow.widget.set_margin_top(17);
     flow.widget.set_spacing(14); // the web's search grid has a tighter row gap than the library's
-    page.append(&entry);
+    page.append(&field);
     page.append(&empty);
     page.append(&flow.widget);
     // Like the web, the field is focused when the page opens.
@@ -79,6 +100,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .valign(gtk4::Align::Start)
         .build();
     backdrop.set_size_request(-1, 385);
+    crate::layout::key_art(&backdrop, false);
     let wash = gtk4::Box::builder()
         .css_classes(["pa-key-wash"])
         .valign(gtk4::Align::Start)

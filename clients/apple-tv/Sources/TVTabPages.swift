@@ -31,11 +31,13 @@ struct TVEmptyStateBlock: View {
                 .tracking(-0.44)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(1)
+                .parityLayout(text: title, size: 22.08, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.44)
                 .placed(x: left + 206, y: top + 45.7, w: textWidth, h: 33.1)
             Text(detail)
                 .font(TVTheme.font(size: 10.75, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .lineLimit(3)
+                .parityLayout(text: detail, size: 10.75, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                 .frame(width: 212, alignment: .leading)
                 .placed(x: left + 206, y: top + 86, w: 212, h: 32.3, alignment: .topLeading)
         }
@@ -64,6 +66,7 @@ private struct TVTabPage<Content: View>: View {
                     .tracking(0.5)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
                     .lineLimit(1)
+                    .parityLayout(text: detail.uppercased(), size: 11.14, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textDisabled, tracking: 0.5)
                     .placed(x: 226.6, y: 115, w: 480, h: 24.1)
             }
             content()
@@ -81,6 +84,7 @@ struct TVDownloadsView: View {
             Text("0 MB of 2.00 GB used on this device")
                 .font(TVTheme.font(size: 10.88, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: "0 MB of 2.00 GB used on this device", size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                 .placed(x: 787.2, y: 57.6, w: 1075.2, h: 16.3)
             Capsule()
                 .fill(DesignTokens.Color.backgroundRaised)
@@ -107,6 +111,7 @@ struct TVWatchlistView: View {
                             Text([item.title, item.year.map(String.init)].compactMap { $0 }.joined(separator: " \u{00B7} "))
                                 .font(TVTheme.font(size: 19.2, weight: .semibold))
                                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                                .parityLayout(text: [item.title, item.year.map(String.init)].compactMap { $0 }.joined(separator: " \u{00B7} "), size: 19.2, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
                         }
                     }
                     .padding(.bottom, 80)
@@ -141,10 +146,12 @@ struct TVRequestsView: View {
                                 Text([request.title, request.year.map(String.init)].compactMap { $0 }.joined(separator: " \u{00B7} "))
                                     .font(TVTheme.font(size: 19.2, weight: .semibold))
                                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                                    .parityLayout(text: [request.title, request.year.map(String.init)].compactMap { $0 }.joined(separator: " \u{00B7} "), size: 19.2, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
                                 Text(request.status.replacingOccurrences(of: "_", with: " ").uppercased())
                                     .font(TVTheme.font(size: 10.9, weight: .bold))
                                     .tracking(0.7)
                                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                                    .parityLayout(text: request.status.replacingOccurrences(of: "_", with: " ").uppercased(), size: 10.9, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled, tracking: 0.7)
                             }
                         }
                     }

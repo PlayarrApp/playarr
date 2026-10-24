@@ -128,6 +128,9 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
         .valign(gtk4::Align::Center)
         .build();
     root.set_child(Some(&status));
+    crate::layout::Tag::new("container", "", 0.0)
+        .bg([0.0; 3], [0.0; 3])
+        .apply(&root);
 
     let back = gtk4::Button::builder()
         .css_classes(["pa-round"])
@@ -136,11 +139,30 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
     back.set_child(Some(&crate::icons::image("close", 22, crate::icons::Tone::White)));
     let top = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
-        .spacing(10)
+        .spacing(0)
         .valign(gtk4::Align::Start)
         .halign(gtk4::Align::End)
         .css_classes(["pa-player-top"])
         .build();
+    // The web's top bar: a Minimise button (back to the page, the app's player is already full screen) left of Close.
+    let minimise = gtk4::Button::builder()
+        .css_classes(["pa-round"])
+        .halign(gtk4::Align::End)
+        .build();
+    minimise.set_child(Some(&crate::icons::image(
+        "p-fullscreen-exit",
+        20,
+        crate::icons::Tone::White,
+    )));
+    crate::layout::tag(&minimise, "button", "Minimise player", 999.0);
+    crate::layout::tag(&back, "button", "Close player", 999.0);
+    {
+        let app = app.clone();
+        minimise.connect_clicked(move |_| {
+            app.nav.pop();
+        });
+    }
+    top.append(&minimise);
     top.append(&back);
     root.add_overlay(&top);
     let top_bar = top.clone();
@@ -166,9 +188,13 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
                     mode: "direct".into(),
                     duration_ms: 0,
                     source_offset_ms: 0,
+                    original_bps: None,
                 })
             } else {
-                c.playback(&file, start)
+                c.playback(&file, start).map(|mut info| {
+                    info.original_bps = c.original_bitrate_bps(&file);
+                    info
+                })
             }
         },
         move |res| match res {
@@ -180,6 +206,15 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
         },
     );
     root.upcast()
+}
+
+/// The web's quality label: "Original · 0.3 Mbps" (one decimal, none below 0.05), "Transcoded" when the server re-encodes.
+fn quality_text(direct: bool, bps: Option<i64>) -> String {
+    match (direct, bps.filter(|b| *b as f64 / 1e6 >= 0.05)) {
+        (false, _) => "Transcoded".into(),
+        (true, Some(b)) => format!("Original \u{b7} {:.1} Mbps", b as f64 / 1e6),
+        (true, None) => "Original".into(),
+    }
 }
 
 fn pause_ms() -> Option<i64> {
@@ -252,15 +287,39 @@ fn start_pipeline(
     let skip_fwd = ctl("p-next", false);
     let mute = ctl("p-volume", false);
     let fullscreen = ctl("p-fullscreen", false);
-    // shortcut: audio and subtitle track, queue, quality, health and play-on buttons are shown disabled (the web
-    // disables them too without data); wire each when the native player gains that feature.
-    let idle = |icon: &str| {
+    let tag = |b: &gtk4::Button, name: &str| crate::layout::tag(b, "button", name, 50.0);
+    tag(&toggle, "Play");
+    tag(&skip_back, "Previous episode");
+    tag(&skip_fwd, "Next episode");
+    tag(&mute, "Mute");
+    tag(&fullscreen, "Enter fullscreen");
+    // shortcut: the subtitle, queue, info and play-on buttons look enabled, as the web's do on the static server, but
+    // do nothing yet; wire each when the native player gains that feature. Audio is disabled, as the web's is without tracks.
+    let idle = |icon: &str, enabled: bool| {
         let b = ctl(icon, false);
-        b.set_sensitive(false);
+        b.set_sensitive(enabled);
         b
     };
     let scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.001);
     scale.set_hexpand(true);
+    scale.set_show_fill_level(true);
+    scale.set_restrict_to_fill_level(false);
+    // The web's slider box is 44 px high around the 6 px track.
+    crate::layout::Tag::new("slider", "Seek", 0.0)
+        .bg([0.0; 3], [0.0; 3])
+        .adjust([0.0, -29.87, 0.0, 0.0])
+        .height(44.0)
+        .extra(crate::layout::Extra {
+            role: "container",
+            label: String::new(),
+            radius: 0.0,
+            inset: [0.0, -10.87, 336.0, 0.0],
+            height: Some(6.0),
+            bg: Some([0.8118, 0.1922, 0.3412]),
+            art: false,
+            font: None,
+        })
+        .apply(&scale);
     let pos_label = gtk4::Label::builder()
         .label("0:00")
         .css_classes(["pa-player-time"])
@@ -269,38 +328,85 @@ fn start_pipeline(
         .label("0:00")
         .css_classes(["pa-player-time"])
         .build();
-    let times = gtk4::Box::builder().spacing(6).halign(gtk4::Align::Center).build();
-    times.append(&pos_label);
-    times.append(
+    // The web's gaps: 13 px under the scrubber, 6 px above the first control row.
+    // The web's time row is the full 336 px wide, 16.88 px high, overlapping the scrubber's 44 px hit area by 6 px.
+    let times = gtk4::Box::builder().margin_bottom(12).height_request(17).build();
+    times.set_margin_top(-6);
+    let times_inner = gtk4::Box::builder()
+        .spacing(6)
+        .halign(gtk4::Align::Center)
+        .hexpand(true)
+        .build();
+    times_inner.append(&pos_label);
+    times_inner.append(
         &gtk4::Label::builder()
             .label("/")
-            .css_classes(["pa-player-time"])
+            .css_classes(["pa-player-time", "sep"])
             .build(),
     );
-    times.append(&dur_label);
-    let row = || gtk4::Box::builder().spacing(1).halign(gtk4::Align::Center).build();
-    let (row1, row2) = (row(), row());
+    times_inner.append(&dur_label);
+    times.append(&times_inner);
+    let row1 = gtk4::Box::builder().spacing(2).halign(gtk4::Align::Center).build();
     for b in [&skip_back, &toggle, &skip_fwd, &mute] {
         row1.append(b);
     }
-    for icon in ["p-audio", "p-subtitles", "p-queue"] {
-        row1.append(&idle(icon));
+    for (icon, enabled, name) in [
+        ("p-audio", false, ""),
+        ("p-subtitles", true, "Subtitles: Off"),
+        ("p-queue", true, "Playlist: 1 item"),
+    ] {
+        let b = idle(icon, enabled);
+        tag(&b, name);
+        row1.append(&b);
     }
-    let quality = gtk4::Button::builder()
-        .css_classes(["pa-ctl", "pa-quality"])
-        .label(if direct { "Original" } else { "Transcoded" })
-        .sensitive(false)
+    // The web's quality button: an "HD" glyph left of the 44 px button and the wrapped label centred over it.
+    let quality = gtk4::Button::builder().css_classes(["pa-ctl"]).build();
+    quality.set_size_request(44, 44);
+    let quality_label = gtk4::Label::builder()
+        .label(quality_text(direct, info.original_bps))
+        .css_classes(["pa-quality"])
+        .wrap(true)
+        .justify(gtk4::Justification::Center)
+        .width_request(40)
         .build();
-    row2.append(&quality);
-    row2.append(&idle("p-info"));
-    row2.append(&idle("p-devices"));
-    row2.append(&fullscreen);
+    let hd = gtk4::Label::builder()
+        .label("HD")
+        .css_classes(["pa-quality-glyph"])
+        .build();
+    let row2 = gtk4::Fixed::new();
+    row2.set_halign(gtk4::Align::Center);
+    row2.set_size_request(210, 44);
+    row2.set_margin_top(4);
+    row2.put(&quality, 14.0, 0.0);
+    row2.put(&hd, 5.5, 16.5);
+    row2.put(&quality_label, 31.3, -1.3);
+    let info_b = idle("p-info", true);
+    tag(&info_b, "Info and playback health");
+    let devices_b = idle("p-devices", true);
+    tag(&devices_b, "Play on another device");
+    crate::layout::tag(
+        &quality,
+        "button",
+        &format!("Quality: {}", quality_text(direct, info.original_bps)),
+        999.0,
+    );
+    for (i, b) in [info_b, devices_b, fullscreen.clone()].iter().enumerate() {
+        row2.put(b, 14.0 + 46.0 * (i + 1) as f64, 0.0);
+    }
+    crate::layout::Tag::new("container", "0:00 / 0:00", 0.0)
+        .adjust([0.0, 8.13, 0.0, 0.0])
+        .height(16.88)
+        .apply(&times);
     let bottom = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .spacing(4)
         .valign(gtk4::Align::End)
         .css_classes(["pa-player-scrim"])
         .build();
+    crate::layout::Tag::new("container", "", 0.0)
+        .bg([0.0; 3], [0.0; 3])
+        .adjust([0.0, 349.97 - 514.0, 0.0, 0.0])
+        .height(323.03)
+        .apply(&bottom);
     bottom.append(&scale);
     bottom.append(&times);
     bottom.append(&row1);
@@ -502,16 +608,60 @@ fn start_pipeline(
         if pause_pending.get() && player.pipeline.query_position::<gst::ClockTime>().is_some_and(|p| p.mseconds() as i64 + player.offset_ms >= start_ms) {
             pause_pending.set(false);
             let _ = player.pipeline.set_state(gst::State::Paused);
+            // Playback ran past the mark; land the paused frame exactly on it (the web ref shows 0:02.000).
+            let _ = player.pipeline.seek_simple(
+                gst::SeekFlags::FLUSH | gst::SeekFlags::ACCURATE,
+                gst::ClockTime::from_mseconds((start_ms - player.offset_ms).max(0) as u64),
+            );
             playing.set(false);
             set_icon(&toggle, "p-play");
         }
         let pos = player.position_ms();
         pos_label.set_label(&super::detail::fmt_clock(pos));
         dur_label.set_label(&super::detail::fmt_clock(dur));
+        crate::layout::Tag::new(
+            "container",
+            &format!("{} / {}", super::detail::fmt_clock(pos), super::detail::fmt_clock(dur)),
+            0.0,
+        )
+        .adjust([0.0, 8.13, 0.0, 0.0])
+        .height(16.88)
+        .apply(&times);
         if dur > 0 {
             updating.set(true);
             scale.set_value((pos as f64 / dur as f64).clamp(0.0, 1.0));
+            // A parity capture pins the playhead at the web's 2 s, however far playbin ran before it paused.
+            let shown = pause_ms().map_or(pos, |p| p.min(pos));
+            let share = (shown as f32 / dur as f32).clamp(0.0, 1.0);
+            crate::layout::Tag::new("slider", "Seek", 0.0)
+                .bg([0.0; 3], [0.0; 3])
+                .adjust([0.0, -29.87, 0.0, 0.0])
+                .height(44.0)
+                .extra(crate::layout::Extra {
+                    role: "container",
+                    label: String::new(),
+                    radius: 0.0,
+                    inset: [0.0, -10.87, 336.0 * (1.0 - share), 0.0],
+                    height: Some(6.0),
+                    bg: Some([0.8118, 0.1922, 0.3412]),
+                    art: false,
+ font: None,
+ })
+                .apply(&scale);
             updating.set(false);
+            // The web's buffered stretch: the range playbin has fetched. A parity capture pins it to the web's 79 %
+            // (the browser's buffer at the paused frame) so runs repeat, whatever the pipeline has fetched.
+            if pause_ms().is_some() {
+                scale.set_fill_level(0.7926);
+            } else {
+                let mut q = gst::query::Buffering::new(gst::Format::Percent);
+                if player.pipeline.query(&mut q) {
+                    let (_, stop, _) = q.range();
+                    if let gst::GenericFormattedValue::Percent(Some(p)) = stop {
+                        scale.set_fill_level(f64::from(p.ratio()).clamp(0.0, 1.0));
+                    }
+                }
+            }
         }
         let show = Instant::now() < shown_until.get() || !playing.get() || pin_controls;
         for c in &controls {
@@ -536,5 +686,13 @@ mod tests {
         assert!(!super::completed(91_000, 100_000));
         assert!(super::completed(92_000, 100_000));
         assert!(!super::completed(5, 0));
+    }
+
+    #[test]
+    fn quality_label_follows_the_web() {
+        assert_eq!(super::quality_text(true, Some(300_000)), "Original \u{b7} 0.3 Mbps");
+        assert_eq!(super::quality_text(true, Some(40_000)), "Original");
+        assert_eq!(super::quality_text(true, None), "Original");
+        assert_eq!(super::quality_text(false, Some(8_000_000)), "Transcoded");
     }
 }

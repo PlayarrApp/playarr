@@ -6,6 +6,7 @@ use std::rc::Rc;
 
 pub struct Header {
     pub widget: gtk4::Box,
+    pub back: gtk4::Button,
     pub title: gtk4::Label,
     pub subtitle: gtk4::Label,
     pub action: gtk4::Button,
@@ -18,8 +19,8 @@ pub struct Header {
 pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
     let row = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
-        .spacing(10)
-        .margin_top(16)
+        .spacing(8)
+        .margin_top(14)
         .margin_start(16)
         .margin_end(16)
         .margin_bottom(5)
@@ -29,7 +30,11 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .valign(gtk4::Align::Start)
         .build();
     back.set_child(Some(
-        &gtk4::Label::builder().label("←").css_classes(["pa-back-arrow"]).build(),
+        &gtk4::Label::builder()
+            .label("←")
+            .css_classes(["pa-back-arrow"])
+            .margin_bottom(2)
+            .build(),
     ));
     {
         let app = app.clone();
@@ -67,12 +72,28 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .visible(false)
         .build();
     extra.set_child(Some(&icons::image("bell", 18, Tone::Soft)));
+    // The web's names for the header controls (a link on list pages, a button on detail and settings pages).
+    let (role, name) = match title {
+        "" => ("button", "Back to Movies"),
+        "Preferences" => ("button", "Settings"),
+        "Calendar" => ("link", "Back to home"),
+        _ => ("link", "Back to Home"),
+    };
+    crate::layout::tag(&back, role, name, 50.0);
+    // The web's action buttons sit 2 px higher than the back button and the title block.
+    back.set_margin_top(2);
+    block.set_margin_top(2);
+    crate::layout::Tag::new("button", "Filters", 14.0).apply(&action);
+    crate::layout::Tag::new("button", "Calendar link", 14.0).apply(&extra);
+    // The web row gap is 8 px but the title block starts 10 px after the back button.
+    back.set_margin_end(2);
     row.append(&back);
     row.append(&block);
     row.append(&extra);
     row.append(&action);
     Header {
         widget: row,
+        back,
         title: h1,
         subtitle,
         action,
@@ -83,6 +104,7 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
 impl Header {
     pub fn set_section(&self, text: &str) {
         self.title.set_label(text);
+        crate::layout::tag(&self.back, "button", &format!("Back to {text}"), 50.0);
     }
 
     /// The web hides the header subtitle on a phone (title only, #1299), so the text is kept but never shown.

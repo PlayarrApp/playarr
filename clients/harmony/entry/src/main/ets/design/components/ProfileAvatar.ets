@@ -181,6 +181,9 @@ export struct ProfileAvatar {
   }
 
   private ringColour(): RgbaColor {
+    if (this.ringOn) { // web phone picker: the ring is crimson on dark and soft pink on light (static-ref pixels), the inverse of the TV's
+      return resolvedThemeMode() === 'dark' ? { r: 98, g: 32, b: 49, a: 1 } : { r: 225, g: 159, b: 174, a: 1 };
+    }
     return resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : { r: 165, g: 39, b: 69, a: 1 };
   }
 

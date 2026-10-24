@@ -189,7 +189,11 @@ struct TVHomeView: View {
                     withAnimation(.smooth(duration: 0.26)) { proxy.scrollTo(rail, anchor: anchor) }
                 }
             }
-            #if os(macOS)
+            #if os(tvOS)
+            // The rails' scroll view must end at the screen edge, or the fade below lands past it (the tvOS capture showed none).
+            .frame(height: 1080 - Self.railTopY, alignment: .top)
+            #endif
+            #if os(macOS) || os(tvOS)
             // Web `[data-fade-axis="y"][data-fade-end]` on `.tv-home-rails`: the last visible row dims to the floor at the page edge.
             .macEdgeFade(axis: .vertical, endFloor: 0.3)
             #endif
@@ -277,6 +281,7 @@ struct TVHomeView: View {
                 .font(TVTheme.font(size: 17.664, css: 610))
                 .tracking(-0.53)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: title, size: 17.664, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.53)
                 .frame(height: 26.5)
                 .padding(.leading, Self.cardBleed)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -316,9 +321,18 @@ struct TVHomeView: View {
                         }
                         .onMoveCommand { direction in
                             cancelStageFocusRequest()
-                            if direction == .left, index == 0,
-                               let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
-                                focusedCard = nil
+                            if direction == .left, index == 0 {
+                                #if os(tvOS)
+                                if (homeCardFrames[focus]?.midY ?? 0) < 520 {
+                                    // The first rail's leading card hands over to the active tab (web: Home).
+                                    requestNavFocus()
+                                    focusedCard = nil
+                                    return
+                                }
+                                #endif
+                                if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                    focusedCard = nil
+                                }
                             }
                         }
                     }
@@ -362,6 +376,7 @@ struct TVHomeView: View {
                             .tracking(1.2)
                             .foregroundStyle(DesignTokens.Color.brandPrimary)
                             .textCase(.uppercase)
+                            .parityLayout(text: (kindKicker(hero)).uppercased(), size: 12, weight: Int(TVTheme.cssWeight(.heavy)), color: DesignTokens.Color.brandPrimary, tracking: 1.2)
                         TVHeroTitle(title: hero.title)
                             .padding(.top, 28)
                         if let overview = hero.overview, !overview.isEmpty {
@@ -370,6 +385,7 @@ struct TVHomeView: View {
                                 .foregroundStyle(DesignTokens.Color.textDisabled)
                                 .lineLimit(5)
                                 .lineSpacing(4)
+                                .parityLayout(text: overview, size: DesignTokens.Shell.featureOverviewSize, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                                 .frame(maxWidth: DesignTokens.Shell.featureOverviewMaxWidth, alignment: .leading)
                                 .padding(.top, 22)
                         }
@@ -530,6 +546,7 @@ struct TVHomeView: View {
                 .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
                 .tracking(-0.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: title, size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
             // Native tvOS card buttons + explicit FocusState. No focusScope:
             // that traps focus inside the rail and blocks Left → dock.
             ScrollView(.horizontal, showsIndicators: false) {
@@ -567,7 +584,10 @@ struct TVHomeView: View {
                             // Per-card Left at the rail head → dock.
                             if direction == .left, index == 0 {
                                 #if os(tvOS)
-                                if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
+                                if (homeCardFrames[focus]?.midY ?? 0) < 520 {
+                                    requestNavFocus()
+                                    focusedCard = nil
+                                } else if let frame = homeCardFrames[focus], requestHomeNavFocus(focus, frame) {
                                     focusedCard = nil
                                 }
                                 #else
@@ -604,6 +624,7 @@ struct TVHomeView: View {
                 .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
                 .tracking(-0.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: "Start watching", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
                 .offset(x: x0, y: y1 - headingH)
 
             ForEach(Array(startWatching.enumerated()), id: \.element.id) { index, work in
@@ -620,6 +641,7 @@ struct TVHomeView: View {
                 .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
                 .tracking(-0.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: "New movies", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
                 .offset(x: x0, y: y2 - headingH)
 
             ForEach(Array(newMovies.enumerated()), id: \.element.id) { index, work in
@@ -659,6 +681,7 @@ struct TVHomeView: View {
                     .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
                     .tracking(-0.5)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .parityLayout(text: definition.title, size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
                     .offset(x: x0, y: top - headingOffset)
                 railCards(definition.works, railIndex: railIndex, top: top, x0: x0, cardPitch: cardPitch)
             }
@@ -840,6 +863,7 @@ struct TVHomeView: View {
                 .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
                 .tracking(-0.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: title, size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
                 .padding(.leading, DesignTokens.Shell.railTrackLeftFade)
                 .padding(.bottom, 17)
             HStack(spacing: DesignTokens.Shell.homeCardGap) {
@@ -910,6 +934,7 @@ struct TVHomeCard: View {
                 .font(TVTheme.font(size: 11.33, weight: .semibold))
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(1)
+                .parityLayout(text: work.title, size: 11.33, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
                 .frame(width: DesignTokens.Shell.homeCardWidth, height: 17, alignment: .leading)
                 .padding(.top, 10)
             Text(
@@ -918,6 +943,8 @@ struct TVHomeCard: View {
             )
                 .font(TVTheme.font(size: 8.64, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }]
+                    .compactMap { $0 }.joined(separator: " · "), size: 8.64, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                 .frame(width: DesignTokens.Shell.homeCardWidth, height: 13, alignment: .leading)
                 .padding(.top, 2.5)
         }
@@ -980,13 +1007,14 @@ struct TVWebHomeCard: View {
     var cover = false
 
     private var artHeight: CGFloat { cover ? artWidth * 1.5 : artWidth * 9 / 16 }
-    static func height(width: CGFloat, cover: Bool = false) -> CGFloat { (cover ? width * 1.5 : width * 9 / 16) + 11.5 + 17.9 + 2.5 + 11.5 }
+    static func height(width: CGFloat, cover: Bool = false) -> CGFloat { (cover ? width * 1.5 : width * 9 / 16) + 10.2 + 17.9 + 3.6 + 11.5 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
                 TVWorkArt(work: work, apiClient: apiClient, posterFirst: cover)
                     .frame(width: artWidth, height: artHeight)
+                    .parityBox("image", radius: 12.48, fill: DesignTokens.Stage.surfaceSoft)
                     .overlay(alignment: .bottomLeading) {
                         if let progress {
                             ZStack(alignment: .leading) {
@@ -1002,6 +1030,7 @@ struct TVWebHomeCard: View {
                         .fill(DesignTokens.Color.brandPrimary)
                         .frame(width: 11.6, height: 11.6)
                         .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
+                        .parityBox("img", radius: 7, fill: DesignTokens.Stage.surfaceSoft)
                         .padding(11.5)
                 }
             }
@@ -1018,15 +1047,22 @@ struct TVWebHomeCard: View {
                 .tracking(-0.18)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(1)
-                .frame(width: artWidth, height: 17.9, alignment: .leading)
-                .padding(.top, 11.5)
+                .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.18)
+                .frame(width: artWidth - 1.91, height: 17.9, alignment: .leading)
+                .padding(.leading, 1.91) // web: the text sits 1.91 pt inside the card
+                .frame(width: artWidth, alignment: .leading)
+                .padding(.top, 10.2)
             Text([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))
                 .font(TVTheme.font(size: 8.832, css: 400))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .lineLimit(1)
-                .frame(width: artWidth, height: 11.5, alignment: .leading)
-                .padding(.top, 2.5)
+                .parityLayout(text: [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "), size: 8.832, weight: Int(400), color: DesignTokens.Color.textDisabled)
+                .frame(width: artWidth - 1.91, height: 11.5, alignment: .leading)
+                .padding(.leading, 1.91)
+                .frame(width: artWidth, alignment: .leading)
+                .padding(.top, 3.6)
         }
+        .parityBox("link", text: "Open \(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", radius: 12, fill: DesignTokens.Stage.surface)
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
@@ -1092,6 +1128,7 @@ struct TVHomeHeroCopy: View {
                 .font(TVTheme.font(size: 12.29, css: 860))
                 .tracking(0.98)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
+                .parityLayout(text: [work.kind.rawValue, work.genres.first].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased(), size: 12.29, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 259.2, w: 455, h: 18.4)
             TVHeroTitle(title: work.title)
                 .placed(x: 153.6, y: 303.5, w: 379.5, h: 62.2 * CGFloat(max(1, lines.count)), alignment: .topLeading)
@@ -1099,6 +1136,7 @@ struct TVHomeHeroCopy: View {
                 Text(meta)
                     .font(TVTheme.font(size: 12.864, css: 600))
                     .foregroundStyle(DesignTokens.Color.textPrimary.opacity(0.86))
+                    .parityLayout(text: meta, size: 12.864, weight: Int(600))
                     .placed(x: 153.6, y: metaY, h: 18)
             }
             if let overview = work.overview, !overview.isEmpty {
@@ -1106,6 +1144,7 @@ struct TVHomeHeroCopy: View {
                     .font(TVTheme.font(size: 12.864, css: 600))
                     .foregroundStyle(DesignTokens.Color.textPrimary.opacity(0.86))
                     .lineLimit(5)
+                    .parityLayout(text: overview, size: 12.864, weight: Int(600))
                     .frame(width: 336, alignment: .topLeading)
                     .placed(x: 153.6, y: overviewY, w: 336, h: 101.6, alignment: .topLeading)
             }
@@ -1318,6 +1357,7 @@ struct TVSearchView: View {
             Text("Find any available movie, series, artist or playlist.")
                 .font(TVTheme.font(size: 14, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: "Find any available movie, series, artist or playlist.", size: 14, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                 .frame(maxWidth: 340, alignment: .leading)
                 .lineSpacing(4)
                 .placed(x: 153.6, y: 268.2 + 56 + DesignTokens.Shell.searchPromptTopGap, w: 340)
@@ -1370,6 +1410,7 @@ struct TVSearchView: View {
                 Text(hasQuery ? query.wrappedValue : "Search your libraries and playlists")
                     .font(TVTheme.font(size: 17, weight: .medium))
                     .foregroundStyle(hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
+                    .parityLayout(text: hasQuery ? query.wrappedValue : "Search your libraries and playlists", size: 17, weight: Int(TVTheme.cssWeight(.medium)))
                     .placed(x: 66, y: 0, w: 480, h: 76)
             } else {
                 TextField("Search your libraries and playlists", text: query)
@@ -1383,6 +1424,7 @@ struct TVSearchView: View {
                 Text("Clear")
                     .font(TVTheme.font(size: 10.94, weight: .bold))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: "Clear", size: 10.94, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
                     .placed(x: 511.5, y: 11, w: 69.5, h: 54, alignment: .center)
             }
         }
@@ -1403,12 +1445,14 @@ struct TVSearchView: View {
                 .font(TVTheme.font(size: 12.288, css: 860))
                 .tracking(0.98)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
+                .parityLayout(text: [kind, year].compactMap { $0 }.joined(separator: " \u{00B7} ").uppercased(), size: 12.288, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 286.6, w: 544, h: 18.4)
             Text(work.title)
                 .font(TVTheme.font(size: 49.92, css: 560))
                 .tracking(-3)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(2)
+                .parityLayout(text: work.title, size: 49.92, weight: Int(560), color: DesignTokens.Color.textPrimary, tracking: -3)
                 .frame(width: 420, alignment: .topLeading)
                 .placed(x: 153.6, y: 330.9, w: 420, h: 47.4 * CGFloat(max(1, lines)), alignment: .topLeading)
             HStack(spacing: 12.8) {
@@ -1423,6 +1467,7 @@ struct TVSearchView: View {
                     .font(TVTheme.font(size: 13.824, css: 600))
                     .foregroundStyle(soft)
                     .lineLimit(4)
+                    .parityLayout(text: overview, size: 13.824, weight: Int(600))
                     .frame(width: 336, alignment: .topLeading)
                     .placed(x: 153.6, y: metaY + 19.6 + 21.6, w: 336, h: 87.4, alignment: .topLeading)
             }
@@ -1499,6 +1544,7 @@ struct TVSearchView: View {
                     .tracking(-0.18)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
+                    .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.18)
                     .placed(x: 1.9, y: 0, w: w - 66.4, h: 18.4)
                 Text(
                     ([work.kind.rawValue.capitalized] + [work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 })
@@ -1506,6 +1552,8 @@ struct TVSearchView: View {
                 )
                     .font(TVTheme.font(size: 8.448, css: 720))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: ([work.kind.rawValue.capitalized] + [work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 })
+                        .joined(separator: " \u{00B7} ").uppercased(), size: 8.448, weight: Int(720), color: DesignTokens.Color.textDisabled)
                     .placed(x: w - 120, y: 3, w: 120, h: 12.7, alignment: .trailing)
             }
             .frame(width: w, height: 20, alignment: .topLeading)
@@ -1520,9 +1568,11 @@ struct TVSearchView: View {
                 .font(TVTheme.font(size: 10.88, weight: .bold))
                 .tracking(0.76)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: "OTHER SOURCES", size: 10.88, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled, tracking: 0.76)
             Text("Nothing found in other sources.")
                 .font(TVTheme.font(size: 11.52, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: "Nothing found in other sources.", size: 11.52, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
         }
     }
 
@@ -1546,6 +1596,7 @@ struct TVSearchView: View {
                 .font(TVTheme.font(size: 17, weight: .semibold))
                 .tracking(-0.3)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: "Start typing to search.", size: 17, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.3)
         }
         .placed(x: cx - art / 2, y: cy - art / 2)
     }
@@ -1656,10 +1707,11 @@ struct TVLibraryKindView: View {
         // The scroll can hand focus to the card that slides under the resting pointer or the settle step (a dark D-pad run
         // landed on the third-row card); ask again, bounded, until the opened card holds it.
         Task { @MainActor in
-            for _ in 0..<4 {
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                if selectedID == id { return }
-                focusRequestID = id
+            // The opened card must hold the focus for 1.5 s (three checks): a late settle step stole it on a loaded hosted runner.
+            var held = 0
+            for _ in 0..<16 {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                if selectedID == id { held += 1; if held >= 3 { return } } else { held = 0; focusRequestID = id }
             }
         }
     }
@@ -1717,7 +1769,8 @@ struct TVLibraryKindView: View {
 
                 if playlistID == nil, !listsPlaylists {
                     filterLauncher
-                        .disabled(filtersOpen)
+                        // Until the grid has titles Filters must not take the first focus (a light D-pad run began on it and every key missed).
+                        .disabled(filtersOpen || items.isEmpty)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                         // The shell action column (page-layout spec, rule 2.3): right edge 12.48 px, top 151.2 px, 62 wide.
                         .padding(.trailing, TVShellActionColumn.edge)
@@ -1784,6 +1837,7 @@ struct TVLibraryKindView: View {
             Text("\u{2190}")
                 .font(TVTheme.font(size: 17.3, weight: .semibold))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
+                        .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
                 .frame(
                     width: DesignTokens.Shell.searchBackSize,
                     height: DesignTokens.Shell.searchBackSize
@@ -1802,6 +1856,7 @@ struct TVLibraryKindView: View {
                 .font(TVTheme.font(size: DesignTokens.Shell.searchTitleSize, weight: .medium))
                 .tracking(-1.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: kindLabel, size: DesignTokens.Shell.searchTitleSize, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -1.5)
             if !items.isEmpty {
                 // SPA suite refs show live totals (e.g. 35 ARTISTS / 67 TITLES).
                 // Parity uses those labels so the heading matches the frame.
@@ -1820,6 +1875,7 @@ struct TVLibraryKindView: View {
                     .font(TVTheme.font(size: DesignTokens.Shell.libraryCountSize, weight: .heavy))
                     .tracking(0.8)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                            .parityLayout(text: "\(countLabel) \(collectionNoun)", size: DesignTokens.Shell.libraryCountSize, weight: Int(TVTheme.cssWeight(.heavy)), color: DesignTokens.Color.textDisabled, tracking: 0.8)
                     .padding(.leading, 8)
                     .overlay(alignment: .leading) {
                         Rectangle()
@@ -1837,6 +1893,7 @@ struct TVLibraryKindView: View {
                 .font(TVTheme.font(size: 12.29, css: 820))
                 .tracking(0.98)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
+                .parityLayout(text: (work.genres.first ?? kindLabel).uppercased(), size: 12.29, weight: Int(820), color: DesignTokens.Stage.brandInk, tracking: 0.98)
             // SPA `.tv-library-preview h2` / `.tv-detail-copy h1`: weight 560,
             // tracking -0.072em, max-width 9ch. DemiBold (semibold) matches
             // white-pixel mass better than Medium (full109 title thr200:
@@ -1859,6 +1916,7 @@ struct TVLibraryKindView: View {
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
                     .lineSpacing(3)
+                    .parityLayout(text: overview, size: 13.82, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
                     .padding(.top, 24)
                     .frame(maxWidth: 348, alignment: .leading)
             }
@@ -1869,17 +1927,23 @@ struct TVLibraryKindView: View {
 
     private func previewMeta(_ work: Work) -> some View {
         let genreLine = work.genres.prefix(2).joined(separator: " · ")
-        return HStack(spacing: 0) {
-            Text(yearString(for: work))
-                .foregroundStyle(DesignTokens.Color.textSecondary)
+        let year = yearString(for: work)
+        // Web `.tv-preview-meta`: flex row, gap 0.8rem; a title without a year starts flush left (music).
+        return HStack(spacing: 12.8) {
+            if !year.isEmpty {
+                Text(year)
+                    .foregroundStyle(DesignTokens.Color.textSecondary)
+                    .parityLayout(text: year, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
+            }
             if !genreLine.isEmpty {
-                // Web: the gap belongs to the year; a title without one starts flush left (music).
-                Text((yearString(for: work).isEmpty ? "" : "  ") + genreLine)
+                Text(genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: genreLine, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
             }
             if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
-                Text("  " + text)
+                Text(text)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: text, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
             }
         }
         .font(TVTheme.font(size: 13, weight: .medium))
@@ -2012,7 +2076,7 @@ struct TVLibraryKindView: View {
                 startPoint: .top, endPoint: .bottom
             )
         )
-        #if os(macOS)
+        #if os(macOS) || os(tvOS)
         // Web end-side scroll fade (`--page-edge-fade-floor` .3 over 5.5 vh): the last row dims toward the screen edge. The diff
         // against the movies reference showed a band of mismatch along the foot of the last visible row.
         .macEdgeFade(axis: .vertical, endFloor: 0.3)
@@ -2069,6 +2133,7 @@ struct TVLibraryKindView: View {
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous))
+                    .parityBox("image", radius: 12, fill: DesignTokens.Stage.surfaceSoft)
                     .modifier(TVCardFocusGlow(focused: isSelected && drawsFocusGlow, cornerRadius: DesignTokens.Radius.card))
                     // Pinned web values: rest 0 10 20 .14 + 0 3 8 .10; focused 0 24 48 .30 + 0 10 20 .20.
                     .shadow(
@@ -2099,6 +2164,7 @@ struct TVLibraryKindView: View {
                         .tracking(-0.18)
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .lineLimit(1)
+                        .parityLayout(text: work.title, size: 11.9, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.18)
                         .frame(width: width, alignment: .leading)
                 }
             }
@@ -2141,11 +2207,14 @@ struct TVLibraryKindView: View {
                         .tracking(-0.22)
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .lineLimit(1)
+                        .parityLayout(text: work.title, size: 14.976, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.22)
                     Text([work.genres.prefix(2).joined(separator: " \u{00B7} "), TVWebFormat.year(work.releaseDate) ?? ""]
                         .filter { !$0.isEmpty }.joined(separator: "  "))
                         .font(TVTheme.font(size: 9.6, css: 400))
                         .foregroundStyle(DesignTokens.Color.textDisabled)
                         .lineLimit(1)
+                        .parityLayout(text: [work.genres.prefix(2).joined(separator: " \u{00B7} "), TVWebFormat.year(work.releaseDate) ?? ""]
+                        .filter { !$0.isEmpty }.joined(separator: "  "), size: 9.6, weight: Int(400), color: DesignTokens.Color.textDisabled)
                 }
                 Spacer(minLength: 0)
             }
@@ -2185,6 +2254,7 @@ struct TVLibraryKindView: View {
                 Text(letter)
                     .font(TVTheme.font(size: 9.2, weight: .regular))
                     .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
+                    .parityLayout(text: letter, size: 9.2, weight: Int(TVTheme.cssWeight(.regular)))
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(active ? DesignTokens.Color.textSecondary : Color.clear))
                     .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 44)
@@ -2427,7 +2497,7 @@ struct TVActionsDrawer: View {
                         TVActionRow(glyph: "\u{FF0B}", label: list.name) { Task { await add(to: list) } }
                     }
                     if playlists.isEmpty {
-                        Text("No playlists yet.").font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled)
+                        Text("No playlists yet.").font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled).parityLayout(text: "No playlists yet.", size: 12.48, weight: Int(400), color: DesignTokens.Color.textDisabled)
                     }
                     TVActionRow(glyph: "\u{2190}", label: "Back") { self.playlists = nil }
                 } else {
@@ -2444,6 +2514,7 @@ struct TVActionsDrawer: View {
                     Text(message)
                         .font(TVTheme.font(size: 12.48, css: 400))
                         .foregroundStyle(DesignTokens.Color.textSecondary)
+                        .parityLayout(text: message, size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(width: 268, alignment: .leading)
                 }

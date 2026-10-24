@@ -4,7 +4,7 @@
  * response `pages/Player.ets` already holds, nothing is fetched here.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { Drawer } from '../design/components/Drawer';
 import { activeColors, toResourceColor } from '../design/Theme';
 import { tv } from '../design/Metrics';
@@ -34,19 +34,19 @@ export struct PlayerInfoDrawer {
   @Builder
   private infoBody(): void {
     Column({ space: tv(SECTION_GAP) }) {
-      Text(this.title).fontFamily(nunito(500))
+      Text(this.title).fontFamily(nunitoAt(500, tv(TITLE_SIZE)))
         .fontSize(tv(TITLE_SIZE))
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
         .width('100%')
       if (this.meta.length > 0) {
-        Text(this.meta).fontFamily(nunito(400))
+        Text(this.meta).fontFamily(nunitoAt(400, tv(META_SIZE)))
           .fontSize(tv(META_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width('100%')
       }
       if (this.synopsis.length > 0) {
-        Text(this.synopsis).fontFamily(nunito(400))
+        Text(this.synopsis).fontFamily(nunitoAt(400, tv(SYNOPSIS_SIZE)))
           .fontSize(tv(SYNOPSIS_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .maxLines(8)
@@ -56,11 +56,11 @@ export struct PlayerInfoDrawer {
       Column({ space: tv(10) }) {
         ForEach(this.facts, (fact: InfoFact) => {
           Row({ space: tv(12) }) {
-            Text(fact.label).fontFamily(nunito(400))
+            Text(fact.label).fontFamily(nunitoAt(400, tv(FACT_SIZE)))
               .fontSize(tv(FACT_SIZE))
               .fontColor(toResourceColor(activeColors().inkMuted))
               .width(tv(FACT_LABEL_WIDTH))
-            Text(fact.value).fontFamily(nunito(400))
+            Text(fact.value).fontFamily(nunitoAt(400, tv(FACT_SIZE)))
               .fontSize(tv(FACT_SIZE))
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)

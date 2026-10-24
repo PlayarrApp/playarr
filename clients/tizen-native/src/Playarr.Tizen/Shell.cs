@@ -32,17 +32,26 @@ internal sealed class Shell : View
     private readonly Dictionary<string, object> _saved = new();
     private readonly View _chrome = new() { Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight) };
     private TextLabel? _clockTime, _clockDate;
+    private float _clockLeft = 481f;
+
+    /// <summary>Web .app-clock: the time, then the date 11.1 px after the time's own width.</summary>
+    private void PlaceClock()
+    {
+        if (_clockTime is null || _clockDate is null) return;
+        _clockTime.PositionX = _clockLeft;
+        _clockDate.PositionX = _clockLeft + Ui.TextWidth(_clockTime.Text, 17.28f, 760, -0.5184f) + 11.1f;
+    }
     public void SetCaptureClock(DateTime? now)
     {
         // The parity suite pins UTC (screens.json determinism.timezone) and hands over UTC wall time; show release times (ToLocalTime) in the same zone.
         if (now is not null) { Environment.SetEnvironmentVariable("TZ", "UTC"); TimeZoneInfo.ClearCachedData(); }
-        _env.ClockNow = () => now ?? DateTime.Now;
+        _env.ClockNow = () => now ?? DateTime.Now; _env.ClockPinned = now is not null;
         UpdateClock();
     }
     private void UpdateClock()
     {
         var now = _env.ClockNow();
-        if (_clockTime is not null) _clockTime.Text = now.ToString("HH:mm");
+        if (_clockTime is not null) { _clockTime.Text = now.ToString("HH:mm"); PlaceClock(); }
         if (_clockDate is not null) _clockDate.Text = now.ToString("ddd d MMMM", System.Globalization.CultureInfo.GetCultureInfo("en-GB")).ToUpperInvariant();
     }
     private TextLabel? _profileLabel;
@@ -71,14 +80,15 @@ internal sealed class Shell : View
     {
         _env = env; _theme = env.Theme; _exit = exit;
         env.Navigate = route => Navigate(route);
-        env.SetClockX = x => { var cx = Math.Max(x, 476.1f); if (_clockTime is not null) _clockTime.PositionX = cx; if (_clockDate is not null) _clockDate.PositionX = cx + 52.7f; };
+        env.SetClockX = x => { _clockLeft = Math.Max(x, 481f); PlaceClock(); };
         env.NavigateBack = () => { if (_history.Count > 0) Navigate(_history.Pop(), push: false); else Navigate("/", push: false); };
         Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         BackgroundColor = Ui.C(_theme.Bg);
         BuildRail();
         _chrome.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
-        _clockTime = Ui.Text("", 476.1f, 68.2f, 17.28f, 800, _theme.Ink, 60, 25.92f, spacing: -0.52f);
-        _clockDate = Ui.Text("", 528.8f, 75f, 11.136f, 700, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.445f);
+        _clockTime = Ui.Text("", 481f, 68.2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f);
+        _clockDate = Ui.Text("", 535.4f, 75f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f);
+        Sem.Tag(_clockTime, "text", null, blockified: true); Sem.Tag(_clockDate, "text", null, blockified: true);
         _chrome.Add(_clockTime); _chrome.Add(_clockDate);
         UpdateClock();
         var tick = new global::Tizen.NUI.Timer(15000);
@@ -100,8 +110,10 @@ internal sealed class Shell : View
             nv.Item64.Size = new Size(64, 64); nv.Item64.PositionX = Cx - 32; nv.Item64.PositionY = nv.CentreY - 32;
             nv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
             nv.Icon = Ui.Icon(item.Icon, 22, 15.1f, 20, _theme.InkMuted);
-            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center);
+            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
             nv.Item64.Add(nv.Tile); nv.Item64.Add(nv.Icon); nv.Item64.Add(nv.Label);
+            var navIndex = _nav.Count; // this item's index once added just below
+            Sem.Tag(nv.Item64, "link", item.Label, radius: 16, backdropNow: () => NavBackdrop(navIndex));
             _chrome.Add(nv.Item64);
             _nav.Add(nv);
         }
@@ -111,12 +123,25 @@ internal sealed class Shell : View
         pv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
         _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 10 };
         pv.Icon = null!;
-        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center);
+        Sem.Tag(_avatarIcon, "container", radius: 50);
+        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
+        Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.", radius: 16, backdropNow: () => NavBackdrop(_nav.Count - 1));
         _chrome.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
-        _chrome.Add(Ui.Text("v 0.1.0", RailX, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center));
+        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono), "text", blockified: true));
+    }
+
+    /// <summary>What a rail item sits on for the layout export: the group fill over the shell, plus the tile fill of the active or focused item.</summary>
+    private Rgba NavBackdrop(int i)
+    {
+        var dark = _theme.Name == "dark";
+        var ink = dark ? new Rgba(0.957f, 0.941f, 0.945f) : _theme.Ink;
+        var a = i == _navFocus ? 0.16f : i == _active ? 0.09f : 0f;
+        Rgba Over(Rgba top, float alpha, Rgba under) => new(top.R * alpha + under.R * (1 - alpha), top.G * alpha + under.G * (1 - alpha), top.B * alpha + under.B * (1 - alpha));
+        var group = dark ? Over(_theme.SurfaceStrong, 0.56f, _theme.Bg) : Over(_theme.SurfaceStrong, 0.56f, _theme.Surface);
+        return a > 0 ? Over(ink, a, group) : group;
     }
 
     private void AddGroup(float y, float h)
@@ -147,7 +172,7 @@ internal sealed class Shell : View
         nv.Label.TextColor = tint;
     }
 
-    public void SetProfileName(string name) { if (_profileLabel is not null) _profileLabel.Text = name; }
+    public void SetProfileName(string name) { if (_profileLabel is not null) { _profileLabel.Text = name; if (_nav.Count > 0) Sem.Tag(_nav[^1].Item64, "link", $"Signed in as {(_env.ProfileFull.Length > 0 ? _env.ProfileFull : name)}. Open profiles.", radius: 16, backdropNow: () => NavBackdrop(_nav.Count - 1)); } }
 
     // ---- routing ----
 
@@ -172,6 +197,7 @@ internal sealed class Shell : View
         if (page is null) { previousSearch?.OnAdded(); return; }
         if (push && _page is not null) { _history.Push(_page.Route); if (_page.SaveState() is { } st) _saved[_page.Route] = st; }
         if (_page is PlaylistsScreen previousPlaylists) previousPlaylists.OnRemoved();
+        if (_page is PlayerScreen previousPlayer) previousPlayer.Stop(); // a route change (not Back) must stop the player and its timers before the views go: they otherwise run on disposed views and the native player crashes
         if (_page is not null)
         {
             Remove(_page.Root); _page.Root.Dispose();
@@ -192,7 +218,7 @@ internal sealed class Shell : View
         BackgroundColor = page.Fullscreen ? new Color(0, 0, 0, 0) : Ui.C(_theme.Bg);
         _chrome.Show(!page.HideChrome);
         var prev = _active;
-        var owner = route.StartsWith("/profiles") || route.StartsWith("/settings") ? "/profiles" : NavModel.Owner(route);
+        var owner = route.StartsWith("/profiles") ? "/profiles" : route.StartsWith("/settings") ? "" : NavModel.Owner(route); // web: Settings highlights no rail item
         _active = _nav.FindIndex(n => n.Item.Route == owner);
         if (prev >= 0) StyleNav(prev);
         if (_active >= 0) StyleNav(_active);

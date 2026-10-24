@@ -719,7 +719,7 @@ def home_recent_flat(image, *, tolerance=40):
 
 
 POSTER_STALL_MIN_COMPLETE = 15  # Home: a good Previewer process completes 66-80 images by the frame, a stalled one 2-6
-POSTER_STALL_MIN_BLOCKS = 2
+POSTER_STALL_MIN_BLOCKS = 4  # a stalled grid leaves most of a screen flat; light Filters shows two flat gradient art windows on the pinned fixture
 
 
 def posters_stalled(name, image_completes, flat_blocks, home_flat=False):

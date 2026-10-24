@@ -11,11 +11,11 @@ TEST_ROOT=$SCRATCH/nura-cap-test-$$
 mkdir -p "$TEST_ROOT/bin" "$TEST_ROOT/venv/bin" "$TEST_ROOT/out"
 printf 'test scratch: %s\n' "$TEST_ROOT"
 
-cat > "$TEST_ROOT/vnc.sh" <<'MOCK'
+cat > "$TEST_ROOT/display.sh" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 [[ "$2" == capture ]]
-[ "${VNC_MODE:-ok}" = ok ] || exit 17
+[ "${DISPLAY_MODE:-ok}" = ok ] || exit 17
 printf 'capture\n' > "$3"
 MOCK
 cat > "$TEST_ROOT/venv/bin/python" <<'MOCK'
@@ -24,7 +24,7 @@ set -euo pipefail
 printf '%s\n' "$*" > "$PYTHON_ARGS"
 [ "${PYTHON_MODE:-ok}" = ok ] || exit 19
 MOCK
-chmod +x "$TEST_ROOT/vnc.sh" "$TEST_ROOT/venv/bin/python"
+chmod +x "$TEST_ROOT/display.sh" "$TEST_ROOT/venv/bin/python"
 cp "$ROOT/cap.sh" "$TEST_ROOT/cap.sh"
 
 PYTHON_ARGS=$TEST_ROOT/python-args PLAYARR_TEST_TMPDIR="$SCRATCH" \
@@ -36,11 +36,11 @@ PYTHON_ARGS=$TEST_ROOT/python-args "$TEST_ROOT/cap.sh" fixture \
 [[ $(cat "$TEST_ROOT/python-args") == *"$TEST_ROOT/out/full-scaled.png 2 $TEST_ROOT/out/small.png"* ]]
 
 set +e
-VNC_MODE=fail PYTHON_ARGS=$TEST_ROOT/python-args \
-  "$TEST_ROOT/cap.sh" fixture "$TEST_ROOT/out/vnc-fail.png"
+DISPLAY_MODE=fail PYTHON_ARGS=$TEST_ROOT/python-args \
+  "$TEST_ROOT/cap.sh" fixture "$TEST_ROOT/out/display-fail.png"
 status=$?
 set -e
-[[ $status -eq 17 ]] || { echo "VNC failure returned $status, expected 17" >&2; exit 1; }
+[[ $status -eq 17 ]] || { echo "display failure returned $status, expected 17" >&2; exit 1; }
 
 set +e
 "$TEST_ROOT/cap.sh" fixture "$TEST_ROOT/out/invalid-scale.png" 00 \

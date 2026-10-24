@@ -17,15 +17,16 @@ namespace Playarr.Xbox.Views
         public static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 
         public static TextBlock Text(string text, double size, FontWeight weight, string brushKey, Thickness margin = default) =>
-            new TextBlock { Text = text, FontSize = size, FontWeight = weight, Foreground = Res(brushKey), Margin = margin };
+            new TextBlock { Text = text, FontSize = size, FontFamily = WebFont.Face(weight.Weight), FontWeight = WebFont.Weight(weight.Weight), Foreground = Res(brushKey), Margin = margin };
 
         /// <summary>The web page header: round Back button, title and an optional pink count line, at the shell content edge.</summary>
         public static PageHeaderParts PageHeader(Panel host, string title, string? subtitle, Action back)
         {
             var backButton = BackButton(back);
             host.Children.Add(backButton);
-            var titles = new StackPanel { Margin = new Thickness(228, 57, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] };
+            var titles = new StackPanel { Margin = new Thickness(226.63, 58.16, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"], FontSize = 33.6, FontFamily = WebFont.Face(580), FontWeight = WebFont.Weight(580), LineHeight = 46, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, CharacterSpacing = -52 };
+            LayoutExport.SetRole(titleText, "heading");
             var subtitleText = new TextBlock { Text = subtitle ?? string.Empty };
             LayoutHeader(titles, titleText, subtitleText);
             host.Children.Add(titles);
@@ -68,8 +69,10 @@ namespace Playarr.Xbox.Views
 
             titles.Children.Clear();
             subtitle.Text = subtitle.Text.ToUpperInvariant();
-            subtitle.FontSize = 11.1; // web: clamp(0.62rem, 0.58vw, 0.72rem) at 1920
-            subtitle.FontWeight = FontWeights.Bold;
+            subtitle.FontSize = 11.14; // web: clamp(0.62rem, 0.58vw, 0.72rem) at 1920
+            WebFont.Apply(subtitle, 680);
+            subtitle.LineHeight = 15;
+            subtitle.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
             subtitle.CharacterSpacing = 45; // web: 0.045em
             subtitle.Foreground = Res("PlayarrInk");
             if (string.IsNullOrEmpty(subtitle.Text))
@@ -84,9 +87,9 @@ namespace Playarr.Xbox.Views
             {
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 subtitle.VerticalAlignment = VerticalAlignment.Center;
-                subtitle.Margin = new Thickness(0, 6, 0, 0);
+                subtitle.Margin = new Thickness(0, -1.7, 0, 0);
                 row.Children.Add(title);
-                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(23, 8, 23, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(22, 8, 21, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(subtitle);
                 titles.Children.Add(row);
             }
@@ -125,11 +128,12 @@ namespace Playarr.Xbox.Views
         public static Button BackButton(Action onClick)
         {
             var button = RoundButton("", onClick);
-            button.Margin = new Thickness(154, 56, 0, 0);
+            button.Margin = new Thickness(153.59, 56.16, 0, 0);
+            LayoutExport.Tag(button, "link", "Back to Home");
             button.HorizontalAlignment = HorizontalAlignment.Left;
             button.VerticalAlignment = VerticalAlignment.Top;
             // The web draws Back as the text arrow, small and lightweight, not an icon-font arrow.
-            button.Content = new TextBlock { Text = "\u2190", FontSize = 14, Foreground = Res("PlayarrInk"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            button.Content = new TextBlock { Text = "\u2190", FontSize = 17.28, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             return button;
         }
 
@@ -260,7 +264,7 @@ namespace Playarr.Xbox.Views
             BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Child = new TextBlock { Text = text, FontSize = web ? 12.7 : 9, FontWeight = web ? FontWeights.Bold : FontWeights.SemiBold, Foreground = web ? Res("PlayarrInk") : new SolidColorBrush(color) },
+            Child = new TextBlock { Text = text, FontSize = web ? 13.44 : 9, FontFamily = WebFont.Face(web ? 750 : 600), FontWeight = WebFont.Weight(web ? 750 : 600), LineHeight = web ? 19 : 0, LineStackingStrategy = web ? LineStackingStrategy.BlockLineHeight : LineStackingStrategy.MaxHeight, Foreground = web ? Res("PlayarrInk") : new SolidColorBrush(color) },
         };
     }
 }

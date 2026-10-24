@@ -7,7 +7,7 @@
 ' SceneGraph substitution notes).
 
 sub init()
-    PlayarrFontifyTree(m.top)
+    PlayarrFontifyTree(m.top, "TvStage")
     ThemeSetRole(m.top.findNode("keyArtFade"), "bg")
     ThemeSetRole(m.top.findNode("homeRailFrostLight"), "homeRailFrost")
     ThemeSetRole(m.top.findNode("homeRailFrostDark"), "homeRailFrost")
@@ -89,7 +89,7 @@ sub onKeyArtUriChange()
         m.keyArtAgent.SetHeaders(m.top.keyArtHeaders)
     end if
     m.keyArt.SetHttpAgent(m.keyArtAgent)
-    m.keyArt.loadWidth = 1038
+    m.keyArt.loadWidth = 900
     m.keyArt.loadHeight = 1191
     m.keyArtBase = uri
     m.keyArtRetries = 0
@@ -113,12 +113,12 @@ end sub
 
 sub onStageKickerChange()
     ' Web .tv-provider: 12.3 px, weight 820, 0.08em tracking, upper case, brand colour.
-    m.stageKickerLabel.spec = { text: m.top.stageKicker, size: 13, weight: 800, tracking: 0.983, role: "brandInk", upper: true }
+    m.stageKickerLabel.spec = { text: m.top.stageKicker, size: 12.29, weight: m.top.kickerWeight, tracking: EpisodeCodeTracking(m.top.stageKicker, 0.173 - 0.97) + 0.97, role: "brandInk", upper: true }
 end sub
 
 sub onStageTitleChange()
     ' Web .tv-title-panel h1: 69.1 px, weight 560, -0.075em tracking, 62.2 px lines, max-width 9ch (373 px), text-wrap: balance.
-    m.stageTitleLabel.spec = { text: m.top.stageTitle, size: 69, weight: 560, tracking: -4.53, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    m.stageTitleLabel.spec = { text: m.top.stageTitle, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
     layoutStageText()
 end sub
 
@@ -129,7 +129,7 @@ end sub
 
 sub onStageOverviewChange()
     ' Web .tv-preview-overview is 12.864 px, weight 600, and 324 px wide at 1920x1080; Roku keeps the matched small-text line height.
-    m.stageOverviewLabel.spec = { text: m.top.stageOverview, size: 14, weight: 600, tracking: 0, role: "inkMuted", width: 324, lineHeight: 20.33, maxLines: 5 }
+    m.stageOverviewLabel.spec = { text: m.top.stageOverview, size: 12.86, weight: 600, tracking: 0, role: "heroSoft", width: 324, lineHeight: 20.33, maxLines: 5 }
     layoutStageText()
 end sub
 
@@ -141,8 +141,8 @@ sub layoutStageText()
     if lines > 3 then lines = 3
     titleBottom = 44.3 + 62.208 * lines
     if m.top.stageMeta <> invalid and m.top.stageMeta <> ""
-        m.stageMetaLabel.translation = [0, titleBottom + 27]
-        m.stageOverviewLabel.translation = [0, titleBottom + 27 + 37.5]
+        m.stageMetaLabel.translation = [0, titleBottom + 22.6]
+        m.stageOverviewLabel.translation = [0, titleBottom + 22.6 + 41.9]
     else
         m.stageMetaLabel.translation = [0, titleBottom + 27]
         m.stageOverviewLabel.translation = [0, titleBottom + 21.6]

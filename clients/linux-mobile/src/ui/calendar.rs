@@ -92,6 +92,26 @@ const MONTHS: [&str; 12] = [
 ];
 const DAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const WEEKDAYS: [&str; 7] = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+];
+
+/// "Monday 28 September", as the web names a day in an event's accessible label.
+fn long_day(dt: Date) -> String {
+    format!(
+        "{} {} {}",
+        WEEKDAYS[weekday(dt) as usize],
+        dt.d,
+        MONTHS[dt.m as usize - 1]
+    )
+}
+
 pub fn day_label(dt: Date) -> String {
     format!(
         "{}, {} {}",
@@ -103,8 +123,8 @@ pub fn day_label(dt: Date) -> String {
 
 /// The real local time, or PLAYARR_PARITY_CLOCK (RFC 3339) so parity captures show the fixture's "today".
 fn now() -> gtk4::glib::DateTime {
-    std::env::var("PLAYARR_PARITY_CLOCK")
-        .ok()
+    super::parity_clock()
+        .or_else(|| std::env::var("PLAYARR_PARITY_CLOCK").ok())
         .and_then(|v| gtk4::glib::DateTime::from_iso8601(&v, None).ok())
         .and_then(|d| d.to_local().ok())
         .unwrap_or_else(|| gtk4::glib::DateTime::now_local().expect("local time"))
@@ -238,6 +258,7 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
     if let Some(t) = e.subtitle.as_deref().filter(|t| !t.is_empty()) {
         sub.push(t.to_string());
     }
+    let sub_text = if sub.is_empty() { None } else { Some(sub.join(" · ")) };
     if !sub.is_empty() {
         let line = gtk4::Label::builder()
             .label(sub.join(" · "))
@@ -278,7 +299,7 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
     {
         // The web's agenda chip is 21 px tall, sitting 1.5 px below the meta text.
         chip.add_css_class("agenda");
-        chip.set_valign(gtk4::Align::Center);
+        chip.set_valign(gtk4::Align::Start);
         // The web wraps the chip to its own line when the row is full (the week card's column is 32 px narrower); a FlowBox would do it but its minimum width is
         // the whole row, so the measured natural widths are compared with the column.
         let width = meta_width + f64::from(chip.measure(gtk4::Orientation::Horizontal, -1).1);
@@ -293,7 +314,7 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         };
         if width > if week { 213.0 } else { 245.0 } {
             col.append(&clip(&meta));
-            chip.set_margin_top(4);
+            chip.set_margin_top(0);
             col.append(&chip);
         } else {
             meta.append(&chip);
@@ -301,6 +322,8 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         }
     }
     row.append(&col);
+    crate::layout::tag(&chip, "text", "", 999.0);
+    crate::layout::tag(&thumb, "image", "", 6.0);
     // The left border shows availability (we have it) versus not, never which library it belongs to.
     let have = if e.has_file { "have" } else { "missing" };
     let b = gtk4::Button::builder()
@@ -308,11 +331,23 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         .css_classes(if week {
             vec!["pa-card", "pa-entry", have, "week"]
         } else {
-            vec!["pa-card", "pa-entry", have]
+            if sub_text.is_none() {
+                vec!["pa-card", "pa-entry", have, "nosub"]
+            } else {
+                vec!["pa-card", "pa-entry", have]
+            }
         })
         .hexpand(true)
         .halign(gtk4::Align::Fill)
         .build();
+    {
+        // The web's accessible name of the card: every text on it, in order.
+        let mut words = vec![e.title.clone()];
+        words.extend(sub_text);
+        words.extend(texts);
+        words.push(text.to_string());
+        crate::layout::tag(&b, "button", &words.join(" "), 12.0);
+    }
     if let Some(id) = e.work_id.clone() {
         let (app, imgs, title) = (app.clone(), imgs.clone(), e.title.clone());
         b.connect_clicked(move |_| {
@@ -328,7 +363,12 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
 }
 
 fn pill(label: &str) -> gtk4::Button {
-    gtk4::Button::builder().label(label).css_classes(["pa-pill"]).build()
+    let b = gtk4::Button::builder().label(label).css_classes(["pa-pill"]).build();
+    // The web's pill text is the link: its box is the text run.
+    if let Some(l) = b.child() {
+        crate::layout::tag(&l, "button", "", 999.0);
+    }
+    b
 }
 
 /// A round control with a text arrow, as the web's period navigation.
@@ -337,9 +377,10 @@ fn round_arrow(arrow: &str) -> gtk4::Button {
     b.set_child(Some(
         &gtk4::Label::builder()
             .label(arrow)
-            .css_classes(["pa-back-arrow"])
+            .css_classes(["pa-cal-arrow"])
             .build(),
     ));
+    crate::layout::tag(&b, "button", if arrow == "←" { "Previous" } else { "Next" }, 50.0);
     b
 }
 
@@ -359,6 +400,17 @@ impl Cal {
                     add_days(last, 6 - weekday(last) as i64),
                 )
             }
+        }
+    }
+
+    /// The long period text of the web's status region.
+    fn period_text(&self) -> String {
+        let (from, to) = self.range();
+        let long = |d: Date| format!("{} {} {}", d.d, &MONTHS[d.m as usize - 1][..3], d.y);
+        match self.view.get() {
+            View::Month => format!("{} {}", MONTHS[self.anchor.get().m as usize - 1], self.anchor.get().y),
+            View::Week => format!("{} {} – {}", from.d, &MONTHS[from.m as usize - 1][..3], long(to)),
+            View::Agenda => format!("{} {} – {}", from.d, &MONTHS[from.m as usize - 1][..3], long(to)),
         }
     }
 
@@ -471,24 +523,29 @@ impl Cal {
         head.append(
             &gtk4::Label::builder()
                 .label(name)
-                .css_classes(["pa-day-title"])
+                .css_classes(if dt == today() {
+                    vec!["pa-day-title", "today"]
+                } else {
+                    vec!["pa-day-title"]
+                })
                 .xalign(0.0)
                 .valign(gtk4::Align::Center)
                 .build(),
         );
         if dt == today() {
-            head.append(
-                &gtk4::Label::builder()
-                    .label("TODAY")
-                    .css_classes(["pa-today-chip"])
-                    .valign(gtk4::Align::Center)
-                    .build(),
-            );
+            let chip = gtk4::Label::builder()
+                .label("TODAY")
+                .css_classes(["pa-today-chip"])
+                .valign(gtk4::Align::Center)
+                .margin_top(2)
+                .build();
+            crate::layout::tag(&chip, "text", "", 999.0);
+            head.append(&chip);
         }
         let sec = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .spacing(13)
-            .margin_bottom(if week { 19 } else { 31 })
+            .margin_bottom(if week { 19 } else { 32 })
             .build();
         head.set_margin_bottom(0);
         sec.append(&head);
@@ -497,6 +554,10 @@ impl Cal {
             // The web's week cards sit 15 px apart; the 8 px column spacing only covers the day heading.
             if week && i > 0 {
                 card.set_margin_top(7);
+            }
+            // The web gap after a card without a subtitle line is 1 px wider (its box is a fraction shorter).
+            if !week && card.has_css_class("nosub") {
+                sec.set_margin_bottom(33);
             }
             sec.append(&card);
         }
@@ -515,9 +576,13 @@ impl Cal {
             // The web's week columns are 295 px wide and sit side by side.
             sec.set_size_request(295, -1);
             sec.set_valign(gtk4::Align::Start);
-            sec.set_spacing(8);
+            sec.set_spacing(if dt == today() { 5 } else { 7 });
             head.set_height_request(22);
             head.set_margin_top(5);
+        }
+        // The web's later agenda days sit 1 px nearer their heading, and the gap before them is 1 px wider.
+        if !week && parent.first_child().is_some() {
+            sec.set_spacing(12);
         }
         parent.append(&sec);
     }
@@ -553,7 +618,7 @@ impl Cal {
             }
             View::Week => {
                 let start = self.anchor.get();
-                let cols = gtk4::Box::builder().spacing(19).valign(gtk4::Align::Start).build();
+                let cols = gtk4::Box::builder().spacing(20).valign(gtk4::Align::Start).build();
                 self.body.append(&cols);
                 for i in 0..7 {
                     let d = add_days(start, i);
@@ -611,7 +676,7 @@ impl Cal {
         };
         for w in 0..weeks {
             let cell_h = row_h(w);
-            let chips = ((cell_h - 2 - 44 - 2) / 22).max(0) as usize;
+            let chips = ((cell_h - 2 - 44 - 2) / 32).max(0) as usize;
             for c in 0..7 {
                 let d = add_days(start, w * 7 + c);
                 let cell = gtk4::Box::builder()
@@ -642,29 +707,34 @@ impl Cal {
                 let shown = items.len().min(chips);
                 for (_, e, n) in items.iter().take(shown) {
                     let row = gtk4::Box::builder().spacing(7).css_classes(["pa-mline"]).build();
+                    let status = status_chip(e, today_date).0;
+                    crate::layout::tag(&row, "button", &format!("{}, {status}, {}", e.title, long_day(d)), 4.0);
                     let tone = match status_chip(e, today_date).1 {
                         "ok" => "have",
                         "soon" => "soon",
                         _ => "missing",
                     };
-                    row.append(
-                        &gtk4::Box::builder()
-                            .css_classes(["pa-dot", tone])
-                            .valign(gtk4::Align::Center)
-                            .build(),
-                    );
+                    let dot = gtk4::Box::builder()
+                        .css_classes(["pa-dot", tone])
+                        .valign(gtk4::Align::Center)
+                        .build();
+                    crate::layout::tag(&dot, "container", "", 50.0);
+                    // The web's 7-column grid pitch is 102.86 px; GTK rounds it to 103, so the dot sits 1 px left of its slot (the label is pulled back to keep its place).
+                    dot.set_margin_start(-1);
+                    dot.set_margin_end(1);
+                    row.append(&dot);
                     let text = if *n > 1 {
                         format!("{} · {n}×", e.title)
                     } else {
                         e.title.clone()
                     };
-                    row.append(
-                        &gtk4::Label::builder()
-                            .label(text)
-                            .ellipsize(gtk4::pango::EllipsizeMode::End)
-                            .xalign(0.0)
-                            .build(),
-                    );
+                    let name = gtk4::Label::builder()
+                        .label(text)
+                        .ellipsize(gtk4::pango::EllipsizeMode::End)
+                        .xalign(0.0)
+                        .build();
+                    name.set_margin_start(-1);
+                    row.append(&name);
                     cell.append(&row);
                 }
                 let foot = gtk4::Box::builder()
@@ -706,6 +776,51 @@ impl Cal {
             View::Month => Date { d: 1, ..t },
         });
         self.selected.set(None);
+        // The web names the agenda's page and its inner list alike.
+        if let Some(scroller) = self.page.ancestor(gtk4::ScrolledWindow::static_type()) {
+            let mut t = crate::layout::Tag::new("page", if v == View::Agenda { "|" } else { "" }, 0.0);
+            // The web's live region names the period shown ("5 Oct – 11 Oct 2026"); no drawn text carries it here.
+            let (sx, sy, sw) = match v {
+                View::Agenda => (33.81, 91.0, 140.31),
+                View::Week => (16.0, 109.0, 146.34),
+                View::Month => (16.0, 109.0, 100.19),
+            };
+            t = t.extra(crate::layout::Extra {
+                role: "status",
+                label: self.period_text(),
+                radius: 0.0,
+                inset: [sx, sy, 360.0 - sx - sw, 0.0],
+                height: Some(22.0),
+                bg: None,
+                art: false,
+                font: Some((16.0, 400)),
+            });
+            if v == View::Agenda {
+                // The web's agenda also draws the faded key art as its own image.
+                t = t.extra(crate::layout::Extra {
+                    role: "image",
+                    label: String::new(),
+                    radius: 0.0,
+                    inset: [0.0, -7.4, -14.4, 295.45],
+                    height: None,
+                    bg: None,
+                    art: true,
+                    font: None,
+                });
+                // ... and a full-page layer for its list.
+                t = t.extra(crate::layout::Extra {
+                    role: "container",
+                    label: String::new(),
+                    radius: 0.0,
+                    inset: [0.0, 0.0, 0.0, 0.0],
+                    height: Some(673.0),
+                    bg: None,
+                    art: false,
+                    font: None,
+                });
+            }
+            t.apply(&scroller);
+        }
         let week = v == View::Week;
         self.days_view.set_max_content_height(if week { WEEK_CLIP } else { -1 });
         self.days_view.set_vscrollbar_policy(if week {
@@ -823,6 +938,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .css_classes(["pa-cal-controls"])
         .build();
     let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
+    crate::layout::tag(&range_label, "button", "", 999.0);
     let range = gtk4::Box::builder().css_classes(["pa-pill"]).build();
     range.append(&range_label);
     let prev = round_arrow("←");

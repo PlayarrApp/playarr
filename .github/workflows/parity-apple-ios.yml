@@ -306,6 +306,14 @@ jobs:
           path: ${{ runner.temp }}/ios18-cache
           key: ios-sim-runtime-18.5-v2-${{ runner.os }}-${{ runner.arch }}
 
+      # Incremental builds: DerivedData (SwiftPM checkouts and unchanged PlayarrKit objects) from the previous run of this device.
+      - name: Restore the DerivedData cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/wall/dd
+          key: ios-dd-${{ matrix.device }}-${{ github.run_id }}
+          restore-keys: ios-dd-${{ matrix.device }}-
+
       - name: Build the app
         timeout-minutes: 60
         run: bash "$TRUSTED/scripts/apple-wall/wall.sh" build "$DEVICE"

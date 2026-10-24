@@ -5,8 +5,8 @@
 //   PLAYARR_TIZEN_DISPLAY (X display of the emulator window, default :25), PLAYARR_TIZEN_WINDOW (X window id when the window is not at 0,0
 //   of its display, default root), PLAYARR_SDB.
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertDeviceTestIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 import { captureWallTime } from "../capture-timezone.mjs";
@@ -26,7 +26,7 @@ async function call(method, path, body) {
   return res.json();
 }
 
-export async function createDriver({ request = call, delay = sleep, env = process.env, secrets, setupForward, captureScreenshot, pixelSignature } = {}) {
+export async function createDriver({ request = call, delay = sleep, env = process.env, secrets, setupForward, captureScreenshot, pixelSignature, writeLayout } = {}) {
   let state = {};
   let forwarded = false;
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: env.PARITY_CLIENT, ...(secrets ? { secrets } : {}) });
@@ -101,21 +101,19 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       await verifyAccount();
       await waitStable();
     },
-    // Web player-controls ref: the clip paused at 2 s with the controls shown. The player reports its position only while playing and
-    // holds the start position for the first frames, so start at 2 s and pause on the first playing sample.
+    // Web player-controls ref: the clip paused at 2 s with the controls shown. The app seeks to 2.000 s and holds it (route ?hold=2000).
     async pausePlayerAtTwoSeconds() {
       const base = state.route.split("?")[0];
-      await request("POST", `/route?path=${encodeURIComponent(`${base}?t=2000`)}`);
-      for (let waited = 0; waited < 45000; waited += 50) {
+      // The app seeks to exactly 2000 ms and holds it paused (no play-then-pause): wait until it reports that position, paused.
+      await request("POST", `/route?path=${encodeURIComponent(`${base}?t=2000&hold=2000`)}`);
+      let held = false;
+      for (let waited = 0; waited < 45000 && !held; waited += 100) {
         await readState();
-        if (state.playing && state.positionMs >= 2000 && state.positionMs < 2600) break;
-        await delay(50);
+        held = !state.playing && state.positionMs === 2000;
+        if (!held) await delay(100);
       }
-      await request("POST", "/key?name=pause");
-      await delay(KEY_MS);
+      if (!held) throw new Error("player did not hold 2.000 s paused");
       await waitStable();
-      await readState();
-      if (state.playing) throw new Error("player did not pause");
       await request("POST", "/blur");
       // The emulator screenshot may not carry the video plane; stand in the paused static clip frame (2 s, as the webOS real-TV capture does) behind the controls.
       await request("POST", "/video-frame", readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../fixtures/static-clip-2s.png")));
@@ -132,7 +130,9 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       if (state.route.startsWith("/player/")) await this.pausePlayerAtTwoSeconds();
       if (state.route.startsWith("/player/") && state.playing) throw new Error("Tizen player capture requires paused playback for deterministic pixels");
       const first = `${file}.stability.png`;
-      const capture = captureScreenshot ?? ((path) => execFileSync("import", ["-window", process.env.PLAYARR_TIZEN_WINDOW ?? "root", path], { env: { ...process.env, DISPLAY } }));
+      // PLAYARR_TIZEN_CROP=<w>x<h>+<x>+<y>: the app area inside a decorated emulator window (a skin with a title bar draws the 1920x1080 app at an offset)
+      const crop = process.env.PLAYARR_TIZEN_CROP;
+      const capture = captureScreenshot ?? ((path) => execFileSync("import", ["-window", process.env.PLAYARR_TIZEN_WINDOW ?? "root", ...(crop ? ["-crop", crop, "+repage"] : []), path], { env: { ...process.env, DISPLAY } }));
       const signature = pixelSignature ?? ((path) => execFileSync("identify", ["-format", "%#", path], { encoding: "utf8" }).trim());
       capture(first);
       await delay(1000);
@@ -140,6 +140,16 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       await waitStable();
       if (state.route.startsWith("/player/") && state.playing) throw new Error("Tizen player capture requires paused playback for deterministic pixels");
       capture(file);
+      // The layout document (docs/parity/LAYOUT.md) of the same screen state: the app walks its own NUI view tree.
+      if (!env.PARITY_NO_LAYOUT) {
+        const theme = basename(dirname(file)), screen = basename(file, ".png");
+        const doc = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
+        if (typeof doc?.json === "string") {
+          const target = join(dirname(dirname(file)), "layout", theme, `${screen}.json`);
+          if (writeLayout) writeLayout(target, doc.json);
+          else { mkdirSync(dirname(target), { recursive: true }); writeFileSync(target, doc.json); }
+        }
+      }
       if (signature(first) !== signature(file)) throw new Error("Tizen rendered pixels changed between deterministic readiness samples");
     },
     // Downloads run through the engine's debug endpoints (the UI path was checked by hand): what is stored, paused and removed is the real

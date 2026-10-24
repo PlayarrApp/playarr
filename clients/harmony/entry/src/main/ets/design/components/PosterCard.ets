@@ -91,7 +91,7 @@
  * `SPINNER_BORDER_WIDTH`.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { image } from '@kit.ImageKit';
 import { activeColors, resolvedThemeMode, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
@@ -123,7 +123,7 @@ interface ShadowLayerSpec {
 /** Brief 5.6, "Card art at rest (home)" / "Card art focused (home)". */
 /** Web `.tv-title-card-copy` / `.tv-home-card` caption: 0.72rem under the art and 0.12rem in from the card edge (measured on the 2026-10-15
  * refs: caption rows 10 vp lower, text 2 vp further right than before). */
-const TV_CAPTION_TOP_GAP: number = 10;
+const TV_CAPTION_TOP_GAP: number = 8.55; // web: the caption sits 1.45 higher than the older 10
 const TV_CAPTION_INSET: number = 2;
 const FOCUS_RING_WIDTH: number = 3;
 const HOME_SHADOW_REST: ShadowLayerSpec[] = [
@@ -204,6 +204,8 @@ export struct PosterCard {
   @Prop unseen: boolean = false;
   /** Phone Library caption: medium weight, the muted ink (web phone grid). */
   @Prop softCaption: boolean = false;
+  /** Phone: web focuses the first card on open, which paints its caption pure white (black in light). */
+  @Prop focusedCaption: boolean = false;
   /** Phone: draw the focus ring and glow without real focus (the Previewer never reports it); web rings the next-up episode on open. */
   @Prop ringOn: boolean = false;
 
@@ -438,7 +440,7 @@ export struct PosterCard {
             .position({ x: this.cardWidth - this.dotSize() - this.dotInset(), y: this.dotInset() })
         }
         if (this.episodeNumberOverlay.length > 0) {
-          Text(this.episodeNumberOverlay).fontFamily(nunito(600))
+          Text(this.episodeNumberOverlay).fontFamily(nunitoAt(600, isTvMetrics() ? tv(20) : 13))
             .width(isTvMetrics() ? tv(24) : 16)
             .fontSize(isTvMetrics() ? tv(20) : 13)
             .fontWeight(600)
@@ -486,34 +488,34 @@ export struct PosterCard {
             .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
             .letterSpacing(tv(this.titleFontSize * -0.015))
         }
-        .fontFamily(nunito(400))
+        .fontFamily(nunitoAt(400, this.titleFontSize))
         .width(this.cardWidth)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
       } else {
-        Text(this.title).fontFamily(nunito(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT))
+        Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
-          .fontWeight(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.softCaption ? 0.15 : tv(this.titleFontSize * -0.02)) // web is about 4% narrower than the Nunito instance
-          .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
+          .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
+          .letterSpacing(this.titleFontSize * -0.0154) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
+          .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
-          .padding(this.softCaption ? { top: 9, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
+          .padding(this.softCaption ? { top: 8.5, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
-        Text(this.subtitle).fontFamily(nunito(400))
+        Text(this.subtitle).fontFamily(nunitoAt(400, this.subtitleFontSize))
           .width(this.cardWidth)
           .fontSize(this.subtitleFontSize)
           .fontWeight(FontWeight.Normal)
-          .fontColor(toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
+          .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption || isTvMetrics() ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .letterSpacing(this.softCaption ? 0 : tv(this.subtitleFontSize * -0.02))
-          .padding({ left: this.softCaption ? 2.3 : tv(TV_CAPTION_INSET) })
+          .letterSpacing(0)
+          .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 2.9 })
       }
     }
     .width(this.cardWidth)

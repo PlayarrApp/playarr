@@ -54,6 +54,18 @@ methods = """
       this.navPathStack.replacePathByName('Detail', params);
       return;
     }
+    if (name.indexOf('dumplayout:') === 0) {
+      // parity layout export: the component tree (box, text, font, colours) goes to the bridge, which keeps it for the capture driver
+      try {
+        const tree: string = this.getUIContext().getFilteredInspectorTree(['$rect', 'content', 'text', 'fontSize', 'fontColor', 'fontFamily', 'fontWeight',
+          'backgroundColor', 'borderRadius', 'opacity', 'letterSpacing', 'textAlign', 'maxLines', 'lineHeight', 'id', 'visibility', 'textCase']);
+        this.previewReq.request('http://127.0.0.1:%s/layout-put?id=' + encodeURIComponent(name.substring(11)),
+          { method: http.RequestMethod.POST, extraData: tree, connectTimeout: 5000, readTimeout: 5000 }).catch((): void => {});
+      } catch (err) {
+        previewReport('dbg=' + encodeURIComponent('dumplayout-failed:' + JSON.stringify(err)));
+      }
+      return;
+    }
     if (name.indexOf('focus:') === 0) {
       this.getUIContext().getFocusController().activate(true, false);
       let result: string = 'ok';
@@ -86,7 +98,7 @@ methods = """
       this.navPathStack.replacePathByName(target, undefined);
     }
   }
-""" % port
+""" % (port, port)
 s = s.replace("\n@Entry", "\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
 s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)

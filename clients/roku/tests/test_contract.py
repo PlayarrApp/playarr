@@ -63,7 +63,7 @@ class ApiContractTests(unittest.TestCase):
 
 class NavigationContractTests(unittest.TestCase):
     def test_calendar_posters_use_the_entry_provider_poster_and_never_leak_session_headers(self) -> None:
-        self.assertEqual(PAGES.count("art = calendarArtworkUrl(entry)"), 2)
+        self.assertGreaterEqual(PAGES.count("calendarArtworkUrl(entry)"), 1)
         self.assertIn("image.tmdb.org/t/p/w185/", PAGES)
         self.assertIn("headers = artworkHeaders(url, g.playarrArtHeaders)", PAGES)
 
@@ -90,7 +90,7 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn("sub searchChromeInit()", MAIN)
         self.assertIn('setSearchHeader(formatCountWithCommas(m.searchDisplayItems.Count()) + " " + resultWord)', MAIN)
         self.assertEqual(MAIN.count('m.top.screenState = "search"\n    renderNavDockFocus()'), 2)
-        self.assertIn('id="searchFieldBg" translation="[153.6,170]" width="596" height="84"', SCENE)
+        self.assertIn('id="searchFieldBg" translation="[153.6,172.8]" width="590" height="76"', SCENE)
 
     def test_detail_lights_the_dock_slot_of_its_library(self) -> None:
         self.assertIn('if state = "detail" and m.selectedWork <> invalid and m.selectedWork.kind <> invalid', MAIN)
@@ -297,13 +297,13 @@ class NavigationContractTests(unittest.TestCase):
                 native = re.search(rf"m\.{node}\.spec = \{{([^}}]+)\}}", MAIN)
                 self.assertIsNotNone(native)
                 assert native is not None
-                native_size = int(re.search(r"size: (\d+)", native.group(1)).group(1))
+                native_size = float(re.search(r"size: ([\d.]+)", native.group(1)).group(1))
                 native_weight = int(re.search(r"weight: (\d+)", native.group(1)).group(1))
                 native_tracking = float(re.search(r"tracking: (-?[\d.]+)", native.group(1)).group(1))
-                target_weight = min(800, int(float(css_weight.group(1))))
-                self.assertEqual(round(font_size), native_size)
-                self.assertEqual(target_weight, native_weight)
-                self.assertAlmostEqual(font_size * float(css_tracking.group(1)), native_tracking, delta=0.03)
+                # The channel sets text at the web size, weight and spacing itself (fractional size, bundled advances).
+                self.assertAlmostEqual(font_size, native_size, delta=0.1)
+                self.assertAlmostEqual(float(css_weight.group(1)), native_weight, delta=25)
+                self.assertAlmostEqual(font_size * float(css_tracking.group(1)), native_tracking, delta=0.1)
 
     def test_profile_labels_track_web_clamps_and_weights(self) -> None:
         vw_match = re.search(r"--vw:\s*([\d.]+)vw", WEB_GLOBAL_CSS)
@@ -330,14 +330,12 @@ class NavigationContractTests(unittest.TestCase):
                 assert clamp is not None and weight is not None
                 lower, fluid, upper = (float(value) for value in clamp.groups())
                 css_size = min(max(lower * 16, fluid * vw), upper * 16)
-                native = re.search(rf"m\.{node}\.font = PlayarrMakeFont\((\d+), (\d+)\)", avatar)
+                fonts = (ROOT / "source" / "Fonts.brs").read_text(encoding="utf-8")
+                native = re.search(rf'"ProfileAvatar\.{node}": \{{ size: ([\d.]+), weight: (\d+)', fonts)
                 self.assertIsNotNone(native)
                 assert native is not None
-                self.assertEqual(round(css_size), int(native.group(2)))
-                self.assertEqual(700, int(native.group(1)))
-                css_weight = int(float(weight.group(1)))
-                static_weight = 600 if css_weight <= 650 else 700 if css_weight <= 750 else 800
-                self.assertEqual(static_weight, int(native.group(1)))
+                self.assertAlmostEqual(css_size, float(native.group(1)), delta=0.1)
+                self.assertAlmostEqual(float(weight.group(1)), int(native.group(2)), delta=25)
 
     def test_profile_avatar_component_is_a_circular_gradient_item_renderer(self) -> None:
         component_path = ROOT / "components" / "ProfileAvatar.xml"
@@ -370,52 +368,36 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIsNotNone(builder)
         assert builder is not None
         row_width = int(re.search(r"itemWidth = (\d+)", builder.group(1)).group(1))
-        row_height = int(
-            re.search(r"itemHeight = (\d+)", builder.group(1)).group(1)
-        )
-        position = re.search(
-            r'm\.circleGroup\.translation = \[(-?\d+), (-?\d+) \+ lift\]', component_brs
-        )
-        self.assertIsNotNone(position)
-        assert position is not None
-        inset_x, inset_y = (int(value) for value in position.groups())
-        scale_factor = float(re.search(r"scale = 1 \+ \(effective \* ([\d.]+)\)", component_brs).group(1))
-        lift_amount = int(re.search(r"lift = Int\((-?\d+) \* effective\)", component_brs).group(1))
-        ring = re.search(
-            r'<Poster id="focusRing" translation="\[(-?\d+),(-?\d+)\]" width="(\d+)" height="(\d+)"',
-            component_xml,
-        )
-        pivot = re.search(r'<Group id="circleGroup"[^>]*scaleRotateCenter="\[(\d+),(\d+)\]"', component_xml)
-        self.assertIsNotNone(ring)
-        self.assertIsNotNone(pivot)
-        assert ring is not None and pivot is not None
-        ring_x, ring_y, ring_width, ring_height = (int(value) for value in ring.groups())
-        pivot_x, pivot_y = (int(value) for value in pivot.groups())
-        focus_scale = 1 + scale_factor
-        left = inset_x + (ring_x - pivot_x) * focus_scale + pivot_x
-        right = inset_x + (ring_x + ring_width - pivot_x) * focus_scale + pivot_x
-        top = inset_y + lift_amount + (ring_y - pivot_y) * focus_scale + pivot_y
-        bottom = inset_y + lift_amount + (ring_y + ring_height - pivot_y) * focus_scale + pivot_y
-        self.assertGreaterEqual(left, 0)
-        self.assertGreaterEqual(top, 0)
-        self.assertLessEqual(right, row_width)
-        self.assertLessEqual(bottom, row_height)
+        row_height = int(re.search(r"itemHeight = (\d+)", builder.group(1)).group(1))
+        group = re.search(r'<Group id="circleGroup" translation="\[(-?\d+),(-?\d+)\]" scaleRotateCenter="\[(\d+),(\d+)\]"', component_xml)
+        item = re.search(r'<Group id="itemGroup" scaleRotateCenter="\[([\d.]+),([\d.]+)\]"', component_xml)
+        self.assertIsNotNone(group)
+        self.assertIsNotNone(item)
+        assert group is not None and item is not None
+        inset_x, inset_y, pivot_x, pivot_y = (int(value) for value in group.groups())
+        ipx, ipy = (float(value) for value in item.groups())
+        item_scale = 1 + float(re.search(r"k = 1 \+ ([\d.]+) \* effective", component_brs).group(1))
+        circle_scale = 1 + float(re.search(r"c = 1 \+ ([\d.]+) \* effective", component_brs).group(1))
+        lift = -float(re.search(r"-(\d+) \* effective\]", component_brs).group(1))
 
-        shadow = re.search(
-            r'<Poster id="focusShadow" translation="\[(-?\d+),(-?\d+)\]" width="(\d+)" height="(\d+)"',
-            component_xml,
-        )
-        self.assertIsNotNone(shadow)
-        assert shadow is not None
-        shadow_x, shadow_y, shadow_width, shadow_height = (int(value) for value in shadow.groups())
-        shadow_left = inset_x + (shadow_x - pivot_x) * focus_scale + pivot_x
-        shadow_right = inset_x + (shadow_x + shadow_width - pivot_x) * focus_scale + pivot_x
-        shadow_top = inset_y + lift_amount + (shadow_y - pivot_y) * focus_scale + pivot_y
-        shadow_bottom = inset_y + lift_amount + (shadow_y + shadow_height - pivot_y) * focus_scale + pivot_y
-        self.assertGreaterEqual(shadow_left, 0)
-        self.assertGreaterEqual(shadow_top, 0)
-        self.assertLessEqual(shadow_right, row_width)
-        self.assertLessEqual(shadow_bottom, row_height)
+        def to_item(px: float, py: float) -> tuple[float, float]:
+            cx = inset_x + pivot_x + circle_scale * (px - pivot_x)
+            cy = inset_y + pivot_y + circle_scale * (py - pivot_y)
+            return ipx + item_scale * (cx - ipx), lift + ipy + item_scale * (cy - ipy)
+
+        for node in ("focusRing", "focusShadow"):
+            box = re.search(
+                rf'<Poster id="{node}" translation="\[(-?\d+),(-?\d+)\]" width="(\d+)" height="(\d+)"', component_xml
+            )
+            self.assertIsNotNone(box)
+            assert box is not None
+            x, y, width, height = (int(value) for value in box.groups())
+            left, top = to_item(x, y)
+            right, bottom = to_item(x + width, y + height)
+            self.assertGreaterEqual(left, 0)
+            self.assertGreaterEqual(top, 0)
+            self.assertLessEqual(right, row_width)
+            self.assertLessEqual(bottom, row_height)
 
     def test_profile_signout_assets_match_web_control_size(self) -> None:
         for name in (

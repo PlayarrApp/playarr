@@ -22,6 +22,39 @@ reference is web mobile at the device's own size. The legend dir is the client's
 | Hisense VIDAA | Real TV: MQTT remote plus the debug mirror build | MQTT remote key messages | Debug mirror build screenshots | Hardware only, no emulator | `vidaa` (pending) |
 | Roku Streaming Stick 4K | Real device, developer mode | ECP key presses | `plugin_inspect` screenshots | No emulator; screenshot has no video plane | `roku` (pending) |
 
+### HarmonyOS: reproduce command
+
+Hosted runs on the static server (Previewer on a Windows runner, pinned clock `2026-10-07T12:00:00Z`), TV screens and phone,
+dark and light, no D-pad (dpadNA): `scripts/parity/harmony/run.sh <branch> <legend-root>`. It dispatches
+`parity-harmony.yml`, waits, and pulls the captures into the `harmony` and `harmony-phone` legend dirs.
+
+### Android TV: the one-command run
+
+The Android TV emulator (`playarr_vnc_tv`) runs headless (`-no-window`, no X display, no VNC) as a user unit. Sign the app in to
+the static parity server once, then run everything (15 screens in both themes plus the 12 non-player D-pad checks, pinned clock
+`2026-10-07T12:00:00Z`) with:
+
+    scripts/parity/android-tv/sign-in.sh                       # clears app data, en-GB and UTC, signs in as `parity`
+    scripts/parity/android-tv/run.sh <fresh out dir> --only screens,dpad --skip-player
+
+`run.sh` reverses the static server's artwork port into the emulator, and recycles the emulator unit every 8 app launches
+(`recycle.sh`: the software-GL emulator leaks about 190 MiB of host memory per launch and wedges `adb` near its cgroup limit).
+Publish with `scripts/parity/android-tv/publish.sh <out dir> <branch> <pr>`; it deletes the previous candidate captures, keeps
+every JSON result and writes `build.json`. Player D-pad checks need the web ref's exact Play/Pause state and a playback window,
+so they stay out of this run. Fire OS runs the same app and APK.
+### Pausing the player at exactly 2.000 s (every device that captures player-controls)
+
+Playing to about 2 s and pressing pause lands anywhere in a window, so the progress fill, the time label and the video frame differ between runs. The deterministic method: load the clip, seek to exactly 2000 ms, hold it paused (no play-then-pause), read the reported position back, and capture only once the device reports `paused` and a position of exactly 2000 ms. Tizen native does it in the app (`/player/<id>?t=2000&hold=2000`) and the driver refuses the capture when the position is not exactly 2.000 s.
+
+### Tizen native: the one-command run
+
+`scripts/parity/tizen-native/run.sh <out dir>` runs the 15 screens in both themes and the 12 D-pad checks against the static
+parity server with the pinned clock (`2026-10-07T12:00:00Z`). Prerequisites: the Tizen TV emulator on a headless X display
+(Xvfb, never a VNC server), the debug tpk (`clients/tizen-native/scripts/deploy.sh` with `PLAYARR_BUILD_ARGS=-p:PlayarrDebug=true`)
+installed and signed in as the static `parity` account (uninstall first for a fresh sign-in), `PARITY_LOCK_DIR` set to a scratch
+directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the tizen-webos lane. Output is `<out>/dark`, `<out>/light`
+`<out>/dpad.json` (the screens run includes the ref-only `calendar-link` through `--extra-screens`) and the layout documents `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md; the debug mirror's `POST /layout` walks the NUI view tree, the driver writes it with every screenshot; `PARITY_NO_LAYOUT=1` skips it); point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens and layout documents; the layout score is 100% on every screen in both themes.
+
 ### Tizen and webOS: how the shared runs work
 
 - Both devices run the same page code, so `drivers/tizen-webos.mjs` is one driver with two transports. Tizen needs a debug
@@ -60,6 +93,16 @@ this note.
   it is left as an engine difference.
 - **On-screen keyboard.** A focused text field opens the platform keyboard; the suite captures search with it dismissed.
 
+### Roku: one command for the full run
+
+`ROKU_DEV_TARGET=<ip> ROKU_DEV_PASSWORD=<pw> scripts/parity/roku/run.sh <legend>/roku/dev` runs the 14 screens in dark and light and the 12 non-player D-pad checks against the static server (`drivers/roku.mjs`, `--via route`). Sideload the channel first (`make package deploy` in `clients/roku`) and pair it once: the pairing screen shows a code, approve it on the static server's `/tv/link` as `parity`. The channel clock is pinned through the `parityNow` launch argument, so the shell clock reads 12:00 on 7 October. The driver has no stable-mode hooks, so `run.sh` sets `PARITY_STABLE=0`. Player controls need a playing title: add `ROKU_PARITY_PLAYER_FRAME=1` and `--only screens --screens player-controls`.
+
+**Layout export.** With every screenshot the driver also writes `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md). The channel prints its own scene-graph geometry on request (ECP `input?parityLayout=1`, `clients/roku/source/LayoutDump.brs`; grid and list items answer from their own components) and `scripts/parity/roku/layout-export.mjs` maps it to the schema: text rects come from the web advances the channel itself places words with, boxes and links from the node geometry, backgrounds from the theme tokens (translucent fills use the web's composited value). Score a screen with `node scripts/parity/layout-score.mjs --ref <legend>/roku/web/layout/<theme>/<screen>.json --device <out>/layout/<theme>/<screen>.json`.
+
+**Text.** Roku rounds every glyph advance to whole pixels, so a plain Label is never the web's width. `WebLabel` and `TrackedText` place each word at the web's own advance (`fonts/NunitoSans-<weight>.json`, built by `clients/roku/scripts/make_font_data.py` from `docs/parity/fonts` with HarfBuzz kerning); glyphs come from the nearest 100-step instance, positions from the exact weight, sizes round to whole pixels (inside the scorer's 0.5 px).
+
+**Platform limits (Roku).** No Download row or tile (no offline storage), no "Check for updates" button on the profiles page (the store updates the channel), and the focused media card keeps the ink caption while a drawer is open.
+
 ### Roku player chrome: what is native and what is a platform limit
 
 The Roku bar follows the web order: previous, play, next, audio, subtitles, queue, quality, info. Subtitles use the Video node's caption tracks (the server's WebVTT sidecars), the queue lists the episodes or tracks of the title, and info shows the playback facts the Video node reports.
@@ -82,7 +125,7 @@ D-pad column as n/a.
 | Android phone | Android Emulator, phone image | `adb shell input` | `adb exec-out screencap` | Software codecs | `android-phone` |
 | HarmonyOS phone | DevEco Previewer | Previewer input | Previewer screenshot | UI only, no real playback | `harmony-phone` |
 | Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad (touch phone) | `VBoxManage controlvm screenshotpng` (VM runs `VBoxHeadless --vrde off`, no VNC or RDP listener) | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
-| Nura (postmarketOS) | `pmbootstrap` qemu-amd64 | QEMU input | QEMU screendump | Slow; software rendering | `postmarketos` |
+| Nura (postmarketOS) | `pmbootstrap` qemu-amd64, headless (no VNC) | QEMU QMP tablet taps and the app's route control file; touch phone, so no D-pad checks (`dpadNA`) | QEMU `screendump` over QMP | Slow; software rendering. Reproduce: `scripts/parity/nura/run.sh <outdir>` (see `scripts/parity/nura/README.md`) | `postmarketos` |
 
 ## Sailfish emulator: cold boot
 
@@ -131,6 +174,21 @@ ships its download engine.
 Notifications (a live system notification per download) and the now-playing entry are checked only where the driver sets
 `supports.notifications` and `supports.nowPlaying`; elsewhere the suite records "not supported".
 
+## Check for updates: which clients have an in-app updater
+
+The web profile page shows a "Check for updates" button only where the shell can install a new build itself
+(`isAndroidTv` in `clients/tv-web/web/src/pages/Profiles.tsx`, bridge in `androidTvUpdate.ts`). The layout score drops it
+from the denominator (`scripts/parity/layout-exclusions.json`) for the clients below, whose packages change only through a
+store or a sideload. Native packages and their update paths are in `docs/versioning-policy.md`.
+
+| Client | In-app updater | Evidence |
+| --- | --- | --- |
+| Android TV, Android phone and tablet | Yes | Google Play In-App Updates and the sideload installer bridge |
+| iOS and iPadOS | Yes | `PlayarrKit/Update` module |
+| Roku | No | Channel Store updates only; Roku has no API to install a channel from inside a channel |
+| Fire TV (Vega OS) | No | `.vpkg` is immutable once installed (`docs/versioning-policy.md`) |
+| Xbox | No | MSIX: Microsoft Store or sideload (`docs/versioning-policy.md`) |
+
 ## Legend and build.json rules
 
 - After every capture run, unmerged branches included, write captures to the legend dir, refresh `web/` in the same
@@ -142,3 +200,16 @@ Notifications (a live system notification per download) and the now-playing entr
 - The score per client: Dark % and Light % are the mean per-screen similarity over the screens captured in that theme;
   D-pad is checks passed of the suite's D-pad checks (playback is no longer scored: it moved to the performance suite); overall is the mean of the parts that have results
   (mobile has no D-pad). Coverage (captured screens out of 15 per theme) is shown beside, never mixed into a percentage.
+
+## Apple TV and macOS: one-command hosted run
+
+`scripts/parity/apple/run.sh <tvos|macos> [app-ref] [workflow-ref]` dispatches `parity-apple.yml` (static server, pinned
+clock `2026-10-07T12:00:00Z`, screens in both themes plus the D-pad checks), waits for it, downloads the artifacts and
+writes them into the legend directory named by `LEGEND_ROOT` (`apple/tvos` or `macos/dev`, with `dpad.json` and
+`build.json`). The workflow ref defaults to the app ref, so driver changes run before they reach `main`.
+## iPhone and iPad: reproduce command
+
+Hosted only (no local Apple toolchain), static server, pinned clock `2026-10-07T12:00:00Z` (the workflow default):
+`gh workflow run parity-apple-ios.yml --ref main -f devices=iphone,ipad -f ref=<40-character app commit SHA>`, then
+download the `apple-wall-<device>-<run id>-dark|light` artifacts into `ios-phone/dev` and `ios-tablet/dev`
+(light screens in the `light/` subfolder) and write `build.json`. Touch devices: no D-pad checks.

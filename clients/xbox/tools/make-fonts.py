@@ -10,8 +10,11 @@ from fontTools.varLib import instancer
 
 SRC = "docs/parity/fonts"
 OUT = "clients/xbox/src/Playarr.Xbox/Assets/Fonts"
+# Every weight the web layout refs use (docs/parity/LAYOUT.md fontWeight), so an element can ask for its exact web weight.
+NAMES = {400: "Regular", 600: "SemiBold", 700: "Bold", 800: "ExtraBold"}
+WEB_WEIGHTS = tuple((w, NAMES.get(w, f"W{w}")) for w in (300, 400, 480, 500, 560, 570, 580, 590, 600, 610, 640, 650, 680, 690, 700, 720, 750, 760, 800, 820, 860, 900))
 FAMILIES = {
-    "Nunito Sans": ("NunitoSans-wght-web.ttf", "NunitoSans.ttc", ((400, "Regular"), (600, "SemiBold"), (700, "Bold"), (800, "ExtraBold"))),
+    "Nunito Sans": ("NunitoSans-wght-web.ttf", "NunitoSans.ttc", WEB_WEIGHTS),
     "JetBrains Mono": ("JetBrainsMono[wght].ttf", "JetBrainsMono.ttc", ((400, "Regular"), (600, "SemiBold"))),
 }
 
@@ -24,17 +27,22 @@ for family, (src, out, weights) in FAMILIES.items():
             if rec.nameID in (1, 2, 3, 4, 6, 16, 17, 21, 22, 25):
                 names.removeNames(nameID=rec.nameID)
         ribbi = sub in ("Regular", "Bold")
+        # The named weights keep the typographic-family naming; every other weight gets its own family "<family> W<n>" (weight class
+        # 400), because UWP snapped the intermediate weights of one family to the nearest named face (probe in the layout export).
+        unique = weight not in (400, 600, 700, 800)
+        face = f"{family} W{weight}" if unique else family
         for pid, eid, lid in ((3, 1, 0x409), (1, 0, 0)):
-            names.setName(family if ribbi else f"{family} {sub}", 1, pid, eid, lid)
-            names.setName(sub if ribbi else "Regular", 2, pid, eid, lid)
+            names.setName(face if (ribbi or unique) else f"{family} {sub}", 1, pid, eid, lid)
+            names.setName(sub if (ribbi and not unique) else "Regular", 2, pid, eid, lid)
             names.setName(f"{family} {sub};web-instance", 3, pid, eid, lid)
-            names.setName(f"{family} {sub}", 4, pid, eid, lid)
+            names.setName(f"{face}" if unique else f"{family} {sub}", 4, pid, eid, lid)
             names.setName(f"{family.replace(' ', '')}-{sub}", 6, pid, eid, lid)
-            names.setName(family, 16, pid, eid, lid)
-            names.setName(sub, 17, pid, eid, lid)
+            if not unique:
+                names.setName(family, 16, pid, eid, lid)
+                names.setName(sub, 17, pid, eid, lid)
         os2 = font["OS/2"]
-        os2.usWeightClass = weight
-        os2.fsSelection = (os2.fsSelection & ~0b1100001) | (0b100000 if sub == "Bold" else 0b1000000)
+        os2.usWeightClass = 400 if unique else weight
+        os2.fsSelection = (os2.fsSelection & ~0b1100001) | (0b100000 if (sub == "Bold" and not unique) else 0b1000000)
         font["head"].macStyle = 1 if sub == "Bold" else 0
         if "STAT" in font:
             del font["STAT"]

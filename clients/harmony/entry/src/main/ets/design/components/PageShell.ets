@@ -6,7 +6,7 @@
  * between pages.
  */
 
-import { nunito } from '../Typography';
+import { nunito, arrowFont, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry } from '../Metrics';
@@ -116,8 +116,8 @@ export struct PageShell {
 
   @Builder
   private headerBack(): void {
-    Text('←').fontFamily(nunito(400))
-      .fontSize(tv(BACK_GLYPH_SIZE))
+    Text('←').fontFamily(arrowFont(720))
+      .fontSize(17.28) // web dump: 17.28, Liberation Sans bold
       .fontWeight(FontWeight.Normal)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .textAlign(TextAlign.Center)
@@ -127,6 +127,7 @@ export struct PageShell {
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
       .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
+      .id('px:' + this.backRole + ':' + this.backLabel)
       .focusable(true)
       .onClick(() => {
         popRoute(getNavStack());
@@ -135,7 +136,8 @@ export struct PageShell {
 
   @Builder
   private headerTitle(): void {
-    Text(this.title).fontFamily(nunito(500))
+    Text(this.title).fontFamily(nunitoAt(580, tv(TITLE_SIZE)))
+      .id('px:heading:' + this.title)
       .fontSize(tv(TITLE_SIZE))
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(TITLE_LETTER_SPACING))
@@ -145,7 +147,7 @@ export struct PageShell {
 
   @Builder
   private headerDetail(inline: boolean): void {
-    Text(this.kicker).fontFamily(nunito(700))
+    Text(this.kicker).fontFamily(nunitoAt(700, tv(DETAIL_SIZE)))
       .fontSize(tv(DETAIL_SIZE))
       .fontWeight(DETAIL_WEIGHT)
       .letterSpacing(tv(DETAIL_LETTER_SPACING))
@@ -230,26 +232,32 @@ export struct PageShell {
     .backgroundColor(toResourceColor(this.railFrostWidthPct >= 0 && isTvMetrics() ? activeColors().surface : activeColors().bg))
   }
 
+  /** The phone Back control's accessible name (web `aria-label` on the round Back link; it differs per page). */
+  @Prop backLabel: string = 'Back to Home';
+  @Prop backRole: string = 'link';
+
   @Builder
   private touchChrome(): void {
     Column() {
-      Row({ space: 12 }) {
+      Row({ space: 10 }) {
         if (this.showHeader) {
-          Text('←').fontFamily(nunito(400))
-            .fontSize(10) // web's arrow glyph is 8 vp wide; the fallback font draws 0.92 em
+          Text('←').fontFamily(arrowFont(720))
+            .fontSize(12.8) // web dump: 12.8 / 720
             .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .textAlign(TextAlign.Center)
             .width(44)
             .height(44)
-            .borderRadius(22)
+            .borderRadius('50%')
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
+            .id('px:' + this.backRole + ':' + this.backLabel)
             .onClick(() => {
               popRoute(getNavStack());
             })
           Column() {
-            Text(this.title).fontFamily(nunito(500))
+            Text(this.title).fontFamily(nunitoAt(580, 21.6))
+              .id('px:heading:' + this.title)
               .fontSize(21.6) // web 1.35rem
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-0.972) // web -0.045em
@@ -263,7 +271,7 @@ export struct PageShell {
       }
       .width('100%')
       // Back is 44 vp but web's header row is 43: take the extra vp off the bottom padding
-      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(17, this.safeTop), bottom: 11 })
+      .padding({ left: atLeast(16, this.safeLeft), right: atLeast(16, this.safeRight), top: atLeast(16, this.safeTop), bottom: 12 })
       .alignItems(VerticalAlign.Center)
       // Web phone hides the header subtitle (web #1299): no count or section line under the title.
       Column() {

@@ -72,26 +72,26 @@ test("Tizen visual readiness ignores an advancing player clock", async () => {
   assert.equal(samples, 2);
 });
 
-test("Tizen player captures restart at 2 s, pause, blur and refuse a still-playing player", async () => {
-  for (const pauses of [true, false]) {
+test("Tizen player captures hold exactly 2.000 s paused and refuse any other position", async () => {
+  for (const exact of [true, false]) {
     const calls = [];
-    let playing = true, route = "/player/test";
+    let route = "/player/test";
     const driver = await createDriver({
       env: accountEnv, secrets, setupForward: () => {}, delay: async () => {},
       request: async (method, path) => {
         calls.push(`${method} ${path}`);
         if (path === "/identity") return identity;
         if (path.startsWith("/route")) route = decodeURIComponent(path.split("=")[1]);
-        if (path === "/key?name=pause" && pauses) playing = false;
-        return { ready: true, pending: 0, route, focused: "pause", position: null, theme: "dark", playing, positionMs: 2100, animationMode: "none" };
+        return { ready: true, pending: 0, route, focused: "play", position: null, theme: "dark", playing: false, positionMs: exact ? 2000 : 2100, animationMode: "none" };
       },
       captureScreenshot: () => {}, pixelSignature: () => "same",
     });
-    if (pauses) {
+    if (exact) {
       await driver.screenshot("ignored.png");
-      assert.ok(calls.includes("POST /route?path=%2Fplayer%2Ftest%3Ft%3D2000"));
-      assert.ok(calls.indexOf("POST /key?name=pause") < calls.indexOf("POST /blur"));
-    } else await assert.rejects(driver.screenshot("ignored.png"), /did not pause/);
+      assert.ok(calls.includes("POST /route?path=%2Fplayer%2Ftest%3Ft%3D2000%26hold%3D2000"));
+      assert.ok(!calls.some((c) => c.includes("name=pause")));
+      assert.ok(calls.includes("POST /blur"));
+    } else await assert.rejects(driver.screenshot("ignored.png"), /did not hold 2.000 s/);
   }
 });
 
@@ -130,4 +130,21 @@ test("Tizen screenshot guard rechecks the active account before the final sample
   await assert.rejects(driver.screenshot("final.png"), /device-test account guard rejected/);
   assert.equal(identityReads, 2);
   assert.deepEqual(captures, ["final.png.stability.png"]);
+});
+
+test("Tizen screenshots write the app's layout document next to the capture", async () => {
+  const written = [];
+  const driver = await createDriver({
+    env: accountEnv, secrets, setupForward: () => {}, delay: async () => {},
+    request: async (_method, path) => {
+      if (path === "/identity") return identity;
+      if (path.startsWith("/layout")) return { json: JSON.stringify({ screen: "home", theme: "dark", elements: [] }) };
+      return { ready: true, pending: 0, route: "/", focused: "home", position: null, theme: "dark", playing: false, animationMode: "none" };
+    },
+    captureScreenshot: () => {}, pixelSignature: () => "same", writeLayout: (target, text) => written.push([target, text]),
+  });
+  await driver.screenshot("out/dark/home.png");
+  assert.equal(written.length, 1);
+  assert.match(written[0][0], /out[\\/]layout[\\/]dark[\\/]home\.json$/);
+  assert.equal(JSON.parse(written[0][1]).screen, "home");
 });
