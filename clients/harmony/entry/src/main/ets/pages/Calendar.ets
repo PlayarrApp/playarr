@@ -925,7 +925,6 @@ export struct ReleaseCalendar {
     // Web's slot 0: the Calendar link (bell); Filters is the second tile.
     ActionTile({
       icon: $r('app.media.action_bell'),
-        label: 'Calendar link',
       label: t('pages.calendar.subscription.title', 'Calendar link'),
       slot: 0,
       onActivate: (): void => {
@@ -934,7 +933,6 @@ export struct ReleaseCalendar {
     })
     ActionTile({
       icon: $r('app.media.action_filters'),
-        label: 'Filters',
       label: t('pages.search.filters', 'Filters'),
       slot: 1,
       ringed: isTvMetrics() && this.view !== 'agenda', // web: after a view switch focus is back on Filters (week, month)
@@ -1292,12 +1290,14 @@ export struct ReleaseCalendar {
     Row({ space: 8 }) {
       TouchIconButton({
         icon: $r('app.media.action_bell'),
+        label: 'Calendar link',
         onTap: (): void => {
           this.linkOpen = true;
         },
       })
       TouchIconButton({
         icon: $r('app.media.action_filters'),
+        label: 'Filters',
         onTap: (): void => {
           this.filtersOpen = true;
         },
