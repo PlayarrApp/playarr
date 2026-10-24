@@ -365,19 +365,27 @@ namespace Playarr.Xbox.Views
 
         private UIElement Month(DateTime start, DateTime end, Dictionary<DateTime, List<CalendarEntry>> byDay)
         {
-            const double left = 154, top = 205, width = 1662, rowHeight = 150;
-            var colWidth = width / 7;
+            // Web month grid: 7 columns of 237.59 x 151.28 px from (153.59, 204.78), day names centred above, a "Month Year" line over it.
+            const double left = 153.59, top = 204.78, colWidth = 237.59, rowHeight = 151.28;
             var weeks = (int)((end - start).TotalDays + 1) / 7;
             var canvas = new Canvas();
+            var status = Ui.Text(_anchor.ToString("MMMM yyyy", Uk), 19.2, FontWeights.Normal, "PlayarrInk");
+            status.LineHeight = 26;
+            status.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            LayoutExport.Tag(status, "status");
+            Canvas.SetLeft(status, left);
+            Canvas.SetTop(status, 163);
+            canvas.Children.Add(status);
             for (var c = 0; c < 7; c++)
             {
-                var name = start.AddDays(c).ToString("ddd", Uk).ToUpperInvariant();
-                var header = Ui.Text(name, 10, FontWeights.SemiBold, "PlayarrInkSoft");
+                var header = Ui.Text(start.AddDays(c).ToString("ddd", Uk).ToUpperInvariant(), 12, FontWeights.Normal, "PlayarrInkMuted");
                 header.CharacterSpacing = 80;
+                header.LineHeight = 16;
+                header.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
                 header.Width = colWidth;
                 header.TextAlignment = TextAlignment.Center;
                 Canvas.SetLeft(header, left + c * colWidth);
-                Canvas.SetTop(header, 181);
+                Canvas.SetTop(header, 181.39);
                 canvas.Children.Add(header);
             }
 
@@ -400,48 +408,60 @@ namespace Playarr.Xbox.Views
         private FrameworkElement MonthCell(DateTime day, List<CalendarEntry> entries, double width, double height)
         {
             var isToday = day == ParityClock.Today;
-            var cell = new Grid
+            var inMonth = day.Month == _anchor.Month;
+            var cell = new Canvas { Width = width, Height = height };
+            var frame = new Border
             {
                 Width = width,
                 Height = height,
-                BorderBrush = isToday ? Theme.FocusRing : (Brush)Application.Current.Resources["PlayarrLine"],
-                BorderThickness = new Thickness(isToday ? 2 : 0.5),
-                // Web's month cells: a faint surface in the month, a stronger one outside it.
-                Background = new SolidColorBrush(day.Month == _anchor.Month
+                Child = cell,
+                Background = new SolidColorBrush(inMonth
                     ? (Theme.IsLight ? Color.FromArgb(255, 251, 250, 249) : Color.FromArgb(255, 27, 24, 27))
                     : (Theme.IsLight ? Color.FromArgb(255, 239, 238, 237) : Color.FromArgb(255, 36, 31, 35))),
-                Padding = new Thickness(10, 8, 10, 8),
+                BorderBrush = isToday ? Theme.FocusRing : (Brush)Application.Current.Resources["PlayarrLine"],
+                BorderThickness = new Thickness(isToday ? 2 : 0.5),
             };
-            var lines = new StackPanel { Spacing = 7 };
-            foreach (var entry in entries.Take(4))
+
+            var row = 0;
+            foreach (var entry in entries.Take(3))
             {
-                var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-                row.Children.Add(new Border
-                {
-                    Width = 6,
-                    Height = 6,
-                    CornerRadius = new CornerRadius(3),
-                    Background = new SolidColorBrush(entry.HasFile ? Available : Absent),
-                    VerticalAlignment = VerticalAlignment.Center,
-                });
                 var grouped = entry.Members != null && entry.Members.Count > 1;
-                var text = Ui.Text(grouped ? $"{entry.Title} · {entry.Members!.Count}×" : entry.Title, 10.5, grouped ? FontWeights.Bold : FontWeights.Normal, "PlayarrInk");
+                var title = grouped ? $"{entry.Title} \u00b7 {entry.Members!.Count}\u00d7" : entry.Title;
+                var button = new Border { Width = 226, Height = 44, CornerRadius = new CornerRadius(4) };
+                LayoutExport.Tag(button, "button", $"{title}, {(entry.HasFile ? "Available" : "Missing")}");
+                Canvas.SetLeft(button, 5.8);
+                Canvas.SetTop(button, 1.8 + row * 45);
+                cell.Children.Add(button);
+                var dot = new Border { Width = 8.8, Height = 8.8, CornerRadius = new CornerRadius(4.4), Background = new SolidColorBrush(entry.HasFile ? Available : Absent) };
+                Canvas.SetLeft(dot, 11.4);
+                Canvas.SetTop(dot, 19.4 + row * 45);
+                cell.Children.Add(dot);
+                var text = Ui.Text(title, 12.48, grouped ? FontWeights.Bold : FontWeights.Normal, "PlayarrInk");
                 text.MaxWidth = width - 36;
                 text.TextTrimming = TextTrimming.CharacterEllipsis;
-                row.Children.Add(text);
-                lines.Children.Add(row);
+                text.LineHeight = 17;
+                text.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+                Canvas.SetLeft(text, 27.4);
+                Canvas.SetTop(text, 14.3 + row * 45);
+                cell.Children.Add(text);
+                row++;
             }
 
-            cell.Children.Add(lines);
-            var footer = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Bottom };
-            footer.Children.Add(Ui.Text(day.Day.ToString(CultureInfo.InvariantCulture), 10, FontWeights.SemiBold, "PlayarrInk"));
-            if (entries.Count > 4)
+            var number = Ui.Text(day.Day.ToString(CultureInfo.InvariantCulture), 12.8, new FontWeight { Weight = 640 }, inMonth ? "PlayarrInk" : "PlayarrInkMuted");
+            number.LineHeight = 18;
+            number.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            Canvas.SetLeft(number, 8.8);
+            Canvas.SetTop(number, 117.9);
+            cell.Children.Add(number);
+            if (entries.Count > 3)
             {
-                footer.Children.Add(Ui.Text($"+{entries.Count - 4} more", 9, FontWeights.SemiBold, "PlayarrInkSoft"));
+                var more = Ui.Text($"+{entries.Count - 3} more", 9, FontWeights.SemiBold, "PlayarrInkSoft");
+                Canvas.SetLeft(more, 40);
+                Canvas.SetTop(more, 120);
+                cell.Children.Add(more);
             }
 
-            cell.Children.Add(footer);
-            return cell;
+            return frame;
         }
 
         // ---- week --------------------------------------------------------------------------------------------------
