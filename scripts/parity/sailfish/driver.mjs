@@ -66,8 +66,10 @@ export async function createDriver() {
     // Detail refs are at the page top, but the series page scrolls itself to the next-up episode.
     const probedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id)), "js:pageStack.currentPage.scrollTop()"] : resolvedSteps;
     // Layout export (docs/parity/LAYOUT.md) runs as the last step, at the end of the settle time, in the state that is captured.
-    const dumpAt = Math.max(probedSteps.length + 1, Math.ceil((pendingSettle - 4) / 1.5));
-    const checkedSteps = [...probedSteps, ...Array(Math.max(0, dumpAt - probedSteps.length - 1)).fill("wait"), "js:layoutDump()"];
+    const dumpAt = Math.max(1, Math.ceil((pendingSettle - 4) / 1.5));
+    const checkedSteps = probedSteps.length >= dumpAt
+      ? [...probedSteps.slice(0, dumpAt), "js:layoutDump()", ...probedSteps.slice(dumpAt)]
+      : [...probedSteps, ...Array(dumpAt - probedSteps.length).fill("wait"), "js:layoutDump()"];
     const script = serializeSteps(theme, checkedSteps);
     writeFileSync(join(tmp, "steps"), script);
     execFileSync("scp", ["-i", env.PLAYARR_SF_SSH_KEY, "-P", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", join(tmp, "steps"), `defaultuser@${host}:/run/user/100000/pa-steps.txt`]);

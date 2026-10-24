@@ -273,7 +273,7 @@ PlayarrPage {
                     lift: true
                     primary: true
                     icon: "\u25B6"; iconSize: Tokens.fs(9.52); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: -0.95
-                    parityRole: "link"; layoutRadiusV: 999; layoutLabel: qsTr("Play %1").arg(work.title)
+                    parityRole: "link"; iconDy: 0.57; layoutRadiusV: 999; layoutLabel: qsTr("Play %1").arg(work.title)
                     fontSize: Tokens.fs(11.2)
                     implicitHeight: 44 * Tokens.u
                     width: parent.fillW

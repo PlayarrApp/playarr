@@ -21,7 +21,7 @@ Item {
         return ""
     }
     Label { id: statusMeasure; visible: false; text: root.statusText; font.family: Tokens.family400; font.letterSpacing: -0.25; font.pixelSize: Tokens.fs(16) }
-    property var layoutEls: [ { x: 0, y: 0, w: 390, h: 683, bg: Tokens.dark ? "#151315" : "#f5f3f2" }, { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) },
+    property var layoutEls: [ { x: 0, y: 0, w: 390, h: 683, bg: Tokens.dark ? (mode === "agenda" ? "#1b181b" : "#151315") : "#f5f3f2" }, { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) },
         statusText !== "" ? { role: "status", text: statusText, x: 16, y: 109, w: statusMeasure.implicitWidth / Tokens.u, h: 22, color: String(Tokens.ink), fontSize: 16, fontWeight: 400, bg: String(Tokens.bg) } : { x: 0, y: 0, w: 0, h: 0 } ]
     property bool periodPickerOpen: false
     property int draftYear: pickerYear

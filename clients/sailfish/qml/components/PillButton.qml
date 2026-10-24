@@ -25,6 +25,7 @@ MouseArea {
     property real contentGap: 9
     property real padCss: 16
     property real contentDy: 0
+    property real iconDy: 0
     property int layoutWeightV: 0
     property string parityRole: "button"
     property string layoutBgS: primary ? String(Tokens.primary) : lift ? (Tokens.dark ? "#1f1c1f" : "#fefefd") : ""
@@ -81,8 +82,10 @@ MouseArea {
         Label { renderType: Text.NativeRendering;
             id: iconLbl
             visible: root.iconImage === ""
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: root.iconDy * Tokens.u
             text: root.icon
+            property real cssSize: (root.iconSize + 0.5) / Tokens.u
+            property real layoutTextH: Math.round(1.011 * cssSize) + Math.round(0.353 * cssSize)
             font.family: Tokens.family400
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize

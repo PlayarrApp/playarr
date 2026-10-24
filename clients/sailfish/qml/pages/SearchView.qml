@@ -36,7 +36,7 @@ Item {
         property alias text: input.text
         x: Tokens.pad; y: 90 * Tokens.u
         width: parent.width - 2 * Tokens.pad; height: 60 * Tokens.u
-        property var layoutEls: [ { role: "search", radius: 999, bg: String(Qt.rgba(1, 1, 1, 1)) }, { role: "textbox", text: qsTr("Search your libraries and playlists"), dx: 43, dy: 8, w: 298, h: 44 } ]
+        property var layoutEls: [ { role: "search", radius: 999, bg: Tokens.dark ? "#201c20" : "#ffffff" }, { role: "textbox", text: qsTr("Search your libraries and playlists"), dx: 43, dy: 8, w: 298, h: 44, bg: Tokens.dark ? "#201c20" : "#ffffff" } ]
         RectangularGlow {   // web card shadow under the field: a wide, low soft shadow
             y: 22 * Tokens.u; width: parent.width; height: parent.height
             glowRadius: 26 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius

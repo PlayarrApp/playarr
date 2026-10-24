@@ -212,7 +212,7 @@ PlayarrPage {
             layoutLabel: qsTr("Sign out %1").arg(Api.profileName); layoutRadiusV: 999; layoutBgS: Tokens.dark ? "#1d191d" : "#fbfbfa"
             navigationActivate: function() { remorse.execute(qsTr("Signing out"), function () { Api.signOut() }) }
             iconImage: NavIcons.url("logout", Tokens.ink); iconSize: 18 * Tokens.u; labelFamily: Tokens.fam(720)
-            text: qsTr("Sign out"); labelSpacing: -0.3; contentGap: 8; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"
+            text: qsTr("Sign out"); labelSpacing: 0.1; contentGap: 7.2; padCss: 17; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"
             fontSize: Tokens.fs(7.68)
             implicitHeight: 44 * Tokens.u
             onClicked: navigationActivate()
