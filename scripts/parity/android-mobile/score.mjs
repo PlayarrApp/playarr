@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Score Android phone/tablet captures against the web refs the way the wall legend does (pixelmatch threshold 0.1, anti-aliased
 // pixels ignored, parity % = 100 - mismatch %).   score.mjs <ref-dir> <cand-dir> [--json out.json] [--heat <dir>]
-// <ref-dir> and <cand-dir> hold <screen>.png (dark) and light/<screen>.png (light). A size mismatch scores null.
+// <cand-dir> holds dark/<screen>.png and light/<screen>.png. A size mismatch scores null.
 import { readFileSync, readdirSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import pngjs from "pngjs";
@@ -12,7 +12,7 @@ const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 
 const [refDir, candDir] = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1].startsWith("--")));
 const out = {};
 for (const theme of ["dark", "light"]) {
-  const r = theme === "dark" ? refDir : join(refDir, "light"), c = theme === "dark" ? candDir : join(candDir, "light");
+  const r = theme === "dark" ? refDir : join(refDir, "light"), c = join(candDir, theme);
   if (!existsSync(c)) continue;
   for (const f of readdirSync(c).filter((n) => n.endsWith(".png")).sort()) {
     const id = f.slice(0, -4);

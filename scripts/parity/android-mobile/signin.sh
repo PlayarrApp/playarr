@@ -21,5 +21,13 @@ for v in "$PARITY_SERVER_URL" "$PARITY_ACCOUNT_NAME" "$PW"; do
   adb shell input text "$v"; sleep 1; adb shell input keyevent KEYCODE_BACK; sleep 1
   n=$((n + 1))
 done
-adb shell input keyevent KEYCODE_ENTER; sleep 15
-adb shell "rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml >/dev/null; cat /sdcard/ui.xml" | grep -qiE 'profile|home|movies' && echo "signed in (check the screen)" || { echo "sign-in not confirmed" >&2; exit 1; }
+# The sign-in button is the only "Sign in" text node; tap it (Enter does not submit).
+xy=$(adb shell "rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml >/dev/null; cat /sdcard/ui.xml" | python3 -I -c "
+import re,sys
+for m in re.finditer(r'text=\"Sign in\"[^>]*?clickable=\"true\"[^>]*?bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"|clickable=\"true\"[^>]*?bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"[^>]*>\s*<node[^>]*text=\"Sign in\"', sys.stdin.read()):
+    g=[int(x) for x in m.groups() if x]; print((g[0]+g[2])//2,(g[1]+g[3])//2); break
+")
+[ -n "$xy" ] || xy="$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | awk -Fx '{print int($1/2), int($2*0.857)}')"
+adb shell input tap $xy; sleep 20
+adb shell "rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml >/dev/null; cat /sdcard/ui.xml" | grep -q 'Sign in to Playarr' && { echo "sign-in not completed" >&2; exit 1; }
+echo "signed in"
