@@ -12,3 +12,9 @@ test("installSpacedRanges wraps formatRange", () => {
   installSpacedRanges(win);
   assert.equal(win.Intl.DateTimeFormat.prototype.formatRange(), "1 – 2 Oct");
 });
+
+test("commaAfterWeekday adds the comma the web draws", async () => {
+  const { commaAfterWeekday } = await import("./spaced-range.mjs");
+  assert.equal(commaAfterWeekday("Wednesday 7 October 2026 at 01:00"), "Wednesday, 7 October 2026 at 01:00");
+  assert.equal(commaAfterWeekday("Wednesday, 7 October 2026"), "Wednesday, 7 October 2026");
+});

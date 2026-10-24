@@ -77,6 +77,17 @@ function installLoopbackArt() {
   const sa = Element.prototype.setAttribute;
   Element.prototype.setAttribute = function (n, v) { return sa.call(this, n, this instanceof HTMLImageElement && n === "src" ? fix(v) : v); };
 }
+// Keeps the playback listener the app registers on AVPlay, so a capture can deliver the position tick of a paused seek (AVPlay sends none while paused).
+function tapAvplayListener() {
+  try {
+    const a = window.webapis && window.webapis.avplay;
+    if (!a || a.__tapped) return;
+    const set = a.setListener.bind(a);
+    a.setListener = function (listener) { window.__avListener = listener; return set(listener); };
+    a.__tapped = true;
+  } catch (e) { /* no AVPlay on this page */ }
+}
+
 export async function createDriver() {
   // TIZEN_REAL=1 runs the Samsung TV through the webOS CDP path, so DEVICE=webos is forced for it.
   const device = TIZEN_REAL ? "webos" : process.env.DEVICE;
@@ -187,9 +198,14 @@ export async function createDriver() {
       const av = `(() => { const a = window.webapis && window.webapis.avplay; return a ? a.getState() : "none"; })()`;
       if (!(await until(`(${av}) === "PLAYING" || (${av}) === "PAUSED"`, 60000))) throw new Error("AVPlay did not start");
       for (let i = 0; i < 8; i += 1) {
-        // The page's seek bar follows AVPlay's time ticks, which stop once paused: seek while playing, pause from the seek callback.
-        await ev(`(() => { const a = window.webapis.avplay; try { if (a.getState() === "PAUSED") a.play(); a.seekTo(2000, function () { try { a.pause(); } catch (e) {} }, function () {}); } catch (e) {} return true; })()`);
-        await sleep(3500);
+        // The page's seek bar follows AVPlay's time ticks, which only come while playing: seek, let a tick land, pause, then seek again so the
+        // last tick and the paused position agree on 2 s.
+        await ev(`(() => { const a = window.webapis.avplay; try { if (a.getState() === "PAUSED") a.play(); a.seekTo(2000, function () {}, function () {}); } catch (e) {} return true; })()`);
+        await sleep(2500);
+        await ev(`(() => { const a = window.webapis.avplay; try { a.pause(); a.seekTo(2000, function () {}, function () {}); } catch (e) {} return true; })()`);
+        await sleep(2500);
+        await ev(`(() => { try { if (window.__avListener && window.__avListener.oncurrentplaytime) window.__avListener.oncurrentplaytime(2000); } catch (e) {} return true; })()`);
+        await sleep(500);
         const t = Number(await ev(`(() => { try { return window.webapis.avplay.getCurrentTime(); } catch (e) { return -1; } })()`));
         if (Math.abs(t - 2000) < 120 && (await ev(av)) === "PAUSED") break;
       }
@@ -385,7 +401,7 @@ export async function createDriver() {
       if (device === "tizen") {
         // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
         if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
-        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();window.__parityPinned = true;`;
+        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();(${tapAvplayListener})();window.__parityPinned = true;`;
         tizenPinScript = Buffer.from(source).toString("base64");
         return;
       }

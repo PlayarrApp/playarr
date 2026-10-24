@@ -1,6 +1,6 @@
 import "./tizen.css";
 import { loadPackagedConfig } from "./tizen-runtime.mjs";
-import { installSpacedRanges } from "../../../tooling/spaced-range.mjs";
+import { installFullDateComma, installSpacedRanges } from "../../../tooling/spaced-range.mjs";
 import { installLegacyHas } from "../../../tooling/legacy-has.mjs";
 import { installLegacyAspectRatio } from "../../../tooling/legacy-aspect-ratio.mjs";
 
@@ -8,6 +8,8 @@ import { installLegacyAspectRatio } from "../../../tooling/legacy-aspect-ratio.m
 installLegacyHas();
 // The TV browser writes "5–11 Oct" for date ranges; the web writes "5 – 11 Oct".
 installSpacedRanges(window);
+// ... and "Wednesday 7 October 2026" for a full date; the web writes "Wednesday, 7 October 2026".
+installFullDateComma(window);
 // Chromium 85 (Tizen 6.5) has no aspect-ratio either; the build keeps each ratio as --lc-ar for this runtime.
 installLegacyAspectRatio();
 

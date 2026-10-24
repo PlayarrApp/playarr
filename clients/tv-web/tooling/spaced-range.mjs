@@ -17,3 +17,29 @@ export function installSpacedRanges(win) {
     return spacedRange(original.apply(this, args));
   };
 }
+
+/**
+ * The Tizen TV browser's ICU writes an en-GB full date as "Wednesday 7 October 2026"; the web reference writes
+ * "Wednesday, 7 October 2026". Only dateStyle "full" is touched.
+ *
+ * @param {string} text
+ */
+export function commaAfterWeekday(text) {
+  return text.replace(/^([A-Za-z]+) (\d)/, "$1, $2");
+}
+
+/** @param {typeof globalThis} win */
+export function installFullDateComma(win) {
+  const proto = win.Intl?.DateTimeFormat?.prototype;
+  const desc = proto && Object.getOwnPropertyDescriptor(proto, "format");
+  if (!proto || !desc?.get) return;
+  const getter = desc.get;
+  Object.defineProperty(proto, "format", {
+    ...desc,
+    get() {
+      const bound = getter.call(this);
+      const full = this.resolvedOptions().dateStyle === "full";
+      return full ? (/** @type {any} */ date) => commaAfterWeekday(bound(date)) : bound;
+    },
+  });
+}
