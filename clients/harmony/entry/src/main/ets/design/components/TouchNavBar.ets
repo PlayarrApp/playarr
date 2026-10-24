@@ -123,7 +123,7 @@ export struct TouchNavBar {
         .padding({ left: BAR_PADDING, right: BAR_PADDING })
         // web `justify-content: space-around`: spread over the bar when the tiles fit, scroll when they do not
         .constraintSize({ minWidth: '100%' })
-        .justifyContent(FlexAlign.SpaceAround)
+        .justifyContent(FlexAlign.Start) // nine 44 tiles never fit the bar, so web's space-around degenerates to a plain 2 vp gap
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
@@ -134,6 +134,7 @@ export struct TouchNavBar {
     .width(`calc(100% - ${atLeast(BAR_SIDE, this.safeLeft) + atLeast(BAR_SIDE, this.safeRight)}vp)`)
     .height(BAR_HEIGHT)
     .alignItems(VerticalAlign.Center)
+    .id('px:navbar')
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.88)) // web: 0.88 measured over the Chapters thumbnail, both themes
     .borderRadius(BAR_RADIUS)
     .shadow({ radius: 20, color: 'rgba(31, 14, 20, 0.2)', offsetY: 14 })

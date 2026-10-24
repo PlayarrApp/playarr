@@ -60,7 +60,7 @@ def text_width(text, size, weight, spacing, measure=None):
 
 def backdrop(image, x, y, w, h, dpr, fallback):
     """The colour behind an element as rendered: the most common colour of its box in the screenshot (web's `background` is the composited backdrop)."""
-    if image is None or w < 1 or h < 1:
+    if image is None or w < 1 or h < 1 or os.environ.get("HX_BG") == "props":
         return fallback
     box = tuple(int(round(v * dpr)) for v in (max(x, 0), max(y, 0), min(x + w, image.width / dpr), min(y + h, image.height / dpr)))
     if box[2] <= box[0] or box[3] <= box[1]:
@@ -86,12 +86,30 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
     vw, vh, dpr = viewport
     out = []
 
+    def app_bg(node):  # the app's page colour: the first opaque Column fill (the web body)
+        c = argb((node.get("$attrs") or node).get("backgroundColor"))
+        if node.get("$type") == "Column" and c is not None and c[3] > 0.99:
+            return c
+        for child in node.get("$children") or []:
+            found = app_bg(child)
+            if found:
+                return found
+        return None
+
+    root_bg = app_bg(tree) or (255, 255, 255, 1.0)
+
     def walk(node, under):
         attrs = node.get("$attrs") or node
         kind = str(node.get("$type", ""))
         box = rect_of(node)
         bg = argb(attrs.get("backgroundColor"))
         here = under
+        if kind == "NavDestination":
+            here = app_bg(node) or under  # the page's own colour is the base of everything on it
+        if str(attrs.get("id", "")) == "px:navbar":
+            here = root_bg  # web composites the nav bar over the body, not over the page
+        if kind in ("Navigation", "NavDestination", "root") or str(attrs.get("id", "")) == "px:navbar":
+            bg = None  # system containers and the nav bar's own fill: web composites its children over the page behind (static refs)
         if bg is not None and bg[3] > 0:
             here = over(bg, under)
         if box is not None:
@@ -105,12 +123,25 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     el["radius"] = radius
                 out.append(el)
             nid = str(attrs.get("id", ""))
+            if nid == "px:navbar":
+                out.append({"text": "Primary navigation", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                            "color": None, "background": hex_of(root_bg), "fontSize": None, "fontWeight": None, "radius": 20})
             if nid.endswith("-nav-tile") or nid == "pcard":  # functional focus ids: the control's name is its first text
                 label = first_text(node)
                 name = ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else (("Open " + label) if nid == "pcard" else label)
                 el = {"text": name, "role": "link", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else 12}
                 out.append(el)
+            pxid = str(attrs.get("id", ""))
+            if kind == "Text" and pxid.startswith("px:") and w >= 40 and h >= 40:  # a Text drawn as a round control: the control and its glyph are two web elements
+                _, prole, pname = pxid.split(":", 2)
+                radius = num(attrs.get("borderRadius"), 0.0)
+                el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                      "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None}
+                if radius:
+                    el["radius"] = 999 if radius >= min(w, h) / 2 - 0.5 else radius
+                out.append(el)
+                attrs = dict(attrs); attrs["id"] = ""; attrs["borderRadius"] = "0"
             text = attrs.get("content", attrs.get("text")) if kind == "Text" else None
             if kind == "Text" and text:
                 size = num(attrs.get("fontSize"), 16.0)
@@ -120,7 +151,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 text = str(text).upper() if "upper" in case or case.endswith("1") else (str(text).lower() if "lower" in case or case.endswith("2") else text)
                 tw = text_width(text, size, weight, spacing, measure)
                 ch = round(size * 1.011) + round(size * 0.353)  # Chrome's content area: rounded ascent plus rounded descent (hhea 1011 / 353)
-                if tw > w + 2:  # wrapped or clipped: the box is the run
+                single = str(attrs.get("maxLines", "")).strip() == "1" or h < size * 2.2
+                if tw > w + 2 and not single:  # wrapped: the box is the run (a one-line text overflowing its clip keeps its own width)
                     rx, ry, rw, rh = x, y, w, h
                 else:
                     align = str(attrs.get("textAlign", "")).lower()
@@ -156,7 +188,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 continue
             walk(child, here)
 
-    walk(tree, (255, 255, 255, 1.0))
+    walk(tree, root_bg)
     doc = {"screen": screen, "theme": theme, "viewport": {"w": vw, "h": vh, "dpr": dpr}, "elements": out}
     if clock_pinned:
         doc["clockPinned"] = True
