@@ -86,6 +86,16 @@ function over(top: string, under: string): string {
   return `#${[0, 1, 2].map((i) => h(t[i]! * a + u[i]! * (1 - a))).join('')}`;
 }
 
+/**
+ * The glyph run's top is the Text view's top (Vega's own `line.y` is not a drawn position: pixels show the glyphs start at the view
+ * top). This table holds the residual per font size (CSS px), calibrated on the device screenshots: the ink box of capital-initial
+ * strings, minus the font's ink offset inside the glyph run (same Nunito Sans file, read off the web refs). Sizes not listed
+ * measured within 0.5 px (calibration run C1: 10.0, 10.6, 11.9, 12.8, 13.1, 17.3, 17.7, 19.2, 8.3).
+ */
+const GLYPH_RUN_OFFSET: Record<string, number> = {'12.3': 1.19};
+function glyphRunOffset(size: number): number {
+  return GLYPH_RUN_OFFSET[size.toFixed(1)] ?? 0;
+}
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 export interface LayoutElement {
@@ -193,7 +203,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
           ...(info?.radius ? {radius: info.radius} : null),
           rect: {
             x: round2(rect.x + line.x / scale),
-            y: round2(info?.exact ? rect.y + (rect.h - lh) / 2 : rect.y + line.y / scale + (lineH - runH) / 2),
+            y: round2(info?.exact ? rect.y + (rect.h - lh) / 2 : rect.y + (line.y - native[0]!.y) / scale + glyphRunOffset(size)),
             w: round2(line.width / scale),
             h: info?.exact ? lh : runH,
           },
