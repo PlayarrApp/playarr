@@ -1,0 +1,1 @@
+- Parity builds export the iPhone and iPad layout (text, style, frames) next to each capture.

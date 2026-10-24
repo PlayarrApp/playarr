@@ -8,7 +8,8 @@
 // The device must already be signed in as the Device Test profile and out of touch mode (a fresh emulator boot is).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { guardAndroidDeviceAccount } from "../capture-state.mjs";
 
@@ -65,8 +66,10 @@ export function stableCaptureObservation(previous, current) {
     previous.marker === current.marker && previous.focus === current.focus);
 }
 
-export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, accountGuard = guardAndroidDeviceAccount, execute = run } = {}) {
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs: readinessTimeoutArg = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, accountGuard = guardAndroidDeviceAccount, execute = run } = {}) {
   const env = envOverride, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
+  // A loaded host can need longer than a minute for the player route's artwork: PARITY_READINESS_TIMEOUT_MS raises the wait.
+  const readinessTimeoutMs = env.PARITY_READINESS_TIMEOUT_MS ? Number(env.PARITY_READINESS_TIMEOUT_MS) : readinessTimeoutArg;
   const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
   // Injectable clock (tests): the readiness loop's deadline arithmetic then never depends on how long a real process took.
   const now = clock.now ?? Date.now;
@@ -120,7 +123,16 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
 
   const parityLines = async () => (await adb("logcat", "-d", "-s", "PlayarrParity:I")).split("\n").map((l) => l.replace(/^.*PlayarrParity: /, "")).filter(Boolean);
   // pause: the debug build pauses the player at 2 s (0:02, as the web ref; PARITY_PAUSE_AT_MS overrides), a still frame for the player-controls screen; off for playback cases.
+  // The software-GL emulator leaks about 190 MiB of host memory per app launch and wedges adb near its cgroup limit: every
+  // PARITY_EMU_RECYCLE_EVERY launches (default 8) PARITY_EMU_RECYCLE_CMD restarts it (app data and the sign-in survive).
+  let launches = 0;
+  const recycleEvery = Number(env.PARITY_EMU_RECYCLE_EVERY ?? 8);
   const launch = async (route, pause = true) => {
+    if (env.PARITY_EMU_RECYCLE_CMD && ++launches > recycleEvery) {
+      launches = 1;
+      const [cmd, ...rest] = env.PARITY_EMU_RECYCLE_CMD.split(" ");
+      await execBounded(cmd, rest, { timeoutMs: 420_000, label: "emulator recycle command" });
+    }
     await guardDeviceAccount();
     const requestedCaptureScreen = captureTarget ? (captureSurface ? "movies" : captureTarget) : null;
     captureScreen = requestedCaptureScreen ?? (["movies", "series", "music"].includes(route) ? route : null);
@@ -154,6 +166,23 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   };
   // Each adb call gets the full command timeout: clamping it to the time left before a readiness deadline gave calls a few
   // milliseconds near the end, which a real process cannot meet (a flaky "timed out after 26ms").
+  // docs/parity/LAYOUT.md: the debug app writes its own layout (semantics tree: text style, glyph-run bounds, controls) in the same state as the screenshot.
+  const exportLayout = async (pngFile) => {
+    const theme = basename(dirname(pngFile)), screen = basename(pngFile, ".png");
+    await shell("run-as", pkg, "rm", "-f", "files/parity-layout.json").catch(() => {});
+    await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme);
+    for (let i = 0; i < 20; i++) {
+      await sleep(500);
+      const json = await adb("exec-out", "run-as", pkg, "cat", "files/parity-layout.json").catch(() => "");
+      if (json.startsWith("{")) {
+        const dir = join(dirname(dirname(pngFile)), "layout", theme);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, `${screen}.json`), json);
+        return;
+      }
+    }
+    console.log(`layout export skipped for ${theme}/${screen}`);
+  };
   const tree = async () => {
     try {
       await adbWithTimeout(commandTimeoutMs, "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml");
@@ -254,7 +283,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       const displaySize = requestedSurface ? await shell("wm", "size") : "";
       const displayWidth = requestedSurface ? Number(/Override size:\s*(\d+)x/.exec(displaySize)?.[1] ?? /Physical size:\s*(\d+)x/.exec(displaySize)?.[1]) : 0;
       const deadline = now() + readinessTimeoutMs;
-      let previous = "", previousMarker = "", stable = 0;
+      let previous = "", previousMarker = "", previousPosition = "", stable = 0, lastReason = "";
       while (now() < deadline) {
         const lines = await parityLines();
         if (phase === "capture") {
@@ -267,13 +296,18 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
           }) ?? "";
           const lastRouteLine = lines.findLast((line) => line.startsWith("route=")) ?? "";
           const currentRoute = /^route=(\S+)/.exec(lastRouteLine)?.[1]?.split("/")[0];
-          if (stableCaptureObservation(
-            { marker: previousMarker, focus: previous },
-            { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus },
-          )) {
+          // The player's capture marker flips between ready and loading as the controls auto-hide, so it never repeats: the paused frame
+          // is the evidence instead. Ready, on the player route, a focused control and the same paused position for three consecutive polls.
+          const playerPosition = target === "player-controls" ? lines.findLast((line) => line.startsWith("player positionMs="))?.slice(18) ?? "" : null;
+          const steady = playerPosition !== null
+            ? Boolean(capture.ready && currentRoute === EXPECTED_ROUTE[target] && focus && playerPosition && playerPosition === previousPosition)
+            : stableCaptureObservation({ marker: previousMarker, focus: previous }, { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus });
+          lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : playerPosition !== null ? "paused frame still moving" : focus !== previous ? "focus still changing" : "marker still changing";
+          if (steady) {
             stable += 1;
-            if (stable >= 2) return;
+            if (stable >= (playerPosition !== null ? 3 : 2)) return;
           } else stable = 0;
+          if (playerPosition !== null) previousPosition = playerPosition;
           previous = focus;
           previousMarker = capture.ready ? capture.marker : "";
           await sleep(Math.min(readinessPollMs, Math.max(0, deadline - now())));
@@ -300,7 +334,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         previous = focus ?? "";
         await sleep(Math.min(readinessPollMs, Math.max(0, deadline - now())));
       }
-      throw new Error(`Android ${phase} readiness timed out without stable focused content`);
+      throw new Error(`Android ${phase} readiness timed out without stable focused content${lastReason ? ` (${lastReason})` : ""}`);
     },
     async setCaptureTarget(screen) {
       captureTarget = screen in EXPECTED_ROUTE ? screen : null;
@@ -397,6 +431,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         ? (await execBounded("import", ["-window", "root", "png:-"], { encoding: "buffer", maxBuffer: 64 << 20, env: { ...env, DISPLAY: env.PARITY_XDISPLAY }, label: "screen capture import" })).stdout
         : (await execBounded(adbBin, ["exec-out", "screencap", "-p"], { encoding: "buffer", maxBuffer: 64 << 20, label: "adb exec-out screencap" })).stdout;
       writeFileSync(file, png);
+      if (env.PARITY_LAYOUT !== "0") await exportLayout(file);
     },
     // Plays media file `c.file` through the player route and watches the position the debug log reports.
     async play(c, expect) {

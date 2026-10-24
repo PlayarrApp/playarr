@@ -1,0 +1,1 @@
+- Parity iOS: cache DerivedData between hosted runs; layout export waits for an idle, identical view tree and covers all design-font text.

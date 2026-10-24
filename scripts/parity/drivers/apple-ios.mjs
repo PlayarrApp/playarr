@@ -130,6 +130,7 @@ export async function createDriver() {
     launchedAt = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; // local time, as `log show --start` reads it
     terminate();
     rmSync(statePath(), { force: true });
+    rmSync(join(dirname(statePath()), "parity-layout.json"), { force: true });
     run("xcrun", ["simctl", "ui", udid, "appearance", theme]);
     const launchEnv = { ...process.env,
       SIMCTL_CHILD_PLAYARR_PARITY_SERVER: e.SERVER_URL,
@@ -327,6 +328,13 @@ export async function createDriver() {
       }, { attempts: 8, intervalMs: 4000, wait: sleep });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       assertScreenshotFile(file);
+      // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames, written beside the screenshot.
+      try {
+        const layout = JSON.parse(readFileSync(join(dirname(statePath()), "parity-layout.json"), "utf8"));
+        const dir = join(dirname(dirname(file)), "layout", theme);
+        run("mkdir", ["-p", dir]);
+        writeFileSync(join(dir, `${id}.json`), JSON.stringify({ screen: id, theme, ...layout, viewport: device === "ipad" ? { w: Math.max(layout.viewport.w, layout.viewport.h), h: Math.min(layout.viewport.w, layout.viewport.h), dpr: layout.viewport.dpr } : layout.viewport }));
+      } catch { /* a build without the exporter, or a screen that registers nothing */ }
       if (layoutDiagnostics) {
         const diagnostics = run("xcrun", ["simctl", "spawn", udid, "log", "show", "--info", "--start", launchedAt, "--style", "compact",
           "--predicate", 'eventMessage CONTAINS "PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC"']);

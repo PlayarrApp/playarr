@@ -13,19 +13,40 @@ internal static class Ui
     public static float TextWidth(string text, float size, int weight, float spacing, string family = Font)
     {
         if (_measure is null) { _measure = new TextLabel { MultiLine = false, WidthResizePolicy = ResizePolicyType.UseNaturalSize, HeightResizePolicy = ResizePolicyType.UseNaturalSize }; _measure.Opacity = 0; Window.Default.Add(_measure); }
-        _measure.PixelSize = size; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = spacing; _measure.Text = text;
-        return _measure.NaturalSize.Width;
+        (family, weight) = Face(family, weight, size);
+        var k = Math.Min(MeasureScale, Math.Max(1f, 200f / size)); // very large glyph sizes overflow the label texture
+        _measure.PixelSize = size * k; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = spacing * k; _measure.Text = text;
+        return _measure.NaturalSize.Width / k;
     }
+
+    internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, TextMetaInfo> TextMeta = new();
 
     /// <summary>Greedy word wrap like the browser's, using measured widths; see <see cref="TextWrap"/>.</summary>
     public static List<string> WrapLines(string text, float size, int weight, float spacing, float width, int maxLines = int.MaxValue, string family = Font, bool balance = false) =>
         TextWrap.WrapLines(text, s => TextWidth(s, size, weight, spacing, family), width, maxLines, balance);
 
+    /// <summary>Web .tv-preview-meta: one span per part, 12.8 px apart (a run of spaces would drift from the span edges). Parts are joined by three or more spaces.</summary>
+    public static void MetaRow(View parent, string joined, float x, float y, float size, int weight, Rgba color, float lh, float gap = 12.8f)
+    {
+        foreach (var part in System.Text.RegularExpressions.Regex.Split(joined, " {3,}").Where(p => p.Length > 0))
+        {
+            parent.Add(Text(part, x, y, size, weight, color, 0, lh));
+            x += TextWidth(part, size, weight, 0) + gap;
+        }
+    }
+
     /// <summary>A wrapped paragraph as one single-line label per line (CSS line height <paramref name="lh"/>); returns the number of lines.</summary>
-    public static int Paragraph(View parent, string text, float x, float y, float size, int weight, Rgba color, float width, float lh, float spacing = 0, int maxLines = int.MaxValue, bool balance = false)
+    public static int Paragraph(View parent, string text, float x, float y, float size, int weight, Rgba color, float width, float lh, float spacing = 0, int maxLines = int.MaxValue, bool balance = false, string role = "text")
     {
         var lines = WrapLines(text, size, weight, spacing, width, maxLines, balance: balance);
-        for (var i = 0; i < lines.Count; i++) parent.Add(Text(lines[i], x, y + i * lh, size, weight, color, width, lh, spacing: spacing));
+        var group = new object();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var label = Text(lines[i], x, y + i * lh, size, weight, color, width, lh, spacing: spacing);
+            TextMeta.TryGetValue(label, out var meta); if (meta is not null) meta.Group = group;
+            if (role != "text") Sem.Tag(label, role);
+            parent.Add(label);
+        }
         return lines.Count;
     }
 
@@ -51,6 +72,28 @@ internal static class Ui
     public static string ResPath(string relative) =>
         global::Tizen.Applications.Application.Current.DirectoryInfo.Resource + relative;
 
+    /// <summary>
+    /// NUI lays text out with whole-pixel glyph advances (a 12.8 px "01:00" is 36 px, the web's subpixel layout 33.6 px). Labels are laid out at
+    /// this multiple of the CSS size and drawn scaled back down, so advances land on 1/TextScale px like the browser's.
+    /// </summary>
+    internal const float TextScale = 4f;
+    /// <summary>Measuring (never drawing) at 16x: advances land on 1/16 px, as the browser's subpixel layout.</summary>
+    private const float MeasureScale = 16f;
+
+    private static readonly Dictionary<int, int[]> WebBySize = WebWeights.BySize.ToDictionary(kv => (int)Math.Round(kv.Key * 1000), kv => kv.Value);
+
+    /// <summary>
+    /// NUI only picks the named weights of a family, the web interpolates its variable font (560, 640, 860, ...). The weights web CSS uses at
+    /// each size are in <see cref="WebWeights"/> (generated from web DOM dumps); a call site's weight snaps to the nearest of them, and
+    /// the fractional ones are drawn from the static instances "Nunito Sans W&lt;weight&gt;" in res/fonts (scripts/make-web-weights.py).
+    /// </summary>
+    private static (string Family, int Weight) Face(string family, int weight, float size)
+    {
+        if (family != Font) return (family, weight);
+        if (WebBySize.TryGetValue((int)Math.Round(size * 1000), out var ws)) { var near = ws.OrderBy(w => Math.Abs(w - weight)).First(); if (Math.Abs(near - weight) <= 45) weight = near; }
+        return Array.IndexOf(WebWeights.Instanced, weight) >= 0 ? ($"{Font} W{weight}", 400) : (family, weight);
+    }
+
     /// <summary>Registers the bundled Nunito Sans weights so TextLabel can use them by family name.</summary>
     public static void RegisterFonts() => FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
 
@@ -69,14 +112,18 @@ internal static class Ui
     public static TextLabel Text(string text, float x, float y, float size, int weight, Rgba color, float w = 0, float lh = 0,
         HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0)
     {
+        (family, weight) = Face(family, weight, size);
+        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
+        var cssY = y;
         var line = lh > 0 ? lh : size * 1.4f;
         var boxH = Math.Max(line, size * 1.45f); // tall enough that descenders are not clipped; the text stays centred on the CSS line box
         y -= (boxH - line) / 2f;
+        if (!multiline && family.StartsWith(Font, StringComparison.Ordinal)) y -= BaselineShifts.Up(size); // NUI vs Chromium baseline rounding, measured per size
         var t = new TextLabel(upper ? text.ToUpperInvariant() : text)
         {
             PositionX = x,
             PositionY = y,
-            PixelSize = size,
+            PixelSize = size * TextScale,
             TextColor = C(color),
             FontFamily = family,
             FontStyle = new PropertyMap().AddWeight(weight),
@@ -85,11 +132,14 @@ internal static class Ui
             MultiLine = multiline,
             Ellipsis = !multiline,
         };
-        if (spacing != 0) t.CharacterSpacing = spacing;
+        if (spacing != 0) t.CharacterSpacing = spacing * TextScale;
         if (multiline && maxLines > 0) t.Ellipsis = false;
-        if (multiline) { t.RelativeLineHeight = line / (size * 1.364f); t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w, size * 1.6f * Math.Max(2, maxLines)); }
-        else if (w > 0) { t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w, boxH); }
-        else { t.WidthResizePolicy = ResizePolicyType.UseNaturalSize; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(0, boxH); }
+        if (multiline) { t.RelativeLineHeight = line / (size * 1.364f); t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w * TextScale, size * 1.6f * Math.Max(2, maxLines) * TextScale); }
+        else if (w > 0) { t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size((w + (align == HorizontalAlignment.Begin ? 3 : 0)) * TextScale, boxH * TextScale); } // slack: the drawn advances can exceed the measured ones by a fraction of a pixel, which would ellipsise a line that fits
+        else { t.WidthResizePolicy = ResizePolicyType.UseNaturalSize; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(0, boxH * TextScale); }
+        t.PivotPoint = global::Tizen.NUI.PivotPoint.TopLeft; t.PositionUsesPivotPoint = true; t.ParentOrigin = global::Tizen.NUI.ParentOrigin.TopLeft;
+        t.Scale = new Vector3(1 / TextScale, 1 / TextScale, 1);
+        TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline));
         return t;
     }
 
@@ -130,11 +180,11 @@ internal static class Ui
     /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
     /// that fades in from nothing at the left edge to full at the right.
     /// </summary>
-    public static View PanelWash(PlayarrTheme t)
+    public static View PanelWash(PlayarrTheme t, float width = 1190)
     {
         var dark = t.Name == "dark"; var mix = dark ? 0.44f : 0.48f;
         Rgba Frost(float a) => new(t.SurfaceSoft.R * mix + t.SurfaceStrong.R * (1 - mix), t.SurfaceSoft.G * mix + t.SurfaceStrong.G * (1 - mix), t.SurfaceSoft.B * mix + t.SurfaceStrong.B * (1 - mix), a);
-        const float w = 1190;
+        var w = width;
         return Gradient(TizenClient.DesignWidth - w, 0, w, TizenClient.DesignHeight, true,
             (0, Frost(0)), (0.12f, Frost(dark ? 0.72f : 0.68f)), (0.34f, Frost(dark ? 0.9f : 0.88f)), (0.62f, Frost(dark ? 0.97f : 0.96f)), (1, Frost(1)));
     }
@@ -199,15 +249,15 @@ internal static class Ui
     /// An image drawn at exactly (w, h) design px with object-fit: cover (centre crop) and a high-quality downscale filter, so the TV
     /// resamples as little and as well as the browser does (owner ruling: art scales exactly as web).
     /// </summary>
-    public static ImageView Remote(string file, float w, float h, SamplingModeType sampling = SamplingModeType.Lanczos)
+    public static ImageView Remote(string file, float w, float h, SamplingModeType sampling = SamplingModeType.Linear)
     {
         var map = new PropertyMap();
         map.Add(Visual.Property.Type, new PropertyValue((int)Visual.Type.Image));
         map.Add(ImageVisualProperty.URL, new PropertyValue(file));
         map.Add(ImageVisualProperty.FittingMode, new PropertyValue((int)FittingModeType.ScaleToFill));
         map.Add(ImageVisualProperty.SamplingMode, new PropertyValue((int)sampling));
-        map.Add(ImageVisualProperty.DesiredWidth, new PropertyValue((int)Math.Round(w)));
-        map.Add(ImageVisualProperty.DesiredHeight, new PropertyValue((int)Math.Round(h)));
+        // no DesiredWidth: the full-size texture is sampled by the GPU (bilinear) as the browser does
+
         return new ImageView { Size = new Size(w, h), Image = map };
     }
 
@@ -226,4 +276,11 @@ internal static class Ui
         map.Add("weight", new PropertyValue(weight >= 800 ? "extraBold" : weight >= 700 ? "bold" : weight >= 600 ? "semiBold" : weight >= 500 ? "medium" : weight >= 400 ? "regular" : "light"));
         return map;
     }
+}
+
+/// <summary>The CSS values a label was made from (the layout exporter reports these, not NUI's scaled internals). Dy: CSS line top minus the label's own top.</summary>
+internal sealed record TextMetaInfo(float Size, int Weight, float LineHeight, float Dy, float Spacing, HorizontalAlignment Align, Rgba Color, bool Multiline)
+{
+    /// <summary>Lines of one wrapped paragraph share a group: web has one element for the whole block.</summary>
+    public object? Group { get; set; }
 }

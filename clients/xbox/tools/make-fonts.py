@@ -10,8 +10,11 @@ from fontTools.varLib import instancer
 
 SRC = "docs/parity/fonts"
 OUT = "clients/xbox/src/Playarr.Xbox/Assets/Fonts"
+# Every weight the web layout refs use (docs/parity/LAYOUT.md fontWeight), so an element can ask for its exact web weight.
+NAMES = {400: "Regular", 600: "SemiBold", 700: "Bold", 800: "ExtraBold"}
+WEB_WEIGHTS = tuple((w, NAMES.get(w, f"W{w}")) for w in (300, 400, 480, 500, 560, 570, 580, 590, 600, 610, 640, 650, 680, 690, 700, 720, 750, 760, 800, 820, 860, 900))
 FAMILIES = {
-    "Nunito Sans": ("NunitoSans-wght-web.ttf", "NunitoSans.ttc", ((400, "Regular"), (600, "SemiBold"), (700, "Bold"), (800, "ExtraBold"))),
+    "Nunito Sans": ("NunitoSans-wght-web.ttf", "NunitoSans.ttc", WEB_WEIGHTS),
     "JetBrains Mono": ("JetBrainsMono[wght].ttf", "JetBrainsMono.ttc", ((400, "Regular"), (600, "SemiBold"))),
 }
 

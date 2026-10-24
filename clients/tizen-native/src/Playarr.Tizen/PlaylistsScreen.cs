@@ -107,6 +107,7 @@ internal sealed class PlaylistsScreen : IPage
         back.BorderlineWidth = 1;
         back.BorderlineColor = Ui.LineA(_theme, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _theme.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
+        Sem.Tag(back, "link", "Back to Home", radius: 50);
         _root.Add(back);
         _title = Ui.Text("Playlists", 226.6f, 56.2f, 33.6f, 600, _theme.Ink, 600, 50, spacing: -1.51f);
         _root.Add(_title);

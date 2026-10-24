@@ -64,12 +64,14 @@ internal sealed class MediaCard
         // Chromium snaps an image's rect to whole device pixels (left and right edges rounded); a fractional rect resamples and blurs the poster
         var snapX = (float)Math.Round(x); var snapY = (float)Math.Round(y); var snapW = (float)Math.Round(x + W) - snapX; var snapH = (float)Math.Round(y + H) - snapY;
         _artDy = snapY - y; Art.PositionX = snapX - x; Art.PositionY = _artDy;
-        Art.Size = new Size(snapW, snapH); Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
+        Art.Size = new Size(snapW, snapH);
+        { var cssBox = (-Art.PositionX, -_artDy, W, H); Sem.Tag(Art, "container", radius: 12.48f, box: cssBox, childImageBox: cssBox); } // the layout export reports the CSS box, not the pixel-snapped one
+        Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
         Art.ClippingMode = ClippingModeType.ClipChildren;
         env.Images.Apply(Art, card.ThumbUrl, snapW, snapH, 12.48f);
         if (card.Progress > 0)
         {
-            Art.Add(Ui.Box(0, H - 3, W, 3, new Rgba(1, 1, 1, 0.2f)));
+            Art.Add(Sem.Tag(Ui.Box(0, H - 3, W, 3, new Rgba(1, 1, 1, 0.2f)), "img", $"{(int)Math.Round(card.Progress * 100)}% watched"));
             Art.Add(Ui.Box(0, H - 3, Math.Max(3, W * (float)card.Progress), 3, t.Brand));
         }
         if (card.StackOptions > 1) AddStack(card, snapW);
@@ -93,12 +95,15 @@ internal sealed class MediaCard
         {
             var dot = Ui.Box(W - 23.6f, 11.1f, 13, 13, t.Brand, 6.5f);
             dot.BorderlineWidth = 2; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
+            Sem.Tag(dot, "img", "Unwatched", radius: 50);
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         var drop = card.StackOptions > 1 ? StackDrop : 0;
         Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 610, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
-        _titleY = Title.PositionY; _subY = H + 31.9f + drop;
+        // web: the whole card is one link; Home names it "<title> <sub>", grids "Open <title>"
+        Sem.Tag(Box, "link", showSub ? $"{card.Title} {card.Sub}" : "Open " + card.Title, (0, 0, W, H + 29.4f), showSub ? 0 : 12, boxNow: () => _focused && (LinkFocusScale != 1f || LinkFocusLift != 0) ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
+        _titleY = Title.PositionY; _titleX = Title.PositionX; _subY = H + 31.9f + drop;
         if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
     }
@@ -124,10 +129,19 @@ internal sealed class MediaCard
         if (show) _outerRing.RaiseToTop();
     }
 
-    private View? _stackNear, _stackFar, _shadow2, _sub;
+    private View? _stackNear, _stackFar, _shadow2; private TextLabel? _sub;
     private float _titleY, _subY;
     /// <summary>Web Home: the focused card's caption rises 8 px with the card (the art's own lift is part of that).</summary>
     public float FocusCaptionLift { get; init; }
+    /// <summary>Web Library: the focused card's link scales 1.015 and lifts 5 px (the layout export reports it; the art animates itself).</summary>
+    public float LinkFocusScale { get; init; } = 1f;
+    public float LinkFocusLift { get; init; }
+
+    /// <summary>Renames the link for the layout export (detail rails name cards "Open <title>" and draw no radius on the link).</summary>
+    public void TagLink(string name, float radius) => Sem.Tag(Box, "link", name, (0, 0, W, H + 29.4f), radius, boxNow: () => _focused && (LinkFocusScale != 1f || LinkFocusLift != 0) ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
+    /// <summary>Web Library: the selected card scales 1.015 about its centre, so the caption grows with it.</summary>
+    public float FocusCaptionScale { get; init; } = 1f;
+    private float _titleX;
     private readonly float _restBlur;
 
     /// <summary>
@@ -165,7 +179,20 @@ internal sealed class MediaCard
         Box.PositionY = _boxY + (focused ? _boxLift : 0);
         Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
         Art.PositionY = _artDy + (focused ? _lift : 0);
-        if (FocusCaptionLift != 0) { var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d; }
+        if (FocusCaptionLift != 0)
+        {
+            var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d;
+            // web: the selected caption takes --ink-max (white in dark, black in light)
+            var max = _t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1);
+            Title.TextColor = focused ? max : Ui.C(_t.Ink); if (_sub is not null) _sub.TextColor = focused ? max : Ui.C(_t.InkMuted);
+            if (FocusCaptionScale != 1f)
+            {
+                // the whole card scales about its centre in web, the caption with it
+                var k = focused ? FocusCaptionScale : 1f;
+                Title.Scale = new Vector3(k / Ui.TextScale, k / Ui.TextScale, 1);
+                Title.PositionX = _titleX + (focused ? (_titleX - W / 2) * (FocusCaptionScale - 1) : 0);
+            }
+        }
         Art.BoxShadow = _searchPlaylistFocusGlow is not null
             ? focused
                 ? new Shadow(52, new Color(31 / 255f, 14 / 255f, 20 / 255f, 0.28f), new Vector2(0, 22), new Vector2(0, 0))
@@ -370,7 +397,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.From("thumbnail", "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 1.9f, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { FocusCaptionLift = -8f };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -8f, LinkFocusLift = -6f };
     }
 
     /// <summary>Web cover view: the poster is the art (poster first, backdrop as the fallback); an On deck episode keeps its frame.</summary>
@@ -441,7 +468,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.Library(false, "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f, FocusCaptionScale = 1.0148f, LinkFocusScale = 1.015f, LinkFocusLift = -5f };
     }
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>
@@ -523,12 +550,17 @@ internal sealed class KeyArt
                 if (_path != wanted) return; // focus moved on
                 foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
                 var dark = _t.Name == "dark";
-                var img = Ui.FilteredImage(file, -20, -22.9f, 1038.3f, 1190.6f, dark ? 0.82f : 1f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
-                img.Opacity = dark ? 0.07f : 0.035f; // retain the current low-opacity TV treatment
+                // web .tv-key-art img: 900 px wide from the nav clearance, 106 % tall, grayscale + contrast + brightness, opacity .72 dark / .24 light
+                var img = Ui.FilteredImage(file, 133, -22.9f, 900, 1190.6f, dark ? 0.82f : 0.88f, dark ? 0.6f : 1.1f, fadeStartX: 0.72f);
+                img.Opacity = dark ? 0.72f : 0.24f;
                 Root.Add(img);
                 var s = _t.Surface; var clear = new Rgba(s.R, s.G, s.B, 0);
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, s), (0.22f, clear), (1, clear)));
-                Root.Add(Ui.Gradient(0, 0, 1920, 1080, false, (0, s), (0.18f, clear), (0.82f, clear), (1, s)));
+                // web .tv-key-art::after (from the nav clearance), then .tv-stage-wash over it
+                Root.Add(Ui.Gradient(133, 0, 1787, 1080, true, (0, s), (0.22f, clear), (1, clear)));
+                Root.Add(Ui.Gradient(133, 0, 1787, 1080, false, (0, s), (0.22f, clear), (0.82f, clear), (1, s)));
+                Rgba A(float a) => new(s.R, s.G, s.B, a);
+                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, A(0.94f)), (0.36f, A(0.90f)), (0.52f, A(0)), (1, A(0))));
+                Root.Add(Ui.Gradient(0, 0, 1920, 1080, true, (0, A(0)), (0.66f, A(0)), (1, A(0.5f))));
             });
         });
     }
@@ -596,11 +628,11 @@ internal sealed class DetailsPanel
         foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
         var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
         Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 800, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, titleMaxLines, balance: true);
+        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, titleMaxLines, balance: true, role: "heading");
         var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f) + (_library ? 4f : 0); // library panels: measured 4 px lower on web
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));
-        if (meta.Length > 0) Root.Add(Ui.Text(meta, 153.6f, metaY, metaSize, 600, Soft(t), 455, _library ? 19.584f : 18, spacing: 0));
+        if (meta.Length > 0) Ui.MetaRow(Root, meta, 153.6f, metaY, metaSize, 600, Soft(t), _library ? 19.584f : 18);
         var noMetaGap = Math.Clamp(TizenClient.DesignHeight * 0.02f, 16f, 28f); // web .tv-home-feature overview margin: clamp(16px, 2vh, 28px)
         var oy = meta.Length == 0 && _useWebNoMetaOverviewGap
             ? ty + tlh * lines + noMetaGap
@@ -613,7 +645,7 @@ internal sealed class DetailsPanel
         Root.Add(scrim); scrim.LowerToBottom();
     }
 
-    private static Rgba Soft(PlayarrTheme t) => t.Name == "dark" ? new Rgba(0.855f, 0.84f, 0.844f) : t.InkSoft;
+    internal static Rgba Soft(PlayarrTheme t) => t.Name == "dark" ? new Rgba(0.855f, 0.84f, 0.844f) : Rgba.Hex(0x4f3f3b); // web color-mix of the ink
 
     public static string Runtime(long ms) => DetailModel.Runtime(ms); // web runtimeLabel: rounded, not truncated
 }

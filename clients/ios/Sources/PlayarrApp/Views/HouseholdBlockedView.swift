@@ -52,7 +52,7 @@ struct HouseholdBlockedView: View {
     private func outlinedButton(_ title: String, width: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(WM.font(16))
+                .wm(16)
                 .foregroundStyle(WM.ink)
                 .frame(width: width, height: 48)
                 .overlay(Capsule().strokeBorder(WM.ink.opacity(0.9), lineWidth: 1))
@@ -62,7 +62,7 @@ struct HouseholdBlockedView: View {
 
     private func note(_ text: String, color: Color) -> some View {
         Text(text)
-            .font(WM.font(9))
+            .wm(9)
             .foregroundStyle(color)
             .multilineTextAlignment(.leading)
             .frame(width: 258, alignment: .leading)
