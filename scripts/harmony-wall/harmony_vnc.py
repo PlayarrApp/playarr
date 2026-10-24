@@ -34,6 +34,7 @@ MAX_PREVIEW_TELEMETRY_BATCH_BYTES = 1 * 1024 * 1024
 PREVIEW_TELEMETRY_BATCH_LOCK = threading.Lock()
 PREVIEW_TELEMETRY_BATCH_LAST_ID = 0
 PREVIEW_TELEMETRY_BATCH_DIGESTS = {}
+LAYOUTS = {}
 PREVIEW_TELEMETRY_POST_PATHS = {
     "/preview-state", "/row-image", "/row-image-stage", "/image-metrics-scope", "/layout-stage",
     "/detail-load", "/episode-target", "/episode-card-area", "/episode-card-container-area",
@@ -1130,6 +1131,9 @@ def main():
                 if name not in OH_KEYS:
                     return self._reply(400, b"unknown key")
                 return self._reply(200 if commands.key_long(name) else 503, b"ok")
+            if url.path == "/layoutget":
+                raw = LAYOUTS.pop(query.get("id", [""])[0], None)
+                return self._reply(200 if raw is not None else 404, raw or b"")
             if url.path == "/setroute":
                 ROUTE_BOX["name"] = query.get("name", [""])[0]
                 return self._reply(200, b"ok")
@@ -1172,6 +1176,9 @@ def main():
                                       content_length > MAX_PREVIEW_TELEMETRY_BATCH_BYTES):
                 return self._reply(413, b"request too large")
             raw = self.rfile.read(content_length)
+            if url.path == "/layout-put":  # parity layout export: the app posts its component tree, capture.py reads it back
+                LAYOUTS[urllib.parse.parse_qs(url.query).get("id", [""])[0]] = raw
+                return self._reply(200, b"ok")
             if url.path == "/preview-batch":
                 if len(raw) != content_length:
                     return self._reply(400, b"truncated telemetry batch")

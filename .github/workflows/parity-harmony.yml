@@ -233,6 +233,7 @@ jobs:
           path: |
             capture/dark
             capture/light
+            capture/layout
             capture/poster
             capture/motion
             capture/build.json

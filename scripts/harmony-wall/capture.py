@@ -238,11 +238,37 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
         abort(f"{name} is too plain: an error or signed-out screen")
     img.save(os.path.join(folder, name + ".png"))
+    export_layout(name)
     try:
         get("/state", resetdbg="1")  # the next frame's dump counts only what happens after this one
     except (OSError, SystemExit):
         pass
     print("captured", name, get("/health").decode().strip()[:80], flush=True)
+
+
+def export_layout(name):
+    """Layout document next to the screenshot (same screen state): the app dumps its component tree, layout_export maps it to the schema.
+    A failed dump is logged, never fatal: the pixel capture stays valid."""
+    try:
+        import layout_export  # noqa: PLC0415
+        get("/setroute", name="dumplayout:" + name)
+        raw = None
+        for _ in range(10):
+            time.sleep(1.5)
+            try:
+                raw = get("/layoutget", id=name)
+                break
+            except urllib.error.HTTPError:
+                continue
+        if raw is None:
+            print(f"layout {name}: the app sent no tree", flush=True)
+            return
+        viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
+        count = layout_export.write(raw, name, "light" if THEME == "light" else "dark", viewport, os.path.join(out, "layout"),
+                                    clock_pinned=True)  # patch_clock.py pins the preview clock to the fixture instant
+        print(f"layout {name}: {count} elements", flush=True)
+    except Exception as error:  # noqa: BLE001
+        print(f"layout {name}: export failed: {error!r}", flush=True)
 
 
 def debug(name, image=None):
