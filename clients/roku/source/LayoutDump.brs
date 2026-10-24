@@ -115,10 +115,13 @@ sub ParityLayoutTracked(node as Object, spec as Object, colour as Dynamic, op as
     contentH = Int(spec.size * 1.011 + 0.5) + Int(spec.size * 0.353 + 0.5)
     y1 = ytop + contentH
     if spec.rectH <> invalid and spec.rectH > 0 then y1 = ytop + spec.rectH
-    meta = invalid
-    if spec.weight <> invalid then meta = { px: spec.size, weight: spec.weight }
     tid = node.id
     if spec.id <> invalid then tid = spec.id
+    meta = invalid
+    reported = spec.size
+    ' An active dock label is drawn 1.05 times larger because the web transforms the tile: its font size stays the design size.
+    if Left(tid, 8) = "navLabel" and spec.size > 9 then reported = spec.size / 1.05
+    if spec.weight <> invalid then meta = { px: reported, weight: spec.weight }
     item = { k: "tracked", bg: ParityTextBg(tid, x0, y0), id: tid, text: text, x: x0, y: y0, w: x1 - x0, h: y1 - y0, op: op, role: spec.role, color: ParityColour(spec, colour), lines: node.lineCount, tracking: spec.tracking }
     if meta <> invalid
         item.size = meta.px

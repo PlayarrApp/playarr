@@ -5084,15 +5084,30 @@ sub renderNavDockFocus()
                     end if
                 end if
             end if
-            if isFocused
+            ' The web scales an active or focused tile 1.05 about its centre: the icon is 21 px and the label 1.05 times as large.
+            base = m.navIcons[i].translation
+            if showChip
                 m.navIcons[i].opacity = 1
                 m.navLabels[i].color = ThemeColor("ink")
-            else if isActive
-                m.navIcons[i].opacity = 1
-                m.navLabels[i].color = ThemeColor("ink")
+                if m.navIcons[i].width <> 21
+                    m.navIcons[i].translation = [base[0] - 0.5, base[1] - 0.8]
+                    m.navIcons[i].width = 21
+                    m.navIcons[i].height = 21
+                    m.navLabels[i].setFields({ size: 9.27, tracking: 0.55 })
+                    lt = m.navLabels[i].translation
+                    m.navLabels[i].translation = [lt[0], lt[1] + 0.3]
+                end if
             else
                 m.navIcons[i].opacity = 0.72
                 m.navLabels[i].color = ThemeColor("inkMuted")
+                if m.navIcons[i].width <> 20
+                    m.navIcons[i].translation = [base[0] + 0.5, base[1] + 0.8]
+                    m.navIcons[i].width = 20
+                    m.navIcons[i].height = 20
+                    m.navLabels[i].setFields({ size: 8.83, tracking: 0.31 })
+                    lt = m.navLabels[i].translation
+                    m.navLabels[i].translation = [lt[0], lt[1] - 0.3]
+                end if
             end if
         end if
     end for
