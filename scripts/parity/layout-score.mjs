@@ -122,12 +122,13 @@ export function scoreLayout(ref, device, { edge = TOL.edge } = {}) {
     total, matched: pairs.size, equal,
     clock: { pinned: clockPinned, equalsFixture: clockSeen.length ? clockSeen.every(Boolean) : null, fixture: FIXTURE_CLOCK },
     extras: dev.length - pairs.size,
+    occluded: ref.occluded ?? 0,
     failures,
   };
 }
 
 export const formatReport = (r, max = 40) => {
-  const lines = [`${r.screen}/${r.theme}: layout ${r.score}% (${r.equal}/${r.total} equal, ${r.matched} matched, ${r.extras} extra device elements); clock pinned ${r.clock.pinned}, equals fixture ${r.clock.equalsFixture}`];
+  const lines = [`${r.screen}/${r.theme}: layout ${r.score}% (${r.equal}/${r.total} equal, ${r.matched} matched, ${r.extras} extra device elements, ${r.occluded} occluded web elements dropped); clock pinned ${r.clock.pinned}, equals fixture ${r.clock.equalsFixture}`];
   for (const f of r.failures.slice(0, max)) {
     const rc = f.ref.rect;
     lines.push(`  ${f.ref.role} "${String(f.ref.text).slice(0, 40)}" @${rc.x},${rc.y} ${rc.w}x${rc.h}${f.device ? "" : "  NOT FOUND ON DEVICE"}`);
