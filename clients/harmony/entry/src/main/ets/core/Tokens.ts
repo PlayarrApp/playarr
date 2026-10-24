@@ -407,7 +407,7 @@ export const TvGeometry: TvGeometryTokens = {
   libraryGridCardWidth: 327,
   libraryGridCardHeight: 184,
   // Web row pitch is 240.5; its caption box sits 12 below the art where PosterCard's sits 5 below.
-  libraryGridRowGap: 28, // 38 before the caption moved 10 vp lower (row pitch stays 240)
+  libraryGridRowGap: 30.4, // web row pitch 240 (the caption sits 1.45 higher now)
   libraryGridColumnGap: 26.5,
   libraryGridCardRadius: 12.48,
   azIndexRailRight: 22,
