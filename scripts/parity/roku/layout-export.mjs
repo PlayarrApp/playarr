@@ -113,5 +113,10 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
   }
   const inView = (e) => e.rect.x < 1920 && e.rect.y < 1080 && e.rect.x + e.rect.w > 0 && e.rect.y + e.rect.h > 0;
   elements.splice(0, elements.length, ...elements.filter(inView));
-  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, ...(dbg.length ? { _dbg: dbg } : {}), elements };
+  const r2 = (v) => Math.round(v * 100) / 100;
+  for (const e of elements) {
+    for (const k of Object.keys(e)) if (k.startsWith("_") || e[k] === undefined) delete e[k];
+    for (const k of ["x", "y", "w", "h"]) e.rect[k] = r2(e.rect[k]);
+  }
+  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements };
 }

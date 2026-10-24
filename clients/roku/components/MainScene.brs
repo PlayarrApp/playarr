@@ -5451,7 +5451,7 @@ sub layoutDetailRails()
             m.detailChapters.translation = [-8, y + 65.7]
             slot = slot + 1
             y = y + 314.3
-            if m.detailCastList = invalid or m.detailCastList.Count() = 0 then y = y + 36
+            if m.detailCastList = invalid or m.detailCastList.Count() = 0 then y = y + 37.7
         end if
         if m.detailSimilar.visible and (m.detailCastList = invalid or m.detailCastList.Count() = 0)
             ' Similar Titles (web grid-sized cards): heading 350 px under Chapters', cards 67 px below it.
@@ -5460,7 +5460,7 @@ sub layoutDetailRails()
             titles = n.ToStr() + " titles"
             if n = 1 then titles = "1 title"
             setDetailRailHead(slot, y, "Similar Titles", titles)
-            m.detailSimilar.translation = [-8, y + 66.7]
+            m.detailSimilar.translation = [-8, y + 65.0]
         else if m.detailSimilar.visible
             n = 0
             if m.detailCastList <> invalid then n = m.detailCastList.Count()
