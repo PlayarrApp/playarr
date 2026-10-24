@@ -28,6 +28,8 @@ namespace Playarr.Xbox.Views
         private readonly Grid _root;
         private readonly Grid _content = new Grid();
         private readonly Button _rangeButton;
+        private readonly Button _todayButton;
+        private bool _todayFocused;
         private readonly HashSet<string> _types = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _statuses = new HashSet<string>(StringComparer.Ordinal);
         private bool _monitoredOnly;
@@ -35,7 +37,7 @@ namespace Playarr.Xbox.Views
 
         /// <summary>The open view; read by the parity trace.</summary>
         internal CalendarView View => _view;
-        private DateTime _anchor = DateTime.Today;
+        private DateTime _anchor = ParityClock.Today;
         private IList<CalendarEntry> _entries = new List<CalendarEntry>();
         private int _loadVersion;
 
@@ -49,53 +51,29 @@ namespace Playarr.Xbox.Views
             var controls = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 10,
+                Spacing = 12,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 51, 80, 0),
+                Margin = new Thickness(0, 56, 77, 0),
             };
-            _rangeButton = Ui.Pill(string.Empty, null);
+            _rangeButton = HeaderPill(string.Empty, null, 0);
             var picker = new MenuFlyout();
             foreach (var (label, view) in new[] { ("Agenda", CalendarView.Agenda), ("Week", CalendarView.Week), ("Month", CalendarView.Month) })
             {
                 var item = new MenuFlyoutItem { Text = label };
-                item.Click += (s, e) => { _view = view; _anchor = DateTime.Today; Load(); };
+                item.Click += (s, e) => { _view = view; _anchor = ParityClock.Today; Load(); };
                 picker.Items.Add(item);
             }
 
             _rangeButton.Flyout = picker;
             controls.Children.Add(_rangeButton);
-            controls.Children.Add(Ui.RoundButton("", () => { _anchor = CalendarRules.Step(_view, _anchor, -1); Load(); }));
-            controls.Children.Add(Ui.Pill("Today", () => { _anchor = DateTime.Today; Load(); }, 90));
-            controls.Children.Add(Ui.RoundButton("", () => { _anchor = CalendarRules.Step(_view, _anchor, 1); Load(); }));
+            controls.Children.Add(ArrowButton("\u2190", () => { _anchor = CalendarRules.Step(_view, _anchor, -1); Load(); }));
+            _todayButton = HeaderPill("Today", () => { _anchor = ParityClock.Today; Load(); }, 90);
+            controls.Children.Add(_todayButton);
+            controls.Children.Add(ArrowButton("\u2192", () => { _anchor = CalendarRules.Step(_view, _anchor, 1); Load(); }));
             _root.Children.Add(controls);
 
-            var linkButton = new Button
-            {
-                Width = 58,
-                Height = 70,
-                Margin = new Thickness(0, 151, 14, 0),
-                Padding = new Thickness(0),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
-                CornerRadius = new CornerRadius(12),
-                Background = Ui.Res("PlayarrSurface"),
-                BorderBrush = Ui.Res("PlayarrLine"),
-                BorderThickness = new Thickness(1),
-                Content = new StackPanel
-                {
-                    Spacing = 8,
-                    Children =
-                    {
-                        new FontIcon { Glyph = "\uE734", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 15 },
-                        new TextBlock { Text = "Calendar link", FontSize = 8.5, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.WrapWholeWords, TextAlignment = TextAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center },
-                    },
-                },
-                FocusVisualPrimaryBrush = Theme.FocusRing,
-                FocusVisualPrimaryThickness = new Thickness(3),
-                FocusVisualSecondaryThickness = new Thickness(0),
-            };
-            linkButton.Click += (s, e) => CalendarLinkPanel.Open(_root);
+            var linkButton = Ui.ActionTile(BellIcon(), "Calendar link", 151, () => CalendarLinkPanel.Open(_root));
             _root.Children.Add(linkButton);
 
             var filtersButton = Ui.ActionTile(Ui.FiltersIcon(), "Filters", 237, OpenFilters);
@@ -111,6 +89,40 @@ namespace Playarr.Xbox.Views
             }
 
             Load();
+        }
+
+        /// <summary>The web's header pill: bold muted text on the strong surface.</summary>
+        private static Button HeaderPill(string text, Action? onClick, double minWidth)
+        {
+            var pill = Ui.Pill(text, onClick, minWidth);
+            pill.Background = Ui.Res("PlayarrSurfaceStrong");
+            pill.Content = Ui.Text(text, 15, FontWeights.Bold, "PlayarrInkMuted");
+            return pill;
+        }
+
+        /// <summary>The web's round period arrow: the text arrow in the muted ink.</summary>
+        private static Button ArrowButton(string arrow, Action onClick)
+        {
+            var button = Ui.RoundButton(string.Empty, onClick);
+            button.Background = Ui.Res("PlayarrSurfaceStrong");
+            button.Content = new TextBlock { Text = arrow, FontSize = 14, Foreground = Ui.Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            return button;
+        }
+
+        /// <summary>The web's bell icon (icons.tsx "bell", 24 unit viewBox, 1.5 stroke).</summary>
+        private static FrameworkElement BellIcon()
+        {
+            var canvas = new Canvas { Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Center };
+            canvas.Children.Add(new Windows.UI.Xaml.Shapes.Path
+            {
+                Stroke = Ui.Res("PlayarrInkMuted"),
+                StrokeThickness = 1.5,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                StrokeLineJoin = PenLineJoin.Round,
+                Data = (Geometry)Windows.UI.Xaml.Markup.XamlBindingHelper.ConvertValue(typeof(Geometry), "M6,9 A6,6 0 0 1 18,9 C18,15 20,16 20,16 L4,16 C4,16 6,15 6,9 M10,20 A2,2 0 0 0 14,20"),
+            });
+            return canvas;
         }
 
         private async void Load()
@@ -147,7 +159,7 @@ namespace Playarr.Xbox.Views
 
         private string RangeLabel(DateTime start, DateTime end) => _view == CalendarView.Month
             ? _anchor.ToString("MMM yyyy", Uk)
-            : $"{start.Day} – {end.ToString(start.Month == end.Month ? "d MMM" : "d MMM", Uk)}";
+            : $"{(start.Month == end.Month ? start.Day.ToString(CultureInfo.InvariantCulture) : start.ToString("d MMM", Uk))} – {end.ToString("d MMM", Uk)}";
 
         private void Render()
         {
@@ -180,7 +192,7 @@ namespace Playarr.Xbox.Views
             body.Children.Add(Drawer.Segmented("View", new[] { "Agenda", "Week", "Month" }, ViewOptionIndex(_view), i =>
             {
                 _view = ViewFromOptionIndex(i);
-                _anchor = DateTime.Today;
+                _anchor = ParityClock.Today;
                 Load();
                 Drawer.TryCloseCurrent();
             }));
@@ -287,7 +299,7 @@ namespace Playarr.Xbox.Views
             var day = CalendarRules.LocalDay(entry);
             bool MatchesStatus(bool hasFile, bool monitored)
             {
-                var aired = day <= DateTime.Today;
+                var aired = day <= ParityClock.Today;
                 var matchesStatus = _statuses.Count == 0
                     || (_statuses.Contains("aired") && aired)
                     || (_statuses.Contains("upcoming") && !aired)
@@ -384,7 +396,7 @@ namespace Playarr.Xbox.Views
 
         private FrameworkElement MonthCell(DateTime day, List<CalendarEntry> entries, double width, double height)
         {
-            var isToday = day == DateTime.Today;
+            var isToday = day == ParityClock.Today;
             var cell = new Grid
             {
                 Width = width,
@@ -441,7 +453,7 @@ namespace Playarr.Xbox.Views
                 var column = new StackPanel { Width = 440, Spacing = 15 };
                 var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
                 heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 16.6, FontWeights.SemiBold, "PlayarrInk"));
-                if (day == DateTime.Today)
+                if (day == ParityClock.Today)
                 {
                     heading.Children.Add(Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color));
                 }
@@ -472,10 +484,11 @@ namespace Playarr.Xbox.Views
         private UIElement Agenda(DateTime start, DateTime end, Dictionary<DateTime, List<CalendarEntry>> byDay)
         {
             var root = new Grid();
-            var detail = new StackPanel { Width = 380, Margin = new Thickness(154, 425, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            // The web's shared details panel: same left column as a library page's focused title.
+            var detail = new StackPanel { Width = 380, Margin = new Thickness(ShellChrome.ContentLeft, 263, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             root.Children.Add(detail);
 
-            var list = new StackPanel { Width = 1033, Margin = new Thickness(783, 168, 0, 48), Spacing = 10 };
+            var list = new StackPanel { Width = 1033, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(783, 168.5, 0, 48), Spacing = 10 };
             CalendarEntry? first = null;
             for (var day = start; day <= end; day = day.AddDays(1))
             {
@@ -484,9 +497,9 @@ namespace Playarr.Xbox.Views
                     continue;
                 }
 
-                var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, list.Children.Count == 0 ? 0 : 22, 0, 6) };
-                heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 14, FontWeights.SemiBold, "PlayarrInk"));
-                if (day == DateTime.Today)
+                var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, list.Children.Count == 0 ? 0 : 30.5, 0, 33.5) };
+                heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 18.4, FontWeights.SemiBold, "PlayarrInk"));
+                if (day == ParityClock.Today)
                 {
                     heading.Children.Add(Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color));
                 }
@@ -495,7 +508,7 @@ namespace Playarr.Xbox.Views
                 foreach (var entry in entries)
                 {
                     first ??= entry;
-                    list.Children.Add(EntryCard(entry, 1033, () => ShowAgendaDetail(detail, entry)));
+                    list.Children.Add(EntryCard(entry, 1033, () => ShowAgendaDetail(detail, entry), web: true, autoHeight: true));
                 }
             }
 
@@ -505,6 +518,14 @@ namespace Playarr.Xbox.Views
             }
 
             root.Children.Add(new ScrollViewer { Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden });
+            // The web opens the agenda with the Today control focused.
+            if (!_todayFocused)
+            {
+                _todayFocused = true;
+                _todayButton.Loaded += (s, e) => _todayButton.Focus(FocusState.Keyboard);
+                _todayButton.Focus(FocusState.Keyboard);
+            }
+
             return root;
         }
 
@@ -512,46 +533,67 @@ namespace Playarr.Xbox.Views
         private void ShowAgendaDetail(StackPanel detail, CalendarEntry entry)
         {
             detail.Children.Clear();
-            var eyebrow = Ui.Text($"{KindLabel(entry).ToUpperInvariant()} · {ReleaseLabel(entry).ToUpperInvariant()}", 10, FontWeights.Bold, "PlayarrBrandInk");
+            var eyebrow = Ui.Text($"{KindLabel(entry).ToUpperInvariant()} · {ReleaseLabel(entry).ToUpperInvariant()}", 12, FontWeights.Bold, "PlayarrBrandInk");
             eyebrow.CharacterSpacing = 120;
             detail.Children.Add(eyebrow);
-            var title = Ui.Text(entry.Title, 56, FontWeights.SemiBold, "PlayarrInk");
-            title.TextWrapping = TextWrapping.WrapWholeWords;
-            title.LineHeight = 58;
-            title.CharacterSpacing = -30;
+            var title = Ui.Text(entry.Title, 69, FontWeights.SemiBold, "PlayarrInk");
+            title.HorizontalAlignment = HorizontalAlignment.Left;
+            title.LineHeight = 62;
+            title.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            title.CharacterSpacing = -72;
             title.MaxLines = 3;
-            title.Margin = new Thickness(0, 22, 0, 0);
+            title.Margin = new Thickness(0, 36.4, 0, 0);
+            title.TextWrapping = TextWrapping.WrapWholeWords;
             detail.Children.Add(title);
             var when = CalendarRules.LocalDay(entry).ToString("dddd, d MMMM yyyy", Uk) + (TimeLabel(entry) is var t && t != "All day" ? " at " + t : string.Empty);
-            detail.Children.Add(Ui.Text(Join(Code(entry), when), 10.5, FontWeights.SemiBold, "PlayarrInkSoft", new Thickness(0, 20, 0, 10)));
-            detail.Children.Add(TonePill(entry));
+            detail.Children.Add(Ui.Text(string.IsNullOrEmpty(Code(entry)) ? when : Code(entry) + "   " + when, 14, FontWeights.Normal, "PlayarrInk", new Thickness(0, 16.6, 0, 19)));
+            detail.Children.Add(TonePill(entry, true));
             if (!string.IsNullOrEmpty(entry.Overview))
             {
-                var overview = Ui.Text(entry.Overview!, 12.5, FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 20, 0, 0));
+                var overview = Ui.Text(entry.Overview!, 14, FontWeights.Normal, "PlayarrInk", new Thickness(0, 23, 0, 0));
                 overview.TextWrapping = TextWrapping.WrapWholeWords;
-                overview.LineHeight = 20.5;
-                overview.MaxLines = 6;
+                overview.LineHeight = 22;
+                overview.MaxLines = 5;
                 overview.TextTrimming = TextTrimming.WordEllipsis;
                 detail.Children.Add(overview);
             }
 
             if (entry.WorkId is { } workId)
             {
-                var open = Ui.Pill(entry.MediaKind == "movie" ? "Open movie" : "Open series", () => App.Navigation.Navigate(typeof(WorkDetailPage), workId), 150);
-                open.Margin = new Thickness(0, 26, 0, 0);
-                detail.Children.Add(open);
+                var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 26, 0, 0) };
+                var open = Ui.Pill(entry.MediaKind == "movie" ? "Open movie" : "Open series", () => App.Navigation.Navigate(typeof(WorkDetailPage), workId), 0);
+                open.Height = 58;
+                open.Background = Ui.Res("PlayarrInk");
+                open.Content = Ui.Text(((TextBlock)open.Content).Text, 15, FontWeights.Bold, "PlayarrSurfaceStrong");
+                actions.Children.Add(open);
+                var watch = Ui.Pill("+  Add to watchlist", null, 0);
+                watch.Height = 58;
+                watch.Content = Ui.Text("+  Add to watchlist", 15, FontWeights.Bold, "PlayarrInkMuted");
+                watch.Click += async (s, e) =>
+                {
+                    try
+                    {
+                        await App.Environment.ApiClient.AddToWatchlistAsync((await App.Environment.ApiClient.GetWorkAsync(workId)).Work);
+                    }
+                    catch (Exception)
+                    {
+                        // Left as it was: the pill only adds.
+                    }
+                };
+                actions.Children.Add(watch);
+                detail.Children.Add(actions);
             }
         }
 
         // ---- shared entry card -------------------------------------------------------------------------------------
 
         /// <param name="web">The week view's card at the web's sizes (19 px title and line, 12.7 px meta, 40x60 poster, 106 px tall).</param>
-        private FrameworkElement EntryCard(CalendarEntry entry, double width, Action? onFocus, bool web = false)
+        private FrameworkElement EntryCard(CalendarEntry entry, double width, Action? onFocus, bool web = false, bool autoHeight = false)
         {
             var card = new Button
             {
                 Width = width,
-                Height = web ? 106 : 100,
+                Height = autoHeight ? double.NaN : web ? 106 : 100,
                 Padding = web ? new Thickness(16, 8, 12, 8) : new Thickness(16, 10, 16, 10),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 VerticalContentAlignment = VerticalAlignment.Center,
@@ -586,10 +628,14 @@ namespace Playarr.Xbox.Views
             row.Children.Add(poster);
             var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
             text.Children.Add(Ui.Text(entry.Title, web ? 19 : 15, FontWeights.SemiBold, "PlayarrInk"));
-            var line2 = Ui.Text(Join(Code(entry), entry.Subtitle ?? string.Empty), web ? 19 : 14, FontWeights.Normal, "PlayarrInkSoft");
-            line2.TextTrimming = TextTrimming.CharacterEllipsis;
-            text.Children.Add(line2);
-            var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 3, 0, 0) };
+            var line2Text = Join(Code(entry), entry.Subtitle ?? string.Empty);
+            if (!autoHeight || line2Text.Length > 0)
+            {
+                var line2 = Ui.Text(line2Text, web ? 19 : 14, FontWeights.Normal, "PlayarrInkSoft");
+                line2.TextTrimming = TextTrimming.CharacterEllipsis;
+                text.Children.Add(line2);
+            }
+            var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, autoHeight ? 5 : 3, 0, 0) };
             foreach (var part in new[] { TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry) })
             {
                 meta.Children.Add(Ui.Text(part, web ? 12.7 : 9, FontWeights.SemiBold, "PlayarrInkSoft"));
@@ -615,7 +661,7 @@ namespace Playarr.Xbox.Views
             return accent;
         }
 
-        private static FrameworkElement TonePill(CalendarEntry entry, bool web = false) => CalendarRules.Tone(entry, DateTime.Today) switch
+        private static FrameworkElement TonePill(CalendarEntry entry, bool web = false) => CalendarRules.Tone(entry, ParityClock.Today) switch
         {
             CalendarTone.Available => Ui.StatusPill("Available", Available, web),
             CalendarTone.Upcoming => Ui.StatusPill("Upcoming", Theme.BrandInk, web),

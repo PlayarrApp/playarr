@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { chromium } from "playwright-core";
-import { layoutPageFn } from "./layout-dump.mjs";
+import { layoutPageFn, volatileFor } from "./layout-dump.mjs";
 
 const exe = [process.env.PARITY_CHROME, "/usr/bin/chromium", "/usr/bin/google-chrome-stable", "/usr/bin/google-chrome"].find((p) => p && existsSync(p));
 const skip = exe ? false : "no Chromium on this host";
@@ -59,4 +59,54 @@ test("a transparent click layer does not occlude", { skip }, async () => {
 test("two dumps of the same page are identical", { skip }, async () => {
   const body = `<span>a</span><aside class="abs" style="top:0;left:0;width:100px;height:100px;background:#000"><b>x</b></aside><span class="abs" style="top:5px">hid</span>`;
   assert.deepEqual(await dump(body), await dump(body));
+});
+
+test("transparent text is not text; gradient-clipped text reports the first stop with colorGradient", { skip }, async () => {
+  const d = await dump(`<p class="abs" style="top:0;color:transparent;background:#123456">skeleton</p>
+    <p class="abs" style="top:40px;-webkit-text-fill-color:#ff0000;color:#00ff00">fill</p>
+    <p class="abs" style="top:80px;color:transparent;background:linear-gradient(90deg,rgb(255,0,0),rgb(0,0,255));-webkit-background-clip:text;background-clip:text">grad</p>`);
+  assert.deepEqual(d.elements.map((e) => [e.text, e.color]), [["", null], ["fill", "#ff0000"], ["grad", "#ff0000"]]);
+  assert.equal(d.elements[2].colorGradient, true);
+  assert.equal(d.elements[1].colorGradient, undefined);
+});
+
+test("the nav-rail app version is a volatile element with its box exported", { skip }, async () => {
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
+    await page.setContent(`<span class="app-user-version" aria-hidden="true" style="position:absolute;top:10px;font-size:11px">v 0.1.0</span>`);
+    const d = await page.evaluate(layoutPageFn, volatileFor("home"));
+    assert.equal(d.elements.length, 1);
+    assert.equal(d.elements[0].volatile, "app-version");
+    assert.equal(d.elements[0].fontSize, 11);
+  } finally { await browser.close(); }
+});
+
+test("a background identical to what is already behind it is not a visible fill", { skip }, async () => {
+  const d = await dump(`<div class="abs" style="top:0;width:50px;height:20px;background:#fff"></div>
+    <div class="abs" style="top:30px;width:50px;height:20px;background:#fefefe"></div>`);
+  assert.deepEqual(d.elements.map((e) => e.background), ["#fefefe"]);
+});
+
+test("an aria-label on a painted container is not visible text; on a control it is the name", { skip }, async () => {
+  const d = await dump(`<section aria-label="Movies titles" class="abs" style="top:0;width:80px;height:20px;background:#123456"></section>
+    <a class="abs" href="#" aria-label="Open Film" style="top:30px;width:80px;height:20px"></a>`);
+  assert.deepEqual(d.elements.map((e) => e.text), ["", "Open Film"]);
+});
+
+test("color-mix() (computed as color(srgb ...)) keeps its colour and alpha", { skip }, async () => {
+  const d = await dump(`<div class="abs" style="top:0;width:50px;height:20px;background:color-mix(in srgb, #ff0000 50%, transparent)"></div>
+    <p class="abs" style="top:40px;color:color-mix(in srgb, #0000ff 100%, #0000ff)">mix</p>`);
+  assert.equal(d.elements[0].background, "#ff8080");
+  assert.equal(d.elements[1].color, "#0000ff");
+});
+
+test("an omit entry is left out of the export", { skip }, async () => {
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
+    await page.setContent(`<div class="player-seek-buffered" style="position:absolute;width:80px;height:6px;background:#575757"></div><span>keep</span>`);
+    const d = await page.evaluate(layoutPageFn, volatileFor("player-controls"));
+    assert.deepEqual(d.elements.map((e) => e.text), ["keep"]);
+  } finally { await browser.close(); }
 });
