@@ -492,12 +492,12 @@ export struct PosterCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
       } else {
-        Text(this.title).fontFamily(nunito(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT))
+        Text(this.title).fontFamily(nunito(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT))
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
-          .fontWeight(this.softCaption ? 600 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.softCaption ? 0.15 : tv(this.titleFontSize * -0.02)) // web is about 4% narrower than the Nunito instance
-          .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
+          .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
+          .letterSpacing(this.softCaption ? 0 : tv(this.titleFontSize * -0.02)) // TV: web is about 4% narrower than the Nunito instance
+          .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge

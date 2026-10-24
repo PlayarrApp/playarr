@@ -170,6 +170,14 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 attrs = dict(attrs); attrs["id"] = ""; attrs["borderRadius"] = "0"
             text = attrs.get("content", attrs.get("text")) if kind == "Text" else None
             if kind == "Text" and text:
+                pad = attrs.get("padding")
+                if isinstance(pad, str) and pad.startswith("{"):
+                    try:
+                        pv = {k: num(v, 0.0) for k, v in json.loads(pad).items()}
+                        x, y = x + pv.get("left", 0), y + pv.get("top", 0)
+                        w, h = w - pv.get("left", 0) - pv.get("right", 0), h - pv.get("top", 0) - pv.get("bottom", 0)
+                    except ValueError:
+                        pass
                 size = num(attrs.get("fontSize"), 16.0)
                 weight = weight_of(attrs)
                 spacing = num(attrs.get("letterSpacing"), 0.0)

@@ -56,7 +56,7 @@ export struct AlphabetRail {
                 .borderRadius((TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH) / 2)
                 .border({ width: RING_WIDTH, color: toResourceColor(BRAND_PINK) })
             }
-            Text(letter).fontFamily(nunito(500))
+            Text(letter).fontFamily(nunito(700))
               .width(TOUCH_DISC)
               .height(TOUCH_DISC)
               .textAlign(TextAlign.Center)
@@ -69,8 +69,10 @@ export struct AlphabetRail {
           .width(TOUCH_DISC)
           .height(TOUCH_DISC)
         }
+        .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
         .width(TOUCH_LETTER_WIDTH)
         .layoutWeight(1)
+        .borderRadius(TOUCH_DISC)
         .justifyContent(FlexAlign.Center)
         .onClick(() => {
           this.onJump(letter);
