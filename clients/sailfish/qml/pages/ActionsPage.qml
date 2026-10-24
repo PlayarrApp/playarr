@@ -15,6 +15,7 @@ PlayarrPage {
     readonly property bool playlistActionVisible: !!work && (work.kind === "movie" || work.kind === "series" || work.kind === "site" || work.kind === "artist")
     property bool showPlaylists: false
     property string note: ""
+    property var layoutEls: [ { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) }, { role: "dialog", x: 0, y: 0, w: 390, h: 683, bg: Tokens.dark ? "#201c20" : "#fefefe" } ]
 
     // Every playable file under the title with its length.
     function leaves() {
@@ -80,24 +81,27 @@ PlayarrPage {
                 Column {
                     anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
                     spacing: 5 * Tokens.u
-                    Label { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: Tokens.fs(6.4); font.letterSpacing: 0.8 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkMuted; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.4 }
                     Label { renderType: Text.NativeRendering;
                         id: titleLbl
+                        property string parityRole: "heading"
                         width: parent.width; text: page.work.title; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
                         lineHeightMode: Text.FixedHeight; lineHeight: 33 * Tokens.u
-                        color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -1.25 * Tokens.u; font.pixelSize: Tokens.fs(22.6)
+                        color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -1.25 * Tokens.u; font.pixelSize: Tokens.fs(22.4)
                     }
                 }
                 MouseArea {
                     id: closeBtn
                     objectName: "parity-actions-close"
                     property bool navigationFocusable: true
+                    property bool layoutSkip: true
+                    property var layoutEls: [ { role: "button", text: qsTr("Close"), dx: 0, w: 44, h: 44, radius: 50, bg: String(Tokens.surfaceSoft) } ]
                     function navigationActivate() { pageStack.pop() }
-                    anchors { right: parent.right; rightMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 20.3 * Tokens.u }
-                    width: 43.7 * Tokens.u; height: width
+                    anchors { right: parent.right; rightMargin: 20 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u }
+                    width: 44 * Tokens.u; height: width
                     onClicked: pageStack.pop()
-                    Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.dark ? "#262226" : "#dedcdd"; border.width: 1; border.color: Tokens.lineStrong }
-                    Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u2715"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: Tokens.fs(10) }
+                    Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: width / 2; color: Tokens.dark ? "#262226" : "#dedcdd"; border.width: 1; border.color: Tokens.lineStrong }
+                    Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u00D7"; color: Tokens.ink; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(16) }
                 }
             }
             ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; navigationInitialFocus: true; parityIndex: 0; navigationActivate: function() { page.play() }; onClicked: page.play() }
