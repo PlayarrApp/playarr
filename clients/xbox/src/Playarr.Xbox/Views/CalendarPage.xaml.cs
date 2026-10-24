@@ -108,7 +108,7 @@ namespace Playarr.Xbox.Views
             button.Background = Ui.Res("PlayarrSurfaceStrong");
             LayoutExport.Tag(button, "button", arrow == "\u2190" ? "Previous" : "Next");
             LayoutExport.SetSplit(button, true);
-            button.Content = new TextBlock { Text = arrow, FontSize = 14.72, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), Foreground = Ui.Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            button.Content = new TextBlock { Text = arrow, FontSize = 14.72, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), Foreground = Ui.Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = arrow == "\u2192" ? new Thickness(0, 0, 15.6, 0) : new Thickness(0) };
             return button;
         }
 

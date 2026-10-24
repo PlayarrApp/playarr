@@ -241,11 +241,12 @@ namespace Playarr.Xbox.Views
             }
 
             var radius = element is Border b ? b.CornerRadius.TopLeft : element is Grid g ? g.CornerRadius.TopLeft : element is Control c ? c.CornerRadius.TopLeft : 0;
-            var pill = element is TextBlock && VisualTreeHelper.GetParent(element) is Border { CornerRadius.TopLeft: > 0 } pillBorder ? pillBorder : null;
+            var pill = element is TextBlock && VisualTreeHelper.GetParent(element) is Border { CornerRadius.TopLeft: > 0, Padding.Left: >= 7 } pillBorder ? pillBorder : null;
             if (pill != null)
             {
-                // A status pill: the web puts the radius on the text element and keeps the page colour behind it.
+                // A status pill: the web puts box, radius and text on one element and keeps the page colour behind it.
                 radius = pill.CornerRadius.TopLeft;
+                rect = Bounds(pill, root, scale);
             }
 
             if (radius > 0 && radius * 2 >= Math.Min(element.ActualWidth, element.ActualHeight) - 0.5)
