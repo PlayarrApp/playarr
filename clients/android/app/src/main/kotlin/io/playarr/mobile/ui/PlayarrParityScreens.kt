@@ -2308,18 +2308,19 @@ private fun ProfilesChromeTrigger(
             .parityBox("button", exportLabel ?: label, background = WebBackground),
     ) {
         Row(
-            (if (webPhone) Modifier else Modifier.fillMaxWidth()).padding(horizontal = 18.dp),
+            // Web `.chrome-select`: 1 px border plus 18.4 px padding, the 16 px icon and the label 9.6 px apart.
+            (if (webPhone) Modifier else Modifier.fillMaxWidth()).padding(horizontal = if (webPhone) 18.dp else 19.4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (webPhone) 10.dp else 9.6.dp),
         ) {
             leading()
             Text(
                 label,
                 color = WebInk,
-                fontSize = if (webPhone) 11.52.sp else 11.5.sp,
-                lineHeight = if (webPhone) 17.28.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
-                fontWeight = if (webPhone) FontWeight(720) else FontWeight.Bold,
-                style = if (webPhone) WebTextStyle else androidx.compose.ui.text.TextStyle.Default,
+                fontSize = 11.52.sp,
+                lineHeight = 17.28.sp,
+                fontWeight = FontWeight(720),
+                style = WebTextStyle,
                 maxLines = 1,
                 modifier = Modifier.weight(1f, fill = !webPhone),
             )
@@ -2598,9 +2599,9 @@ private fun ProfileChoice(
                         modifier = Modifier.heightIn(min = 44.dp).parityBox("button", "Sign out ${profile.displayName}", 999f, background = io.playarr.shared.designsystem.page.parityOver(WebSurfaceStrong, 0.64f, WebBackground)),
                     ) {
                         Row(
-                            Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            Modifier.padding(start = if (isTelevision) 17.dp else 16.dp, end = if (isTelevision) 17.dp else 16.dp, top = 10.dp, bottom = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(if (isTelevision) 7.2.dp else 8.dp),
                         ) {
                             ProfilesSignOutIcon(WebInkSoft, Modifier.parityBox("image", background = io.playarr.shared.designsystem.page.parityOver(WebSurfaceStrong, 0.64f, WebBackground)))
                             Text(
@@ -2614,7 +2615,10 @@ private fun ProfileChoice(
                 }
             }
           }
-          if (tabletActions) UnstagedForWebCssPx { ActionRow() } else ActionRow()
+          // Web draws the action pills at their own 44 px: no minimum touch target, and not scaled with the lifted card.
+          androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentSize provides (if (isTelevision) androidx.compose.ui.unit.Dp.Unspecified else androidx.compose.material3.LocalMinimumInteractiveComponentSize.current)) {
+              if (tabletActions) UnstagedForWebCssPx { ActionRow() } else if (!isTelevision) ActionRow() else Box(Modifier.graphicsLayer { scaleX = 1f / 1.045f; scaleY = 1f / 1.045f; translationX = 0f }) { ActionRow() }
+          }
         }
     }
 }
@@ -2718,7 +2722,7 @@ private fun AddProfileChoice(
             fontWeight = if (isTelevision) FontWeight(690) else FontWeight.Bold,
             letterSpacing = if (isTelevision) 0.423.sp else 0.6.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = if (isTelevision) 4.5.dp else 4.dp),
+            modifier = Modifier.padding(top = if (isTelevision) 4.5.dp else 4.dp).fillMaxWidth(),
         )
     }
 }
@@ -3253,7 +3257,7 @@ internal fun ExperienceParitySettingsScreen(
         androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalPlayarrBackFocus provides (if (LocalStageScale.current != 1f) tabletBackFocus else null)) {
         PlayarrPageLayout(
             pageId = PlayarrPageId.Settings,
-            header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), onBack = onBack, backActive = true),
+            header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), onBack = onBack, backActive = true, backLabel = playarrString(PlayarrString.ProfilesSettings), backRole = "button"),
             body = PlayarrPageBody.Bleed,
         ) {
             TvSettingsBody(
@@ -3276,7 +3280,7 @@ internal fun ExperienceParitySettingsScreen(
     }
     PlayarrPageLayout(
         pageId = PlayarrPageId.Settings,
-        header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), onBack = { if (!wideScreen && picked != null) picked = null else onBack() }, subtitle = if (showIndex) null else playarrString(section.label).uppercase(LocalPlayarrLanguage.current.locale), largeTitle = showIndex),
+        header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), backLabel = playarrString(PlayarrString.ProfilesSettings), backRole = "button", onBack = { if (!wideScreen && picked != null) picked = null else onBack() }, subtitle = if (showIndex) null else playarrString(section.label).uppercase(LocalPlayarrLanguage.current.locale), largeTitle = showIndex),
         body = if (!showIndex) PlayarrPageBody.Panel else PlayarrPageBody.Bleed,
     ) {
     if (showIndex) {
@@ -4602,7 +4606,7 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
         lowercaseExport = false,
     ) { display.setHomeView(it) }
     }
-    Spacer(Modifier.height(29.5.dp))
+    Spacer(Modifier.height(28.5.dp))
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
     Column(Modifier.parityBox("container", "", background = WebSurface)) {
     Spacer(Modifier.height(30.3.dp))

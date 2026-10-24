@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
@@ -82,6 +83,7 @@ fun PlayarrPageLayout(
     Box(
         Modifier
             .fillMaxSize()
+            .parityBox("container", "", background = PlayarrWebTheme.palette.surface)
             .background(PlayarrWebTheme.palette.surface)
             .then(if (tv || !panel) Modifier else Modifier.windowInsetsPadding(phoneInsets))
             .semantics { pageIdTag = pageId },
@@ -141,7 +143,7 @@ internal fun PlayarrPageActions(actions: List<PlayarrPageAction>, modifier: Modi
     ) {
         orderedForHeader(actions).forEach { action ->
             when (action) {
-                is PlayarrPageAction.Navigation -> Row(Modifier.padding(end = if (tv) 0.dp else 25.dp), horizontalArrangement = if (tv) FractionalSpacedArrangement(15.3.dp) else Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                is PlayarrPageAction.Navigation -> Row(Modifier.padding(end = if (tv) 0.dp else 25.dp).then(if (tv) Modifier.offset(x = (-1).dp) else Modifier), horizontalArrangement = if (tv) FractionalSpacedArrangement(15.3.dp) else Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     action.items.forEachIndexed { index, item -> PlayarrNavButton(item, exitRight = index == action.items.lastIndex) }
                 }
                 is PlayarrPageAction.Panel -> PlayarrActionPill(action.icon, action.label, action.onToggle, active = action.open)

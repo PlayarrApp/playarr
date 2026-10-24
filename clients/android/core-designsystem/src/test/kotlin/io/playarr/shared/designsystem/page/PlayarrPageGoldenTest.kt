@@ -46,7 +46,7 @@ class PlayarrPageGoldenTest(private val target: Target) {
         detail: String? = null,
         actions: List<PlayarrPageAction> = emptyList(),
         backActive: Boolean = false,
-    ) = PlayarrPageHeaderSpec(title, detail, PlayarrBack("Back") {}, actions, backActive = backActive)
+    ) = PlayarrPageHeaderSpec(title, detail, PlayarrBack("Back", {}), actions, backActive = backActive)
 
     private fun shootHeader(name: String, spec: PlayarrPageHeaderSpec) {
         compose.setContent {

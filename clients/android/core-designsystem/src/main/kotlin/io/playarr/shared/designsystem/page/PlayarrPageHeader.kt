@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.TextUnit
 import io.playarr.shared.designsystem.theme.PlayarrWebTheme
 
@@ -109,6 +110,10 @@ internal fun PlayarrPageHeaderRow(
     // Web phone: the 21.6 px title used by Search, Settings and the detail pages (library headers use 17.6 px).
     val large = spec.largeTitle || spec.variant == PlayarrHeaderVariant.Detail || !tv
     val subtitle = spec.detail
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val titleStyle = androidx.compose.material3.LocalTextStyle.current.merge(
+        androidx.compose.ui.text.TextStyle(fontSize = 33.6.sp, fontWeight = FontWeight(580), letterSpacing = (-1.512).sp, lineHeight = 50.sp),
+    )
     val reservedStartPx = if (tv) with(density) { (PlayarrClockReservedStart - metrics.start).roundToPx() } else null
     SubcomposeLayout(modifier) { constraints ->
         val loose = Constraints()
@@ -150,7 +155,8 @@ internal fun PlayarrPageHeaderRow(
             )
         }.first().measure(loose.copy(maxWidth = titleMax.coerceAtMost(constraints.maxWidth)))
         val separator = (if (tv) 47.04.dp else 10.dp).roundToPx()
-        val titleEnd = backWidth + backGap + titleP.width
+        // Television: the title's CSS box ends after its last glyph and that glyph's (negative) tracking; Compose counts whole pixels and not the trailing tracking.
+        val titleEnd = backWidth + backGap + (if (tv) titleP.width.coerceAtMost(measurer.measure(title, titleStyle, softWrap = false, maxLines = 1).let { m -> (m.getLineRight(0) - m.getLineLeft(0) - 1.512f).roundToInt() }) else titleP.width)
         val probe = subtitle?.takeIf { tv || !spec.countLine }?.let {
             subcompose("probe") { if (tv) PlayarrTvInlineSubtitle(it) else PlayarrBreadcrumbText(it, phone = true) }.first().measure(loose)
         }
@@ -315,7 +321,7 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
                 .then(LocalPlayarrBackFocus.current?.let { Modifier.focusRequester(it) } ?: Modifier)
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (focused || active) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
-                .parityBox("link", back.label, 50f, background = palette.surface)
+                .parityBox(back.role, back.label, 50f, background = palette.surface)
                 .semantics { contentDescription = back.label; role = Role.Button },
         ) {
             Box(contentAlignment = Alignment.Center) {

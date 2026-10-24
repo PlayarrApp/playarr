@@ -194,6 +194,9 @@ internal enum class PlayarrString(
     NavRequests("Requests", "คำขอ", "リクエスト"),
 
     CommonBack("Back", "ย้อนกลับ", "戻る"),
+    CommonBackToHome("Back to Home", "กลับไปหน้าหลัก", "ホームに戻る"),
+    CalendarBackToHome("Back to home", "กลับไปหน้าหลัก", "ホームに戻る"),
+    CommonBackToTitle("Back to {{title}}", "กลับไปที่ {{title}}", "{{title}}に戻る"),
     CommonCancel("Cancel", "ยกเลิก", "キャンセル"),
     CommonClose("Close", "ปิด", "閉じる"),
     CommonDone("Done", "เสร็จสิ้น", "完了"),

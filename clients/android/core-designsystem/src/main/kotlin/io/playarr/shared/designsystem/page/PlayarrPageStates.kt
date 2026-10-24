@@ -76,12 +76,12 @@ fun PlayarrEmptyState(spec: PlayarrEmptySpec) {
         ) {
             val glyph = androidx.compose.ui.graphics.lerp(palette.ink, androidx.compose.ui.graphics.Color(0xFFCF3157), 0.78f)
             Box(
-                Modifier.size(132.dp)
+                Modifier.size(132.dp).parityBox("container", "", 50f)
                     .background(palette.surfaceStrong.copy(alpha = 0.54f), CircleShape)
                     .border(1.dp, palette.hairline(0.15f, 0.18f).copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Canvas(Modifier.size(54.dp, 36.dp)) {
+                Canvas(Modifier.size(54.dp, 36.dp).parityBox("image")) {
                     // The web SVG (viewBox 48 x 32): a circle r 9 at (21, 14), the handle and the bar.
                     val k = size.width / 48f
                     val stroke = Stroke(width = 1.8f * k, cap = StrokeCap.Round, join = StrokeJoin.Round)
@@ -91,7 +91,7 @@ fun PlayarrEmptyState(spec: PlayarrEmptySpec) {
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(spec.message, color = palette.ink, fontSize = 16.896.sp, lineHeight = 25.344.sp, fontWeight = FontWeight(650))
+                Text(spec.message, color = palette.ink, fontSize = 16.896.sp, lineHeight = 25.344.sp, fontWeight = FontWeight(650), letterSpacing = (-0.338).sp)
                 spec.description?.let { Text(it, color = palette.inkMuted, fontSize = 13.sp) }
             }
         }

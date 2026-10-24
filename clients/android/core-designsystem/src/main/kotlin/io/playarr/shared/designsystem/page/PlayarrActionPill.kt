@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -112,7 +113,7 @@ fun PlayarrActionPill(
                     verticalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterVertically),
                 ) {
                     if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp).parityBox("image", background = parityPillGlass()))
-                    Text(label, fontSize = 8.256.sp, lineHeight = 12.384.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1)
+                    Text(label, fontSize = 8.256.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1, modifier = Modifier.offset(y = (-1).dp))
                     if (count > 0) {
                         Surface(color = palette.accent, shape = CircleShape) {
                             Text(

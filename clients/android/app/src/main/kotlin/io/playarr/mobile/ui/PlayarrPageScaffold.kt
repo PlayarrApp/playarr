@@ -120,10 +120,13 @@ internal fun playarrPageHeader(
     backActive: Boolean = false,
     /** Web phone: the subtitle is a count line under the title (library headers). */
     countLine: Boolean = false,
+    /** The Back control's accessible name and role (web: a link "Back to Home", or a button on detail pages and Settings). */
+    backLabel: String? = null,
+    backRole: String = "link",
 ): PlayarrPageHeaderSpec = PlayarrPageHeaderSpec(
     title = title,
     detail = subtitle,
-    back = PlayarrBack(playarrString(PlayarrString.CommonBack), onBack),
+    back = PlayarrBack(backLabel ?: playarrString(PlayarrString.CommonBackToHome), onBack, backRole),
     actions = buildList {
         addAll(actions)
         if (filters != null) {
@@ -510,7 +513,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
             Column(
                 Modifier.fillMaxHeight().padding(horizontal = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(if (icon == null) 0.dp else 4.dp, Alignment.CenterVertically),
+                verticalArrangement = Arrangement.spacedBy(if (icon == null) 0.dp else 6.4.dp, Alignment.CenterVertically),
             ) {
                 icon?.invoke(if (selected) WebBackground else WebInkSoft)
                 Text(if (LocalTabletDrawerCssPx.current) label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } } else label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(if (icon != null) 900 else weight), maxLines = 1, modifier = if (boxed) Modifier.parityText(if (lowercaseExport) label.lowercase() else label, background = fillFlat) else Modifier.parityText(role = "button", radius = 12f, background = fillFlat))
