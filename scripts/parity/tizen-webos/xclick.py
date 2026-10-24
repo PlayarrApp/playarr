@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""xclick.py <display> click X Y | text STRING | textenv VARNAME | press KEYSYM | down/up KEYSYM"""
+"""xclick.py <display> focus | click X Y | text STRING | textenv VARNAME | press KEYSYM | down/up KEYSYM"""
 import sys
 import time
 from Xlib import X, XK, display
@@ -8,7 +8,14 @@ from Xlib.ext import xtest
 d = display.Display(sys.argv[1])
 cmd = sys.argv[2]
 NAMES = {" ": "space", "-": "minus", ".": "period", "_": "underscore", "@": "at"}
-if cmd == "click":
+if cmd == "focus":
+    # An X server without a window manager leaves the input focus on PointerRoot: give it to the emulator window.
+    for w in d.screen().root.query_tree().children:
+        name = w.get_wm_name() or ""
+        if "Emulator" in name:
+            w.set_input_focus(X.RevertToParent, X.CurrentTime)
+            break
+elif cmd == "click":
     x, y = int(sys.argv[3]), int(sys.argv[4])
     d.screen().root.warp_pointer(x, y)
     d.sync()

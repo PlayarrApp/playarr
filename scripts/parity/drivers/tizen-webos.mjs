@@ -402,6 +402,7 @@ export async function createDriver() {
       } else {
         await guard();
         execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
+        execFileSync("python3", [XCLICK, display, "focus"], { stdio: "ignore" }); // no window manager on the headless display: give the emulator window the input focus
         await applyTizenPin();
       }
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
@@ -574,7 +575,9 @@ export async function createDriver() {
       const xwd = `${file}.xwd`;
       writeFileSync(xwd, execFileSync("xwd", ["-display", display, "-root", "-silent"], { maxBuffer: 64 << 20 }));
       await guard();
-      execFileSync("magick", [`xwd:${xwd}`, `png:${file}`]);
+      // The Tizen emulator draws its own title bar and 1 px borders (no window manager on the headless display): cut the 1920x1080 app area out of the root grab.
+      const crop = device === "tizen" ? ["-crop", `1920x1080+${process.env.TIZEN_CONTENT_OFFSET ?? "6,35"}`.replace(",", "+"), "+repage"] : [];
+      execFileSync("magick", [`xwd:${xwd}`, ...crop, `png:${file}`]);
       rmSync(xwd);
     },
     // ---- Downloads cases (webOS only): the same steps as the web driver, as page code over CDP (Playwright cannot attach to Chromium 94).
