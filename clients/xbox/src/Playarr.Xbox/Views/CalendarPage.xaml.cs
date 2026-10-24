@@ -548,7 +548,6 @@ namespace Playarr.Xbox.Views
             eyebrow.CharacterSpacing = 120;
             detail.Children.Add(eyebrow);
             var title = Ui.Text(entry.Title, 69.12, new FontWeight { Weight = 560 }, "PlayarrInk");
-            LayoutExport.SetRole(title, "heading");
             title.HorizontalAlignment = HorizontalAlignment.Left;
             title.LineHeight = 62;
             title.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
@@ -558,7 +557,14 @@ namespace Playarr.Xbox.Views
             title.TextWrapping = TextWrapping.WrapWholeWords;
             detail.Children.Add(title);
             var when = CalendarRules.LocalDay(entry).ToString("dddd, d MMMM yyyy", Uk) + (TimeLabel(entry) is var t && t != "All day" ? " at " + t : string.Empty);
-            detail.Children.Add(Ui.Text(string.IsNullOrEmpty(Code(entry)) ? when : Code(entry) + "   " + when, 13.06, new FontWeight { Weight = 600 }, "PlayarrInkSoft", new Thickness(0, 16.6, 0, 19)));
+            var metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 13, Margin = new Thickness(0, 16.6, 0, 19) };
+            if (Join(Code(entry), entry.Subtitle ?? string.Empty) is { Length: > 0 } codeLine)
+            {
+                metaRow.Children.Add(Ui.Text(codeLine, 13.06, new FontWeight { Weight = 600 }, "PlayarrInkSoft"));
+            }
+
+            metaRow.Children.Add(Ui.Text(when, 13.06, new FontWeight { Weight = 600 }, "PlayarrInkSoft"));
+            detail.Children.Add(metaRow);
             detail.Children.Add(TonePill(entry, true));
             if (!string.IsNullOrEmpty(entry.Overview))
             {
