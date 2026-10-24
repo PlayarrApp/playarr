@@ -191,6 +191,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     var lineHeight: CGFloat? = nil
     var lines: [String]? = nil
     var pitch: CGFloat = 0
+    var onPage = false
     @Environment(\.self) private var environment
     @State private var id = UUID()
 
@@ -216,7 +217,7 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     private func report(_ frame: CGRect) {
         TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: frame, tracking: tracking,
-                                                 background: hex(frame.minY < 130 ? DesignTokens.Stage.bg : DesignTokens.Stage.surface),
+                                                 background: hex(onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface),
                                                  lineHeight: lineHeight, lines: lines, pitch: pitch)) // web: header on the page, content on the surface
     }
 }
@@ -270,9 +271,9 @@ extension View {
 
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, lineHeight: CGFloat? = nil, lines: [String]? = nil, pitch: CGFloat = 0) -> some View {
+    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, lineHeight: CGFloat? = nil, lines: [String]? = nil, pitch: CGFloat = 0, onPage: Bool = false) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, lineHeight: lineHeight, lines: lines, pitch: pitch))
+        modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, lineHeight: lineHeight, lines: lines, pitch: pitch, onPage: onPage))
         #else
         self
         #endif
