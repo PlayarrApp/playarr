@@ -1012,7 +1012,7 @@ export struct Home {
           itemGap: TouchGeometry.railItemGap,
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
-          headingWeight: 500, // web's phone rail heading is lighter than the TV's 600
+          headingWeight: 610, // web's phone rail heading weight
           headingGap: TOUCH_RAIL_HEADING_GAP,
           bleedEnd: TOUCH_GUTTER + atLeast(Spacing.md, this.safeRight), // the rail sits in the 16 vp gutter: run on to the screen edge so the next card peeks as on web
           allowFocusedOverflow: true,
@@ -1030,7 +1030,7 @@ export struct Home {
           itemGap: TouchGeometry.railItemGap,
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
-          headingWeight: 500, // web's phone rail heading is lighter than the TV's 600
+          headingWeight: 610, // web's phone rail heading weight
           headingGap: TOUCH_RAIL_HEADING_GAP,
           bleedEnd: TOUCH_GUTTER + atLeast(Spacing.md, this.safeRight), // the rail sits in the 16 vp gutter: run on to the screen edge so the next card peeks as on web
           allowFocusedOverflow: true,

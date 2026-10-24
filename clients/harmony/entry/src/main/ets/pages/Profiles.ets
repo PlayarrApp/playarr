@@ -382,6 +382,7 @@ struct Profiles {
     .constraintSize({ minWidth: tv(TV_ACTION_HEIGHT) })
     .justifyContent(FlexAlign.Center)
     .padding({ left: label.length > 0 ? tv(17) : 0, right: label.length > 0 ? tv(17) : 0 })
+    .id(isTvMetrics() ? '' : 'px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
     .borderRadius(tv(TV_ACTION_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -500,7 +501,7 @@ struct Profiles {
               .fontWeight(FontWeight.Bold)
               .letterSpacing(this.pick(0.423, 0.33))
               .textCase(TextCase.UpperCase)
-              .fontColor(toResourceColor(activeColors().inkSoft))
+              .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
               .margin({ top: this.pick(9, profile.is_current ? 14 : 12) })
             if (profile.is_current) {
               Row({ space: tv(9) }) {
@@ -515,6 +516,7 @@ struct Profiles {
             }
           }
           .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
+          .id(isTvMetrics() ? '' : 'px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
         // Web on TV: the tile opens the QR sign-in (/login/qr); a successful link returns to the picker.
@@ -555,10 +557,11 @@ struct Profiles {
             .letterSpacing(this.pick(0.423, 0.33))
             .textCase(TextCase.UpperCase)
             .textAlign(TextAlign.Center)
-            .fontColor(toResourceColor(activeColors().inkSoft))
+            .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
             .margin({ top: this.pick(9, 12) })
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
+        .id(isTvMetrics() ? '' : 'px:button:+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase())
         .focusable(true)
         .onClick(() => {
           pushRoute(getNavStack(), ROUTES.Pairing);
@@ -573,6 +576,15 @@ struct Profiles {
     }
     .width('100%')
     .height('100%')
+  }
+
+  private currentName(): string {
+    for (const profile of this.profiles) {
+      if (profile.is_current) {
+        return profile.display_name;
+      }
+    }
+    return '';
   }
 
   /** A TV size scaled to the window, or the phone's own size (web phone profile picker). */

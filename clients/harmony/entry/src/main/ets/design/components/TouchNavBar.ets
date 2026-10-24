@@ -107,6 +107,7 @@ export struct TouchNavBar {
               illustrationRatio: 0.86,
             })
               .focusable(false)
+              .margin({ bottom: 7 }) // web's avatar sits 9 px below the tile top, not centred
           }
           .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
           .borderRadius(TILE_RADIUS)

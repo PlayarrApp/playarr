@@ -131,8 +131,8 @@ const PHONE_AGENDA_BLEED: number = 0; // the static-server web ref keeps the car
 const PHONE_AGENDA_CARD_MIN_WIDTH: number = 328; // web (static refs): the card ends 16 vp from the right edge
 const PHONE_CONTROL_FONT: number = 11.2;
 // Web phone header controls: 0.6rem apart, the right edge on the 16.7 vp gutter, Today 72.7 wide with its ring 5.3 outside.
-const PHONE_CONTROL_GAP: number = 9.6;
-const PHONE_CONTROL_RIGHT: number = 16.7;
+const PHONE_CONTROL_GAP: number = 8.76;
+const PHONE_CONTROL_RIGHT: number = 16;
 const PHONE_TODAY_WIDTH: number = 72.7;
 const PHONE_RING_OUTSET: number = 5.3;
 const ENTRY_META_GAP: number = 12;
@@ -1021,7 +1021,7 @@ export struct ReleaseCalendar {
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(44)
-        .padding({ left: 20, right: 20 })
+        .padding({ left: 18.8, right: 18.8 })
         .borderRadius(22)
         .backgroundColor(toResourceColor(activeColors().bg))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -1039,6 +1039,7 @@ export struct ReleaseCalendar {
       })
     }
     .width('100%')
+    .backgroundColor(toResourceColor(activeColors().bg)) // the page colour behind the controls (the root fill is darker)
     .justifyContent(FlexAlign.End)
     .padding({ top: this.view === 'month' ? 14 : 0, bottom: this.view === 'month' ? 12 : 19, right: PHONE_CONTROL_RIGHT })
     .margin({ top: this.view === 'month' ? 0 : -4 })

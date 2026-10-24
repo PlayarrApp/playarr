@@ -91,7 +91,8 @@ export struct ChoiceSegments {
           .fontWeight(FontWeight.Bold)
           .letterSpacing(tv(HEADING_LETTER_SPACING))
           .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColor(activeColors().inkSoft))
+          .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
+          .id(isTvMetrics() ? '' : 'px:heading:' + this.heading.toUpperCase())
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
@@ -101,7 +102,7 @@ export struct ChoiceSegments {
             .textAlign(TextAlign.Center)
             .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
             .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkSoft))
+            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : (isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted)))
             .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
               toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
             .borderRadius(tv(CHOICE_RADIUS))

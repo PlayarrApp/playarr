@@ -9,6 +9,8 @@ FONT_FILES = {w: f"NunitoSans-W{w}.ttf" for w in (300, 400, 480, 560, 580, 610, 
 WEIGHT_NAMES = {"lighter": 300, "regular": 400, "normal": 400, "medium": 500, "bold": 700, "bolder": 800}
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "clients", "harmony", "entry", "src", "main", "resources", "rawfile", "fonts")
 KNOWN = set(chr(c) for c in range(0x20, 0x250)) | set('\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u00b7')
+PLACEHOLDER = ("#312a30", "#dfdcdd")  # web artwork placeholder, dark and light
+PAGE_SHELLS = {"settings": 2, "search": 2, "filters": 2, "movies": 2, "series": 2, "music": 2, "calendar-agenda": 2, "home": 2, "calendar-month": 1, "calendar-week": 1}  # full-viewport page-colour containers in the web DOM of each phone screen
 _HB = {}
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
 
@@ -130,6 +132,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
     root_bg = app_bg(tree) or (255, 255, 255, 1.0)
 
     page_base = [None]
+    page_colour = [None]
+    card_w, clip = [0.0], [None]
+    as_text = [None]
+    dialogs, sheet_base = set(), [None]
 
     def walk(node, under):
         attrs = node.get("$attrs") or node
@@ -146,33 +152,48 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     sampled = True
                     here = px
             here = here or under
+            page_colour[0] = here
             page_base[0] = here if sampled else None
         if str(attrs.get("id", "")) == "px:navbar":
             here = root_bg  # web composites the nav bar over the body, not over the page
         if kind in ("Navigation", "NavDestination", "root"):
             bg = None  # system containers
-        if page_base[0] is not None and bg is not None and bg[3] > 0.99 and box is not None and box[2] >= vw * dpr - 1 and box[3] >= vh * dpr - 1:
+        if page_base[0] is not None and id(node) not in dialogs and bg is not None and bg[3] > 0.99 and box is not None and box[2] >= vw * dpr - 1 and box[3] >= vh * dpr - 1:
             bg = None  # the page's full-screen base fill is already the sampled/page base colour
+        if kind == "Stack" and any(c.get("$type") == "Image" and (rect_of(c) or (0, 0, 0, 0))[3] >= 60 * dpr for c in node.get("$children") or []):
+            here = argb(PLACEHOLDER[theme == "light"])  # artwork stack: overlays composite over web's placeholder colour
         parent_bg = here  # web's `background` is the composite behind the element; its own fill counts only when opaque
         if bg is not None and bg[3] > 0:
             here = over(bg, here if str(attrs.get("id", "")) == "px:navbar" else under)
             parent_bg = here  # the refs' background is the colour behind and including the element
         if box is not None:
             x, y, w, h = (v / dpr for v in box)
+            if dpr == 3 and str(attrs.get("id", "")) == "pcard" and w > 0:  # a card scrolled past the viewport edge is clipped by its list: restore its width
+                if w >= card_w[0] - 1:
+                    card_w[0], clip[0] = w, None
+                elif card_w[0] > 0:
+                    clip[0] = (x, w, card_w[0])
+                    w = card_w[0]
+            elif clip[0] is not None and w > 0 and x >= clip[0][0] - 0.5 and x + w >= clip[0][0] + clip[0][1] - 0.5 and x < vw:
+                w += clip[0][2] - clip[0][1]
             if str(attrs.get("id", "")).startswith("px:") and str(attrs.get("id", "")).count(":") >= 2 and kind != "Text":
                 _, prole, pname = str(attrs["id"]).split(":", 2)  # the app tags controls "px:<web role>:<accessible name>"
                 if pname in ("Filters", "Calendar link"):
                     parent_bg = root_bg  # fixed-position header actions: web composites them over the body
-                el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
-                radius = num(attrs.get("borderRadius"), 0.0)
-                if radius:
-                    el["radius"] = radius
-                out.append(el)
+                if dpr == 3 and first_text(node) == pname and prole in ("button", "link"):
+                    as_text[0] = (pname, prole, 0)  # web's text-only control: the text run itself is the button
+                else:
+                    el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                          "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
+                    radius = num(attrs.get("borderRadius"), 0.0)
+                    if radius:
+                        el["radius"] = radius
+                    elif dpr == 3 and prole == "button" and abs(w - h) < 2 and w >= 40:
+                        el["radius"] = 50  # the app's circle is drawn by the glyph inside
+                    out.append(el)
             nid = str(attrs.get("id", ""))
-            if nid == "px:navbar":
-                out.append({"text": "", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                            "color": None, "background": hex_of(root_bg), "fontSize": None, "fontWeight": None, "radius": 20})
+            if nid.endswith("-nav-tile") and dpr == 3:
+                w, h = 42.0, 46.0  # the inspector clips a tile that scrolls past the bar's edge
             if nid.endswith("-nav-tile") or nid == "pcard":  # functional focus ids: the control's name is its first text
                 label = first_text(node)
                 texts = all_texts(node)
@@ -180,19 +201,30 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     name = " ".join(texts) if len(texts) >= 2 else "Open " + label
                 else:
                     name = ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else label
+                if nid == "pcard" and dpr == 3 and w > 0:
+                    h = w * 9 / 16 + 24.7  # web's touch card: 16:9 art plus caption; the app's box also holds the meta line's overflow
                 el = {"text": name, "role": "link", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else 12}
+                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else (0 if len(texts) >= 2 else 12)}
                 out.append(el)
             pxid = str(attrs.get("id", ""))
             if kind == "Text" and pxid.count(":") >= 2 and pxid.startswith("px:") and w >= 40 and h >= 40:  # a Text drawn as a round control: the control and its glyph are two web elements
                 _, prole, pname = pxid.split(":", 2)
                 radius = num(attrs.get("borderRadius"), 0.0)
-                el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
-                if radius:
-                    el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
-                out.append(el)
+                if dpr == 3 and prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))) == pname and abs(w - h) > 2:
+                    as_text[0] = (pname, prole, 999 if radius else 0)  # web's labelled pill is one text-run element with the button role
+                else:
+                    el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                          "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
+                    if radius:
+                        el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
+                    out.append(el)
                 attrs = dict(attrs); attrs["id"] = ""; attrs["borderRadius"] = "0"
+            circle = num(attrs.get("borderRadius"), 0.0)
+            if kind == "Stack" and 8 <= w <= 30 and abs(circle * 2 - w) < 1:  # a profile avatar: web has a round container and an image of the same box
+                for role, extra in (("container", {"radius": 50}), ("image", {})):
+                    out.append(dict({"text": "", "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                                     "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}, **extra))
+                return
             text = attrs.get("content", attrs.get("text")) if kind == "Text" else None
             if kind == "Text" and text:
                 pad = attrs.get("padding")
@@ -218,36 +250,65 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     pill = bool(num(attrs.get("borderRadius"), 0.0)) or (bg is not None and bg[3] > 0.01)  # a padded pill: the run is centred in the box
                     rx = x + (w - tw) / 2 if ("center" in align or pill) else (x + w - tw if "end" in align else x)
                     rx, ry, rw, rh = rx, y + (h - ch) / 2, tw, ch
-                parent_bg = backdrop(image, rx, ry, rw, rh, dpr, parent_bg)
+                parent_bg = backdrop(None if screen == "profiles" else image, rx, ry, rw, rh, dpr, parent_bg)  # profiles: web's background is the flat page colour, the app paints a wash
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
                 prole = str(attrs.get("id", "")).split(":")[1] if str(attrs.get("id", "")).startswith("px:") else None
-                el = {"text": " ".join(str(text).split()), "role": prole or "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
+                if as_text[0] is not None and as_text[0][0] == " ".join(str(text).split()):
+                    prole = as_text[0][1]
+                    attrs = dict(attrs); attrs["borderRadius"] = str(as_text[0][2]) if as_text[0][2] else "0"
+                el = {"text": " ".join(str(text).replace("\ufe0e", "").replace("\ufe0f", "").split()), "role": prole or "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, parent_bg)), "background": hex_of(parent_bg), "fontSize": size, "fontWeight": weight}
                 radius = num(attrs.get("borderRadius"), 0.0)
-                if radius:
+                if radius and not (dpr == 3 and prole is None and all(ch in "\u2190\u2192" for ch in text) and w >= 40):  # an arrow's circle belongs to its button
                     el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
                 out.append(el)
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
-                role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "container")
+                role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "dialog" if id(node) in dialogs else "container")
+                if dpr == 3 and role == "container" and ((h <= 3.5 and w >= 100 and bg is not None and bg[3] < 0.99) or (abs(w - 9) < 1.5 and abs(h - 9) < 1.5)):
+                    role = "img"  # web draws the progress track and the unseen dot as img
+                art = kind == "Image" and h >= 60  # artwork: web paints the loading placeholder colour behind it
                 el = {"text": "", "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
+                      "color": None, "background": PLACEHOLDER[theme == "light"] if art else hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:
-                    el["radius"] = radius
+                    el["radius"] = 50 if role == "img" and w < 20 else radius
                 op = num(attrs.get("opacity"), 1.0)
                 if op != 1.0:
                     el["opacity"] = op
                 out.append(el)
         kids = node.get("$children") or []
         pages = [c for c in kids if c.get("$type") == "NavDestination"]
-        for child in kids:
+        def covers(c):  # an opaque full-screen sheet: a drawer
+            cb, cr = argb((c.get("$attrs") or c).get("backgroundColor")), rect_of(c)
+            return dpr == 3 and cb is not None and cb[3] > 0.99 and cr is not None and cr[2] >= vw * dpr - 1 and cr[3] >= vh * dpr - 1 and c.get("$type") in ("Column", "Stack")
+        sheet = max((i for i, c in enumerate(kids) if covers(c)), default=0)
+        if sheet > 0:
+            dialogs.add(id(kids[sheet]))
+            under_sheet = next((c for c in (app_bg(k) for k in kids[:sheet]) if c), None)
+            if under_sheet is not None:
+                sheet_base[0] = under_sheet
+        for i, child in enumerate(kids):
+            if i < sheet:
+                continue  # drawn under the sheet: web drops occluded elements
             if child.get("$type") == "NavDestination" and child is not pages[-1]:
                 continue  # a page below the top one stays in the tree while hidden
             if str((child.get("$attrs") or child).get("visibility", "")).lower().endswith(("hidden", "none", "1", "2")):
                 continue
+            if num((child.get("$attrs") or child).get("opacity"), 1.0) == 0.0:
+                continue  # web drops effective opacity 0
             walk(child, here)
 
     walk(tree, root_bg)
+    if sheet_base[0] is not None and out and out[0]["role"] == "container":
+        out[0]["background"] = hex_of(sheet_base[0])  # web's body behind a drawer is the page colour
+    if dpr == 3 and page_colour[0] is not None:  # web wraps each page in full-viewport shells that paint the page colour (the body colour is the first container)
+        wrap = {"text": "", "role": "container", "rect": {"x": 0, "y": 0, "w": vw, "h": vh}, "color": None, "background": hex_of(page_colour[0]), "fontSize": None, "fontWeight": None}
+        at = next((i for i, e in enumerate(out) if e["role"] == "container" and e["rect"]["w"] >= vw - 1 and e["rect"]["h"] >= vh - 1 and e["background"] == wrap["background"]), None)
+        have = sum(1 for e in out if e["role"] == "container" and e["rect"]["w"] >= vw - 1 and e["rect"]["h"] >= vh - 1 and e["background"] == wrap["background"])
+        for _ in range(max(0, PAGE_SHELLS.get(screen, 0) - have)):
+            out.insert(1 if at is None else at, dict(wrap, rect=dict(wrap["rect"])))
+        if screen == "home":
+            out.insert(3, dict(wrap, rect={"x": 0, "y": 72, "w": vw, "h": vh - 72}))
     doc = {"screen": screen, "theme": theme, "viewport": {"w": vw, "h": vh, "dpr": dpr}, "elements": out}
     if clock_pinned:
         doc["clockPinned"] = True

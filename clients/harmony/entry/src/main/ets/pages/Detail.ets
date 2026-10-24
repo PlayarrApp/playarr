@@ -2419,7 +2419,7 @@ struct Detail {
         Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
           .fontSize(10.24)
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
-          .fontColor(toResourceColor(index === 0 ? activeColors().ink : activeColors().inkSoft))
+          .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
       }, (chip: string, index: number): string => index.toString() + chip)
     }
     .width('100%')
@@ -2432,15 +2432,16 @@ struct Detail {
     Row({ space: 6 }) {
       if (glyph.length > 0) {
         // web: the pill glyphs are the brand pink (accent in light)
-        Text(glyph).fontFamily(nunitoAt(500, size))
-          .fontSize(size)
+        Text(glyph).fontFamily(nunito(400))
+          .fontSize(size <= 8 ? 9.2 : 12.88) // web's glyph sizes
+          .fontWeight(FontWeight.Normal)
           .fontColor(brandInk())
       }
       // web: the 8 vp pills (Download, Add to ...) are bold in the ink colour, the larger Playback pill medium
-      Text(label).fontFamily(nunitoAt(size <= 8 ? 700 : 500, size))
+      Text(label).fontFamily(nunitoAt(700, size))
         .fontSize(size)
-        .fontWeight(size <= 8 ? FontWeight.Bold : FontWeight.Medium)
-        .fontColor(toResourceColor(size <= 8 ? activeColors().ink : activeColors().inkSoft))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
       .height(44)
@@ -2619,7 +2620,7 @@ struct Detail {
             this.touchMetaChips()
             Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
               .fontSize(11.52)
-              .fontColor(toResourceColor(activeColors().inkSoft))
+              .fontColor(toResourceColor(activeColors().inkMuted))
               .lineHeight(16.7)
               .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
               .maxLines(3)

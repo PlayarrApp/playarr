@@ -496,12 +496,12 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.softCaption ? 0 : tv(this.titleFontSize * -0.02)) // TV: web is about 4% narrower than the Nunito instance
+          .letterSpacing(this.softCaption ? this.titleFontSize * -0.015 : tv(this.titleFontSize * -0.02)) // TV: web is about 4% narrower than the Nunito instance
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
-          .padding(this.softCaption ? { top: 9, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
+          .padding(this.softCaption ? { top: 8.5, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
@@ -513,7 +513,7 @@ export struct PosterCard {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .letterSpacing(this.softCaption ? 0 : tv(this.subtitleFontSize * -0.02))
-          .padding({ left: this.softCaption ? 2.3 : tv(TV_CAPTION_INSET) })
+          .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET) })
       }
     }
     .width(this.cardWidth)
