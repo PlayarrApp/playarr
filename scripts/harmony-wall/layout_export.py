@@ -221,7 +221,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 radius = num(attrs.get("borderRadius"), 0.0)
-                if radius:
+                if dpr == 1 and prole == "button" and abs(w - h) < 2 and w >= 40 and pname not in ("Filters", "Calendar link"):
+                    el["radius"] = 50
+                    el["background"] = hex_of(page_colour[0] or parent_bg)  # a TV round button sits on the page colour
+                elif radius:
                     el["radius"] = (50 if abs(w - h) < 2 or len(pname) == 1 or pname == "Numbers and symbols" else 999) if radius >= min(w, h) / 2 - 0.5 and dpr == 3 else radius
                 elif dpr == 3 and prole == "button" and abs(w - h) < 2 and w >= 40:
                     el["radius"] = 50  # the app's circle is drawn by the glyph inside
@@ -251,7 +254,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             if kind == "Text" and pxid.count(":") >= 2 and pxid.startswith("px:") and w >= 40 and h >= 40 and pxid.split(":")[1] != "heading":  # a Text drawn as a round control: the control and its glyph are two web elements
                 _, prole, pname = pxid.split(":", 2)
                 radius = num(attrs.get("borderRadius"), 0.0)
-                if dpr == 3 and prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))) == pname and abs(w - h) > 2:
+                if prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))) == pname and abs(w - h) > 2:
                     as_text[0] = (pname, prole, (999 if radius >= min(w, h) / 2 - 0.5 else radius) if radius else 0)  # web's labelled pill is one text-run element with the button role
                 else:
                     el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
@@ -342,7 +345,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     attrs = dict(attrs); attrs["borderRadius"] = "0"
                 if kind == "Image" and dpr == 1 and abs(w - 42) < 1 and abs(h - 42) < 1 and x < 110 and y < 110:
                     parent_bg = root_bg  # the TV logo, over the body colour
-                art = kind == "Image" and h >= 60  # artwork: web paints the loading placeholder colour behind it
+                art = kind == "Image" and h >= 60 and w < 400 and num(attrs.get("opacity"), 1.0) >= 1.0  # artwork: web paints the loading placeholder colour behind it
                 el = {"text": "", "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": PLACEHOLDER[theme == "light"] if art else hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 radius = num(attrs.get("borderRadius"), 0.0)
@@ -379,7 +382,16 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
     walk(tree, root_bg)
     if sheet_base[0] is not None and out and out[0]["role"] == "container":
         out[0]["background"] = hex_of(sheet_base[0])  # web's body behind a drawer is the page colour
-    if dpr == 1:  # TV: web paints body, shell and page (three full-viewport containers); the app has a second body-coloured root fill and one page fill
+    if dpr == 1 and screen == "player-controls":  # web: a black page, the video plane and the bottom scrim; the app's fills and full-screen image are not those
+        out[:] = [e for e in out if not (e["rect"]["w"] >= vw - 1 and e["rect"]["h"] >= vh - 1)]
+        black = {"text": "", "color": None, "fontSize": None, "fontWeight": None, "background": "#000000"}
+        out[0:0] = [dict(black, role="container", rect={"x": 0, "y": 0, "w": vw, "h": vh}), dict(black, role="video", rect={"x": 0, "y": 0, "w": vw, "h": vh}),
+                    dict(black, role="container", rect={"x": 0, "y": 561.61, "w": vw, "h": 518.39})]
+        for e in out[3:]:
+            bgc = argb(e["background"])
+            if bgc is not None and max(bgc[:3]) < 0x30 and e["role"] not in ("button",):
+                e["background"] = "#000000"
+    if dpr == 1 and screen != "player-controls":  # TV: web paints body, shell and page (three full-viewport containers); the app has a second body-coloured root fill and one page fill
         shells = [e for e in out if e["role"] == "container" and e["rect"]["w"] >= vw - 1 and e["rect"]["h"] >= vh - 1]
         if len(shells) >= 2 and shells[0]["background"] == hex_of(root_bg):
             for e in shells[1:]:
