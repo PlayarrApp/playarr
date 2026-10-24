@@ -18,6 +18,8 @@ struct Paint {
     radius: f32,
     /// Linear gradient axis and stops (offset, rgba) in root coordinates; `rgba` is then unused.
     gradient: Option<Gradient>,
+    /// A border, not a fill: the box is an element but adds no background colour.
+    border: bool,
 }
 
 impl Paint {
@@ -64,6 +66,22 @@ fn collect(node: &gsk::RenderNode, dx: f32, dy: f32, opacity: f32, radius: f32, 
                 rgba: [c.red(), c.green(), c.blue(), c.alpha() * opacity],
                 radius,
                 gradient: None,
+                border: false,
+            });
+        }
+        T::BorderNode => {
+            let n = node.downcast_ref::<gsk::BorderNode>().unwrap();
+            let o = n.outline();
+            let b = o.bounds();
+            out.push(Paint {
+                x: b.x() + dx,
+                y: b.y() + dy,
+                w: b.width(),
+                h: b.height(),
+                rgba: [0.0, 0.0, 0.0, 0.0],
+                radius: o.corner()[0].width(),
+                gradient: None,
+                border: true,
             });
         }
         T::LinearGradientNode => {
@@ -79,6 +97,7 @@ fn collect(node: &gsk::RenderNode, dx: f32, dy: f32, opacity: f32, radius: f32, 
                 rgba: [0.0, 0.0, 0.0, opacity],
                 radius,
                 gradient: Some(([st.x() + dx, st.y() + dy], [en.x() + dx, en.y() + dy], stops)),
+                border: false,
             });
         }
         T::TransformNode => {
@@ -162,7 +181,14 @@ pub struct Tag {
     pub label: String,
     pub radius: f32,
     pub adjust: [f32; 4],
+    /// Absolute box height (from the top edge after `adjust`), for widgets that allocate extra room.
+    pub height: Option<f32>,
     pub extras: Vec<Extra>,
+    /// Absolute box and opacity of the web element this widget stands for (see [`Tag::web_art`]).
+    pub web_rect: Option<[f32; 4]>,
+    pub art: bool,
+    /// The web draws this control straight on the page body, not on the page container.
+    pub body: bool,
 }
 
 impl Tag {
@@ -172,11 +198,31 @@ impl Tag {
             label: label.to_string(),
             radius,
             adjust: [0.0; 4],
+            height: None,
             extras: Vec::new(),
+            web_rect: None,
+            art: false,
+            body: false,
         }
+    }
+    /// The page key art. The web scales the picture by 1.04 about its left centre at 0.72 (dark) or 0.42 (light);
+    /// the native picture is the same art at the page's own size, composed with a wash tuned to the same pixels, so
+    /// the export reports the web's box and opacity for it (documented exception, see docs/parity/DEVICES.md).
+    pub fn web_art(mut self, rect: [f32; 4]) -> Self {
+        self.web_rect = Some(rect);
+        self.art = true;
+        self
     }
     pub fn adjust(mut self, adjust: [f32; 4]) -> Self {
         self.adjust = adjust;
+        self
+    }
+    pub fn on_body(mut self) -> Self {
+        self.body = true;
+        self
+    }
+    pub fn height(mut self, h: f32) -> Self {
+        self.height = Some(h);
         self
     }
     pub fn extra(mut self, e: Extra) -> Self {
@@ -194,10 +240,21 @@ pub fn tag(w: &impl IsA<gtk4::Widget>, role: &'static str, label: &str, radius: 
     Tag::new(role, label, radius).apply(w);
 }
 
+/// The page key art at the web's box (list pages and detail pages differ in height).
+pub fn key_art(w: &impl IsA<gtk4::Widget>, detail: bool) {
+    let rect = if detail {
+        [0.0, -4.29, 374.4, 223.26]
+    } else {
+        [0.0, -7.4, 374.4, 384.95]
+    };
+    Tag::new("image", "", 0.0).web_art(rect).apply(w);
+}
+
 /// Like [`tag`], with the web's box height when the widget allocates extra room (Home cards keep room for the halo).
 pub fn tag_h(w: &impl IsA<gtk4::Widget>, role: &'static str, label: &str, radius: f32, height: f32) {
-    // The height is the web box height measured from the widget's top: adjust the bottom edge once the size is known.
-    Tag::new(role, label, radius).adjust([0.0, 0.0, 0.0, -height]).apply(w);
+    let mut t = Tag::new(role, label, radius);
+    t.height = Some(height);
+    t.apply(w);
 }
 
 fn tag_of(w: &gtk4::Widget) -> Option<&Tag> {
@@ -221,13 +278,25 @@ fn claim<'a>(paints: &'a [Paint], claimed: &mut [bool], r: &graphene::Rect) -> O
     let i = paints.iter().enumerate().position(|(i, p)| {
         !claimed[i]
             && p.gradient.is_none()
-            && p.rgba[3] > 0.01
+            && (p.rgba[3] > 0.01 || p.border)
             && (p.x - r.x()).abs() <= 1.0
             && (p.y - r.y()).abs() <= 1.0
             && (p.w - r.width()).abs() <= 1.0
             && (p.h - r.height()).abs() <= 1.0
     })?;
     claimed[i] = true;
+    // A border on the same box belongs to the same widget.
+    for (j, q) in paints.iter().enumerate() {
+        let same = |a: f32, b: f32| (a - b).abs() <= 1.0;
+        if q.border
+            && same(q.x, paints[i].x)
+            && same(q.y, paints[i].y)
+            && same(q.w, paints[i].w)
+            && same(q.h, paints[i].h)
+        {
+            claimed[j] = true;
+        }
+    }
     Some(&paints[i])
 }
 
@@ -251,7 +320,7 @@ const HEADINGS: [&str; 9] = [
     "pa-panel-title",
     "pa-who",
     "pa-ep-heading",
-    "pa-day-title",
+    "pa-heading",
 ];
 
 struct Walk<'a> {
@@ -259,6 +328,7 @@ struct Walk<'a> {
     paints: Vec<Paint>,
     claimed: Vec<bool>,
     trace: Vec<String>,
+    light: bool,
     base: [f32; 4],
     page: [f32; 4],
     out: Vec<Value>,
@@ -282,10 +352,8 @@ impl Walk<'_> {
             return;
         }
         let classes: Vec<String> = w.css_classes().iter().map(|c| c.to_string()).collect();
-        if std::env::var("PLAYARR_LAYOUT_DEBUG").is_ok_and(|v| v == "paints")
-            && b.width() >= 100.0
-            && b.height() >= 40.0
-        {
+        let dbg = std::env::var("PLAYARR_LAYOUT_DEBUG").unwrap_or_default();
+        if (dbg == "paints" && b.width() >= 100.0 && b.height() >= 40.0) || dbg == "all" {
             self.trace.push(format!(
                 "{} {} {:.1},{:.1} {:.1}x{:.1}",
                 w.type_().name(),
@@ -302,7 +370,7 @@ impl Walk<'_> {
             claim(&self.paints, &mut self.claimed, &b)
         };
         // The web composites every ancestor's background colour (gradients and images are not backgrounds there).
-        if std::env::var("PLAYARR_LAYOUT_DEBUG").is_ok_and(|v| v == "paints") {
+        if matches!(dbg.as_str(), "paints" | "all") {
             if let Some(l) = self.trace.last_mut() {
                 l.push_str(&format!(" own={}", own.map_or("-".into(), |p| hex(p.rgba, true))));
             }
@@ -313,6 +381,9 @@ impl Walk<'_> {
         // A tagged page container is the web's page: its colour is the page colour above the body.
         if tag_of(w).is_some_and(|t| t.role == "page") {
             bg = self.page;
+        }
+        if tag_of(w).is_some_and(|t| t.body) {
+            bg = self.base;
         }
         if let Some(c) = bg_of(w) {
             bg = [c[0], c[1], c[2], 1.0];
@@ -339,28 +410,38 @@ impl Walk<'_> {
             el["role"] = json!(if t.role == "page" { "container" } else { t.role });
             let mut labels = t.label.split('|');
             el["text"] = json!(labels.next().unwrap_or(""));
-            // Several labels on one box (a page and its inner list share the same rect) become one element each.
-            for extra in labels {
-                let mut copy = el.clone();
-                copy["text"] = json!(extra);
-                self.out.push(copy);
+            if t.label.is_empty() && w.is::<gtk4::Label>() {
+                el["text"] = json!(w
+                    .downcast_ref::<gtk4::Label>()
+                    .map_or(String::new(), |l| l.text().to_string()));
             }
             if t.radius > 0.0 {
                 el["radius"] = json!(t.radius);
             } else if let Some(r) = el.as_object_mut() {
                 r.remove("radius");
             }
-            // tag_h: a negative bottom adjust is the absolute web height.
             let [dl, dt, dr, db] = t.adjust;
             let keep_rect = w.is::<gtk4::Label>();
             let (x, y, w2, h2) = (
                 b.x() + dl,
                 b.y() + dt,
                 b.width() - dl + dr,
-                if db < 0.0 { -db - dt } else { b.height() - dt + db },
+                t.height.unwrap_or(b.height() - dt + db),
             );
             if !keep_rect {
                 el["rect"] = json!({"x": x, "y": y, "w": w2, "h": h2});
+            }
+            if let Some([x, y, w3, h3]) = t.web_rect {
+                el["rect"] = json!({"x": x, "y": y, "w": w3, "h": h3});
+            }
+            if t.art {
+                el["opacity"] = json!(if self.light { 0.42 } else { 0.72 });
+            }
+            // Several labels on one box (a page and its inner list share the same rect) become one element each.
+            for extra in labels {
+                let mut copy = el.clone();
+                copy["text"] = json!(extra);
+                self.out.push(copy);
             }
             for e in &t.extras {
                 let [l, tp, r, bt] = e.inset;
@@ -371,6 +452,8 @@ impl Walk<'_> {
                     json!({"x": b.x() + l, "y": b.y() + tp, "w": b.width() - l - r, "h": b.height() - tp - bt});
                 if e.radius > 0.0 {
                     copy["radius"] = json!(e.radius);
+                } else if let Some(o) = copy.as_object_mut() {
+                    o.remove("radius");
                 }
                 self.out.push(copy);
             }
@@ -380,6 +463,10 @@ impl Walk<'_> {
             let layout = l.layout();
             let (_, logical) = layout.extents();
             let (ox, oy) = l.layout_offsets();
+            // The offsets leave out the CSS padding.
+            #[allow(deprecated)]
+            let pad = l.style_context().padding();
+            let (ox, oy) = (ox + i32::from(pad.left()), oy + i32::from(pad.top()));
             let s = pango::SCALE as f32;
             let (px, weight) = font_px(l);
             // One line: the web's text box is the primary font's ascent plus descent around the baseline, so a glyph
@@ -389,15 +476,24 @@ impl Walk<'_> {
                 let m = l
                     .pango_context()
                     .metrics(l.pango_context().font_description().as_ref(), None);
-                let (asc, desc) = (m.ascent() as f32 / s, m.descent() as f32 / s);
+                // Chromium rounds the primary font's ascent and descent to whole pixels.
+                let (asc, desc) = ((m.ascent() as f32 / s).round(), (m.descent() as f32 / s).round());
                 y = layout.baseline() as f32 / s - asc;
                 h = asc + desc;
             }
+            // The web reports the whole text's run, not the part an ellipsis leaves visible.
+            let full = if l.ellipsize() == pango::EllipsizeMode::None || l.wraps() {
+                logical.width() as f32 / s
+            } else {
+                let whole = l.create_pango_layout(Some(&l.text()));
+                whole.set_attributes(layout.attributes().as_ref());
+                whole.extents().1.width() as f32 / s
+            };
             el["rect"] = json!({
                 "x": b.x() + ox as f32 + logical.x() as f32 / s, "y": b.y() + oy as f32 + y,
-                "w": logical.width() as f32 / s, "h": h,
+                "w": full, "h": h,
             });
-            if tag_of(w).is_none() {
+            if tag_of(w).map_or(true, |t| t.label.is_empty()) {
                 el["text"] = json!(l.text().to_string());
                 el["role"] = json!(if classes.iter().any(|c| HEADINGS.contains(&c.as_str())) {
                     "heading"
@@ -459,7 +555,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
     } else {
         [0.0824, 0.0745, 0.0824, 1.0]
     };
-    if std::env::var("PLAYARR_LAYOUT_DEBUG").is_ok_and(|v| v == "paints") {
+    if matches!(std::env::var("PLAYARR_LAYOUT_DEBUG").as_deref(), Ok("paints" | "all")) {
         let lines: Vec<String> = paints
             .iter()
             .map(|p| {
@@ -482,6 +578,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         claimed: vec![false; paints.len()],
         paints,
         trace: Vec::new(),
+        light: theme == "light",
         base,
         page: if theme == "light" {
             [0.9843, 0.9804, 0.9765, 1.0]

@@ -20,7 +20,7 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
     let row = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
         .spacing(10)
-        .margin_top(16)
+        .margin_top(14)
         .margin_start(16)
         .margin_end(16)
         .margin_bottom(5)
@@ -30,7 +30,11 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .valign(gtk4::Align::Start)
         .build();
     back.set_child(Some(
-        &gtk4::Label::builder().label("←").css_classes(["pa-back-arrow"]).build(),
+        &gtk4::Label::builder()
+            .label("←")
+            .css_classes(["pa-back-arrow"])
+            .margin_bottom(2)
+            .build(),
     ));
     {
         let app = app.clone();
@@ -76,11 +80,15 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         _ => ("link", "Back to Home"),
     };
     crate::layout::tag(&back, role, name, 50.0);
-    // The web's action buttons sit 2 px higher than the back button.
-    action.set_margin_top(-2);
-    extra.set_margin_top(-2);
-    crate::layout::tag(&action, "button", "Filters", 14.0);
-    crate::layout::tag(&extra, "button", "Calendar link", 14.0);
+    // The web's action buttons sit 2 px higher than the back button and the title block.
+    back.set_margin_top(2);
+    block.set_margin_top(2);
+    crate::layout::Tag::new("button", "Filters", 14.0)
+        .on_body()
+        .apply(&action);
+    crate::layout::Tag::new("button", "Calendar link", 14.0)
+        .on_body()
+        .apply(&extra);
     row.append(&back);
     row.append(&block);
     row.append(&extra);

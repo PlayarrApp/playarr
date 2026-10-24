@@ -143,13 +143,22 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         ),
     }
     if let Some(p) = o.progress {
-        overlay.add_overlay(
-            &gtk4::ProgressBar::builder()
-                .fraction(p.clamp(0.0, 1.0))
-                .valign(gtk4::Align::End)
-                .css_classes(["pa-progress"])
-                .build(),
-        );
+        let bar = gtk4::ProgressBar::builder()
+            .fraction(p.clamp(0.0, 1.0))
+            .valign(gtk4::Align::End)
+            .css_classes(["pa-progress"])
+            .build();
+        // The web's bar is a 3 px track with the watched share drawn inside it as its own box.
+        let width = o.width.unwrap_or(158) as f32;
+        crate::layout::Tag::new("img", &format!("{}% watched", (p.clamp(0.0, 1.0) * 100.0).round()), 0.0)
+            .extra(crate::layout::Extra {
+                role: "container",
+                label: "",
+                radius: 0.0,
+                inset: [0.0, 0.0, width * (1.0 - p.clamp(0.0, 1.0) as f32), 0.0],
+            })
+            .apply(&bar);
+        overlay.add_overlay(&bar);
     }
     if o.unseen {
         let dot = gtk4::Box::builder()
@@ -232,4 +241,20 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
     });
     b.add_controller(press);
     b
+}
+
+/// The web draws the page's first card focused (title in pure white); a touch screen has no focus ring, so only the
+/// caption colour is applied.
+pub fn mark_lead(card: &gtk4::Button) {
+    let caption = card
+        .child()
+        .and_then(|c| c.first_child())
+        .and_then(|art| art.next_sibling())
+        .and_then(|cap| cap.first_child());
+    if let Some(title) = caption {
+        title.add_css_class("lead");
+        if let Some(meta) = title.next_sibling() {
+            meta.add_css_class("lead");
+        }
+    }
 }

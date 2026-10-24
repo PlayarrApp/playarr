@@ -17,11 +17,13 @@ fn glyph(icon: &str) -> &'static str {
 }
 
 fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
-    let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 20);
+    let content = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
     content.append(
         &gtk4::Label::builder()
             .label(glyph(icon))
             .css_classes(["pa-row-glyph"])
+            .xalign(0.0)
+            .width_request(42)
             .build(),
     );
     content.append(&gtk4::Label::builder().label(label).xalign(0.0).hexpand(true).build());

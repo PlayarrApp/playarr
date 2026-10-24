@@ -242,7 +242,11 @@ impl Lib {
                 ..Default::default()
             };
             self.loaded.set(self.loaded.get() + 1);
-            self.flow.append(&card(&self.imgs, &w, opts, move |w| a.open_work(w)));
+            let c = card(&self.imgs, &w, opts, move |w| a.open_work(w));
+            if first {
+                super::cards::mark_lead(&c);
+            }
+            self.flow.append(&c);
         }
         let more = !self.buffer.borrow().is_empty() || self.fetched.get() < self.total.get();
         self.status.set_label(if more {
@@ -408,13 +412,13 @@ impl Lib {
             col.append(
                 &gtk4::Label::builder()
                     .label(text.to_uppercase())
-                    .css_classes(["pa-section-label"])
+                    .css_classes(["pa-section-label", "pa-heading"])
                     .xalign(0.0)
                     .build(),
             );
         };
         let tiles = |names: &[&str], active: usize, glyphs: bool| -> Vec<gtk4::ToggleButton> {
-            let row = gtk4::Box::builder().spacing(10).homogeneous(true).build();
+            let row = gtk4::Box::builder().spacing(8).homogeneous(true).build();
             let mut group: Option<gtk4::ToggleButton> = None;
             let mut out = Vec::new();
             for (i, n) in names.iter().enumerate() {
@@ -430,6 +434,10 @@ impl Lib {
                     view_tile_child(&t, i, n);
                 } else {
                     t.set_label(n);
+                    // The web's tile text is the button: its box is the text run.
+                    if let Some(l) = t.child() {
+                        crate::layout::tag(&l, "button", "", 12.0);
+                    }
                 }
                 match &group {
                     Some(g) => t.set_group(Some(g)),
@@ -462,7 +470,7 @@ impl Lib {
             });
         }
         label("Sort by");
-        let sort = tiles(&["Title", "Date Added"], usize::from(q.sort == "date_added"), false);
+        let sort = tiles(&["Title", "Date added"], usize::from(q.sort == "date_added"), false);
         label("Order");
         let order = tiles(&["A-Z", "Z-A"], usize::from(q.descending), false);
 
@@ -472,9 +480,40 @@ impl Lib {
         let mut drops = Vec::new();
         for (i, heading) in ["Audio language", "Subtitle language"].iter().enumerate() {
             label(heading);
+            if i == 0 {
+                // The web's Audio heading sits one px higher than the rhythm of the rows above it.
+                if let Some(l) = col.last_child() {
+                    l.set_margin_top(11);
+                }
+            }
             let dd = gtk4::DropDown::from_strings(&["Any language"]);
             dd.add_css_class("pa-dropdown");
             dd.add_css_class("pa-filter");
+            // The web's select is a bordered group holding a button with the value and a caret glyph.
+            crate::layout::Tag::new("group", heading, 12.0)
+                .extra(crate::layout::Extra {
+                    role: "button",
+                    label: "Any language \u{2304}",
+                    radius: 10.0,
+                    inset: [7.39; 4],
+                })
+                .apply(&dd);
+            if let Some(inner) = dd
+                .first_child()
+                .and_then(|b| b.downcast::<gtk4::Button>().ok())
+                .and_then(|b| b.child())
+                .and_then(|c| c.downcast::<gtk4::Box>().ok())
+            {
+                if let Some(arrow) = inner.last_child() {
+                    arrow.set_visible(false);
+                }
+                inner.append(
+                    &gtk4::Label::builder()
+                        .label("\u{2304}")
+                        .css_classes(["pa-dd-caret"])
+                        .build(),
+                );
+            }
             col.append(&dd);
             drops.push(dd);
             let _ = i;
@@ -588,6 +627,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         .valign(gtk4::Align::Start)
         .build();
     backdrop.set_size_request(-1, 385);
+    crate::layout::key_art(&backdrop, false);
     let wash = gtk4::Box::builder()
         .css_classes(["pa-key-wash"])
         .valign(gtk4::Align::Start)
@@ -650,7 +690,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         });
     }
     // The web spreads the 44 px wide letter buttons 18.635 css px apart (the first at y 88); whole px give 18 or 19.
-    let top = |i: usize| (88.0 + 18.635 * i as f64).round() as i32;
+    let top = |i: usize| (88.0 + 18.635 * i as f64 - 0.2).round() as i32;
     for (i, c) in ALPHABET.chars().enumerate() {
         let name = if c == '#' {
             "Numbers and symbols".to_string()
@@ -777,8 +817,32 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
         .valign(gtk4::Align::Center)
         .build();
     col.append(&area);
-    col.append(&gtk4::Label::new(Some(name)));
+    let label = gtk4::Label::new(Some(name));
+    // The web's text node is the lower-case word; a capital first letter is drawn by its CSS.
+    crate::layout::tag(&label, "text", &name.to_lowercase(), 0.0);
+    col.append(&label);
     tile.set_child(Some(&col));
+    // The web draws each glyph from three boxes: (x, y, w, h) in the tile's own css px.
+    let boxes: [[f32; 4]; 3] = [
+        [40.66, 8.28, 20.0, 2.0],
+        [41.66, 11.68, 5.46, 3.86],
+        [42.67, 6.78, 4.0, 13.0],
+    ];
+    let [x, y, w, h] = boxes[i];
+    let step = [4.0, 7.52, 6.0][i];
+    let gap_y = if i == 0 { 4.0 } else { 0.0 };
+    let mut t = crate::layout::Tag::new("button", name, 12.0);
+    for k in 0..3 {
+        let kf = k as f32;
+        let (dx, dy) = if i == 0 { (0.0, kf * gap_y) } else { (kf * step, 0.0) };
+        t = t.extra(crate::layout::Extra {
+            role: "container",
+            label: "",
+            radius: 1.0,
+            inset: [x + dx, y + dy, 101.33 - (x + dx) - w, 48.0 - (y + dy) - h],
+        });
+    }
+    t.apply(tile);
 }
 
 #[cfg(test)]

@@ -75,15 +75,25 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
             .map(|(name, page)| {
                 pages.add_named(page, Some(name));
                 let label = match *name {
-                    "home" => "Home|Home media tracks",
-                    "series" => "Series library|Series titles",
-                    "movies" => "Movies library|Movies titles",
-                    "music" => "Music library|Music artists",
-                    "search" => "Search Playarr",
+                    "home" => "Home|",
+                    "series" => "Series library||Series titles",
+                    "movies" => "Movies library||Movies titles",
+                    "music" => "Music library||Music artists",
+                    "search" => "Search Playarr|",
                     "calendar" => "Calendar",
                     _ => "",
                 };
-                if !label.is_empty() {
+                if name == &"home" {
+                    // The web's track list starts below the header.
+                    crate::layout::Tag::new("page", label, 0.0)
+                        .extra(crate::layout::Extra {
+                            role: "container",
+                            label: "Home media tracks",
+                            radius: 0.0,
+                            inset: [0.0, 72.0, 0.0, 0.0],
+                        })
+                        .apply(page);
+                } else if !label.is_empty() {
                     crate::layout::tag(page, "page", label, 0.0);
                 }
                 let icon = icons::image(name, 21, Tone::Soft);

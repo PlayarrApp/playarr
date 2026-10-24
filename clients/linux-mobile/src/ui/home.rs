@@ -29,6 +29,7 @@ fn rail_row(children: impl IntoIterator<Item = gtk4::Button>, selected: bool) ->
     for c in children {
         if selected && cards.is_empty() {
             selected_card = Some(c.clone());
+            super::cards::mark_lead(&c);
         }
         row.append(&c);
         cards.push(c);
@@ -271,6 +272,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .valign(gtk4::Align::Start)
         .build();
     backdrop.set_size_request(-1, 340);
+    crate::layout::key_art(&backdrop, false);
     let wash = gtk4::Box::builder()
         .css_classes(["pa-key-wash", "pa-home-wash"])
         .valign(gtk4::Align::Start)
@@ -356,7 +358,7 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
             };
             // Touch parity: the web touch refs show no resting ring; the halo follows real focus only.
             let mut initial_selection = false;
-            let mut focus_sections = Vec::new();
+            let mut focus_sections: Vec<FocusSection> = Vec::new();
             let mut art_set = false;
             let mut set_art = |w: &Work| {
                 if !art_set {
@@ -426,10 +428,18 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                             })
                             .collect();
                         let section = section(&title, rail_row(cards, selected));
+                        // The web's rail pitch is 217.56 css px; whole px give 217, so the third rail takes one more.
+                        if focus_sections.len() == 2 {
+                            section.widget.set_margin_top(1);
+                        }
                         page.append(&section.widget);
                         focus_sections.push(section);
                     }
                 }
+            }
+            // The web draws the first card focused (white caption); a touch screen shows no ring.
+            if let Some(first) = focus_sections.first().and_then(|s| s.cards.first()) {
+                super::cards::mark_lead(first);
             }
             // Capture hook `rail-end:<n>`: focus the last card of rail n (0 = the first), so a capture sees its ring at the edge.
             let last_cards: Vec<_> = focus_sections

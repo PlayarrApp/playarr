@@ -33,7 +33,7 @@ fn decorate_dropdown(d: &gtk4::DropDown, icon: &str) {
         return;
     };
     inner.set_halign(gtk4::Align::Center);
-    inner.set_spacing(10);
+    inner.set_spacing(0);
     if let Some(label) = inner.first_child() {
         label.set_hexpand(false);
     }
@@ -124,7 +124,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         // Left-aligned like the web row, whose avatar starts 20 px in.
         .halign(gtk4::Align::Start)
         .margin_start(20)
-        .margin_top(33)
+        .margin_top(30)
         .build();
     root.append(&tiles);
     let status = gtk4::Label::builder()
@@ -151,9 +151,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     }
     let sign_out = gtk4::Button::builder().css_classes(["pa-pill", "small"]).build();
     // The web's Sign out pill is 3 px tighter on the left, 4 px on the right, and its icon sits 2 px further from the text.
-    let out_row = gtk4::Box::builder().spacing(8).build();
-    out_row.set_margin_start(-3);
-    out_row.set_margin_end(-9);
+    let out_row = gtk4::Box::builder().spacing(7).build();
+
     out_row.append(&icons::image("logout", 18, Tone::Ink));
     out_row.append(&gtk4::Label::new(Some("Sign out")));
     sign_out.set_child(Some(&out_row));
@@ -237,6 +236,15 @@ fn tile(
     if p.is_current {
         av.add_css_class("current");
     }
+    layout::Tag::new("container", "", 50.0)
+        .adjust([-0.87, 0.06, -1.12, 0.0])
+        .extra(layout::Extra {
+            role: "image",
+            label: "",
+            radius: 0.0,
+            inset: [10.96, 11.89, 12.97, 12.04],
+        })
+        .apply(&av);
     col.append(&av);
     col.append(
         &gtk4::Label::builder()
@@ -250,7 +258,7 @@ fn tile(
         col.append(
             &gtk4::Label::builder()
                 .label("WATCHING NOW")
-                .css_classes(["pa-tiny"])
+                .css_classes(["pa-tiny", "watching"])
                 .margin_top(5)
                 .build(),
         );
@@ -268,16 +276,8 @@ fn tile(
         p.display_name.clone()
     };
     layout::Tag::new("button", &name, 0.0)
-        .adjust([1.76, 2.69, -3.76, -3.03])
+        .adjust([1.76, 2.69, -3.76, -0.34])
         .apply(&b);
-    layout::Tag::new("container", "", 50.0)
-        .extra(layout::Extra {
-            role: "image",
-            label: "",
-            radius: 0.0,
-            inset: [11.8, 11.8, 11.8, 11.8],
-        })
-        .apply(&av);
     let (app, client, current, user_id) = (app.clone(), client.clone(), p.is_current, p.id.clone());
     b.connect_clicked(move |_| {
         if app.is_signing_out() {
@@ -443,7 +443,10 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
-    layout::tag(&b, "button", "+ Sign in ADD ANOTHER PROFILE", 0.0);
+    layout::Tag::new("button", "+ Sign in ADD ANOTHER PROFILE", 0.0)
+        .adjust([-1.0, 15.0, 0.0, 0.0])
+        .height(191.36)
+        .apply(&b);
     layout::tag(&circle, "container", "", 50.0);
     let app = app.clone();
     b.connect_clicked(move |_| {
