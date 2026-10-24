@@ -898,7 +898,7 @@ export struct ReleaseCalendar {
       .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(0.2) : 0 })
       .id('px:button:' + (label === '←' ? 'Previous' : (label === '→' ? 'Next' : label)))
       .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
-      .backgroundColor(toResourceColor(activeColors().bg))
+      .backgroundColor(toResourceColor(activeColors().surface))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       .focusable(true)
       .onClick(() => {
@@ -986,7 +986,7 @@ export struct ReleaseCalendar {
         .height(tv(HEADER_CONTROL_SIZE))
         .padding({ left: tv(20), right: tv(20) })
         .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
-        .backgroundColor(toResourceColor(activeColors().bg))
+        .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
         .focusable(true)
         .onClick(() => {
@@ -1034,7 +1034,7 @@ export struct ReleaseCalendar {
         .height(44)
         .padding({ left: 18.8, right: 18.8 })
         .borderRadius(22)
-        .backgroundColor(toResourceColor(activeColors().bg))
+        .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
         .onClick(() => {
           this.periodOpen = !this.periodOpen;
@@ -1050,7 +1050,7 @@ export struct ReleaseCalendar {
       })
     }
     .width('100%')
-    .backgroundColor(toResourceColor(activeColors().bg)) // the page colour behind the controls (the root fill is darker)
+    .backgroundColor(toResourceColor(activeColors().surface)) // the page colour behind the controls (the root fill is darker)
     .justifyContent(FlexAlign.End)
     .padding({ top: this.view === 'agenda' ? 0 : 14, bottom: this.view === 'month' ? 12 : (this.view === 'week' ? 8.2 : 19), right: PHONE_CONTROL_RIGHT })
     .margin({ top: this.view === 'agenda' ? -4 : 0 })
@@ -1069,7 +1069,7 @@ export struct ReleaseCalendar {
         .width(width)
         .height(44)
         .borderRadius(22)
-        .backgroundColor(toResourceColor(activeColors().bg))
+        .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       if (label === t('pages.calendar.today', 'Today')) {
         // web opens the page with Today focused (the Previewer reports no focus): the 3 vp ring sits outside the pill, 2.3 vp clear of it
@@ -1201,11 +1201,22 @@ export struct ReleaseCalendar {
       Row({ space: PHONE_WEEK_GAP }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) - 1.8 }) {
-            Text(dayHeading(cell.day)).fontFamily(nunitoAt(640, PHONE_DAY_HEADING_SIZE))
-              .fontSize(PHONE_DAY_HEADING_SIZE) // web phone: 14.4
-              .fontWeight(FontWeight.Medium)
-              .fontColor(cell.isToday ? toResourceColorWithAlpha(activeColors().ink, 0.9) : toResourceColor(activeColors().ink)) // web: today's heading is the dimmer one
-              .height(tv(WEEK_HEADING_HEIGHT))
+            Row({ space: 10 }) {
+              Text(dayHeading(cell.day)).fontFamily(nunitoAt(640, PHONE_DAY_HEADING_SIZE))
+                .fontSize(PHONE_DAY_HEADING_SIZE) // web phone: 14.4
+                .fontWeight(FontWeight.Medium)
+                .fontColor(cell.isToday ? toResourceColorWithAlpha(activeColors().ink, 0.9) : toResourceColor(activeColors().ink)) // web: today's heading is the dimmer one
+              if (cell.isToday) {
+                Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, TODAY_TAG_SIZE))
+                  .fontSize(TODAY_TAG_SIZE)
+                  .fontWeight(FontWeight.Medium)
+                  .letterSpacing(TODAY_TAG_LETTER_SPACING)
+                  .textCase(TextCase.UpperCase)
+                  .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+              }
+            }
+            .height(tv(WEEK_HEADING_HEIGHT))
+            .alignItems(VerticalAlign.Center)
             Scroll() {
               Column({ space: tv(ENTRY_GAP + 1) }) {
                 ForEach(groupSeriesEpisodes(cell.entries), (item: CalendarItem) => {
