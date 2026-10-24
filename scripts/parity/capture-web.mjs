@@ -7,7 +7,7 @@
 // --base is a fixture server (scripts/fixtures/up.sh) that also serves the built web client
 // (PLAYARR_WEB_ASSETS_DIR) or a Vite dev server proxying /api to it. Writes <out>/<layout>/<theme>/<id>.png
 // (tv 1920x1080 at 1x, mobile 390x844 at 3x = 1170x2532; theme is light or dark) and <out>/manifest.json.
-// --dump-dom also writes <out>/<layout>/<theme>/dom/<id>.json: the rect, font and colour of every visible element, so a
+// --dump-dom also writes <out>/<layout>/<theme>/layout/<id>.json (the layout schema) and <out>/<layout>/<theme>/dom/<id>.json: the rect, font and colour of every visible element, so a
 // native layout can be fixed from numbers. PARITY_CHROME_CHANNEL=chrome launches the installed Google Chrome (it plays the
 // H.264 fixture clips on runners whose Chromium build cannot).
 // Determinism: no backdrop blur (see FREEZE_CSS), a fixed storage estimate, fixed clock (Date frozen), reduced motion, animations and transitions off, caret hidden,
@@ -17,6 +17,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
+import { dumpLayout } from "./layout-dump.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = JSON.parse(readFileSync(join(here, "screens.json"), "utf8"));
@@ -324,6 +325,9 @@ async function captureOnce(layoutId, layout, theme, screen) {
       });
       mkdirSync(join(out, layoutId, theme, "dom"), { recursive: true });
       writeFileSync(join(out, layoutId, theme, "dom", `${screen.id}.json`), JSON.stringify(dom));
+      // The deterministic layout schema (docs/parity/LAYOUT.md) that scripts/parity/layout-score.mjs compares devices against.
+      mkdirSync(join(out, layoutId, theme, "layout"), { recursive: true });
+      writeFileSync(join(out, layoutId, theme, "layout", `${screen.id}.json`), `${JSON.stringify(await dumpLayout(page, { screen: screen.id, theme }), null, 1)}\n`);
     }
     // Regions whose text legitimately differs per fixture instance (for example a server address) are recorded as
     // rectangles in CSS px; diff.mjs ignores them in both images. The reference screenshot itself is unmasked.
