@@ -153,6 +153,12 @@ Notifications (a live system notification per download) and the now-playing entr
   D-pad is checks passed of the suite's D-pad checks (playback is no longer scored: it moved to the performance suite); overall is the mean of the parts that have results
   (mobile has no D-pad). Coverage (captured screens out of 15 per theme) is shown beside, never mixed into a percentage.
 
+## Apple TV and macOS: one-command hosted run
+
+`scripts/parity/apple/run.sh <tvos|macos> [app-ref] [workflow-ref]` dispatches `parity-apple.yml` (static server, pinned
+clock `2026-10-07T12:00:00Z`, screens in both themes plus the D-pad checks), waits for it, downloads the artifacts and
+writes them into the legend directory named by `LEGEND_ROOT` (`apple/tvos` or `macos/dev`, with `dpad.json` and
+`build.json`). The workflow ref defaults to the app ref, so driver changes run before they reach `main`.
 ## iPhone and iPad: reproduce command
 
 Hosted only (no local Apple toolchain), static server, pinned clock `2026-10-07T12:00:00Z` (the workflow default):
