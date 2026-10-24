@@ -434,6 +434,10 @@ impl Lib {
                     view_tile_child(&t, i, n);
                 } else {
                     t.set_label(n);
+                    // The web sets capitalised tile text a touch wider than GTK; the lowercase quirk text matches already.
+                    if n.starts_with(char::is_uppercase) {
+                        t.add_css_class("wide");
+                    }
                     // The web's tile text is the button: its box is the text run.
                     if let Some(l) = t.child() {
                         crate::layout::tag(&l, "button", "", 12.0);
@@ -497,8 +501,8 @@ impl Lib {
                     role: "button",
                     label: "Any language \u{2304}".into(),
                     radius: 10.0,
-                    inset: [7.39; 4],
-                    height: None,
+                    inset: [7.39, 6.0, 7.39, 0.0],
+                    height: Some(44.0),
                     bg: None,
                     art: false,
                     font: None,

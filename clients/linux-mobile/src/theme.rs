@@ -66,7 +66,7 @@ pub fn css(dark: bool) -> String {
     let defs = format!(
         "@define-color pa_bg {}; @define-color pa_surface {}; @define-color pa_surface_strong {}; @define-color pa_soft {};\n\
          @define-color pa_ink {}; @define-color pa_ink_soft {}; @define-color pa_muted {}; @define-color pa_line {}; @define-color pa_line_strong {};\n\
-         @define-color pa_brand {}; @define-color pa_brand_ink {}; @define-color pa_focus_glow {}; @define-color pa_on_accent {}; @define-color pa_accent {}; @define-color pa_shadow {}; @define-color pa_wash {}; @define-color pa_ring {}; @define-color pa_body {}; @define-color pa_missing {}; @define-color pa_day {};\n",
+         @define-color pa_brand {}; @define-color pa_brand_ink {}; @define-color pa_focus_glow {}; @define-color pa_on_accent {}; @define-color pa_accent {}; @define-color pa_shadow {}; @define-color pa_wash {}; @define-color pa_ring {}; @define-color pa_body {}; @define-color pa_missing {}; @define-color pa_day {}; @define-color pa_lead {};\n",
         t.bg, t.surface, t.surface_strong, t.surface_soft, t.ink, t.ink_soft, t.ink_muted, t.line, t.line_strong, t.brand, t.brand_ink,
         t.focus_glow, t.on_accent, t.accent, t.shadow, t.wash,
         // The web's dark focus ring is pure white (page-layout.css); light keeps the ink.
@@ -76,7 +76,9 @@ pub fn css(dark: bool) -> String {
         // The calendar's "missing" dot.
         if dark { "#f1a4a8" } else { "#722f34" },
         // The calendar's day heading and Today chip.
-        if dark { "#dfdcdd" } else { "#4d4248" }
+        if dark { "#dfdcdd" } else { "#4d4248" },
+        // The first card's focused caption: pure white on dark, pure black on light.
+        if dark { "#ffffff" } else { "#000000" }
     );
     // The detail hero's opacity and filter come from the web references: dark .5 and darkened, light .16 and lightened.
     // Bottom of the art: a soft fade from about 150 px; once the page is scrolled over it, dark has the web's hard edge

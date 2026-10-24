@@ -401,7 +401,7 @@ impl Walk<'_> {
                 b.height()
             ));
         }
-        let own = if w.is::<gtk4::Label>()
+        let own = if (w.is::<gtk4::Label>() && !w.has_css_class("pa-chip-status"))
             || w.is::<gtk4::Image>()
             || w.is::<gtk4::Picture>()
             || (b.width() >= vw && b.height() >= vh && tag_of(w).is_none_or_dialog())
