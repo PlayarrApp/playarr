@@ -6,7 +6,7 @@
     { "name": "calendar-link-url", "selector": ".calendar-subscription-url" },
     { "name": "calendar-link-qr", "selector": ".calendar-link-secret > :last-child" },
     { "name": "app-version", "selector": ".app-user-version" },
-    { "name": "video-frame", "selector": "video, #parity-video-frame", "maskOnly": true }
+    { "name": "video-frame", "selector": "video", "maskOnly": true }
   ],
   "settings-server": [
     { "name": "server-address", "textRegex": "https?://\\S+" }

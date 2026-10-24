@@ -33,6 +33,7 @@ chmod 600 "$work/profiles.xml"
 trap '"$tizen" cli-config "profiles.path=$HOME/tizen-studio-data/profile/profiles.xml" >/dev/null 2>&1; rm -rf "$work"' EXIT
 mkdir -p "$stage/app"
 rsync -a --delete "$dist/" "$stage/app/"
+"$here/write-build-info.sh" "$stage/app"
 cp "$here/netlog.js" "$stage/app/netlog.js"
 sed -i 's#<head>#<head><script src="./netlog.js"></script>#' "$stage/app/index.html"
 rm -f "$stage/Playarr.wgt"
