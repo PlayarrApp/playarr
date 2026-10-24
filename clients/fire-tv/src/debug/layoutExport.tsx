@@ -11,6 +11,8 @@ export interface TextInfo {
   role?: string;
   /** Text views of one web element (a balanced title is one Text per line) share a group; the export merges them. */
   group?: string;
+  /** The element's own corner radius on the web (a pill with a text-only box). */
+  radius?: number;
   /** The web rect is the element's line box (lh), not the content area. */
   exact?: boolean;
   /** A deliberate vertical nudge of this run (CSS px), reported as the glyph run's offset. */
@@ -135,6 +137,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
         const own = hex(style.backgroundColor);
         if (own && own !== '#f2f2f2' && own !== '#00000000') nextBg = over(own, under);
         const reported = f.memoizedProps?.parityBgUnder ? under : nextBg;
+        if (typeof f.memoizedProps?.parityBg === 'string') nextBg = f.memoizedProps.parityBg;
         if (typeof f.memoizedProps?.parityOpacity === 'number') nextOpacity *= f.memoizedProps.parityOpacity;
         hosts.push({fiber: f, bg: reported, opacity: nextOpacity, path: []});
       }
@@ -145,6 +148,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
   const scale = Dimensions.get('window').width / 1920;
   const out: LayoutElement[] = [];
   const groupAt = new Map<string, LayoutElement>();
+  const groupLines = new Map<string, number>();
   const rects = await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber))));
   hosts.forEach((h, i) => {
     const r = rects[i];
@@ -162,7 +166,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       ...(h.opacity < 0.999 ? {opacity: round2(h.opacity)} : {}),
     };
     if (props.parityRole) {
-      if (props.parityRole === 'skip') return;
+      if (props.parityRole === 'skip' || props.parityRole === 'none') return;
       const pt = props.parityText as {size: number; weight: number; color: string} | undefined;
       out.push({...(base as LayoutElement), ...(typeof props.parityRadius === 'number' ? {radius: props.parityRadius} : null), text: String(props.parityLabel ?? ''), role: String(props.parityRole), rect, color: pt?.color ?? null, fontSize: pt?.size ?? null, fontWeight: pt?.weight ?? null});
       return;
@@ -186,7 +190,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       // `measureInWindow` reports the Text view's layout box without `T`'s relative `top` shift (which is what puts Vega's glyphs where
       // that centring does), so the line box starts at the measured top.
       const runH = Math.round(1.011 * size) + Math.round(0.353 * size);
-      const lineTop = rect.y - (typeof style.top === 'number' ? style.top / scale : 0);
+      const lineTop = rect.y - (style.position === 'relative' && typeof style.top === 'number' ? style.top / scale : 0);
       const y = info?.exact ? rect.y + (rect.h - lh) / 2 : lineTop + (lh - runH) / 2 + TEXT_BIAS;
       const box = {x: round2(rect.x + x0 / scale), y: round2(y), w: round2((x1 - x0) / scale), h: round2((n - 1) * lh + (info?.exact ? lh : runH))};
       void content;
@@ -198,6 +202,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
         ...(base as LayoutElement),
         text: upper ? text.toUpperCase() : text,
         role: info?.role ?? 'text',
+        ...(info?.radius ? {radius: info.radius} : null),
         rect: box,
         color: hex(style.color),
         fontSize: round2(fontSize),
@@ -206,10 +211,12 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       };
       const prior = info?.group ? groupAt.get(info.group) : undefined;
       if (prior) {
-        const x1 = Math.max(prior.rect.x + prior.rect.w, element.rect.x + element.rect.w), y1 = Math.max(prior.rect.y + prior.rect.h, element.rect.y + element.rect.h);
-        prior.rect = {x: Math.min(prior.rect.x, element.rect.x), y: Math.min(prior.rect.y, element.rect.y), w: 0, h: 0};
-        prior.rect.w = round2(x1 - prior.rect.x);
-        prior.rect.h = round2(y1 - prior.rect.y);
+        // One web element drawn as one Text per line: the lines are exactly one line height apart on the web.
+        const x1 = Math.max(prior.rect.x + prior.rect.w, element.rect.x + element.rect.w);
+        const x0 = Math.min(prior.rect.x, element.rect.x);
+        const count = (groupLines.get(info!.group!) ?? 1) + 1;
+        groupLines.set(info!.group!, count);
+        prior.rect = {x: x0, y: prior.rect.y, w: round2(x1 - x0), h: round2((count - 1) * lh + runH)};
         prior.text = `${prior.text} ${element.text}`;
         return;
       }

@@ -12,7 +12,7 @@ import {useTvBackNavigation} from '../navigation/backPolicy';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, T, u} from '../tv/kit';
-import {lx} from '../debug/layoutMarks';
+import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
 import {EdgeFade} from '../tv/EdgeFade';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -132,7 +132,7 @@ export function SettingsScreen({initial = 'appearance'}: {initial?: SettingsSect
     const bottom = LIST_TOP + (row + 1) * ROW_PITCH;
     const target = bottom > 1040 ? bottom - 1040 : 0;
     setScrollOffset(target);
-    Animated.timing(scroll, {toValue: -target, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+    Animated.timing(scroll, {toValue: -target, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER}).start();
   }, [focusedRow, activeIndex, scroll]);
 
   return (

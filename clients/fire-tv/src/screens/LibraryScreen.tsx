@@ -51,8 +51,8 @@ import {Icon} from '../shell/icons';
 import {ActionTile} from '../tv/ActionTile';
 import {Button} from '../tv/forms';
 import {EdgeFade} from '../tv/EdgeFade';
-import {CardCaption, MediaFocus} from '../tv/mediaFocus';
-import {lx} from '../debug/layoutMarks';
+import {CardCaption, focusInk, MediaFocus} from '../tv/mediaFocus';
+import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
 import {Box, T, u} from '../tv/kit';
 import {PageHeader} from '../tv/PageHeader';
 import {Preview} from '../tv/Preview';
@@ -437,7 +437,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
     if (nextGridOffset !== gridOffset.current) {
       gridOffset.current = nextGridOffset;
       scrollY.stopAnimation();
-      Animated.timing(scrollY, {toValue: -nextGridOffset, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start(({finished}) => {
+      Animated.timing(scrollY, {toValue: -nextGridOffset, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER}).start(({finished}) => {
         if (finished) currentScrollOffset.current = nextGridOffset;
       });
     }
@@ -680,7 +680,7 @@ interface CardProps {
 
 function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.ReactElement {
   const {work, x, y, card, baseUrl, token, selected, first, progress, progressReady, onFocus, onPress} = props;
-  const {colour} = useTheme();
+  const {colour, scheme} = useTheme();
   const kinds: readonly ('backdrop' | 'poster')[] = card.posters ? ['poster', 'backdrop'] : ['backdrop', 'poster'];
   const artKind = preferredArtworkKind(work, kinds);
   const uri = artKind ? workArtworkUrl(baseUrl, work.id, artKind) : undefined;
@@ -706,7 +706,7 @@ function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.Re
       </MediaFocus>
       <View style={{marginTop: u(11.5), paddingHorizontal: u(1.9)}}>
         <CardCaption focused={selected} variant="library" artH={card.cardH} gap={11.5}>
-          <T size={11.904} weight={610} ls={-0.1786} lh={17.9} color={colour.ink} lines={1}>
+          <T size={11.904} weight={610} ls={-0.1786} lh={17.9} color={selected ? focusInk(scheme) : colour.ink} lines={1}>
             {work.title}
           </T>
         </CardCaption>
@@ -769,7 +769,7 @@ function Alphabet({active, onJump}: {active: string | null; onJump: (letter: str
   useEffect(() => {
     if (at < 0) return;
     const to = Math.min(RAIL_SCROLL_MAX, Math.max(0, 8 + at * RAIL_ROW + RAIL_ROW / 2 - (1080 - RAIL_TOP) / 2));
-    const animation = Animated.timing(scroll, {toValue: -to, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true});
+    const animation = Animated.timing(scroll, {toValue: -to, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER});
     animation.start();
     return () => animation.stop();
   }, [at, scroll]);

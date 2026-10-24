@@ -40,6 +40,7 @@ import {RailFrost, Stage} from '../tv/Stage';
 import {DetailSheet, FiltersPanel, LinkPanel, PeriodPicker} from './calendar/CalendarPanels';
 import {AgendaView, MonthView, WeekView, type ViewShared} from './calendar/CalendarViews';
 import {reportQuery, takePendingQuery} from '../debug/parityControl';
+import {lx} from '../debug/layoutMarks';
 import {appNow, isClockFrozen} from '../shell/clock';
 
 export function CalendarScreen(): React.ReactElement {
@@ -191,6 +192,7 @@ function RoundNav({x, glyph, label, onPress}: {x: number; glyph: string; label: 
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('button', label, 50)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
@@ -229,13 +231,14 @@ function TodayPill({label, onPress, settled}: {label: string; onPress: () => voi
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('none')}
       hasTVPreferredFocus
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
       style={{position: 'absolute', left: u(1694.7), top: u(56.2), width: u(83.2), height: u(50), borderRadius: 999, backgroundColor: colour.surface, borderWidth: 1, borderColor: colour.line, alignItems: 'center', justifyContent: 'center'}}
     >
-      <T size={14.72} weight={720} color={colour.inkSoft}>
+      <T wrole="button" size={14.72} weight={720} color={colour.inkSoft}>
         {label}
       </T>
       {focused ? <FocusRing /> : null}

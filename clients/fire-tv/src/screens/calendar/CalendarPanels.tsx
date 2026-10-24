@@ -33,6 +33,7 @@ import {Button} from '../../tv/forms';
 import {FocusRing} from '../../tv/FocusRing';
 import {T, u} from '../../tv/kit';
 import {ItemDetails} from './CalendarParts';
+import {lx} from '../../debug/layoutMarks';
 
 const VIEW_KEYS = {agenda: 'pages.calendar.viewAgenda', week: 'pages.calendar.viewWeek', month: 'pages.calendar.viewMonth'} as const;
 const VIEW_ICONS = {agenda: 'list', week: 'screen', month: 'cover'} as const;
@@ -309,6 +310,7 @@ export function PeriodPicker({label, anchor, locale, onChange}: {label: string; 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
+        {...lx('none')}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         onPress={() => {
@@ -318,7 +320,7 @@ export function PeriodPicker({label, anchor, locale, onChange}: {label: string; 
         // The web's range button: a secondary pill in the header group, left of Previous / Today / Next (right edge 1613.9).
         style={{position: 'absolute', right: u(1920 - 1613.9), top: u(56.2), height: u(50), paddingHorizontal: u(21), borderRadius: 999, borderWidth: 1, borderColor: colour.line, flexDirection: 'row', alignItems: 'center', backgroundColor: colour.surface}}
       >
-        <T size={14.72} weight={720} color={colour.inkSoft}>
+        <T wrole="button" wradius={999} size={14.72} weight={720} color={colour.inkSoft}>
           {label}
         </T>
         {focused ? <FocusRing /> : null}

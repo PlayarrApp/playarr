@@ -16,7 +16,7 @@ import {useTheme} from '../theme/ThemeProvider';
 import {FocusRing} from './FocusRing';
 import {EdgeFade} from './EdgeFade';
 import {T, u} from './kit';
-import {lx} from '../debug/layoutMarks';
+import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
 import {useScrollReveal} from './useScrollReveal';
 
 export const DRAWER_X = 1560;
@@ -110,7 +110,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
 
   const slide = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const animation = Animated.timing(slide, {toValue: 1, duration: 360, easing: Easing.bezier(0.16, 1, 0.3, 1), useNativeDriver: true});
+    const animation = Animated.timing(slide, {toValue: 1, duration: 360, easing: Easing.bezier(0.16, 1, 0.3, 1), useNativeDriver: NATIVE_DRIVER});
     animation.start();
     return () => {
       animation.stop();

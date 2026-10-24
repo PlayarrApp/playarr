@@ -23,8 +23,8 @@ import {loadOnDeck, type OnDeckEntry} from '../lib/onDeck';
 import {runtimeLabel} from '../lib/runtimeLabel';
 import {blend} from '../theme/color';
 import {EdgeFade} from '../tv/EdgeFade';
-import {CardCaption, MediaFocus} from '../tv/mediaFocus';
-import {lx} from '../debug/layoutMarks';
+import {CardCaption, focusInk, MediaFocus} from '../tv/mediaFocus';
+import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
 import {BalancedT, Box, T, u} from '../tv/kit';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -227,7 +227,7 @@ export function HomeScreen(): React.ReactElement {
     return scrollXs[rail];
   };
   useEffect(() => {
-    Animated.timing(railY, {toValue: focus.rail === 0 ? 0 : layout.centredHeadingY - layout.firstHeadingY - focus.rail * layout.railPitch, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+    Animated.timing(railY, {toValue: focus.rail === 0 ? 0 : layout.centredHeadingY - layout.firstHeadingY - focus.rail * layout.railPitch, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER}).start();
   }, [focus.rail, railY, layout.railPitch, layout.centredHeadingY, layout.firstHeadingY]);
   const scrollTargets = useRef<number[]>([]);
   const [scrolled, setScrolled] = useState<number[]>([]);
@@ -527,7 +527,7 @@ const HomeCard = memo(function HomeCard(props: {
   );
   const onPress = useCallback(() => onOpen(work), [onOpen, work]);
   const onLongPress = useCallback(() => onActions(work), [onActions, work]);
-  const {colour} = useTheme();
+  const {colour, scheme} = useTheme();
   const kind = preferredArtworkKind(work, layout.cover ? ['poster', 'backdrop'] : ['backdrop', 'poster']);
   const uri = mediaFileId && !layout.cover ? mediaThumbnailUrl(baseUrl, mediaFileId) : kind ? workArtworkUrl(baseUrl, work.id, kind) : undefined;
   return (
@@ -552,11 +552,11 @@ const HomeCard = memo(function HomeCard(props: {
       </MediaFocus>
       <View style={{marginTop: u(11.25)}}>
         <CardCaption focused={selected} variant="home" artH={layout.artH} gap={11.25}>
-          <T size={11.904} weight={610} ls={-0.17856} color={colour.ink} lh={17.9} lines={1} dy={-1}>
+          <T size={11.904} weight={610} ls={-0.17856} color={selected ? focusInk(scheme) : colour.ink} lh={17.9} lines={1} dy={-1}>
             {title}
           </T>
           <View style={{marginTop: u(2.5)}}>
-            <T size={8.832} weight={400} color={colour.inkMuted} lh={11.5} lines={1} dy={-1}>
+            <T size={8.832} weight={400} color={selected ? focusInk(scheme) : colour.inkMuted} lh={11.5} lines={1} dy={-1}>
               {subtitle}
             </T>
           </View>

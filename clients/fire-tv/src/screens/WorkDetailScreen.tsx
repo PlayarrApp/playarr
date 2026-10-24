@@ -391,7 +391,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
           overview={overview ?? (episodic ? t('pages.workDetail.noEpisodeSynopsis') : t('pages.workDetail.noSynopsis'))}
           movieActions={
             work.kind === 'movie' ? (
-              <PillRow top={37.8}>
+              <PillRow top={39.6}>
                 {playMediaFileId ? <Pill glyph={'\u2637'} label={t('pages.workDetail.playbackButtonLabel')} web={{role: 'button', label: `Playback settings for ${work.title}`}} onPress={() => setSettingsOpen(true)} focusable={!settingsFocused} /> : null}
                 {playMediaFileId ? (
                   <Pill primary glyph="play" label={moviePlayLabel} web={{role: 'link', label: `Play ${work.title}`}} onPress={() => play(playMediaFileId, {title: work.title, ...launchQuality(effectiveOptions)})} hasTVPreferredFocus focusable={!settingsFocused} />
@@ -490,7 +490,7 @@ function CopyColumn(props: {
           </T>
         </View>
       ) : null}
-      <View style={{marginTop: u(27), marginBottom: u(-6.4), flexDirection: 'row', flexWrap: 'wrap', width: u(455)}}>
+      <View style={{marginTop: u(props.subtitle ? 28.5 : 27), marginBottom: u(-6.4), flexDirection: 'row', flexWrap: 'wrap', width: u(455)}}>
         {props.meta.map((entry) => (
           <View key={entry.key} style={{marginRight: u(13.6), marginBottom: u(6.4)}}>
             <T size={10.56} weight={entry.lead ? 680 : 400} lh={15.8} color={entry.lead ? colour.inkSoft : colour.inkMuted}>

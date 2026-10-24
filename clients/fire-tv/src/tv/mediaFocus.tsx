@@ -18,6 +18,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {Animated, Easing, View, type StyleProp, type ViewStyle} from 'react-native';
 import {useTheme} from '../theme/ThemeProvider';
 import {u} from './kit';
+import {NATIVE_DRIVER} from '../debug/layoutMarks';
 
 export type MediaFocusVariant = 'default' | 'library' | 'home' | 'search';
 
@@ -112,7 +113,7 @@ export interface MediaFocusProps {
 function useFocusProgress(focused: boolean, onSettled?: () => void): Animated.Value {
   const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
   useEffect(() => {
-    const animation = Animated.timing(progress, {toValue: focused ? 1 : 0, duration: MEDIA_FOCUS.durationMs, easing: MEDIA_FOCUS.easing, useNativeDriver: true});
+    const animation = Animated.timing(progress, {toValue: focused ? 1 : 0, duration: MEDIA_FOCUS.durationMs, easing: MEDIA_FOCUS.easing, useNativeDriver: NATIVE_DRIVER});
     animation.start(({finished}) => {
       if (finished && !focused) onSettled?.();
     });
@@ -127,6 +128,11 @@ function useFocusProgress(focused: boolean, onSettled?: () => void): Animated.Va
  * centre), so the caption rises with the art: translateY(-lift) plus the scale's push away from the centre, which sits
  * `(artH + gap) / 2` above the caption's own centre.
  */
+/** The caption colour of a focused card: the web forces pure white (dark) or black (light) on it. */
+export function focusInk(scheme: 'dark' | 'light'): string {
+  return scheme === 'dark' ? '#ffffff' : '#000000';
+}
+
 export function CardCaption({focused, variant = 'default', artH, gap, children}: {focused: boolean; variant?: MediaFocusVariant; artH: number; gap: number; children: React.ReactNode}): React.ReactElement {
   const spec = MEDIA_FOCUS.variants[variant];
   const progress = useFocusProgress(focused);

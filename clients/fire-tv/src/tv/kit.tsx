@@ -76,6 +76,8 @@ export interface TProps {
   heading?: boolean;
   /** Parity layout export only: the web role of the element this text is (a button whose only content is text). */
   wrole?: string;
+  /** Parity layout export only: the web element's own corner radius. */
+  wradius?: number;
   /** Parity layout export only: Text views with the same group are one web element. */
   group?: string;
   style?: StyleProp<TextStyle>;
@@ -95,7 +97,7 @@ export function halfLeading(size: number, lh: number | undefined): number {
   return lh >= content ? (lh - content) / 2 : (content - lh) * 0.274;
 }
 
-export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, wrole, group, style, onTextLayout, children}: TProps): React.ReactElement {
+export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, wrole, wradius, group, style, onTextLayout, children}: TProps): React.ReactElement {
   const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(lh), mono});
   // Parity builds record the CSS size, weight and laid-out lines of every run for the layout exporter.
   const node = React.useRef<object | null>(null);
@@ -103,7 +105,7 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
     ? {
         ref: (instance: object | null) => {
           node.current = instance;
-          registerText(instance, {size, weight, lh, group, dy: 0, ...(wrole ? {role: wrole} : heading ? {role: 'heading'} : null)});
+          registerText(instance, {size, weight, lh, group, radius: wradius, dy: 0, ...(wrole ? {role: wrole} : heading ? {role: 'heading'} : null)});
         },
         onTextLayout: (event: NativeSyntheticEvent<TextLayoutEventData>) => {
           registerLines(node.current, event.nativeEvent.lines);

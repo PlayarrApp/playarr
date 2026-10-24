@@ -30,6 +30,7 @@ import {useTheme} from '../../theme/ThemeProvider';
 import {Button} from '../../tv/forms';
 import {BalancedT, Box, T, u} from '../../tv/kit';
 import {legacySnapshot, planItemActions} from '../../lib/calendarActions';
+import {lx} from '../../debug/layoutMarks';
 
 export type EntryStateName = 'inLibrary' | 'monitored' | 'notMonitored';
 
@@ -126,7 +127,7 @@ export function StatusPill({tone, label, size = 13.44}: {tone: EntryPillTone | '
         alignSelf: 'flex-start',
       }}
     >
-      <T size={size} weight={750} lh={18.8} color={colour.ink} lines={1}>
+      <T wradius={999} size={size} weight={750} lh={18.8} color={colour.ink} lines={1}>
         {label}
       </T>
     </View>
@@ -168,6 +169,7 @@ export function EntryCard({item, width, wrap, selected, today, onFocus, onPress,
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={itemTitle(item)}
+      {...lx('button', [itemTitle(item), subtitle, time ? new Intl.DateTimeFormat(locale, {timeStyle: 'short'}).format(time) : t('pages.calendar.allDay'), t(RELEASE_KEYS[first.release_type]), item.kind === 'series' ? null : t(KIND_KEYS[first.media_kind]), t(PILL_KEYS[tone])].filter(Boolean).join(' '), 12)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       onLayout={onLayout}
       onFocus={() => {
@@ -193,7 +195,7 @@ export function EntryCard({item, width, wrap, selected, today, onFocus, onPress,
         backgroundColor: colour.surfaceStrong,
       }}
     >
-      <View style={{width: u(40), height: u(60), borderRadius: u(6), overflow: 'hidden', backgroundColor: colour.surfaceSoft}}>
+      <View {...lx('image', '', 6)} style={{width: u(40), height: u(60), borderRadius: u(6), overflow: 'hidden', backgroundColor: colour.surfaceSoft}}>
         {first.poster_url ? <ArtworkImage uri={first.poster_url} accessToken={undefined} style={{width: '100%', height: '100%'}} resizeMode="cover" /> : null}
       </View>
       <View style={{marginLeft: u(14.4), flex: 1}}>
@@ -381,6 +383,7 @@ function WatchlistPill({listed, onPress}: {listed: boolean | null; onPress: () =
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('button', `+ ${label}`, 999)}
       disabled={listed === null}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}

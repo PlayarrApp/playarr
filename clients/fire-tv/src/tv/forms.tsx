@@ -74,6 +74,7 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('none')}
       disabled={disabled}
       hasTVPreferredFocus={hasTVPreferredFocus}
       onFocus={() => {
@@ -97,7 +98,7 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
         transform: [{scale: focused ? 1.03 : 1}],
       }}
     >
-      <T size={primary ? 14.72 : 11.52} weight={720} color={primary ? colour.onAccent : colour.inkSoft}>
+      <T wrole="button" size={primary ? 14.72 : 11.52} weight={720} color={primary ? colour.onAccent : colour.inkSoft}>
         {label}
       </T>
     </Pressable>
