@@ -1,0 +1,1 @@
+- webOS: single-line text keeps the web line-box height on engines that truncate fractional line heights, so Library captions, Settings rows, the Filters drawer and the nav labels sit where the web puts them.
