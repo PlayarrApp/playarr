@@ -49,6 +49,7 @@ struct TVWorkDetailView: View {
                                    startPoint: .top, endPoint: .bottom)
                         .frame(width: 1038.4, height: 55)
                         .allowsHitTesting(false)
+                        .ignoresSafeArea()
                 }
             }
             #endif
@@ -638,6 +639,7 @@ struct TVWorkDetailView: View {
                         count: "\(season.episodes.count) episodes",
                         y: top
                     )
+                    #if !os(tvOS) // the static web ref shows no season download arrow
                     Button { showDownloadNote = true } label: {
                         Image(systemName: "arrow.down.to.line")
                             .font(.system(size: 18, weight: .regular))
@@ -647,6 +649,7 @@ struct TVWorkDetailView: View {
                     .buttonStyle(TVFocusableCardButtonStyle())
                     .accessibilityLabel("Download \(season.season.title ?? "Season \(season.season.seasonNumber)")")
                     .placed(x: 1841.7, y: top + 10.9, w: 18.7, h: 24.2, alignment: .center)
+                    #endif
                     ForEach(Array(season.episodes.enumerated()), id: \.element.id) { index, episode in
                         let selected = episode.episode.id == activeID
                         episodeCard(detail, season: season, episode: episode, ordered: ordered, selected: selected)
