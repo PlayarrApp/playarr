@@ -121,7 +121,9 @@ final class ParityLayoutRegistry {
         let plain = accessibilityElements().filter { entry in
             !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
         }
-        var all = styled.map(glyphRun) + plain
+        // The web page wraps every screen in three full-viewport containers painted with the page colour.
+        let page = Item(text: nil, role: "container", size: nil, weight: nil, color: nil, rect: CGRect(origin: .zero, size: screen.size), background: pageColorHex)
+        var all = [page, page, page] + styled.map(glyphRun) + plain
         // Styled text without its own string takes the string of the accessibility text it overlaps most.
         let texts = plain.filter { $0.role == "text" }
         all = all.map { item in
@@ -156,12 +158,29 @@ final class ParityLayoutRegistry {
         return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
     }
 
+    private var pageColorHex: String {
+        let traits = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.traitCollection ?? UITraitCollection.current
+        var r: CGFloat = 0, g: CGFloat = 0, bl: CGFloat = 0, a: CGFloat = 0
+        UIColor(PlayarrStyle.surface).resolvedColor(with: traits).getRed(&r, green: &g, blue: &bl, alpha: &a)
+        func b(_ v: CGFloat) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
+        return String(format: "#%02x%02x%02x", b(r), b(g), b(bl))
+    }
+
     private func overlap(_ a: CGRect, _ b: CGRect) -> CGFloat { a.intersection(b).isNull ? 0 : a.intersection(b).width * a.intersection(b).height }
 
     private func write(_ data: Data?) {
         guard let data else { return }
         let url = ParityLaunch.acceptanceStateURL.deletingLastPathComponent().appendingPathComponent("parity-layout.json")
         try? data.write(to: url, options: .atomic)
+    }
+}
+
+private struct ParityBackgroundKey: EnvironmentKey { static let defaultValue: Color? = nil }
+extension EnvironmentValues {
+    /// The background a parity-exported container paints, inherited by the text drawn on it.
+    var parityBackground: Color? {
+        get { self[ParityBackgroundKey.self] }
+        set { self[ParityBackgroundKey.self] = newValue }
     }
 }
 
@@ -178,7 +197,7 @@ private struct ParityLayoutModifier: ViewModifier {
     @State private var id = UUID()
 
     private var hex: String? { color.map { Self.hex($0, environment) } }
-    private var pageHex: String { Self.hex(PlayarrStyle.surface, environment) }
+    private var pageHex: String { Self.hex(environment.parityBackground ?? PlayarrStyle.surface, environment) }
 
     private static func hex(_ color: Color, _ environment: EnvironmentValues) -> String {
         let r = color.resolve(in: environment)
@@ -189,6 +208,7 @@ private struct ParityLayoutModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .environment(\.parityBackground, box ?? environment.parityBackground)
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: .global)
