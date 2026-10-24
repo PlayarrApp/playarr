@@ -124,6 +124,7 @@ export struct AlphabetRail {
             // Web's current letter is a 24 px disc in ink-soft (not the 44 px hit area), the letters sit ~1.5 px high.
             this.tvLetter(letter)
           }
+          .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
           .width(tv(BUTTON_SIZE))
           .height(tv(BUTTON_SIZE))
           .justifyContent(FlexAlign.Center)

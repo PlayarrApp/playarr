@@ -46,9 +46,10 @@ export struct ActionTile {
         .fontSize(tv(LABEL_SIZE))
         .fontWeight(FontWeight.Bold)
         .letterSpacing(tv(LABEL_LETTER_SPACING))
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .fontColor(toResourceColor(activeColors().inkMuted))
         .maxLines(1)
     }
+    .id('px:button:' + this.label)
     .width(tv(TILE_WIDTH))
     .height(tv(TILE_HEIGHT))
     .justifyContent(FlexAlign.Center)
