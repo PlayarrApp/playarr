@@ -10,6 +10,7 @@ import { createServer } from "node:http";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
+import { dumpLayout } from "../layout-dump.mjs";
 import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
 
 // True when no card-art in view (and none cut by the viewport edge) lacks a loaded poster img. A card-art with no img at all and a text
@@ -815,6 +816,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await guard();
       await page.screenshot({ path: file });
     },
+    // The layout schema document (docs/parity/LAYOUT.md) of the page as it is now; call right after screenshot().
+    async layoutDump({ screen, theme }) { await guard(); return dumpLayout(page, { screen, theme }); },
     // Facts about the page as it is now, for the reference verifier: theme, the title on detail pages and action drawers, loading
     // placeholders, open dialogs, broken images, fonts.
     async inspect() {
