@@ -274,7 +274,7 @@ private fun ExperienceCalendarScreen(
                             groups = groups, loading = loading, selected = detailItem, today = today, zone = zone, locale = language.locale,
                             onSelect = { holder.select(it.key) }, onOpenWork = onOpenWork, onPlay = onPlay, actions = viewModel.actions, modifier = body,
                         ) else TvCalendarAgenda(
-                            state = state, groups = groups, loading = loading, selected = detailItem, zone = zone, locale = language.locale, today = today,
+                            state = state, groups = groups, loading = loading, selected = detailItem, ringKey = selectedItem?.key, zone = zone, locale = language.locale, today = today,
                             onSelect = { holder.select(it.key) }, onOpenWork = onOpenWork, onPlay = onPlay, actions = viewModel.actions,
                             onJump = { jumpOpen = true },
                         )
@@ -584,7 +584,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val fill = WebSurfaceStrong
     Surface(
         // Material's clickable Surface paints a focus state layer (a fill); web's focus state is the ring alone.
-        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if ((m === TvCalendarMetrics || (m === PhoneCalendarMetrics && LocalStageScale.current == 1f)) && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
+        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === TvCalendarMetrics && agenda && rowSubtitle.isEmpty()) 78f else if ((m === TvCalendarMetrics || (m === PhoneCalendarMetrics && LocalStageScale.current == 1f)) && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
@@ -654,6 +654,8 @@ internal fun TvCalendarAgenda(
     groups: List<CalendarDayGroup>,
     loading: Boolean,
     selected: CalendarItem?,
+    // The row drawn as selected: only one the user picked (the details preview of the first release carries no ring, as on web).
+    ringKey: String? = selected?.key,
     zone: ZoneId,
     locale: Locale,
     today: LocalDate,
@@ -672,11 +674,11 @@ internal fun TvCalendarAgenda(
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
             // Web: the date range lives in the header group; the details panel takes the library stage (eyebrow at y 259)
             // and the day list starts under the header. Both panes end at the bottom of the screen.
-            val detailsTop = if (tablet) 294.3.dp else 259.dp
+            val detailsTop = if (tablet) 294.3.dp else 264.dp
             val listTop = if (tablet) 135.dp else 167.dp
             val listStart = if (tablet) 534.dp else 783.dp
             // Tablet web: the list ends at x 1193, clear of the right action column (measured on the 1280 x 800 static refs).
-            val listWidth = if (tablet) (maxWidth - listStart - 87.dp) else 1034.dp
+            val listWidth = if (tablet) (maxWidth - listStart - 87.dp) else 1033.4.dp
             val dayFont = LocalCalendarMetrics.current
             val detailScroll = rememberScrollState()
             // The details are the library hero: keep them on the stage (1920 values); only the day list is in css px.
@@ -743,7 +745,8 @@ internal fun TvCalendarAgenda(
                         } else if (item != null) {
                             item(key = "entry-$index-${item.key}") {
                                 PhoneCalendarEntry(
-                                    item, selected = item.key == selected?.key, zone = zone, onClick = { onSelect(item) },
+                                    item, selected = item.key == ringKey, zone = zone, onClick = { onSelect(item) },
+                                    agenda = true,
                                     // The details panel follows focus: UP/DOWN selects, SELECT is not needed.
                                     modifier = Modifier.calendarListRow(focus, "agenda-${item.key}", onFocused = { onSelect(item) }),
                                 )
