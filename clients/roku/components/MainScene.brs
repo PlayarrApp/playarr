@@ -3168,7 +3168,7 @@ sub searchChromeInit()
     m.searchTitle.visible = false
     pgBackButton(holder, 153.6)
     m.searchHeaderTitle = CreateObject("roSGNode", "TrackedText")
-    m.searchHeaderTitle.translation = [226.6, 56.2]
+    m.searchHeaderTitle.translation = [226.6, 58.2]
     m.searchHeaderTitle.spec = PageTitleSpec("Search")
     holder.AppendChild(m.searchHeaderTitle)
     m.searchHeaderDivider = pgRect(holder, 348, 73, 1, 16, "line")

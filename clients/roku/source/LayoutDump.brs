@@ -130,6 +130,7 @@ sub ParityLayoutTracked(node as Object, spec as Object, colour as Dynamic, op as
     if meta <> invalid
         item.size = meta.px
         item.font = PlayarrFontPath(spec.weight)
+        item.weightReq = spec.weight
     end if
     ParityLayoutEmit(item)
 end sub
@@ -381,7 +382,7 @@ sub ParityAnnotated(node as Object, op as Float)
     r = node.sceneBoundingRect()
     if node.hasField("parityText")
         c = ThemeColor(node.parityColor)
-        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(node.parityBg), id: "mark", text: node.parityText, x: r.x, y: r.y, w: r.width, h: r.height, op: op, role: "", aria: node.parityRole, color: ParityHex(c), lines: 1, tracking: 0, radius: node.parityRadius, size: node.paritySize, font: PlayarrFontPath(node.parityWeight) })
+        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(node.parityBg), id: "mark", text: node.parityText, x: r.x, y: r.y, w: r.width, h: r.height, op: op, role: "", aria: node.parityRole, color: ParityHex(c), lines: 1, tracking: 0, radius: node.parityRadius, size: node.paritySize, font: PlayarrFontPath(node.parityWeight), weightReq: node.parityWeight })
         return
     end if
     ParityBox(node.parityRole, node.parityName, r.x, r.y, r.width, r.height, node.parityRadius, node.parityBg, op)
@@ -554,7 +555,7 @@ sub ParityProfile(item as Object, content as Object)
     ParityBox("container", "", c0[0], c0[1], 244 * cs, 244 * cs, 50, "bg")
     if isAdd
         t = ParityCirclePoint(item, [99.0, 69.4])
-        ParityLayoutEmit({ k: "tracked", bg: ParityToken("bg"), id: "plus", text: "+", x: t[0], y: t[1], w: 46.1 * cs, h: 105 * cs, op: 1, role: "", color: ParityHex(ThemeColor("inkSoft")), lines: 1, tracking: 0, size: 76.8, font: PlayarrFontPath(300) })
+        ParityLayoutEmit({ k: "tracked", bg: ParityToken("bg"), id: "plus", text: "+", x: t[0], y: t[1], w: 46.1 * cs, h: 105 * cs, op: 1, role: "", color: ParityHex(ThemeColor("inkSoft")), lines: 1, tracking: 0, size: 76.8, font: PlayarrFontPath(300), weightReq: 300 })
     else
         i0 = ParityCirclePoint(item, [17.95, 17.95])
         ParityBox("image", "", i0[0], i0[1], 208.1 * cs, 208.1 * cs, 0, "bg")
@@ -590,7 +591,7 @@ sub ParityProfilesPage()
         ParityBox("image", "", a[0] + 13, a[1] + 13, 18, 18, 0, tok)
         ParityBox("button", "Sign out " + who, a[0] + 52.8, a[1], 101.2, 44, 999, tok)
         ParityBox("image", "", a[0] + 69.8, a[1] + 13, 18, 18, 0, tok)
-        ParityLayoutEmit({ k: "tracked", bg: ParityToken(tok), id: "signout", text: "Sign out", x: a[0] + 95, y: a[1] + 14, w: 42, h: 15, op: 1, role: "", color: ParityHex(ThemeColor("inkSoft")), lines: 1, tracking: 0, size: 10.75, font: PlayarrFontPath(720) })
+        ParityLayoutEmit({ k: "tracked", bg: ParityToken(tok), id: "signout", text: "Sign out", x: a[0] + 95, y: a[1] + 14, w: 42, h: 15, op: 1, role: "", color: ParityHex(ThemeColor("inkSoft")), lines: 1, tracking: 0, size: 10.75, font: PlayarrFontPath(720), weightReq: 720 })
     end if
 end sub
 
@@ -637,14 +638,14 @@ sub ParityTiles(specs as Object, title as String)
         if t.ink = true and not inkOn then grole = "playerInk"
         gh = Int(t.glyphSize * 1.011 + 0.5) + Int(t.glyphSize * 0.353 + 0.5)
         if glyph = "▶" then gh = t.glyphSize * 1.46
-        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(tok), id: "tile", text: glyph, x: t.startX, y: cy - 0.65 - gh / 2, w: t.gw, h: gh, op: 1, role: "", color: ParityHex(ThemeColor(grole)), lines: 1, tracking: 0, size: t.glyphSize, font: PlayarrFontPath(400) })
+        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(tok), id: "tile", text: glyph, x: t.startX, y: cy - 0.65 - gh / 2, w: t.gw, h: gh, op: 1, role: "", color: ParityHex(ThemeColor(grole)), lines: 1, tracking: 0, size: t.glyphSize, font: PlayarrFontPath(400), weightReq: 400 })
         lrole = "ink"
         if t.primary then lrole = "playerInk"
         if inkOn then lrole = "bg"
         if t.ink = true and not inkOn then lrole = "playerInk"
         lh = Int(t.labelSize * 1.011 + 0.5) + Int(t.labelSize * 0.353 + 0.5)
         if t.labelSize > 11.5 then lh = 17
-        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(tok), id: "tile", text: t.text, x: t.startX + t.gw + t.gap, y: cy - 0.95 - lh / 2, w: t.lw, h: lh, op: 1, role: "", color: ParityHex(ThemeColor(lrole)), lines: 1, tracking: 0, size: t.labelSize, font: PlayarrFontPath(700) })
+        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(tok), id: "tile", text: t.text, x: t.startX + t.gw + t.gap, y: cy - 0.95 - lh / 2, w: t.lw, h: lh, op: 1, role: "", color: ParityHex(ThemeColor(lrole)), lines: 1, tracking: 0, size: t.labelSize, font: PlayarrFontPath(700), weightReq: 700 })
     end for
 end sub
 

@@ -87,6 +87,7 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
     if (it.k === "label" || it.k === "tracked") {
       if (it.size == null) continue;
       const f = fontFromUri(it.font);
+      if (it.weightReq) f.weight = it.weightReq;
       const lineH = it.size * LINE_HEIGHT;
       const textW = it.k === "label" ? it.textw : it.w;
       let x = it.x;
