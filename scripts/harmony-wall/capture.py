@@ -263,6 +263,9 @@ def export_layout(name, image=None):
         if raw is None:
             print(f"layout {name}: the app sent no tree", flush=True)
             return
+        rawdir = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark")  # the unconverted tree: exporter fixes replay offline
+        os.makedirs(rawdir, exist_ok=True)
+        open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
         count = layout_export.write(raw, name, "light" if THEME == "light" else "dark", viewport, os.path.join(out, "layout"),
                                     clock_pinned=True, image=image)  # patch_clock.py pins the preview clock to the fixture instant

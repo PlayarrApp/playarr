@@ -234,6 +234,7 @@ jobs:
             capture/dark
             capture/light
             capture/layout
+            capture/layout-raw
             capture/poster
             capture/motion
             capture/build.json

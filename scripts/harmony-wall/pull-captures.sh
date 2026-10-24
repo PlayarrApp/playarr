@@ -18,3 +18,4 @@ for L in $(find "$TMP" -type d -name layout | grep -v _debug); do mkdir -p "$DES
 D=$(find "$TMP" -name dpad.json | head -1); [ -z "$D" ] || cp "$D" "$DEST/dev/dpad.json"
 cp "$(find "$TMP" -name build.json | sort | head -1)" "$DEST/dev/build.json"
 cat "$DEST/dev/build.json"
+for L in $(find "$TMP" -type d -name layout-raw); do mkdir -p "$DEST/layout-raw"; cp -r "$L/." "$DEST/layout-raw/"; done  # kept beside dev/, not in the legend cand dir
