@@ -113,7 +113,7 @@ MouseArea {
             elide: Text.ElideRight
             color: Tokens.ink
             font.family: Tokens.family610   // web --card-title-weight: 610
-            font.letterSpacing: -0.015 * 8.9 * Tokens.u
+            font.letterSpacing: -0.0285 * 8.9 * Tokens.u
             font.pixelSize: 8.9 * Tokens.u
         }
         Label { renderType: Text.NativeRendering;

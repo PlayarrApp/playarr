@@ -48,6 +48,6 @@ QtObject {
     readonly property string family820: nunito820.name
     // Device-pixel snapping like the browser: edges land on whole pixels so art is not resampled by a half pixel.
     function px(v) { return Math.round(v * u) }
-    readonly property real pad: Math.round(16 * u)
+    readonly property real pad: 16 * u
     readonly property real radius: 10 * u
 }
