@@ -18,6 +18,8 @@ case $device in
   *) echo "device must be tvos or macos" >&2; exit 2 ;;
 esac
 repo=PlayarrApp/playarr
+# SCREENS=home,movies limits the screens (suite --screens); the build is cached per device by the workflow (DerivedData).
+if [[ -n ${SCREENS:-} ]]; then screens_args=(-f "suite_args=--only screens --screens $SCREENS"); fi
 dispatch() { # <extra gh args...>: dispatch and print the new run id
   gh workflow run parity-apple.yml -R "$repo" --ref "$wfref" -f devices="$device" -f ref="$ref" -f stream=false -f chain=false "$@" >&2
   sleep 25
