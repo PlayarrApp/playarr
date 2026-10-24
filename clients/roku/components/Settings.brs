@@ -46,20 +46,35 @@ sub renderSettings()
     activeIdx = settingsSectionIndexOf(m.settingsPanel)
     pageBegin("Preferences", 672)
     ' Web: a hairline as wide as the title, then the section name; no description line.
-    titleW = pgButtonWidth(m.pageHead, "Preferences", 0, 50, 34, 600) - 16.6
+    titleW = pgButtonWidth(m.pageHead, "Preferences", 0, 50, 33.6, 580) - 16.6
     pgRect(m.pageHead, 226.6, 112, titleW, 1, "line")
-    pgLabel(m.pageHead, 226.6, 117, 420, 17, UCase(sections[activeIdx].title), 12, 700, "ink")
+    pgLabel(m.pageHead, 226.6, 119.1, 420, 15, UCase(sections[activeIdx].title), 11.14, 680, "ink", { tracking: 0.49 })
+    ' The web numbers sections by their place in the full list, so a hidden admin-only section leaves a gap (08).
+    full = ["appearance", "avatar", "language", "player", "server", "lock", "invite", "latency", "remote", "data", "home"]
     for i = 0 to sections.Count() - 1
         y = 162 + 91.9 * i
-        if i = activeIdx then pgRect(m.pageBody, 153.6, y, 480.4, 91.9, "surfaceSoft")
-        num = i + 1
+        rowBg = "surface"
+        if i = activeIdx
+            pgRect(m.pageBody, 153.6, y, 470.4, 91.9, "surfaceSoft")
+            rowBg = "surfaceSoft"
+        end if
+        num = 1
+        for k = 0 to full.Count() - 1
+            if full[k] = sections[i].id then num = k + 1
+        end for
         numText = num.ToStr()
         if num < 10 then numText = "0" + numText
-        pgLabel(m.pageBody, 185.6, y + 23.8, 40, 18, numText, 10, 800, "inkMuted")
-        pgLabel(m.pageBody, 245.6, y + 23.8, 330, 44, sections[i].title, 30, 500, "ink")
+        pgLabel(m.pageBody, 185.6, y + 27.3, 40, 14, numText, 9.92, 760, "ink", { fitWidth: 11.9 })
+        pgLabel(m.pageBody, 245.6, y + 25.8, 330, 40, sections[i].title, 29.6, 480, "ink", { tracking: -1.038 })
         arrowRole = "inkMuted"
-        if i = activeIdx then arrowRole = "ink"
-        pgIcon(m.pageBody, 586, y + 33, 20, "arrow-right.png", arrowRole)
+        arrowX = 571.2
+        if i = activeIdx
+            arrowRole = "ink"
+            arrowX = 576.2
+        end if
+        pgIcon(m.pageBody, arrowX, y + 35.3, 20, "arrow-right.png", arrowRole)
+        pgMark(m.pageBody, "link", numText + " " + sections[i].title + " →", 153.6, y, 470.4, 91.9, 0, rowBg)
+        pgMarkText(m.pageBody, "→", arrowX, y + 31.3, 20.8, 28, 20.8, 400, arrowRole, rowBg)
         pgFocusable(153.6, y, 480.4, 91.9, 12, "section", sections[i].id, true)
     end for
     id = m.settingsPanel
@@ -115,51 +130,79 @@ function pgSegmented(x as Float, y as Float, h as Float, labels as Object, activ
 end function
 
 sub pgHeading(y as Float, text as String)
-    pgLabel(m.pageBody, 773.8, y, 995, 40, text, 26, 600, "ink")
+    pgLabel(m.pageBody, 773.8, y, 995, 40, text, 26.4, 560, "ink", { tracking: -0.929, aria: "heading" })
 end sub
 
-sub pgHint(y as Float, text as String, size = 13 as Integer)
+sub pgHint(y as Float, text as String, size = 13.12 as Float)
     pgLabel(m.pageBody, 773.8, y, 995, 22, text, size, 400, "inkMuted", { wrap: true })
 end sub
 
 sub panelAppearance()
-    pgHeading(210, "Colour theme")
-    pgSegmentedWide(773.8, 266, 56, ["System", "Light", "Dark"], PairingThemeIndex(m.themePreference), "theme")
+    pgHeading(211, "Colour theme")
+    pgSegmentedWide(773.8, 265.8, 56, ["System", "Light", "Dark"], PairingThemeIndex(m.themePreference), "theme")
     pgRect(m.pageBody, 773.8, 352, 1042, 1, "line")
-    pgHeading(382, "Home screen artwork")
-    pgHint(426.5, "Show portrait covers instead of wide media thumbnails on the home screen.")
+    pgMark(m.pageBody, "container", "", 773.8, 352, 1042.2, 169, 0, "surface")
+    pgHeading(384.3, "Home screen artwork")
+    pgHint(429.5, "Show portrait covers instead of wide media thumbnails on the home screen.")
     coverIdx = 0
     if m.homeCover = true then coverIdx = 1
     pgSegmentedWide(773.8, 465, 56, ["Thumbnails", "Covers"], coverIdx, "artwork")
     pgRect(m.pageBody, 773.8, 551, 1042, 1, "line")
-    pgHeading(581, "Artwork size")
-    pgHint(626, "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
+    pgMark(m.pageBody, "container", "", 773.8, 551.2, 1042.2, 169, 0, "surface")
+    pgHeading(583.5, "Artwork size")
+    pgHint(628.7, "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
     sizes = ["small", "medium", "large"]
     active = 1
     for i = 0 to 2
         if sizes[i] = m.artworkSizePref then active = i
     end for
-    pgSegmentedWide(773.8, 665, 56, ["Small", "Medium", "Large"], active, "artSize")
+    pgSegmentedWide(773.8, 664.2, 56, ["Small", "Medium", "Large"], active, "artSize")
 end sub
 
 ' Web segmented control (.segmented-control): equal cells across the panel width, the chosen one filled with the ink colour.
 sub pgSegmentedWide(x as Float, y as Float, h as Float, labels as Object, activeIdx as Integer, action as String)
     n = labels.Count()
-    gap = 4.0
-    w = (1042 - gap * (n - 1)) / n
+    gap = 7.9
+    w = (1042.2 - gap * (n - 1)) / n
     for i = 0 to n - 1
         cx = x + i * (w + gap)
+        bx = cx
+        by = y
+        bw = w
+        bh = h
         if i = activeIdx
-            pgRound(m.pageBody, cx, y, w, h, 14, "ink")
-            pgLabel(m.pageBody, cx, y, w, h, labels[i], 13, 700, "bg", { horizAlign: "center", vertAlign: "center" })
+            ' The chosen cell is drawn 1.025 times larger (web transform).
+            bx = cx - w * 0.01245
+            by = y - h * 0.01245
+            bw = w * 1.0249
+            bh = h * 1.0249
+            pgRound(m.pageBody, bx, by, bw, bh, 14, "ink")
         else
-            pgRound(m.pageBody, cx, y, w, h, 14, "surfaceSoft", 120)
+            pgRound(m.pageBody, cx, y, w, h, 14, "surfaceSoft", 163)
             pgRound(m.pageBody, cx, y, w, h, 14, "line", -1, true)
-            pgLabel(m.pageBody, cx, y, w, h, labels[i], 13, 700, "inkMuted", { horizAlign: "center", vertAlign: "center" })
         end if
+        role = "inkMuted"
+        bgRole = "c:292428:e9e7e7"
+        if i = activeIdx
+            role = "bg"
+            bgRole = "ink"
+        end if
+        shown = labels[i]
+        if action = "theme" or action = "artSize" then shown = LCase(shown)
+        fit = segmentedFit(LCase(labels[i]))
+        pgLabel(m.pageBody, bx + (bw - fit) / 2, by + 20.2 * bh / h, fit + 4, 15, shown, 10.56, 900, role, { fitWidth: fit })
+        pgMark(m.pageBody, "button", labels[i], bx, by, bw, bh, 12, bgRole)
         pgFocusable(cx, y, w, h, 14, action, i, true)
     end for
 end sub
+
+' Measured width of each option label in the web segmented control (text-transform lowercase, letter-spacing .05em).
+function segmentedFit(text as String) as Float
+    table = { system: 37.4, light: 26.6, dark: 25.6, thumbnails: 61.3, covers: 34.3, small: 29.7, medium: 41.6, large: 29.1 }
+    w = table[text]
+    if w = invalid then w = PlayarrTextWidth(text, 10.56, 900, 0.5)
+    return w
+end function
 
 sub panelAvatar()
     presets = ["astronaut", "cat", "dinosaur", "robot", "pirate", "alien"]

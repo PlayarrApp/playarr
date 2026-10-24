@@ -54,7 +54,7 @@ sub ParityLayoutWalk(node as Object, opacity as Float, ctx as Object)
         ParityCard(node)
     else if kind = "WebLabel"
         if node.text <> ""
-            ParityLayoutTracked(node.findNode("run"), { id: node.id, rectH: node.rectH, text: node.text, size: node.size, weight: node.weight, tracking: node.tracking, lineHeight: ParityWebLineHeight(node) }, node.color, op, ctx)
+            ParityLayoutTracked(node.findNode("run"), { id: node.id, rectH: node.rectH, text: node.text, size: node.size, weight: node.weight, tracking: node.tracking, lineHeight: ParityWebLineHeight(node), aria: node.aria }, node.color, op, ctx)
         end if
         return
     end if
@@ -125,7 +125,7 @@ sub ParityLayoutTracked(node as Object, spec as Object, colour as Dynamic, op as
     if Left(tid, 8) = "navLabel" and spec.size > 9 then reported = spec.size / 1.05
     if spec.weight <> invalid then meta = { px: reported, weight: spec.weight }
     item = { k: "tracked", bg: ParityTextBg(tid, x0 + ParityDx(), y0 + ParityDy()), id: tid, text: text, x: x0, y: y0, w: x1 - x0, h: y1 - y0, op: op, role: spec.role, color: ParityColour(spec, colour), lines: node.lineCount, tracking: spec.tracking }
-    if spec.aria <> invalid then item.aria = spec.aria
+    if spec.aria <> invalid and spec.aria <> "" then item.aria = spec.aria
     if meta <> invalid
         item.size = meta.px
         item.font = PlayarrFontPath(spec.weight)
@@ -150,7 +150,14 @@ end function
 
 ' The colour the web reports as "behind" an element: a theme token (dock and header: bg, page content: surface, art: surfaceSoft).
 function ParityToken(token as String) as String
+    if token = "sample" or token = "" or token = "inherit" then return ""
     if Left(token, 1) = "#" then return token
+    ' "c:<dark>:<light>": the web's composited background of a translucent fill, per theme (read from the web layout document).
+    if Left(token, 2) = "c:"
+        parts = token.Split(":")
+        if m.global.themeMode = "light" then return "#" + parts[2]
+        return "#" + parts[1]
+    end if
     if token = "accent" then return "#cf3157"
     if token = "progressTrackBg" then return "#5a5559"
     return Left(ParityHex(ThemeColor(token)), 7)
@@ -170,6 +177,8 @@ sub ParityBox(role as String, name as String, x as Float, y as Float, w as Float
     label = name
     if role = "container" or role = "image" or role = "img" then label = ""
     item = { k: "box", role: role, text: label, x: x, y: y, w: w, h: h, radius: r, bg: ParityToken(bgToken) }
+    if bgToken <> "sample" and bgToken <> "" and bgToken <> "inherit" then item.fixed = true
+    if bgToken = "inherit" then item.inherit = true
     if opacity < 0.995 then item.opacity = opacity
     ParityLayoutEmit(item)
 end sub
@@ -188,14 +197,14 @@ end sub
 sub ParityDock()
     kinds = navDockLabelList()
     activeIdx = activeNavDockIndex()
-    sample = "bg"
+    sample = "c:1c191c:fbfaf9"
     found = false
     for g = 0 to 2
         bg = m.top.findNode("navGroupBg" + g.ToStr())
         if bg <> invalid and bg.visible
             r = bg.sceneBoundingRect()
             found = true
-            ParityBox("container", "", r.x, r.y, r.width - 0.5, r.height - 0.4, 22, "bg")
+            ParityBox("container", "", r.x, r.y, r.width - 0.5, r.height - 0.4, 22, "c:1c191c:fbfaf9")
         end if
     end for
     if not found then return
@@ -204,19 +213,21 @@ sub ParityDock()
         hl = m.navHighlights[i].sceneBoundingRect()
         on = i = activeIdx or (m.navDockMode = true and i = m.navDockIndex)
         name = m.navLabels[i].text
+        tileBg = sample
+        if on then tileBg = "c:2f2c2f:e9e7e6"
         if on
-            ParityBox("link", name, hl.x + 0.2, hl.y - 0.8, 67.2, 67.2, 16, sample)
+            ParityBox("link", name, hl.x + 0.2, hl.y - 0.8, 67.2, 67.2, 16, tileBg)
         else
             ParityBox("link", name, hl.x + 1.8, hl.y + 0.8, 64, 64, 16, sample)
         end if
         ic = m.navIcons[i].sceneBoundingRect()
-        ParityLayoutEmit({ k: "box", role: "image", text: "", x: ic.x, y: ic.y, w: ic.width, h: ic.height, radius: 0, bg: ParityToken("bg") })
+        ParityLayoutEmit({ k: "box", role: "image", text: "", x: ic.x, y: ic.y, w: ic.width, h: ic.height, radius: 0, bg: ParityToken(tileBg), fixed: true })
     end for
     ' Identity tile
     pill = m.top.findNode("userPillBg")
     if pill <> invalid and pill.visible
         r = pill.sceneBoundingRect()
-        at = "bg"
+        at = "c:1c191c:fbfaf9"
         ParityBox("container", "", r.x, r.y, r.width - 0.5, r.height - 0.6, 22, at)
         ParityBox("link", "Signed in as " + m.session.profileName + ". Open profiles.", r.x + 6.8, r.y + 7.7, 64, 64, 16, at)
         av = m.userAvatar.sceneBoundingRect()
@@ -354,6 +365,7 @@ sub ParityPageShell()
     art = false
     panel = false
     shell = true
+    panelX = 729.6
     if state = "home"
         art = true
         panel = true
@@ -366,8 +378,9 @@ sub ParityPageShell()
         panel = true
     else if state = "page" and m.pageKind = "calendar"
         art = m.calendarView = "agenda"
-    else if state = "settings"
-        shell = true
+    else if state = "page" and m.pageKind = "settings"
+        panel = true
+        panelX = 672
     else
         shell = false
     end if
@@ -380,7 +393,7 @@ sub ParityPageShell()
         ParityBox("image", "", 133.03, -22.9, 899.97, 1190.59, 0, "surface", op)
     end if
     ParityBox("container", "", 0, 0, 1920, 1080, 0, "surface")
-    if panel then ParityBox("container", "", 729.6, 0, 1190.4, 1080, 0, "surface")
+    if panel then ParityBox("container", "", panelX, 0, 1920 - panelX, 1080, 0, "surface")
 end sub
 
 ' Where a list lays an item out is not reachable from the item, so the scene tells every card its origin before the cards answer.

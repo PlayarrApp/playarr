@@ -23,6 +23,8 @@
     <field id="lineHeight" type="float" value="0" onChange="refresh" />
     <field id="tracking" type="float" value="0" onChange="refresh" />
     <field id="rectH" type="float" value="0" />
+    <field id="aria" type="string" value="" />
+    <field id="fitWidth" type="float" value="0" onChange="refresh" />
     <field id="textWidth" type="float" value="0" />
     <field id="lineCount" type="integer" value="0" />
   </interface>

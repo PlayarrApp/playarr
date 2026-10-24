@@ -129,7 +129,7 @@ end sub
 
 sub onStageOverviewChange()
     ' Web .tv-preview-overview is 12.864 px, weight 600, and 324 px wide at 1920x1080; Roku keeps the matched small-text line height.
-    m.stageOverviewLabel.spec = { text: m.top.stageOverview, size: 12.86, weight: 600, tracking: 0, role: "inkMuted", width: 324, lineHeight: 20.33, maxLines: 5 }
+    m.stageOverviewLabel.spec = { text: m.top.stageOverview, size: 12.86, weight: 600, tracking: 0, role: "heroSoft", width: 324, lineHeight: 20.33, maxLines: 5 }
     layoutStageText()
 end sub
 

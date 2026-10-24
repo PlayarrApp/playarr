@@ -2915,11 +2915,11 @@ sub updateBrowsePreview(work as Object)
     if titleLines < 1 then titleLines = 1
     metaY = 303.5 + 62.208 * titleLines + 27
     m.browsePreviewMeta.translation = [153.6, metaY]
-    m.browsePreviewMeta.spec = { text: year, size: 13.06, weight: 600, tracking: 0, role: "inkSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta.spec = { text: year, size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
     metaX = 153.6
     if year <> "" then metaX = 153.6 + m.browsePreviewMeta.textWidth + 12.8
     m.browsePreviewMeta2.translation = [metaX, metaY]
-    m.browsePreviewMeta2.spec = { text: genreLine, size: 13.06, weight: 600, tracking: 0, role: "inkMuted", width: 300, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta2.spec = { text: genreLine, size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 300, lineHeight: 18.144, maxLines: 1 }
     m.browseMetaY = metaY
     m.browseMetaGenreLine = genreLine
     m.homeHeroFocusedWorkId = work.id
@@ -2927,7 +2927,7 @@ sub updateBrowsePreview(work as Object)
     overview = work.overview
     if overview = invalid or overview = "" then overview = "No synopsis available."
     m.browsePreviewOverview.translation = [153.6, metaY + 41.3]
-    m.browsePreviewOverview.spec = { text: overview, size: 13.82, weight: 600, tracking: 0, role: "inkMuted", width: 336, lineHeight: 23, maxLines: 5 }
+    m.browsePreviewOverview.spec = { text: overview, size: 13.82, weight: 600, tracking: 0, role: "heroSoft", width: 336, lineHeight: 23, maxLines: 5 }
     ' Defer key-art download so acceptBrowseCatalog paints the grid first.
     ' Home hero uses sync GetToFile successfully; here it must not block paint.
     if m.browseKeyArt <> invalid
@@ -4504,7 +4504,7 @@ end sub
 
 ' Web LibraryPreview third span: the focused work's runtime, filled in once its detail is known (same cache and request as the Home hero).
 sub showBrowsePreviewRuntime(workId as String)
-    m.browsePreviewMeta3.spec = { text: "", size: 13.06, weight: 600, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta3.spec = { text: "", size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 120, lineHeight: 18.144, maxLines: 1 }
     if workId = "" or m.homeHeroDetailTimer = invalid then return
     runtimeMs = m.homeHeroRuntimeById.Lookup(workId)
     if runtimeMs <> invalid
@@ -4522,7 +4522,7 @@ sub placeBrowsePreviewRuntime(runtimeMs as Dynamic)
     x = m.browsePreviewMeta2.translation[0] + 12.8
     if m.browseMetaGenreLine <> invalid and m.browseMetaGenreLine <> "" then x = x + m.browsePreviewMeta2.textWidth
     m.browsePreviewMeta3.translation = [x, m.browseMetaY]
-    m.browsePreviewMeta3.spec = { text: label, size: 13.06, weight: 600, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta3.spec = { text: label, size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 120, lineHeight: 18.144, maxLines: 1 }
 end sub
 
 sub onHomeHeroDetailTimer()

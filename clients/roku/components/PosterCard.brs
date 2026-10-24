@@ -225,8 +225,8 @@ sub onFocusChanged()
     applyCaptionFocus()
     ' A focused card's caption is white (web .is-focused).
     if shadowOpacity > 0.5 and not m.cardListMode and not m.top.findNode("circleMask").visible
-        m.title.color = ThemeColor("playerInk")
-        m.kind.color = ThemeColor("playerInk")
+        m.title.color = ThemeColor("cardFocusInk")
+        m.kind.color = ThemeColor("cardFocusInk")
     else
         m.title.color = ThemeColor("ink")
         m.kind.color = ThemeColor("inkMuted")

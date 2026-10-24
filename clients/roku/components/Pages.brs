@@ -78,6 +78,8 @@ function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Floa
         if opts.lineSpacing <> invalid then label.lineSpacing = opts.lineSpacing
         if opts.mono = true then label.tracking = 0
         if opts.tracking <> invalid then label.tracking = opts.tracking
+        if opts.aria <> invalid then label.aria = opts.aria
+        if opts.fitWidth <> invalid then label.fitWidth = opts.fitWidth
     end if
     label.text = text
     parent.AppendChild(label)
@@ -342,14 +344,14 @@ sub pgFocusable(x as Float, y as Float, w as Float, h as Float, r as Float, acti
 end sub
 
 ' Pill button: width from the text. style "primary" (accent fill) or "secondary" (outlined). Returns the width.
-function pgButtonWidth(parent as Object, text as String, padX as Float, h as Float, fontSize = 15 as Integer, fontWeight = 700 as Integer) as Float
+function pgButtonWidth(parent as Object, text as String, padX as Float, h as Float, fontSize = 15 as Float, fontWeight = 700 as Integer) as Float
     probe = pgLabel(parent, 0, 0, 0, h, text, fontSize, fontWeight, "inkSoft")
     textW = probe.textWidth
     parent.removeChild(probe)
     return textW + padX * 2
 end function
 
-function pgButton(parent as Object, x as Float, y as Float, h as Float, text as String, style as String, action as String, data = invalid as Dynamic, padX = 21 as Float, scrolls = false as Boolean, fontSize = 15 as Integer, fontWeight = 700 as Integer) as Float
+function pgButton(parent as Object, x as Float, y as Float, h as Float, text as String, style as String, action as String, data = invalid as Dynamic, padX = 21 as Float, scrolls = false as Boolean, fontSize = 15 as Float, fontWeight = 700 as Integer) as Float
     w = pgButtonWidth(parent, text, padX, h, fontSize, fontWeight)
     textRole = "inkSoft"
     if style = "primary"
@@ -378,13 +380,13 @@ end function
 ' tiny label. Used for every header action (Calendar link, Filters).
 ' Shared page header pieces (web PageHeader): the round Back button, the title spec and the right-hand action tile. Every page
 ' (Pages, Library, Detail, Search) draws these here and nowhere else; clients/roku/tests/test_page_anatomy.py enforces it.
-sub pgBackButton(parent as Object, x as Float, name = "Back to Home" as String)
+sub pgBackButton(parent as Object, x as Float, name = "Back to Home" as String, role = "link" as String)
     pgRound(parent, x, 56.3, 50, 50, 25, "surface", 179)
     pgRound(parent, x, 56.3, 50, 50, 25, "line", -1, true)
     pgIcon(parent, x + 16.4, 73, 17, "arrow-left.png", "inkSoft")
-    pgMark(parent, "link", name, x, 56.2, 50, 50, 50)
+    pgMark(parent, role, name, x, 56.2, 50, 50, 50, "c:1f1b1f:fefefd")
     ' The web draws the arrow as a text glyph: the same box, reported as the text it is.
-    arrow = pgMark(parent, "text", "←", x + 16.4, 69.2, 17.3, 23, 0)
+    arrow = pgMark(parent, "text", "←", x + 16.4, 69.2, 17.3, 23, 0, "c:1f1b1f:fefefd")
     arrow.addFields({ parityText: "←", paritySize: 17.28, parityWeight: 720, parityColor: "inkSoft" })
 end sub
 
@@ -398,8 +400,8 @@ sub pgShellTile(parent as Object, x as Float, y as Float, label as String, icon 
     pgRound(parent, x, y, 62, 72, 14, "line", -1, true)
     pgIcon(parent, x + 19, y + 15, 24, icon, "inkMuted")
     pgLabel(parent, x, y + 44.6, 62, 14, label, 8.26, 700, "inkMuted", { horizAlign: "center", tracking: 0.163 })
-    pgMark(parent, "button", label, x, y, 62, 72, 14, "bg")
-    pgMark(parent, "image", "", x + 19, y + 15, 24, 24, 0, "bg")
+    pgMark(parent, "button", label, x, y, 62, 72, 14, "c:1e1b1e:fdfcfc")
+    pgMark(parent, "image", "", x + 19, y + 15, 24, 24, 0, "c:1e1b1e:fdfcfc")
 end sub
 
 sub pgTile(parent as Object, x as Float, y as Float, label as String, icon as String, action as String, data = invalid as Dynamic)
@@ -432,7 +434,10 @@ sub pageBegin(title as String, panelX as Float)
     if clientsPage then backX = 0
     backName = "Back to Home"
     if m.pageKind = "calendar" then backName = "Back to home"
-    pgBackButton(m.pageHead, backX, backName)
+    if m.pageKind = "settings" then backName = "Settings"
+    backRole = "link"
+    if m.pageKind = "settings" then backRole = "button"
+    pgBackButton(m.pageHead, backX, backName, backRole)
     pgFocusable(backX, 56.3, 50, 50, 25, "back")
     if clientsPage
         pgFocusable(1552, 50, 144, 48, 24, "clientsTheme")
@@ -1968,10 +1973,10 @@ sub pgCalendarCircle(x as Float, name as String, icon as String, glyphX as Float
     pgRound(m.pageHead, x, 56.2, 50, 50, 25, "line", -1, true)
     pgIcon(m.pageHead, glyphX - 0.3, 73, 15, icon, "inkSoft")
     pgFocusable(x, 56.2, 50, 50, 25, action)
-    pgMark(m.pageHead, "button", name, x, 56.2, 50, 50, 50, "surface")
+    pgMark(m.pageHead, "button", name, x, 56.2, 50, 50, 50, "sample")
     glyph = "←"
     if name = "Next" then glyph = "→"
-    pgMarkText(m.pageHead, glyph, glyphX, 71.1, 14.7, 20, 14.72, 720, "inkSoft", "surface")
+    pgMarkText(m.pageHead, glyph, glyphX, 71.1, 14.7, 20, 14.72, 720, "inkSoft", "sample")
 end sub
 
 sub pgCalendarPill(x as Float, text as String, action as String)
@@ -1980,7 +1985,7 @@ sub pgCalendarPill(x as Float, text as String, action as String)
     pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "line", -1, true)
     pgLabel(m.pageHead, x + 20.6, 71.1, w - 41.2, 20, text, 14.72, 720, "inkSoft", { horizAlign: "center" })
     pgFocusable(x, 54.8, w, 52.8, 26.4, action)
-    pgMarkText(m.pageHead, text, x + 20.6, 71.1, w - 41.2, 20, 14.72, 720, "inkSoft", "surface", "button", 999)
+    pgMarkText(m.pageHead, text, x + 20.6, 71.1, w - 41.2, 20, 14.72, 720, "inkSoft", "sample", "button", 999)
 end sub
 
 sub renderCalendarAgenda(entries as Object)
@@ -2145,7 +2150,7 @@ sub renderCalendarMonth(entries as Object)
         end if
     end for
     ' The web names the grid for assistive tech with a hidden status line, then draws the weekday row.
-    statusMark = pgMark(m.pageBody, "status", calendarRangeLabelLong(r), 153.6, 163, 120.1, 26, 0, "surface")
+    statusMark = pgMark(m.pageBody, "status", calendarRangeLabelLong(r), 153.6, 163, 120.1, 26, 0, "sample")
     statusMark.addFields({ parityText: calendarRangeLabelLong(r), paritySize: 19.2, parityWeight: 400, parityColor: "ink" })
     names = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
     for c = 0 to 6
@@ -2162,7 +2167,7 @@ sub renderCalendarMonth(entries as Object)
         x = gx + (i mod 7) * cw
         y = gy + Int(i / 7) * ch
         if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12)
-        pgMark(m.pageBody, "container", "", x, y, cw, ch, 0, "surface")
+        pgMark(m.pageBody, "container", "", x, y, cw, ch, 0, "sample")
     end for
     for rr = 0 to rows
         pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
@@ -2200,7 +2205,7 @@ sub renderCalendarMonth(entries as Object)
             text = chips[k].title
             if chips[k].count > 1 then text = text + " · " + chips[k].count.ToStr() + "×"
             cy = y + 1.8 + k * 25.4
-            pgMark(m.pageBody, "button", chips[k].title + ", " + chips[k].status + ", " + calendarDayHeading(dt, false), x + 5.8, cy, 226, 44, 4, "surface")
+            pgMark(m.pageBody, "button", chips[k].title + ", " + chips[k].status + ", " + calendarDayHeading(dt, false), x + 5.8, cy, 226, 44, 4, "sample")
             pgRound(m.pageBody, x + 11.4, cy + 17.6, 8.8, 8.8, 4.4, "ink")
             pgMark(m.pageBody, "container", "", x + 11.4, cy + 17.6, 8.8, 8.8, 50, dot)
             pgLabel(m.pageBody, x + 27.4, cy + 12.5, cw - 38, 17, text, 12.48, 400, "ink", { maxLines: 1 })
