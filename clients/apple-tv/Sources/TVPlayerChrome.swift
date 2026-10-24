@@ -94,18 +94,23 @@ struct TVPlayerChrome: View {
                 Text("Minimise")
                     .font(TVTheme.font(size: 11.2, weight: .bold))
                     .tracking(0.22)
+                    .parityLayout(text: "Minimise", size: 11.2, weight: Int(TVTheme.cssWeight(.bold)), tracking: 0.22)
             }
             .foregroundStyle(Color.white)
             .frame(width: 124, height: 48)
-            .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58)))
+            .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.81)))
+            .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
             .placed(x: 1678, y: 37.8, w: 124, h: 48)
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .light))
                     .foregroundStyle(Color.white)
                     .frame(width: 48, height: 48)
                     .background(Circle().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58)))
+                    .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
@@ -164,35 +169,40 @@ struct TVPlayerChrome: View {
             Text(Self.clock(state.position))
                 .font(TVTheme.font(size: 10.88, weight: .regular))
                 .foregroundStyle(Color.white)
+                .parityLayout(text: Self.clock(state.position), size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color.white)
                 .placed(x: 302.8, y: 981.8, w: 30, h: 16.3)
             Text("/")
                 .font(TVTheme.font(size: 10.88, weight: .regular))
                 .foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
+                .parityLayout(text: "/", size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
                 .placed(x: 330.6, y: 981.8, w: 8, h: 16.3)
             Text(Self.clock(state.duration))
                 .font(TVTheme.font(size: 10.88, weight: .regular))
                 .foregroundStyle(Color.white)
+                .parityLayout(text: Self.clock(state.duration), size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color.white)
                 .placed(x: 340.2, y: 981.8, w: 30, h: 16.3)
         }
     }
 
     private var rightGroup: some View {
         ZStack(alignment: .topLeading) {
-            icon("speaker.wave.2.fill", x: 1323.5)
-            icon("captions.bubble", x: 1401.1)
-            icon("list.bullet", x: 1478.7)
+            icon("speaker.wave.2.fill", x: 1323.5, opacity: 0.3)
+            icon("text.rectangle", x: 1401.1)
+            icon("text.line.last.and.arrowtriangle.forward", x: 1478.7)
             Button(action: onToggleQualityMenu) {
                 HStack(spacing: 11.8) {
                     Text("HD")
                         .font(TVTheme.font(size: 7.68, weight: .bold))
                         .tracking(0.31)
                         .foregroundStyle(Color.white)
+                        .parityLayout(text: "HD", size: 7.68, weight: Int(TVTheme.cssWeight(.bold)), color: Color.white, tracking: 0.31)
                         .frame(width: 28, height: 20)
                     Text(state.qualityLabel)
                         .font(TVTheme.font(size: 10.56, weight: .bold))
                         .tracking(0.11)
                         .foregroundStyle(Color.white)
                         .lineLimit(1)
+                        .parityLayout(text: state.qualityLabel, size: 10.56, weight: Int(TVTheme.cssWeight(.bold)), color: Color.white, tracking: 0.11)
                 }
                 .padding(.horizontal, 15.5)
                 .frame(width: 173.4, height: 60.5, alignment: .leading)
@@ -203,7 +213,7 @@ struct TVPlayerChrome: View {
             .modifier(TVFocusTag(binding: focus, control: .quality))
             .placed(x: 1527.8, y: 959.8, w: 173.4, h: 60.5)
             icon("info.circle", x: 1730.4)
-            icon("airplayvideo", x: 1808)
+            icon("macbook.and.iphone", x: 1808)
         }
     }
 
@@ -248,6 +258,7 @@ struct TVPlayerChrome: View {
                 .font(TVTheme.font(size: 8.64, weight: .heavy))
                 .tracking(1.3)
                 .foregroundStyle(Color.white.opacity(0.56))
+                .parityLayout(text: "QUALITY", size: 8.64, weight: Int(TVTheme.cssWeight(.heavy)), tracking: 1.3)
                 .placed(x: 1084.6, y: 549.8, w: 600, h: 28.9)
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(DesignTokens.Color.brandPrimary.opacity(0.22))
@@ -259,20 +270,24 @@ struct TVPlayerChrome: View {
             Text(state.qualityLabel)
                 .font(TVTheme.font(size: 12.48, weight: .bold))
                 .foregroundStyle(Color.white)
+                .parityLayout(text: state.qualityLabel, size: 12.48, weight: Int(TVTheme.cssWeight(.bold)), color: Color.white)
                 .placed(x: 1095.5, y: 591.4, w: 300, h: 18.7)
             Text("Source quality")
                 .font(TVTheme.font(size: 9.28, weight: .regular))
                 .foregroundStyle(white54)
+                .parityLayout(text: "Source quality", size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
                 .placed(x: 1095.5, y: 612, w: 300, h: 13.9)
             Text("\u{2713}")
                 .font(TVTheme.font(size: 11.84, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.brandPrimary)
+                .parityLayout(text: "\u{2713}", size: 11.84, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.brandPrimary)
                 .placed(x: 1658.1, y: 599.8, w: 16, h: 17.8)
             ForEach(columns, id: \.0) { column in
                 Text(column.0.uppercased())
                     .font(TVTheme.font(size: 10.24, weight: .heavy))
                     .tracking(0.82)
                     .foregroundStyle(white54)
+                    .parityLayout(text: column.0.uppercased(), size: 10.24, weight: Int(TVTheme.cssWeight(.heavy)), tracking: 0.82)
                     .placed(x: column.1, y: 646.7, w: 156.6, h: 27.5, alignment: .center)
             }
             ForEach(Array(Self.tiers.enumerated()), id: \.offset) { row, tier in
@@ -280,10 +295,12 @@ struct TVPlayerChrome: View {
                 Text(tier.name)
                     .font(TVTheme.font(size: 12.16, weight: .heavy))
                     .foregroundStyle(Color.white)
+                    .parityLayout(text: tier.name, size: 12.16, weight: Int(TVTheme.cssWeight(.heavy)), color: Color.white)
                     .placed(x: 1088.6, y: top + 13, w: 104.7, h: 18.2)
                 Text(tier.height)
                     .font(TVTheme.font(size: 9.28, weight: .regular))
                     .foregroundStyle(white54)
+                    .parityLayout(text: tier.height, size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
                     .placed(x: 1088.6, y: top + 33.1, w: 104.7, h: 13.9)
                 ForEach(Array(columns.enumerated()), id: \.offset) { column, spec in
                     ZStack(alignment: .topLeading) {
@@ -297,10 +314,12 @@ struct TVPlayerChrome: View {
                         Text("\(tier.mbps[column]) Mbps")
                             .font(TVTheme.font(size: 12.48, weight: .bold))
                             .foregroundStyle(Color.white)
+                            .parityLayout(text: "\(tier.mbps[column]) Mbps", size: 12.48, weight: Int(TVTheme.cssWeight(.bold)), color: Color.white)
                             .placed(x: 10.9, y: 12.7, w: 130, h: 18.7)
                         Text(spec.0)
                             .font(TVTheme.font(size: 9.28, weight: .regular))
                             .foregroundStyle(white54)
+                            .parityLayout(text: spec.0, size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
                             .placed(x: 10.9, y: 33.3, w: 130, h: 13.9)
                     }
                     .frame(width: 156.6, height: 60, alignment: .topLeading)
@@ -334,7 +353,7 @@ private struct TVScrubberBody: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Capsule().fill(Color.white.opacity(0.2)).frame(width: 1780, height: 6).offset(y: 15)
-            Capsule().fill(Color.white.opacity(0.34)).frame(width: 491.8, height: 6).offset(y: 15)
+            Capsule().fill(Color.white.opacity(0.34)).frame(width: 1380, height: 6).offset(y: 15)
             Capsule().fill(DesignTokens.Color.brandPrimary).frame(width: max(progress, 0), height: 6).offset(y: 15)
             if isFocused {
                 Capsule().stroke(Color.white, lineWidth: 3).frame(width: 1786, height: 12).offset(x: -3, y: 12)

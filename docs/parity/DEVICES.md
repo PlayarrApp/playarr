@@ -147,6 +147,21 @@ ships its download engine.
 Notifications (a live system notification per download) and the now-playing entry are checked only where the driver sets
 `supports.notifications` and `supports.nowPlaying`; elsewhere the suite records "not supported".
 
+## Check for updates: which clients have an in-app updater
+
+The web profile page shows a "Check for updates" button only where the shell can install a new build itself
+(`isAndroidTv` in `clients/tv-web/web/src/pages/Profiles.tsx`, bridge in `androidTvUpdate.ts`). The layout score drops it
+from the denominator (`scripts/parity/layout-exclusions.json`) for the clients below, whose packages change only through a
+store or a sideload. Native packages and their update paths are in `docs/versioning-policy.md`.
+
+| Client | In-app updater | Evidence |
+| --- | --- | --- |
+| Android TV, Android phone and tablet | Yes | Google Play In-App Updates and the sideload installer bridge |
+| iOS and iPadOS | Yes | `PlayarrKit/Update` module |
+| Roku | No | Channel Store updates only; Roku has no API to install a channel from inside a channel |
+| Fire TV (Vega OS) | No | `.vpkg` is immutable once installed (`docs/versioning-policy.md`) |
+| Xbox | No | MSIX: Microsoft Store or sideload (`docs/versioning-policy.md`) |
+
 ## Legend and build.json rules
 
 - After every capture run, unmerged branches included, write captures to the legend dir, refresh `web/` in the same
@@ -159,6 +174,12 @@ Notifications (a live system notification per download) and the now-playing entr
   D-pad is checks passed of the suite's D-pad checks (playback is no longer scored: it moved to the performance suite); overall is the mean of the parts that have results
   (mobile has no D-pad). Coverage (captured screens out of 15 per theme) is shown beside, never mixed into a percentage.
 
+## Apple TV and macOS: one-command hosted run
+
+`scripts/parity/apple/run.sh <tvos|macos> [app-ref] [workflow-ref]` dispatches `parity-apple.yml` (static server, pinned
+clock `2026-10-07T12:00:00Z`, screens in both themes plus the D-pad checks), waits for it, downloads the artifacts and
+writes them into the legend directory named by `LEGEND_ROOT` (`apple/tvos` or `macos/dev`, with `dpad.json` and
+`build.json`). The workflow ref defaults to the app ref, so driver changes run before they reach `main`.
 ## iPhone and iPad: reproduce command
 
 Hosted only (no local Apple toolchain), static server, pinned clock `2026-10-07T12:00:00Z` (the workflow default):

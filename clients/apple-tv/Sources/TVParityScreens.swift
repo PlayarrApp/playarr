@@ -97,7 +97,7 @@ extension TVParityLaunch {
     /// The clock and calendar "now" are the web refs' instant: live routes, and key-driven captures (the driver passes
     /// `-PlayarrParityNow` or `-PlayarrParityState`) so the dates match the seeded server.
     static var pinnedClock: Bool {
-        isLive || ProcessInfo.processInfo.arguments.contains { $0 == "-PlayarrParityNow" || $0 == "-PlayarrParityState" }
+        isLive || ProcessInfo.processInfo.arguments.contains { $0 == "-PlayarrParityNow" || $0 == "-PlayarrParityState" || $0 == "-PlayarrMuted" }
     }
 
     /// Static chrome (floating nav, no focus effects, frozen clock): fixture screens and live routes.
@@ -521,6 +521,20 @@ enum TVParityState {
         write()
     }
 
+    /// The suite's `/player/<id>` route while the player is on screen (it is pushed inside the detail, not on the path).
+    private static var routeBeforePlayer: String?
+    static func setPlayer(_ id: UUID?) {
+        if let id {
+            if routeBeforePlayer == nil { routeBeforePlayer = base }
+            base = "/player/\(id.uuidString.lowercased())"
+            query = [:]
+        } else if let previous = routeBeforePlayer {
+            base = previous
+            routeBeforePlayer = nil
+        }
+        write()
+    }
+
     static func setProfiles(_ open: Bool) {
         base = open ? "/profiles" : base
         write()
@@ -611,17 +625,21 @@ enum TVParityState {
     private static func focusState() -> (label: String?, item: String?) { (nil, nil) }
     #endif
 
+    /// The state file: `-PlayarrParityState <path>` (the Mac driver) or the app's Documents folder.
+    static var stateURL: URL? {
+        let args = ProcessInfo.processInfo.arguments
+        let explicit = args.firstIndex(of: "-PlayarrParityState").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
+        return explicit.map { URL(fileURLWithPath: $0) }
+            ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("parity-state.json")
+    }
+
     private static func write() {
         let found = focusState()
         let state: [String: Any] = ["route": route, "userID": currentUserID, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
                                     "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any,
                                     "items": items as Any]
         // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
-        let args = ProcessInfo.processInfo.arguments
-        let explicit = args.firstIndex(of: "-PlayarrParityState").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
-        guard let data = try? JSONSerialization.data(withJSONObject: state),
-              let target = explicit.map({ URL(fileURLWithPath: $0) })
-                ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("parity-state.json") else { return }
+        guard let data = try? JSONSerialization.data(withJSONObject: state), let target = stateURL else { return }
         do { try data.write(to: target, options: .atomic) } catch { NSLog("PlayarrParity: cannot write %@: %@", target.path, String(describing: error)) }
     }
 }

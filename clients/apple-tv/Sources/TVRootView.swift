@@ -316,6 +316,7 @@ private struct TVProductionShell<Stage: View>: View {
 #endif
     /// Who's watching, opened from the nav's profile tile (web `/profiles`).
     @State private var showProfiles = false
+    @State private var openedByLaunchArgument = false
     /// A full-screen page (the player) is showing: no nav, no clock.
     @State private var chromeHidden = false
     /// The stage's pushed pages (titles, playlists); a tab change starts from the root.
@@ -406,7 +407,8 @@ private struct TVProductionShell<Stage: View>: View {
 #if os(macOS)
                     // Web restores the card that opened a detail: remember it on the push, hand it back on the pop.
                     if newPath.count > oldPath.count, case .work(let opened) = newPath.last {
-                        MacFocusEngine.shared.returnWorkID = opened.id
+                        MacFocusEngine.shared.returnWorkID = openedByLaunchArgument ? nil : opened.id
+                        openedByLaunchArgument = false
                         MacFocusEngine.shared.returnReady = false
                     } else if newPath.count < oldPath.count, newPath.isEmpty {
                         MacFocusEngine.shared.returnReady = true
@@ -437,6 +439,7 @@ private struct TVProductionShell<Stage: View>: View {
                     // From the library, so Back returns to its grid like the web's history does.
                     nav = detail.work.kind == .series ? .series : .movies
                     try? await Task.sleep(for: .milliseconds(1500))
+                    openedByLaunchArgument = true // no card opened it: Back lands on the grid's first card, as the web history does
                     path = [.work(detail.work)]
                 }
                 .onChange(of: showProfiles) { _, open in if open { TVParityState.setProfiles(true) } else { TVParityState.setRoute(tab: tab, path: path) } }
@@ -913,6 +916,7 @@ struct TVProfilesView: View {
                         .font(TVTheme.font(size: 10.37 * s, weight: .heavy))
                         .tracking(1.35 * s)
                         .foregroundStyle(palette.brandPink)
+                        .parityLayout(text: "PROFILES", size: 10.37 * s, weight: Int(TVTheme.cssWeight(.heavy)), color: palette.brandPink, tracking: 1.35 * s)
                         .frame(height: 15.6 * s)
 
                     Text("Who\u{2019}s watching?")
@@ -920,6 +924,7 @@ struct TVProfilesView: View {
                         .tracking(-5.8 * s)
                         .foregroundStyle(palette.ink)
                         .lineLimit(1)
+                        .parityLayout(text: "Who\u{2019}s watching?", size: 80.64 * s, weight: Int(TVTheme.cssWeight(.medium)), color: palette.ink, tracking: -5.8 * s)
                         .frame(height: 76.6 * s)
                         .padding(.top, 7.2 * s)
 
@@ -1105,6 +1110,7 @@ struct TVProfilesView: View {
                         .font(TVTheme.font(size: 17.28 * s, weight: .semibold))
                         .foregroundStyle(active ? palette.ink : palette.inkSoft)
                         .lineLimit(1)
+                        .parityLayout(text: profile.displayName.isEmpty ? profile.username : profile.displayName, size: 17.28 * s, weight: Int(TVTheme.cssWeight(.semibold)))
                         .offset(y: active ? 4.6 : 0)
 
                     Text(statusLabel(for: profile, busy: busy))
@@ -1112,6 +1118,7 @@ struct TVProfilesView: View {
                         .tracking(0.42 * s)
                         .textCase(.uppercase)
                         .foregroundStyle(palette.inkMuted)
+                        .parityLayout(text: (statusLabel(for: profile, busy: busy)).uppercased(), size: 9.41 * s, weight: Int(TVTheme.cssWeight(.bold)), color: palette.inkMuted, tracking: 0.42 * s)
                         .frame(minHeight: 12 * s)
                         .offset(y: active ? 4.6 : 0)
                 }
@@ -1136,6 +1143,7 @@ struct TVProfilesView: View {
             .disabled(switchingID != nil)
             .accessibilityLabel(profile.displayName.isEmpty ? profile.username : profile.displayName)
             #if os(macOS)
+            .environment(\.macDownTo, selected ? "profile-gear" : nil) // web: Down from the avatar lands on the gear
             // The driver reads the focused profile from the Mac focus engine's tag (the household page reported none, so the
             // Down, Down, Select path of the Settings capture could not follow focus).
             .environment(\.macParityTag, MacParityTag(title: profile.displayName.isEmpty ? profile.username : profile.displayName,
@@ -1167,6 +1175,10 @@ struct TVProfilesView: View {
             .focusEffectDisabled(true)
             .focused($focusedTarget, equals: .settings)
             .accessibilityLabel("Settings for \(profile.displayName)")
+            #if os(macOS)
+            .environment(\.macFocusName, "profile-gear")
+            .environment(\.macParityTag, MacParityTag(title: "Settings", id: "profile-settings", rail: 1, index: 0, gridPosition: nil))
+            #endif
 
             // Web `.profile-sign-out-button` — glass pill, danger on focus.
             Button {
@@ -1182,6 +1194,9 @@ struct TVProfilesView: View {
             .buttonStyle(TVProfileActionButtonStyle())
             .focusEffectDisabled(true)
             .accessibilityLabel("Sign out \(profile.displayName)")
+            #if os(macOS)
+            .environment(\.macParityTag, MacParityTag(title: "Sign out", id: "profile-sign-out", rail: 1, index: 1, gridPosition: nil))
+            #endif
         }
     }
 
