@@ -85,15 +85,15 @@ export struct ChoiceSegments {
   private viewShapes(value: string): void {
     if (value === 'list') {
       Column({ space: 2 }) {
-        this.viewShape(20, 2)
-        this.viewShape(20, 2)
-        this.viewShape(20, 2)
+        this.viewShape(20, isTvMetrics() ? 2.94 : 2)
+        this.viewShape(20, isTvMetrics() ? 2.94 : 2)
+        this.viewShape(20, isTvMetrics() ? 2.94 : 2)
       }
     } else if (value === 'screen') {
       Row({ space: 2.06 }) {
-        this.viewShape(5.46, 3.86)
-        this.viewShape(5.46, 3.86)
-        this.viewShape(5.48, 3.86)
+        this.viewShape(5.46, isTvMetrics() ? 13.13 : 3.86)
+        this.viewShape(5.46, isTvMetrics() ? 13.13 : 3.86)
+        this.viewShape(5.48, isTvMetrics() ? 13.13 : 3.86)
       }
     } else {
       Row({ space: 2 }) {
@@ -131,31 +131,31 @@ export struct ChoiceSegments {
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
-         if (!isTvMetrics() && choice.icon !== undefined && choice.icon.length > 0) {
+         if (choice.icon !== undefined && choice.icon.length > 0) {
           // phone View buttons: web draws three outlined bars (list, screen, cover) over a lower-case 900-weight word
           Column({ space: 6.85 }) {
             this.viewShapes(choice.value)
             Text(choice.label.toLowerCase()).fontFamily(nunito(900))
-              .fontSize(TOUCH_CHOICE_LABEL_SIZE)
+              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
           .id('px:button:' + choice.label)
           .width(tv(this.choiceWidth()))
-          .height(TOUCH_CHOICE_HEIGHT)
+          .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
           .justifyContent(FlexAlign.Center)
           .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
             toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
           .borderRadius(CHOICE_RADIUS)
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
-          .scale(choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
+          .scale(!isTvMetrics() && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
           .focusable(true)
           .onClick(() => {
             this.onChoose(choice.value);
           })
          } else {
           Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? (this.large ? choice.label.toLowerCase() : choice.label) : capitalWords(choice.label))).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CHOICE_LABEL_SIZE)) : nunito(680))
-            .id((isTvMetrics() && !this.large) || (choice.icon !== undefined && choice.icon.length > 0) ? '' : 'px:button:' + choice.label)
+            .id('px:button:' + choice.label)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)

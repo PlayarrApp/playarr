@@ -261,7 +261,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             if kind == "Text" and pxid.count(":") >= 2 and pxid.startswith("px:") and w >= 40 and h >= 40 and pxid.split(":")[1] != "heading":  # a Text drawn as a round control: the control and its glyph are two web elements
                 _, prole, pname = pxid.split(":", 2)
                 radius = num(attrs.get("borderRadius"), 0.0)
-                if prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))).lower() == pname.lower() and abs(w - h) > 2:
+                if prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))).lower() == pname.lower() and not (str(attrs.get("content", attrs.get("text", ""))) == str(attrs.get("content", attrs.get("text", ""))).lower() != pname) and abs(w - h) > 2:
                     as_text[0] = (pname, prole, (999 if radius >= min(w, h) / 2 - 0.5 else radius) if radius else 0)  # web's labelled pill is one text-run element with the button role
                 else:
                     el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
