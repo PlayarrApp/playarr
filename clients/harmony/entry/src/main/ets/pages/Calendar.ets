@@ -652,10 +652,11 @@ export struct ReleaseCalendar {
       .layoutWeight(1)
       .width('100%')
       Row({ space: tv(6) }) {
-        Text(String(dayOfMonth(cell.day))).fontFamily(nunitoAt(500, tv(MONTH_DAY_SIZE)))
+        Text(String(dayOfMonth(cell.day))).fontFamily(isTvMetrics() ? nunitoAt(500, tv(MONTH_DAY_SIZE)) : nunito(640))
           .fontSize(tv(MONTH_DAY_SIZE))
           .fontWeight(FontWeight.Medium)
-          .fontColor(toResourceColor(activeColors().inkSoft))
+          .margin({ top: isTvMetrics() ? 0 : 3.84 })
+          .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : (cell.inMonth ? activeColors().ink : activeColors().inkMuted)))
         if (groupSeriesEpisodes(cell.entries).length > this.monthLinesFor(cellHeight)) {
           Text(`+${groupSeriesEpisodes(cell.entries).length - this.monthLinesFor(cellHeight)} more`).fontFamily(nunitoAt(400, tv(MONTH_LINE_SIZE)))
             .fontSize(tv(MONTH_LINE_SIZE))
@@ -668,7 +669,7 @@ export struct ReleaseCalendar {
     }
     .layoutWeight(1)
     .height(isTvMetrics() ? tv(cellHeight) : '100%')
-    .padding({ left: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, right: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, top: tv(2) })
+    .padding({ left: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, right: isTvMetrics() ? tv(MONTH_CELL_PADDING) : 1, top: isTvMetrics() ? tv(2) : 0.8 })
     .backgroundColor(cell.inMonth ? Color.Transparent : toResourceColorWithAlpha(activeColors().surfaceSoft, 0.4))
     .border({
       width: cell.isToday ? 2 : 1,
@@ -1238,7 +1239,7 @@ export struct ReleaseCalendar {
               .fontSize(tv(MONTH_WEEKDAY_SIZE))
               .letterSpacing(tv(0.96))
               .textCase(TextCase.UpperCase)
-              .fontColor(toResourceColor(activeColors().inkSoft))
+              .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
               .textAlign(TextAlign.Center)
               .layoutWeight(1)
           }, (name: string): string => name)

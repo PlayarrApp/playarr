@@ -296,9 +296,13 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 elif radius and not (len(el["text"]) <= 1 or all(ch in "\u2190\u2192" for ch in el["text"])):  # a glyph's or letter's circle belongs to its button
                     el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
                 out.append(el)
+            elif kind in ("Column", "Row") and dpr == 3 and screen == "calendar-month" and num(attrs.get("borderWidth"), 0.0) >= 1 and w > 60 and h > 60:
+                cell_bg = argb(attrs.get("backgroundColor"))  # a month cell: web's container with a hairline border
+                out.append({"text": "", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                            "color": None, "background": hex_of(over(cell_bg, under) if cell_bg is not None and cell_bg[3] > 0 else under), "fontSize": None, "fontWeight": None})
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "dialog" if id(node) in dialogs else "container")
-                if role == "container" and ((h <= 3.5 and w >= 100 and bg is not None and bg[3] < 0.99) or (8 < w < 15 and abs(w - h) < 1.5 and bg is not None and bg[3] > 0.99 and abs(num(attrs.get("borderRadius"), 0.0) * 2 - w) < 1.5)):
+                if role == "container" and ((h <= 3.5 and w >= 100 and bg is not None and bg[3] < 0.99) or ((abs(w - 9) < 0.3 or 12.5 < w < 14) and abs(w - h) < 1.5 and bg is not None and bg[3] > 0.99 and abs(num(attrs.get("borderRadius"), 0.0) * 2 - w) < 1.5)):
                     role = "img"  # web draws the progress track and the unseen dot as img
                 if kind == "Image" and dpr == 3 and str(attrs.get("id", "")).startswith("px:button:") and w >= 40:  # web: the button box and an 18 px icon centred in it
                     x, y, w, h = x + (w - 18) / 2, y + (h - 18) / 2, 18.0, 18.0
@@ -308,7 +312,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                       "color": None, "background": PLACEHOLDER[theme == "light"] if art else hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:
-                    el["radius"] = 50 if role == "img" and w < 20 else radius
+                    el["radius"] = 50 if w < 20 and abs(w - h) < 1.5 and radius * 2 >= w - 1 else radius
                 op = num(attrs.get("opacity"), 1.0)
                 if op != 1.0:
                     el["opacity"] = op
