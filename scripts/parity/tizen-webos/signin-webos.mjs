@@ -1,0 +1,22 @@
+// Signs the webOS simulator in to the static parity server as `parity` (password from ~/.secrets, never printed).
+import { readFileSync } from "node:fs";
+const sec = readFileSync(process.env.HOME + "/.secrets", "utf8");
+const get = (k) => (sec.match(new RegExp(`^${k}=(.*)$`, "m"))?.[1] ?? "").replace(/^['"]|['"]$/g, "");
+const url = process.env.PARITY_SERVER_URL ?? "http://192.168.1.220:18500", pw = get("PLAYARR_PARITY_STATIC_PASSWORD");
+const list = await (await fetch("http://127.0.0.1:9226/json/list")).json();
+const t = list.find((x) => /webos-stage/.test(x.url));
+const ws = new WebSocket(t.webSocketDebuggerUrl); let id = 0; const p = new Map();
+ws.onmessage = (m) => { const d = JSON.parse(m.data); p.get(d.id)?.(d); };
+await new Promise((r) => (ws.onopen = r));
+const ev = (expression) => new Promise((res) => { const i = ++id; p.set(i, res); ws.send(JSON.stringify({ id: i, method: "Runtime.evaluate", params: { expression, awaitPromise: true, returnByValue: true } })); }).then((d) => d.result?.result?.value);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+await ev(`(localStorage.clear(), sessionStorage.clear(), localStorage.setItem("playarr:apiBaseUrl", ${JSON.stringify(url)}), setTimeout(() => location.reload(), 50), true)`);
+await sleep(7000);
+await ev(`[...document.querySelectorAll("button,a")].find((b) => /sign in manually/i.test(b.textContent))?.click()`);
+await sleep(2500);
+const set = (name, v) => `(() => { const i = document.querySelector('input[name="${name}"]'); if (!i) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(i, ${JSON.stringify(v)}); i.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`;
+console.log("fields", await ev(set("username", "parity")), await ev(set("password", pw)));
+await ev(`(document.querySelector('button[type="submit"]') ?? document.querySelector("form button"))?.click()`);
+await sleep(8000);
+console.log(await ev(`JSON.stringify({ h: location.hash, t: document.body.innerText.slice(0, 160) })`));
+ws.close(); process.exit(0);

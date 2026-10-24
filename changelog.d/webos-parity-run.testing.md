@@ -1,0 +1,1 @@
+- Parity tooling: the webOS and Tizen driver captures detail pages at page top and the player at its 2 s frame; one command reproduces the webOS run.

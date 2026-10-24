@@ -169,6 +169,27 @@ export async function createDriver() {
       socket.close();
     }
   }
+  // Player chrome for the refs (web driver playerControls): the clip paused on its 2 s frame, controls revealed, focus dropped.
+  // Chromium 94 presents the frame before an exact 2.000 s seek target (burned-in 1.933), so the pin aims one frame later (2.04 s) to show the 2.000 s frame.
+  async function pinPlayerFrame() {
+    const pin = (t) => ev(`(async () => {
+      const v = document.querySelector("video");
+      v.pause();
+      if (Math.abs(v.currentTime - ${t}) > 0.01) await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = ${t}; setTimeout(res, 8000); });
+      v.pause();
+      if (v.requestVideoFrameCallback) await new Promise((res) => { v.requestVideoFrameCallback(() => res()); setTimeout(res, 3000); });
+      return v.paused && Math.abs(v.currentTime - ${t}) < 0.05;
+    })()`);
+    if (!(await until(`(() => { const v = document.querySelector("video"); return !!v && v.readyState >= 2; })()`, 60000))) throw new Error("player video has no frames");
+    await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: 960, y: 540 });
+    if (!(await until(`!!document.querySelector(".player-controls") && !document.querySelector(".player-controls").classList.contains("is-hidden")`, 10000))) throw new Error("player controls did not show");
+    // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
+    let held = 0;
+    for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.04)) ? held + 1 : 0; await sleep(700); }
+    if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
+    await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
+    await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
+  }
   async function clickDisplayAt(x, y) {
     const tree = execFileSync("xwininfo", ["-display", display, "-root", "-tree"], { encoding: "utf8" });
     const window = tree.split("\n").find((line) => line.includes('"webOS TV') && /\d+x\d+[+-]\d+[+-]-?\d+/.test(line));
@@ -534,6 +555,9 @@ export async function createDriver() {
       }
       if (device === "webos" && (await keyboardVisible())) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
       if (await ev(BAD)) throw new Error("signed out or error page");
+      if (device === "webos" && (await ev(`/^#\\/player\\//.test(location.hash)`))) await pinPlayerFrame();
+      // Detail refs are taken at page top (the web driver does the same): the focus-scroll to the first episode card must not show in the capture.
+      if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
       await settleVisibleImages();
       await guard();
       const xwd = `${file}.xwd`;
