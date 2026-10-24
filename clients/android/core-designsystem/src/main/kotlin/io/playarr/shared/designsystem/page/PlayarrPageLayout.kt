@@ -83,6 +83,7 @@ fun PlayarrPageLayout(
         Modifier
             .fillMaxSize()
             .background(PlayarrWebTheme.palette.surface)
+            .parityBox("container", background = PlayarrWebTheme.palette.surface)
             .then(if (tv || !panel) Modifier else Modifier.windowInsetsPadding(phoneInsets))
             .semantics { pageIdTag = pageId },
     ) {

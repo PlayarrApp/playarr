@@ -246,7 +246,7 @@ private fun ExperienceCalendarScreen(
                 ) {
                     PhoneKeyArt(null, "", null, Modifier.fillMaxSize())
                     PhoneStageWash(Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().background(phonePanelBrush()))
+                    Box(Modifier.fillMaxSize().parityBox("container", background = WebSurface).background(phonePanelBrush()))
                 }
             }
         } else null,

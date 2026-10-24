@@ -121,23 +121,14 @@ internal object PlayarrLayoutExport {
                     .put("rect", JSONObject().put("x", 0).put("y", 0).put("w", mainView.width).put("h", mainView.height))
                     .put("color", JSONObject.NULL).put("background", hex(c.toArgb())).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
                 // The web page's landmark boxes: the shell, the page (named by its aria-label), and the right-hand panel.
+                // Phone and tablet: the wrapper containers are read from the running app (the shell, page layout and panel layers tag
+                // themselves). Only the TV keeps its synthetic landmark boxes.
                 val phoneWindow = mainView.width <= 800
-                if (phoneWindow) {
-                    // Phone web refs carry only unnamed full-viewport wrapper fills; how many a page has follows its DOM.
-                    val (shell, surfaces) = when (screen) {
-                        "actions" -> false to 1
-                        "profiles" -> true to 0
-                        "calendar-month", "calendar-week", "film-detail", "series-detail" -> true to 1
-                        "home", "filters", "search", "settings", "calendar-link" -> true to 2
-                        else -> true to 3 // movies, series, music, calendar-agenda
-                    }
-                    if (screen == "player-controls") elements.put(fill(androidx.compose.ui.graphics.Color.Black))
-                    else {
-                        if (shell) elements.put(fill(PlayarrWebTheme.palette.background))
-                        repeat(surfaces) { elements.put(fill(PlayarrWebTheme.palette.surface)) }
-                    }
-                } else if (screen == "player-controls") repeat(4) { elements.put(fill(androidx.compose.ui.graphics.Color.Black)) } else elements.put(fill(PlayarrWebTheme.palette.background))
-                val names = if (phoneWindow) null else PAGE_LANDMARKS[screen]
+                val tabletWindow = mainView.width in 2000..2800
+                if (!phoneWindow && !tabletWindow) {
+                    if (screen == "player-controls") repeat(4) { elements.put(fill(androidx.compose.ui.graphics.Color.Black)) } else elements.put(fill(PlayarrWebTheme.palette.background))
+                }
+                val names = if (phoneWindow || tabletWindow) null else PAGE_LANDMARKS[screen]
                 if (names != null) {
                     fun named(label: String, x: Double, w: Double) = JSONObject().put("text", label).put("role", "container")
                         .put("rect", JSONObject().put("x", x).put("y", 0).put("w", w).put("h", mainView.height))

@@ -411,6 +411,7 @@ internal fun PlayarrPlayerChrome(
                 onAudio = { onAudio(it); openMenu = null; showControls() },
                 onSubtitle = { onSubtitle(it); openMenu = null; showControls() },
                 onTogglePlaylist = { playlistOpen = !playlistOpen; showControls() },
+                playlistCount = queue.items.size, playlistOpen = playlistOpen,
                 onMinimise = onMinimise,
                 onBack = onBack,
                 onHealth = if (health != null) ({ showControls(); healthOpen = true }) else null,
@@ -1705,3 +1706,35 @@ private fun PlayerDialogOption(
         if (selected) Text("✓", color = WebAccent, fontWeight = FontWeight.Bold)
     }
 }
+
+/** The web's `Audio: <track>` button name (the same string every user's screen reader hears). */
+@Composable
+internal fun playerAudioButtonName(controls: PlaybackControlsState): String {
+    val locale = LocalPlayarrLanguage.current.locale
+    val active = controls.audioTracks.firstOrNull { it.id == controls.selectedAudioTrackId } ?: controls.audioTracks.firstOrNull()
+    val label = active?.let { playarrAudioTrackLabel(it, locale, playarrString(PlayarrString.PlayerChannelsMono), playarrString(PlayarrString.PlayerChannelsStereo)) }
+        ?: playarrString(PlayarrString.PlayerUnavailable)
+    return playarrString(PlayarrString.PlayerAudioButtonLabel, "label" to label)
+}
+
+/** The web's `Subtitles: <track|Off>` button name. */
+@Composable
+internal fun playerSubtitlesButtonName(controls: PlaybackControlsState): String {
+    val locale = LocalPlayarrLanguage.current.locale
+    val active = controls.subtitleTracks.firstOrNull { it.id == controls.selectedSubtitleTrackId }
+    val label = active?.let { playarrSubtitleTrackLabel(it, locale, playarrString(PlayarrString.PlayerSubtitleForced)) } ?: playarrString(PlayarrString.PlayerOff)
+    return playarrString(PlayarrString.PlayerSubtitlesButtonLabel, "label" to label)
+}
+
+/** The web's `Quality: <level>` button name. */
+@Composable
+internal fun playerQualityButtonName(controls: PlaybackControlsState): String {
+    val active = controls.qualityOptions.firstOrNull { it.id == controls.activeQualityId } ?: controls.qualityOptions.firstOrNull()
+    return playarrString(PlayarrString.PlayerQualityButtonLabel, "label" to active?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") }.orEmpty())
+}
+
+/** The web's `Playlist: N item|episodes` button name; the open state keeps the close wording. */
+@Composable
+internal fun playerPlaylistButtonName(count: Int, open: Boolean): String =
+    if (open) playarrString(PlayarrString.PlayerClosePlaylist)
+    else playarrString(if (count == 1) PlayarrString.PlayerPlaylistLabelSingular else PlayarrString.PlayerPlaylistLabelPlural, "count" to count)

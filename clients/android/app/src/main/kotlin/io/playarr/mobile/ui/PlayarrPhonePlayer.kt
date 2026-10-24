@@ -178,13 +178,14 @@ internal fun BoxScope.PhonePlayerOverlay(
     onCast: (() -> Unit)?,
     castConnected: Boolean,
     onActivity: () -> Unit,
+    playlistCount: Int = 1,
+    playlistOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     val topInset = webPhoneInsets().asPaddingValues().calculateTopPadding()
     val bottomInset = playerBottomInset()
     var fullscreen by remember { mutableStateOf(false) }
-    // Parity captures: the web reference plays muted (autoplay policy), so the debug pause hook starts with the muted icon.
-    var muted by remember { mutableStateOf(parityPauseAtMs != null) }
+    var muted by remember { mutableStateOf(false) }
     val durationMs = timeline.durationMs.coerceAtLeast(0L)
     val displayedMs = (scrubPositionMs ?: timeline.positionMs).coerceIn(0L, durationMs)
     val activeQuality = controls.qualityOptions.firstOrNull { it.id == controls.activeQualityId } ?: controls.qualityOptions.firstOrNull()
@@ -264,7 +265,6 @@ internal fun BoxScope.PhonePlayerOverlay(
                 PhonePlayerButton(
                     if (muted) PlayarrWebIcons.PlayerVolumeMuted else PlayarrWebIcons.PlayerVolumeHigh,
                     playarrString(if (muted) PlayarrString.PlayerUnmute else PlayarrString.PlayerMute),
-                    exportLabel = if (parityPauseAtMs != null) playarrString(PlayarrString.PlayerMute) else null, // the web ref plays unmuted-labelled
                 ) {
                     onActivity()
                     val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -274,10 +274,10 @@ internal fun BoxScope.PhonePlayerOverlay(
                 PhonePlayerButton(PlayarrWebIcons.PlayerAudio, playarrString(PlayarrString.PlayerAudioTrackMenuLabel), enabled = controls.audioTracks.isNotEmpty() && !controls.switching) {
                     onMenu(if (openMenu == PlayarrPlayerMenu.Audio) null else PlayarrPlayerMenu.Audio)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerSubtitles, playarrString(PlayarrString.PlayerSubtitleTrackMenuLabel), enabled = !controls.switching, exportLabel = if (parityPauseAtMs != null) "Subtitles: Off" else null) {
+                PhonePlayerButton(PlayarrWebIcons.PlayerSubtitles, "${playarrString(PlayarrString.PlayerSubtitlesHeading)}: ${controls.subtitleTracks.firstOrNull { it.id == controls.selectedSubtitleTrackId }?.label ?: playarrString(PlayarrString.PlayerOff)}", enabled = !controls.switching) {
                     onMenu(if (openMenu == PlayarrPlayerMenu.Subtitles) null else PlayarrPlayerMenu.Subtitles)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerPlaylist, playarrString(PlayarrString.PlayerClosePlaylist), enabled = !controls.switching, exportLabel = if (parityPauseAtMs != null) "Playlist: 1 item" else null) { onTogglePlaylist() }
+                PhonePlayerButton(PlayarrWebIcons.PlayerPlaylist, if (playlistOpen) playarrString(PlayarrString.PlayerClosePlaylist) else playarrString(if (playlistCount == 1) PlayarrString.PlayerPlaylistLabelSingular else PlayarrString.PlayerPlaylistLabelPlural, "count" to playlistCount), enabled = !controls.switching) { onTogglePlaylist() }
                 // `.player-quality-button`: a 42 px box whose HD glyph and wrapped label overflow it on both sides.
                 Box(
                     Modifier

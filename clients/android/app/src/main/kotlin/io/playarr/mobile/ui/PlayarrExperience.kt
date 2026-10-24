@@ -1860,7 +1860,7 @@ internal fun PlayarrExperience(
         }
         if (isTelevision) {
             // Keep the TV layout tree and its focus order unchanged.
-            Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().background(WebBackground).parityBox("container", background = WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 backgroundContent()
                 if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
                     PlayarrMiniPlayer(
@@ -1876,7 +1876,7 @@ internal fun PlayarrExperience(
                 }
             }
         } else {
-            Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().background(WebBackground).parityBox("container", background = WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 Box(
                     Modifier.fillMaxSize()
                         .graphicsLayer {
@@ -3226,7 +3226,7 @@ private fun ExperienceStage(
             ) { rails() }
         } else {
             Box(Modifier.fillMaxSize()) {
-                Box(Modifier.padding(top = 58.dp + webPhoneInsets().asPaddingValues().calculateTopPadding()).fillMaxSize().background(phoneHomePanelBrush()))
+                Box(Modifier.padding(top = 58.dp + webPhoneInsets().asPaddingValues().calculateTopPadding()).fillMaxSize().parityBox("container", background = WebSurface).background(phoneHomePanelBrush()))
                 rails()
             }
         }
@@ -4659,7 +4659,7 @@ private fun ExperienceLibraryScreen(
                 if (!isTelevision) {
                     PhoneKeyArt(selected, serverUrl, accessToken, Modifier.fillMaxSize())
                     PhoneStageWash(Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().background(phonePanelBrush()))
+                    Box(Modifier.fillMaxSize().parityBox("container", background = WebSurface).background(phonePanelBrush()))
                 } else {
                 AuthenticatedArtwork(
                     work = selected,

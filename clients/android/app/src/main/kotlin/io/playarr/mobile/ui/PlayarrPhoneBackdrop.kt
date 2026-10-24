@@ -28,6 +28,8 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -101,7 +103,7 @@ internal fun PhoneKeyArt(
 internal fun PhoneStageWash(modifier: Modifier = Modifier) {
     val surface = WebSurface
     val clear = surface.copy(alpha = 0f)
-    Box(modifier.background(Brush.verticalGradient(0f to clear, 0.32f to clear, 0.66f to surface, 1f to surface)))
+    Box(modifier.parityBox("container", background = surface).background(Brush.verticalGradient(0f to clear, 0.32f to clear, 0.66f to surface, 1f to surface)))
 }
 
 /** Home's `.tv-rail-surface`: transparent at its top edge, solid surface from 8% down. */
@@ -261,7 +263,8 @@ internal fun PhonePill(
         shadows = listOf(shadow),
         shape = androidx.compose.foundation.shape.CircleShape,
         modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp)
-            .parityBox(exportRole, exportLabel.orEmpty(), 999f, background = container.compositeOver(WebSurface)),
+            .parityBox(exportRole, exportLabel.orEmpty(), 999f, background = container.compositeOver(WebSurface))
+            .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier),
         innerModifier = Modifier.background(container),
         innerFill = false,
         innerWidthFill = fill,
