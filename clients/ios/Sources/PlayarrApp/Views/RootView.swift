@@ -647,7 +647,7 @@ private struct AuthenticatedPlayarrShell: View {
                                 )
                                 .offset(x: 0.33, y: 0.5) // measured: web glyphs sit 1 px right and 1.5 px lower (3x)
                                 .frame(width: 44, height: 46)
-                                .parityBox("link", name: destination.title, background: phoneSelectedDestination == destination ? WM.ink : WM.page, radius: 14)
+                                .parityBox("link", name: destination.title, background: phoneSelectedDestination == destination ? WM.ink : WM.chip, radius: 14)
                                 .background(
                                     phoneSelectedDestination == destination ? WM.ink : .clear,
                                     in: RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -755,7 +755,7 @@ private struct AuthenticatedPlayarrShell: View {
                     }
                     .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
                     .frame(width: 64, height: 64)
-                    .parityBox("link", name: destination.title, radius: 16)
+                    .parityBox("link", name: destination.title, background: PlayarrStyle.surfaceStrong, radius: 16)
                     .background(
                         selected == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
