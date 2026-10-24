@@ -298,11 +298,11 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
           const currentRoute = /^route=(\S+)/.exec(lastRouteLine)?.[1]?.split("/")[0];
           // The player's capture marker flips between ready and loading as the controls auto-hide, so it never repeats: the paused frame
           // is the evidence instead. Ready, on the player route, a focused control and the same paused position for three consecutive polls.
-          const playerPosition = target === "player-controls" ? lines.findLast((line) => line.startsWith("player positionMs="))?.slice(18) ?? "" : null;
+          const playerPosition = target === "player-controls" ? lines.findLast((line) => line.startsWith("player positionMs="))?.slice(18) ?? "none" : null;
           const steady = playerPosition !== null
-            ? Boolean(capture.ready && currentRoute === EXPECTED_ROUTE[target] && focus && playerPosition && playerPosition === previousPosition)
+            ? Boolean(capture.ready && currentRoute === EXPECTED_ROUTE[target] && focus && playerPosition === previousPosition && focus === previous)
             : stableCaptureObservation({ marker: previousMarker, focus: previous }, { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus });
-          lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : playerPosition !== null ? "paused frame still moving" : focus !== previous ? "focus still changing" : "marker still changing";
+          lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : playerPosition !== null ? `paused frame still moving (position ${previousPosition || "none"} then ${playerPosition}, focus ${focus === previous ? "held" : "changed"})` : focus !== previous ? "focus still changing" : "marker still changing";
           if (steady) {
             stable += 1;
             if (stable >= (playerPosition !== null ? 3 : 2)) return;
