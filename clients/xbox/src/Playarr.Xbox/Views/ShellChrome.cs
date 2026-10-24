@@ -25,7 +25,7 @@ namespace Playarr.Xbox.Views
         public const double ContentLeft = 154;
 
         private const double RailLeft = 42;
-        private const double RailWidth = 77;
+        private const double RailWidth = 78;
         private const double ItemHeight = 72;
 
         private readonly Frame _frame;
@@ -132,7 +132,7 @@ namespace Playarr.Xbox.Views
                 Height = 42,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(RailLeft + (RailWidth - 42) / 2, 59, 0, 0),
+                Margin = new Thickness(60.63, 60.16, 0, 0),
             });
 
             var groups = new StackPanel
@@ -169,6 +169,7 @@ namespace Playarr.Xbox.Views
             profileContent.Children.Add(avatar);
             profileContent.Children.Add(_profileName);
             var profile = RailButton(profileContent, typeof(SettingsPage), null);
+            LayoutExport.Tag(profile, "link", "Signed in as " + (string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName) + ". Open profiles.");
             var profileGroup = Group(profile);
             profileGroup.VerticalAlignment = VerticalAlignment.Top;
             profileGroup.HorizontalAlignment = HorizontalAlignment.Left;
@@ -217,7 +218,7 @@ namespace Playarr.Xbox.Views
             {
                 Child = stack,
                 Width = RailWidth,
-                Padding = new Thickness(4, 1, 4, 2),
+                Padding = new Thickness(6, 1, 6, 2),
                 CornerRadius = new CornerRadius(22),
                 // Measured on the web rail: a lifted fill and a hairline (light: near-white with a soft shadow, dark: 30 26 30 over 27 23 26).
                 Background = (Brush)Application.Current.Resources["PlayarrRailFill"],

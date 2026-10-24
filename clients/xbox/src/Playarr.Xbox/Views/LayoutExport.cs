@@ -223,8 +223,7 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                // The web reports the rail group's own fill as the page background; its children sit on the lifted fill.
-                background = pill != null || (element is Border { Background: var fill } && ReferenceEquals(fill, Application.Current.Resources["PlayarrRailFill"])) ? BackgroundBehind(pill ?? element) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
+                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
