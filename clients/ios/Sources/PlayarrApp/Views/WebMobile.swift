@@ -138,6 +138,7 @@ struct WMText: View {
             .lineLimit(1)
             .truncationMode(.tail)
             .frame(height: lineHeight, alignment: .leading)
+            .parityLayout(text: text, role: "text", size: size, weight: weight, color: color)
     }
 }
 
