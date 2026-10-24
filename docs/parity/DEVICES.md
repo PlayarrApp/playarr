@@ -58,8 +58,16 @@ Extra arguments go to `suite-run.mjs` (`--screens home,movies`, `--themes dark`)
 
 ### Tizen web package: debug build on the emulator
 
-`scripts/parity/tizen-webos/tizen-deploy-debug.sh` signs the built `apps/tv-tizen/dist` plus `netlog.js` with a Samsung
-certificate profile, installs it on the Tizen TV emulator and starts it. Hold the shared emulator lock while it runs.
+The Tizen web run has its own emulator instance (a qcow2 overlay on the clean TV image, own VM name, own Xvfb display, own
+unit) so it never shares an emulator with the native Tizen run. `tizen-deploy-debug.sh` signs the built `apps/tv-tizen/dist`
+plus `netlog.js` with the Samsung certificate in `TIZEN_CERT_DIR` (the password is read from the secrets file at run time into
+a temporary profiles file, never into the shared `profiles.xml`) and installs it on `TIZEN_SERIAL`. Then:
+
+```sh
+python3 scripts/parity/tizen-webos/logserver.py <netlog dir>/log.txt &      # host log sink and eval channel
+PARITY_NETLOG=<netlog dir> node scripts/parity/tizen-webos/signin-tizen.mjs   # once per install
+TIZEN_OUT=<legend dir>/tizen PARITY_NETLOG=<netlog dir> scripts/parity/tizen-webos/run-tizen.sh
+```
 
 ### webOS documented exceptions (not chased)
 
