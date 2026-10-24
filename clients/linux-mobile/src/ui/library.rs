@@ -483,19 +483,21 @@ impl Lib {
             if i == 0 {
                 // The web's Audio heading sits one px higher than the rhythm of the rows above it.
                 if let Some(l) = col.last_child() {
-                    l.set_margin_top(11);
+                    l.set_margin_top(-1);
                 }
             }
             let dd = gtk4::DropDown::from_strings(&["Any language"]);
             dd.add_css_class("pa-dropdown");
             dd.add_css_class("pa-filter");
             // The web's select is a bordered group holding a button with the value and a caret glyph.
-            crate::layout::Tag::new("group", heading, 12.0)
+            crate::layout::Tag::new("group", "", 12.0)
                 .extra(crate::layout::Extra {
                     role: "button",
                     label: "Any language \u{2304}",
                     radius: 10.0,
                     inset: [7.39; 4],
+                    height: None,
+                    bg: None,
                 })
                 .apply(&dd);
             if let Some(inner) = dd
@@ -840,6 +842,8 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
             label: "",
             radius: 1.0,
             inset: [x + dx, y + dy, 101.33 - (x + dx) - w, 48.0 - (y + dy) - h],
+            height: None,
+            bg: None,
         });
     }
     t.apply(tile);

@@ -47,14 +47,14 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .build(),
     );
     row.append(&col);
-    row.append(
-        &gtk4::Label::builder()
-            .label("→")
-            .css_classes(["pa-pref-arrow"])
-            .valign(gtk4::Align::Center)
-            .margin_end(1)
-            .build(),
-    );
+    let arrow = gtk4::Label::builder()
+        .label("→")
+        .css_classes(["pa-pref-arrow"])
+        .valign(gtk4::Align::Center)
+        .build();
+    // The web nudges the first (hovered) row's arrow 5 px right.
+    arrow.set_margin_end(if n == 1 { -4 } else { 1 });
+    row.append(&arrow);
     let b = gtk4::Button::builder().child(&row).css_classes(["pa-pref"]).build();
     crate::layout::tag(&b, "link", &format!("{n:02} {title} {desc} \u{2192}"), 0.0);
     b
@@ -365,6 +365,6 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         .hscrollbar_policy(gtk4::PolicyType::Never)
         .css_classes(["pa-page"])
         .build();
-    crate::layout::tag(&scroller, "page", "Settings sections|", 0.0);
+    crate::layout::tag(&scroller, "page", "|", 0.0);
     scroller.upcast()
 }

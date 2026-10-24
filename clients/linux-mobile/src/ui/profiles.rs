@@ -243,6 +243,8 @@ fn tile(
             label: "",
             radius: 0.0,
             inset: [10.96, 11.89, 12.97, 12.04],
+            height: None,
+            bg: None,
         })
         .apply(&av);
     col.append(&av);

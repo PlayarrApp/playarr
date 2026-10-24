@@ -20,7 +20,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .hexpand(true)
         .valign(gtk4::Align::Center)
         .margin_start(8)
-        .margin_end(16)
+        .margin_end(17)
         .build();
     entry.set_size_request(-1, 44);
     crate::layout::tag(&entry, "textbox", "Search your libraries and playlists", 0.0);
@@ -32,10 +32,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .margin_top(24)
         .build();
     let glass = crate::icons::image("search", 18, crate::icons::Tone::Soft);
-    glass.set_margin_start(16);
+    glass.set_margin_start(17);
     field.append(&glass);
     field.append(&entry);
-    crate::layout::tag(&field, "search", "", 0.0);
+    crate::layout::tag(&field, "search", "", 999.0);
     // The web's empty state: a ring with a search-minus icon, then the prompt beside it.
     let status = gtk4::Label::builder()
         .label("Start typing to search.")

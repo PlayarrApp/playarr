@@ -171,6 +171,10 @@ pub struct Extra {
     pub label: &'static str,
     pub radius: f32,
     pub inset: [f32; 4],
+    /// Absolute height from the inset top edge, when the web box ends where the widget does not.
+    pub height: Option<f32>,
+    /// The element's own background colour (it is painted opaque on top of what lies behind).
+    pub bg: Option<[f32; 3]>,
 }
 
 /// Layout metadata a widget carries for the export: role, accessible label, corner radius, and where the web's box for
@@ -189,6 +193,8 @@ pub struct Tag {
     pub art: bool,
     /// The web draws this control straight on the page body, not on the page container.
     pub body: bool,
+    /// The element's own opaque background in the dark and the light theme.
+    pub bg: Option<([f32; 3], [f32; 3])>,
 }
 
 impl Tag {
@@ -203,6 +209,7 @@ impl Tag {
             web_rect: None,
             art: false,
             body: false,
+            bg: None,
         }
     }
     /// The page key art. The web scales the picture by 1.04 about its left centre at 0.72 (dark) or 0.42 (light);
@@ -215,6 +222,10 @@ impl Tag {
     }
     pub fn adjust(mut self, adjust: [f32; 4]) -> Self {
         self.adjust = adjust;
+        self
+    }
+    pub fn bg(mut self, dark: [f32; 3], light: [f32; 3]) -> Self {
+        self.bg = Some((dark, light));
         self
     }
     pub fn on_body(mut self) -> Self {
@@ -355,7 +366,8 @@ impl Walk<'_> {
         let dbg = std::env::var("PLAYARR_LAYOUT_DEBUG").unwrap_or_default();
         if (dbg == "paints" && b.width() >= 100.0 && b.height() >= 40.0) || dbg == "all" {
             self.trace.push(format!(
-                "{} {} {:.1},{:.1} {:.1}x{:.1}",
+                "min={} {} {} {:.1},{:.1} {:.1}x{:.1}",
+                w.measure(gtk4::Orientation::Horizontal, -1).0,
                 w.type_().name(),
                 classes.join("."),
                 b.x(),
@@ -375,9 +387,13 @@ impl Walk<'_> {
                 l.push_str(&format!(" own={}", own.map_or("-".into(), |p| hex(p.rgba, true))));
             }
         }
-        let mut bg = own
-            .filter(|p| p.rgba[3] >= 0.999)
-            .map_or(parent_bg, |p| over(p.rgba, parent_bg));
+        // The floating navigation is an overlay in the app, a child of the page on the web.
+        let parent_bg = if classes.iter().any(|c| c == "pa-nav") {
+            self.page
+        } else {
+            parent_bg
+        };
+        let mut bg = own.filter(|p| !p.border).map_or(parent_bg, |p| over(p.rgba, parent_bg));
         // A tagged page container is the web's page: its colour is the page colour above the body.
         if tag_of(w).is_some_and(|t| t.role == "page") {
             bg = self.page;
@@ -385,12 +401,12 @@ impl Walk<'_> {
         if tag_of(w).is_some_and(|t| t.body) {
             bg = self.base;
         }
-        if let Some(c) = bg_of(w) {
+        if let Some((d, l)) = tag_of(w).and_then(|t| t.bg) {
+            let c = if self.light { l } else { d };
             bg = [c[0], c[1], c[2], 1.0];
         }
-        // The floating navigation sits on the body, not on the page.
-        if classes.iter().any(|c| c == "pa-nav") {
-            bg = self.base;
+        if let Some(c) = bg_of(w) {
+            bg = [c[0], c[1], c[2], 1.0];
         }
         let mut el = json!({
             "text": "", "role": "container",
@@ -405,6 +421,18 @@ impl Walk<'_> {
         if opacity < 0.995 {
             el["opacity"] = json!((opacity * 100.0).round() / 100.0);
         }
+        // An icon is drawn at its pixel size, centred in whatever the widget is stretched to.
+        let b = match w
+            .downcast_ref::<gtk4::Image>()
+            .map(|i| i.pixel_size())
+            .filter(|px| *px > 0)
+        {
+            Some(px) => {
+                let px = px as f32;
+                graphene::Rect::new(b.x() + (b.width() - px) / 2.0, b.y() + (b.height() - px) / 2.0, px, px)
+            }
+            None => b,
+        };
         let mut emit = own.is_some();
         if let Some(t) = tag_of(w) {
             el["role"] = json!(if t.role == "page" { "container" } else { t.role });
@@ -446,6 +474,9 @@ impl Walk<'_> {
             for e in &t.extras {
                 let [l, tp, r, bt] = e.inset;
                 let mut copy = el.clone();
+                if let Some(c) = e.bg {
+                    copy["background"] = json!(hex([c[0], c[1], c[2], 1.0], false));
+                }
                 copy["role"] = json!(e.role);
                 copy["text"] = json!(e.label);
                 copy["rect"] =
@@ -589,7 +620,8 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
     };
     walk.out.push(json!({
         "text": "", "role": "container", "rect": {"x": 0, "y": 0, "w": root.width(), "h": root.height()},
-        "color": Value::Null, "background": hex(base, false), "fontSize": Value::Null, "fontWeight": Value::Null,
+        // The web's title-actions sheet replaces the page: its first box is the page colour, the sheet sits on the body.
+        "color": Value::Null, "background": hex(if screen == "actions" { walk.page } else { base }, false), "fontSize": Value::Null, "fontWeight": Value::Null,
     }));
     walk.visit(root, 1.0, base);
     if !walk.trace.is_empty() {

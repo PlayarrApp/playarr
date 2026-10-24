@@ -329,11 +329,10 @@ impl App {
             ("Library controls", "Filters") => "Movies display filters".to_string(),
             (_, t) => t.to_string(),
         };
-        layout::tag(&panel, "dialog", &dialog, 0.0);
+        let _ = dialog;
+        layout::tag(&panel, "dialog", "", 0.0);
         layout::tag(&close, "button", if filters { "Close filters" } else { "Close" }, 50.0);
-        if filters {
-            layout::set_bg(&panel, [0.1059, 0.0941, 0.1059]);
-        }
+
         let me = self.clone();
         close.connect_clicked(move |_| me.close_panel());
         head.append(&block);

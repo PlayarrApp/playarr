@@ -21,7 +21,7 @@ fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
     content.append(
         &gtk4::Label::builder()
             .label(glyph(icon))
-            .css_classes(["pa-row-glyph"])
+            .css_classes(["pa-row-glyph", icon])
             .xalign(0.0)
             .width_request(42)
             .build(),

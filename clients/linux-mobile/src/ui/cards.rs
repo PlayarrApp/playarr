@@ -150,12 +150,15 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
             .build();
         // The web's bar is a 3 px track with the watched share drawn inside it as its own box.
         let width = o.width.unwrap_or(158) as f32;
-        crate::layout::Tag::new("img", &format!("{}% watched", (p.clamp(0.0, 1.0) * 100.0).round()), 0.0)
+        crate::layout::Tag::new("img", "", 0.0)
+            .bg([0.3529, 0.3333, 0.3490], [0.8980, 0.8902, 0.8941])
             .extra(crate::layout::Extra {
                 role: "container",
                 label: "",
                 radius: 0.0,
                 inset: [0.0, 0.0, width * (1.0 - p.clamp(0.0, 1.0) as f32), 0.0],
+                height: Some(3.0),
+                bg: Some([0.8118, 0.1922, 0.3412]),
             })
             .apply(&bar);
         overlay.add_overlay(&bar);
@@ -168,7 +171,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
             .margin_top(7)
             .margin_end(7)
             .build();
-        crate::layout::tag(&dot, "img", "Unwatched", 50.0);
+        crate::layout::tag(&dot, "img", "", 50.0);
         overlay.add_overlay(&dot);
     }
     // A fixed art height (the web's 16:9 at card width); AspectFrame reported no height inside a button.

@@ -428,8 +428,8 @@ fn load(page: &gtk4::Box, backdrop: &gtk4::Picture, app: Rc<App>, client: Client
                             })
                             .collect();
                         let section = section(&title, rail_row(cards, selected));
-                        // The web's rail pitch is 217.56 css px; whole px give 217, so the third rail takes one more.
-                        if focus_sections.len() == 2 {
+                        // The web's rail pitch is 217.56 css px; whole px give 217, so the second rail takes one more.
+                        if focus_sections.len() == 1 {
                             section.widget.set_margin_top(1);
                         }
                         page.append(&section.widget);

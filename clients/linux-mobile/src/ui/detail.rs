@@ -258,6 +258,25 @@ fn meta_row(parts: &[(String, bool)]) -> gtk4::FlowBox {
                 .build(),
         );
     }
+    // GTK sizes each cell to whole pixels, the web to fractions: once the fonts resolve, trim each cell's margin so the
+    // running position follows the fractional one (at most half a pixel apart) instead of drifting by a pixel per cell.
+    f.connect_map(|f| {
+        let mut exact = 0.0_f64;
+        let mut placed = 0.0_f64;
+        let mut child = f.first_child();
+        while let Some(c) = child {
+            child = c.next_sibling();
+            let Some(label) = c.first_child().and_then(|w| w.downcast::<gtk4::Label>().ok()) else {
+                continue;
+            };
+            let frac = f64::from(label.layout().size().0) / f64::from(gtk4::pango::SCALE);
+            let whole = frac.ceil();
+            exact += frac + 10.0;
+            let trim = ((exact - placed - whole - 10.0).round() as i32).min(0);
+            label.set_margin_end(trim);
+            placed += whole + 10.0 + f64::from(trim);
+        }
+    });
     f
 }
 
@@ -268,7 +287,18 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     body.set_margin_start(16);
     body.set_margin_end(16);
     page.append(&body);
-    crate::layout::tag(page, "page", &w.title, 0.0);
+    // The web's page box runs 73 px past the content (the navigation clearance), over a header block 485 px high.
+    crate::layout::Tag::new("page", "", 0.0)
+        .adjust([0.0, 0.0, 0.0, 73.0])
+        .extra(crate::layout::Extra {
+            role: "container",
+            label: "",
+            radius: 0.0,
+            inset: [0.0, 0.0, 0.0, 0.0],
+            height: Some(484.55),
+            bg: None,
+        })
+        .apply(page);
     let gap = |b: &gtk4::Box, px: i32| b.append(&gtk4::Box::builder().height_request(px).build());
     // Focused episode for a series, the title itself for a film.
     let focus_ep = l.focus.as_ref().and_then(|(sn, id)| {
@@ -485,7 +515,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                     Some((_, pos, label)) => (format!("Resume from {label}"), *pos),
                     None => ("Play".to_string(), 0),
                 };
-                let b = action_pill("play", &label, 110, true, false);
+                let b = action_pill("play", &label, if start == 0 { 104 } else { 110 }, true, false);
                 crate::layout::tag(&b, "link", &format!("Play {title}"), 999.0);
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
@@ -543,7 +573,15 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     } else {
         row2.append(&watch);
         row2.append(&playlist);
-        body.append(&row1);
+        // The film's three pills are 6 px wider than the text column; the web lets them overflow, so the row sits in a
+        // scroller that reports no minimum width.
+        let clip = gtk4::ScrolledWindow::builder()
+            .child(&row1)
+            .hscrollbar_policy(gtk4::PolicyType::External)
+            .vscrollbar_policy(gtk4::PolicyType::Never)
+            .propagate_natural_height(true)
+            .build();
+        body.append(&clip);
         body.append(&row2);
     }
 
@@ -561,7 +599,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         if runtime > 0 {
             let outer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
             outer.add_css_class("pa-rail-band");
-            crate::layout::tag(&outer, "page", &format!("{title} chapters and people"), 0.0);
+            crate::layout::tag(&outer, "page", "", 0.0);
             let b = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
             b.set_margin_start(16);
             b.append(&chapters_rail(imgs, file, runtime, &title, play.clone()));

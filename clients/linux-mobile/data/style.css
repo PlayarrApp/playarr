@@ -107,7 +107,7 @@ button.pa-hbtn.square { border-radius: 14px; }
 .pa-key-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0.54), alpha(@pa_bg, 0)), linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }
 scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { background: transparent; }
 .pa-rail-title { font-size: 16px; font-weight: 610; letter-spacing: -0.48px; }
-.pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 58px; padding: 0 14px; box-shadow: none; color: @pa_ink; }
+.pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 58px; padding: 0; box-shadow: none; color: @pa_ink; }
 .pa-search text { color: @pa_ink; }
 entry.pa-search-input { background: none; border: none; box-shadow: none; outline: none; min-height: 0; padding: 0; color: @pa_ink; }
 
@@ -174,7 +174,7 @@ button.pa-pref:first-child { background: @pa_soft; }
 .pa-search:focus-within { outline: none; }
 
 /* Detail, measured from the web (360 px viewport) */
-.pa-display { font-size: 36px; font-weight: 560; letter-spacing: -2.6px; }
+.pa-display { font-size: 36px; font-weight: 560; letter-spacing: -2.74px; }
 .pa-kicker { font-size: 10.56px; letter-spacing: 0.8448px; }
 .pa-meta { font-size: 10.24px; color: @pa_muted; }
 .pa-overview { font-size: 11.52px; line-height: 1.06; color: @pa_muted; }
@@ -209,7 +209,7 @@ button.pa-entry .pa-chip-status.agenda { min-height: 21px; }
 /* Week cards keep their earlier look until measured against the web week */
 button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface; border-color: @pa_line; }
 button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
-.pa-today-chip { font-size: 11.2px; letter-spacing: 0.5px; font-weight: 640; padding: 0 10px; min-height: 20px; color: @pa_day; }
+.pa-today-chip { font-size: 11.2px; letter-spacing: 1px; font-weight: 640; padding: 0 10px; min-height: 20px; color: @pa_day; }
 .pa-thumb { border-radius: 6px; }
 
 /* Drawers, measured from the web */
@@ -221,7 +221,7 @@ button.pa-close.ring { outline: 2px solid @pa_ring; outline-offset: 2px; }
 button.pa-close { min-width: 46px; min-height: 46px; }
 button.pa-close.soft { background: @pa_soft; min-width: 42px; min-height: 42px; border: 1px solid alpha(@pa_ink, 0.15); }
 .pa-section-label { font-size: 7.04px; font-weight: 720; letter-spacing: 0.8px; margin-top: 12px; margin-bottom: 3px; }
-.pa-seg-tile { min-height: 38px; background: alpha(@pa_soft, 0.64); border: none; border-radius: 12px; font-size: 11.52px; font-weight: 680; color: @pa_muted; padding: 0 0 2px; }
+.pa-seg-tile { min-height: 38px; background: alpha(@pa_soft, 0.64); border: none; border-radius: 12px; font-size: 11.52px; font-weight: 680; color: @pa_muted; padding: 4px 10px 6px; }
 .pa-seg-tile:checked { background: @pa_ink; color: @pa_body; }
 button.pa-row { background: @pa_soft; border: none; border-radius: 14px; min-height: 68px; padding: 0 18px; font-size: 16px; font-weight: 700; }
 
@@ -247,7 +247,7 @@ button.pa-letter { background: transparent; border: none; box-shadow: none; padd
 /* Month grid, as the web's calendar-month cells */
 .pa-mday { font-size: 12px; letter-spacing: 1px; color: @pa_muted; padding: 14px 6px 6px; }
 .pa-mcell { border: 1px solid @pa_line; padding: 1px 5px 1px; }
-.pa-mcell.outside { background: alpha(@pa_surface, 0.4); color: @pa_muted; }
+.pa-mcell.outside { background: #241f23; color: @pa_muted; }
 .pa-mcell.today { box-shadow: inset 0 0 0 2px @pa_accent; }
 .pa-mline { min-height: 32px; padding: 0 6px; border-radius: 4px; font-size: 12.5px; color: @pa_ink; }
 .pa-mline .pa-dot { min-width: 8px; min-height: 8px; border-radius: 4px; }
@@ -271,7 +271,7 @@ dropdown.pa-filter arrow, dropdown.pa-filter image { -gtk-icon-size: 8px; min-wi
 
 /* Search empty state */
 .pa-empty-ring { border: 1px solid @pa_line; border-radius: 999px; }
-.pa-empty-text { font-size: 11px; font-weight: 680; color: @pa_ink; }
+.pa-empty-text { font-size: 11.52px; font-weight: 680; color: @pa_ink; }
 
 
 /* Detail hero fades, as the web phone's .tv-key-art::after and .tv-stage-wash */
@@ -303,7 +303,7 @@ button.pa-clients-link { min-height: 42px; box-shadow: 0 14px 38px rgba(31, 14, 
 button.pa-entry.week .pa-entry-title, button.pa-entry.week .pa-entry-sub, button.pa-entry.week .pa-entry-meta { line-height: 1.09; }
 button.pa-entry.week.have, button.pa-entry.week.have:hover { border-left-color: #8ac5a5; }
 button.pa-entry.week.missing, button.pa-entry.week.missing:hover { border-left-color: @pa_muted; }
-button.pa-entry.week .pa-chip-status { margin-top: 2px; }
+button.pa-entry.week .pa-chip-status { margin-top: 0; min-height: 19px; }
 
 /* The web agenda sits on a faint wash with a lighter corner at the top left (white over the page, so invisible on the light theme) */
 .pa-agenda-bg { background: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 150px), linear-gradient(180deg, rgba(255, 255, 255, 0.057) 0px, rgba(255, 255, 255, 0.057) 350px, rgba(255, 255, 255, 0) 450px); }
@@ -328,3 +328,9 @@ dropdown.pa-dropdown > button > box { border-spacing: 9.6px; }
 .pa-profile-name.pa-add-label { letter-spacing: 0; color: @pa_ink_soft; opacity: 1; }
 .pa-tiny.watching { letter-spacing: 0.44px; }
 .pa-profile-actions button.pa-pill.small, button.pa-clients-link { padding: 0 17px; }
+/* The web draws its symbol glyphs from DejaVu Sans, its arrows full-width from a CJK font and the open circle from a
+   mono face; naming them gives the same advances (and glyph shapes) as the web. */
+.pa-row-glyph, .pa-glyph, .pa-dd-caret { font-family: "Nunito Sans", "DejaVu Sans"; }
+.pa-row-glyph.add { font-family: "Nunito Sans", "Droid Sans Fallback", "Noto Sans CJK JP"; }
+.pa-row-glyph.circle { font-family: "Nunito Sans", "Adwaita Mono", "Liberation Mono"; }
+.pa-back-arrow, .pa-pill-arrow, .pa-cal-arrow, .pa-pref-arrow { font-family: "Nunito Sans", "Droid Sans Fallback", "Noto Sans CJK JP"; }

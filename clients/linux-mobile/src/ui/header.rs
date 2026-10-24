@@ -83,12 +83,8 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
     // The web's action buttons sit 2 px higher than the back button and the title block.
     back.set_margin_top(2);
     block.set_margin_top(2);
-    crate::layout::Tag::new("button", "Filters", 14.0)
-        .on_body()
-        .apply(&action);
-    crate::layout::Tag::new("button", "Calendar link", 14.0)
-        .on_body()
-        .apply(&extra);
+    crate::layout::Tag::new("button", "Filters", 14.0).apply(&action);
+    crate::layout::Tag::new("button", "Calendar link", 14.0).apply(&extra);
     row.append(&back);
     row.append(&block);
     row.append(&extra);

@@ -300,7 +300,6 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         // The web's agenda chip is 21 px tall, sitting 1.5 px below the meta text.
         chip.add_css_class("agenda");
         chip.set_valign(gtk4::Align::Center);
-        chip.set_margin_top(4);
         // The web wraps the chip to its own line when the row is full (the week card's column is 32 px narrower); a FlowBox would do it but its minimum width is
         // the whole row, so the measured natural widths are compared with the column.
         let width = meta_width + f64::from(chip.measure(gtk4::Orientation::Horizontal, -1).1);
@@ -515,13 +514,13 @@ impl Cal {
                 .build(),
         );
         if dt == today() {
-            head.append(
-                &gtk4::Label::builder()
-                    .label("TODAY")
-                    .css_classes(["pa-today-chip"])
-                    .valign(gtk4::Align::Center)
-                    .build(),
-            );
+            let chip = gtk4::Label::builder()
+                .label("TODAY")
+                .css_classes(["pa-today-chip"])
+                .valign(gtk4::Align::Center)
+                .build();
+            crate::layout::tag(&chip, "text", "", 999.0);
+            head.append(&chip);
         }
         let sec = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
@@ -591,7 +590,7 @@ impl Cal {
             }
             View::Week => {
                 let start = self.anchor.get();
-                let cols = gtk4::Box::builder().spacing(19).valign(gtk4::Align::Start).build();
+                let cols = gtk4::Box::builder().spacing(20).valign(gtk4::Align::Start).build();
                 self.body.append(&cols);
                 for i in 0..7 {
                     let d = add_days(start, i);
@@ -738,7 +737,7 @@ impl Cal {
     fn set_view(self: &Rc<Self>, v: View) {
         self.view.set(v);
         self.controls.set_margin_top(if v == View::Agenda { 3 } else { 21 });
-        self.days_view.set_margin_top(if v == View::Agenda { 8 } else { 6 });
+        self.days_view.set_margin_top(if v == View::Agenda { 7 } else { 6 });
         let t = today();
         self.anchor.set(match v {
             View::Agenda => t,
@@ -747,16 +746,14 @@ impl Cal {
         });
         self.selected.set(None);
         // The web names the agenda's page and its inner list alike.
-        crate::layout::tag(
-            &self.page,
-            "page",
-            if v == View::Agenda {
+        if let Some(scroller) = self.page.ancestor(gtk4::ScrolledWindow::static_type()) {
+            let name = if v == View::Agenda {
                 "Calendar|Calendar"
             } else {
                 "Calendar"
-            },
-            0.0,
-        );
+            };
+            crate::layout::tag(&scroller, "page", name, 0.0);
+        }
         let week = v == View::Week;
         self.days_view.set_max_content_height(if week { WEEK_CLIP } else { -1 });
         self.days_view.set_vscrollbar_policy(if week {

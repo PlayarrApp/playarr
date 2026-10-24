@@ -75,12 +75,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
             .map(|(name, page)| {
                 pages.add_named(page, Some(name));
                 let label = match *name {
-                    "home" => "Home|",
-                    "series" => "Series library||Series titles",
-                    "movies" => "Movies library||Movies titles",
-                    "music" => "Music library||Music artists",
-                    "search" => "Search Playarr|",
-                    "calendar" => "Calendar",
+                    "home" => "|",
+                    "series" | "movies" | "music" => "||",
+                    "search" => "|",
+                    "calendar" => "",
                     _ => "",
                 };
                 if name == &"home" {
@@ -88,9 +86,11 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
                     crate::layout::Tag::new("page", label, 0.0)
                         .extra(crate::layout::Extra {
                             role: "container",
-                            label: "Home media tracks",
+                            label: "",
                             radius: 0.0,
                             inset: [0.0, 72.0, 0.0, 0.0],
+                            height: None,
+                            bg: None,
                         })
                         .apply(page);
                 } else if !label.is_empty() {
@@ -126,7 +126,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .margin_end(10)
         .margin_bottom(8)
         .build();
-    crate::layout::tag(&nav_scroll, "container", "Primary navigation", 20.0);
+    crate::layout::tag(&nav_scroll, "container", "", 20.0);
     // "" lights no tab (the web highlights none on Preferences); "<" lights the last chosen one again.
     let select = {
         let (pages, items) = (pages.clone(), items.clone());
