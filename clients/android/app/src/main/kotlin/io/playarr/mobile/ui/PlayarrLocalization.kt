@@ -194,6 +194,9 @@ internal enum class PlayarrString(
     NavRequests("Requests", "คำขอ", "リクエスト"),
 
     CommonBack("Back", "ย้อนกลับ", "戻る"),
+    CommonBackToHome("Back to Home", "กลับไปหน้าแรก", "ホームに戻る"),
+    CommonBackToHomeLower("Back to home", "กลับไปหน้าหลัก", "ホームに戻る"),
+    CommonBackToDestination("Back to {{destination}}", "กลับไปที่ {{destination}}", "{{destination}}に戻る"),
     CommonCancel("Cancel", "ยกเลิก", "キャンセル"),
     CommonClose("Close", "ปิด", "閉じる"),
     CommonDone("Done", "เสร็จสิ้น", "完了"),
@@ -880,8 +883,8 @@ internal enum class PlayarrString(
     PlayerQualityHeading("Quality", "คุณภาพ", "画質"),
     PlayerMute("Mute", "ปิดเสียง", "ミュート"),
     PlayerUnmute("Unmute", "เปิดเสียง", "ミュート解除"),
-    PlayerEnterFullscreen("Enter full screen", "เต็มหน้าจอ", "全画面表示"),
-    PlayerExitFullscreen("Exit full screen", "ออกจากเต็มหน้าจอ", "全画面表示を終了"),
+    PlayerEnterFullscreen("Enter fullscreen", "เต็มหน้าจอ", "全画面表示"),
+    PlayerExitFullscreen("Exit fullscreen", "ออกจากเต็มหน้าจอ", "全画面表示を終了"),
     PlayerQualitySource("Source quality", "คุณภาพต้นฉบับ", "元の画質"),
     PlayerPlaylistLabelSingular(
         "Playlist: {{count}} item",
@@ -893,6 +896,10 @@ internal enum class PlayarrString(
         "เพลย์ลิสต์: {{count}} ตอน",
         "プレイリスト: {{count}}話",
     ),
+    PlayerAudioButtonLabel("Audio: {{label}}", "เสียง: {{label}}", "音声: {{label}}"),
+    PlayerSubtitlesButtonLabel("Subtitles: {{label}}", "คำบรรยาย: {{label}}", "字幕: {{label}}"),
+    PlayerQualityButtonLabel("Quality: {{label}}", "คุณภาพ: {{label}}", "画質: {{label}}"),
+    PlayerUnavailable("Unavailable", "ไม่พร้อมใช้งาน", "利用できません"),
     PlayerBackToDetails("Back to details", "กลับไปที่หน้ารายละเอียด", "詳細に戻る"),
     PlayerCloseLabel("Close", "ปิด", "閉じる"),
     PlayerClosePlayer("Close player", "ปิดเครื่องเล่น", "プレーヤーを閉じる"),
@@ -1891,7 +1898,7 @@ internal enum class PlayarrString(
     ),
 
     ProfileViewerFallback("Viewer", "ผู้ชม", "視聴者"),
-    ProfileControl("Signed in as {{name}}. Open profiles.", "โปรไฟล์สำหรับ {{name}}", "{{name}}のプロフィール"),
+    ProfileControl("Signed in as {{name}}. Open profiles.", "เข้าสู่ระบบในชื่อ {{name}} เปิดโปรไฟล์", "{{name}}としてサインイン中。プロフィールを開く。"),
 
     CastButtonLabel("Cast", "แคสต์", "キャスト"),
     CastButtonConnectedLabel(
@@ -1907,7 +1914,7 @@ internal enum class PlayarrString(
     ),
     CastStopCasting("Stop casting", "หยุดแคสต์", "キャストを停止"),
     HealthOpen(
-        "Playback health",
+        "Info and playback health",
         "สถานะการเล่น",
         "再生の状態",
     ),

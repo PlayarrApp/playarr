@@ -1,6 +1,6 @@
 # uitap.py <regex> [tap-up|long-up]: act on the first node on emulator-5568 whose text fully matches; "-up" aims 120 px above the caption, at the card art
 import os, re, subprocess, sys
-adb = [os.path.expanduser("~/Android/Sdk/platform-tools/adb"), "-s", "emulator-5568"]
+adb = [os.path.expanduser("~/Android/Sdk/platform-tools/adb"), "-s", os.environ.get("ANDROID_SERIAL", "emulator-5568")]
 mode = sys.argv[2] if len(sys.argv) > 2 else "tap"
 subprocess.run(adb + ["shell", "uiautomator", "dump", "/sdcard/ui.xml"], capture_output=True)
 xml = subprocess.run(adb + ["shell", "cat", "/sdcard/ui.xml"], capture_output=True, text=True).stdout

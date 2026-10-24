@@ -180,6 +180,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
@@ -1858,7 +1860,7 @@ internal fun PlayarrExperience(
         }
         if (isTelevision) {
             // Keep the TV layout tree and its focus order unchanged.
-            Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().background(WebBackground).parityBox("container", background = WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 backgroundContent()
                 if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
                     PlayarrMiniPlayer(
@@ -1874,7 +1876,7 @@ internal fun PlayarrExperience(
                 }
             }
         } else {
-            Box(modifier = Modifier.fillMaxSize().background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().background(WebBackground).parityBox("container", background = WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 Box(
                     Modifier.fillMaxSize()
                         .graphicsLayer {
@@ -2126,47 +2128,59 @@ private fun ExperienceNavigation(
     Surface(
         modifier = Modifier
             .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
-            .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav),
+            .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav)
+            .parityBox("container", radius = if (isTelevision) 0f else 20f, background = if (isTelevision) WebBackground else WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)),
         color = Color.Transparent,
         shape = phoneNavShape,
         tonalElevation = 0.dp,
     ) {
         LazyRow(
-            modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = if (isTelevision) 5.dp else 7.dp, bottom = 5.dp).fillMaxWidth(),
+            // Phone (measured against the static ref, 719 px wide): content 2 device px higher and 1.5 px further left than before.
+            modifier = Modifier.padding(start = if (isTelevision) 5.dp else 4.2.dp, end = 5.dp, top = if (isTelevision) 5.dp else 5.9.dp, bottom = if (isTelevision) 5.dp else 6.1.dp).fillMaxWidth(),
             // A short list (a household-limited profile) is centred in the bar; a long one scrolls from the start.
             horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
             contentPadding = PaddingValues(0.dp),
         ) {
             if (tvProfile != null) item(key = "profile") {
+                // The web link is 44 wide inside a 46 px slot.
+                Box(Modifier.width(46.dp), contentAlignment = Alignment.Center) {
                 Surface(
                     onClick = tvProfile.onClick,
                     color = Color.Transparent,
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.height(46.dp).semantics { contentDescription = tvProfile.description },
+                    modifier = Modifier.height(46.dp).width(if (isTelevision) 46.dp else 44.dp).semantics { contentDescription = tvProfile.description }.parityBox("link", tvProfile.description, radius = 14f, background = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)),
                 ) {
-                    Box(Modifier.width(46.dp), contentAlignment = Alignment.Center) {
-                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp), glyphSize = 13.sp) // web: 39 device px
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", radius = 50f, background = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)).parityBox("image", background = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)), glyphSize = 13.sp) // web: 39 device px
                     }
                 }
+                }
             }
-            items(destinations, key = { it.route }) { destination ->
+            itemsIndexed(destinations, key = { _, d -> d.route }) { navIndex, destination ->
                 val selected = currentRoute == destination.route
                 val label = playarrString(destination.label)
                 // Web phone bar: the selected pill is 43.4 css px wide inside a 46 px slot, and idle icons are the muted ink.
-                Box(Modifier.width(46.dp).height(46.dp), contentAlignment = Alignment.Center) {
+                // Web slots are 46 css px (84.8 device px): whole-pixel slots drift 0.2 px per item, so the width follows the cumulative rounding.
+                val slotDensity = LocalDensity.current
+                val slotWidth = if (isTelevision || !parityNoInsets) 46.dp else with(slotDensity) { // parity captures only (719 px wide = 390 css)
+                    val unit = 46f * 719f / 390f
+                    val px = Math.round((navIndex + 1 + (if (tvProfile != null) 1 else 0)) * unit) - Math.round((navIndex + (if (tvProfile != null) 1 else 0)) * unit)
+                    px.toDp()
+                }
+                Box(Modifier.width(slotWidth).height(46.dp), contentAlignment = Alignment.Center) {
                 Surface(
                     onClick = { onNavigate(destination.route) },
                     color = if (selected) WebInk else Color.Transparent,
                     contentColor = if (selected) WebBackground else PlayarrWebTheme.palette.webInkMuted,
                     shape = RoundedCornerShape(if (isTelevision) 16.dp else 14.dp),
-                    modifier = Modifier.width(43.4.dp).height(46.dp),
+                    modifier = Modifier.width(43.4.dp).height(46.dp).parityBox("link", label, radius = 14f, background = if (selected) WebInk else WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)),
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = if (selected && isTelevision) 16.dp else if (isTelevision) 12.dp else 11.2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        Icon(destination.icon, contentDescription = label, modifier = Modifier.size(21.dp))
+                        Icon(destination.icon, contentDescription = label, modifier = Modifier.size(21.dp).parityBox("image", background = if (selected) WebInk else WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)))
                         AnimatedVisibility(visible = selected && isTelevision) {
                             Text(
                                 label.uppercase(LocalPlayarrLanguage.current.locale),
@@ -3212,7 +3226,7 @@ private fun ExperienceStage(
             ) { rails() }
         } else {
             Box(Modifier.fillMaxSize()) {
-                Box(Modifier.padding(top = 58.dp + webPhoneInsets().asPaddingValues().calculateTopPadding()).fillMaxSize().background(phoneHomePanelBrush()))
+                Box(Modifier.padding(top = 58.dp + webPhoneInsets().asPaddingValues().calculateTopPadding()).fillMaxSize().parityBox("container", background = WebSurface).background(phoneHomePanelBrush()))
                 rails()
             }
         }
@@ -3503,7 +3517,7 @@ internal fun ExperienceMediaRail(
                 Text(
                     railTitle, color = WebInk, fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight(610), letterSpacing = (-0.48).sp,
                     style = WebTextStyle, maxLines = 1,
-                    modifier = Modifier.graphicsLayer {
+                    modifier = Modifier.semantics { heading() }.graphicsLayer {
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
                         if (active) { scaleX = 1.16f; scaleY = 1.16f; translationY = -1.dp.toPx() }
                     },
@@ -3590,6 +3604,7 @@ internal fun ExperienceMediaRail(
                     homeView = homeView,
                     webPhone = !isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail,
                     webHome = true,
+                    strongCaption = !isTelevision && railIndex == 0 && itemIndex == 0 && !markSelected,
                     showUnwatched = true,
                     selected = markSelected && selectedId == work.id,
                     progress = onDeck?.progress ?: progressByWork[work.id],
@@ -3643,6 +3658,8 @@ internal fun ExperienceLandscapeCard(
     webPhone: Boolean = false,
     /** With [webPhone]: the Home rail variant (title and kind line, lifted 6 px when selected) instead of the library's. */
     webHome: Boolean = false,
+    /** Web phone: the first card (default selection) draws its caption in the strong ink (#fff / #000). */
+    strongCaption: Boolean = false,
     /** With [webPhone]: the Search result variant (darker art tile, kind and year in capitals). */
     webSearch: Boolean = false,
     /** Television home rails: web `.tv-home-card` motion (lift 6 px, art scale 1.025), radius and type sizes. */
@@ -3670,6 +3687,7 @@ internal fun ExperienceLandscapeCard(
     val scale = if (webPhone) 1f else animatedScale
     // Web remote mode (`body[data-input-mode="remote"]`, which is always the case on a TV): no lift, no scale and no
     // selected state; the focused card's art gets a 3 px ring and a deeper shadow, and nothing else changes.
+    val phoneDensity = androidx.compose.ui.platform.LocalDensity.current.density
     val visualFocus = focused && !suppressFocusVisuals
     val liftActive = visualFocus
     val artScale by animateFloatAsState(if (visualFocus && (webTvStyle || webPhoneRemoteFocus)) 1.025f else 1f, tween(240), label = "homeArtScale")
@@ -3716,7 +3734,7 @@ internal fun ExperienceLandscapeCard(
             webPhoneRemoteFocus -> Modifier.mediaCardLift(liftActive, webPhoneMotion)
             else -> Modifier
         },
-    ).parityBox("link", if (webTvLibrary) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary) LocalParityLinkRadius.current else 0f, background = WebSurface, fit = if (webTvLibrary || !webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
+    ).parityBox("link", if (webTvLibrary || (webPhone && !webHome)) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary || (webPhone && !webHome)) LocalParityLinkRadius.current / LocalStageScale.current else 0f, background = WebSurface, fit = if (webTvLibrary) null else if (webPhone && webHome) { r -> r.copy(bottom = r.bottom - 12.88f * phoneDensity) } else if (!webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
         WebShadowedBox(
             shadows = if (webPhone) webCardShadows(selected || visualFocus, webHome, webSearch) else if (webTvStyle) (if (visualFocus) (if (webTvLibrary) webCardFocusShadows else webRemoteFocusShadows) else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
@@ -3745,7 +3763,7 @@ internal fun ExperienceLandscapeCard(
                     },
                 )
                 .scale(artScale)
-                .parityBox("container", radius = if (webTvStyle) 12.48f else 10f, background = WebSurfaceSoft),
+                .parityBox("container", radius = if (webPhone) 8f else if (webTvStyle) 12.48f else 10f, background = WebSurfaceSoft),
             innerModifier = Modifier.background(if (webSearch) WebSurfaceStrong else WebSurfaceSoft)
                 .then(if (!webPhone && !webTvStyle && (focused || selected)) Modifier.border(1.dp, WebInk.copy(alpha = 0.62f), RoundedCornerShape(10.dp)) else Modifier),
         ) {
@@ -3806,15 +3824,16 @@ internal fun ExperienceLandscapeCard(
             Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = 8.832.sp, lineHeight = 13.248.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp, start = 1.9.dp))
         } else if (webPhone && webHome) {
             // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
+            val strongInk = if (webIsDark) Color.White else Color.Black
             Text(
-                displayTitle, color = WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
+                displayTitle, color = if (strongCaption) strongInk else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 1.9.dp, top = 9.7.dp),
+                modifier = Modifier.offset(y = 1.9.dp).padding(start = 1.9.dp, top = 9.7.dp), // offsets keep the rail height
             )
             Text(
-                resolvedSubtitle, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
+                resolvedSubtitle, color = if (strongCaption) strongInk else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 1.9.dp, top = 2.56.dp),
+                modifier = Modifier.offset(y = 1.08.dp).padding(start = 1.9.dp, top = 2.56.dp),
             )
         } else if (webPhone && webSearch) {
             // Web `.tv-search-result` caption on phones (live dom dump): 8.8 px title at y +11.5, 6.4 px upper-case meta 2 px below.
@@ -3830,10 +3849,10 @@ internal fun ExperienceLandscapeCard(
             )
         } else if (webPhone) {
             Text(
-                displayTitle, color = WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
+                displayTitle, color = if (strongCaption) (if (webIsDark) Color.White else Color.Black) else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 // Web library caption: 1 px lower than before (measured against the fresh phone refs); the row gap below gives it back.
-                modifier = Modifier.padding(start = 1.9.dp, top = 12.dp),
+                modifier = Modifier.padding(start = 1.9.dp - 0.3.dp, top = 11.6.dp),
             )
         } else {
         Text(displayTitle, color = WebInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
@@ -3975,7 +3994,8 @@ internal fun LibraryResults(
         LazyVerticalGrid(
             columns = fixedColumns?.let { GridCells.Fixed(it) } ?: if (isTelevision) GridCells.Adaptive(landscapeWidth) else GridCells.Fixed(phonePosterColumns(artworkSize, androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)),
             state = gridState,
-            modifier = Modifier.fillMaxSize().then(if (isTelevision) Modifier.playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical) else Modifier),
+            // Phone too: web's scroll-edge mask (floor 0.3) dims the grid at both edges over the page background.
+            modifier = Modifier.fillMaxSize().playarrEdgeFades(gridState.canScrollBackward, gridState.canScrollForward, androidx.compose.foundation.gestures.Orientation.Vertical, panel = if (isTelevision) null else WebBackground),
             contentPadding = screenPadding,
             horizontalArrangement = Arrangement.spacedBy(if (isTelevision) tvRail?.gap ?: 25.92.dp else 12.dp),
             verticalArrangement = Arrangement.spacedBy(if (isTelevision) tvRowGap else 23.32.dp),
@@ -4005,6 +4025,7 @@ internal fun LibraryResults(
                     onContext = { onContext(work) },
                     showUnwatched = progressLoaded,
                     webPhone = !isTelevision,
+                    strongCaption = !isTelevision && index == 0 && selectedId.isEmpty(),
                     webTvStyle = isTelevision,
                     webTvLibrary = isTelevision,
                     suppressFocusVisuals = suppressFocusedCardVisuals,
@@ -4461,7 +4482,7 @@ private fun <T> LibraryFilterChoices(
 /** Web phone drawer section label (`h3`): 7.04 px / 720, 0.07em, uppercase, muted. */
 @Composable
 private fun LibraryFilterLabel(title: String) {
-    Text(title.uppercase(LocalPlayarrLanguage.current.locale), color = WebInkMuted, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.4928.sp)
+    Text(title.uppercase(LocalPlayarrLanguage.current.locale), color = WebInkMuted, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.4928.sp, modifier = Modifier.semantics { heading() }.parityText(role = "heading", background = WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)))
 }
 
 /** Web `.tv-view-icon`: outlined TV list bars, 20 x 3 screen blocks, and the existing tall cover blocks. */
@@ -4474,7 +4495,10 @@ private fun LibraryViewIcon(mode: LibraryViewMode, colour: Color) {
         else -> Triple(3, 4f, 13f)
     }
     val list = mode == LibraryViewMode.List
-    val bar = Modifier.size(w.dp, h.dp).let { if (list && !tv) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp)) }
+    // Layout export: the segment's flat fill under the bars (ink when selected, the soft surface at 64% over the drawer otherwise).
+    val chosen = colour == WebSurface || colour == WebBackground
+    val barUnder = if (chosen) WebInk else WebSurfaceSoft.copy(alpha = 0.64f).compositeOver(WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface))
+    val bar = Modifier.size(w.dp, h.dp).parityBox("container", radius = 1f, background = barUnder).let { if (list && !tv) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp)) }
     if (list) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
     else Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
 }
@@ -4549,21 +4573,21 @@ private fun ExperienceLibraryScreen(
     when (val state = states[kind] ?: ExperienceLoad.Loading) {
         ExperienceLoad.Loading -> PlayarrPageLayout(
             pageId = PlayarrPageId.Library,
-            header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }),
+            header = playarrPageHeader(title = plural, backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }),
             // Television: skeletons with the final geometry (owner rule), never a centred "Loading" screen.
             state = if (isTelevision) null else PlayarrPageState.Loading(playarrString(PlayarrString.LibraryLoading, "label" to plural)),
             body = if (isTelevision) PlayarrPageBody.Bleed else PlayarrPageBody.Panel,
         ) { if (isTelevision) TvLibrarySkeleton(playarrString(PlayarrString.LibraryLoading, "label" to plural)) }
         is ExperienceLoad.Failed -> PlayarrPageLayout(
             pageId = PlayarrPageId.Library,
-            header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }),
+            header = playarrPageHeader(title = plural, backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }),
             state = playarrErrorState(state.message) { viewModel.loadLibrary(kind) },
         ) {}
         is ExperienceLoad.Ready -> {
             if (state.value.isEmpty()) {
                 PlayarrPageLayout(
                     pageId = PlayarrPageId.Library,
-                    header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }),
+                    header = playarrPageHeader(title = plural, backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }),
                     state = PlayarrPageState.Empty(
                         PlayarrEmptySpec(
                             playarrString(PlayarrString.LibraryEmptyTitle, "plural" to plural.lowercase(language.locale)),
@@ -4606,7 +4630,7 @@ private fun ExperienceLibraryScreen(
             val selected = filteredWorks.firstOrNull { it.id == selectedId } ?: filteredWorks.firstOrNull() ?: state.value.first()
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Library,
-                header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }, largeTitle = true, countLine = true,
+                header = playarrPageHeader(title = plural, backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }, largeTitle = true, countLine = true,
                 // Web hides the header subtitle on phones (#1299).
                 subtitle = if (!isTelevision) null else playarrString(
                     PlayarrString.LibraryCollectionCount,
@@ -4635,7 +4659,7 @@ private fun ExperienceLibraryScreen(
                 if (!isTelevision) {
                     PhoneKeyArt(selected, serverUrl, accessToken, Modifier.fillMaxSize())
                     PhoneStageWash(Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().background(phonePanelBrush()))
+                    Box(Modifier.fillMaxSize().parityBox("container", background = WebSurface).background(phonePanelBrush()))
                 } else {
                 AuthenticatedArtwork(
                     work = selected,
@@ -4681,7 +4705,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         serverUrl = serverUrl,
                         accessToken = accessToken,
                         isTelevision = isTelevision,
-                        selectedId = selectedId,
+                        // Web phone: nothing is selected on load; the focus ring sits on the active letter of the index until a card is touched.
+                        selectedId = if (!isTelevision && savedSelectedId == null) "" else selectedId,
                         progressByWork = progressByWork,
                         progressLoaded = progressLoaded,
                         onSelected = { savedSelectedId = it.id },
@@ -4714,11 +4739,15 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
                             val active = shownLetter == letter
                             Box(
-                                Modifier.height(25.dp).fillMaxWidth().clickable { activeLetter = letter },
+                                Modifier.height(25.dp).fillMaxWidth().parityBox("button", if (letter == "#") "Numbers and symbols" else letter, radius = 50f, background = WebSurface).clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (active) Box(Modifier.size(22.dp).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
-                                Text(letter, color = if (active) WebBackground else WebInkSoft, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
+                                if (active) Box(Modifier.size(22.dp).then(if (savedSelectedId == null) Modifier.drawBehind {
+                                    // Web's letter ring is crimson, 2 css px, 1.5 px off the disc, and is drawn in touch mode too (programmatic focus).
+                                    val grow = 1.5.dp.toPx() + 1.dp.toPx()
+                                    drawCircle(UnwatchedDotColour, radius = size.minDimension / 2f + grow, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+                                } else Modifier).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
+                                Text(letter, color = if (active) WebBackground else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
                             }
                         }
                     }
@@ -4868,7 +4897,7 @@ private fun ExperienceSearchScreen(
     }
     PlayarrPageLayout(
         pageId = PlayarrPageId.Search,
-        header = playarrPageHeader(title = playarrString(PlayarrString.SearchTitle), onBack = { navController.openExperienceTopLevel("home") }, subtitle = if (isTelevision) resultStatus else null, filters = PlayarrFilterAction(
+        header = playarrPageHeader(title = playarrString(PlayarrString.SearchTitle), backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }, subtitle = if (isTelevision) resultStatus else null, filters = PlayarrFilterAction(
             label = playarrString(PlayarrString.SearchFilters),
             onClick = { filtersOpen = !filtersOpen },
             active = filtersOpen,
@@ -5637,7 +5666,7 @@ private fun MediaContextDialog(
             navigationAbovePane = false,
             initialFocus = firstAction, // web: the drawer opens on its first action
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = if (playarrTvDrawer()) Arrangement.spacedBy(14.dp) else FractionalColumnArrangement(68.dp, 14.dp)) {
                 // Web `play`: resolve the title's playable leaves, prefer the one with progress, else the first.
                 if (onPlay != null) {
                     var resolvingPlay by remember(work.id) { mutableStateOf(false) }
@@ -5716,12 +5745,12 @@ private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit,
         shape = RoundedCornerShape(14.dp),
         color = WebSurfaceSoft,
         contentColor = WebInk,
-        modifier = modifier.fillMaxWidth().height(68.dp).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused },
+        modifier = modifier.fillMaxWidth().height(68.dp).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused }.parityBox("button", "$glyph $label", 14f, background = WebSurfaceSoft),
     ) {
         Row(Modifier.padding(start = 18.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(glyph, color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp)) // web: 1.22 rem in a 42 px column
+            Text(glyph, color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp).parityText(background = WebSurfaceSoft)) // web: 1.22 rem in a 42 px column
             val cssTablet = LocalTabletDrawerCssPx.current
-            Text(label, fontSize = if (cssTablet) 16.sp else if (tv) 19.2.sp else 16.sp, lineHeight = if (cssTablet) 24.sp else if (tv) 28.8.sp else 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, fontSize = if (cssTablet) 16.sp else if (tv) 19.2.sp else 16.sp, lineHeight = if (cssTablet) 24.sp else if (tv) 28.8.sp else 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.parityText(background = WebSurfaceSoft))
         }
     }
 }
@@ -6107,7 +6136,7 @@ private fun ExperienceDetailScreen(
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Detail,
                 // Web phone detail header: the back pill and the kind title only (live dom dump); the work title is a TV subtitle.
-                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = detail.work.title.takeIf { isTelevision }, largeTitle = true, countLine = true),
+                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), backLabel = playarrString(PlayarrString.CommonBackToDestination, "destination" to detail.work.kind.playarrPluralLabel()), onBack = onBack, backAsButton = true, subtitle = detail.work.title.takeIf { isTelevision }, largeTitle = true, countLine = true),
                 body = PlayarrPageBody.Bleed,
             ) {
             Box(Modifier.fillMaxSize()) {
@@ -6630,7 +6659,7 @@ private fun PhoneVideoDetailBody(
     val language = LocalPlayarrLanguage.current
     val episode = selectedEpisode?.episode
     val seasonNumber = selectedSeason?.season?.seasonNumber
-    val episodeCode = episode?.let { "S${(seasonNumber ?: 0).toString().padStart(2, '0')} · E${it.episodeNumber.toString().padStart(2, '0')}" }
+    val episodeCode = episode?.let { "S ${(seasonNumber ?: 0).toString().padStart(2, '0')} · E ${it.episodeNumber.toString().padStart(2, '0')}" }
     val dateFormat = remember(language) { PlayarrDateFormat("yMMMd", language.locale, java.time.ZoneOffset.UTC) }
     val metaItems = buildList {
         if (episode != null) {
@@ -6662,6 +6691,7 @@ private fun PhoneVideoDetailBody(
                 Text(
                     (episodeCode ?: work.genres.firstOrNull() ?: work.kind.playarrSingularLabel()).uppercase(language.locale),
                     color = PlayarrWebTheme.palette.brandInk, fontSize = 10.56.sp, lineHeight = 15.84.sp, fontWeight = FontWeight(820), letterSpacing = 0.8448.sp, style = WebTextStyle,
+                    modifier = Modifier.parityText(background = WebSurface),
                 )
                 Spacer(Modifier.height(10.dp))
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
@@ -6684,7 +6714,7 @@ private fun PhoneVideoDetailBody(
                         shownTitle, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
                         onTextLayout = { titleLines = it.lineCount },
-                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() },
+                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() }.semantics { heading() }.parityText(background = WebSurface),
                     )
                 }
                 if (episode != null) {
@@ -6693,7 +6723,7 @@ private fun PhoneVideoDetailBody(
                         episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episodeNumber),
                         color = WebInkSoft, fontSize = 14.4.sp, lineHeight = 16.56.sp, fontWeight = FontWeight(570), letterSpacing = (-0.504).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() },
+                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() }.parityText(background = WebSurface),
                     )
                 }
                 Spacer(Modifier.height(if (episode != null) 6.9.dp else 12.dp))
@@ -6701,7 +6731,7 @@ private fun PhoneVideoDetailBody(
                     metaItems.forEachIndexed { index, item ->
                         Text(
                             item, color = if (index == 0) WebInkSoft else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 10.24.sp, lineHeight = 15.36.sp,
-                            fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal, style = WebTextStyle, maxLines = 1,
+                            fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurface),
                         )
                     }
                 }
@@ -6716,7 +6746,7 @@ private fun PhoneVideoDetailBody(
                 } else {
                     Spacer(Modifier.height(10.dp))
                 }
-                WebClampedText(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, fontWeight = FontWeight.Normal, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1)
+                WebClampedText(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, fontWeight = FontWeight.Normal, style = WebTextStyle, maxLines = 3, modifier = Modifier.parityText(background = WebSurface), minLines = if (episode != null) 3 else 1)
                 Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,
@@ -6805,7 +6835,7 @@ private fun PhoneDetailRail(
         Box(Modifier.fillMaxWidth().height(24.dp)) {
             Text(
                 title, color = WebInk, fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight(610), letterSpacing = (-0.48).sp,
-                style = WebTextStyle, maxLines = 1, modifier = Modifier.padding(start = 16.dp),
+                style = WebTextStyle, maxLines = 1, modifier = Modifier.padding(start = 16.dp).semantics { heading() }.parityText(background = WebSurface),
             )
             // Web `.tv-season-download`: an icon-only button on the heading line (it overflows the 24 px line, as in CSS).
             if (action != null) {
@@ -6814,7 +6844,7 @@ private fun PhoneDetailRail(
         }
         Text(
             subtitle, color = WebInkMuted, fontSize = 10.56.sp, lineHeight = 15.84.sp, style = WebTextStyle, maxLines = 1,
-            modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp).parityText(background = WebSurface),
         )
         Spacer(Modifier.height(8.dp))
         // Web `--tv-track-shadow-end` (48 px) after the last tile, kept clear when a focused tile scrolls into view.
@@ -6833,7 +6863,7 @@ private fun PhoneDetailRail(
 
 @Composable
 private fun PhoneChapterCard(chapter: MediaChapter, mediaFileId: String, serverUrl: String, accessToken: String?, onClick: () -> Unit) {
-    Column(Modifier.width(179.4.dp).clickable(onClick = onClick)) {
+    Column(Modifier.width(179.4.dp).parityBox("link", "Play from Chapter ${chapter.index + 1}", background = WebSurface, fit = { r -> r }).clickable(onClick = onClick)) {
         PhoneEpisodeArt(
             badge = {
                 Text(
@@ -6850,11 +6880,12 @@ private fun PhoneChapterCard(chapter: MediaChapter, mediaFileId: String, serverU
             )
         }
         Row(Modifier.padding(top = 11.5.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.8.dp)) {
-            Text(formatPlayarrPlayerTime(chapter.startMs), color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+            Text(formatPlayarrPlayerTime(chapter.startMs), color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurface))
             Text(
                 chapter.title ?: playarrString(PlayarrString.DetailChapterNumber, "number" to chapter.index + 1),
                 color = WebInk, fontSize = 12.48.sp, lineHeight = 18.72.sp, fontWeight = FontWeight(610), letterSpacing = (-0.1872).sp,
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.parityText(background = WebSurface),
             )
         }
     }
@@ -6919,19 +6950,19 @@ private fun PhoneDetailActions(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             // Series: the primary Start pill grows to fill the row, the watchlist pill follows.
             PhonePill(
-                onClick = onPlayClick, container = WebInk, fill = true,
+                onClick = onPlayClick, container = WebInk, fill = true, exportRole = if (series) "button" else "link", exportLabel = "$playLabel ${work.title}",
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
                 modifier = Modifier.weight(1f).focusRequester(firstPill),
             ) {
-                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle)
+                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebInk))
                 Spacer(Modifier.width(10.dp))
-                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebInk))
             }
             WatchlistToggleButton(work, webPhone = true)
-            PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor) {
-                Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
+            PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor, exportLabel = "+ Add to Playlist") {
+                Text("+", color = PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 Spacer(Modifier.width(7.6.dp))
-                Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
             }
         }
         return
@@ -6939,35 +6970,35 @@ private fun PhoneDetailActions(
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         run {
             if (canDownload) {
-                PhonePill(onClick = { onDownload(listOf(downloadCandidate)) }, container = pillColor, width = 104.dp, modifier = Modifier.focusRequester(firstPill)) {
-                    Text("⇩", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
+                PhonePill(onClick = { onDownload(listOf(downloadCandidate)) }, container = pillColor, width = 104.dp, exportLabel = "Download $title", modifier = Modifier.focusRequester(firstPill)) {
+                    Text("⇩", color = PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                     Spacer(Modifier.width(10.dp))
-                    Text(playarrString(PlayarrString.DetailDownloadButton), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                    Text(playarrString(PlayarrString.DetailDownloadButton), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 }
             }
             onPlaybackSettings?.let { open ->
-                PhonePill(onClick = open, container = pillColor, width = 119.dp, modifier = if (canDownload) Modifier else Modifier.focusRequester(firstPill)) {
-                    Text("☷", color = WebKicker, fontSize = 12.88.sp, lineHeight = 19.32.sp, style = WebTextStyle)
+                PhonePill(onClick = open, container = pillColor, width = 119.dp, exportLabel = "Playback settings for $title", modifier = if (canDownload) Modifier else Modifier.focusRequester(firstPill)) {
+                    Text("☷", color = PlayarrWebTheme.palette.brandInk, fontSize = 12.88.sp, lineHeight = 19.32.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                     Spacer(Modifier.width(10.dp))
-                    Text(playarrString(PlayarrString.DetailPlayback), color = WebInk, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                    Text(playarrString(PlayarrString.DetailPlayback), color = WebInk, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 }
             }
             // Web phone `.tv-detail-play`: the ink pill (no hover scale on touch) that fills what is left of the first row;
             // a long label such as "Resume from 0:02" wraps to two lines inside it.
             PhonePill(
-                onClick = onPlayClick, container = WebInk, width = 118.5.dp,
+                onClick = onPlayClick, container = WebInk, width = 118.5.dp, exportRole = if (series) "button" else "link", exportLabel = "$playLabel ${work.title}",
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
                 modifier = if (canDownload || onPlaybackSettings != null) Modifier else Modifier.focusRequester(firstPill),
             ) {
-                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle)
+                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebInk))
                 Spacer(Modifier.width(10.dp))
-                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 2)
+                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 2, modifier = Modifier.parityText(background = WebInk))
             }
             WatchlistToggleButton(work, webPhone = true)
-            PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor) {
-                Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
+            PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor, exportLabel = "+ Add to Playlist") {
+                Text("+", color = PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 Spacer(Modifier.width(7.6.dp))
-                Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
             }
         }
     }
@@ -7784,13 +7815,13 @@ private fun PhoneEpisodeCard(
     val available = episode.mediaFileId != null
     val code = "S${seasonNumber.toString().padStart(2, '0')} · E${episode.episode.episodeNumber.toString().padStart(2, '0')}"
     val title = episode.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episode.episodeNumber)
-    Column(Modifier.width(179.4.dp).combinedClickable(enabled = available, onLongClick = onLongPress, onClick = { onSelect(); onPlay() })) {
+    Column(Modifier.width(179.4.dp).parityBox("link", episode.episode.episodeNumber.toString().padStart(2, '0') + " " + code + " " + title, background = WebSurface).combinedClickable(enabled = available, onLongClick = onLongPress, onClick = { onSelect(); onPlay() })) {
         PhoneEpisodeArt(
             badge = {
                 Text(
                     episode.episode.episodeNumber.toString().padStart(2, '0'),
                     color = Color.White, fontSize = 12.8.sp, lineHeight = 19.2.sp, fontWeight = FontWeight(560), style = WebTextStyle,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.7.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.7.dp).parityText(background = WebSurfaceSoft),
                 )
                 progress?.takeIf { it.state != WatchState.Unseen }?.let {
                     Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.28f))) {
@@ -7823,10 +7854,11 @@ private fun PhoneEpisodeCard(
             }
         }
         Row(Modifier.padding(top = 11.5.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.8.dp)) {
-            Text(code, color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+            Text(code, color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurface))
             Text(
                 title, color = if (available) WebInk else WebInkMuted, fontSize = 12.48.sp, lineHeight = 18.72.sp,
                 fontWeight = FontWeight(610), letterSpacing = (-0.1872).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.parityText(background = WebSurface),
             )
         }
         if (!available) Text(playarrString(PlayarrString.DetailUnavailable), color = WebInkMuted, fontSize = 10.sp)
@@ -10859,3 +10891,17 @@ private fun homeStageVerticalScale(): Float =
 /** Web's rail `scroll-padding-inline` / end padding clamp(22, 2.4 vw, 46) css px: a tablet keeps it clear of the screen edge so the last card's ring and glow are not cut (television keeps its tuned value). */
 @Composable
 private fun tabletTrackEnd(tv: Dp): Dp = if (LocalStageScale.current == 1f) tv else webVw(22f, 2.4f, 46f)
+
+
+/**
+ * Rows of a fixed dp height with a dp gap, positioned from the running float pitch (a browser lays the rows out in fractional
+ * px; `Arrangement.spacedBy` rounds every row height and gap and drifts a pixel after a few rows).
+ */
+@androidx.compose.runtime.Immutable
+internal class FractionalColumnArrangement(private val item: androidx.compose.ui.unit.Dp, private val gap: androidx.compose.ui.unit.Dp) : Arrangement.Vertical {
+    override val spacing: androidx.compose.ui.unit.Dp get() = gap
+    override fun androidx.compose.ui.unit.Density.arrange(totalSize: Int, sizes: IntArray, outPositions: IntArray) {
+        val pitch = item.toPx() + gap.toPx()
+        for (i in sizes.indices) outPositions[i] = Math.round(i * pitch)
+    }
+}

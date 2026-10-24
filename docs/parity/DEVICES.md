@@ -217,6 +217,13 @@ store or a sideload. Native packages and their update paths are in `docs/version
   D-pad is checks passed of the suite's D-pad checks (playback is no longer scored: it moved to the performance suite); overall is the mean of the parts that have results
   (mobile has no D-pad). Coverage (captured screens out of 15 per theme) is shown beside, never mixed into a percentage.
 
+## Android phone and tablet: one command
+
+Boot the emulator headless (`-no-window`), then `scripts/parity/android-mobile/emu-setup.sh <serial> [719x1558 295]` (en-GB, UTC, animations off, art port forwarded) and `signin.sh <serial>` (account `parity` on the static server). Install the sideload debug APK. Then
+`PARITY_LEGEND_ROOT=<legend evidence root> PARITY_OUT=<scratch dir> scripts/parity/android-mobile/run.sh phone` (or `tablet`) captures every screen in both themes with the pinned clock, scores against `android-<device>/web`, and replaces `android-<device>/dev` (old PNGs removed, JSON kept). `PARITY_EMU_UNIT` names the emulator's systemd user unit so the run can recycle it when the swiftshader leak grows. D-pad does not apply (touch devices).
+
+Layout export (Android phone and tablet): every capture also writes `<cand>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md) from the debug build's own `PlayarrLayoutExport` (`am broadcast -a io.playarr.mobile.PARITY_LAYOUT`): Compose semantics text runs with the resolved text style, plus `parityBox` / `parityTag` records for links, buttons, images, painted containers with their resolved fill, radius and alpha. `run.sh` scores each file with `layout-score.mjs` and prints `layout-scores.txt`. The tablet emulator runs as the user unit `playarr-android-tablet.service` (headless, own cgroup); `emu-recycle.sh` restarts a unit when its memory passes a limit.
+
 ## Apple TV and macOS: one-command hosted run
 
 `scripts/parity/apple/run.sh <tvos|macos> [app-ref] [workflow-ref]` dispatches `parity-apple.yml` (static server, pinned

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
@@ -39,6 +40,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.semantics.contentDescription
@@ -125,9 +127,10 @@ internal fun PlayarrPageHeaderRow(
                         contentDescription = b.label,
                         active = spec.backActive,
                         focusScale = if (spec.backActive) 1.055f else 1f,
+                        detailPage = b.asButton,
                     ) {
                         // Web draws the arrow as the text glyph "←" at 12.8 px, weight 720.
-                        Text("←", color = if (spec.backActive) palette.background else palette.inkSoft, fontSize = 12.8.sp, fontWeight = FontWeight(720))
+                        Text("←", color = if (spec.backActive) palette.background else palette.inkSoft, fontSize = 12.8.sp, fontWeight = FontWeight(720), modifier = Modifier.offset(y = (-0.8).dp))
                     }
                 }
             }.first().measure(Constraints.fixed(backSize, backHeight))
@@ -262,6 +265,7 @@ private fun PlayarrPhoneBackPill(
     contentDescription: String,
     active: Boolean,
     focusScale: Float,
+    detailPage: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val palette = PlayarrWebTheme.palette
@@ -277,6 +281,7 @@ private fun PlayarrPhoneBackPill(
             modifier = Modifier.size(metrics.controlWidth, metrics.control).graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (below != null) Modifier.focusProperties { down = below } else Modifier)
                 .then(if (focused || focusScale > 1f) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
+                .parityBox(if (detailPage) "button" else "link", contentDescription, 50f, background = palette.surfaceStrong.copy(alpha = 0.7f).compositeOver(palette.background))
                 .semantics { this.contentDescription = contentDescription },
             shape = androidx.compose.foundation.shape.CircleShape,
             color = if (active) palette.ink else palette.surfaceStrong.copy(alpha = 0.7f),
