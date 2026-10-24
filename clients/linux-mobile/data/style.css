@@ -220,7 +220,7 @@ button.pa-close.ring { outline: 2px solid @pa_ring; outline-offset: 2px; }
 .pa-panel-title { font-size: 22.4px; font-weight: 590; letter-spacing: -1.3px; }
 button.pa-close { min-width: 46px; min-height: 46px; }
 button.pa-close.soft { background: @pa_soft; min-width: 42px; min-height: 42px; border: 1px solid alpha(@pa_ink, 0.15); }
-.pa-section-label { font-size: 7.04px; font-weight: 720; letter-spacing: 0.8px; margin-top: 12px; margin-bottom: 3px; }
+.pa-section-label { font-size: 7.04px; font-weight: 720; letter-spacing: 0.55px; margin-top: 12px; margin-bottom: 3px; }
 .pa-seg-tile { min-height: 38px; background: alpha(@pa_soft, 0.64); border: none; border-radius: 12px; font-size: 11.52px; font-weight: 680; color: @pa_muted; padding: 4px 10px 6px; }
 .pa-seg-tile:checked { background: @pa_ink; color: @pa_body; }
 button.pa-row { background: @pa_soft; border: none; border-radius: 14px; min-height: 68px; padding: 0 18px; font-size: 16px; font-weight: 700; }
@@ -327,7 +327,8 @@ dropdown.pa-dropdown > button > box { border-spacing: 9.6px; }
 .pa-profile-name { letter-spacing: 0.16px; }
 .pa-profile-name.pa-add-label { letter-spacing: 0; color: @pa_ink_soft; opacity: 1; }
 .pa-tiny.watching { letter-spacing: 0.44px; }
-.pa-profile-actions button.pa-pill.small, button.pa-clients-link { padding: 0 17px; }
+.pa-profile-actions button.pa-pill.small { padding: 0 16px; }
+button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 /* The web draws its symbol glyphs from DejaVu Sans, its arrows full-width from a CJK font and the open circle from a
    mono face; naming them gives the same advances (and glyph shapes) as the web. */
 .pa-row-glyph, .pa-glyph, .pa-dd-caret { font-family: "Nunito Sans", "DejaVu Sans"; }
@@ -338,3 +339,5 @@ dropdown.pa-dropdown > button > box { border-spacing: 9.6px; }
 .pa-display.two { letter-spacing: -2.85px; }
 .pa-cal-arrow { margin-left: 2px; }
 .pa-mline .pa-dot { margin-top: 2px; }
+.pa-seg-tile { font-kerning: none; }
+.pa-pref-arrow { margin-bottom: 3px; }

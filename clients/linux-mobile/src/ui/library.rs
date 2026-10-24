@@ -491,6 +491,8 @@ impl Lib {
             dd.add_css_class("pa-filter");
             // The web's select is a bordered group holding a button with the value and a caret glyph.
             crate::layout::Tag::new("group", "", 12.0)
+                .adjust([0.0, -1.39, 0.0, 0.0])
+                .height(58.78)
                 .extra(crate::layout::Extra {
                     role: "button",
                     label: "Any language \u{2304}",
@@ -822,28 +824,36 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
     col.append(&area);
     let label = gtk4::Label::new(Some(name));
     // The web's text node is the lower-case word; a capital first letter is drawn by its CSS.
-    crate::layout::tag(&label, "text", &name.to_lowercase(), 0.0);
+    // The web's word sits 1.4, 1.2 and 1.9 px lower than the centred label.
+    crate::layout::Tag::new("text", &name.to_lowercase(), 0.0)
+        .adjust([0.0, [1.35, 1.17, 1.85][i], 0.0, 0.0])
+        .apply(&label);
     col.append(&label);
     tile.set_child(Some(&col));
-    // The web draws each glyph from three boxes: (x, y, w, h) in the tile's own css px.
+    // The web draws each glyph from three boxes (web x, y, w, h); the Screen tile is the focused one and drawn 1.025 times
+    // larger. Insets are relative to this tile, whose box sits at x 20, 130 and 240, y 116 (101 wide).
     let boxes: [[f32; 4]; 3] = [
-        [40.66, 8.28, 20.0, 2.0],
-        [41.66, 11.68, 5.46, 3.86],
-        [42.67, 6.78, 4.0, 13.0],
+        [60.66, 124.2, 20.0, 2.0],
+        [169.73, 127.0, 5.46, 3.86],
+        [281.33, 122.7, 4.0, 13.0],
     ];
+    let tile_x = [20.0_f32, 130.0, 239.0][i];
     let [x, y, w, h] = boxes[i];
     let step = [4.0, 7.52, 6.0][i];
-    let gap_y = if i == 0 { 4.0 } else { 0.0 };
     let mut t = crate::layout::Tag::new("button", name, 12.0);
+    if i == 1 {
+        t = t.adjust([-1.94, -0.68, 1.92, 0.0]).height(49.2);
+    }
     for k in 0..3 {
         let kf = k as f32;
-        let (dx, dy) = if i == 0 { (0.0, kf * gap_y) } else { (kf * step, 0.0) };
+        let (dx, dy) = if i == 0 { (0.0, kf * step) } else { (kf * step, 0.0) };
+        let left = x + dx - tile_x;
         t = t.extra(crate::layout::Extra {
             role: "container",
             label: "",
             radius: 1.0,
-            inset: [x + dx, y + dy, 101.33 - (x + dx) - w, 48.0 - (y + dy) - h],
-            height: None,
+            inset: [left, y + dy - 116.0, 101.0 - left - w, 0.0],
+            height: Some(h),
             bg: None,
             art: false,
         });

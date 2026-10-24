@@ -102,8 +102,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .orientation(gtk4::Orientation::Vertical)
         .halign(gtk4::Align::Center)
         .margin_top(9)
-        // The web centres the heading about 15 px left of the page centre.
-        .margin_end(30)
+        // The web centres the heading about 16 px left of the page centre.
+        .margin_end(32)
         .build();
     heading.append(
         &gtk4::Label::builder()

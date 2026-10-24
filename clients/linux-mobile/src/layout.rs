@@ -435,6 +435,7 @@ impl Walk<'_> {
             }
             None => b,
         };
+        let mut shift = (0.0_f64, 0.0_f64);
         let mut emit = own.is_some();
         if let Some(t) = tag_of(w) {
             el["role"] = json!(if t.role == "page" { "container" } else { t.role });
@@ -458,7 +459,10 @@ impl Walk<'_> {
                 b.width() - dl + dr,
                 t.height.unwrap_or(b.height() - dt + db),
             );
-            if !keep_rect {
+            if keep_rect {
+                // A label keeps its text box; a tagged adjust only shifts it (applied below).
+                shift = (f64::from(dl), f64::from(dt));
+            } else {
                 el["rect"] = json!({"x": x, "y": y, "w": w2, "h": h2});
             }
             if let Some([x, y, w3, h3]) = t.web_rect {
@@ -533,16 +537,19 @@ impl Walk<'_> {
                 whole.extents().1.width() as f32 / s
             };
             el["rect"] = json!({
-                "x": b.x() + ox as f32 + if l.wraps() { 0.0 } else { logical.x() as f32 / s }, "y": b.y() + oy as f32 + y,
+                "x": f64::from(b.x()) + shift.0 + f64::from(ox) + if l.wraps() { 0.0 } else { f64::from(logical.x()) / f64::from(s) },
+                "y": f64::from(b.y()) + shift.1 + f64::from(oy) + f64::from(y),
                 "w": full, "h": h,
             });
             if tag_of(w).map_or(true, |t| t.label.is_empty()) {
                 el["text"] = json!(l.text().to_string());
-                el["role"] = json!(if classes.iter().any(|c| HEADINGS.contains(&c.as_str())) {
-                    "heading"
-                } else {
-                    "text"
-                });
+                if tag_of(w).is_none() {
+                    el["role"] = json!(if classes.iter().any(|c| HEADINGS.contains(&c.as_str())) {
+                        "heading"
+                    } else {
+                        "text"
+                    });
+                }
             }
             el["color"] = json!(hex(rgba(&l.color()), true));
             el["fontSize"] = json!((px * 100.0).round() / 100.0);
