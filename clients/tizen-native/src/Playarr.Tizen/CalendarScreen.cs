@@ -160,6 +160,8 @@ internal sealed class CalendarScreen : IPage
         if (_period is not null)
             _period.Text = _view == CalendarView.Month ? _anchor.ToString("MMM yyyy", gb)
                 : _view == CalendarView.Week ? $"{start.Day} – {end.ToString("d MMM", gb)}" : $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM", gb)}";
+        var statusText = _view == CalendarView.Month ? _anchor.ToString("MMMM yyyy", gb) : _view == CalendarView.Week ? $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM yyyy", gb)}" : $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM yyyy", gb)}";
+        _body.Add(Sem.Tag(new View { PositionX = 153.6f, PositionY = 163 }, "status", statusText, style: (19.2f, 400, _t.Ink))); // web: visually hidden period text
         switch (_view)
         {
             case CalendarView.Month: RenderMonth(start, end); break;
@@ -176,7 +178,7 @@ internal sealed class CalendarScreen : IPage
     private void RenderMonth(DateTime start, DateTime end)
     {
         var days = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
-        for (var i = 0; i < 7; i++) _body.Add(Ui.Text(days[i], GridX + i * CellW, HeadY + 6, 12f, 400, _t.InkMuted, CellW, 18f, upper: true, spacing: 0.96f));
+        for (var i = 0; i < 7; i++) _body.Add(Ui.Text(days[i], GridX + i * CellW, HeadY + 6, 12f, 400, _t.InkMuted, CellW, 18f, HorizontalAlignment.Center, upper: true, spacing: 0.96f));
         var byDay = Visible.GroupBy(CalendarRules.LocalDay).ToDictionary(g => g.Key, g => g.OrderBy(Order).ToList());
         var rows = (int)Math.Ceiling(((end - start).TotalDays + 1) / 7);
         for (var r = 0; r < rows; r++)
@@ -193,8 +195,10 @@ internal sealed class CalendarScreen : IPage
                 {
                     var e = list[k];
                     var dot = ToneColor(CalendarRules.Tone(e, _today));
-                    var ly = 7 + k * 25.4f;
-                    cell.Add(Ui.Box(11.4f, ly + 7, 8.8f, 8.8f, dot, 4.4f));
+                    var ly = 15.3f + k * 25.4f;
+                    cell.Add(Ui.Box(11.4f, ly + 4.1f, 8.8f, 8.8f, dot, 4.4f));
+                    var toneName = CalendarRules.Tone(e, _today) switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
+                    cell.Add(Sem.Tag(new View { PositionX = 5.8f, PositionY = 1.8f + k * 25.4f, Size = new Size(226, 44) }, "button", $"{e.Title}, {toneName}, {day.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"))}", radius: 4));
                     var multi = e.Members is { Count: > 1 } m ? $" · {m.Count}×" : "";
                     cell.Add(Ui.Text(e.Title + multi, 27.4f, ly, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
                 }
@@ -269,6 +273,7 @@ internal sealed class CalendarScreen : IPage
                 Focused = () => RevealWeekItem(dayIndex, 8, WeekColumnW, 34),
             });
             var y = 48f;
+            if (!byDay.ContainsKey(day) || byDay[day].Count == 0) content.Add(Ui.Text("Nothing scheduled", 0, 47.6f, 19.2f, 400, _t.InkMuted, WeekColumnW, 28.8f)); // web: an empty day says so
             foreach (var e in byDay.TryGetValue(day, out var l) ? l : new List<CalendarEntry>())
             {
                 var cardY = y;

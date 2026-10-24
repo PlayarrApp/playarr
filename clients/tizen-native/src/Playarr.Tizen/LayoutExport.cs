@@ -19,15 +19,17 @@ internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, f
     public Rgba? Backdrop { get; init; }
     /// <summary>The element's own fill is a color-mix on web, which the web refs carry no background for.</summary>
     public bool IgnoreOwnBg { get; init; }
+    /// <summary>A text element with no drawn label (web exports visually hidden text such as the calendar period status).</summary>
+    public (float Size, int Weight, Rgba Color)? Style { get; init; }
 }
 
 internal static class Sem
 {
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, SemInfo> Table = new();
 
-    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false) where T : View
+    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false, (float Size, int Weight, Rgba Color)? style = null) where T : View
     {
-        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { BoxNow = boxNow, Backdrop = backdrop, IgnoreOwnBg = ignoreOwnBg }); return v;
+        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { BoxNow = boxNow, Backdrop = backdrop, IgnoreOwnBg = ignoreOwnBg, Style = style }); return v;
     }
 }
 
@@ -80,6 +82,9 @@ internal static class LayoutExport
     };
     private static float RunTopShift(float size) => RunTopShifts.TryGetValue((int)Math.Round(size * 1000), out var d) ? d : 0f;
 
+    // web writes a circle's radius as 50 (50%) and a pill's as 999 (999px)
+    private static float Radius(float r, float w, float h) => r >= Math.Min(w, h) / 2f - 0.6f && r > 1f ? (Math.Abs(w - h) < 1.5f ? 50f : 999f) : r;
+
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
 
     // (vx, vy): visual top-left of the parent; s: accumulated scale; bg: composited background so far (over white); op: accumulated opacity
@@ -121,15 +126,20 @@ internal static class LayoutExport
             var mixed = paints && (IsMixedSurface(bc) || sem is { IgnoreOwnBg: true });
             (float R, float G, float B) cbg = ebg;
             if (paints && !mixed) { var a = bc.A * cop; cbg = (ebg.Item1 * (1 - a) + bc.R * a, ebg.Item2 * (1 - a) + bc.G * a, ebg.Item3 * (1 - a) + bc.B * a); }
-            if (sem is not null && sem.Role != "none")
+            if (sem is { Style: { } hs } && !string.IsNullOrEmpty(sem.Name))
+            {
+                var hw = Ui.TextWidth(sem.Name, hs.Size, hs.Weight, 0); var ha = (float)Math.Round(1.011 * hs.Size); var hh = ha + (float)Math.Round(0.353 * hs.Size);
+                outList.Add(new Node(sem.Name, sem.Role, cx, cy, hw, hh, Hex(hs.Color.R, hs.Color.G, hs.Color.B, hs.Color.A), Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), hs.Size, hs.Weight, 0, cop));
+            }
+            else if (sem is not null && sem.Role != "none")
             {
                 var (bx, by, bw, bh) = (sem.BoxNow?.Invoke() ?? sem.Box) is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
-                outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? child.CornerRadius.X * csx, cop));
+                outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
             }
             if (child is ImageView && w > 1 && h > 1)
                 outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, parentClips ? parentRadius : 0, cop));
             else if (paints && sem is null)
-                outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, child.CornerRadius.X * csx, cop));
+                outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, Radius(child.CornerRadius.X * csx, w, h), cop));
             Walk(child, cx, cy, csx, csy, cbg, cop, outList, child.CornerRadius.X * csx);
         }
     }

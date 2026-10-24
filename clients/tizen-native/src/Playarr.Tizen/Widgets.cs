@@ -100,7 +100,7 @@ internal sealed class MediaCard
         Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 610, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
         // web: the whole card is one link; Home names it "<title> <sub>", grids "Open <title>"
-        Sem.Tag(Box, "link", showSub ? $"{card.Title} {card.Sub}" : "Open " + card.Title, (0, 0, W, H + 29.4f), 12, boxNow: () => _focused && LinkFocusScale != 1f ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
+        Sem.Tag(Box, "link", showSub ? $"{card.Title} {card.Sub}" : "Open " + card.Title, (0, 0, W, H + 29.4f), showSub ? 0 : 12, boxNow: () => _focused && (LinkFocusScale != 1f || LinkFocusLift != 0) ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
         _titleY = Title.PositionY; _titleX = Title.PositionX; _subY = H + 31.9f + drop;
         if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
@@ -136,7 +136,7 @@ internal sealed class MediaCard
     public float LinkFocusLift { get; init; }
 
     /// <summary>Renames the link for the layout export (detail rails name cards "Open <title>" and draw no radius on the link).</summary>
-    public void TagLink(string name, float radius) => Sem.Tag(Box, "link", name, (0, 0, W, H + 29.4f), radius, boxNow: () => _focused && LinkFocusScale != 1f ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
+    public void TagLink(string name, float radius) => Sem.Tag(Box, "link", name, (0, 0, W, H + 29.4f), radius, boxNow: () => _focused && (LinkFocusScale != 1f || LinkFocusLift != 0) ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
     /// <summary>Web Library: the selected card scales 1.015 about its centre, so the caption grows with it.</summary>
     public float FocusCaptionScale { get; init; } = 1f;
     private float _titleX;
@@ -395,7 +395,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.From("thumbnail", "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 1.9f, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -8f };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -8f, LinkFocusLift = -6f };
     }
 
     /// <summary>Web cover view: the poster is the art (poster first, backdrop as the fallback); an On deck episode keeps its frame.</summary>
