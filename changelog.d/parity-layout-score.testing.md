@@ -1,0 +1,1 @@
+- Parity: deterministic layout score (`scripts/parity/layout-score.mjs`), layout schema and web layout export.

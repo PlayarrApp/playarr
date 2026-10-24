@@ -15,7 +15,8 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
 ```
 
 - `rect`: CSS px of the layout viewport (device px divided by dpr), origin at the top left of the app viewport, excluding system bars.
-  For text elements it is the bounds of the text run (the glyph lines), for other elements the border box.
+  For text elements it is the glyph-run bounds (the lines of drawn text, as `Range.getBoundingClientRect` reports them), never the
+  widget or view box: exporters must emit the bounds of the laid-out text, not a stretched label frame. Other elements use the border box.
 - `color`: text colour, `#rrggbb` or `#rrggbbaa`; `null` for elements without text. `background`: the colour behind and including
   the element, every ancestor background composited over white. `fontSize` (CSS px, after any zoom) and `fontWeight` (100 to 900):
   `null` without text. `radius` (top-left corner, px) and `opacity` (product with the ancestors) only when not 0 and not 1.

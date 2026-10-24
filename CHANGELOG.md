@@ -13,44 +13,6 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Android phone: agenda entry lines sit at the web's pitch, and the agenda panel reaches the top of the screen.
-- Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.
-- Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
-- Android phone: Home draws no default-focus ring on the first card (touch), and a phone detail title that wraps breaks where its longer line is shortest, like the web's `text-wrap: balance`.
-- Android phone player controls: buttons are 44 dp, Previous and Next dim when the queue has one item, and the time and button rows are spaced as on the web.
-- Android phone Settings index: the numbered rows are spread over whole pixels (162, 162 and 163 px) instead of a rounded 162 px, so the list pitch matches the web.
-- Android tablet: the Filters drawer headings, kicker and language field text use the web's css sizes and 12 px label gap, and segment labels are capitalised per word (filters 2.99 to 2.17 % raw mismatch dark, 3.09 to 2.27 light).
-- Android tablet: the hero key art starts at the nav clearance and is 106% of the viewport tall as on the web, and the Filters drawer groups use the web's `clamp(22, 2.8vu, 34)` gap (filters 3.56 to 2.99 % mismatch dark, 3.66 to 3.09 light).
-- Android tablet: the profile picker follows the static web (chrome and action pills in css px, heading and row positions, no Clients link).
-- Android tablet: a series detail with few tracks centres its first season like the web, and Similar Titles use the web's wider 16:9 cards.
-- Android tablet: film detail shows the web's scene-marker count under Chapters, the Similar Titles track uses 320 x 180 cards, and the agenda list ends clear of the action column.
-- Android tablet: Home rail cards, the film and series detail tracks, the Chapters label gap and the Calendar month grid follow the static web (positions, css px text, bottom edge fade).
-- Android tablet: the player's control row, seek bar and top buttons sit where the static web has them.
-- Android TV film detail: the Similar Titles track fades at the bottom like the web and sits 1 px higher, so the light film detail matches the static refs more closely.
-- Android TV player controls: the parity capture (debug pause extra) now matches the web ref at rest: no focus ring, 16 s buffered bar, seek bar 3 px higher and the quality pill spacing as web. Series detail fades at the bottom edge like the web, light detail score 97.2 to 99.1.
-- Android TV player controls: the parity capture draws the time as three spans like the web (tabular digits, fainter slash) and pauses at 0:02 within 5 ms, so the paused frame and the playhead match the web ref.
-- Fire TV (Vega): the Search grid starts at the web's x (777 px), the detail page kicker takes the web's theme colours (dark rose, light maroon) and the Calendar month grid is as wide as the web's (1663 px, with the right-hand action column).
-- Fire TV (Vega): detail pages fall back to genre-ranked library titles for Similar Titles when the server returns none, the primary action pill turns brand red with white text when focused, and tracks follow the web spacing (seasons close, other tracks a section gap apart).
-- HarmonyOS phone: series-detail text block, title wrap and synopsis height match web, series year chip uses the end date, Profiles selects no longer wrap their label, Library filter language sections have web's gap.
-- HarmonyOS phone: film action pills share the row width, episode ring glow is no longer cut at the rail edge, Library filter language selects use web's smaller regular label, the preview build pins the parity clock (Calendar agenda), the preview contract test follows the static-server workflow env.
-- HarmonyOS phone: the agenda card fits the page width (328 vp) instead of scrolling sideways.
-- HarmonyOS phone: the detail hero is drawn as the web does (58 vh box, greyscale art under a per-theme veil and two surface washes).
-- HarmonyOS phone: library and Home card captions use the web's weight and tracking, Search shows the focused field ring and web empty state, title actions use web glyph sizes and ring gap, and the focused card glow is wider.
-- HarmonyOS phone: the film Chapters rail follows the web layout, the nav bar glass and saved avatar match the web, series titles wrap like the web, the Profiles avatar glows and agenda cards grow with a wrapped pill.
-- HarmonyOS phone: the calendar agenda, Filters drawer and month cells follow the web's sizes, film and series action pills carry the web shadow and the Profiles page has the web wash.
-- HarmonyOS phone: Library grids draw the card row under the translucent nav bar like the web, the agenda text offset is closer and the Profiles avatar glow is round.
-- HarmonyOS phone: Home rails scroll under the translucent nav bar like the web and the Profiles avatar glow matches the web's wide falloff.
-- HarmonyOS phone: the player controls follow the web's control set and layout (previous, play, next, two volume, subtitles and queue icons; quality, info, devices and full screen below).
-- iPad film and series detail: web background fade, title line pitch, 16:9 Similar Titles rail and page-top parity captures.
-- Roku: Chapters thumbnails carry the web's dark wash, the calendar Filters drawer header matches the library one, and parity captures show the static clip frame behind the player controls (capture mode only).
-- Roku: the parity driver captures player-controls itself (opt-in, pauses the static clip at 2 s), and the stage title tracking and Actions drawer glyph sizes follow the web.
-- Roku: library cards draw the web's soft card shadow in light mode, the Filters and Actions drawers match the web panel fill, header offsets and round close button, and Actions titles use the web line height.
-- Sailfish: agenda cards end at the page padding, loopback poster URLs fall back to the work art, the edge fade is limited to the active calendar view, and the Profiles header and select styling match the web.
-- Sailfish: nav icons 21 px as on the web, Actions page rows use the web's weight, glyphs and title position.
-- Sailfish: Home rails use the web's 170 px cards, title pages lead with the next-up episode on series, wrap long titles like the web and show Chapters (generated "Chapter 1" fallback) and Similar Titles (genre-ranked library fallback) when the server returns none.
-- Tizen native parity capture: the paused player-controls capture draws the web buffered segment on the seek track (debug builds only).
-- Tizen native parity capture: the paused player-controls capture shows the static clip's 2 s frame behind the controls (debug builds only), matching the web reference.
-- Tizen native: the unseen dot on library cards uses web's 2 px ring and sits half a pixel lower.
 - Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.
 - Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
 - Android phone player controls: buttons are 44 dp, Previous and Next dim when the queue has one item, and the time and button rows are spaced as on the web.
@@ -747,7 +709,6 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Helm chart `playarr-dev` 0.6.0 can render its release Namespace with labels and annotations from values (`namespace.create`, off by default).
 - Parity: a static, seeded, frozen reference server (`scripts/parity/static-server.sh`, `PLAYARR_STATIC=1`) and one shared capture config (`scripts/parity/parity.env`), so web refs and device captures stop drifting with a live library.
 - Validate the configured fixture server and Device Test profile before the Apple iOS wall builds or captures.
 - HarmonyOS: a string layer from the web's English, Thai and Japanese tables and Settings > Language; navigation labels and Settings text follow it.
@@ -3470,8 +3431,6 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Testing
 
-- Parity capture on a real Samsung TV also stands in the static clip frame behind the player controls: the Tizen player runs through AVPlay, so the driver recognises a paused AVPlay at 2 s as well as a paused video element; the app is unchanged.
-- Parity capture on a real LG TV shows the paused static clip frame behind the player controls (the inspector screenshot has no video plane); the app is unchanged.
 - Parity capture on a real LG TV shows the paused static clip frame behind the player controls (the inspector screenshot has no video plane); the app is unchanged.
 - Add a fail-closed Android tablet capture preflight that confirms the active test account and server before screenshots.
 - iPad Home parity captures now fail closed when the Device Test account has unexpected playback progress or the canonical Home deck row changes during capture.

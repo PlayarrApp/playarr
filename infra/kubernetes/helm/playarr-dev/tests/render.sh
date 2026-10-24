@@ -14,16 +14,9 @@ trap 'rm -rf "$chart_dir"; rm -f "$rendered"' EXIT
 # As shipped, the chart's neutral defaults render nothing and lint cleanly.
 helm lint --strict "$src_chart" >/dev/null
 test -z "$(helm template playarr-dev "$src_chart" | grep -v '^---$' | tr -d '[:space:]')"
-# The Namespace renders only when asked, with its labels and annotations.
-ns="$(helm template playarr-dev "$src_chart" --namespace playarr --set namespace.create=true --set namespace.labels.team=example --set-string 'namespace.annotations.example\.com/wave=-1')"
-test "$(grep -c '^kind: Namespace$' <<<"$ns")" -eq 1
-grep -q '^  name: playarr$' <<<"$ns"
-grep -q '^    team: example$' <<<"$ns"
-grep -q '^    example.com/wave: "-1"$' <<<"$ns"
 helm lint --strict "$chart_dir"
 helm template playarr-dev "$chart_dir" --namespace playarr >"$rendered"
 
-test "$(grep -c '^kind: Namespace$' "$rendered")" -eq 0
 test "$(grep -c '^kind: Deployment$' "$rendered")" -eq 8
 test "$(grep -c '^          startupProbe:$' "$rendered")" -eq 6
 test "$(grep -c '^          readinessProbe:$' "$rendered")" -eq 8

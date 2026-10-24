@@ -24,10 +24,3 @@ regionalImage: ""
 # a Deployment, Services, PV/PVC, optional cert-manager Certificate and an
 # ingress Mapping. See README.md, "Regional instances".
 regionalInstances: {}
-
-# Optionally render the release Namespace so its labels and annotations live in
-# the chart values. Off by default: the namespace is then created elsewhere.
-namespace:
-  create: false
-  labels: {}
-  annotations: {}

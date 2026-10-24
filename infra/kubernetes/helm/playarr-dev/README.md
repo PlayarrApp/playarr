@@ -51,9 +51,6 @@ this chart manages only the matching ingress routes.
 | `workloads` | `{}` | Development workloads, keyed by name. |
 | `regionalImage` | `""` | The single image every regional instance runs, for example `<registry>/playarr:<sha8>`. Required when `regionalInstances` is set. |
 | `regionalInstances` | `{}` | Regional servers, keyed by instance name (also the Deployment, Service and Mapping name). |
-| `namespace.create` | `false` | Render the release Namespace (named after `--namespace`). |
-| `namespace.labels` | `{}` | Labels for the rendered Namespace. |
-| `namespace.annotations` | `{}` | Annotations for the rendered Namespace. |
 
 ### Regional instance (`regionalInstances.<name>`)
 
