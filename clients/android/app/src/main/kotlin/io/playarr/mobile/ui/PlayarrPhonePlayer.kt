@@ -179,7 +179,8 @@ internal fun BoxScope.PhonePlayerOverlay(
     val topInset = webPhoneInsets().asPaddingValues().calculateTopPadding()
     val bottomInset = playerBottomInset()
     var fullscreen by remember { mutableStateOf(false) }
-    var muted by remember { mutableStateOf(false) }
+    // Parity captures: the web reference plays muted (autoplay policy), so the debug pause hook starts with the muted icon.
+    var muted by remember { mutableStateOf(parityPauseAtMs != null) }
     val durationMs = timeline.durationMs.coerceAtLeast(0L)
     val displayedMs = (scrubPositionMs ?: timeline.positionMs).coerceIn(0L, durationMs)
     val activeQuality = controls.qualityOptions.firstOrNull { it.id == controls.activeQualityId } ?: controls.qualityOptions.firstOrNull()
