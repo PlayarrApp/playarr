@@ -149,7 +149,7 @@ function RailLink({
         {...lf(8.832, 680, 8.832)}
         style={[
           textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
-          {color: ink, marginTop: sw(4.8), fontSize: sw(8.832)},
+          {color: ink, marginTop: sw(3.8), fontSize: sw(8.832)},
         ]}
       >
         {item.label}
@@ -334,7 +334,7 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
             {...lf(8.832, 680, 8.832)}
             style={[
               textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
-              {color: ink, marginTop: sw(4.8), maxWidth: sw(58), fontSize: sw(8.832)},
+              {color: ink, marginTop: sw(3.8), maxWidth: sw(58), fontSize: sw(8.832)},
             ]}
           >
             {shortName}

@@ -91,6 +91,15 @@ export interface TProps {
  * half-leading. When the line height is smaller than the content area (the big titles) the correction is smaller.
  * Calibrated on the device against the web's text positions (the big titles: 0.274, measured 2026-10-24 on the 69.12 px hero).
  */
+/**
+ * Per-size vertical corrections (CSS px) measured on the device against the web layout refs (median of the web glyph-run top minus
+ * the Text view's top over every matched run of that size, 2026-10-25): Vega's glyph placement differs a little by font size.
+ */
+const TEXT_NUDGE: Record<string, number> = {
+  '8': -0.55, '9.22': -0.79, '9.92': 1.22, '9.98': -0.53, '10.56': -0.36, '11.14': 0.64, '12.48': 0.38, '12.8': 0.74,
+  '12.81': -2.03, '13.06': 0.92, '13.44': -1.75, '20.8': -1.71, '29.6': -0.31, '33.6': -0.84,
+};
+
 export function halfLeading(size: number, lh: number | undefined): number {
   if (lh === undefined) return 0;
   const content = 1.364 * size;
@@ -118,7 +127,7 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
       numberOfLines={lines}
       {...parity}
       allowFontScaling={false}
-      style={[run, {color, includeFontPadding: false, position: 'relative', top: u(halfLeading(size, lh) + dy), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}
+      style={[run, {color, includeFontPadding: false, position: 'relative', top: u(halfLeading(size, lh) + dy + (TEXT_NUDGE[String(size)] ?? 0)), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}
     >
       {children}
     </Text>
