@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// Parity layout export (docs/parity/LAYOUT.md), debug builds only. Views opt in with `.parityLayout(...)`, reporting their
 /// text, style and frame in screen points; the registry writes `parity-layout.json` beside `parity-state.json`, which the
@@ -87,6 +90,34 @@ final class TVParityLayoutRegistry {
         visit(window, depth: 0)
         return found
     }
+    #elseif os(macOS)
+    /// The Mac's accessibility tree (AppKit): frames and names for what views did not report themselves.
+    private func accessibilityElements() -> [Item] {
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first, let content = window.contentView else { return [] }
+        var found: [Item] = []
+        var visited = 0
+        let height = content.bounds.height
+        func visit(_ object: Any, depth: Int) {
+            guard visited < 4000, depth < 40 else { return }
+            visited += 1
+            guard let element = object as? NSAccessibilityProtocol else { return }
+            let role = element.accessibilityRole?()
+            let label = element.accessibilityLabel?() ?? ""
+            let frame = element.accessibilityFrame()
+            if let role, !label.isEmpty || role == .image, role != .group, role != .scrollArea, role != .window {
+                var mapped = "container"
+                if role == .button { mapped = "button" } else if role == .link { mapped = "link" } else if role == .image { mapped = "image" }
+                else if role == .staticText { mapped = "text" }
+                // screen coordinates (origin bottom-left) to the content view's top-left origin
+                let inWindow = window.convertFromScreen(frame)
+                let rect = CGRect(x: inWindow.minX, y: height - inWindow.maxY, width: inWindow.width, height: inWindow.height)
+                found.append(Item(text: label.isEmpty ? nil : label, role: mapped, rect: rect))
+            }
+            for child in element.accessibilityChildren?() ?? [] { visit(child, depth: depth + 1) }
+        }
+        visit(content, depth: 0)
+        return found
+    }
     #endif
 
     /// Web text boxes are the glyph run: the text width by the font's content-area height (Chromium: rounded ascent plus
@@ -105,13 +136,9 @@ final class TVParityLayoutRegistry {
     private func snapshot() -> Data? {
         let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         let styled = order.compactMap { items[$0] }
-        #if os(tvOS)
         let plain = accessibilityElements().filter { entry in
             !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
         }
-        #else
-        let plain: [Item] = []
-        #endif
         let elements: [[String: Any]] = (styled.map(glyphRun) + plain).compactMap { item in
             guard item.rect.width > 0, item.rect.height > 0, item.rect.intersects(screen) else { return nil } // off-viewport lazy items are dropped
             var element: [String: Any] = [
