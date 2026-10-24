@@ -14,7 +14,11 @@ anon=$(awk '$1=="anon"{print $2}' "$cg/memory.stat")
 limit=$((max_gib * 1024 * 1024 * 1024))
 echo "emu-recycle: $unit anon=$((anon / 1048576)) MiB, limit $((max_gib * 1024)) MiB"
 [ "$anon" -le "$limit" ] && exit 0
-systemctl --user restart "$unit"
+# A transient unit cannot be restarted (it is removed when stopped): kill the emulator through adb and let Restart=always bring it back.
+if ! systemctl --user restart "$unit" 2>/dev/null; then
+  adb -s "$serial" emu kill >/dev/null 2>&1 || true
+  sleep 30
+fi
 timeout 600 bash -c "until [ \"\$(timeout 10 adb -s '$serial' shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 10; done"
 sleep 60  # let system_server settle before the first activity start
 for _ in 1 2 3; do "$(dirname "$0")/emu-setup.sh" "$serial" "${PARITY_WM_SIZE:-}" "${PARITY_WM_DENSITY:-}" && break; sleep 20; done
