@@ -17,8 +17,9 @@ MouseArea {
     property bool compact: false        // library grids: title only
     property bool showUnwatched: true
     property string parityRole: "link"
-    readonly property string layoutLabel: work ? ((work.deckTitle || work.title) + " " + (work.deckSub ? work.deckSub : kindLabel(work.kind) + (work.release_date ? " \u00B7 " + work.release_date.substr(0, 4) : ""))) : ""
-    readonly property real layoutH: art.height + 24.7 * Tokens.u
+    readonly property int layoutRadius: compact ? 12 : 0
+    readonly property string layoutLabel: compact && work ? qsTr("Open %1").arg(work.deckTitle || work.title) : work ? ((work.deckTitle || work.title) + " " + (work.deckSub ? work.deckSub : kindLabel(work.kind) + (work.release_date ? " \u00B7 " + work.release_date.substr(0, 4) : ""))) : ""
+    readonly property real layoutH: art.height + (compact ? 24.7 : 24.7) * Tokens.u
     property bool firstInk: false
     property bool ring: false           // web focuses the first library card at rest and draws its ring
     readonly property var prog: work ? Progress.byWork[work.id] : undefined
@@ -125,7 +126,7 @@ MouseArea {
             elide: Text.ElideRight
             color: root.firstInk ? (Tokens.dark ? "#ffffff" : "#000000") : Tokens.ink
             font.family: Tokens.family610   // web --card-title-weight: 610
-            font.letterSpacing: -0.0285 * 8.9 * Tokens.u
+            font.letterSpacing: -0.0285 * 8.9 * Tokens.u - 0.1
             font.pixelSize: 8.9 * Tokens.u
         }
         Label { renderType: Text.NativeRendering;

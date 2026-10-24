@@ -6,6 +6,8 @@ import Sailfish.Silica 1.0
 Item {
     property alias title: label.text
     property bool back: true
+    property string backLabel: qsTr("Back to Home")
+    property string backRole: "link"
     property bool restRing: false   // web focuses the back button at rest on Settings
     property bool navigationActive: !!(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive)
     signal backClicked()
@@ -18,6 +20,9 @@ Item {
         property bool navigationFocusable: true
         function navigationActivate() { parent.backClicked() }
         visible: parent.back
+        property bool layoutSkip: true
+        property var layoutEls: [ { role: parent.backRole, text: parent.backLabel, dx: 0, dy: (43.7 - 44) / 2 / Tokens.u * Tokens.u, w: 44, h: 44, radius: 50 },
+            { role: "text", text: "\u2190", dx: 15.59, dy: 12.41, w: 12.8, h: 18, color: Tokens.dark ? "#cdc1c6" : "#443a40", bg: String(Qt.rgba(Tokens.surfaceStrong.r, Tokens.surfaceStrong.g, Tokens.surfaceStrong.b, 1)), fontSize: 12.8, fontWeight: 720 } ]
         x: Tokens.pad
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: 1 * Tokens.u
@@ -33,7 +38,7 @@ Item {
         Canvas {   // web: the thin system arrow, 14 x 6 px with a small head (Nunito has no arrow glyph)
             width: 16; height: 10   // device pixels
             anchors.centerIn: parent; anchors.verticalCenterOffset: 2
-            property color ink: Tokens.inkSoft
+            property color ink: Tokens.dark ? "#cdc1c6" : "#443a40"
             onInkChanged: requestPaint()
             onPaint: {
                 var c = getContext("2d"); c.clearRect(0, 0, width, height)
@@ -47,8 +52,9 @@ Item {
         anchors { left: parent.back ? btn.right : parent.left; leftMargin: parent.back ? 10 * Tokens.u : Tokens.pad; right: parent.right; verticalCenter: parent.verticalCenter }
         elide: Text.ElideRight
         color: Tokens.ink
-        font.family: Tokens.family610
-        font.pixelSize: 19.6 * Tokens.u
-        font.letterSpacing: -0.3
+        property string parityRole: "heading"
+        font.family: Tokens.family580
+        font.pixelSize: Math.round(21.6 * Tokens.u)
+        font.letterSpacing: -1.05 * Tokens.u
     }
 }

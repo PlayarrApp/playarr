@@ -56,9 +56,9 @@ function dump(root, u, weights, log) {
             var t = String(item.text)
             if (item.font.capitalization === 1) t = t.toUpperCase()
             // glyph-run bounds: ascent plus descent of the font per line (Nunito Sans 1.364 em), not Qt's taller line box
-            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = (lines - 1) * (ch / lines) + Math.floor(1.364 * fs / u) * u
+            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = (lines - 1) * (ch / lines) + (Math.round(1.011 * fs / u) + Math.round(0.353 * fs / u)) * u
             var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y0 + (ch - gh) / 2, cw, gh),
-                color: hex(item.color), background: bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2((item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333) / u), fontWeight: wt }
+                color: hex(item.color), background: item.layoutBg ? String(item.layoutBg) : bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2((item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333) / u), fontWeight: wt }
             if (op < 0.999) el.opacity = r2(op)
             if (el.text !== "") emit(el)
         } else if (item.border !== undefined && item.radius !== undefined && item.color !== undefined && w > 0 && h > 0) {
@@ -75,7 +75,9 @@ function dump(root, u, weights, log) {
             if (op < 0.999) im.opacity = r2(op)
             emit(im)
         } else if (item.navigationFocusable === true && w > 0 && h > 0) {
-            emit({ text: String(item.layoutLabel || item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, w, item.layoutH !== undefined ? item.layoutH : h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null })
+            var fr = { text: String(item.layoutLabel || item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, w, item.layoutH !== undefined ? item.layoutH : h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null }
+            if (item.layoutRadius) fr.radius = item.layoutRadius
+            emit(fr)
         }
         var kids = item.children
         for (var i = 0; i < kids.length; ++i) walk(kids[i], op)

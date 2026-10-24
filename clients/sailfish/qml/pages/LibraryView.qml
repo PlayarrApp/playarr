@@ -97,12 +97,14 @@ Item {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
         width: 43.7 * Tokens.u; height: width
+        property bool layoutSkip: true
+        property var layoutEls: [ { role: "button", text: qsTr("Filters"), dx: 0, dy: -1.4, w: 44, h: 44, radius: 14 }, { role: "image", dx: 13, dy: 11.6, w: 18, h: 18 } ]
         onClicked: {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
         }
         Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
-        Image { anchors.centerIn: parent; width: 16.8 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
+        Image { anchors.centerIn: parent; property bool layoutSkip: true; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
     }
     PageTitle {
         id: heading
@@ -167,6 +169,8 @@ Item {
             model: root.alphabet
             MouseArea {
                 width: 26 * Tokens.u; height: 19 * Tokens.u
+                property bool layoutSkip: true
+                property var layoutEls: [ { role: "button", text: modelData === "#" ? qsTr("Numbers and symbols") : modelData, dx: -9, w: 44, h: 19, radius: 50 } ]
                 onClicked: root.jumpTo(modelData)
                 Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
                     visible: root.activeLetter === modelData
@@ -176,8 +180,8 @@ Item {
                 }
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.dark ? "#d4d1d4" : Qt.rgba(0.22, 0.15, 0.13, 0.78) }   // web: ink at 78%
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.96 * Tokens.u
-                        color: root.activeLetter === modelData ? (Tokens.dark ? "#1b181b" : "#ffffff") : Tokens.inkSoft }
+                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Math.round(8.96 * Tokens.u); property color layoutBg: Tokens.bg
+                        color: root.activeLetter === modelData ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft }
             }
         }
     }

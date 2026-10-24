@@ -23,8 +23,7 @@ ApplicationWindow {
 
     // Parity layout export (docs/parity/LAYOUT.md); only a PLAYARR_STEPS `js:layoutDump()` step calls it.
     function layoutDump() {
-        var w = {}
-        w[Tokens.family400] = 400; w[Tokens.family580] = 580; w[Tokens.family610] = 610; w[Tokens.family820] = 820
+        var w = Tokens.weightOfFamily()
         LayoutDump.dump(app.contentItem, Tokens.u, w, function (line) { console.log(line) })
     }
 

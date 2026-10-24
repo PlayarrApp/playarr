@@ -56,6 +56,7 @@ SilicaGridView {
                 navigationActive: !!(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive)
                 poster: root.mode === "cover"
                 compact: true
+                firstInk: index === 0
                 ring: activeFocus || (root.restRing && index === 0 && !(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive))
                 cardWidth: root.cardW
                 onOpened: root.opened(work)

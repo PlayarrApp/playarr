@@ -42,6 +42,19 @@ QtObject {
     property FontLoader nunito580: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-580.ttf") }
     property FontLoader nunito610: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-610.ttf") }
     property FontLoader nunito820: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-820.ttf") }
+    // Further static weights the web phone layout uses; `fam(w)` returns the family of weight w, `weightOfFamily` is the reverse map.
+    property FontLoader nunito300: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-300.ttf") }
+    property FontLoader nunito480: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-480.ttf") }
+    property FontLoader nunito640: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-640.ttf") }
+    property FontLoader nunito680: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-680.ttf") }
+    property FontLoader nunito700: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-700.ttf") }
+    property FontLoader nunito720: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-720.ttf") }
+    property FontLoader nunito760: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-760.ttf") }
+    property FontLoader nunito900: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-900.ttf") }
+    readonly property var loaders: ({ 300: nunito300, 400: nunito400, 480: nunito480, 580: nunito580, 610: nunito610, 640: nunito640, 680: nunito680,
+                                      700: nunito700, 720: nunito720, 760: nunito760, 820: nunito820, 900: nunito900 })
+    function fam(w) { return loaders[w].name }
+    function weightOfFamily() { var m = {}; for (var k in loaders) m[loaders[k].name] = Number(k); return m }
     readonly property string family400: nunito400.name
     readonly property string family580: nunito580.name
     readonly property string family610: nunito610.name
