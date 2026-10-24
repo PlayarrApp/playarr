@@ -24,7 +24,17 @@ final class ParityLayoutRegistry {
     private var order: [UUID] = []
     private var pending: Task<Void, Never>?
 
+    /// SwiftUI builds its accessibility tree only while an assistive client is attached; this switches that on in the
+    /// debug build so the walk below sees buttons, links and images (the call UI test runners use).
+    private static let enableAccessibility: Void = {
+        guard let handle = dlopen("/usr/lib/libAccessibility.dylib", RTLD_NOW),
+              let symbol = dlsym(handle, "_AXSApplicationAccessibilitySetEnabled") else { return }
+        typealias Setter = @convention(c) (Bool) -> Void
+        unsafeBitCast(symbol, to: Setter.self)(true)
+    }()
+
     func set(_ id: UUID, _ item: Item) {
+        _ = Self.enableAccessibility
         if items[id] == nil { order.append(id) }
         items[id] = item
         schedule()
