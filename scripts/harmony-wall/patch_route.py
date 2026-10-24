@@ -75,9 +75,34 @@ methods = """
     return isNaN(n) ? fallback : n;
   }
 
+  private previewOneLine(st: PvStyle, text: string, constrain: boolean): SizeOptions {
+    const mu: MeasureUtils = this.getUIContext().getMeasureUtils();
+    if (st.family.length > 0) {
+      return mu.measureTextSize({
+        textContent: text, fontSize: st.size, fontFamily: st.family, letterSpacing: st.spacing, maxLines: 1,
+        constraintWidth: constrain ? st.widthVp : undefined
+      });
+    }
+    return mu.measureTextSize({
+      textContent: text, fontSize: st.size, letterSpacing: st.spacing, maxLines: 1, constraintWidth: constrain ? st.widthVp : undefined
+    });
+  }
+
+  private previewBlock(st: PvStyle, text: string): SizeOptions {
+    const mu: MeasureUtils = this.getUIContext().getMeasureUtils();
+    if (st.family.length > 0) {
+      return mu.measureTextSize({
+        textContent: text, fontSize: st.size, fontFamily: st.family, letterSpacing: st.spacing, constraintWidth: st.widthVp,
+        lineHeight: st.lineHeight > 0 ? st.lineHeight : undefined
+      });
+    }
+    return mu.measureTextSize({
+      textContent: text, fontSize: st.size, letterSpacing: st.spacing, constraintWidth: st.widthVp, lineHeight: st.lineHeight > 0 ? st.lineHeight : undefined
+    });
+  }
+
   private previewMeasureText(node: PvNode, a: PvAttrs): PvLine[] {
     const ui: UIContext = this.getUIContext();
-    const mu: MeasureUtils = ui.getMeasureUtils();
     let content: string = a.content !== undefined ? a.content : (a.text !== undefined ? a.text : '');
     const lines: PvLine[] = [];
     if (content.length === 0) {
@@ -93,57 +118,51 @@ methods = """
     for (const part of String(node.$rect).split(',')) {
       rect.push(parseFloat(part));
     }
-    const widthVp: number = ui.px2vp(rect[2]);
-    const size: number = this.previewNumber(a.fontSize, 16);
-    const spacing: number = this.previewNumber(a.letterSpacing, 0);
-    const lineHeight: number = this.previewNumber(a.lineHeight, 0);
-    const family: string = a.fontFamily === undefined ? '' : a.fontFamily;
+    const st: PvStyle = new PvStyle();
+    st.widthVp = ui.px2vp(rect[2]);
+    st.size = this.previewNumber(a.fontSize, 16);
+    st.spacing = this.previewNumber(a.letterSpacing, 0);
+    st.lineHeight = this.previewNumber(a.lineHeight, 0);
+    st.family = a.fontFamily === undefined ? '' : a.fontFamily;
     const maxLines: number = this.previewNumber(a.maxLines, 0);
-    const oneLine = (text: string, constrain: boolean): SizeOptions => {
-      return mu.measureTextSize({
-        textContent: text, fontSize: size, fontFamily: family.length > 0 ? family : undefined,
-        letterSpacing: spacing, maxLines: 1, constraintWidth: constrain ? widthVp : undefined
-      });
-    };
-    const block = (text: string): SizeOptions => {
-      return mu.measureTextSize({
-        textContent: text, fontSize: size, fontFamily: family.length > 0 ? family : undefined,
-        letterSpacing: spacing, constraintWidth: widthVp, lineHeight: lineHeight > 0 ? lineHeight : undefined
-      });
-    };
-    const natural: SizeOptions = oneLine('Hg', false);
-    const contentH: number = (natural.height as number);
-    const lineH: number = lineHeight > 0 ? ui.vp2px(lineHeight) : contentH;
-    for (const paragraph of content.split('\n')) {
+    const natural: SizeOptions = this.previewOneLine(st, 'Hg', false);
+    const contentH: number = natural.height as number;
+    const lineH: number = st.lineHeight > 0 ? ui.vp2px(st.lineHeight) : contentH;
+    for (const paragraph of content.split('\\n')) {
       if (paragraph.length === 0) {
         continue;
       }
-      const whole: SizeOptions = block(paragraph);
+      const whole: SizeOptions = this.previewBlock(st, paragraph);
       if (maxLines === 1 || (whole.height as number) < lineH * 1.5) {
-        const m: SizeOptions = oneLine(paragraph, true);
-        lines.push({ text: paragraph, w: (m.width as number), h: contentH, lineH: lineH });
+        const m: SizeOptions = this.previewOneLine(st, paragraph, true);
+        lines.push(this.previewLine(paragraph, m.width as number, contentH, lineH));
         continue;
       }
       // wrapped: grow the line word by word, asking the measurer when the block no longer fits on one line
-      const words: string[] = paragraph.split(' ');
       let cur: string = '';
-      const flush = (text: string): void => {
-        lines.push({ text: text, w: (oneLine(text, false).width as number), h: contentH, lineH: lineH });
-      };
-      for (const word of words) {
+      for (const word of paragraph.split(' ')) {
         const trial: string = cur.length === 0 ? word : cur + ' ' + word;
-        if (cur.length > 0 && (block(trial).height as number) > lineH * 1.5) {
-          flush(cur);
+        if (cur.length > 0 && (this.previewBlock(st, trial).height as number) > lineH * 1.5) {
+          lines.push(this.previewLine(cur, this.previewOneLine(st, cur, false).width as number, contentH, lineH));
           cur = word;
         } else {
           cur = trial;
         }
       }
       if (cur.length > 0) {
-        flush(cur);
+        lines.push(this.previewLine(cur, this.previewOneLine(st, cur, false).width as number, contentH, lineH));
       }
     }
     return lines;
+  }
+
+  private previewLine(text: string, w: number, h: number, lineH: number): PvLine {
+    const line: PvLine = new PvLine();
+    line.text = text;
+    line.w = w;
+    line.h = h;
+    line.lineH = lineH;
+    return line;
   }
 
   private previewGo(name: string): void {
@@ -204,7 +223,7 @@ methods = """
     }
   }
 """ % (port, port)
-s = s.replace("\n@Entry", "\ninterface PvLine {\n  text: string;\n  w: number;\n  h: number;\n  lineH: number;\n}\n\ninterface PvAttrs {\n  content?: string;\n  text?: string;\n  fontSize?: string;\n  fontFamily?: string;\n  letterSpacing?: string;\n  lineHeight?: string;\n  maxLines?: string;\n  textCase?: string;\n}\n\ninterface PvNode {\n  $type: string;\n  $rect: string;\n  $attrs?: PvAttrs;\n  $children?: PvNode[];\n  $measured?: PvLine[];\n  $measureError?: string;\n}\n\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
+s = s.replace("\n@Entry", "\nclass PvLine {\n  text: string = '';\n  w: number = 0;\n  h: number = 0;\n  lineH: number = 0;\n}\n\nclass PvStyle {\n  widthVp: number = 0;\n  size: number = 16;\n  spacing: number = 0;\n  lineHeight: number = 0;\n  family: string = '';\n}\n\ninterface PvAttrs {\n  content?: string;\n  text?: string;\n  fontSize?: string;\n  fontFamily?: string;\n  letterSpacing?: string;\n  lineHeight?: string;\n  maxLines?: string;\n  textCase?: string;\n}\n\ninterface PvNode {\n  $type: string;\n  $rect: string;\n  $attrs?: PvAttrs;\n  $children?: PvNode[];\n  $measured?: PvLine[];\n  $measureError?: string;\n}\n\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
 s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { MeasureUtils } from '@kit.ArkUI';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
 s = s.replace("  aboutToAppear(): void {\n", "  aboutToAppear(): void {\n    this.startPreviewRoutePoll();\n", 1)
