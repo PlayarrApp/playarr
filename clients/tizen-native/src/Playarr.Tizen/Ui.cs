@@ -113,6 +113,7 @@ internal static class Ui
         HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0)
     {
         var cssFamily = family;
+        if (GlyphAdvance(text) is { } adv && !multiline) { w = adv * size; align = HorizontalAlignment.Center; } // fallback-font glyphs: drawn centred in a box of the web's advance, so what follows starts where it does on web
         (family, weight) = Face(family, weight, size);
         var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
         var cssY = y;
@@ -133,6 +134,7 @@ internal static class Ui
             MultiLine = multiline,
             Ellipsis = !multiline,
         };
+        if (GlyphAdvance(text) is not null) t.Ellipsis = false;
         if (spacing != 0) t.CharacterSpacing = spacing * TextScale;
         if (multiline && maxLines > 0) t.Ellipsis = false;
         if (multiline) { t.RelativeLineHeight = line / (size * 1.364f); t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w * TextScale, size * 1.6f * Math.Max(2, maxLines) * TextScale); }
@@ -143,6 +145,9 @@ internal static class Ui
         TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline) { Family = cssFamily });
         return t;
     }
+
+    /// <summary>The web's advance (em) of glyphs that both clients draw from a fallback font: 0.838 em for the download, check and chevron glyphs, 0.769 em for the play triangle.</summary>
+    internal static float? GlyphAdvance(string text) => text switch { "⇩" or "✓" or "⌄" => 0.838f, "▶" => 0.769f, _ => null };
 
     /// <summary>Linear gradient box ("to right" when horizontal, else "to bottom"); stops are (offset 0..1, straight-alpha colour). Rendered once to a PNG and stretched.</summary>
     public static View Gradient(float x, float y, float w, float h, bool horizontal, params (float At, Rgba Color)[] stops)
