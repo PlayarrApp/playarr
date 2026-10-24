@@ -638,7 +638,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
                     Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(lineGap))
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.then(if (m === TvCalendarMetrics) Modifier.offset(y = (-2).dp) else Modifier), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(time, color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
                     Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
                     Text(
@@ -1172,17 +1172,17 @@ private fun CalendarWeekBody(
                         if (true) {
                             Row(Modifier.then(if (isTelevision) Modifier.offset(y = 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    phoneCalendarDayHeading(group.date, locale), color = WebInk, fontSize = if (isTelevision) 18.7.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision) 560 else 640),
-                                    style = WebTextStyle, modifier = Modifier.semantics { heading() },
+                                    phoneCalendarDayHeading(group.date, locale), color = if (isTelevision && LocalStageScale.current == 1f) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.7.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
+                                    style = WebTextStyle, modifier = if (isTelevision && LocalStageScale.current == 1f) Modifier else Modifier.semantics { heading() },
                                 )
-                                if (group.date == today) CalendarTodayBadge()
+                                if (group.date == today) CalendarTodayBadge(tv = isTelevision && LocalStageScale.current == 1f)
                             }
                         } else {
                             CalendarDayHeading(group.date, today, locale, isTelevision)
                         }
                         if (group.entries.isEmpty()) {
                             if (isTelevision) {
-                                Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = 12.sp)
+                                Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = if (LocalStageScale.current == 1f) 19.2.sp else 12.sp, lineHeight = if (LocalStageScale.current == 1f) 28.8.sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                             } else {
                                 // Web `.calendar-day-empty`: 16 px / 24 px muted.
                                 Text(playarrString(PlayarrString.CalendarEmptyDay), color = WebInkMuted, fontSize = 16.sp, lineHeight = 24.sp, style = WebTextStyle)

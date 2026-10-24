@@ -7033,7 +7033,7 @@ private fun VideoDetailCopy(
                     fontSize = 21.sp,
                     fontWeight = FontWeight(570),
                     letterSpacing = (-0.739).sp,
-                    modifier = Modifier.padding(top = 17.dp + (if (LocalStageScale.current != 1f) 2.3.dp else 0.dp)),
+                    modifier = Modifier.padding(top = 17.dp + (if (LocalStageScale.current != 1f) 2.3.dp else 0.dp)).semantics { heading() },
                 )
             }
             androidx.compose.foundation.layout.FlowRow(
