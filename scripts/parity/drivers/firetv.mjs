@@ -244,16 +244,20 @@ export async function createDriver({ out } = {}) {
       const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
       if (!film) throw new Error("suite has no pinned film for player-controls");
       await command({ cmd: "armPause", ms: "1870" }, 500);
-      await this.route(film);
-      // The film's file: the pinned detail page plays it on Select; the app pauses itself at 2 s of the clip (the web ref's frame).
-      await press("Return");
-      const t0 = Date.now();
-      for (;;) {
-        if (Date.now() - t0 > 120000) throw new Error("the Vega player did not pause at 2 s within 120 s");
-        const player = (await state(20000).catch(() => ({}))).player ?? {};
-        if (player.state === "paused" && player.positionSeconds < 5) break;
-        await sleep(1500);
+      // Play on the pinned film's page; if the clip has not started within 50 s (a dropped Select), open the page again and retry once.
+      let paused = false;
+      for (let attempt = 0; attempt < 2 && !paused; attempt++) {
+        await this.route(film);
+        await sleep(2000);
+        await press("Return");
+        const t0 = Date.now();
+        while (Date.now() - t0 < 50000) {
+          const player = (await state(20000).catch(() => ({}))).player ?? {};
+          if (player.state === "paused" && player.positionSeconds < 5) { paused = true; break; }
+          await sleep(1500);
+        }
       }
+      if (!paused) throw new Error("the Vega player did not pause at 2 s");
       await press("Right"); // the first input only raises the controls
       await sleep(2500);
     },
