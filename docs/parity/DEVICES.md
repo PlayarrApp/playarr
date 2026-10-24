@@ -22,6 +22,12 @@ reference is web mobile at the device's own size. The legend dir is the client's
 | Hisense VIDAA | Real TV: MQTT remote plus the debug mirror build | MQTT remote key messages | Debug mirror build screenshots | Hardware only, no emulator | `vidaa` (pending) |
 | Roku Streaming Stick 4K | Real device, developer mode | ECP key presses | `plugin_inspect` screenshots | No emulator; screenshot has no video plane | `roku` (pending) |
 
+### HarmonyOS: reproduce command
+
+Hosted runs on the static server (Previewer on a Windows runner, pinned clock `2026-10-07T12:00:00Z`), TV screens and phone,
+dark and light, no D-pad (dpadNA): `scripts/parity/harmony/run.sh <branch> <legend-root>`. It dispatches
+`parity-harmony.yml`, waits, and pulls the captures into the `harmony` and `harmony-phone` legend dirs.
+
 ### Android TV: the one-command run
 
 The Android TV emulator (`playarr_vnc_tv`) runs headless (`-no-window`, no X display, no VNC) as a user unit. Sign the app in to

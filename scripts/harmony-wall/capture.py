@@ -238,11 +238,40 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
         abort(f"{name} is too plain: an error or signed-out screen")
     img.save(os.path.join(folder, name + ".png"))
+    export_layout(name, img)
     try:
         get("/state", resetdbg="1")  # the next frame's dump counts only what happens after this one
     except (OSError, SystemExit):
         pass
     print("captured", name, get("/health").decode().strip()[:80], flush=True)
+
+
+def export_layout(name, image=None):
+    """Layout document next to the screenshot (same screen state): the app dumps its component tree, layout_export maps it to the schema.
+    A failed dump is logged, never fatal: the pixel capture stays valid."""
+    try:
+        import layout_export  # noqa: PLC0415
+        get("/setroute", name="dumplayout:" + name)
+        raw = None
+        for _ in range(10):
+            time.sleep(1.5)
+            try:
+                raw = get("/layoutget", id=name)
+                break
+            except urllib.error.HTTPError:
+                continue
+        if raw is None:
+            print(f"layout {name}: the app sent no tree", flush=True)
+            return
+        rawdir = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark")  # the unconverted tree: exporter fixes replay offline
+        os.makedirs(rawdir, exist_ok=True)
+        open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
+        viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
+        count = layout_export.write(raw, name, "light" if THEME == "light" else "dark", viewport, os.path.join(out, "layout"),
+                                    clock_pinned=True, image=image)  # patch_clock.py pins the preview clock to the fixture instant
+        print(f"layout {name}: {count} elements", flush=True)
+    except Exception as error:  # noqa: BLE001
+        print(f"layout {name}: export failed: {error!r}", flush=True)
 
 
 def debug(name, image=None):
@@ -805,13 +834,23 @@ else:
         click(*CLOSE_DRAWER); time.sleep(3)
         snap("calendar-" + view, folder, 60000)
 
+    def phone_rails_loaded(r):
+        """The phone Home ref shows three rails: when the lower rails have not drawn (flat band below On deck), route again, up to 3 times."""
+        for _ in range(3):
+            band = png().crop((0, 1000, 1080, 1500))
+            if max(high - low for low, high in band.getextrema()) > 60:
+                return
+            route(r, 40)
+        raise Skip("home: the rails below On deck never loaded")
+
+    # the phone library refs have no card focus ring either (web touch layout), so no card is focused on the phone
     # the phone Home ref is taken without the On deck focus ring (web-refs.json noFocusRing), so Home is not focused here
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
         if name == "home":  # other workers share the account: re-seed immediately before capture for the pinned fixture item
             subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])
-        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), focus_first_card() if name in ('movies', 'series', 'music') else None, snap(name, folder, floor)))
+        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), phone_rails_loaded(r) if name == 'home' else None, snap(name, folder, floor)))
     route("library:movie", 15); settle()
     open_filters("movies"); guarded("filters", lambda: snap("filters", folder, 40000)); click(*CLOSE_DRAWER); time.sleep(3)
     longclick(*CARDS[0]); time.sleep(5); debug("movies-actions-open"); guarded("actions", lambda: snap("actions", folder, 40000))

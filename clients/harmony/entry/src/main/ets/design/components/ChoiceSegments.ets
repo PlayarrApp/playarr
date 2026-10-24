@@ -3,7 +3,7 @@
  * a small uppercase heading over equal-width choice tiles, the chosen one filled with ink.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -30,7 +30,7 @@ const DESCRIPTION_SIZE: number = 13.824;
 const SECTION_GAP: number = 30;
 // Web phone drawer choices: 46.7 high, 11.5 type, sections 8 vp closer than the TV's.
 const TOUCH_CHOICE_HEIGHT: number = 48; // web: 144 px inactive; the selected choice is 1.025 scaled
-const TOUCH_CHOICE_LABEL_SIZE: number = 11.5;
+const TOUCH_CHOICE_LABEL_SIZE: number = 11.52;
 const TOUCH_SECTION_GAP: number = 23.7;
 const LARGE_HEADING_SIZE: number = 26.4;
 const LARGE_HEADING_LETTER_SPACING: number = -0.924;
@@ -73,35 +73,37 @@ export struct ChoiceSegments {
   build() {
     Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP) }) {
       if (this.large) {
-        Text(this.heading).fontFamily(nunito(500))
+        Text(this.heading).fontFamily(nunitoAt(500, tv(LARGE_HEADING_SIZE)))
           .fontSize(tv(LARGE_HEADING_SIZE))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
           .margin({ bottom: this.description === '' ? tv(5) : 0 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
-          Text(this.description).fontFamily(nunito(400))
+          Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE))
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: tv(-5), bottom: tv(1) })
         }
       } else {
-        Text(this.heading).fontFamily(nunito(700))
+        Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
           .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
           .fontWeight(FontWeight.Bold)
           .letterSpacing(tv(HEADING_LETTER_SPACING))
           .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColor(activeColors().inkSoft))
+          .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
+          .id(isTvMetrics() ? '' : 'px:heading:' + this.heading.toUpperCase())
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
-          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? choice.label : capitalWords(choice.label))).fontFamily(nunito(700))
+          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? choice.label : capitalWords(choice.label))).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CHOICE_LABEL_SIZE)) : nunito(680))
+            .id(isTvMetrics() || (choice.icon !== undefined && choice.icon.length > 0) ? '' : 'px:button:' + choice.label)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)
             .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
             .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkSoft))
+            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : (isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted)))
             .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
               toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
             .borderRadius(tv(CHOICE_RADIUS))

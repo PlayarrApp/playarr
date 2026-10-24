@@ -7,7 +7,8 @@ import { formatRuntimeLabel } from "../main/ets/core/RuntimeLabel";
 describe("formatRuntimeLabel", () => {
   it("formats hours and minutes as web does", () => {
     assert.equal(formatRuntimeLabel(112 * 60000), "1h 52m");
-    assert.equal(formatRuntimeLabel(45 * 60000), "45m");
+    assert.equal(formatRuntimeLabel(45 * 60000), "45 min");
+    assert.equal(formatRuntimeLabel(30000), "1 min");
     assert.equal(formatRuntimeLabel(120 * 60000), "2h");
     assert.equal(formatRuntimeLabel(null), "");
     assert.equal(formatRuntimeLabel(0), "");

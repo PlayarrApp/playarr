@@ -5,7 +5,7 @@
  * Not here: the live-updates revalidation web does.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv } from '../design/Metrics';
@@ -63,7 +63,7 @@ export struct RequestsScreen {
   @Builder
   private row(request: RequestView): void {
     Column({ space: tv(COPY_GAP) }) {
-      Text(request.title).fontFamily(nunito(700))
+      Text(request.title).fontFamily(nunitoAt(700, tv(TITLE_SIZE_ROW)))
         .fontSize(tv(TITLE_SIZE_ROW))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
@@ -71,13 +71,13 @@ export struct RequestsScreen {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
       Row({ space: tv(META_GAP) }) {
         ForEach(requestMetaParts(request), (part: string) => {
-          Text(part).fontFamily(nunito(400))
+          Text(part).fontFamily(nunitoAt(400, tv(META_SIZE)))
             .fontSize(tv(META_SIZE))
             .fontColor(toResourceColor(activeColors().inkMuted))
         }, (part: string): string => part)
       }
       if (request.status_note !== undefined && request.status_note !== null && request.status_note.length > 0) {
-        Text(request.status_note).fontFamily(nunito(400))
+        Text(request.status_note).fontFamily(nunitoAt(400, tv(META_SIZE)))
           .fontSize(tv(META_SIZE))
           .fontColor(toResourceColor(activeColors().inkMuted))
       }
@@ -107,12 +107,12 @@ export struct RequestsScreen {
         .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
     } else if (this.requests.length === 0) {
       Column({ space: tv(8) }) {
-        Text('No requests yet').fontFamily(nunito(500))
+        Text('No requests yet').fontFamily(nunitoAt(500, tv(26.4)))
           .fontSize(tv(26.4))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(-0.924))
           .fontColor(toResourceColor(activeColors().ink))
-        Text('Request a title that is not in the library and its progress shows up here.').fontFamily(nunito(400))
+        Text('Request a title that is not in the library and its progress shows up here.').fontFamily(nunitoAt(400, tv(13.824)))
           .fontSize(tv(13.824))
           .fontColor(toResourceColor(activeColors().inkSoft))
       }

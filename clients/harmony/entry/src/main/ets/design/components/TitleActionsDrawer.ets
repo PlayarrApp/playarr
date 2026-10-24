@@ -7,7 +7,7 @@
  * playlists that take this kind of title and adds it to the one chosen.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { Drawer } from './Drawer';
 import { ActionList } from './ActionList';
 import type { ActionItem } from './ActionList';
@@ -180,7 +180,7 @@ export struct TitleActionsDrawer {
 
   @Builder
   private pill(label: string, onTap: () => void): void {
-    Text(label).fontFamily(nunito(400))
+    Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
       .fontSize(tv(PILL_SIZE))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
@@ -195,7 +195,7 @@ export struct TitleActionsDrawer {
   @Builder
   private noticeText(): void {
     if (this.notice.length > 0) {
-      Text(this.notice).fontFamily(nunito(400))
+      Text(this.notice).fontFamily(nunitoAt(400, tv(TEXT_SIZE)))
         .fontSize(tv(TEXT_SIZE))
         .fontColor(toResourceColor(activeColors().danger))
         .width(tv(SECTION_WIDTH))
@@ -206,7 +206,7 @@ export struct TitleActionsDrawer {
   private body(): void {
     Column({ space: tv(SECTION_GAP) }) {
       if (this.view === 'quality') {
-        Text(this.targets.length > 1 ? 'Download ' + String(this.targets.length) + ' items' : t('settings.yourData.exportDownload', 'Download')).fontFamily(nunito(400))
+        Text(this.targets.length > 1 ? 'Download ' + String(this.targets.length) + ' items' : t('settings.yourData.exportDownload', 'Download')).fontFamily(nunitoAt(400, tv(TEXT_SIZE)))
           .fontSize(tv(TEXT_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width(tv(SECTION_WIDTH))
