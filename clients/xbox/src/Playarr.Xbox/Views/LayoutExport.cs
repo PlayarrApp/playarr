@@ -18,6 +18,25 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal static class LayoutExport
     {
+        /// <summary>The web role (heading, link, button, tab, textbox, search, img, status ...) an element exports as; unset elements derive one from their type.</summary>
+        public static readonly DependencyProperty RoleProperty = DependencyProperty.RegisterAttached("Role", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
+
+        public static void SetRole(DependencyObject element, string role) => element.SetValue(RoleProperty, role);
+
+        public static string? GetRole(DependencyObject element) => (string?)element.GetValue(RoleProperty);
+
+        /// <summary>Tags a control the way the web's accessibility tree names it: role and accessible name (also read by screen readers).</summary>
+        public static T Tag<T>(T element, string role, string? name = null) where T : DependencyObject
+        {
+            SetRole(element, role);
+            if (name != null)
+            {
+                Windows.UI.Xaml.Automation.AutomationProperties.SetName(element, name);
+            }
+
+            return element;
+        }
+
         public static string Build(string screen, string theme)
         {
             var root = (FrameworkElement)Window.Current.Content;
@@ -41,9 +60,18 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
+            if (node is Canvas { Width: 0, Height: 0 })
+            {
+                return; // shadow and glow layers hang off a zero-size canvas
+            }
+
             if (node is FrameworkElement element && element.ActualWidth >= 1 && element.ActualHeight >= 1 && !(element is Page))
             {
                 Add(element, root, scale, output);
+                if (GetRole(element) == "image")
+                {
+                    return; // a drawn icon is one image, not its strokes
+                }
             }
 
             var count = VisualTreeHelper.GetChildrenCount(node);
@@ -55,12 +83,13 @@ namespace Playarr.Xbox.Views
 
         private static void Add(FrameworkElement element, FrameworkElement root, double scale, List<object> output)
         {
-            string? role = null;
+            string? role = GetRole(element);
             string? text = null;
             string? color = null;
             double? fontSize = null;
             int? fontWeight = null;
             var rect = Bounds(element, root, scale);
+            var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(element);
             if (element is TextBlock block)
             {
                 text = block.Text;
@@ -69,11 +98,15 @@ namespace Playarr.Xbox.Views
                     return;
                 }
 
-                role = "text";
+                role ??= "text";
                 color = Hex(block.Foreground);
                 fontSize = Math.Round(block.FontSize, 2);
                 fontWeight = block.FontWeight.Weight;
                 rect = TextRun(block, root, scale) ?? rect;
+            }
+            else if (role != null)
+            {
+                text = string.IsNullOrEmpty(name) ? null : name;
             }
             else if (element is Image)
             {
@@ -82,6 +115,7 @@ namespace Playarr.Xbox.Views
             else if (element is Button || element is ToggleButton || element is ListViewItem || element is GridViewItem)
             {
                 role = "button";
+                text = string.IsNullOrEmpty(name) ? null : name;
             }
             else if (element is Border border && Hex(border.Background) is not null)
             {
@@ -108,6 +142,12 @@ namespace Playarr.Xbox.Views
             }
 
             var radius = element is Border b ? b.CornerRadius.TopLeft : element is Control c ? c.CornerRadius.TopLeft : 0;
+            if (radius > 0 && radius * 2 >= Math.Min(element.ActualWidth, element.ActualHeight) - 0.5)
+            {
+                // The web reports a circle as 50 and any other fully rounded pill as 999.
+                radius = Math.Abs(element.ActualWidth - element.ActualHeight) < 1 ? 50 / scale : 999 / scale;
+            }
+
             output.Add(new
             {
                 text,
@@ -128,22 +168,23 @@ namespace Playarr.Xbox.Views
             return new Rect(origin.X * scale, origin.Y * scale, element.ActualWidth * scale, element.ActualHeight * scale);
         }
 
-        /// <summary>Bounds of the glyph run: the union of the first and last character rectangles per line, in root coordinates.</summary>
+        /// <summary>Single line: the glyph run's horizontal extent on the element's line box (the web reports the line box height); wrapped text keeps the element box.</summary>
         private static Rect? TextRun(TextBlock block, FrameworkElement root, double scale)
         {
             try
             {
-                var transform = block.TransformToVisual(root);
+                var box = Bounds(block, root, scale);
                 var first = block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
                 var last = block.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
-                var wrapped = last.Y > first.Y + 1;
-                var left = wrapped ? 0 : first.X;
-                var right = wrapped ? block.ActualWidth : last.X + last.Width;
-                var top = first.Y;
-                var bottom = last.Y + last.Height;
-                var a = transform.TransformPoint(new Point(left, top));
-                var z = transform.TransformPoint(new Point(right, bottom));
-                return new Rect(a.X * scale, a.Y * scale, Math.Max(0, (z.X - a.X) * scale), Math.Max(0, (z.Y - a.Y) * scale));
+                if (last.Y > first.Y + 1)
+                {
+                    return box;
+                }
+
+                var transform = block.TransformToVisual(root);
+                var a = transform.TransformPoint(new Point(first.X, 0));
+                var z = transform.TransformPoint(new Point(last.X + last.Width, 0));
+                return new Rect(a.X * scale, box.Y, Math.Max(0, (z.X - a.X) * scale), box.Height);
             }
             catch (Exception)
             {
@@ -179,7 +220,14 @@ namespace Playarr.Xbox.Views
                 }
             }
 
-            var result = Theme.Bg;
+            // The page stage is the surface colour; the shell (rail, clock) sits on the page background.
+            var underPage = false;
+            for (var parent = VisualTreeHelper.GetParent(node); parent != null && !underPage; parent = VisualTreeHelper.GetParent(parent))
+            {
+                underPage = parent is Page;
+            }
+
+            var result = underPage ? Theme.Surface : Theme.Bg;
             for (var i = layers.Count - 1; i >= 0; i--)
             {
                 var l = layers[i];

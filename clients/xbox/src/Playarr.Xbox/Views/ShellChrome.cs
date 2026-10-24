@@ -25,15 +25,15 @@ namespace Playarr.Xbox.Views
         public const double ContentLeft = 154;
 
         private const double RailLeft = 42;
-        private const double RailWidth = 78;
+        private const double RailWidth = 77;
         private const double ItemHeight = 72;
 
         private readonly Frame _frame;
         private readonly Grid _chrome = new Grid { IsHitTestVisible = true };
         private readonly List<(Button Button, Type Page, WorkKind? Kind)> _items = new List<(Button, Type, WorkKind?)>();
-        private readonly TextBlock _time = new TextBlock { FontSize = 17.3, FontWeight = FontWeights.Bold, CharacterSpacing = -30 };
-        private readonly TextBlock _date = new TextBlock { FontSize = 11.1, FontWeight = FontWeights.SemiBold, CharacterSpacing = 40, VerticalAlignment = VerticalAlignment.Center };
-        private readonly TextBlock _profileName = new TextBlock { FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
+        private readonly TextBlock _time = new TextBlock { FontSize = 17.28, FontWeight = new FontWeight { Weight = 760 }, CharacterSpacing = -30, LineHeight = 25.92, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+        private readonly TextBlock _date = new TextBlock { FontSize = 11.14, FontWeight = new FontWeight { Weight = 640 }, CharacterSpacing = 40, LineHeight = 12.25, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _profileName = new TextBlock { FontSize = 8.83, FontWeight = new FontWeight { Weight = 680 }, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
         private readonly List<(TextBlock Label, string Key)> _labels = new List<(TextBlock, string)>();
         private Border _avatar = null!;
         private bool _avatarLoaded;
@@ -136,11 +136,11 @@ namespace Playarr.Xbox.Views
 
             var groups = new StackPanel
             {
-                Spacing = 16,
+                Spacing = 13,
                 Width = RailWidth,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(RailLeft, 118, 0, 0),
+                Margin = new Thickness(RailLeft, 119, 0, 0),
             };
             groups.Children.Add(Group(Item("Downloads", typeof(DownloadsPage), null), Item("Search", typeof(SearchPage), null)));
             groups.Children.Add(Group(
@@ -157,14 +157,14 @@ namespace Playarr.Xbox.Views
 
             _avatar = new Border
             {
-                Width = 24,
-                Height = 24,
-                CornerRadius = new CornerRadius(12),
+                Width = 20,
+                Height = 20,
+                CornerRadius = new CornerRadius(10),
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
             var avatar = _avatar;
-            var profileContent = new StackPanel { Spacing = 6 };
+            var profileContent = new StackPanel { Spacing = 2, Margin = new Thickness(0, 2, 0, 0) };
             profileContent.Children.Add(avatar);
             profileContent.Children.Add(_profileName);
             var profile = RailButton(profileContent, typeof(SettingsPage), null);
@@ -178,14 +178,16 @@ namespace Playarr.Xbox.Views
             {
                 Text = "v" + typeof(App).Assembly.GetName().Version.ToString(3),
                 FontFamily = (FontFamily)Application.Current.Resources["PlayarrMonoFont"],
-                FontSize = 10,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"],
+                FontSize = 8,
+                FontWeight = FontWeights.Bold,
+                LineHeight = 10,
+                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+                Foreground = (Brush)Application.Current.Resources["PlayarrInk"],
                 Width = RailWidth,
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(RailLeft, 1034, 0, 0),
+                Margin = new Thickness(RailLeft, 1036, 0, 0),
             });
 
             var clock = new StackPanel
@@ -194,7 +196,7 @@ namespace Playarr.Xbox.Views
                 Spacing = 11.2,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(483, 67, 0, 0),
+                Margin = new Thickness(480.97, 68.19, 0, 0),
                 IsHitTestVisible = false,
             };
             clock.Children.Add(_time);
@@ -214,8 +216,8 @@ namespace Playarr.Xbox.Views
             {
                 Child = stack,
                 Width = RailWidth,
-                Padding = new Thickness(4),
-                CornerRadius = new CornerRadius(24),
+                Padding = new Thickness(4, 1, 4, 2),
+                CornerRadius = new CornerRadius(22),
                 // Measured on the web rail: a lifted fill and a hairline (light: near-white with a soft shadow, dark: 30 26 30 over 27 23 26).
                 Background = (Brush)Application.Current.Resources["PlayarrRailFill"],
                 BorderBrush = (Brush)Application.Current.Resources["PlayarrRailLine"],
@@ -225,12 +227,14 @@ namespace Playarr.Xbox.Views
 
         private Button Item(string label, Type? page, WorkKind? kind)
         {
-            var content = new StackPanel { Spacing = 6 };
+            var content = new StackPanel { Spacing = 2, Margin = new Thickness(0, 2, 0, 0) };
             content.Children.Add(NavIcons.Create(label, (Brush)Application.Current.Resources["PlayarrInkMuted"]));
-            var text = new TextBlock { Text = Lang.T("shell.nav." + label.ToLowerInvariant()), FontSize = 10, FontWeight = FontWeights.Medium, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
+            var text = new TextBlock { Text = Lang.T("shell.nav." + label.ToLowerInvariant()), FontSize = 8.83, FontWeight = new FontWeight { Weight = 680 }, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
             _labels.Add((text, label));
             content.Children.Add(text);
-            return RailButton(content, page, kind);
+            var button = RailButton(content, page, kind);
+            LayoutExport.Tag(button, "link", Lang.T("shell.nav." + label.ToLowerInvariant()));
+            return button;
         }
 
         /// <summary>The web tints the current item with the page ink and the others with the muted ink.</summary>
@@ -258,7 +262,7 @@ namespace Playarr.Xbox.Views
                 Content = content,
                 Width = 64, // the web's --tv-nav-item-size
                 Height = 64,
-                Margin = new Thickness(0, 4, 0, 4),
+                Margin = new Thickness(0, 5, 0, 5),
                 Padding = new Thickness(0),
                 CornerRadius = new CornerRadius(16),
                 HorizontalContentAlignment = HorizontalAlignment.Center,

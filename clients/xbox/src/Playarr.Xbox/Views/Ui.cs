@@ -24,8 +24,9 @@ namespace Playarr.Xbox.Views
         {
             var backButton = BackButton(back);
             host.Children.Add(backButton);
-            var titles = new StackPanel { Margin = new Thickness(228, 57, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"] };
+            var titles = new StackPanel { Margin = new Thickness(226.63, 58.16, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"], FontSize = 33.6, FontWeight = new FontWeight { Weight = 580 }, LineHeight = 46, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+            LayoutExport.SetRole(titleText, "heading");
             var subtitleText = new TextBlock { Text = subtitle ?? string.Empty };
             LayoutHeader(titles, titleText, subtitleText);
             host.Children.Add(titles);
@@ -68,8 +69,10 @@ namespace Playarr.Xbox.Views
 
             titles.Children.Clear();
             subtitle.Text = subtitle.Text.ToUpperInvariant();
-            subtitle.FontSize = 11.1; // web: clamp(0.62rem, 0.58vw, 0.72rem) at 1920
-            subtitle.FontWeight = FontWeights.Bold;
+            subtitle.FontSize = 11.14; // web: clamp(0.62rem, 0.58vw, 0.72rem) at 1920
+            subtitle.FontWeight = new FontWeight { Weight = 680 };
+            subtitle.LineHeight = 15;
+            subtitle.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
             subtitle.CharacterSpacing = 45; // web: 0.045em
             subtitle.Foreground = Res("PlayarrInk");
             if (string.IsNullOrEmpty(subtitle.Text))
@@ -125,11 +128,12 @@ namespace Playarr.Xbox.Views
         public static Button BackButton(Action onClick)
         {
             var button = RoundButton("", onClick);
-            button.Margin = new Thickness(154, 56, 0, 0);
+            button.Margin = new Thickness(153.59, 56.16, 0, 0);
+            LayoutExport.Tag(button, "link", "Back to Home");
             button.HorizontalAlignment = HorizontalAlignment.Left;
             button.VerticalAlignment = VerticalAlignment.Top;
             // The web draws Back as the text arrow, small and lightweight, not an icon-font arrow.
-            button.Content = new TextBlock { Text = "\u2190", FontSize = 14, Foreground = Res("PlayarrInk"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            button.Content = new TextBlock { Text = "\u2190", FontSize = 17.28, FontWeight = new FontWeight { Weight = 720 }, LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             return button;
         }
 

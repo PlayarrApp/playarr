@@ -46,10 +46,10 @@ namespace Playarr.Xbox.Views
             VerticalAlignment = VerticalAlignment.Top,
         };
         private readonly Rectangle _stageWashLeft = new Rectangle { IsHitTestVisible = false };
-        private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12, FontWeight = FontWeights.Bold, CharacterSpacing = 120 };
-        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69, FontWeight = FontWeights.SemiBold, CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 36.4, 0, 0) };
-        private readonly TextBlock _meta = new TextBlock { FontSize = 14, Margin = new Thickness(0, 16.6, 0, 0) };
-        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 14, LineHeight = 22, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 24, 0, 0) };
+        private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12.29, FontWeight = new FontWeight { Weight = 860 }, CharacterSpacing = 120, LineHeight = 16, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69.12, FontWeight = new FontWeight { Weight = 560 }, CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 36.4, 0, 0) };
+        private readonly TextBlock _meta = new TextBlock { FontSize = 13.06, FontWeight = new FontWeight { Weight = 600 }, LineHeight = 18, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Margin = new Thickness(0, 16.6, 0, 0) };
+        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontWeight = new FontWeight { Weight = 600 }, LineHeight = 20, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 24, 0, 0) };
         private readonly StackPanel _panel;
 
         public FocusDetail()
@@ -77,6 +77,7 @@ namespace Playarr.Xbox.Views
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
             };
+            LayoutExport.SetRole(_title, "heading");
             _panel.Children.Add(_eyebrow);
             _panel.Children.Add(_title);
             _panel.Children.Add(_meta);
