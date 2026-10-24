@@ -3,7 +3,7 @@
  * buttons on the right edge; the current letter is filled with ink. Geometry from the live web TV DOM.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -56,7 +56,7 @@ export struct AlphabetRail {
                 .borderRadius((TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH) / 2)
                 .border({ width: RING_WIDTH, color: toResourceColor(BRAND_PINK) })
             }
-            Text(letter).fontFamily(nunito(500))
+            Text(letter).fontFamily(nunitoAt(700, TOUCH_LETTER_SIZE))
               .width(TOUCH_DISC)
               .height(TOUCH_DISC)
               .textAlign(TextAlign.Center)
@@ -69,8 +69,10 @@ export struct AlphabetRail {
           .width(TOUCH_DISC)
           .height(TOUCH_DISC)
         }
+        .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
         .width(TOUCH_LETTER_WIDTH)
         .layoutWeight(1)
+        .borderRadius(TOUCH_DISC)
         .justifyContent(FlexAlign.Center)
         .onClick(() => {
           this.onJump(letter);
@@ -96,7 +98,7 @@ export struct AlphabetRail {
   @Builder
   private tvLetter(letter: string): void {
     Column() {
-      Text(letter).fontFamily(nunito(400))
+      Text(letter).fontFamily(nunitoAt(400, tv(LETTER_SIZE)))
         .width(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
         .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
         .textAlign(TextAlign.Center)
@@ -122,6 +124,7 @@ export struct AlphabetRail {
             // Web's current letter is a 24 px disc in ink-soft (not the 44 px hit area), the letters sit ~1.5 px high.
             this.tvLetter(letter)
           }
+          .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
           .width(tv(BUTTON_SIZE))
           .height(tv(BUTTON_SIZE))
           .justifyContent(FlexAlign.Center)

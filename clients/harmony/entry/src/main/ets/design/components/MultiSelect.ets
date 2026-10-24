@@ -4,7 +4,7 @@
  * the trigger opens a list of options with check boxes. Sizes are web's at 1920x1080 (1rem = 19.2 px).
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -80,7 +80,7 @@ export struct MultiSelect {
 
   build() {
     Column({ space: tv(HEADING_GAP) }) {
-      Text(this.heading).fontFamily(nunito(700))
+      Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
         .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
         .fontWeight(FontWeight.Bold)
         .letterSpacing(tv(HEADING_LETTER_SPACING))
@@ -90,11 +90,11 @@ export struct MultiSelect {
         Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
           ForEach(this.selected, (value: string) => {
             Row({ space: tv(8.64) }) {
-              Text(this.labelOf(value)).fontFamily(nunito(700))
+              Text(this.labelOf(value)).fontFamily(nunitoAt(700, tv(CONTROL_FONT)))
                 .fontSize(tv(CONTROL_FONT))
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().bg))
-              Text('×').fontFamily(nunito(700))
+              Text('×').fontFamily(nunitoAt(700, tv(CONTROL_FONT)))
                 .fontSize(tv(CONTROL_FONT))
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().bg))
@@ -112,12 +112,12 @@ export struct MultiSelect {
             })
           }, (value: string): string => value)
           Row() {
-            Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(nunito(isTvMetrics() ? 700 : 500))
+            Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(nunitoAt(isTvMetrics() ? 700 : 500, isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT))
               .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)
               .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
-            Text('⌄').fontFamily(nunito(400))
+            Text('⌄').fontFamily(nunitoAt(400, tv(CONTROL_FONT)))
               .fontSize(tv(CONTROL_FONT))
               .fontColor(toResourceColor(activeColors().inkMuted))
               .rotate({ angle: this.open ? 180 : 0 })
@@ -143,7 +143,7 @@ export struct MultiSelect {
           Column() {
             ForEach(this.options, (option: Choice) => {
               Row({ space: tv(OPTION_GAP) }) {
-                Text(this.isOn(option.value) ? '✓' : '').fontFamily(nunito(400))
+                Text(this.isOn(option.value) ? '✓' : '').fontFamily(nunitoAt(400, tv(CHECK_FONT)))
                   .fontSize(tv(CHECK_FONT))
                   .fontColor(toResourceColor(this.isOn(option.value) ? activeColors().bg : activeColors().ink))
                   .textAlign(TextAlign.Center)
@@ -152,7 +152,7 @@ export struct MultiSelect {
                   .borderRadius(tv(BOX_RADIUS))
                   .border({ width: 2, color: toResourceColor(activeColors().ink) })
                   .backgroundColor(this.isOn(option.value) ? toResourceColor(activeColors().ink) : Color.Transparent)
-                Text(option.label).fontFamily(nunito(400))
+                Text(option.label).fontFamily(nunitoAt(400, tv(CONTROL_FONT)))
                   .fontSize(tv(CONTROL_FONT))
                   .fontColor(toResourceColor(activeColors().ink))
                   .layoutWeight(1)

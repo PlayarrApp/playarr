@@ -106,7 +106,7 @@
  * establish for brief literals outside `core/Tokens.ts`'s current scope.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry, TouchGeometry } from '../Metrics';
@@ -169,7 +169,7 @@ const RAIL_CLIP_INSET_TOP: number = 24;
  * `.letterSpacing()` takes a length, not an `em` unit directly. */
 const RAIL_HEADING_TRACKING_EM: number = -0.03;
 /** TV: the Nunito instance renders the heading about 2.5% wider than web's, so tighten by a further 0.012em. */
-const RAIL_HEADING_TRACKING_TV_EM: number = -0.042;
+const RAIL_HEADING_TRACKING_TV_EM: number = -0.03; // fitted to the TV layout refs' heading run widths
 
 /** `design/components/FocusLift.ets`'s own documented contract for
  * `activeRailFactor` is exactly "1 while the rail itself holds focus, 0
@@ -410,7 +410,8 @@ export struct MediaRail {
 
     Column({ space: this.headingGap }) {
       if (this.heading.length > 0) {
-        Text(this.heading).fontFamily(nunito(this.headingWeight))
+        Text(this.heading).fontFamily(nunitoAt(this.headingWeight, this.headingSize))
+          .id('px:heading:' + this.heading)
           .fontSize(this.headingSize)
           .fontWeight(this.headingWeight)
           .fontColor(toResourceColor(activeColors().ink))

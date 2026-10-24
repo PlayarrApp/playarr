@@ -101,7 +101,7 @@
  */
 
 import { t, tf } from '../core/Language';
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
@@ -199,7 +199,7 @@ import { getNavStack, popRoute, pushRoute } from '../navigation/NavStack';
 // exception pattern) --------------------------------------------------------
 
 const PLAY_BUTTON_HEIGHT_TV: number = 56;
-const PLAY_BUTTON_HEIGHT_TOUCH: number = 48;
+const PLAY_BUTTON_HEIGHT_TOUCH: number = 44;
 const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
 const HERO_TOUCH_HEIGHT: number = 452; // web: 58 vh of the 780 vp phone
@@ -837,12 +837,12 @@ struct Detail {
   /** Phone: the title actions drawer (Download, Add to Playlist, watched marks). */
   @State private touchActionsOpen: boolean = false;
   /** Phone Play: web's focus style (`.tv-detail-play:focus-visible`: brand-strong fill, white label, 1.06 scale). */
-  // starts true on the phone: web opens with Play focused, and the Previewer window never reports the focus
+  // the phone starts with Play unfocused (web's touch layout; the static-server ref shows the white pill)
   /** Web's unseen dot on episode cards: the viewer's progress rows by media file, once loaded. */
   @State private episodeProgress: Map<string, WatchProgress> = new Map<string, WatchProgress>();
   @State private episodeProgressLoaded: boolean = false;
-  // true from the start on both: web opens a film with Play focused (the Previewer never reports focus); only the TV film Play pill and the phone Play read it
-  @State private playFocused: boolean = true;
+  // true from the start on the TV: web opens a film with Play focused (the Previewer never reports focus); only the TV film Play pill and the phone Play read it
+  @State private playFocused: boolean = isTvMetrics();
   @State private optionsOpen: boolean = false;
   /** On this profile's watchlist: null until the server has answered. */
   @State private listed: boolean | null = null;
@@ -1723,11 +1723,9 @@ struct Detail {
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
   @Builder
   private playTriangle(): void {
-    Polygon({ width: 8, height: 9 })
-      .points([[0, 0], [0, 9], [8, 4.5]])
-      .fill(this.playInk())
-      .width(8)
-      .height(9)
+    Text('\u25B6').fontFamily(nunito(400)) // web draws the glyph (7.3 x 13 at 9.5 vp)
+      .fontSize(9.5)
+      .fontColor(this.playInk())
   }
 
   /** The primary play action: a simple pill (brief 5.8's "primary play
@@ -1743,19 +1741,20 @@ struct Detail {
 
     Row({ space: Spacing.sm }) {
       if (isTvMetrics()) {
-        Text('\u25B6').fontFamily(nunito(400))
+        Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE))
           .fontSize(PLAY_BUTTON_ICON_SIZE)
           .fontColor(this.playInk())
       } else {
         this.playTriangle()
       }
-      Text(this.primaryLabel()).fontFamily(nunito(700))
+      Text(this.primaryLabel()).fontFamily(nunitoAt(700, isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.playInk())
     }
+    .id(this.pillId(this.primaryLabel(), '', true))
     .layoutWeight(1)
     .height(height)
     .padding({ left: Spacing.lg, right: Spacing.lg })
@@ -1765,7 +1764,7 @@ struct Detail {
     .backgroundColor((enabled ? (this.playFocused && !isTvMetrics() ? PLAY_FOCUS_FILL : toResourceColor(isTvMetrics() ? activeColors().accent : activeColors().ink)) : toResourceColor(activeColors().inkMuted)))
     .opacity((enabled ? 1 : 0.6))
     .focusable(enabled)
-    .defaultFocus(enabled && !isTvMetrics())
+    // web's touch layout opens with no pill focused (static-server refs show the unfocused white Play)
     .scale(this.playFocused && !isTvMetrics() ? { x: 1.06, y: 1.06 } : { x: 1, y: 1 })
     .onFocus((): void => {
       this.playFocused = true;
@@ -1863,15 +1862,16 @@ struct Detail {
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
-      Text(glyph).fontFamily(nunito(400))
+      Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
-      Text(label).fontFamily(nunito(700))
+      Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
         .maxLines(1)
     }
+    .id(this.pillId(label, primary ? '' : glyph, primary))
     .height(tv(PILL_HEIGHT))
     .constraintSize({ minWidth: tv(primary ? PILL_PRIMARY_MIN_WIDTH : PILL_SECONDARY_MIN_WIDTH) })
     .padding({ left: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X), right: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X) })
@@ -2014,7 +2014,7 @@ struct Detail {
   private castItem(item: MediaRailItem, index: number, activeRailFactor: number): void {
     Column({ space: tv(8) }) {
       Stack() {
-        Text(initialsOf((item as CastRow).name)).fontFamily(nunito(500))
+        Text(initialsOf((item as CastRow).name)).fontFamily(nunitoAt(500, tv(CAST_INITIALS_SIZE)))
           .fontSize(tv(CAST_INITIALS_SIZE))
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.6))
@@ -2033,7 +2033,7 @@ struct Detail {
       .backgroundColor(toResourceColorWithAlpha(activeColors().ink, 0.08))
       .focusable(true)
       .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
-      Text((item as CastRow).name).fontFamily(nunito(400))
+      Text((item as CastRow).name).fontFamily(nunitoAt(400, tv(12)))
         .fontSize(tv(12))
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
@@ -2059,10 +2059,11 @@ struct Detail {
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
     Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 4) }) {
-      Text(heading).fontFamily(nunito(400))
+      Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
+        .id('px:heading:' + heading)
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(count).fontFamily(nunito(400))
+      Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11)))
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11))
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
@@ -2330,10 +2331,31 @@ struct Detail {
     return this.synopsisText();
   }
 
+  /** The web accessible name and role of an action pill: Play is a link, Download and Playback carry the title, the rest read glyph and label. */
+  private pillId(label: string, glyph: string, primary: boolean): string {
+    const title = this.detail !== null ? this.detail.work.title : '';
+    if (primary) {
+      return (this.detail !== null && this.detail.work.kind === 'series' ? 'px:button:' : 'px:link:') + (this.detail !== null && this.detail.work.kind === 'series' ? label : label) + ' ' + title;
+    }
+    if (label === t('components.mediaContextMenu.download', 'Download')) {
+      return 'px:button:' + label + ' ' + title;
+    }
+    if (label === t('pages.workDetail.playbackButtonLabel', 'Playback')) {
+      return 'px:button:Playback settings for ' + title;
+    }
+    return 'px:button:' + (glyph.length > 0 ? glyph + ' ' : '') + label;
+  }
+
+  private phoneKindTitle(): string {
+    return this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '';
+  }
+
   @Builder
   private tvLayout(): void {
     PageShell({
       title: this.shellTitle(),
+      backLabel: 'Back to ' + this.shellTitle(),
+      backRole: 'button',
       kicker: (this.detail !== null ? this.detail.work.title.toUpperCase() : ''),
       selectedId: this.shellNavId(),
       content: (): void => {
@@ -2414,12 +2436,12 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 8.9), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
-        Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
+        Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
           .fontSize(10.24)
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
-          .fontColor(toResourceColor(index === 0 ? activeColors().ink : activeColors().inkSoft))
+          .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
       }, (chip: string, index: number): string => index.toString() + chip)
     }
     .width('100%')
@@ -2432,17 +2454,19 @@ struct Detail {
     Row({ space: 6 }) {
       if (glyph.length > 0) {
         // web: the pill glyphs are the brand pink (accent in light)
-        Text(glyph).fontFamily(nunito(500))
-          .fontSize(size)
+        Text(glyph).fontFamily(nunito(400))
+          .fontSize(size <= 8 ? 9.2 : 12.88) // web's glyph sizes
+          .fontWeight(FontWeight.Normal)
           .fontColor(brandInk())
       }
       // web: the 8 vp pills (Download, Add to ...) are bold in the ink colour, the larger Playback pill medium
-      Text(label).fontFamily(nunito(size <= 8 ? 700 : 500))
+      Text(label).fontFamily(nunitoAt(700, size))
         .fontSize(size)
-        .fontWeight(size <= 8 ? FontWeight.Bold : FontWeight.Medium)
-        .fontColor(toResourceColor(size <= 8 ? activeColors().ink : activeColors().inkSoft))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
+      .id(this.pillId(label, glyph, false))
       .height(44)
       .justifyContent(FlexAlign.Center)
       .padding({ left: 16, right: 16 })
@@ -2461,15 +2485,16 @@ struct Detail {
   @Builder
   private touchSeriesAction(label: string, onTap: () => void): void {
     Row({ space: 4 }) {
-      Text('+').fontFamily(nunito(700))
+      Text('+').fontFamily(nunitoAt(700, 8))
         .fontSize(8)
         .fontColor(brandInk())
-      Text(label).fontFamily(nunito(700))
+      Text(label).fontFamily(nunitoAt(700, 8))
         .fontSize(8)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
+    .id(this.pillId(label, '+', false))
     .layoutWeight(1)
     .height(44)
     .justifyContent(FlexAlign.Center)
@@ -2488,12 +2513,13 @@ struct Detail {
     Row({ space: 8 }) {
       Row({ space: 6 }) {
         this.playTriangle()
-        Text(this.primaryLabel()).fontFamily(nunito(700))
+        Text(this.primaryLabel()).fontFamily(nunitoAt(700, 11))
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
           .maxLines(1)
           .fontColor(toResourceColor(activeColors().bg))
       }
+      .id(this.pillId(this.primaryLabel(), '', true))
       .width(100)
       .height(44)
       .justifyContent(FlexAlign.Center)
@@ -2538,6 +2564,7 @@ struct Detail {
     }
     // web phone film: the three pills share the row width (104 / 104 / 110 vp)
     .width('100%')
+    .margin({ top: 2.26 })
     Row({ space: 8 }) {
       this.touchActionButton(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
@@ -2546,7 +2573,7 @@ struct Detail {
         this.touchActionsOpen = true;
       }, 8, '+')
     }
-    .margin({ top: 11 })
+    .margin({ top: 12 })
   }
 
   /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the
@@ -2592,7 +2619,7 @@ struct Detail {
         })
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column() {
-            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunito(900))
+            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunitoAt(900, 10.56))
               .fontSize(10.56)
               .height(16)
               .fontWeight(FontWeight.Bolder)
@@ -2600,26 +2627,28 @@ struct Detail {
               .textCase(TextCase.UpperCase)
               .fontColor(brandInk())
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
-            Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunito(500))
-              .fontSize(33.5) // measured against the static refs
+            Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunitoAt(560, 36))
+              .id('px:heading:' + (this.detail !== null ? this.detail.work.title : ''))
+              .fontSize(36) // measured against the static refs
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-1.5)
+              .letterSpacing(-2.59) // web -0.072em (fitted to the refs' run width)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
               .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
-              Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunito(500))
+              Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
                 .fontSize(14.4)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(toResourceColor(activeColors().ink))
+                .fontColor(toResourceColor(activeColors().inkSoft))
+                .id('px:heading:' + planEpisodeTitle(this.detail, this.resumePlan))
                 .maxLines(1)
                 .margin({ top: 5.7 })
             }
             this.touchMetaChips()
-            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunito(400))
+            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
               .fontSize(11.52)
-              .fontColor(toResourceColor(activeColors().inkSoft))
+              .fontColor(toResourceColor(activeColors().inkMuted))
               .lineHeight(16.7)
               .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
               .maxLines(3)
@@ -2698,8 +2727,8 @@ struct Detail {
         })
         .hitTestBehavior(HitTestMode.None)
       Row({ space: 10 }) {
-        Text('←').fontFamily(nunito(700))
-          .fontSize(11)
+        Text('←').fontFamily(arrowFont(720))
+          .fontSize(12.8)
           .fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .textAlign(TextAlign.Center)
@@ -2708,11 +2737,14 @@ struct Detail {
           .borderRadius(PHONE_BACK_SIZE / 2)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+          .id('px:button:Back to ' + this.phoneKindTitle())
           .onClick(() => {
             popRoute(getNavStack());
           })
-        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunito(500))
-          .fontSize(22)
+        Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
+          .id('px:heading:' + this.phoneKindTitle())
+          .fontSize(21.6)
+          .letterSpacing(-0.972)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
       }

@@ -183,8 +183,8 @@ const TOP_RAIL_MORE_SERIES: string = 'moreSeries';
  * (12/10) -- `design/components/PosterCard.ets`'s own header comment names
  * these as the documented touch override, matching `pages/DesignGallery.ets`'s
  * `touchRailItem` demo exactly. */
-const TOUCH_CARD_TITLE_FONT_SIZE: number = 8;
-const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 7;
+const TOUCH_CARD_TITLE_FONT_SIZE: number = 8.8; // web dump
+const TOUCH_CARD_SUBTITLE_FONT_SIZE: number = 6.88; // web dump
 
 /** `TouchGeometryTokens` has no dedicated rail-to-rail spacing field (only
  * `railItemGap`, the gap BETWEEN cards inside one rail) -- a reasoned,
@@ -877,6 +877,12 @@ export struct Home {
    * `pages/DesignGallery.ets`'s own `touchRailItem` demo exactly. No
    * `.nextFocus()` wiring -- touch has no D-pad "Up escapes to the nav rail"
    * concept, `NavPill` is always visible instead (brief 9). */
+  /** Phone: web focuses the first card of the first rail on open. */
+  private isFirstTouchCard(id: string): boolean {
+    const first: HomeCardItem | undefined = this.continueWatchingItems[0] ?? (this.serverRails.length > 0 ? this.serverRails[0].items[0] : undefined);
+    return first !== undefined && first.id === id;
+  }
+
   @Builder
   private touchCardItemBuilder(item: MediaRailItem, index: number, activeRailFactor: number): void {
 
@@ -889,9 +895,10 @@ export struct Home {
       unseen: this.unseenFor(item as HomeCardItem),
       cardWidth: this.touchCardWidth(),
       cardHeight: Math.round(this.touchCardHeight()),
-      artworkRadius: Radii.homeCardArtworkTouch,
+      artworkRadius: 8, // web dump: 8
       titleFontSize: TOUCH_CARD_TITLE_FONT_SIZE,
       softCaption: true,
+      focusedCaption: this.isFirstTouchCard((item as HomeCardItem).id),
       subtitleFontSize: TOUCH_CARD_SUBTITLE_FONT_SIZE,
       activeRailFactor: activeRailFactor,
       onSelect: ((): void => {
@@ -1012,7 +1019,7 @@ export struct Home {
           itemGap: TouchGeometry.railItemGap,
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
-          headingWeight: 500, // web's phone rail heading is lighter than the TV's 600
+          headingWeight: 610, // web's phone rail heading weight
           headingGap: TOUCH_RAIL_HEADING_GAP,
           bleedEnd: TOUCH_GUTTER + atLeast(Spacing.md, this.safeRight), // the rail sits in the 16 vp gutter: run on to the screen edge so the next card peeks as on web
           allowFocusedOverflow: true,
@@ -1030,7 +1037,7 @@ export struct Home {
           itemGap: TouchGeometry.railItemGap,
           listHeight: this.touchListHeight(),
           headingSize: TOUCH_RAIL_HEADING_SIZE,
-          headingWeight: 500, // web's phone rail heading is lighter than the TV's 600
+          headingWeight: 610, // web's phone rail heading weight
           headingGap: TOUCH_RAIL_HEADING_GAP,
           bleedEnd: TOUCH_GUTTER + atLeast(Spacing.md, this.safeRight), // the rail sits in the 16 vp gutter: run on to the screen edge so the next card peeks as on web
           allowFocusedOverflow: true,

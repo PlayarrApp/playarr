@@ -4,7 +4,7 @@
  * draw their own header buttons for panels.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -42,13 +42,14 @@ export struct ActionTile {
         .height(tv(ICON_SIZE))
         .colorFilter(tintFilter(activeColors().inkSoft))
         .focusable(false)
-      Text(this.label).fontFamily(nunito(700))
+      Text(this.label).fontFamily(nunitoAt(700, tv(LABEL_SIZE)))
         .fontSize(tv(LABEL_SIZE))
         .fontWeight(FontWeight.Bold)
         .letterSpacing(tv(LABEL_LETTER_SPACING))
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .fontColor(toResourceColor(activeColors().inkMuted))
         .maxLines(1)
     }
+    .id('px:button:' + this.label)
     .width(tv(TILE_WIDTH))
     .height(tv(TILE_HEIGHT))
     .justifyContent(FlexAlign.Center)

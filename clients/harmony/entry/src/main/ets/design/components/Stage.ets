@@ -127,6 +127,7 @@ export struct Stage {
   @Prop kicker: string = '';
   @Prop title: string = '';
   @Prop metaLines: string[] = [];
+  @Prop metaRuns: string[] = [];
   @Prop synopsis: string = '';
   /** Home: draw web's rails frost (`.tv-home-rails` background). */
   @Prop railFrost: boolean = false;
@@ -334,6 +335,7 @@ export struct Stage {
         kicker: this.kicker,
         title: this.title,
         metaLines: this.metaLines,
+        metaRuns: this.metaRuns,
         synopsis: this.synopsis,
         metaGapAdjust: this.metaGapAdjust,
         synopsisGapAdjust: this.synopsisGapAdjust,
