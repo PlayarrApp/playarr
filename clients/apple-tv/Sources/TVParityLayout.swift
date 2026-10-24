@@ -100,20 +100,21 @@ final class TVParityLayoutRegistry {
         func visit(_ object: Any, depth: Int) {
             guard visited < 4000, depth < 40 else { return }
             visited += 1
-            guard let element = object as? NSAccessibilityProtocol else { return }
-            let role = element.accessibilityRole?()
-            let label = element.accessibilityLabel?() ?? ""
-            let frame = element.accessibilityFrame()
-            if let role, !label.isEmpty || role == .image, role != .group, role != .scrollArea, role != .window {
+            guard let element = object as? NSObject else { return }
+            let role: NSAccessibility.Role? = element.accessibilityRole()
+            let label: String = element.accessibilityLabel() ?? ""
+            let frame: NSRect = element.accessibilityFrame()
+            let skipped: [NSAccessibility.Role] = [.group, .scrollArea, .window]
+            if let role, !label.isEmpty || role == NSAccessibility.Role.image, !skipped.contains(role) {
                 var mapped = "container"
-                if role == .button { mapped = "button" } else if role == .link { mapped = "link" } else if role == .image { mapped = "image" }
-                else if role == .staticText { mapped = "text" }
+                if role == NSAccessibility.Role.button { mapped = "button" } else if role == NSAccessibility.Role.link { mapped = "link" }
+                else if role == NSAccessibility.Role.image { mapped = "image" } else if role == NSAccessibility.Role.staticText { mapped = "text" }
                 // screen coordinates (origin bottom-left) to the content view's top-left origin
                 let inWindow = window.convertFromScreen(frame)
                 let rect = CGRect(x: inWindow.minX, y: height - inWindow.maxY, width: inWindow.width, height: inWindow.height)
                 found.append(Item(text: label.isEmpty ? nil : label, role: mapped, rect: rect))
             }
-            for child in element.accessibilityChildren?() ?? [] { visit(child, depth: depth + 1) }
+            for child in element.accessibilityChildren() ?? [] { visit(child, depth: depth + 1) }
         }
         visit(content, depth: 0)
         return found
