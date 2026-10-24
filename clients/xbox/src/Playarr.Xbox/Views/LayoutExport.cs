@@ -37,6 +37,27 @@ namespace Playarr.Xbox.Views
 
         public static void SetPad(DependencyObject element, Thickness pad) => element.SetValue(PadProperty, pad);
 
+        /// <summary>The text's web box is its CSS line box (own line-height), not Chrome's content area.</summary>
+        public static readonly DependencyProperty LineBoxProperty = DependencyProperty.RegisterAttached("LineBox", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
+
+        public static void SetLineBox(DependencyObject element, bool value) => element.SetValue(LineBoxProperty, value);
+
+        public static T SetLineBoxed<T>(T element, bool value = true) where T : DependencyObject
+        {
+            element.SetValue(LineBoxProperty, value);
+            return element;
+        }
+
+        /// <summary>A button the web exports as the box plus a separate text element (round letter and arrow buttons).</summary>
+        public static readonly DependencyProperty SplitProperty = DependencyProperty.RegisterAttached("Split", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
+
+        public static void SetSplit(DependencyObject element, bool value) => element.SetValue(SplitProperty, value);
+
+        /// <summary>Export a text block's runs as separate elements at this separator (the web's meta line is one span per part).</summary>
+        public static readonly DependencyProperty SplitOnProperty = DependencyProperty.RegisterAttached("SplitOn", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
+
+        public static void SetSplitOn(DependencyObject element, string separator) => element.SetValue(SplitOnProperty, separator);
+
         public static void SetBox(DependencyObject element, Rect box) => element.SetValue(BoxProperty, box);
 
         public static void SetShell(DependencyObject element, bool shell) => element.SetValue(ShellProperty, shell);
@@ -112,7 +133,7 @@ namespace Playarr.Xbox.Views
                     return; // a drawn icon is one image, not its strokes
                 }
 
-                if (element is Button { Content: TextBlock } && (GetRole(element) == null || GetRole(element) == "button"))
+                if (element is Button { Content: TextBlock } && element.GetValue(SplitProperty) is not true && (GetRole(element) == null || GetRole(element) == "button"))
                 {
                     return; // the web's label button is one element carrying the text run and its style
                 }
@@ -144,6 +165,12 @@ namespace Playarr.Xbox.Views
             }
 
             var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(element);
+            if (element is TextBlock split && split.GetValue(SplitOnProperty) is string separator && split.Text.Contains(separator))
+            {
+                AddRuns(split, separator, root, scale, output);
+                return;
+            }
+
             if (element is TextBlock block)
             {
                 text = (string?)block.GetValue(TextProperty) ?? block.Text;
@@ -158,7 +185,7 @@ namespace Playarr.Xbox.Views
                 fontWeight = WebFont.WeightOf(block);
                 rect = TextRun(block, root, scale) ?? rect;
             }
-            else if (element is Button { Content: TextBlock drawerLabel } && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
+            else if (element is Button { Content: TextBlock drawerLabel } && element.GetValue(SplitProperty) is not true && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
             {
                 role = "button";
                 text = (string?)drawerLabel.GetValue(TextProperty) ?? (string.IsNullOrEmpty(name) ? drawerLabel.Text : name);
@@ -175,7 +202,7 @@ namespace Playarr.Xbox.Views
             {
                 role = "image";
             }
-            else if (element is Button { Content: TextBlock label } labelButton && !string.IsNullOrWhiteSpace(label.Text))
+            else if (element is Button { Content: TextBlock label } labelButton && element.GetValue(SplitProperty) is not true && !string.IsNullOrWhiteSpace(label.Text))
             {
                 role = "button";
                 text = string.IsNullOrEmpty(name) ? label.Text : name;
@@ -214,11 +241,12 @@ namespace Playarr.Xbox.Views
             }
 
             var radius = element is Border b ? b.CornerRadius.TopLeft : element is Grid g ? g.CornerRadius.TopLeft : element is Control c ? c.CornerRadius.TopLeft : 0;
-            var pill = element is TextBlock && VisualTreeHelper.GetParent(element) is Border { CornerRadius.TopLeft: > 0 } pillBorder ? pillBorder : null;
+            var pill = element is TextBlock && VisualTreeHelper.GetParent(element) is Border { CornerRadius.TopLeft: > 0, Padding.Left: >= 7 } pillBorder ? pillBorder : null;
             if (pill != null)
             {
-                // A status pill: the web puts the radius on the text element and keeps the page colour behind it.
+                // A status pill: the web puts box, radius and text on one element and keeps the page colour behind it.
                 radius = pill.CornerRadius.TopLeft;
+                rect = Bounds(pill, root, scale);
             }
 
             if (radius > 0 && radius * 2 >= Math.Min(element.ActualWidth, element.ActualHeight) - 0.5)
@@ -233,12 +261,56 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
+                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element, includeSelf: Own(element) != null)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
                 opacity = element.Opacity < 1 ? (double?)Math.Round(element.Opacity, 2) : null,
             });
+        }
+
+        private static void AddRuns(TextBlock block, string separator, FrameworkElement root, double scale, List<object> output)
+        {
+            var text = block.Text;
+            var start = 0;
+            foreach (var part in text.Split(new[] { separator }, StringSplitOptions.None))
+            {
+                var begin = start;
+                start += part.Length + separator.Length;
+                if (part.Length == 0)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var first = block.ContentStart.GetPositionAtOffset(begin + 1, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Backward) ?? block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+                    var lastPos = block.ContentStart.GetPositionAtOffset(begin + 1 + part.Length, LogicalDirection.Backward);
+                    var last = lastPos?.GetCharacterRect(LogicalDirection.Backward) ?? first;
+                    var transform = block.TransformToVisual(root);
+                    var a = transform.TransformPoint(new Point(first.X, 0));
+                    var z = transform.TransformPoint(new Point(last.X, 0));
+                    var box = Bounds(block, root, scale);
+                    var size = block.FontSize * scale;
+                    var ascent = Math.Round(1.011 * size, MidpointRounding.AwayFromZero);
+                    var height = ascent + Math.Round(0.353 * size, MidpointRounding.AwayFromZero);
+                    var baseline = box.Y + block.BaselineOffset * scale;
+                    output.Add(new
+                    {
+                        text = part,
+                        role = "text",
+                        rect = new { x = Math.Round(a.X * scale, 1), y = Math.Round(baseline - ascent, 1), w = Math.Round(Math.Max(0, (z.X - a.X) * scale), 1), h = height },
+                        color = Hex(block.Foreground),
+                        background = BackgroundBehind(block),
+                        fontSize = Math.Round(block.FontSize, 2),
+                        fontWeight = WebFont.WeightOf(block),
+                    });
+                }
+                catch (Exception)
+                {
+                    // A run whose position cannot be read is left out rather than guessed.
+                }
+            }
         }
 
         private static Rect Bounds(FrameworkElement element, FrameworkElement root, double scale)
@@ -263,7 +335,18 @@ namespace Playarr.Xbox.Views
                 var transform = block.TransformToVisual(root);
                 var a = transform.TransformPoint(new Point(first.X, 0));
                 var z = transform.TransformPoint(new Point(last.X + last.Width, 0));
-                return new Rect(a.X * scale, box.Y, Math.Max(0, (z.X - a.X) * scale), box.Height);
+                if (block.GetValue(LineBoxProperty) is true)
+                {
+                    // CSS line box (the clock and the date set their own line-height): the element's own box.
+                    return new Rect(a.X * scale, box.Y, Math.Max(0, (z.X - a.X) * scale), box.Height);
+                }
+
+                // Chrome's content area for Nunito Sans: ascent round(1.011 em) above the baseline, round(0.353 em) below.
+                var size = block.FontSize * scale;
+                var ascent = Math.Round(1.011 * size, MidpointRounding.AwayFromZero);
+                var height = ascent + Math.Round(0.353 * size, MidpointRounding.AwayFromZero);
+                var baseline = box.Y + block.BaselineOffset * scale * (box.Height / Math.Max(1, block.ActualHeight));
+                return new Rect(a.X * scale, baseline - ascent, Math.Max(0, (z.X - a.X) * scale), height);
             }
             catch (Exception)
             {
@@ -281,12 +364,17 @@ namespace Playarr.Xbox.Views
         };
 
         /// <summary>The colour behind an element: ancestors' fills composited over the page colour.</summary>
-        private static string BackgroundBehind(DependencyObject node)
+        private static string BackgroundBehind(DependencyObject node, bool includeSelf = false)
         {
             var layers = new List<Color>();
             var underPage = false;
-            for (var parent = VisualTreeHelper.GetParent(node); parent != null; parent = VisualTreeHelper.GetParent(parent))
+            for (var parent = includeSelf ? node : VisualTreeHelper.GetParent(node); parent != null; parent = VisualTreeHelper.GetParent(parent))
             {
+                if (parent.GetValue(ShellProperty) is true)
+                {
+                    break; // shell chrome and the profile picker sit on the page background
+                }
+
                 if (parent is Page)
                 {
                     underPage = true; // the page stage (a gradient) is reported as the surface colour; nothing above it counts

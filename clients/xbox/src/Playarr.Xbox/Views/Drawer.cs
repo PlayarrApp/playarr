@@ -59,6 +59,7 @@ namespace Playarr.Xbox.Views
             close.Width = close.Height = 50;
             close.Content = new TextBlock { Text = "\u00d7", FontSize = 26.88, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 36, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInk"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             LayoutExport.Tag(close, "button", "Close " + title.ToLowerInvariant());
+            LayoutExport.SetSplit(close, true);
             close.Background = Ui.Res("PlayarrSurfaceStrong");
             close.HorizontalAlignment = HorizontalAlignment.Right;
             close.VerticalAlignment = VerticalAlignment.Top;
@@ -265,19 +266,20 @@ namespace Playarr.Xbox.Views
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             content.Children.Add(Ui.Text(current, 11.84, new FontWeight { Weight = 680 }, "PlayarrInk"));
-            var chevron = new FontIcon { Glyph = "\uE70D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 8, Foreground = Ui.Res("PlayarrInkSoft") };
+            var chevron = new TextBlock { Text = "\uE70D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 11.84, LineHeight = 16, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInkMuted") };
+            LayoutExport.SetText(chevron, "\u2304");
             Grid.SetColumn(chevron, 1);
             content.Children.Add(chevron);
             var button = new Button
             {
-                Height = 58,
+                Height = 44,
+                Margin = new Thickness(7),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                Padding = new Thickness(20, 0, 20, 0),
-                CornerRadius = new CornerRadius(12),
-                Background = RestingChip(),
-                BorderBrush = Ui.Res("PlayarrLineStrong"),
-                BorderThickness = new Thickness(1),
+                Padding = new Thickness(5, 0, 5, 0),
+                CornerRadius = new CornerRadius(10),
+                Background = new SolidColorBrush(Colors.Transparent),
+                BorderThickness = new Thickness(0),
                 Content = content,
                 FocusVisualPrimaryBrush = Theme.FocusRing,
                 FocusVisualPrimaryThickness = new Thickness(3),
@@ -306,7 +308,18 @@ namespace Playarr.Xbox.Views
 
                 flyout.ShowAt(button);
             };
-            group.Children.Add(button);
+            LayoutExport.Tag(button, "button", current + " \u2304");
+            LayoutExport.SetSplit(button, true);
+            var frame = new Border
+            {
+                CornerRadius = new CornerRadius(12),
+                Background = RestingChip(),
+                BorderBrush = Ui.Res("PlayarrLineStrong"),
+                BorderThickness = new Thickness(1),
+                Child = button,
+            };
+            LayoutExport.Tag(frame, "group", label);
+            group.Children.Add(frame);
             return group;
         }
 
@@ -354,17 +367,23 @@ namespace Playarr.Xbox.Views
         /// <summary>An action row ("Play", "Mark as Watched"): icon in brand pink and label, as the web actions panel.</summary>
         public static Button Action(string glyph, string label, Action onClick)
         {
-            var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 18 };
-            content.Children.Add(new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 16, Foreground = Ui.Res("PlayarrBrand") });
-            content.Children.Add(Ui.Text(label, 19, FontWeights.Bold, "PlayarrInk"));
+            var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
+            var icon = new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 19.52, LineHeight = 27, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrBrand"), VerticalAlignment = VerticalAlignment.Center };
+            // The web draws these as text glyphs; the export names them as the web does.
+            LayoutExport.SetText(icon, glyph switch { "\uF5B0" => "\u25B6", "\uE896" => "\u21E9", "\uE710" => "\uFF0B", "\uE73E" => "\u2713", "\uE711" => "\u25CB", _ => glyph });
+            content.Children.Add(icon);
+            var text = Ui.Text(label, 19.2, new FontWeight { Weight = 700 }, "PlayarrInk");
+            text.LineHeight = 26;
+            text.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            content.Children.Add(text);
             var button = new Button
             {
                 Height = 68,
                 Margin = new Thickness(0, 0, 0, 14),
-                Padding = new Thickness(26, 0, 16, 0),
+                Padding = new Thickness(18, 0, 16, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
-                CornerRadius = new CornerRadius(12),
+                CornerRadius = new CornerRadius(14),
                 Background = Ui.Res("PlayarrSurfaceSoft"),
                 BorderThickness = new Thickness(0),
                 Content = content,
@@ -373,6 +392,8 @@ namespace Playarr.Xbox.Views
                 FocusVisualSecondaryThickness = new Thickness(0),
             };
             button.Click += (s, e) => onClick();
+            LayoutExport.Tag(button, "button", (string?)icon.GetValue(LayoutExport.TextProperty) + " " + label);
+            LayoutExport.SetSplit(button, true);
             return button;
         }
     }

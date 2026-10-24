@@ -52,6 +52,8 @@ namespace Playarr.Xbox.Views
             Root.Children.Add(_chrome);
             Build();
             _frame.Navigated += (s, e) => Sync(e);
+            LayoutExport.SetLineBox(_time, true);
+            LayoutExport.SetLineBox(_date, true);
             _clockTimer.Tick += (s, e) => UpdateClock();
             _clockTimer.Start();
             UpdateClock();
@@ -165,7 +167,7 @@ namespace Playarr.Xbox.Views
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
             var avatar = _avatar;
-            var profileContent = new StackPanel { Spacing = 2, Margin = new Thickness(0, 2, 0, 0) };
+            var profileContent = new StackPanel { Spacing = 3.5, Margin = new Thickness(0, 0.7, 0, 0) };
             profileContent.Children.Add(avatar);
             profileContent.Children.Add(_profileName);
             var profile = RailButton(profileContent, typeof(SettingsPage), null);
@@ -176,7 +178,7 @@ namespace Playarr.Xbox.Views
             profileGroup.Margin = new Thickness(RailLeft, 952, 0, 0);
             _chrome.Children.Add(profileGroup);
 
-            _chrome.Children.Add(new TextBlock
+            _chrome.Children.Add(LayoutExport.SetLineBoxed(new TextBlock
             {
                 Text = "v" + typeof(App).Assembly.GetName().Version.ToString(3),
                 FontFamily = (FontFamily)Application.Current.Resources["PlayarrMonoFont"],
@@ -189,8 +191,8 @@ namespace Playarr.Xbox.Views
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(RailLeft, 1036, 0, 0),
-            });
+                Margin = new Thickness(RailLeft, 1037.8, 0, 0),
+            }));
 
             var clock = new StackPanel
             {
@@ -218,7 +220,7 @@ namespace Playarr.Xbox.Views
             {
                 Child = stack,
                 Width = RailWidth,
-                Padding = new Thickness(6, 1, 6, 2),
+                Padding = new Thickness(6, 2.1, 6, 0.9),
                 CornerRadius = new CornerRadius(22),
                 // Measured on the web rail: a lifted fill and a hairline (light: near-white with a soft shadow, dark: 30 26 30 over 27 23 26).
                 Background = (Brush)Application.Current.Resources["PlayarrRailFill"],
@@ -229,7 +231,7 @@ namespace Playarr.Xbox.Views
 
         private Button Item(string label, Type? page, WorkKind? kind)
         {
-            var content = new StackPanel { Spacing = 2, Margin = new Thickness(0, 2, 0, 0) };
+            var content = new StackPanel { Spacing = 3.5, Margin = new Thickness(0, 0.7, 0, 0) };
             content.Children.Add(NavIcons.Create(label, (Brush)Application.Current.Resources["PlayarrInkMuted"]));
             var text = new TextBlock { Text = Lang.T("shell.nav." + label.ToLowerInvariant()), FontSize = 8.83, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), CharacterSpacing = 34, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
             _labels.Add((text, label));
