@@ -148,8 +148,8 @@ export async function createDriver() {
 
   return {
     endCrops: true, cropIds: ["filters-language", "filters-list"], // the open language flyout, then the List view (it persists, so it goes last)
-    // The drawer's focus starts on List (web: the Close button). Picking a view reloads the page, so the List crop reopens the drawer.
-    cropKeys: { "filters-language": ["down*3", "select"], "filters-list": ["select"] },
+    // The drawer's focus starts on Close (as web). Picking a view reloads the page, so the List crop reopens the drawer.
+    cropKeys: { "filters-list": ["down", "left*2", "select"] }, // the drawer opens on Close, as on web: the language crop uses the suite keys
     async afterCropKeys(id) { if (id === "filters-list") { await sleep(9000); await click(1877, 187, 3); } },
     async start() { run("write", "parity.on", "1"); },
     async setTheme(t) {
@@ -242,7 +242,11 @@ export async function createDriver() {
       }
       if (/^\/(movies|series)\/[^/]+\/?$/.test(base) || base.endsWith("/:id")) await click(...FIRST_CARD, 8);
       else if (base.startsWith("/player")) throw new Error("player-controls requires the guarded direct-play route");
-      else if (query?.includes("panel=filters")) await click(1877, 187, 3);
+      else if (query?.includes("panel=filters")) {
+        // The web reaches the Filters button with right,right from the first card, so its details panel shows the third title.
+        for (let i = 0; i < 2; i++) { await requireTestAccount(); run("key", "right"); await sleep(1200); }
+        await click(1877, 187, 3);
+      }
     },
     async key(name, { long } = {}) {
       await requireTestAccount();

@@ -490,7 +490,7 @@ namespace Playarr.Xbox.Views
                 Appearance.LibraryView = views[i];
                 Drawer.TryCloseCurrent();
                 App.Navigation.NavigateReplacingCurrent(typeof(LibraryPage), _viewModel.SelectedKind!);
-            }));
+            }, null, new[] { "list", "screen", "cover" }));
             body.Children.Add(Drawer.Segmented("Sort by", new[] { "Title", "Date Added" }, _viewModel.SelectedSort == null ? 0 : 1, i =>
             {
                 _viewModel.SelectSort(i == 0 ? null : LibraryViewModel.SortRecentlyAdded);

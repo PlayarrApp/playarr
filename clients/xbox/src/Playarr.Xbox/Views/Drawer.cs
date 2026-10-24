@@ -46,7 +46,7 @@ namespace Playarr.Xbox.Views
             var eyebrowText = Ui.Text(eyebrow.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft");
             eyebrowText.CharacterSpacing = 120;
             header.Children.Add(eyebrowText);
-            var titleText = Ui.Text(title, 34, FontWeights.Bold, "PlayarrInk", new Thickness(0, 10, 0, 0));
+            var titleText = Ui.Text(title, 32, FontWeights.Bold, "PlayarrInk", new Thickness(0, 10, 0, 0));
             titleText.TextWrapping = TextWrapping.WrapWholeWords;
             titleText.LineHeight = 57;
             titleText.MaxLines = 3;
@@ -54,15 +54,13 @@ namespace Playarr.Xbox.Views
             panel.Children.Add(header);
 
             var close = Ui.RoundButton("", Close);
-            close.Width = close.Height = 46;
+            close.Width = close.Height = 50;
             ((FontIcon)close.Content).Glyph = "\uE8BB"; // ChromeClose: the web's bold X
             ((FontIcon)close.Content).FontSize = 13;
-            close.CornerRadius = new CornerRadius(23);
-            close.Background = Ui.Res("PlayarrSurfaceSoft");
-            close.BorderThickness = new Thickness(0);
+            close.Background = Ui.Res("PlayarrSurfaceStrong");
             close.HorizontalAlignment = HorizontalAlignment.Right;
             close.VerticalAlignment = VerticalAlignment.Top;
-            close.Margin = new Thickness(0, -20, -22, 0);
+            close.Margin = new Thickness(0, 1, -1, 0);
             panel.Children.Add(close);
 
             var scroller = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden };
@@ -82,7 +80,8 @@ namespace Playarr.Xbox.Views
             host.Children.Add(_overlay);
             panel.Loaded += (s, e) =>
             {
-                var first = FocusManager.FindFirstFocusableElement(scroller) as Control;
+                // The web opens the Filters panel with its Close button focused; action drawers focus their first row.
+                var first = title == "Filters" ? null : FocusManager.FindFirstFocusableElement(scroller) as Control;
                 (first ?? close).Focus(FocusState.Keyboard);
             };
         }
@@ -126,16 +125,37 @@ namespace Playarr.Xbox.Views
             return new SolidColorBrush(Color.FromArgb((byte)(Theme.IsLight ? 19 : 10), ink.R, ink.G, ink.B));
         }
 
-        /// <summary>A labelled group ("SORT BY") with segmented options, the selected one filled like the web.</summary>
-        public static StackPanel Segmented(string label, string[] options, int selected, Action<int> onSelect, string? automationIdPrefix = null)
+        /// <summary>The web's view glyph (<c>.tv-view-icon</c>): three outlined boxes, 20 by 13 px (16 wide for Cover), 2 px apart.</summary>
+        private static FrameworkElement ViewIcon(string kind, Brush brush)
         {
-            var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
-            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
+            var width = kind == "cover" ? 16.0 : 20.0;
+            var canvas = new Canvas { Width = width, Height = 13 };
+            for (var n = 0; n < 3; n++)
+            {
+                var box = kind == "list"
+                    ? new Border { Width = width, Height = 3 }
+                    : new Border { Width = (width - 4) / 3, Height = 13 };
+                box.BorderBrush = brush;
+                box.BorderThickness = new Thickness(1);
+                box.CornerRadius = new CornerRadius(1);
+                Canvas.SetLeft(box, kind == "list" ? 0 : n * ((width - 4) / 3 + 2));
+                Canvas.SetTop(box, kind == "list" ? n * 5 : 0);
+                canvas.Children.Add(box);
+            }
+
+            return canvas;
+        }
+
+        /// <summary>A labelled group ("SORT BY") with segmented options, the selected one filled like the web.</summary>
+        public static StackPanel Segmented(string label, string[] options, int selected, Action<int> onSelect, string? automationIdPrefix = null, string[]? icons = null)
+        {
+            var group = new StackPanel { Margin = new Thickness(0, 0, 0, 30) };
+            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 14));
             caption.CharacterSpacing = 120;
             group.Children.Add(caption);
             // More than four options wrap onto a second row so every label keeps room (5 options: 3 + 2).
             var perRow = options.Length > 4 ? (options.Length + 1) / 2 : options.Length;
-            var row = new Grid { ColumnSpacing = 6, RowSpacing = 6 };
+            var row = new Grid { ColumnSpacing = 8, RowSpacing = 8 };
             for (var c = 0; c < perRow; c++)
             {
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -150,25 +170,37 @@ namespace Playarr.Xbox.Views
             {
                 var index = i;
                 var isSelected = i == selected;
+                var tint = isSelected ? Ui.Res("PlayarrSurfaceStrong") : Ui.Res("PlayarrInkSoft");
+                var labelText = new TextBlock { Text = options[i], FontSize = 10.6, FontWeight = FontWeights.Bold, Foreground = tint, HorizontalAlignment = HorizontalAlignment.Center };
+                UIElement content = labelText;
+                if (icons != null && i < icons.Length)
+                {
+                    var stack = new StackPanel { Spacing = 8.8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                    stack.Children.Add(ViewIcon(icons[i], tint));
+                    stack.Children.Add(labelText);
+                    content = stack;
+                }
+
                 var button = new Button
                 {
                     Height = 56,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
-                    CornerRadius = new CornerRadius(6),
+                    CornerRadius = new CornerRadius(12),
                     Background = isSelected ? Ui.Res("PlayarrInk") : RestingChip(),
                     BorderBrush = Ui.Res("PlayarrLineStrong"),
                     BorderThickness = new Thickness(1),
-                    Content = new TextBlock
-                    {
-                        Text = options[i],
-                        FontSize = 10.5,
-                        FontWeight = FontWeights.SemiBold,
-                        Foreground = isSelected ? Ui.Res("PlayarrSurfaceStrong") : Ui.Res("PlayarrInkSoft"),
-                    },
+                    Content = content,
                     FocusVisualPrimaryBrush = Theme.FocusRing,
                     FocusVisualPrimaryThickness = new Thickness(3),
                     FocusVisualSecondaryThickness = new Thickness(0),
                 };
+                if (isSelected)
+                {
+                    // The web scales the active choice by 1.025.
+                    button.RenderTransform = new ScaleTransform { ScaleX = 1.025, ScaleY = 1.025 };
+                    button.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+                }
+
                 if (!string.IsNullOrWhiteSpace(automationIdPrefix))
                 {
                     AutomationProperties.SetAutomationId(button, $"{automationIdPrefix}.{i}");
@@ -209,8 +241,8 @@ namespace Playarr.Xbox.Views
         /// </summary>
         public static StackPanel Dropdown(string label, string current, Func<System.Threading.Tasks.Task<System.Collections.Generic.IList<Playarr.Core.Models.LanguageFacet>>> load, Action<string?> onSelect, System.Collections.Generic.ICollection<string> selected)
         {
-            var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
-            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
+            var group = new StackPanel { Margin = new Thickness(0, 0, 0, 30) };
+            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 14));
             caption.CharacterSpacing = 120;
             group.Children.Add(caption);
             var content = new Grid();

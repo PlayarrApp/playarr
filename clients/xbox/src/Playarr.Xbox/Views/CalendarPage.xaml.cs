@@ -54,7 +54,7 @@ namespace Playarr.Xbox.Views
                 Spacing = 12,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 51, 77, 0),
+                Margin = new Thickness(0, 56, 77, 0),
             };
             _rangeButton = HeaderPill(string.Empty, null, 0);
             var picker = new MenuFlyout();
@@ -485,10 +485,10 @@ namespace Playarr.Xbox.Views
         {
             var root = new Grid();
             // The web's shared details panel: same left column as a library page's focused title.
-            var detail = new StackPanel { Width = 480, Margin = new Thickness(ShellChrome.ContentLeft, 263, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            var detail = new StackPanel { Width = 380, Margin = new Thickness(ShellChrome.ContentLeft, 263, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             root.Children.Add(detail);
 
-            var list = new StackPanel { Width = 1033, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(783, 170.5, 0, 48), Spacing = 10 };
+            var list = new StackPanel { Width = 1033, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(783, 168.5, 0, 48), Spacing = 10 };
             CalendarEntry? first = null;
             for (var day = start; day <= end; day = day.AddDays(1))
             {
@@ -546,7 +546,7 @@ namespace Playarr.Xbox.Views
             title.TextWrapping = TextWrapping.WrapWholeWords;
             detail.Children.Add(title);
             var when = CalendarRules.LocalDay(entry).ToString("dddd, d MMMM yyyy", Uk) + (TimeLabel(entry) is var t && t != "All day" ? " at " + t : string.Empty);
-            detail.Children.Add(Ui.Text(string.IsNullOrEmpty(Code(entry)) ? when : Code(entry) + "   " + when, 14, FontWeights.Normal, "PlayarrInk", new Thickness(0, 13.6, 0, 16)));
+            detail.Children.Add(Ui.Text(string.IsNullOrEmpty(Code(entry)) ? when : Code(entry) + "   " + when, 14, FontWeights.Normal, "PlayarrInk", new Thickness(0, 16.6, 0, 19)));
             detail.Children.Add(TonePill(entry, true));
             if (!string.IsNullOrEmpty(entry.Overview))
             {
@@ -628,10 +628,14 @@ namespace Playarr.Xbox.Views
             row.Children.Add(poster);
             var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
             text.Children.Add(Ui.Text(entry.Title, web ? 19 : 15, FontWeights.SemiBold, "PlayarrInk"));
-            var line2 = Ui.Text(Join(Code(entry), entry.Subtitle ?? string.Empty), web ? 19 : 14, FontWeights.Normal, "PlayarrInkSoft");
-            line2.TextTrimming = TextTrimming.CharacterEllipsis;
-            text.Children.Add(line2);
-            var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 3, 0, 0) };
+            var line2Text = Join(Code(entry), entry.Subtitle ?? string.Empty);
+            if (!autoHeight || line2Text.Length > 0)
+            {
+                var line2 = Ui.Text(line2Text, web ? 19 : 14, FontWeights.Normal, "PlayarrInkSoft");
+                line2.TextTrimming = TextTrimming.CharacterEllipsis;
+                text.Children.Add(line2);
+            }
+            var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, autoHeight ? 5 : 3, 0, 0) };
             foreach (var part in new[] { TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry) })
             {
                 meta.Children.Add(Ui.Text(part, web ? 12.7 : 9, FontWeights.SemiBold, "PlayarrInkSoft"));
