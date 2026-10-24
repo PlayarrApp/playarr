@@ -48,8 +48,9 @@ export struct KeyArtBackdrop {
       if (this.keyArt !== undefined) {
         Stack() {
           Image(this.keyArt)
-            .width(tv(TvGeometry.keyArtWidthPx))
+            .width(tv(TvGeometry.keyArtImageWidthPx))
             .height(tv(TvGeometry.keyArtHeightPx))
+            .position({ x: tv(TvGeometry.keyArtImageLeft), y: tv(-TvGeometry.keyArtOffsetY) })
             .objectFit(ImageFit.Cover)
             .grayscale(1)
             .contrast(resolvedThemeMode() === 'dark' ? CONTRAST_DARK : CONTRAST_LIGHT)

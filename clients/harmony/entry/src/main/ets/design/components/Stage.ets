@@ -195,8 +195,9 @@ export struct Stage {
   private keyArtLayer(): void {
     Stack() {
       Image(this.keyArt)
-        .width(tv(TvGeometry.keyArtWidthPx))
+        .width(tv(TvGeometry.keyArtImageWidthPx))
         .height(tv(TvGeometry.keyArtHeightPx))
+        .position({ x: tv(TvGeometry.keyArtImageLeft), y: tv(-TvGeometry.keyArtOffsetY) }) // web: the img box is 865 wide at x 150, top 0 of the page
         .objectFit(ImageFit.Cover)
         // Web `.tv-key-art img`: grey, flattened and dimmed so the copy stays readable (dark theme: contrast .82, brightness .6,
         // opacity .72; light: contrast .88, brightness 1.1, opacity .24).

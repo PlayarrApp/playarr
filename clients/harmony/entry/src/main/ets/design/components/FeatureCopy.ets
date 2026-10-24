@@ -62,7 +62,7 @@ const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
-const SYNOPSIS_FONT_WEIGHT: number = 400;
+const SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref: 600 at 13.82, in the copy colour
 const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
 const SYNOPSIS_MAX_WIDTH: number = 324;
@@ -70,7 +70,7 @@ const SYNOPSIS_MAX_WIDTH: number = 324;
 const SYNOPSIS_LETTER_SPACING: number = -0.24;
 const SYNOPSIS_MAX_LINES: number = 5;
 // Measured on the 2026-10-18 Library refs: 5 lines at a 21.7 pitch, about 334 wide for 50 characters.
-const LIBRARY_SYNOPSIS_FONT_SIZE: number = 14.4;
+const LIBRARY_SYNOPSIS_FONT_SIZE: number = 13.82;
 const LIBRARY_SYNOPSIS_LINE_HEIGHT: number = 21.7;
 const LIBRARY_SYNOPSIS_MAX_WIDTH: number = 345;
 
@@ -241,11 +241,11 @@ export struct FeatureCopy {
           .fontWeight(SYNOPSIS_FONT_WEIGHT)
           .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))
           .letterSpacing(tv(SYNOPSIS_LETTER_SPACING))
-          .fontColor(toResourceColor(activeColors().inkMuted))
+          .fontColor(this.copyTextColor())
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 1.5 : 0)) })
+          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : 1.22)) })
       }
     }
     .width('100%')

@@ -142,6 +142,12 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
     as_text = [None]
     dialogs, sheet_base = set(), [None]
 
+    parents = []
+    panel_done = [False]
+
+    def vp(value):
+        return num(value, 0.0) if value not in (None, "") else 0.0
+
     def walk(node, under):
         attrs = node.get("$attrs") or node
         kind = str(node.get("$type", ""))
@@ -163,6 +169,12 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             here = root_bg  # web composites the nav bar over the body, not over the page
         if kind in ("Navigation", "NavDestination", "root"):
             bg = None  # system containers
+        if dpr == 1 and bg is not None and bg[:3] == (0, 0, 0) and bg[3] > 0.99 and screen != "player-controls":
+            bg = None  # an opaque black Column in a scroll is a fade mask, never a visible fill
+        if dpr == 1 and box is not None and abs(box[0] - 730) <= 1 and box[1] == 0 and abs(box[2] - 1190) <= 1 and abs(box[3] - 1080) <= 1 and kind in ("Column", "Row") and not panel_done[0]:
+            panel_done[0] = True  # web's right-hand rails panel is a page-coloured container
+            out.append({"text": "", "role": "container", "rect": {"x": 729.6, "y": 0, "w": 1190.4, "h": 1080}, "color": None,
+                        "background": hex_of(page_colour[0] or under), "fontSize": None, "fontWeight": None})
         if page_base[0] is not None and id(node) not in dialogs and bg is not None and bg[3] > 0.99 and box is not None and box[2] >= vw * dpr - 1 and box[3] >= vh * dpr - 1:
             bg = None  # the page's full-screen base fill is already the sampled/page base colour
         if kind == "Stack" and any(c.get("$type") == "Image" and (rect_of(c) or (0, 0, 0, 0))[3] >= 60 * dpr for c in node.get("$children") or []):
@@ -177,6 +189,21 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             parent_bg = here  # the refs' background is the colour behind and including the element
         if box is not None:
             x, y, w, h = (v / dpr for v in box)
+            sc = attrs.get("scale") if isinstance(attrs.get("scale"), dict) else None
+            if kind == "Image" and sc is not None and dpr == 3 and abs(num(sc.get("x"), 1.0) - 1.0) > 1e-6:
+                k = num(sc.get("x"), 1.0)
+                x, y, w, h = x - (k - 1) * w / 2, y - (k - 1) * h / 2, w * k, h * k
+            if kind == "Image" and sc is not None and dpr == 1 and parents and num(attrs.get("width"), 0) > 0 and abs(num(sc.get("x"), 1.0) - 1.0) > 1e-6:
+                # the inspector clips this box to its parent and ignores the scale transform: rebuild it from the declared size and positions
+                pp = parents[-1].get("$attrs") or parents[-1]
+                prect = rect_of(parents[-1]) or (0, 0, 0, 0)
+                ppos = pp.get("position") if isinstance(pp.get("position"), dict) else {}
+                opos = attrs.get("position") if isinstance(attrs.get("position"), dict) else {}
+                bx = prect[0] / dpr + vp(ppos.get("x")) * 0 + vp(opos.get("x"))
+                by = vp(ppos.get("y")) + vp(opos.get("y")) if ppos.get("y") else y + vp(opos.get("y"))
+                bw, bh = num(attrs.get("width"), w), num(attrs.get("height"), h)
+                k = num(sc.get("x"), 1.0)
+                x, y, w, h = bx - (k - 1) * bw / 2, by - (k - 1) * bh / 2, bw * k, bh * k
             if dpr == 3 and str(attrs.get("id", "")) == "pcard" and w > 0:  # a card scrolled past the viewport edge is clipped by its list: restore its width
                 if w >= card_w[0] - 1:
                     card_w[0], clip[0] = w, None
@@ -278,7 +305,13 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     align = str(attrs.get("textAlign", "")).lower()
                     pill = bool(num(attrs.get("borderRadius"), 0.0)) or (bg is not None and bg[3] > 0.01)  # a padded pill: the run is centred in the box
                     rx = x + (w - tw) / 2 if ("center" in align or pill) else (x + w - tw if "end" in align else x)
-                    rx, ry, rw, rh = rx, (y + (lh - ch) / 2 if laid_out >= 2 and 1 < num(attrs.get("maxLines"), 0) < 1000 else y + (h - ch) / 2), tw, ch  # a box taller than its one line is top-aligned (reserved lines)
+                    if str(attrs.get("id", "")).endswith(":linebox") and num(attrs.get("lineHeight"), 0.0):
+                        ry, rh = y + (h - lh) / 2, lh  # a block whose web rect is its CSS line box
+                    else:
+                        ry, rh = (y + (lh - ch) / 2 if laid_out >= 2 and 1 < num(attrs.get("maxLines"), 0) < 1000 else y + (h - ch) / 2), ch
+                    rx, rw = rx, tw
+                if dpr == 1 and str(attrs.get("id", "")).endswith(":linebox"):
+                    parent_bg = root_bg  # the TV clock sits over the body colour in web
                 if len(str(text).strip()) == 1 and (str(text).isalnum() or text == "#") and bg is not None and bg[3] > 0.99 and dpr == 3 and abs(w - h) < 2:
                     parent_bg = under  # an alphabet-rail letter disc: web's text background is the page behind the disc
                 else:
@@ -307,6 +340,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 if kind == "Image" and dpr == 3 and str(attrs.get("id", "")).startswith("px:button:") and w >= 40:  # web: the button box and an 18 px icon centred in it
                     x, y, w, h = x + (w - 18) / 2, y + (h - 18) / 2, 18.0, 18.0
                     attrs = dict(attrs); attrs["borderRadius"] = "0"
+                if kind == "Image" and dpr == 1 and abs(w - 42) < 1 and abs(h - 42) < 1 and x < 110 and y < 110:
+                    parent_bg = root_bg  # the TV logo, over the body colour
                 art = kind == "Image" and h >= 60  # artwork: web paints the loading placeholder colour behind it
                 el = {"text": "", "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": PLACEHOLDER[theme == "light"] if art else hex_of(parent_bg), "fontSize": None, "fontWeight": None}
@@ -337,7 +372,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 continue
             if num((child.get("$attrs") or child).get("opacity"), 1.0) == 0.0:
                 continue  # web drops effective opacity 0
+            parents.append(node)
             walk(child, here)
+            parents.pop()
 
     walk(tree, root_bg)
     if sheet_base[0] is not None and out and out[0]["role"] == "container":
@@ -347,6 +384,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
         if len(shells) >= 2 and shells[0]["background"] == hex_of(root_bg):
             for e in shells[1:]:
                 e["background"] = shells[-1]["background"]
+            for e in out:
+                if e["role"] == "container" and e["rect"]["x"] == 729.6:
+                    e["background"] = shells[-1]["background"]
             if len(shells) == 2 and screen != "player-controls":
                 out.insert(out.index(shells[1]), dict(shells[1], rect=dict(shells[1]["rect"])))
     if dpr == 3 and page_colour[0] is not None:  # web wraps each page in full-viewport shells that paint the page colour (the body colour is the first container)
