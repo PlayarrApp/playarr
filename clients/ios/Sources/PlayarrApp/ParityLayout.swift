@@ -44,10 +44,53 @@ final class ParityLayoutRegistry {
         }
     }
 
+    /// Accessibility elements of the key window (buttons, links, headings, images, static text): frames, names and traits
+    /// for everything the views did not report themselves. Styled text from `.parityLayout` replaces the plain entry.
+    private func accessibilityElements() -> [Item] {
+        guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return [] }
+        var found: [Item] = []
+        var visited = 0
+        func visit(_ object: NSObject, depth: Int) {
+            guard visited < 4000, depth < 40 else { return }
+            visited += 1
+            if object.isAccessibilityElement {
+                let traits = object.accessibilityTraits
+                var role = "container"
+                if traits.contains(.link) { role = "link" }
+                else if traits.contains(.button) { role = "button" }
+                else if traits.contains(.header) { role = "heading" }
+                else if traits.contains(.image) { role = "image" }
+                else if traits.contains(.staticText) { role = "text" }
+                else if traits.contains(.tabBar) { role = "tab" }
+                let frame = object.accessibilityFrame
+                let label = object.accessibilityLabel ?? ""
+                found.append(Item(text: label.isEmpty ? nil : label, role: role, size: nil, weight: nil, color: nil, rect: frame))
+                return
+            }
+            let count = object.accessibilityElementCount()
+            if count != NSNotFound, count > 0 {
+                for index in 0..<count { if let child = object.accessibilityElement(at: index) as? NSObject { visit(child, depth: depth + 1) } }
+                return
+            }
+            if let elements = object.accessibilityElements as? [NSObject], !elements.isEmpty {
+                for child in elements { visit(child, depth: depth + 1) }
+            }
+            if let view = object as? UIView { for sub in view.subviews { visit(sub, depth: depth + 1) } }
+        }
+        visit(window, depth: 0)
+        return found
+    }
+
     private func write() {
         let screen = UIScreen.main.bounds
-        let elements: [[String: Any]] = order.compactMap { id in
-            guard let item = items[id], item.rect.width > 0, item.rect.height > 0 else { return nil }
+        let styled = order.compactMap { items[$0] }
+        // A plain accessibility entry is dropped when a styled one has the same text and nearly the same frame.
+        let plain = accessibilityElements().filter { entry in
+            !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
+        }
+        let all = styled + plain
+        let elements: [[String: Any]] = all.compactMap { item in
+            guard item.rect.width > 0, item.rect.height > 0 else { return nil }
             var element: [String: Any] = [
                 "text": item.text ?? "",
                 "role": item.role,
