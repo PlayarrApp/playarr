@@ -6,7 +6,6 @@ import Sailfish.Silica 1.0
 Item {
     property alias title: label.text
     property bool back: true
-    property bool filled: false   // detail pages: web fills the round button instead of outlining it
     property bool restRing: false   // web focuses the back button at rest on Settings
     property bool navigationActive: !!(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive)
     signal backClicked()
@@ -24,7 +23,12 @@ Item {
         anchors.verticalCenterOffset: 1 * Tokens.u
         width: 43.7 * Tokens.u; height: width
         onClicked: parent.backClicked()
-        Rectangle { anchors.fill: parent; radius: width / 2; color: parent.parent.filled ? Tokens.surfaceSoft : "transparent"; border.width: parent.parent.filled ? 0 : 1; border.color: Tokens.lineStrong; opacity: btn.pressed ? 0.5 : 1 }
+        // web .tv-page-back: surface-strong at 70 %, a 1 px border of line-strong at 66 %
+        Rectangle {
+            anchors.fill: parent; radius: width / 2; opacity: btn.pressed ? 0.5 : 1
+            color: Qt.rgba(Tokens.surfaceStrong.r, Tokens.surfaceStrong.g, Tokens.surfaceStrong.b, 0.7)
+            border.width: 1; border.color: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.66)
+        }
         Rectangle { visible: btn.parent.navigationActive ? btn.activeFocus : btn.parent.restRing; anchors { fill: parent; margins: -4.75 * Tokens.u } radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary }
         Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "←"; color: Tokens.ink; font.pixelSize: 13 * Tokens.u }
     }

@@ -122,7 +122,7 @@ PlayarrPage {
     onStatusChanged: if (status === PageStatus.Active && detail) load() // refresh resume state after playback
     Component.onCompleted: load()
 
-    function hm(ms) { var m = Math.round(ms / 60000); return m >= 60 ? Math.floor(m / 60) + "h " + (m % 60) + "m" : m + "m" }
+    function hm(ms) { var m = Math.max(1, Math.round(ms / 60000)); return m >= 60 ? Math.floor(m / 60) + "h" + (m % 60 ? " " + (m % 60) + "m" : "") : m + " min" }
     property bool inWatchlist: false
     property string titleKey: ""
     function snapshot() { return { kind: work.kind, title: work.title, work_id: work.id, year: work.release_date ? Number(work.release_date.substr(0, 4)) : null } }
@@ -180,7 +180,6 @@ PlayarrPage {
                         PageTitle {
                             y: 4 * Tokens.u
                             title: work.kind === "movie" ? qsTr("Movies") : work.kind === "series" ? qsTr("Series") : qsTr("Music")
-                            filled: true
                             onBackClicked: pageStack.pop()
                         }
                     }
@@ -265,8 +264,7 @@ PlayarrPage {
                 }
                 PillButton {
                     lift: true
-                    primary: work.kind !== "movie"
-                    fill: work.kind === "movie" ? "#a52745" : "transparent"; fillInk: "#ffffff"   // web: the film's Play holds the default focus, drawn crimson
+                    primary: true
                     icon: "\u25B6"; iconSize: 9 * Tokens.u; labelFamily: Tokens.family610
                     fontSize: 11 * Tokens.u
                     implicitHeight: 44 * Tokens.u
