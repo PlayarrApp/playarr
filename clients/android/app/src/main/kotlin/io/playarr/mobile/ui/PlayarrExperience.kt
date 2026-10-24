@@ -1,6 +1,8 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityNavGlass
+import io.playarr.shared.designsystem.page.parityNavSelected
 import io.playarr.shared.designsystem.page.parityLineBox
 import io.playarr.shared.designsystem.page.playarrEdgeFades
 import io.playarr.shared.designsystem.page.PlayarrRingShape
@@ -2324,7 +2326,7 @@ internal fun tvProfileTileLabel(displayName: String): String =
 private fun TvNavGroup(padding: PaddingValues, content: @Composable ColumnScope.() -> Unit) {
     val groupShape = RoundedCornerShape(22.dp)
     Surface(
-        modifier = Modifier.glass(groupShape, WebGlass.NavGroup).parityBox("container", radius = 22f, background = WebBackground),
+        modifier = Modifier.glass(groupShape, WebGlass.NavGroup).parityBox("container", radius = 22f, background = parityNavGlass()),
         color = Color.Transparent,
         shape = groupShape,
     ) {
@@ -2361,7 +2363,7 @@ private fun TvNavTile(
         modifier = Modifier
             .size(width = 64.dp, height = web?.linkHeight ?: 64.dp)
             .scale(navScale)
-            .parityBox("link", description ?: label, 16f, background = WebBackground)
+            .parityBox("link", description ?: label, 16f, background = if (selected) parityNavSelected() else parityNavGlass())
             .webFocusRing(focused && !tabletNav, radius = 16.dp, offset = 2.dp)
             .then(if (entryFocus != null) Modifier.focusRequester(entryFocus) else Modifier)
             .onFocusChanged { focused = it.isFocused }
@@ -2383,7 +2385,7 @@ private fun TvNavTile(
         // Web `.app-nav-link`: the 20 px icon 15.2 px down, the 8.832 px label 4.8 px under it.
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
             Spacer(Modifier.height(web?.iconTop ?: 15.2.dp))
-            Box(Modifier.size(20.dp).parityBox("image", background = WebBackground), contentAlignment = Alignment.Center) { icon() }
+            Box(Modifier.size(20.dp).parityBox("image", background = if (selected) parityNavSelected() else parityNavGlass()), contentAlignment = Alignment.Center) { icon() }
             Text(
                 label,
                 fontSize = web?.labelSize ?: 8.832.sp,

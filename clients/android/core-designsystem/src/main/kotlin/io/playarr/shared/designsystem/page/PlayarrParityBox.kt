@@ -70,3 +70,11 @@ class FractionalSpacedArrangement(private val gap: androidx.compose.ui.unit.Dp, 
         }
     }
 }
+
+private fun over(top: androidx.compose.ui.graphics.Color, alpha: Float, under: androidx.compose.ui.graphics.Color) =
+    androidx.compose.ui.graphics.Color(top.red * alpha + under.red * (1 - alpha), top.green * alpha + under.green * (1 - alpha), top.blue * alpha + under.blue * (1 - alpha))
+
+/** Layout export: the web composites translucent fills over the page, so these are the flat colours the DOM dump reports. */
+fun parityNavGlass(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.surfaceStrong, 0.56f, it.background) }
+fun parityNavSelected(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.ink, 0.09f, parityNavGlass()) }
+fun parityPillGlass(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.surfaceStrong, 0.78f, it.background) }
