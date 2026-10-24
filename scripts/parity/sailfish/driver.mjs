@@ -132,7 +132,7 @@ export async function createDriver() {
     if (path === "/profiles") return [["wait", `js:pageStack.push('${PAGES}/ProfilesPage.qml')`], 12];
     if (path.startsWith("/player/")) {
       if (screenId === "player-controls" && !/^[A-Za-z0-9_-]+$/.test(playerTarget || "")) throw new Error("PLAYARR_SF_PLAYER_FILE must be set to the verified direct-play fixture file ID");
-      if (screenId === "player-controls") return [["wait", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${playerTarget}',title:'Sample media',startMs:0})`, ...Array(36).fill("wait")], 38];
+      if (screenId === "player-controls") return [["wait", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${playerTarget}',title:'Sample media',startMs:0})`, ...Array(14).fill("wait"), "js:pageStack.currentPage.parityHold(2000)", ...Array(6).fill("wait")], 38];
       throw new Error(`player route requires an explicit verified target: ${route}`);
     }
     throw new Error(`no Sailfish mapping for ${route}`);
