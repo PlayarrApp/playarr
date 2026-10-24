@@ -60,3 +60,12 @@ test("two dumps of the same page are identical", { skip }, async () => {
   const body = `<span>a</span><aside class="abs" style="top:0;left:0;width:100px;height:100px;background:#000"><b>x</b></aside><span class="abs" style="top:5px">hid</span>`;
   assert.deepEqual(await dump(body), await dump(body));
 });
+
+test("transparent text is not text; gradient-clipped text reports the first stop with colorGradient", { skip }, async () => {
+  const d = await dump(`<p class="abs" style="top:0;color:transparent;background:#123456">skeleton</p>
+    <p class="abs" style="top:40px;-webkit-text-fill-color:#ff0000;color:#00ff00">fill</p>
+    <p class="abs" style="top:80px;color:transparent;background:linear-gradient(90deg,rgb(255,0,0),rgb(0,0,255));-webkit-background-clip:text;background-clip:text">grad</p>`);
+  assert.deepEqual(d.elements.map((e) => [e.text, e.color]), [["", null], ["fill", "#ff0000"], ["grad", "#ff0000"]]);
+  assert.equal(d.elements[2].colorGradient, true);
+  assert.equal(d.elements[1].colorGradient, undefined);
+});

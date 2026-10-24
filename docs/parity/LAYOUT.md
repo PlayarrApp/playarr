@@ -37,6 +37,10 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   looking up to the common ancestor). Transparent click layers and `pointer-events: none` elements never occlude. A partly covered
   element stays. The document counts what it dropped as `occluded`; `layout-score.mjs` prints it, so a drawer screen shows a
   non-zero count and a screen without an overlay shows 0.
+- Text colour: the exporter reads `-webkit-text-fill-color` (which defaults to `color`). Fully transparent text (loading skeleton
+  lines use `color: transparent` over a painted bar) is not text: the element exports as a container with its background and no
+  text, font or colour. Text clipped to a gradient (`background-clip: text`) reports the gradient's first stop colour and
+  `colorGradient: true`; the scorer compares it with the normal deltaE.
 - Font size and scale: `fontSize` is the computed `font-size` in CSS px of the layout viewport (`viewport.w` x `viewport.h`),
   multiplied by every `zoom` on the element and its ancestors. The refs are rendered at the stage size (TV 1920x1080 at dpr 1,
   where the TV stage scale `tvStageScale.ts` is neutral, zoom 1; phone groups at their own CSS viewport), so no root zoom or

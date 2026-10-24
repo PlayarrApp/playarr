@@ -123,6 +123,13 @@ export function layoutPageFn(volatile) {
     var texts = [];
     for (var k = 0; k < el.childNodes.length; k++) if (el.childNodes[k].nodeType === 3 && norm(el.childNodes[k].textContent)) texts.push(el.childNodes[k]);
     var own = shown(norm(texts.map(function (n) { return n.textContent; }).join(" ")), cs);
+    var fill = parse(cs.webkitTextFillColor || cs.color);
+    var gradient = null;
+    if (own && fill[3] === 0) {
+      var clip = cs.webkitBackgroundClip || cs.backgroundClip;
+      var stop = clip === "text" && /gradient/.test(cs.backgroundImage) ? /rgba?\([^)]+\)/.exec(cs.backgroundImage) : null;
+      if (stop) gradient = parse(stop[0]); else own = "";
+    }
     var vol = matchVolatile(el, own);
     if (vol && vol.host !== el) continue;
     var r = el.getBoundingClientRect();
@@ -155,11 +162,12 @@ export function layoutPageFn(volatile) {
       text: vol && !vol.entry.selector ? own : vol ? norm(el.innerText) : text,
       role: roleOf(el, !!own),
       rect: { x: round(r.left), y: round(r.top), w: round(r.width), h: round(r.height) },
-      color: own ? toHex(parse(cs.color)) : null,
+      color: own ? toHex(gradient || fill) : null,
       background: toHex(backdrop(el)),
       fontSize: own ? round(parseFloat(cs.fontSize) * zoom) : null,
       fontWeight: own ? Number(cs.fontWeight) || 400 : null
     };
+    if (gradient) row.colorGradient = true;
     if (radius > 0) row.radius = round(radius);
     if (op < 1) row.opacity = round(op);
     if (vol) {
