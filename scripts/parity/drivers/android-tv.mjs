@@ -65,8 +65,10 @@ export function stableCaptureObservation(previous, current) {
     previous.marker === current.marker && previous.focus === current.focus);
 }
 
-export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, accountGuard = guardAndroidDeviceAccount, execute = run } = {}) {
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs: readinessTimeoutArg = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, accountGuard = guardAndroidDeviceAccount, execute = run } = {}) {
   const env = envOverride, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
+  // A loaded host can need longer than a minute for the player route's artwork: PARITY_READINESS_TIMEOUT_MS raises the wait.
+  const readinessTimeoutMs = env.PARITY_READINESS_TIMEOUT_MS ? Number(env.PARITY_READINESS_TIMEOUT_MS) : readinessTimeoutArg;
   const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
   // Injectable clock (tests): the readiness loop's deadline arithmetic then never depends on how long a real process took.
   const now = clock.now ?? Date.now;
@@ -120,7 +122,16 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
 
   const parityLines = async () => (await adb("logcat", "-d", "-s", "PlayarrParity:I")).split("\n").map((l) => l.replace(/^.*PlayarrParity: /, "")).filter(Boolean);
   // pause: the debug build pauses the player at 2 s (0:02, as the web ref; PARITY_PAUSE_AT_MS overrides), a still frame for the player-controls screen; off for playback cases.
+  // The software-GL emulator leaks about 190 MiB of host memory per app launch and wedges adb near its cgroup limit: every
+  // PARITY_EMU_RECYCLE_EVERY launches (default 14) PARITY_EMU_RECYCLE_CMD restarts it (app data and the sign-in survive).
+  let launches = 0;
+  const recycleEvery = Number(env.PARITY_EMU_RECYCLE_EVERY ?? 14);
   const launch = async (route, pause = true) => {
+    if (env.PARITY_EMU_RECYCLE_CMD && ++launches > recycleEvery) {
+      launches = 1;
+      const [cmd, ...rest] = env.PARITY_EMU_RECYCLE_CMD.split(" ");
+      await execBounded(cmd, rest, { timeoutMs: 420_000, label: "emulator recycle command" });
+    }
     await guardDeviceAccount();
     const requestedCaptureScreen = captureTarget ? (captureSurface ? "movies" : captureTarget) : null;
     captureScreen = requestedCaptureScreen ?? (["movies", "series", "music"].includes(route) ? route : null);

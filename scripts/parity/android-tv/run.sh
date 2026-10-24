@@ -14,5 +14,7 @@ eval "$(node "$here/../parity-config.mjs" --shell)"
 export PARITY_CLIENT=${PARITY_CLIENT:-android-tv} PARITY_LOCK_DIR=${PARITY_LOCK_DIR:-$out/../.lock}
 # The static server's artwork URLs (calendar posters, key art) name its loopback artwork port: the emulator reaches them through a reverse tunnel.
 adb reverse "tcp:$PARITY_ART_PORT" "tcp:$PARITY_ART_PORT" >/dev/null
+export PARITY_READINESS_TIMEOUT_MS=${PARITY_READINESS_TIMEOUT_MS:-120000}
+export PARITY_EMU_RECYCLE_CMD=${PARITY_EMU_RECYCLE_CMD-$here/recycle.sh}
 cd "$here/.."
 node suite-run.mjs --driver ./drivers/android-tv.mjs --out "$out" --expected "$here/../expected.static.json" "$@"
