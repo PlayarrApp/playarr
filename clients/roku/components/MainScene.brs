@@ -2925,7 +2925,7 @@ sub updateBrowsePreview(work as Object)
     m.homeHeroFocusedWorkId = work.id
     showBrowsePreviewRuntime(work.id)
     overview = work.overview
-    if overview = invalid or overview = "" then overview = "No synopsis available."
+    if overview = invalid or overview = "" then overview = "No synopsis is available."
     m.browsePreviewOverview.translation = [153.6, metaY + 41.3]
     m.browsePreviewOverview.spec = { text: overview, size: 13.82, weight: 600, tracking: 0, role: "heroSoft", width: 336, lineHeight: 23, maxLines: 5 }
     ' Defer key-art download so acceptBrowseCatalog paints the grid first.
@@ -3434,7 +3434,7 @@ sub updateSearchPreview(work as Object)
     end if
     m.searchPreviewMeta.text = meta
     overview = work.overview
-    if overview = invalid or overview = "" then overview = "No synopsis available."
+    if overview = invalid or overview = "" then overview = "No synopsis is available."
     m.searchPreviewOverview.text = overview
 end sub
 

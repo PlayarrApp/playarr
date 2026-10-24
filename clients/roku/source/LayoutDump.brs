@@ -159,7 +159,10 @@ function ParityToken(token as String) as String
         if m.global.themeMode = "light" then return "#" + parts[2]
         return "#" + parts[1]
     end if
-    if token = "progressTrackBg" then return "#5a5559"
+    if token = "progressTrackBg"
+        if m.global.themeMode = "light" then return "#e5e3e4"
+        return "#5a5559"
+    end if
     return Left(ParityHex(ThemeColor(token)), 7)
 end function
 

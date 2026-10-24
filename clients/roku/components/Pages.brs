@@ -2117,7 +2117,7 @@ sub renderCalendarAgenda(entries as Object)
             hg = CreateObject("roSGNode", "Group")
             m.pageHead.AppendChild(hg)
             pgRect(hg, 775, ay, 1060, 58, "surface")
-            pgMark(hg, "heading", "", 783.4, ay, 1033.4, 44, 0, "bg")
+            pgMark(hg, "heading", "", 783.4, ay, 1033.4, 44, 0, "c:151315:fbfaf9")
             headRole = "ink"
             if day = today then headRole = "accent"
             headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole)
@@ -2126,7 +2126,7 @@ sub renderCalendarAgenda(entries as Object)
                 pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
                 tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
                 tl.addFields({ parityHidden: true })
-                pgMarkText(hg, "TODAY", hx, ay + 13.6, 42.3, 15, 11.2, 640, "accent", "bg", "text", 999)
+                pgMarkText(hg, "TODAY", hx, ay + 13.6, 42.3, 15, 11.2, 640, "accent", "c:151315:fbfaf9", "text", 999)
             end if
             m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
@@ -2261,9 +2261,9 @@ sub renderCalendarMonth(entries as Object)
         if shown > maxChips then shown = maxChips
         dt = calDate(day)
         for k = 0 to shown - 1
-            dot = "#cf3157"
-            if chips[k].status = "Available" then dot = "#8ac5a5"
-            if chips[k].status = "Missing" then dot = "#f1a4a8"
+            dot = "c:cf3157:cf3157"
+            if chips[k].status = "Available" then dot = "c:8ac5a5:2f6a45"
+            if chips[k].status = "Missing" then dot = "c:f1a4a8:722f34"
             text = chips[k].title
             if chips[k].count > 1 then text = text + " · " + chips[k].count.ToStr() + "×"
             cy = y + 1.8 + k * 25.4
