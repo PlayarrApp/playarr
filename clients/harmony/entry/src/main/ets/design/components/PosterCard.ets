@@ -496,7 +496,7 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.softCaption ? this.titleFontSize * -0.015 : tv(this.titleFontSize * -0.02)) // TV: web is about 4% narrower than the Nunito instance
+          .letterSpacing(this.titleFontSize * -0.0154) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -512,7 +512,7 @@ export struct PosterCard {
           .fontColor(toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .letterSpacing(this.softCaption ? 0 : tv(this.subtitleFontSize * -0.02))
+          .letterSpacing(0)
           .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 1.45 })
       }
     }

@@ -169,7 +169,7 @@ const RAIL_CLIP_INSET_TOP: number = 24;
  * `.letterSpacing()` takes a length, not an `em` unit directly. */
 const RAIL_HEADING_TRACKING_EM: number = -0.03;
 /** TV: the Nunito instance renders the heading about 2.5% wider than web's, so tighten by a further 0.012em. */
-const RAIL_HEADING_TRACKING_TV_EM: number = -0.042;
+const RAIL_HEADING_TRACKING_TV_EM: number = -0.03; // fitted to the TV layout refs' heading run widths
 
 /** `design/components/FocusLift.ets`'s own documented contract for
  * `activeRailFactor` is exactly "1 while the rail itself holds focus, 0
