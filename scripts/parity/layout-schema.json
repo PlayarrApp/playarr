@@ -13,6 +13,7 @@
       "required": ["w", "h", "dpr"],
       "properties": { "w": { "type": "number" }, "h": { "type": "number" }, "dpr": { "type": "number" } }
     },
+    "occluded": { "type": "integer", "description": "Web documents: how many otherwise exportable elements the exporter dropped because a modal or drawer fully covers them (sanity count, 0 on screens without an overlay)." },
     "clockPinned": { "type": "boolean", "description": "Device documents only: the app's own clock was pinned to the fixture instant for this capture." },
     "elements": {
       "type": "array",
