@@ -2592,6 +2592,7 @@ struct Detail {
           .width('100%')
           .height(HERO_ART_HEIGHT)
           .objectFit(ImageFit.Cover)
+          .scale({ x: 1.04, y: 1.04 }) // web `.tv-key-art img`: 1.04 about its centre
           .grayscale(1)
           .draggable(false)
           .focusable(false)
