@@ -91,10 +91,32 @@ def make_handler(vidaa, session):
            "launch": lambda tv, r: vidaa.op_launch(tv, str(r["app"]), bool(r.get("allow_any"))),
            "open_debug": lambda tv, r: vidaa.op_open_debug(tv, str(r.get("variant", "app")), str(r.get("path", "/")), min(max(float(r.get("wait", 5)), 0.0), 60.0), bool(r.get("seed")))}
 
+    def ergon(tv, req):
+        action = req.get("action")
+        if action == "state":
+            return vidaa.op_state(tv)
+        if action == "key":
+            keys = req.get("keys")
+            if not isinstance(keys, list) or not keys:
+                raise SystemExit("refused: ergon key requires a non-empty keys list")
+            return vidaa.op_ergon_key(tv, keys)
+        if action == "launch":
+            app = req.get("app")
+            if not isinstance(app, str):
+                raise SystemExit("refused: ergon launch requires an allowed browser app id")
+            return vidaa.op_ergon_launch(tv, app)
+        raise SystemExit(f"refused: unsupported ergon action {action!r}")
+
     def handle(req):
-        op = ops.get(req.get("op"))
+        name = req.get("op")
+        if name == "ergon":
+            import json
+            log(f"ergon: {json.dumps(req, sort_keys=True)}")
+            op = ergon
+        else:
+            op = ops.get(name)
         if not op:
-            raise SystemExit(f"unknown op {req.get('op')!r}")
+            raise SystemExit(f"unknown op {name!r}")
         with session.lock:
             if session.tv is None:
                 raise SystemExit("broker has no TV session (remote service wedged or re-pair needed); see keepalive.log")

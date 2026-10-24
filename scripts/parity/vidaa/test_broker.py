@@ -7,6 +7,7 @@ from unittest import mock
 
 os.environ.setdefault("PLAYARR_DATA_DIR", ".")
 import broker
+import keepalive
 
 # vidaa.py needs paho only to open a real session; the tests never do.
 for name in ("paho", "paho.mqtt", "paho.mqtt.client"):
@@ -131,6 +132,53 @@ class KeyPacing(unittest.TestCase):
         self.assertIn("sent KEY_UP", e.exception.code)
         self.assertIn("KEY_POWER is blocked", e.exception.code)
         tv.pub.assert_called_once()
+
+
+class ErgonOperations(unittest.TestCase):
+    def setUp(self):
+        self.session = types.SimpleNamespace(tv=mock.Mock(), lock=__import__("threading").RLock())
+        self.handle = keepalive.make_handler(vidaa, self.session)
+        self.session.tv.apps.return_value = [{"name": "TV Browser", "appId": "16", "url": "browser"}]
+
+    def test_state_action_returns_state(self):
+        self.session.tv.state.return_value = {"statetype": "browser"}
+        self.assertEqual(self.handle({"op": "ergon", "action": "state"}), '{"statetype": "browser"}')
+
+    def test_allowed_key_skips_mirror_and_foreground_checks(self):
+        with mock.patch.object(keepalive, "log") as log, \
+             mock.patch.object(vidaa, "require_device_test_account", side_effect=AssertionError("mirror check")), \
+             mock.patch.object(vidaa, "foreground_ok", side_effect=AssertionError("foreground check")), \
+             mock.patch.object(vidaa.time, "sleep"):
+            self.assertEqual(self.handle({"op": "ergon", "action": "key", "keys": ["KEY_UP"]}), "sent KEY_UP")
+        self.assertTrue(log.call_args.args[0].startswith('ergon: {"action": "key"'))
+        self.session.tv.pub.assert_called_once_with("remote_service", "sendkey", "KEY_UP")
+
+    def test_refuses_non_navigation_key(self):
+        with mock.patch.object(vidaa, "require_device_test_account") as account, \
+             self.assertRaises(SystemExit) as error:
+            self.handle({"op": "ergon", "action": "key", "keys": ["KEY_UP", "KEY_POWER"]})
+        self.assertIn("not an allowed navigation key", error.exception.code)
+        account.assert_not_called()
+        self.session.tv.pub.assert_not_called()
+
+    def test_launches_only_builtin_browser_entry(self):
+        self.assertEqual(self.handle({"op": "ergon", "action": "launch", "app": "16"}), "launch requested: TV Browser")
+        self.session.tv.pub.assert_called_once_with("ui_service", "launchapp", {"name": "TV Browser", "appId": "16", "url": "browser"})
+
+    def test_refuses_other_app(self):
+        with self.assertRaises(SystemExit) as error:
+            self.handle({"op": "ergon", "action": "launch", "app": "3"})
+        self.assertIn("only the built-in TV Browser", error.exception.code)
+        self.session.tv.pub.assert_not_called()
+
+    def test_existing_key_operation_still_checks_mirror_account(self):
+        with mock.patch.object(vidaa, "foreground_ok", return_value=(True, {})), \
+             mock.patch.object(vidaa, "require_device_test_account", side_effect=SystemExit("mirror check")), \
+             mock.patch.object(vidaa.time, "sleep"):
+            with self.assertRaises(SystemExit) as error:
+                self.handle({"op": "key", "keys": ["KEY_UP"], "allow_any": True, "delay": 0})
+        self.assertEqual(error.exception.code, "mirror check")
+        self.session.tv.pub.assert_not_called()
 
 
 if __name__ == "__main__":

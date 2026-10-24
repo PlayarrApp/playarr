@@ -22,4 +22,8 @@ Log: `.data/PlayarrApp/playarr/scratch/20261017-parity-vidaa/keepalive.log`.
 The two PARITY values make the broker's account guard trust the static parity server (`scripts/parity/static-server.sh`) and its seeded account, like the node tools; leave them empty for the old Device Test account.
 `receiver.py` takes the same two variables, and `vidaa open-debug --seed` (once per server change) has it log the account in and replace the TV page's saved sign-in.
 
+## Ergon broker requests
+
+The broker accepts a restricted `ergon` operation for Ergon row 767. It skips the Playarr foreground and device-test-account checks. Supported requests are `{"op":"ergon","action":"state"}`, `{"op":"ergon","action":"key","keys":["KEY_UP"]}` and `{"op":"ergon","action":"launch","app":"16"}`. Keys are limited to `KEY_UP`, `KEY_DOWN`, `KEY_LEFT`, `KEY_RIGHT`, `KEY_OK`, `KEY_ENTER`, `KEY_BACK`, `KEY_RETURN` and `KEY_HOME`, with at least `MIN_KEY_GAP` between sends. Launch is limited to the app-list entry named exactly `TV Browser` with appId `16`; the broker refuses other ids, names or apps. The Ergon allowlist currently contains only appId `16`. Existing `key` requests retain their previous foreground and account checks. Every `ergon` request is recorded with an `ergon:` prefix in the keepalive log.
+
 Test: `python3 -m unittest test_keepalive test_broker` in this directory.

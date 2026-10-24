@@ -399,6 +399,8 @@ def cmd_volume(a):
 
 # Navigation-only keys allowed from the TV's own launcher (state remote_launcher), to reach the Playarr tile.
 LAUNCHER_KEYS = {"KEY_UP", "KEY_DOWN", "KEY_LEFT", "KEY_RIGHT", "KEY_OK", "KEY_ENTER", "KEY_BACK", "KEY_RETURN", "KEY_HOME"}
+ERGON_BROWSER_APP_IDS = {"16"}
+ERGON_BROWSER_NAMES = {"tv browser"}
 
 
 def op_key(tv, keys, allow_any=False, delay=0.6):
@@ -422,6 +424,36 @@ def op_key(tv, keys, allow_any=False, delay=0.6):
         out.append(f"sent {k}")
         time.sleep(delay)
     return "\n".join(out)
+
+
+def op_ergon_key(tv, keys):
+    """Ergon's constrained navigation path: no Playarr foreground or mirror-account checks."""
+    global _last_key
+    normalised = [str(key).upper() for key in keys]
+    invalid = next((key for key in normalised if key not in LAUNCHER_KEYS), None)
+    if invalid is not None:
+        sys.exit(f"refused: {invalid} is not an allowed navigation key")
+    out = []
+    for key in normalised:
+        time.sleep(max(0.0, _last_key + MIN_KEY_GAP - time.time()))
+        tv.pub("remote_service", "sendkey", key)
+        _last_key = time.time()
+        out.append(f"sent {key}")
+    return "\n".join(out)
+
+
+def op_ergon_launch(tv, app_id):
+    """Launch only the known built-in VIDAA TV Browser entry (appId 16)."""
+    if app_id not in ERGON_BROWSER_APP_IDS:
+        sys.exit("refused: Ergon may launch only the built-in TV Browser app (appId 16)")
+    apps = tv.apps() or []
+    hit = next((entry for entry in apps if isinstance(entry, dict)
+                and str(entry.get("appId", "")) in ERGON_BROWSER_APP_IDS
+                and str(entry.get("name", "")).strip().lower() in ERGON_BROWSER_NAMES), None)
+    if not hit:
+        sys.exit("refused: built-in TV Browser appId 16 was not found in the app list")
+    tv.pub("ui_service", "launchapp", {key: hit[key] for key in hit if key != "httpIcon"})
+    return f"launch requested: {hit.get('name')}"
 
 
 def cmd_key(a):
