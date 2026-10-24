@@ -83,7 +83,7 @@ namespace Playarr.Xbox.Views
                     return; // a drawn icon is one image, not its strokes
                 }
 
-                if (element is Button { Content: TextBlock })
+                if (element is Button { Content: TextBlock } && GetRole(element) == null)
                 {
                     return; // the web's label button is one element carrying the text run and its style
                 }

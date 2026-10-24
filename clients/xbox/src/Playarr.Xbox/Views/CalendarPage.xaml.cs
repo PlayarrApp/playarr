@@ -46,7 +46,8 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             _root = RootGrid;
             _root.Children.Add(_content);
-            Ui.PageHeader(_root, "Calendar", null, () => App.Navigation.GoBack());
+            var header = Ui.PageHeader(_root, "Calendar", null, () => App.Navigation.GoBack());
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(header.Back, "Back to home"); // the web names it with a lower-case home here
 
             var controls = new StackPanel
             {
