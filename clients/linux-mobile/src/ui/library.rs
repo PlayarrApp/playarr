@@ -438,10 +438,6 @@ impl Lib {
                     if n.starts_with(char::is_uppercase) {
                         t.add_css_class("wide");
                     }
-                    // The web's tile text is the button: its box is the text run.
-                    if let Some(l) = t.child() {
-                        crate::layout::tag(&l, "button", "", 12.0);
-                    }
                 }
                 match &group {
                     Some(g) => t.set_group(Some(g)),
@@ -494,20 +490,6 @@ impl Lib {
             dd.add_css_class("pa-dropdown");
             dd.add_css_class("pa-filter");
             // The web's select is a bordered group holding a button with the value and a caret glyph.
-            crate::layout::Tag::new("group", "", 12.0)
-                .adjust([0.0, -1.39, 0.0, 0.0])
-                .height(58.78)
-                .extra(crate::layout::Extra {
-                    role: "button",
-                    label: "Any language \u{2304}".into(),
-                    radius: 10.0,
-                    inset: [7.39, 6.0, 7.39, 0.0],
-                    height: Some(44.0),
-                    bg: None,
-                    art: false,
-                    font: None,
-                })
-                .apply(&dd);
             if let Some(inner) = dd
                 .first_child()
                 .and_then(|b| b.downcast::<gtk4::Button>().ok())
@@ -637,7 +619,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         .valign(gtk4::Align::Start)
         .build();
     backdrop.set_size_request(-1, 385);
-    crate::layout::key_art(&backdrop, false);
     let wash = gtk4::Box::builder()
         .css_classes(["pa-key-wash"])
         .valign(gtk4::Align::Start)
@@ -721,7 +702,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
             .height_request(top(i + 1) - top(i))
             .margin_top(if i == 0 { top(0) - 88 } else { 0 })
             .build();
-        crate::layout::tag(&b, "button", &name, 50.0);
+        crate::layout::name(&b, &name);
         let lib = lib.clone();
         b.connect_clicked(move |_| lib.jump(c));
         rail.append(&b);
@@ -830,41 +811,8 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
     let label = gtk4::Label::new(Some(name));
     // The web's text node is the lower-case word; a capital first letter is drawn by its CSS.
     // The web's word sits 1.4, 1.2 and 1.9 px lower than the centred label.
-    crate::layout::Tag::new("text", &name.to_lowercase(), 0.0)
-        .adjust([0.0, [1.35, 1.17, 1.85][i], 0.0, 0.0])
-        .apply(&label);
     col.append(&label);
     tile.set_child(Some(&col));
-    // The web draws each glyph from three boxes (web x, y, w, h); the Screen tile is the focused one and drawn 1.025 times
-    // larger. Insets are relative to this tile, whose box sits at x 20, 130 and 240, y 116 (101 wide).
-    let boxes: [[f32; 4]; 3] = [
-        [60.66, 124.2, 20.0, 2.0],
-        [169.73, 127.0, 5.46, 3.86],
-        [281.33, 122.7, 4.0, 13.0],
-    ];
-    let tile_x = [20.0_f32, 130.0, 239.0][i];
-    let [x, y, w, h] = boxes[i];
-    let step = [4.0, 7.52, 6.0][i];
-    let mut t = crate::layout::Tag::new("button", name, 12.0);
-    if i == 1 {
-        t = t.adjust([-1.94, -0.68, 1.92, 0.0]).height(49.2);
-    }
-    for k in 0..3 {
-        let kf = k as f32;
-        let (dx, dy) = if i == 0 { (0.0, kf * step) } else { (kf * step, 0.0) };
-        let left = x + dx - tile_x;
-        t = t.extra(crate::layout::Extra {
-            role: "container",
-            label: String::new(),
-            radius: 1.0,
-            inset: [left, y + dy - 116.0, 101.0 - left - w, 0.0],
-            height: Some(h),
-            bg: None,
-            art: false,
-            font: None,
-        });
-    }
-    t.apply(tile);
 }
 
 #[cfg(test)]

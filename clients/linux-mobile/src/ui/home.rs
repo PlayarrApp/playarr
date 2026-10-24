@@ -272,7 +272,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .valign(gtk4::Align::Start)
         .build();
     backdrop.set_size_request(-1, 340);
-    crate::layout::key_art(&backdrop, false);
     let wash = gtk4::Box::builder()
         .css_classes(["pa-key-wash", "pa-home-wash"])
         .valign(gtk4::Align::Start)

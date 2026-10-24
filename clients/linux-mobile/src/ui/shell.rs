@@ -45,7 +45,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .margin_bottom(7)
         .build();
     avatar_box.append(&avatar);
-    crate::layout::tag(&avatar_box, "container", "", 50.0);
     me.set_child(Some(&avatar_box));
     {
         let (app, client) = (app.clone(), client.clone());
@@ -60,7 +59,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
             move || c.profiles().ok().and_then(|p| p.into_iter().find(|p| p.is_current)),
             move |p| {
                 let name = p.map_or_else(|| "Device Test".into(), |p| p.display_name);
-                crate::layout::tag(&me, "link", &format!("Signed in as {name}. Open profiles."), 14.0);
+                crate::layout::name(&me, &format!("Signed in as {name}. Open profiles."));
             },
         );
     }
@@ -83,20 +82,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
                 };
                 if name == &"home" {
                     // The web's track list starts below the header.
-                    crate::layout::Tag::new("page", label, 0.0)
-                        .extra(crate::layout::Extra {
-                            role: "container",
-                            label: String::new(),
-                            radius: 0.0,
-                            inset: [0.0, 72.0, 0.0, 0.0],
-                            height: None,
-                            bg: None,
-                            art: false,
-                            font: None,
-                        })
-                        .apply(page);
                 } else if !label.is_empty() {
-                    crate::layout::tag(page, "page", label, 0.0);
                 }
                 let icon = icons::image(name, 21, Tone::Soft);
                 let button = gtk4::Button::builder()
@@ -107,7 +93,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
                 row.append(&button);
                 let mut label = name.to_string();
                 label[..1].make_ascii_uppercase();
-                crate::layout::tag(&button, "link", &label, 14.0);
                 Item {
                     name: name.to_string(),
                     button,
@@ -128,7 +113,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .margin_end(10)
         .margin_bottom(8)
         .build();
-    crate::layout::tag(&nav_scroll, "container", "", 20.0);
     // "" lights no tab (the web highlights none on Preferences); "<" lights the last chosen one again.
     let select = {
         let (pages, items) = (pages.clone(), items.clone());

@@ -1,6 +1,7 @@
 //! The one title card: 16:9 art with a caption, as the web's mobile layout draws it (140 wide on a 360 phone, two to a row in grids).
 use super::images::Images;
 use crate::api::Client;
+use crate::layout;
 use crate::model::Work;
 use gtk4::prelude::*;
 
@@ -148,21 +149,6 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
             .valign(gtk4::Align::End)
             .css_classes(["pa-progress"])
             .build();
-        // The web's bar is a 3 px track with the watched share drawn inside it as its own box.
-        let width = o.width.unwrap_or(158) as f32;
-        crate::layout::Tag::new("img", "", 0.0)
-            .bg([0.3529, 0.3333, 0.3490], [0.8980, 0.8902, 0.8941])
-            .extra(crate::layout::Extra {
-                role: "container",
-                label: String::new(),
-                radius: 0.0,
-                inset: [0.0, 0.0, width * (1.0 - p.clamp(0.0, 1.0) as f32), 0.0],
-                height: Some(3.0),
-                bg: Some([0.8118, 0.1922, 0.3412]),
-                art: false,
-                font: None,
-            })
-            .apply(&bar);
         overlay.add_overlay(&bar);
     }
     if o.unseen {
@@ -173,7 +159,6 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
             .margin_top(7)
             .margin_end(7)
             .build();
-        crate::layout::tag(&dot, "img", "", 50.0);
         overlay.add_overlay(&dot);
     }
     // A fixed art height (the web's 16:9 at card width); AspectFrame reported no height inside a button.
@@ -226,11 +211,13 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         })
         .valign(gtk4::Align::Start)
         .build();
-    // The web's card link: "Open <title>" in a library, "<title> <meta>" on Home.
-    match &o.meta {
-        Some(m) => crate::layout::tag_h(&b, "link", &format!("{} {m}", work.title), 0.0, art_h as f32 + 24.7),
-        None => crate::layout::tag(&b, "link", &format!("Open {}", work.title), 12.0),
-    }
+    layout::name(
+        &b,
+        &match &o.meta {
+            Some(m) => format!("{} {m}", work.title),
+            None => format!("Open {}", work.title),
+        },
+    );
     let w = work.clone();
     b.connect_clicked(move |_| on_open(&w));
     // Long-press opens the actions sheet.
