@@ -18,6 +18,8 @@ internal static class Ui
         return _measure.NaturalSize.Width / TextScale;
     }
 
+    internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, TextMetaInfo> TextMeta = new();
+
     /// <summary>Greedy word wrap like the browser's, using measured widths; see <see cref="TextWrap"/>.</summary>
     public static List<string> WrapLines(string text, float size, int weight, float spacing, float width, int maxLines = int.MaxValue, string family = Font, bool balance = false) =>
         TextWrap.WrapLines(text, s => TextWidth(s, size, weight, spacing, family), width, maxLines, balance);
@@ -91,6 +93,8 @@ internal static class Ui
         HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0)
     {
         (family, weight) = Face(family, weight, size);
+        var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
+        var cssY = y;
         var line = lh > 0 ? lh : size * 1.4f;
         var boxH = Math.Max(line, size * 1.45f); // tall enough that descenders are not clipped; the text stays centred on the CSS line box
         y -= (boxH - line) / 2f;
@@ -115,6 +119,7 @@ internal static class Ui
         else { t.WidthResizePolicy = ResizePolicyType.UseNaturalSize; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(0, boxH * TextScale); }
         t.PivotPoint = global::Tizen.NUI.PivotPoint.TopLeft; t.PositionUsesPivotPoint = true; t.ParentOrigin = global::Tizen.NUI.ParentOrigin.TopLeft;
         t.Scale = new Vector3(1 / TextScale, 1 / TextScale, 1);
+        TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline));
         return t;
     }
 
@@ -252,3 +257,6 @@ internal static class Ui
         return map;
     }
 }
+
+/// <summary>The CSS values a label was made from (the layout exporter reports these, not NUI's scaled internals). Dy: CSS line top minus the label's own top.</summary>
+internal sealed record TextMetaInfo(float Size, int Weight, float LineHeight, float Dy, float Spacing, HorizontalAlignment Align, Rgba Color, bool Multiline);

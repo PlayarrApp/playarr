@@ -5,8 +5,8 @@
 //   PLAYARR_TIZEN_DISPLAY (X display of the emulator window, default :25), PLAYARR_TIZEN_WINDOW (X window id when the window is not at 0,0
 //   of its display, default root), PLAYARR_SDB.
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertDeviceTestIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 import { captureWallTime } from "../capture-timezone.mjs";
@@ -140,6 +140,13 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       await waitStable();
       if (state.route.startsWith("/player/") && state.playing) throw new Error("Tizen player capture requires paused playback for deterministic pixels");
       capture(file);
+      // The layout document (docs/parity/LAYOUT.md) of the same screen state: the app walks its own NUI view tree.
+      if (!env.PARITY_NO_LAYOUT) {
+        const theme = basename(dirname(file)), screen = basename(file, ".png");
+        const doc = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
+        mkdirSync(join(dirname(dirname(file)), "layout", theme), { recursive: true });
+        writeFileSync(join(dirname(dirname(file)), "layout", theme, `${screen}.json`), doc.json);
+      }
       if (signature(first) !== signature(file)) throw new Error("Tizen rendered pixels changed between deterministic readiness samples");
     },
     // Downloads run through the engine's debug endpoints (the UI path was checked by hand): what is stored, paused and removed is the real

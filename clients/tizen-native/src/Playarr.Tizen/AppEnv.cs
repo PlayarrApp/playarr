@@ -14,6 +14,7 @@ internal sealed class AppEnv
     public CaptureWork VisualWork { get; } = new();
     public AuthImage Images { get; }
     public Func<DateTime> ClockNow { get; set; } = () => DateTime.Now;
+    public bool ClockPinned { get; set; }
     /// <summary>Set by the shell: opens a route (detail pages, the player).</summary>
     public Action<string> Navigate { get; set; } = _ => { };
     /// <summary>Set by the shell: the same as Back on the remote (previous page).</summary>
