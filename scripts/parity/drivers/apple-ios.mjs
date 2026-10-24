@@ -130,6 +130,7 @@ export async function createDriver() {
     launchedAt = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; // local time, as `log show --start` reads it
     terminate();
     rmSync(statePath(), { force: true });
+    rmSync(join(dirname(statePath()), "parity-layout.json"), { force: true });
     run("xcrun", ["simctl", "ui", udid, "appearance", theme]);
     const launchEnv = { ...process.env,
       SIMCTL_CHILD_PLAYARR_PARITY_SERVER: e.SERVER_URL,

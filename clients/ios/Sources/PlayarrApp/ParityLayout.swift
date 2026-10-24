@@ -18,6 +18,7 @@ final class ParityLayoutRegistry {
         var rect: CGRect = .zero
         var tracking: CGFloat = 0
         var background: String?
+        var radius: CGFloat = 0
     }
 
     private var items: [UUID: Item] = [:]
@@ -50,9 +51,16 @@ final class ParityLayoutRegistry {
         guard ParityLaunch.isActive else { return }
         pending?.cancel()
         pending = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            guard !Task.isCancelled, let self else { return }
-            self.write()
+            // Export only when the view is idle: two snapshots 0.6 s apart must be identical.
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            var previous: Data?
+            for _ in 0..<40 {
+                guard !Task.isCancelled, let self else { return }
+                let current = self.snapshot()
+                if current == previous { self.write(current); return }
+                previous = current
+                try? await Task.sleep(nanoseconds: 600_000_000)
+            }
         }
     }
 
@@ -106,14 +114,25 @@ final class ParityLayoutRegistry {
         return out
     }
 
-    private func write() {
+    private func snapshot() -> Data? {
         let screen = UIScreen.main.bounds
         let styled = order.compactMap { items[$0] }
         // A plain accessibility entry is dropped when a styled one has the same text and nearly the same frame.
         let plain = accessibilityElements().filter { entry in
             !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
         }
-        let all = styled.map(glyphRun) + plain
+        var all = styled.map(glyphRun) + plain
+        // Styled text without its own string takes the string of the accessibility text it overlaps most.
+        let texts = plain.filter { $0.role == "text" }
+        all = all.map { item in
+            guard item.text == nil, item.size != nil else { return item }
+            var out = item
+            out.text = texts.max { overlap($0.rect, item.rect) < overlap($1.rect, item.rect) }.flatMap { overlap($0.rect, item.rect) > 0 ? $0.text : nil }
+            return out
+        }.filter { $0.text != nil || $0.size == nil }
+        let viewport = CGRect(origin: .zero, size: screen.size)
+        all = all.filter { $0.rect.intersects(viewport) && $0.rect.width > 1 && $0.rect.height > 1 }
+        all.sort { ($0.rect.minY, $0.rect.minX, $0.text ?? "", $0.role) < ($1.rect.minY, $1.rect.minX, $1.text ?? "", $1.role) }
         let elements: [[String: Any]] = all.compactMap { item in
             guard item.rect.width > 0, item.rect.height > 0 else { return nil }
             var element: [String: Any] = [
@@ -126,6 +145,7 @@ final class ParityLayoutRegistry {
                 "fontWeight": item.weight as Any? ?? NSNull(),
             ]
             if item.color == nil { element["color"] = NSNull() }
+            if item.radius > 0 { element["radius"] = Double(item.radius) }
             return element
         }
         let document: [String: Any] = [
@@ -133,7 +153,13 @@ final class ParityLayoutRegistry {
             "clockPinned": ParityLaunch.frozenNow != nil,
             "elements": elements,
         ]
-        guard let data = try? JSONSerialization.data(withJSONObject: document) else { return }
+        return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
+    }
+
+    private func overlap(_ a: CGRect, _ b: CGRect) -> CGFloat { a.intersection(b).isNull ? 0 : a.intersection(b).width * a.intersection(b).height }
+
+    private func write(_ data: Data?) {
+        guard let data else { return }
         let url = ParityLaunch.acceptanceStateURL.deletingLastPathComponent().appendingPathComponent("parity-layout.json")
         try? data.write(to: url, options: .atomic)
     }
@@ -146,6 +172,8 @@ private struct ParityLayoutModifier: ViewModifier {
     let weight: Int?
     let color: Color?
     let tracking: CGFloat
+    let box: Color?
+    let radius: CGFloat
     @Environment(\.self) private var environment
     @State private var id = UUID()
 
@@ -173,7 +201,7 @@ private struct ParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: pageHex))
+        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { Self.hex($0, environment) } ?? pageHex, radius: radius))
     }
 }
 #endif
@@ -181,11 +209,24 @@ private struct ParityLayoutModifier: ViewModifier {
 extension View {
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0) -> some View {
+    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, box: Color? = nil, radius: CGFloat = 0) -> some View {
         #if DEBUG
-        modifier(ParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking))
+        modifier(ParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, box: box, radius: radius))
         #else
         self
         #endif
+    }
+}
+
+extension View {
+    /// The design font at a CSS size and weight, reported to the parity layout export with the text it draws.
+    func wm(_ size: CGFloat, _ weight: Int = 400) -> some View {
+        font(DesignFont.font(size, weight))
+            .parityLayout(role: "text", size: size, weight: weight, color: PlayarrStyle.ink)
+    }
+
+    /// A control or container that the web exports as one element (a card link, a panel with a background).
+    func parityBox(_ role: String, name: String? = nil, background: Color? = nil, radius: CGFloat = 0) -> some View {
+        parityLayout(text: name, role: role, box: background, radius: radius)
     }
 }

@@ -586,6 +586,7 @@ struct WMRailCard: View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
+                .parityBox("image")
                 .background(WM.artFill)
                 .overlay(alignment: .bottomLeading) {
                     if let progress {
@@ -605,6 +606,7 @@ struct WMRailCard: View {
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
             WMText(work.singularKindYearLabel, 7.3, 400, color: WM.ink, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
+        .parityBox("link", name: "\(work.title) \(work.singularKindYearLabel)")
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
     }
 }
@@ -673,6 +675,7 @@ struct WMLibraryCard: View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
+                .parityBox("image")
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .wmCardShadow()
@@ -682,6 +685,7 @@ struct WMLibraryCard: View {
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
         }
+        .parityBox("link", name: "Open \(work.title)")
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
     }
 }
@@ -705,6 +709,7 @@ struct WMSearchCard: View {
             WMText(work.singularKindYearLabel.uppercased(), 9.28, 720, color: WM.muted, lh: 13.92, ls: 0.3)
                 .padding(.top, 2)
         }
+        .parityBox("link", name: "Open \(work.title)")
         .frame(width: 173, height: 142.5, alignment: .topLeading)
 
     }
@@ -722,7 +727,7 @@ struct WMHeaderCircleButton: View {
         Button(action: action) {
             // The web draws the arrow glyph about 0.65 times the size of the app's fallback glyph, 1.3 pt lower.
             Text(glyph)
-                .font(WM.font(glyph == "\u{2190}" ? 8.3 : 12.8, weight))
+                .wm(glyph == "\u{2190}" ? 8.3 : 12.8, weight)
                 .foregroundStyle(WM.inkSoft)
                 .offset(y: glyph == "\u{2190}" ? 1.3 : 0)
                 .frame(width: width, height: height)
