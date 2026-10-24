@@ -197,13 +197,21 @@ private struct ParityLayoutModifier: ViewModifier {
     @State private var id = UUID()
 
     private var hex: String? { color.map { Self.hex($0, environment) } }
-    private var pageHex: String { Self.hex(environment.parityBackground ?? PlayarrStyle.surface, environment) }
+    private var pageHex: String { Self.composited(environment.parityBackground ?? PlayarrStyle.surface, environment) }
 
     private static func hex(_ color: Color, _ environment: EnvironmentValues) -> String {
         let r = color.resolve(in: environment)
         func byte(_ value: Float) -> Int { max(0, min(255, Int((value * 255).rounded()))) }
         let base = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
         return r.opacity < 0.999 ? base + String(format: "%02x", byte(r.opacity)) : base
+    }
+
+    /// A fill composited over the page colour (translucent chips read as the colour the eye sees, as in the web export).
+    private static func composited(_ color: Color, _ environment: EnvironmentValues) -> String {
+        let top = color.resolve(in: environment), page = PlayarrStyle.surface.resolve(in: environment)
+        let a = Float(top.opacity)
+        func mix(_ t: Float, _ p: Float) -> Int { max(0, min(255, Int(((t * a + p * (1 - a)) * 255).rounded()))) }
+        return String(format: "#%02x%02x%02x", mix(top.red, page.red), mix(top.green, page.green), mix(top.blue, page.blue))
     }
 
     func body(content: Content) -> some View {
@@ -221,7 +229,7 @@ private struct ParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { Self.hex($0, environment) } ?? pageHex, radius: radius))
+        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { Self.composited($0, environment) } ?? pageHex, radius: radius))
     }
 }
 #endif
@@ -248,5 +256,16 @@ extension View {
     /// A control or container that the web exports as one element (a card link, a panel with a background).
     func parityBox(_ role: String, name: String? = nil, background: Color? = nil, radius: CGFloat = 0) -> some View {
         parityLayout(text: name, role: role, box: background, radius: radius)
+    }
+}
+
+extension View {
+    /// Text drawn on this fill reports it as its background in the layout export.
+    func parityBackground(_ color: Color) -> some View {
+        #if DEBUG
+        environment(\.parityBackground, color)
+        #else
+        self
+        #endif
     }
 }
