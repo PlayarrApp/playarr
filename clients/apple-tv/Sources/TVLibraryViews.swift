@@ -1007,7 +1007,7 @@ struct TVWebHomeCard: View {
     var cover = false
 
     private var artHeight: CGFloat { cover ? artWidth * 1.5 : artWidth * 9 / 16 }
-    static func height(width: CGFloat, cover: Bool = false) -> CGFloat { (cover ? width * 1.5 : width * 9 / 16) + 11.5 + 17.9 + 2.5 + 11.5 }
+    static func height(width: CGFloat, cover: Bool = false) -> CGFloat { (cover ? width * 1.5 : width * 9 / 16) + 10.2 + 17.9 + 3.6 + 11.5 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1046,15 +1046,19 @@ struct TVWebHomeCard: View {
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(1)
                 .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.18)
-                .frame(width: artWidth, height: 17.9, alignment: .leading)
-                .padding(.top, 11.5)
+                .frame(width: artWidth - 1.91, height: 17.9, alignment: .leading)
+                .padding(.leading, 1.91) // web: the text sits 1.91 pt inside the card
+                .frame(width: artWidth, alignment: .leading)
+                .padding(.top, 10.2)
             Text([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))
                 .font(TVTheme.font(size: 8.832, css: 400))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .lineLimit(1)
                 .parityLayout(text: [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "), size: 8.832, weight: Int(400), color: DesignTokens.Color.textDisabled)
-                .frame(width: artWidth, height: 11.5, alignment: .leading)
-                .padding(.top, 2.5)
+                .frame(width: artWidth - 1.91, height: 11.5, alignment: .leading)
+                .padding(.leading, 1.91)
+                .frame(width: artWidth, alignment: .leading)
+                .padding(.top, 3.6)
         }
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)

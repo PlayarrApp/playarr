@@ -439,7 +439,6 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         if (!/^(dark|light)$/.test(basename(themeDir))) throw new Error("not a screen capture");
         const dir = join(dirname(themeDir), "layout", basename(themeDir));
         mkdirSync(dir, { recursive: true });
-        addBackgrounds(layout, file);
         writeFileSync(join(dir, `${id}.json`), JSON.stringify({ screen: id, theme: basename(themeDir), ...layout }));
         rmSync(join(base, "parity-layout.json"), { force: true });
       } catch { /* a build without the exporter, a crop, or a screen that registers nothing */ }
