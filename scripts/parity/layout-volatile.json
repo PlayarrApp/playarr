@@ -12,9 +12,11 @@
     { "name": "server-address", "textRegex": "https?://\\S+" }
   ],
   "player-controls": [
-    { "name": "player-time", "selector": ".player-time" }
+    { "name": "player-time", "selector": ".player-time" },
+    { "name": "player-buffered", "selector": ".player-seek-buffered", "maskOnly": true }
   ],
   "player-quality-menu": [
-    { "name": "player-time", "selector": ".player-time" }
+    { "name": "player-time", "selector": ".player-time" },
+    { "name": "player-buffered", "selector": ".player-seek-buffered", "maskOnly": true }
   ]
 }

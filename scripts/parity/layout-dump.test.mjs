@@ -93,3 +93,10 @@ test("an aria-label on a painted container is not visible text; on a control it 
     <a class="abs" href="#" aria-label="Open Film" style="top:30px;width:80px;height:20px"></a>`);
   assert.deepEqual(d.elements.map((e) => e.text), ["", "Open Film"]);
 });
+
+test("color-mix() (computed as color(srgb ...)) keeps its colour and alpha", { skip }, async () => {
+  const d = await dump(`<div class="abs" style="top:0;width:50px;height:20px;background:color-mix(in srgb, #ff0000 50%, transparent)"></div>
+    <p class="abs" style="top:40px;color:color-mix(in srgb, #0000ff 100%, #0000ff)">mix</p>`);
+  assert.equal(d.elements[0].background, "#ff8080");
+  assert.equal(d.elements[1].color, "#0000ff");
+});

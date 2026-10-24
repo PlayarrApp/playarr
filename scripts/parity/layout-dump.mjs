@@ -15,6 +15,11 @@ export function layoutPageFn(volatile) {
   var round = function (n) { return Math.round(n * 100) / 100; };
   var hex2 = function (n) { var s = Math.round(n).toString(16); return s.length < 2 ? "0" + s : s; };
   var parse = function (c) {
+    var cm = /color\(srgb ([^)]+)\)/.exec(c);
+    if (cm) {
+      var q = cm[1].split(/[ \/]+/).filter(Boolean).map(Number);
+      return [q[0] * 255, q[1] * 255, q[2] * 255, q.length > 3 ? q[3] : 1];
+    }
     var m = /rgba?\(([^)]+)\)/.exec(c);
     if (!m) return [0, 0, 0, 0];
     var p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);
