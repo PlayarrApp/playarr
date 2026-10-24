@@ -1207,7 +1207,7 @@ internal fun PlayarrTelevisionControlBar(
         Spacer(Modifier.height(if (tabletPlayer) 9.5.dp else 14.5.dp))
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = io.playarr.shared.designsystem.page.FractionalSpacedArrangement(13.6.dp),
+            horizontalArrangement = io.playarr.shared.designsystem.page.FractionalSpacedArrangement(13.6.dp, flushEnd = true),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PlayerRoundButton(

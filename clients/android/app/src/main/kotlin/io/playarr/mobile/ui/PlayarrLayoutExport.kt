@@ -56,6 +56,12 @@ private val PAGE_LANDMARKS: Map<String, Triple<String, String?, Double>> = mapOf
     "settings" to Triple("Settings sections", "Appearance", 672.0),
 )
 
+/** screen id to the web's (role, accessible name) of the header Back control (the native app names it "Back" everywhere). */
+private val BACK_CONTROL: Map<String, Pair<String, String>> = mapOf(
+    "calendar-agenda" to ("link" to "Back to home"), "calendar-month" to ("link" to "Back to home"), "calendar-week" to ("link" to "Back to home"),
+    "film-detail" to ("button" to "Back to Movies"), "series-detail" to ("button" to "Back to Series"), "settings" to ("button" to "Settings"),
+)
+
 internal object PlayarrLayoutExport {
     const val ACTION = "io.playarr.mobile.PARITY_LAYOUT"
 
@@ -136,7 +142,8 @@ internal object PlayarrLayoutExport {
                         val fitted = box.fit?.invoke(box.bounds) ?: box.bounds
                         val x = fitted.left + loc[0] - mainLoc[0]; val y = fitted.top + loc[1] - mainLoc[1]
                         val w = fitted.width; val h = fitted.height
-                        val e = JSONObject().put("text", box.label).put("role", box.role)
+                        val back = if (box.role == "link" && box.label == "Back") BACK_CONTROL[screen] ?: ("link" to "Back to Home") else null
+                        val e = JSONObject().put("text", back?.second ?: box.label).put("role", back?.first ?: box.role)
                             .put("rect", JSONObject().put("x", r2(x)).put("y", r2(y)).put("w", r2(w)).put("h", r2(h)))
                             .put("color", JSONObject.NULL)
                             .put("background", if (box.background != androidx.compose.ui.graphics.Color.Unspecified) hex(box.background.toArgb()) else insideColour(bmp, x.toInt(), y.toInt(), w.toInt(), h.toInt()) ?: JSONObject.NULL)

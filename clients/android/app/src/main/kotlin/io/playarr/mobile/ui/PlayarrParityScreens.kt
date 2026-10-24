@@ -1,5 +1,7 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityRole
 import io.playarr.shared.designsystem.page.mediaCardLift
 import io.playarr.shared.designsystem.page.PlayarrPageBody
 import io.playarr.shared.designsystem.page.PlayarrPageLayout
@@ -122,6 +124,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -1914,14 +1917,7 @@ private fun TelevisionProfilesStage(
     Box(Modifier.fillMaxSize()) {
         // Web keeps the Playarr mark at the top left of the profile picker, where the shell draws it.
         PlayarrLogo(Modifier.align(Alignment.TopStart).padding(start = 59.dp, top = 60.dp))
-        // `.profile-clients-link`: the glass pill bottom right (web shows it on every TV client).
-        // Tablet web (1280 x 800 refs) shows no Clients link.
-        if (LocalStageScale.current == 1f) ProfilesGlassPill(onClick = onClients, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 50.dp, bottom = 34.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(playarrString(PlayarrString.ProfilesClients), color = WebInkSoft, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Text("\u2192", color = WebInkSoft, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+        // Web's `.profile-clients-link` renders only when the client platform is "web": the Android TV web ref has no Clients pill.
         // `.profiles-heading`
         Column(
             modifier = Modifier
@@ -1946,7 +1942,7 @@ private fun TelevisionProfilesStage(
                 fontWeight = FontWeight.Medium,
                 letterSpacing = (-5.806).sp,
                 lineHeight = 76.6.sp,
-                modifier = Modifier.padding(top = 7.2.dp).offset(y = (-16).dp),
+                modifier = Modifier.padding(top = 7.2.dp).offset(y = (-16).dp).semantics { heading() },
             )
         }
 
@@ -2076,7 +2072,7 @@ private fun TelevisionProfilesStage(
         @Composable fun UpdateColumn() = Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = if (tabletUpdate) 38.dp else 40.dp, bottom = if (tabletUpdate) 24.5.dp else 36.dp),
+                .padding(start = if (tabletUpdate) 38.dp else 49.dp, bottom = if (tabletUpdate) 24.5.dp else 30.5.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (updateControl.available) {
@@ -2087,8 +2083,9 @@ private fun TelevisionProfilesStage(
                     Text(
                         label,
                         color = WebInkSoft,
-                        fontSize = if (tabletUpdate) 8.sp else 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = if (tabletUpdate) 8.sp else 10.752.sp,
+                        fontWeight = if (tabletUpdate) FontWeight.Bold else FontWeight(720),
+                        modifier = Modifier.parityRole("button", 999f),
                     )
                 }
                 if (event is AndroidUpdateEvent.Error) {
@@ -2222,6 +2219,7 @@ internal fun ProfilesChromeThemeDropdown(display: PlayarrDisplayPreferences, web
             leading = { ProfilesThemeIcon(WebInkMuted) },
             onClick = { expanded = !expanded },
             webPhone = webPhone,
+            exportLabel = "Theme: $label",
         )
         androidx.compose.material3.DropdownMenu(
             expanded = expanded,
@@ -2294,6 +2292,7 @@ private fun ProfilesChromeTrigger(
     leading: @Composable () -> Unit,
     onClick: () -> Unit,
     webPhone: Boolean = false,
+    exportLabel: String? = null,
 ) {
     Surface(
         onClick = onClick,
@@ -2304,7 +2303,8 @@ private fun ProfilesChromeTrigger(
             // A fixed width on TV: the label row fills the trigger, so a min width alone let the first select take the whole row.
             .then(if (webPhone) Modifier else Modifier.width(minWidth))
             .height(48.dp)
-            .scale(if (expanded) 1.02f else 1f),
+            .scale(if (expanded) 1.02f else 1f)
+            .parityBox("button", exportLabel ?: label, background = WebBackground),
     ) {
         Row(
             (if (webPhone) Modifier else Modifier.fillMaxWidth()).padding(horizontal = 18.dp),
@@ -2322,7 +2322,7 @@ private fun ProfilesChromeTrigger(
                 maxLines = 1,
                 modifier = Modifier.weight(1f, fill = !webPhone),
             )
-            Canvas(Modifier.size(12.dp).rotate(if (expanded) 180f else 0f)) {
+            Canvas(Modifier.size(12.dp).rotate(if (expanded) 180f else 0f).parityBox("image", background = WebBackground)) {
                 val stroke = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
                 val s = size.width / 24f
                 val path = Path().apply {
@@ -2338,7 +2338,7 @@ private fun ProfilesChromeTrigger(
 
 @Composable
 private fun ProfilesThemeIcon(color: Color) {
-    Canvas(Modifier.size(16.dp)) {
+    Canvas(Modifier.size(16.dp).parityBox("image", background = WebBackground)) {
         val stroke = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round)
         val s = size.width / 24f
         drawCircle(color = color, radius = 4f * s, center = Offset(12f * s, 12f * s), style = stroke)
@@ -2359,7 +2359,7 @@ private fun ProfilesThemeIcon(color: Color) {
 
 @Composable
 private fun ProfilesGlobeIcon(color: Color) {
-    Canvas(Modifier.size(16.dp)) {
+    Canvas(Modifier.size(16.dp).parityBox("image", background = WebBackground)) {
         val stroke = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round)
         val s = size.width / 24f
         drawCircle(color, radius = 8.5f * s, center = Offset(12f * s, 12f * s), style = stroke)
@@ -2507,13 +2507,16 @@ private fun ProfileChoice(
         modifier = Modifier
             .width(cardWidth)
             .then(lift)
+            // Web: the button is the avatar plus its two text lines (the actions below are separate controls).
+            .parityBox("button", avatarDescription, background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top, r.right, r.top + r.width * 301.6f / 244f) })
             .onFocusChanged { if (it.isFocused) onFocus() },
     ) {
         if (isTelevision) {
             WebShadowedBox(
                 shadows = avatarShadows,
                 shape = CircleShape,
-                modifier = Modifier.size(avatarSize).graphicsLayer { scaleX = if (selected) 1.035f else 1f; scaleY = scaleX },
+                modifier = Modifier.size(avatarSize).graphicsLayer { scaleX = if (selected) 1.035f else 1f; scaleY = scaleX }
+                    .parityBox("container", "", 50f, background = WebBackground, fit = { r -> val e = r.width * 0.0175f; androidx.compose.ui.geometry.Rect(r.left - e, r.top - e, r.right + e, r.bottom + e) }),
                 focusGlow = avatarFocused,
             ) { avatarSurface() }
         } else {
@@ -2575,10 +2578,11 @@ private fun ProfileChoice(
                     color = WebSurfaceStrong.copy(alpha = 0.64f),
                     border = BorderStroke(1.dp, WebInkMuted.copy(alpha = 0.35f)),
                     modifier = Modifier.size(44.dp).focusRequester(settingsFocus).focusProperties { down = FocusRequester.Cancel } // web: nothing below the actions
+                        .parityBox("button", settingsLabel, 999f, background = WebBackground)
                         .semantics { contentDescription = settingsLabel },
                 ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        ProfilesSettingsIcon(ProfilesBrandRose)
+                        ProfilesSettingsIcon(ProfilesBrandRose, Modifier.parityBox("image", background = WebBackground))
                     }
                 }
                 onSignOut?.let { action ->
@@ -2589,14 +2593,14 @@ private fun ProfileChoice(
                         shape = CircleShape,
                         color = WebSurfaceStrong.copy(alpha = 0.64f),
                         border = BorderStroke(1.dp, WebInkMuted.copy(alpha = 0.35f)),
-                        modifier = Modifier.heightIn(min = 44.dp),
+                        modifier = Modifier.heightIn(min = 44.dp).parityBox("button", "Sign out ${profile.displayName}", 999f, background = WebBackground),
                     ) {
                         Row(
                             Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            ProfilesSignOutIcon(WebInkSoft)
+                            ProfilesSignOutIcon(WebInkSoft, Modifier.parityBox("image", background = WebBackground))
                             Text(
                                 playarrString(PlayarrString.ProfilesSignOut),
                                 color = WebInkSoft,
@@ -2684,13 +2688,14 @@ private fun AddProfileChoice(
         modifier = Modifier
             .width(cardWidth)
             .then(lift)
+            .parityBox("button", "+ " + playarrString(PlayarrString.ProfilesSignIn) + " " + playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale), background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top, r.right, r.top + r.width * 301.6f / 244f) })
             .onFocusChanged { addFocused = it.hasFocus; if (it.hasFocus) onFocus() },
     ) {
         if (isTelevision) {
             WebShadowedBox(
                 shadows = if (addFocused) listOf(WebShadow(22.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.28f))) else emptyList(),
                 shape = CircleShape,
-                modifier = Modifier.size(avatarSize),
+                modifier = Modifier.size(avatarSize).parityBox("container", "", 50f, background = WebBackground),
                 focusGlow = addFocused,
             ) { addAvatar() }
         } else {
@@ -2717,8 +2722,8 @@ private fun AddProfileChoice(
 
 /** Web `SettingsIcon` stroke gear. */
 @Composable
-internal fun ProfilesSettingsIcon(color: Color) {
-    Canvas(Modifier.size(18.dp)) {
+internal fun ProfilesSettingsIcon(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(18.dp)) {
         val stroke = Stroke(width = 1.7.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         val s = size.width / 24f
         drawCircle(color, radius = 3f * s, center = Offset(12f * s, 12f * s), style = stroke)
@@ -2771,8 +2776,8 @@ internal fun ProfilesSettingsIcon(color: Color) {
 
 /** Web `SignOutIcon` door + arrow. */
 @Composable
-internal fun ProfilesSignOutIcon(color: Color) {
-    Canvas(Modifier.size(18.dp)) {
+internal fun ProfilesSignOutIcon(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(18.dp)) {
         val stroke = Stroke(width = 1.7.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         val s = size.width / 24f
         // Door frame: M10 5H5v14h5

@@ -47,7 +47,7 @@ fun Modifier.parityRole(role: String, radius: Float = 0f): Modifier = semantics 
  * running position in float and rounds each child's own position once (left to right), as a browser lays out inline boxes.
  */
 @androidx.compose.runtime.Immutable
-class FractionalSpacedArrangement(private val gap: androidx.compose.ui.unit.Dp) : androidx.compose.foundation.layout.Arrangement.Horizontal {
+class FractionalSpacedArrangement(private val gap: androidx.compose.ui.unit.Dp, private val flushEnd: Boolean = false) : androidx.compose.foundation.layout.Arrangement.Horizontal {
     override val spacing: androidx.compose.ui.unit.Dp get() = gap
     override fun androidx.compose.ui.unit.Density.arrange(totalSize: Int, sizes: IntArray, layoutDirection: androidx.compose.ui.unit.LayoutDirection, outPositions: IntArray) {
         var position = 0f
@@ -57,7 +57,7 @@ class FractionalSpacedArrangement(private val gap: androidx.compose.ui.unit.Dp) 
             position += sizes[i] + g
         }
         // The row sized its flexible spacer with whole-pixel gaps: give the difference to the children after it, so the right edge stays flush.
-        if (sizes.isNotEmpty()) {
+        if (flushEnd && sizes.isNotEmpty()) {
             val spacer = sizes.indices.maxByOrNull { sizes[it] } ?: 0
             val shift = totalSize - (outPositions.last() + sizes.last())
             if (shift != 0) for (i in spacer + 1 until sizes.size) outPositions[i] += shift

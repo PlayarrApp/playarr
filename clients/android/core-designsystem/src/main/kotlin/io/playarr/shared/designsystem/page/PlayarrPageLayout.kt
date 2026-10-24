@@ -141,7 +141,7 @@ internal fun PlayarrPageActions(actions: List<PlayarrPageAction>, modifier: Modi
     ) {
         orderedForHeader(actions).forEach { action ->
             when (action) {
-                is PlayarrPageAction.Navigation -> Row(Modifier.padding(end = if (tv) 0.dp else 25.dp), horizontalArrangement = Arrangement.spacedBy(if (tv) 15.3.dp else 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                is PlayarrPageAction.Navigation -> Row(Modifier.padding(end = if (tv) 0.dp else 25.dp), horizontalArrangement = if (tv) FractionalSpacedArrangement(15.3.dp) else Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     action.items.forEachIndexed { index, item -> PlayarrNavButton(item, exitRight = index == action.items.lastIndex) }
                 }
                 is PlayarrPageAction.Panel -> PlayarrActionPill(action.icon, action.label, action.onToggle, active = action.open)
@@ -187,7 +187,7 @@ private fun PlayarrNavButton(item: PlayarrNavItem, exitRight: Boolean = false) {
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (glyph != null) Text(glyph, fontSize = if (tv) 14.72.sp else 13.sp, fontWeight = FontWeight(720))
-                else Text(item.label, fontSize = if (tv) 14.72.sp else 14.4.sp, fontWeight = FontWeight(720), maxLines = 1, modifier = (if (tv) Modifier.padding(horizontal = 20.dp) else Modifier).parityRole("button"))
+                else Text(item.label, fontSize = if (tv) 14.72.sp else 14.4.sp, fontWeight = FontWeight(720), maxLines = 1, modifier = (if (tv) Modifier.padding(horizontal = 20.dp) else Modifier).parityRole("button", 999f))
             }
         }
     }
