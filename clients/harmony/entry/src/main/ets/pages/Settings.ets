@@ -626,30 +626,33 @@ export struct SettingsScreen {
           // Web phone `.settings-option`: 328 x 88 rows (16 vp page margin), number at +12/+14, copy at +56, arrow centred at +310.
           Stack({ alignContent: Alignment.TopStart }) {
             Text(section.number).fontFamily(nunito(700))
-              .fontSize(10)
+              .fontSize(8.96)
               .fontWeight(FontWeight.Bold)
+              .lineHeight(12)
               .fontColor(toResourceColor(activeColors().ink))
               .position({ x: 12, y: 16 })
-            Column({ space: 3.5 }) {
+            Column({ space: 2.4 }) {
               Text(section.title).fontFamily(nunito(500))
-                .fontSize(15.5)
+                .fontSize(16)
                 .fontWeight(FontWeight.Medium)
+                .lineHeight(22)
                 .letterSpacing(-0.54)
                 .fontColor(toResourceColor(activeColors().ink))
               Text(sectionCopyOf(section.id)).fontFamily(nunito(400))
-                .fontSize(11)
+                .fontSize(10.88)
+                .lineHeight(15)
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
             .alignItems(HorizontalAlign.Start)
-            .width(226)
-            .position({ x: 56, y: 24.5 })
+            .width(262) // web dump: the copy runs 261.6 wide, under the arrow
+            .position({ x: 56, y: 22.9 })
             Text('→').fontFamily(nunito(400))
-              .fontSize(14)
+              .fontSize(20.8)
               .fontColor(toResourceColor(activeColors().ink))
               .height(88)
-              .position({ x: 303, y: 3 })
+              .position({ x: section.id === this.openSection ? 300.2 : 295.2, y: 0 }) // web: the selected row's arrow sits 5 vp further right
           }
           .width(328)
           .height(88)

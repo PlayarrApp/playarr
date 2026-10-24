@@ -107,7 +107,7 @@ const ENTRY_TITLE_SIZE: number = 19.2;
 const ENTRY_META_SIZE: number = 12.8;
 /** Web phone agenda card, measured on the 360 vp reference: smaller type and a 92 vp card than the TV's. */
 const PHONE_ENTRY_TITLE_SIZE: number = 16;
-const PHONE_ENTRY_META_SIZE: number = 13;
+const PHONE_ENTRY_META_SIZE: number = 12.8; // web dump: 12.8
 const PHONE_ENTRY_HEIGHT: number = 93; // web: 255 px in the static ref
 /** A card without a subtitle line (a movie) is 15 vp shorter on web. */
 const PHONE_ENTRY_HEIGHT_NO_SUBTITLE: number = 77;
@@ -1121,7 +1121,7 @@ export struct ReleaseCalendar {
         .borderRadius(tv(POSTER_RADIUS))
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-      Column({ space: fixedHeight > 0 ? 2 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
+      Column({ space: fixedHeight > 0 ? 1.85 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
         Text(item.title).fontFamily(nunito(600)) // web 640: the 610 instance is the nearest
           .fontSize(PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
@@ -1156,7 +1156,8 @@ export struct ReleaseCalendar {
       minHeight: fixedHeight > 0 ? fixedHeight : PHONE_WEEK_CARD_MIN_HEIGHT,
       maxHeight: fixedHeight === PHONE_ENTRY_HEIGHT ? fixedHeight : PHONE_CARD_NO_MAX, // web: a movie's pill wraps under the meta line and the card grows with it
     })
-    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : 8, bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
+    // agenda: web's text starts 1 vp higher (static-ref dump)
+    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 7 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
     .border({
