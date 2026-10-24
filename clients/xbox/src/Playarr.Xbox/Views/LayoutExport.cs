@@ -42,6 +42,12 @@ namespace Playarr.Xbox.Views
 
         public static void SetLineBox(DependencyObject element, bool value) => element.SetValue(LineBoxProperty, value);
 
+        public static T SetLineBoxed<T>(T element, bool value = true) where T : DependencyObject
+        {
+            element.SetValue(LineBoxProperty, value);
+            return element;
+        }
+
         /// <summary>A button the web exports as the box plus a separate text element (round letter and arrow buttons).</summary>
         public static readonly DependencyProperty SplitProperty = DependencyProperty.RegisterAttached("Split", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
 

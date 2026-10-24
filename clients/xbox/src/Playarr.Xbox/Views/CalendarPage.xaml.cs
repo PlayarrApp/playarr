@@ -521,7 +521,9 @@ namespace Playarr.Xbox.Views
                 }
 
                 var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, list.Children.Count == 0 ? 0 : 30.5, 0, 33.5) };
-                heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 18.4, new FontWeight { Weight = 640 }, day == ParityClock.Today ? "PlayarrInkSoft" : "PlayarrInk"));
+                var dayTitle = Ui.Text(day.ToString("dddd d MMMM", Uk), 18.4, new FontWeight { Weight = 640 }, day == ParityClock.Today ? "PlayarrInkSoft" : "PlayarrInk");
+                dayTitle.CharacterSpacing = 28;
+                heading.Children.Add(dayTitle);
                 if (day == ParityClock.Today)
                 {
                     var today = Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color);
@@ -675,7 +677,7 @@ namespace Playarr.Xbox.Views
                 line2.TextTrimming = TextTrimming.CharacterEllipsis;
                 text.Children.Add(line2);
             }
-            var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, autoHeight ? 5 : 3, 0, 0) };
+            var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = web ? 13 : 10, Margin = new Thickness(0, autoHeight ? 5 : 3, 0, 0) };
             foreach (var part in new[] { TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry) })
             {
                 meta.Children.Add(Ui.Text(part, web ? 12.8 : 9, web ? FontWeights.Normal : FontWeights.SemiBold, web ? "PlayarrInkMuted" : "PlayarrInkSoft"));
