@@ -43,9 +43,11 @@ function sampler(pngFile) {
 export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned }) {
   const bg = sampler(pngFile);
   const elements = [];
+  const dbg = [];
   for (const raw of lines) {
     let it;
     try { it = JSON.parse(raw); } catch { continue; }
+    if (it.k === "dbg") { dbg.push(it.m); continue; }
     if (it.k === "label" || it.k === "tracked") {
       if (it.size == null) continue;
       const f = fontFromUri(it.font);
@@ -75,5 +77,5 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
   }
   const inView = (e) => e.rect.x < 1920 && e.rect.y < 1080 && e.rect.x + e.rect.w > 0 && e.rect.y + e.rect.h > 0;
   elements.splice(0, elements.length, ...elements.filter(inView));
-  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements };
+  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, ...(dbg.length ? { _dbg: dbg } : {}), elements };
 }

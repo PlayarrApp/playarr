@@ -101,7 +101,7 @@ sub ParityLayoutTracked(node as Object, spec as Object, colour as Dynamic, op as
     for i = 0 to n - 1
         g = node.getChild(i)
         if g.visible and g.text <> ""
-            r = g.sceneBoundingRect()
+            r = ParityRectOf(g)
             w = ParityTextWidth(ctx, g.text, g.font)
             if r.x < x0 then x0 = r.x
             if r.y < y0 then y0 = r.y
@@ -122,7 +122,7 @@ sub ParityLayoutTracked(node as Object, spec as Object, colour as Dynamic, op as
     ' An active dock label is drawn 1.05 times larger because the web transforms the tile: its font size stays the design size.
     if Left(tid, 8) = "navLabel" and spec.size > 9 then reported = spec.size / 1.05
     if spec.weight <> invalid then meta = { px: reported, weight: spec.weight }
-    item = { k: "tracked", bg: ParityTextBg(tid, x0, y0), id: tid, text: text, x: x0, y: y0, w: x1 - x0, h: y1 - y0, op: op, role: spec.role, color: ParityColour(spec, colour), lines: node.lineCount, tracking: spec.tracking }
+    item = { k: "tracked", bg: ParityTextBg(tid, x0 + ParityDx(), y0 + ParityDy()), id: tid, text: text, x: x0, y: y0, w: x1 - x0, h: y1 - y0, op: op, role: spec.role, color: ParityColour(spec, colour), lines: node.lineCount, tracking: spec.tracking }
     if spec.aria <> invalid then item.aria = spec.aria
     if meta <> invalid
         item.size = meta.px
@@ -164,7 +164,10 @@ sub ParityBox(role as String, name as String, x as Float, y as Float, w as Float
         r = 999
         if Abs(w - h) < 1 then r = 50
     end if
-    item = { k: "box", role: role, text: name, x: x, y: y, w: w, h: h, radius: r, bg: ParityToken(bgToken) }
+    ' Containers and images carry no accessible name in the web document; links, buttons, status lines and text boxes do.
+    label = name
+    if role = "container" or role = "image" or role = "img" then label = ""
+    item = { k: "box", role: role, text: label, x: x, y: y, w: w, h: h, radius: r, bg: ParityToken(bgToken) }
     if opacity < 0.995 then item.opacity = opacity
     ParityLayoutEmit(item)
 end sub
@@ -225,20 +228,48 @@ function ParityTextBg(id as String, x as Float, y as Float) as String
     return ParityToken("surface")
 end function
 
+' Position of a node's origin from its translation chain up to the item root (m.parityRoot, set while a list item answers) or the scene.
+' sceneBoundingRect is not used inside list items: it leaves out the item's own transforms.
+function ParityPos(node as Object) as Object
+    x = 0.0
+    y = 0.0
+    n = node
+    while n <> invalid
+        if m.parityRoot <> invalid and n.isSameNode(m.parityRoot) then exit while
+        if n.hasField("translation")
+            t = n.translation
+            x = x + t[0]
+            y = y + t[1]
+        end if
+        n = n.getParent()
+    end while
+    return [x, y]
+end function
+
+' A point of the card's art group (local q) drawn at its scale about scaleRotateCenter.
+function ParityArtPoint(ag as Object, q as Object) as Object
+    o = ParityPos(ag)
+    s = ag.scale[0]
+    c = ag.scaleRotateCenter
+    return [o[0] + c[0] + s * (q[0] - c[0]), o[1] + c[1] + s * (q[1] - c[1])]
+end function
+
 ' One media card (web .tv-title-card / .tv-home-card): link, art container and image, state badges. The caption labels are walked as text.
 sub ParityCard(card as Object)
     bgNode = card.findNode("posterBg")
     if bgNode = invalid or not bgNode.visible then return
-    r = bgNode.sceneBoundingRect()
-    if r.width < 20 or r.x > 1925 or r.y > 1085 or r.x + r.width < 0 or r.y + r.height < 0 then return
+    ag = card.findNode("artGroup")
+    s = ag.scale[0]
+    tl = ParityArtPoint(ag, [0, 0])
+    r = { x: tl[0], y: tl[1], width: bgNode.width * s, height: bgNode.height * s }
+    ax = r.x + ParityDx()
+    ay = r.y + ParityDy()
+    if r.width < 20 or ax > 1925 or ay > 1085 or ax + r.width < 0 or ay + r.height < 0 then return
     title = card.findNode("title")
     kind = card.findNode("kind")
+    inGrid = bgNode.width > 300 and card.findNode("progressTrack") <> invalid and not card.findNode("progressTrack").visible
     inGrid = false
-    p = card.getParent()
-    while p <> invalid
-        if p.id = "browseGrid" or p.id = "searchGrid" then inGrid = true
-        p = p.getParent()
-    end while
+    if m.parityGrid = true then inGrid = true
     name = title.text
     if inGrid
         name = "Open " + title.text
@@ -246,28 +277,27 @@ sub ParityCard(card as Object)
         name = title.text + " " + kind.text
     end if
     ' The web scales the whole card by 1.015 on focus and its art a further 1.025: the art's scale is the device's own focus state.
-    s = card.findNode("artGroup").scale[0]
     ls = 1.0
-    if r.width / s > 300 and s > 1.001 then ls = s / (1 + (s - 1) * 0.6219)
-    lw = r.width / s * ls
-    lh = (r.height / s + 29.38) * ls
+    if bgNode.width > 300 and m.parityGrid = true and s > 1.001 then ls = s / (1 + (s - 1) * 0.6219)
+    lw = bgNode.width * ls
+    lh = (bgNode.height + 29.38) * ls
     lx = r.x + r.width / 2 - lw / 2
-    ly = r.y + r.height / 2 + 14.69 * ls - lh / 2
-    surf = "surface"
-    ParityBox("link", name, lx, ly, lw, lh, 12, surf)
+    ly = r.y + r.height / 2 + 14.69 * ls - lh / 2 + (s - 1) * 0
+    ParityBox("link", name, lx, ly, lw, lh, 12, "surface")
     ParityBox("container", "", r.x, r.y, r.width, r.height, 12.48, "surfaceSoft")
     ParityBox("image", "", r.x, r.y, r.width, r.height, 0, "surfaceSoft")
     badge = card.findNode("unwatchedBadge")
     if badge <> invalid and badge.visible
-        b = badge.sceneBoundingRect()
-        ParityBox("img", "Unwatched", b.x + b.width * 0.067, b.y + b.height * 0.067, b.width * 0.867, b.height * 0.867, 50, "accent")
+        q = badge.translation
+        p = ParityArtPoint(ag, q)
+        ParityBox("img", "", p[0] + badge.width * s * 0.067, p[1] + badge.height * s * 0.067, badge.width * s * 0.867, badge.height * s * 0.867, 50, "accent")
     end if
     track = card.findNode("progressTrack")
     if track <> invalid and track.visible
-        t = track.sceneBoundingRect()
-        f = card.findNode("progressFill").sceneBoundingRect()
-        ParityBox("img", Str(Int(f.width / t.width * 100 + 0.5)).Trim() + "% watched", t.x, t.y, t.width, t.height, 0, "progressTrackBg")
-        ParityBox("container", "", f.x, f.y, f.width, f.height, 0, "accent")
+        p = ParityArtPoint(ag, track.translation)
+        fill = card.findNode("progressFill")
+        ParityBox("img", "", p[0], p[1], track.width * s, track.height * s, 0, "progressTrackBg")
+        ParityBox("container", "", p[0], p[1], fill.width * s, fill.height * s, 0, "accent")
     end if
 end sub
 
@@ -336,21 +366,23 @@ sub ParityPrepareCards()
             row = list.content.getChild(0)
             if row = invalid then continue for
             for j = 0 to row.getChildCount() - 1
-                ParityPlace(row.getChild(j), o[0] + 96 + 7.98 + j * (list.rowItemSize[0][0] + list.rowItemSpacing[0][0]), o[1] + 14.6)
+                ParityPlace(row.getChild(j), o[0] + 96 + j * (list.rowItemSize[0][0] + list.rowItemSpacing[0][0]), o[1])
             end for
         else
             ' A grid item reports its box in the scene already; the cell offset is what it lacks.
             cols = list.numColumns
             if cols < 1 then cols = 1
             for i = 0 to list.content.getChildCount() - 1
-                ParityPlace(list.content.getChild(i), (i mod cols) * Int(list.itemSize[0] + list.itemSpacing[0]), Int(i / cols) * Int(list.itemSize[1] + list.itemSpacing[1]))
+                o = ParityOrigin(list)
+                ParityPlace(list.content.getChild(i), o[0] + (i mod cols) * Int(list.itemSize[0] + list.itemSpacing[0]), o[1] + Int(i / cols) * Int(list.itemSize[1] + list.itemSpacing[1]), true)
             end for
         end if
     end for
 end sub
 
-sub ParityPlace(item as Object, x as Float, y as Float)
-    if not item.hasField("parityDx") then item.addFields({ parityDx: 0.0, parityDy: 0.0 })
+sub ParityPlace(item as Object, x as Float, y as Float, grid = false as Boolean)
+    if not item.hasField("parityDx") then item.addFields({ parityDx: 0.0, parityDy: 0.0, parityGrid: false })
+    item.parityGrid = grid
     item.parityDx = x
     item.parityDy = y
 end sub
@@ -378,4 +410,11 @@ function ParityOrigin(node as Object) as Object
         n = n.getParent()
     end while
     return [x, y]
+end function
+
+' Rect of a node at the item (m.parityRoot) or the scene: manual in list items, where sceneBoundingRect cannot be trusted.
+function ParityRectOf(node as Object) as Object
+    if m.parityRoot = invalid then return node.sceneBoundingRect()
+    p = ParityPos(node)
+    return { x: p[0], y: p[1], width: node.width, height: node.height }
 end function

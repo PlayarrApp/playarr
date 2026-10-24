@@ -4654,8 +4654,8 @@ end sub
 ' Home headings keep the same Web typography regardless of which rail owns card focus.
 sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    rail.title.spec = { text: rail.label, size: 18, weight: 600, tracking: -0.53, role: "ink" }
-    rail.title.translation = [0, -21]
+    rail.title.spec = { text: rail.label, size: 17.66, weight: 610, tracking: -0.53, role: "ink", aria: "heading" }
+    rail.title.translation = [0, -19.9]
 end sub
 
 sub onHomeItemSelected(event as Object)

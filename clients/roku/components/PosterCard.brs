@@ -126,7 +126,7 @@ sub onContentChanged()
     if watchState = "part"
         pct = 0
         if content.progressPct <> invalid then pct = content.progressPct
-        fill = 220 * pct / 100
+        fill = m.progressTrack.width * pct / 100
         if fill < 3 then fill = 3
         m.progressFill.width = fill
     end if
@@ -221,6 +221,14 @@ sub onFocusChanged()
     if shadowOpacity > 1 then shadowOpacity = 1
     if shadowOpacity < 0 then shadowOpacity = 0
     m.focusShadow.opacity = shadowOpacity
+    ' A focused card's caption is white (web .is-focused).
+    if shadowOpacity > 0.5 and not m.cardListMode and not m.top.findNode("circleMask").visible
+        m.title.color = &hFFFFFFFF
+        m.kind.color = &hFFFFFFFF
+    else
+        m.title.color = ThemeColor("ink")
+        m.kind.color = ThemeColor("inkMuted")
+    end if
     m.restShadow.opacity = 1 - shadowOpacity
     ' Web --card-glow: a brand ring and soft glow on the focused media card (not the round cast headshots).
     ringOn = shadowOpacity > 0.5 and not m.top.findNode("circleMask").visible
@@ -384,7 +392,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.cardArtW = artW
     m.title.translation = [1.94, m.titleY]
     m.title.width = artW - 3.9
-    m.kind.translation = [0, artH + titleGap + 19.5]
+    m.kind.translation = [1.94, artH + titleGap + 19.5]
     m.kind.width = artW
     if listMode
         ' Web list row: the art on the left, the title and the genre line centred beside it.
@@ -431,6 +439,11 @@ sub onParityLayoutCard()
     if content = invalid or not content.hasField("parityDx") then return
     m.parityDx = content.parityDx
     m.parityDy = content.parityDy
+    m.parityRoot = m.top
+    ' A rail lifts its focused item as a whole (the lift is outside the item, so its fields do not show it): 6.25 px, measured.
+    if m.homeCardFocusStyle = true and m.top.focusPercent * m.top.activeRailFactor > 0.5 then m.parityDy = m.parityDy - 6.25
+    ' A focus animation that has not run to its end leaves the fields part-way: report the settled state.
+    m.parityGrid = content.parityGrid
     ParityCard(m.top)
     ctx = { measure: CreateObject("roSGNode", "Label"), count: 0 }
     ParityLayoutWalk(m.cardRoot, 1.0, ctx)
