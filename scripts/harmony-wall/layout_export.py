@@ -5,7 +5,9 @@ the text lines the framework's measurer reports for each Text node (`$measured`,
 derived from the web references: no page-shell counts, no web glyph advances, no substituted geometry. A Text node without `$measured`
 fails the export, because a rect built from font constants would not be a measurement."""
 import json
+import os
 import re
+import struct
 
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
 WEIGHT_NAMES = {"lighter": 300, "regular": 400, "normal": 400, "medium": 500, "bold": 700, "bolder": 800}
@@ -13,8 +15,37 @@ SYSTEM = ("Navigation", "NavDestination", "root")
 CLIP_KINDS = ("Scroll", "List", "Grid", "WaterFlow", "Swiper")
 
 
+# ArkUI lays a line out with its own (system) font metrics even when the glyphs come from a bundled font: its line box is 1.167 em and the
+# baseline sits 0.821 of that box below the line top. Calibrated against the screenshots with inkcheck.py (ink bottoms of descender-free
+# texts); the glyph content area is then taken from the bundled font file's own ascent and descent, the way a browser reports a text range.
+NATIVE_ASCENT_RATIO = 0.821
+FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "clients", "harmony", "entry", "src", "main", "resources", "rawfile", "fonts")
+_FONT_METRICS = {}
+
+
 class ExportError(Exception):
     pass
+
+
+def font_metrics(family):
+    """(ascent, descent) in em from the bundled font file's hhea table, or None for a system font."""
+    m = re.fullmatch(r"NunitoSansW(\d+)", family)
+    name = f"NunitoSans-W{m.group(1)}.ttf" if m else (family + ".ttf" if family.startswith("PlayarrArrows") else None)
+    if name is None:
+        return None
+    if name not in _FONT_METRICS:
+        path = os.path.join(FONT_DIR, name)
+        if not os.path.exists(path):
+            raise ExportError(f"font file {name} is not bundled")
+        d = open(path, "rb").read()
+        tabs = {}
+        for i in range(struct.unpack(">H", d[4:6])[0]):
+            tag, _, off, _ = struct.unpack(">4sIII", d[12 + 16 * i:28 + 16 * i])
+            tabs[tag.decode()] = off
+        upm = struct.unpack(">H", d[tabs["head"] + 18:tabs["head"] + 20])[0]
+        asc, desc = struct.unpack(">hh", d[tabs["hhea"] + 4:tabs["hhea"] + 8])
+        _FONT_METRICS[name] = (asc / upm, -desc / upm)
+    return _FONT_METRICS[name]
 
 
 def num(value, default=None):
@@ -68,6 +99,19 @@ def radius_of(attrs):
     if isinstance(r, dict):
         r = r.get("topLeft")
     return num(r, 0.0) or 0.0
+
+
+def padding_of(attrs, dpr):
+    """(left, top, right, bottom) of a node's padding in inspector px."""
+    raw = attrs.get("padding")
+    if isinstance(raw, str) and raw.startswith("{"):
+        try:
+            p = json.loads(raw)
+        except ValueError:
+            return (0.0, 0.0, 0.0, 0.0)
+        return tuple((num(p.get(k), 0.0) or 0.0) * dpr for k in ("left", "top", "right", "bottom"))
+    v = (num(raw, 0.0) or 0.0) * dpr
+    return (v, v, v, v)
 
 
 def has_gradient(attrs):
@@ -134,17 +178,22 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         if measured is None:
             raise ExportError(f"Text {content[:30]!r} has no native measurement ({node.get('$measureError', 'no $measured')})")
         x, y, w, h = box
+        pl, pt, pr, pb = padding_of(a, dpr)  # the Text's box includes its padding; its lines sit in the content box
+        x, y, w, h = x + pl, y + pt, w - pl - pr, h - pt - pb
         align = str(a.get("textAlign", "")).lower()
         weight, size = weight_of(a), num(a.get("fontSize"), 16.0)
         col = argb(a.get("fontColor")) or (0, 0, 0, 1.0)
         colour = hex_of(over(col, under))
         total = sum(line["lineH"] for line in measured)
         top = y + (h - total) / 2 if total <= h else y  # ArkUI centres the laid-out lines in the Text box
+        metrics = font_metrics(str(a.get("fontFamily", "")))
+        size_px = size * dpr
         for i, line in enumerate(measured):
-            lw, ch, lh = line["w"], line["h"], line["lineH"]
+            lw, nat, lh = line["w"], line["h"], line["lineH"]
             lx = x + (w - lw) / 2 if "center" in align else (x + w - lw if "end" in align or "right" in align else x)
-            ly = top + i * lh + (lh - ch) / 2
-            rect = transform((lx, ly, lw, ch), chain)
+            baseline = top + i * lh + (lh - nat) / 2 + NATIVE_ASCENT_RATIO * nat  # the baseline ArkUI draws on
+            asc, desc = metrics if metrics is not None else (NATIVE_ASCENT_RATIO * nat / size_px, (1 - NATIVE_ASCENT_RATIO) * nat / size_px)
+            rect = transform((lx, baseline - asc * size_px, lw, (asc + desc) * size_px), chain)
             if visible(rect, clip):
                 emit("text", " ".join(str(line["text"]).split()), rect, under, 0.0, colour, size, weight, opacity)
 

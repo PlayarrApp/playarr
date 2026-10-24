@@ -20,7 +20,8 @@ class LayoutExportTest(unittest.TestCase):
         t = [e for e in doc["elements"] if e["role"] == "text"][0]
         self.assertEqual(t["text"], "Hello world")
         self.assertEqual(t["fontWeight"], 610)
-        self.assertEqual(t["rect"], {"x": 10.0, "y": 101.0, "w": 100.0, "h": 22.0})
+        # the baseline ArkUI draws on (0.821 of the 66 px line below its top), with the font file's own ascent 1.011 and descent 0.353 around it
+        self.assertEqual(t["rect"], {"x": 10.0, "y": 102.89, "w": 100.0, "h": 21.82})
         self.assertEqual(t["color"], "#f4f0f1")
         self.assertEqual(t["background"], "#151315")
 
@@ -30,7 +31,7 @@ class LayoutExportTest(unittest.TestCase):
         doc = export(tree, "x", "dark", (1920, 1080, 1))
         t = [e for e in doc["elements"] if e["role"] == "text"]
         self.assertEqual([e["text"] for e in t], ["one two", "three"])
-        self.assertEqual([e["rect"]["y"] for e in t], [2.0, 26.0])
+        self.assertEqual([round(e["rect"]["y"] - t[0]["rect"]["y"], 2) for e in t], [0.0, 24.0])  # one line pitch apart
 
     def test_a_text_without_a_native_measurement_fails_the_export(self):
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "unmeasured", None)], rect="[0.00, 0.00],[1920.00, 1080.00]")
