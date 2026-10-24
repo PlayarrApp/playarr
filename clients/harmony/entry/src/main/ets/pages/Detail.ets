@@ -2436,7 +2436,7 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 8.9), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
           .fontSize(10.24)
@@ -2564,6 +2564,7 @@ struct Detail {
     }
     // web phone film: the three pills share the row width (104 / 104 / 110 vp)
     .width('100%')
+    .margin({ top: 2.26 })
     Row({ space: 8 }) {
       this.touchActionButton(this.listed === true ? t('discovery.watchlist.remove', 'Remove from watchlist') : t('discovery.watchlist.add', 'Add to watchlist'), (): void => {
         this.toggleWatchlist();
@@ -2572,7 +2573,7 @@ struct Detail {
         this.touchActionsOpen = true;
       }, 8, '+')
     }
-    .margin({ top: 11 })
+    .margin({ top: 12 })
   }
 
   /** Phone (web phone detail): the backdrop fading into the page at the top, Back over it, then the pink kind line, the title, the
@@ -2630,7 +2631,7 @@ struct Detail {
               .id('px:heading:' + (this.detail !== null ? this.detail.work.title : ''))
               .fontSize(36) // measured against the static refs
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-1.5)
+              .letterSpacing(-2.59) // web -0.072em (fitted to the refs' run width)
               .lineHeight(34)
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
