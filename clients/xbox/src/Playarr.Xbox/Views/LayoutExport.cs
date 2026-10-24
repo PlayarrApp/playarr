@@ -190,7 +190,8 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
+                // The web reports the rail group's own fill as the page background; its children sit on the lifted fill.
+                background = pill != null || (element is Border { Background: var fill } && ReferenceEquals(fill, Application.Current.Resources["PlayarrRailFill"])) ? BackgroundBehind(pill ?? element) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
@@ -257,11 +258,6 @@ namespace Playarr.Xbox.Views
                     Control control => control.Background,
                     _ => null,
                 };
-                if (ReferenceEquals(brush, Application.Current.Resources["PlayarrRailFill"]))
-                {
-                    continue; // the web reports the rail's own fill as the page background
-                }
-
                 if (brush is SolidColorBrush solid && solid.Color.A > 0)
                 {
                     layers.Add(Color.FromArgb((byte)Math.Round(solid.Color.A * solid.Opacity), solid.Color.R, solid.Color.G, solid.Color.B));
