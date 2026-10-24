@@ -139,7 +139,7 @@ struct SettingsView: View {
             PlayarrBackButton(action: goHome)
                 .offset(x: 16, y: WM.topInset + 2)
             WMText("Preferences", 21.6, 580, lh: 32.4, ls: -0.972)
-                .offset(x: 68, y: WM.topInset + 5)
+                .offset(x: 70, y: WM.topInset + 7.8)
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
                     ForEach(Array(Section.allCases.filter { $0 != .requestLatency }.enumerated()), id: \.element.id) { index, section in

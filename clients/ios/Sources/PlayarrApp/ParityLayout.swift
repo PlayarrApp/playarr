@@ -122,8 +122,10 @@ final class ParityLayoutRegistry {
             !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
         }
         // The web page wraps every screen in three full-viewport containers painted with the page colour.
-        let page = Item(text: nil, role: "container", size: nil, weight: nil, color: nil, rect: CGRect(origin: .zero, size: screen.size), background: pageColorHex)
-        var all = [page, page, page] + styled.map(glyphRun) + plain
+        var page = Item(text: nil, role: "container", size: nil, weight: nil, color: nil, rect: CGRect(origin: .zero, size: screen.size), background: colourHex(PlayarrStyle.surface))
+        var shell = page
+        shell.background = colourHex(PlayarrStyle.background)
+        var all = [shell, page, page] + styled.map(glyphRun) + plain
         // Styled text without its own string takes the string of the accessibility text it overlaps most.
         let texts = plain.filter { $0.role == "text" }
         all = all.map { item in
@@ -158,10 +160,10 @@ final class ParityLayoutRegistry {
         return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
     }
 
-    private var pageColorHex: String {
+    private func colourHex(_ colour: Color) -> String {
         let traits = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.traitCollection ?? UITraitCollection.current
         var r: CGFloat = 0, g: CGFloat = 0, bl: CGFloat = 0, a: CGFloat = 0
-        UIColor(PlayarrStyle.surface).resolvedColor(with: traits).getRed(&r, green: &g, blue: &bl, alpha: &a)
+        UIColor(colour).resolvedColor(with: traits).getRed(&r, green: &g, blue: &bl, alpha: &a)
         func b(_ v: CGFloat) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
         return String(format: "#%02x%02x%02x", b(r), b(g), b(bl))
     }

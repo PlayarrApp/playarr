@@ -757,7 +757,7 @@ struct WMLibraryHeader: View {
             PlayarrBackButton(action: onBack)
                 .offset(x: PlayarrPageTokens.gutter, y: top)
             WMText(title, 21.6, 580, lh: 33, ls: -1)
-                .offset(x: 71, y: top + 5)
+                .offset(x: 70, y: top + 5.5)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
                 Spacer()

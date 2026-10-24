@@ -32,7 +32,7 @@ private struct WMListPage<Content: View>: View {
                     .offset(x: phone ? PlayarrPageTokens.gutter : max(102, proxy.size.width * 0.08) - 52, y: top + 1)
                 // Web: the heading row is 44 pt tall (the back button) with the title line box centred in it.
                 WMText(title, 21.6, 580, lh: 44, ls: -0.972)
-                    .offset(x: phone ? 68 : max(102, proxy.size.width * 0.08), y: top - 2)
+                    .offset(x: phone ? 70 : max(102, proxy.size.width * 0.08), y: top - 2)
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }

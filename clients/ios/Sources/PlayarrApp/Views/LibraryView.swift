@@ -258,7 +258,7 @@ struct LibraryView: View {
                 PlayarrBackButton(action: goHome)
                     .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
                 WMText("Search", 21.6, 580, lh: 32.4, ls: -0.972)
-                    .offset(x: 68, y: WM.topInset + 5)
+                    .offset(x: 70, y: WM.topInset + 7.8)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
