@@ -15,6 +15,11 @@ export function layoutPageFn(volatile) {
   var round = function (n) { return Math.round(n * 100) / 100; };
   var hex2 = function (n) { var s = Math.round(n).toString(16); return s.length < 2 ? "0" + s : s; };
   var parse = function (c) {
+    var cm = /color\(srgb ([^)]+)\)/.exec(c);
+    if (cm) {
+      var q = cm[1].split(/[ \/]+/).filter(Boolean).map(Number);
+      return [q[0] * 255, q[1] * 255, q[2] * 255, q.length > 3 ? q[3] : 1];
+    }
     var m = /rgba?\(([^)]+)\)/.exec(c);
     if (!m) return [0, 0, 0, 0];
     var p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);
@@ -82,8 +87,9 @@ export function layoutPageFn(volatile) {
     }
     return null;
   };
-  var visibleFill = function (cs) {
-    return parse(cs.backgroundColor)[3] > 0 || cs.backgroundImage !== "none" || parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0 || cs.boxShadow !== "none";
+  var visibleFill = function (cs, el) {
+    var shade = parse(cs.backgroundColor)[3] > 0 && (!el.parentElement || toHex(backdrop(el)) !== toHex(backdrop(el.parentElement)));
+    return shade || cs.backgroundImage !== "none" || parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0 || cs.boxShadow !== "none";
   };
   var hiddenHost = function (el) {
     if (el.closest("[inert]")) return true;
@@ -123,8 +129,16 @@ export function layoutPageFn(volatile) {
     var texts = [];
     for (var k = 0; k < el.childNodes.length; k++) if (el.childNodes[k].nodeType === 3 && norm(el.childNodes[k].textContent)) texts.push(el.childNodes[k]);
     var own = shown(norm(texts.map(function (n) { return n.textContent; }).join(" ")), cs);
+    var fill = parse(cs.webkitTextFillColor || cs.color);
+    var gradient = null;
+    if (own && fill[3] === 0) {
+      var clip = cs.webkitBackgroundClip || cs.backgroundClip;
+      var stop = clip === "text" && /gradient/.test(cs.backgroundImage) ? /rgba?\([^)]+\)/.exec(cs.backgroundImage) : null;
+      if (stop) gradient = parse(stop[0]); else own = "";
+    }
     var vol = matchVolatile(el, own);
     if (vol && vol.host !== el) continue;
+    if (vol && vol.entry.omit) continue;
     var r = el.getBoundingClientRect();
     if (vol && own) {
       var range = document.createRange();
@@ -144,22 +158,23 @@ export function layoutPageFn(volatile) {
     if (op <= 0) continue;
     var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var media = tag === "img" || tag === "svg" || tag === "canvas" || tag === "video";
-    var painted = visibleFill(cs);
+    var painted = visibleFill(cs, el);
     if (!vol && !own && !control && !media && !painted) continue;
     if (occluded(el, r)) { dropped++; continue; }
     var label = el.getAttribute("aria-label") || el.getAttribute("alt") || "";
-    var text = own || norm(label) || (control ? norm(el.innerText || el.value) : "");
+    var text = own || (control || media ? norm(label) : "") || (control ? norm(el.innerText || el.value) : "");
     var zoom = zoomOf(el);
     var radius = (parseFloat(cs.borderTopLeftRadius) || 0) * zoom;
     var row = {
       text: vol && !vol.entry.selector ? own : vol ? norm(el.innerText) : text,
       role: roleOf(el, !!own),
       rect: { x: round(r.left), y: round(r.top), w: round(r.width), h: round(r.height) },
-      color: own ? toHex(parse(cs.color)) : null,
+      color: own ? toHex(gradient || fill) : null,
       background: toHex(backdrop(el)),
       fontSize: own ? round(parseFloat(cs.fontSize) * zoom) : null,
       fontWeight: own ? Number(cs.fontWeight) || 400 : null
     };
+    if (gradient) row.colorGradient = true;
     if (radius > 0) row.radius = round(radius);
     if (op < 1) row.opacity = round(op);
     if (vol) {
