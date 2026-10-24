@@ -422,7 +422,8 @@ private struct AuthenticatedPlayarrShell: View {
                     .zIndex(20)
             }
         }
-        .background(PlayarrStyle.background.ignoresSafeArea())
+        .background(PlayarrStyle.background.ignoresSafeArea().parityBox("container", background: PlayarrStyle.background))
+        .parityBackground(PlayarrStyle.background)
         .environment(visibleDetailRoutes)
         #if DEBUG
         .overlay(alignment: .topLeading) {

@@ -113,6 +113,7 @@ struct WMText: View {
     let color: Color
     let lineHeight: CGFloat
     let tracking: CGFloat
+    let role: String
 
     init(
         _ text: String,
@@ -120,7 +121,8 @@ struct WMText: View {
         _ weight: Int = 400,
         color: Color = WM.ink,
         lh: CGFloat,
-        ls: CGFloat = 0
+        ls: CGFloat = 0,
+        role: String = "text"
     ) {
         self.text = text
         self.size = size
@@ -128,6 +130,7 @@ struct WMText: View {
         self.color = color
         self.lineHeight = lh
         self.tracking = ls
+        self.role = role
     }
 
     var body: some View {
@@ -137,8 +140,9 @@ struct WMText: View {
             .foregroundStyle(color)
             .lineLimit(1)
             .truncationMode(.tail)
+            .parityRenderedText(text, role: role, size: size, weight: weight, color: color)
             .frame(height: lineHeight, alignment: .leading)
-            .parityLayout(text: text, role: "text", size: size, weight: weight, color: color, tracking: tracking)
+            .accessibilityAddTraits(role == "heading" ? .isHeader : [])
     }
 }
 

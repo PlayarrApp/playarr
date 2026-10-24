@@ -9,7 +9,7 @@ import UIKit
 final class ParityLayoutRegistry {
     static let shared = ParityLayoutRegistry()
 
-    struct Item {
+    struct Item: Equatable {
         var text: String?
         var role: String
         var size: CGFloat?
@@ -22,6 +22,7 @@ final class ParityLayoutRegistry {
     }
 
     private var items: [UUID: Item] = [:]
+    private var textRuns: [UUID: [Item]] = [:]
     private var order: [UUID] = []
     private var pending: Task<Void, Never>?
 
@@ -36,13 +37,24 @@ final class ParityLayoutRegistry {
 
     func set(_ id: UUID, _ item: Item) {
         _ = Self.enableAccessibility
+        guard items[id] != item else { return }
         if items[id] == nil { order.append(id) }
         items[id] = item
         schedule()
     }
 
+    func setTextRuns(_ id: UUID, _ runs: [Item]) {
+        _ = Self.enableAccessibility
+        guard textRuns[id] != runs else { return }
+        if textRuns[id] == nil { order.append(id) }
+        textRuns[id] = runs
+        schedule()
+    }
+
     func remove(_ id: UUID) {
+        guard items[id] != nil || textRuns[id] != nil else { return }
         items[id] = nil
+        textRuns[id] = nil
         order.removeAll { $0 == id }
         schedule()
     }
@@ -72,22 +84,8 @@ final class ParityLayoutRegistry {
         var visited = 0
         func visit(_ object: NSObject, depth: Int) {
             guard visited < 4000, depth < 40 else { return }
+            if let view = object as? UIView, view.isHidden || view.alpha <= 0.001 { return }
             visited += 1
-            if let label = object as? UILabel, let text = label.text, !text.isEmpty, label.window != nil {
-                // A UIKit label (the iPad title): its own font, weight axis and colour, in glyph-run bounds.
-                var weight = 400
-                if let variation = label.font.fontDescriptor.fontAttributes[UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String)] as? [NSNumber: NSNumber] {
-                    for (axis, value) in variation where axis.uint32Value == 0x77676874 { weight = Int(value.doubleValue.rounded()) }
-                }
-                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-                label.textColor.resolvedColor(with: label.traitCollection).getRed(&r, green: &g, blue: &b, alpha: &a)
-                func byte(_ v: CGFloat) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
-                let text_rect = label.textRect(forBounds: label.bounds, limitedToNumberOfLines: label.numberOfLines)
-                let frame = label.convert(text_rect, to: nil)
-                found.append(Item(text: text, role: label.font.pointSize >= 14 ? "heading" : "text", size: label.font.pointSize, weight: weight,
-                                  color: String(format: "#%02x%02x%02x", byte(r), byte(g), byte(b)), rect: frame))
-                return
-            }
             if object.isAccessibilityElement {
                 let traits = object.accessibilityTraits
                 var role = "container"
@@ -116,51 +114,20 @@ final class ParityLayoutRegistry {
         return found
     }
 
-    /// Web text boxes are the glyph run: the text width by the font's content-area height (1.364 em for Nunito Sans),
-    /// centred in the line frame the view was given.
-    private func glyphRun(_ item: Item) -> Item {
-        guard let text = item.text, let size = item.size, let weight = item.weight,
-              let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) else { return item }
-        var out = item
-        let width = (text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width
-        let height = (1.011 * size).rounded() + (0.353 * size).rounded() // Chromium: rounded ascent plus rounded descent
-        out.rect = CGRect(x: item.rect.minX, y: item.rect.midY - height / 2, width: min(width, item.rect.width), height: height)
-        if size >= 14 && weight >= 560 { out.role = "heading" }
-        return out
-    }
-
     private func snapshot() -> Data? {
-        let screen = UIScreen.main.bounds
-        let styled = order.compactMap { items[$0] }
+        guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return nil }
+        let screen = window.bounds
+        let styled = order.flatMap { id -> [Item] in
+            if let runs = textRuns[id] { return runs }
+            return items[id].map { [$0] } ?? []
+        }
         // A plain accessibility entry is dropped when a styled one has the same text and nearly the same frame.
         let plain = accessibilityElements().filter { entry in
             !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
         }
-        // The web page wraps every screen in three full-viewport containers painted with the page colour.
-        var page = Item(text: nil, role: "container", size: nil, weight: nil, color: nil, rect: CGRect(origin: .zero, size: screen.size), background: colourHex(PlayarrStyle.surface))
-        var shell = page
-        shell.background = colourHex(PlayarrStyle.background)
-        var all = [shell, page, page] + styled.map(glyphRun) + plain
-        // Styled text without its own string takes the string of the accessibility text it overlaps most.
-        let texts = plain.filter { $0.role == "text" }
-        all = all.map { item in
-            guard item.text == nil, item.size != nil else { return item }
-            var out = item
-            out.text = texts.max { overlap($0.rect, item.rect) < overlap($1.rect, item.rect) }.flatMap { overlap($0.rect, item.rect) > 0 ? $0.text : nil }
-            return out
-        }.filter { $0.text != nil || $0.size == nil }
-        // A plain accessibility entry that encloses a styled text is that text's control: a button with the text's backdrop.
-        let styledTexts = all.filter { $0.size != nil }
-        all = all.map { item in
-            guard item.size == nil, item.role == "text" || item.role == "container", let name = item.text, !name.isEmpty,
-                  let inner = styledTexts.first(where: { item.rect.insetBy(dx: -1, dy: -1).contains($0.rect) && item.rect.height > $0.rect.height + 4 }) else { return item }
-            var out = item
-            out.role = "button"
-            out.background = inner.background
-            out.radius = 50
-            if name == "#" { out.text = "Numbers and symbols" }
-            return out
-        }
+        // Only registered views and native accessibility elements exist in the export. A style on a parent with no
+        // source string cannot identify a child text run, so keep the child's accessibility entry without guessed style.
+        var all = styled.filter { $0.text != nil || $0.size == nil } + plain
         let viewport = CGRect(origin: .zero, size: screen.size)
         all = all.filter { $0.rect.intersects(viewport) && $0.rect.width > 1 && $0.rect.height > 1 }
         all.sort { ($0.rect.minY, $0.rect.minX, $0.text ?? "", $0.role) < ($1.rect.minY, $1.rect.minX, $1.text ?? "", $1.role) }
@@ -180,22 +147,12 @@ final class ParityLayoutRegistry {
             return element
         }
         let document: [String: Any] = [
-            "viewport": ["w": Double(screen.width), "h": Double(screen.height), "dpr": Double(UIScreen.main.scale)],
+            "viewport": ["w": Double(screen.width), "h": Double(screen.height), "dpr": Double(window.screen.scale)],
             "clockPinned": ParityLaunch.frozenNow != nil,
             "elements": elements,
         ]
         return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
     }
-
-    private func colourHex(_ colour: Color) -> String {
-        let traits = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.traitCollection ?? UITraitCollection.current
-        var r: CGFloat = 0, g: CGFloat = 0, bl: CGFloat = 0, a: CGFloat = 0
-        UIColor(colour).resolvedColor(with: traits).getRed(&r, green: &g, blue: &bl, alpha: &a)
-        func b(_ v: CGFloat) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
-        return String(format: "#%02x%02x%02x", b(r), b(g), b(bl))
-    }
-
-    private func overlap(_ a: CGRect, _ b: CGRect) -> CGFloat { a.intersection(b).isNull ? 0 : a.intersection(b).width * a.intersection(b).height }
 
     private func write(_ data: Data?) {
         guard let data else { return }
@@ -228,7 +185,7 @@ private struct ParityLayoutModifier: ViewModifier {
     private var hex: String? { color.map { Self.hex($0, environment) } }
     private var pageHex: String { Self.composited(environment.parityBackground ?? PlayarrStyle.surface, environment) }
 
-    private static func hex(_ color: Color, _ environment: EnvironmentValues) -> String {
+    static func hex(_ color: Color, _ environment: EnvironmentValues) -> String {
         let r = color.resolve(in: environment)
         func byte(_ value: Float) -> Int { max(0, min(255, Int((value * 255).rounded()))) }
         let base = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
@@ -236,7 +193,7 @@ private struct ParityLayoutModifier: ViewModifier {
     }
 
     /// A fill composited over the page colour (translucent chips read as the colour the eye sees, as in the web export).
-    private static func composited(_ color: Color, _ environment: EnvironmentValues) -> String {
+    static func composited(_ color: Color, _ environment: EnvironmentValues) -> String {
         let top = color.resolve(in: environment), page = PlayarrStyle.surface.resolve(in: environment)
         let a = Float(top.opacity)
         func mix(_ t: Float, _ p: Float) -> Int { max(0, min(255, Int(((t * a + p * (1 - a)) * 255).rounded()))) }
@@ -261,9 +218,66 @@ private struct ParityLayoutModifier: ViewModifier {
         ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { Self.composited($0, environment) } ?? pageHex, radius: radius))
     }
 }
+
+/// Observe the exact layout handed to SwiftUI's drawing context. Drawing is unchanged; no font metrics or line
+/// positions from another renderer are substituted. WMText contains one style and one laid-out line.
+@available(iOS 18.0, *)
+struct ParityTextRenderer: TextRenderer {
+    let report: ([CGRect]) -> Void
+
+    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+        for line in layout { context.draw(line) }
+        report(layout.map { $0.typographicBounds.rect })
+    }
+}
+
+@available(iOS 18.0, *)
+private struct ParityRenderedTextModifier: ViewModifier {
+    let text: String
+    let role: String
+    let size: CGFloat
+    let weight: Int
+    let color: Color
+    @Environment(\.self) private var environment
+    @State private var id = UUID()
+    @State private var frame = CGRect.zero
+
+    func body(content: Content) -> some View {
+        let colour = ParityLayoutModifier.hex(color, environment)
+        let background = environment.parityBackground.map { ParityLayoutModifier.composited($0, environment) }
+        content
+            .textRenderer(ParityTextRenderer { bounds in
+                guard frame.width > 0, frame.height > 0 else { return }
+                let runs = bounds.map { rect in
+                    ParityLayoutRegistry.Item(text: text, role: role, size: size, weight: weight, color: colour,
+                                              rect: rect.offsetBy(dx: frame.minX, dy: frame.minY), background: background)
+                }
+                Task { @MainActor in ParityLayoutRegistry.shared.setTextRuns(id, runs) }
+            })
+            .background(GeometryReader { proxy in
+                Color.clear
+                    .onAppear { frame = proxy.frame(in: .global) }
+                    .onChange(of: proxy.frame(in: .global)) { _, value in frame = value }
+            })
+            .onDisappear { ParityLayoutRegistry.shared.remove(id) }
+    }
+}
 #endif
 
 extension View {
+    @ViewBuilder
+    func parityRenderedText(_ text: String, role: String, size: CGFloat, weight: Int, color: Color) -> some View {
+        #if DEBUG
+        if #available(iOS 18.0, *) {
+            modifier(ParityRenderedTextModifier(text: text, role: role, size: size, weight: weight, color: color))
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
     func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, box: Color? = nil, radius: CGFloat = 0) -> some View {
@@ -282,7 +296,7 @@ extension View {
             .parityLayout(role: "text", size: size, weight: weight, color: color)
     }
 
-    /// A control or container that the web exports as one element (a card link, a panel with a background).
+    /// Reports a native control or a view that actually paints a background.
     func parityBox(_ role: String, name: String? = nil, background: Color? = nil, radius: CGFloat = 0) -> some View {
         parityLayout(text: name, role: role, box: background, radius: radius)
     }
