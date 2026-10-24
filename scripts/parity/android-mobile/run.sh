@@ -23,7 +23,7 @@ for t in Dark Light; do
   d=$out/$(echo "$t" | tr A-Z a-z); rm -rf "$d"; mkdir -p "$d"
   # The swiftshader emulator leaks host memory per launch (emu-recycle.sh): capture in chunks of 5 screens and recycle in between.
   for ((i = 0; i < ${#screens[@]}; i += 5)); do
-    "$here/emu-recycle.sh" "${PARITY_EMU_UNIT:-}" "$ANDROID_SERIAL" "${PARITY_EMU_MAX_GIB:-5}"
+    "$here/emu-recycle.sh" "${PARITY_EMU_UNIT:-}" "$ANDROID_SERIAL" "${PARITY_EMU_MAX_GIB:-5}" || echo "emu-recycle failed, continuing"
     "$cap" "$d" "$t" "${screens[@]:i:5}"
   done
 done

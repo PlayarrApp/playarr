@@ -17,5 +17,5 @@ echo "emu-recycle: $unit anon=$((anon / 1048576)) MiB, limit $((max_gib * 1024))
 systemctl --user restart "$unit"
 timeout 600 bash -c "until [ \"\$(timeout 10 adb -s '$serial' shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')\" = 1 ]; do sleep 10; done"
 sleep 60  # let system_server settle before the first activity start
-"$(dirname "$0")/emu-setup.sh" "$serial" "${PARITY_WM_SIZE:-}" "${PARITY_WM_DENSITY:-}"
+for _ in 1 2 3; do "$(dirname "$0")/emu-setup.sh" "$serial" "${PARITY_WM_SIZE:-}" "${PARITY_WM_DENSITY:-}" && break; sleep 20; done
 echo "emu-recycle: restarted and booted"
