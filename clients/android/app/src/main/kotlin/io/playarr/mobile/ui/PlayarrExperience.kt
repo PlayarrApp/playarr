@@ -175,6 +175,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -3501,7 +3502,7 @@ internal fun ExperienceMediaRail(
                 Text(
                     railTitle, color = WebInk, fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight(610), letterSpacing = (-0.48).sp,
                     style = WebTextStyle, maxLines = 1,
-                    modifier = Modifier.graphicsLayer {
+                    modifier = Modifier.semantics { heading() }.graphicsLayer {
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
                         if (active) { scaleX = 1.16f; scaleY = 1.16f; translationY = -1.dp.toPx() }
                     },
@@ -3588,6 +3589,7 @@ internal fun ExperienceMediaRail(
                     homeView = homeView,
                     webPhone = !isTelevision && homeView == PlayarrHomeViewPreference.Thumbnail,
                     webHome = true,
+                    strongCaption = !isTelevision && railIndex == 0 && itemIndex == 0 && !markSelected,
                     showUnwatched = true,
                     selected = markSelected && selectedId == work.id,
                     progress = onDeck?.progress ?: progressByWork[work.id],
@@ -3641,6 +3643,8 @@ internal fun ExperienceLandscapeCard(
     webPhone: Boolean = false,
     /** With [webPhone]: the Home rail variant (title and kind line, lifted 6 px when selected) instead of the library's. */
     webHome: Boolean = false,
+    /** Web phone: the first card (default selection) draws its caption in the strong ink (#fff / #000). */
+    strongCaption: Boolean = false,
     /** With [webPhone]: the Search result variant (darker art tile, kind and year in capitals). */
     webSearch: Boolean = false,
     /** Television home rails: web `.tv-home-card` motion (lift 6 px, art scale 1.025), radius and type sizes. */
@@ -3677,7 +3681,7 @@ internal fun ExperienceLandscapeCard(
     Box(
         modifier = modifier
             .width(width)
-            .parityBox("link", background = WebSurface, label = if (webPhone) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), radiusDp = if (webPhone) 12f else 0f)
+            .parityBox("link", background = WebSurface, label = if (webPhone && !webHome) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), radiusDp = if (webPhone && !webHome) 12f else 0f, trimBottomDp = if (webPhone && webHome) 12.88f else 0f)
             .then(
                 if (webPhone) {
                     Modifier.graphicsLayer { scaleX = scale; scaleY = scale; translationY = 0f }
@@ -3771,7 +3775,13 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.28f))) {
+                if (webPhone) {
+                    // Web phone `.tv-watch-progress`: a crimson fill on a flat track (#5a5559 dark, #e5e3e4 light).
+                    val track = if (webIsDark) Color(0xFF5A5559) else Color(0xFFE5E3E4)
+                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).background(track).parityBox("img", "${(it.fraction * 100).toInt()}% watched", background = track)) {
+                        Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().background(UnwatchedDotColour).parityBox("container", background = UnwatchedDotColour))
+                    }
+                } else Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.28f))) {
                     Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().background(WebAccent))
                 }
             }
@@ -3804,15 +3814,16 @@ internal fun ExperienceLandscapeCard(
             Text(resolvedSubtitle, color = WebInkMuted, fontSize = 8.64.sp, lineHeight = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp))
         } else if (webPhone && webHome) {
             // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
+            val strongInk = if (webIsDark) Color.White else Color.Black
             Text(
-                displayTitle, color = WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
+                displayTitle, color = if (strongCaption) strongInk else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 1.9.dp, top = 9.7.dp),
+                modifier = Modifier.offset(y = 1.9.dp).padding(start = 1.9.dp, top = 9.7.dp), // offsets keep the rail height
             )
             Text(
-                resolvedSubtitle, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
+                resolvedSubtitle, color = if (strongCaption) strongInk else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 6.88.sp, lineHeight = 10.32.sp,
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 1.9.dp, top = 2.56.dp),
+                modifier = Modifier.offset(y = 1.08.dp).padding(start = 1.9.dp, top = 2.56.dp),
             )
         } else if (webPhone && webSearch) {
             // Web `.tv-search-result` caption on phones (live dom dump): 8.8 px title at y +11.5, 6.4 px upper-case meta 2 px below.
@@ -3828,7 +3839,7 @@ internal fun ExperienceLandscapeCard(
             )
         } else if (webPhone) {
             Text(
-                displayTitle, color = WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
+                displayTitle, color = if (strongCaption) (if (webIsDark) Color.White else Color.Black) else WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 // Web library caption: 1 px lower than before (measured against the fresh phone refs); the row gap below gives it back.
                 modifier = Modifier.padding(start = 1.9.dp - 0.3.dp, top = 11.6.dp),
@@ -3995,6 +4006,7 @@ internal fun LibraryResults(
                     onContext = { onContext(work) },
                     showUnwatched = progressLoaded,
                     webPhone = !isTelevision,
+                    strongCaption = !isTelevision && index == 0 && selectedId.isEmpty(),
                     webTvStyle = isTelevision,
                     webTvLibrary = isTelevision,
                     suppressFocusVisuals = suppressFocusedCardVisuals,

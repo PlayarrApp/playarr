@@ -39,7 +39,7 @@ import java.io.File
 /** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
 internal var parityLayoutEnabled = false
 
-private class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var radiusDp: Float = 0f, var circle: Boolean = false, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
+private class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var radiusDp: Float = 0f, var circle: Boolean = false, var trimBottomDp: Float = 0f, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
 
 private val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
@@ -47,11 +47,11 @@ private val parityBoxes = java.util.Collections.synchronizedSet(java.util.Linked
  * Records this node's window bounds for the layout export (docs/parity/LAYOUT.md): a painted container, an image, a control
  * (cards are `link` with their accessible name, as the web's `Open <title>` links). A no-op unless the debug build enabled it.
  */
-internal fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, radiusDp: Float = 0f, circle: Boolean = false): Modifier =
+internal fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, radiusDp: Float = 0f, circle: Boolean = false, trimBottomDp: Float = 0f): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
         val box = remember { ParityBox(view, role, label, radius, opacity, background) }
-        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.radiusDp = radiusDp; box.circle = circle
+        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.radiusDp = radiusDp; box.circle = circle; box.trimBottomDp = trimBottomDp
         DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
         onGloballyPositioned { box.bounds = androidx.compose.ui.geometry.Rect(it.localToWindow(androidx.compose.ui.geometry.Offset.Zero), it.localToWindow(androidx.compose.ui.geometry.Offset(it.size.width.toFloat(), it.size.height.toFloat()))) } // unclipped: the web boxes run past the viewport too
     }
@@ -129,7 +129,7 @@ internal object PlayarrLayoutExport {
                         val loc = IntArray(2).also { box.view.getLocationOnScreen(it) }
                         val x = box.bounds.left + loc[0] - mainLoc[0]; val y = box.bounds.top + loc[1] - mainLoc[1]
                         if (x + box.bounds.width <= 0f || y + box.bounds.height <= 0f || x >= mainView.width || y >= mainView.height) continue
-                        val w = box.bounds.width; val h = box.bounds.height
+                        val w = box.bounds.width; val h = box.bounds.height - box.trimBottomDp * box.view.resources.displayMetrics.density
                         val e = JSONObject().put("text", box.label).put("role", box.role)
                             .put("rect", JSONObject().put("x", r2(x)).put("y", r2(y)).put("w", r2(w)).put("h", r2(h)))
                             .put("color", JSONObject.NULL)
