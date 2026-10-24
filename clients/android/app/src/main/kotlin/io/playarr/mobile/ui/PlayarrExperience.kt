@@ -3278,7 +3278,7 @@ internal fun WebClampedText(
  * 62.208 dp box with the glyphs centred, which is where CSS puts them.
  */
 @Composable
-internal fun WebHeroTitle(title: String, modifier: Modifier = Modifier, maxLines: Int = 2) {
+internal fun WebHeroTitle(title: String, modifier: Modifier = Modifier, maxLines: Int = 2, exportRole: String = "heading") {
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     val density = LocalDensity.current
     val style = androidx.compose.ui.text.TextStyle(
@@ -3342,7 +3342,7 @@ internal fun WebHeroTitle(title: String, modifier: Modifier = Modifier, maxLines
     }
     val widest = remember(lines, style) { lines.maxOfOrNull { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width.toFloat() + style.letterSpacing.value } ?: 0f }
     // Web run bounds: the glyph box of the first to the last line (the 62.2 px line boxes are shorter than the 94 px glyph box).
-    Column(modifier.parityBox("heading", title, background = WebSurface, style = Triple(69.12f, 560, WebInk), fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top - 15.84f, r.left + widest, r.bottom + 15.84f) }).semantics(mergeDescendants = true) { contentDescription = title }) {
+    Column(modifier.parityBox(exportRole, title, background = WebSurface, style = Triple(69.12f, 560, WebInk), fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top - 15.84f, r.left + widest, r.bottom + 15.84f) }).semantics(mergeDescendants = true) { contentDescription = title }) {
         lines.forEach { line ->
             Box(Modifier.height(62.208.dp)) {
                 Text(
@@ -7033,7 +7033,7 @@ private fun VideoDetailCopy(
                     fontSize = 21.sp,
                     fontWeight = FontWeight(570),
                     letterSpacing = (-0.739).sp,
-                    modifier = Modifier.padding(top = 17.dp + (if (LocalStageScale.current != 1f) 2.3.dp else 0.dp)),
+                    modifier = Modifier.padding(top = 17.dp + (if (LocalStageScale.current != 1f) 2.3.dp else 0.dp)).semantics { heading() },
                 )
             }
             androidx.compose.foundation.layout.FlowRow(
