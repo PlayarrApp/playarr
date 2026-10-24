@@ -129,3 +129,10 @@ Notifications (a live system notification per download) and the now-playing entr
 - The score per client: Dark % and Light % are the mean per-screen similarity over the screens captured in that theme;
   D-pad is checks passed of the suite's D-pad checks (playback is no longer scored: it moved to the performance suite); overall is the mean of the parts that have results
   (mobile has no D-pad). Coverage (captured screens out of 15 per theme) is shown beside, never mixed into a percentage.
+
+## iPhone and iPad: reproduce command
+
+Hosted only (no local Apple toolchain), static server, pinned clock `2026-10-07T12:00:00Z` (the workflow default):
+`gh workflow run parity-apple-ios.yml --ref main -f devices=iphone,ipad -f ref=<40-character app commit SHA>`, then
+download the `apple-wall-<device>-<run id>-dark|light` artifacts into `ios-phone/dev` and `ios-tablet/dev`
+(light screens in the `light/` subfolder) and write `build.json`. Touch devices: no D-pad checks.
