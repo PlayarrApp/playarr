@@ -12,7 +12,7 @@ dispatch() { # dispatch <gh -f args...>: print the new run id
   gh run list -R "$R" -w parity-harmony.yml -b "$BRANCH" -L 1 --json databaseId --jq '.[0].databaseId'
 }
 TV=$(dispatch -f device=tv -f parts=screens)
-PH=$(dispatch -f device=phone)
+PH=$(dispatch -f device=phone -f phone_core_only=true)
 for id in "$TV" "$PH"; do gh-watcher wait --repo "$R" --run "$id" --timeout 120m --json | grep -q '"state": "success"' || { echo "run $id failed" >&2; exit 1; }; done  # one waiter per run, no polling loops
 bash "$HERE/../../harmony-wall/pull-captures.sh" "$TV" tv "$ROOT/harmony"
 bash "$HERE/../../harmony-wall/pull-captures.sh" "$PH" phone "$ROOT/harmony-phone"
