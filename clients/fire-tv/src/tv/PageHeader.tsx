@@ -68,7 +68,7 @@ export interface PageHeaderProps {
 
 const HEADER_X = 226.6;
 /** Web: the title, 24 px, a 1 px divider, 24 px, the subtitle; the subtitle wraps under the title when it would run into the clock (475.75 minus the 24 px gap). */
-const HEADER_GAP = 24;
+const HEADER_GAP = 23.02;
 const HEADER_BESIDE_LIMIT = 451.75;
 
 export function PageHeader({title, detail, onBack, backLabel, backFocus, webBack}: PageHeaderProps): React.ReactElement {

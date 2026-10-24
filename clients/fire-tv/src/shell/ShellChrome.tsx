@@ -7,7 +7,7 @@ import {focusDefaultTarget, focusNode, getFocusedTag, TvFocusScope, useRemoteKey
 import {findNodeHandle, Pressable, StyleSheet, Text, View} from 'react-native';
 import type {WorkKind} from '@playarr-tv/api-client';
 import {reportFocus} from '../debug/parityControl';
-import {lf, lu, lx} from '../debug/layoutMarks';
+import {lf, lx} from '../debug/layoutMarks';
 import {ProfileAvatar} from '../components/ProfileAvatar';
 import {mix} from '../theme/color';
 import {textRun} from '../theme/fonts';
@@ -201,7 +201,6 @@ function Rail({
         return (
           <View
             key={group.id}
-            {...lu()}
             style={{
               position: 'absolute',
               left: sw(GROUP_X),
@@ -289,7 +288,6 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
   return (
     <>
       <View
-        {...lu()}
         style={{
           position: 'absolute',
           left: sw(GROUP_X),
