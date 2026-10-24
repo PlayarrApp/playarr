@@ -1,0 +1,1 @@
+- HarmonyOS TV: player chrome, settings rows, calendar controls and the clock follow the web layout refs; phone Detail hero and calendar week spacing too.

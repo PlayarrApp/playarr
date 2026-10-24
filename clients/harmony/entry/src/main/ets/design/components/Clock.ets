@@ -66,7 +66,6 @@ export struct Clock {
     }
     // Web centres the date on the time (measured: time 1 vp and date 4 vp lower than web with bottom alignment).
     .alignItems(VerticalAlign.Center)
-    .translate({ y: -tv(1) })
     .focusable(false)
   }
 }

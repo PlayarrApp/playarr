@@ -105,7 +105,7 @@ const AUDIO_CHOICES: Choice[] = AUDIO_LANGUAGES.map((language: AudioLanguage): C
 // Web `.settings-option`: 480x92 rows from (154, 162); number at +32/+24, title at +92, arrow at +432.
 const LIST_TOP: number = 162;
 const ROW_WIDTH: number = 470.4; // web row box 470.41
-const ROW_HEIGHT: number = 92;
+const ROW_HEIGHT: number = 91.89;
 const NUMBER_LEFT: number = 32;
 const NUMBER_TOP: number = 28.3;
 const NUMBER_SIZE: number = 9.92;
@@ -680,7 +680,7 @@ export struct SettingsScreen {
         backRole: 'button',
         touch: true,
         selectedId: '',
-        kicker: this.sectionOpen ? this.sectionTitle() : '',
+        kicker: this.sectionOpen || isTvMetrics() ? this.sectionTitle() : '',
         touchContent: (): void => {
           this.touchContentBody();
         },
