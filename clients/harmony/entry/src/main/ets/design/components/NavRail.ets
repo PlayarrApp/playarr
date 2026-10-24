@@ -82,6 +82,11 @@ import { clientVersion } from '../../core/AppConfig';
 export const PROFILE_NAV_ID: string = 'profile';
 // Web `.app-user-identity`: the tile group sits at y=954 with the version line under it.
 const PROFILE_GROUP_TOP: number = 952.42;
+const NAV_TILE_X: number = 7; // web: 6.75 in from the group edge
+const NAV_TILE_Y0: number = 7.72; // web: padding 6.72 plus the 1 px border
+const NAV_GROUP_WIDTH: number = 78; // web 77.5
+const NAV_X: number = 42; // web 42.23
+const NAV_TOPS: number[] = [119, 286, 600, 952]; // web group tops 119.11, 285.73, 599.55, 952.42
 const PROFILE_AVATAR_SIZE: number = 20;
 const VERSION_SIZE: number = 8.832;
 
@@ -249,22 +254,22 @@ export struct NavRail {
   }
 
   @Builder
-  private group(items: NavRailItem[]): void {
-    Column({ space: tv(TvGeometry.navGroupItemGap) }) {
+  private group(items: NavRailItem[], top: number): void {
+    // ArkUI snaps every box to whole pixels, so flowed groups drift 1 to 5 px from web's fractional positions: tiles are placed absolutely
+    // at web's rounded offsets inside a fixed-size group (the 1 px border is outside the content origin).
+    Stack({ alignContent: Alignment.TopStart }) {
       ForEach(
         items,
-        (item: NavRailItem) => {
+        (item: NavRailItem, index: number) => {
           NavTile({ item: item, selected: item.id === this.selectedId, onSelect: this.onSelect })
+            .position({ x: NAV_TILE_X - 1, y: Math.round(NAV_TILE_Y0 + index * (TvGeometry.navTileSize + TvGeometry.navGroupItemGap)) - 1 })
         },
         (item: NavRailItem): string => item.id
       )
     }
-    .padding({
-      left: tv(TvGeometry.navGroupPaddingH),
-      right: tv(TvGeometry.navGroupPaddingH),
-      top: tv(TvGeometry.navGroupPaddingV),
-      bottom: tv(TvGeometry.navGroupPaddingV),
-    })
+    .width(NAV_GROUP_WIDTH)
+    .height(this.boxHeight(items.length))
+    .position({ x: 0, y: top })
     .borderRadius(tv(TvGeometry.navGroupRadius))
     .clip(true)
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, TvGeometry.navGroupBackgroundOpacity))
@@ -280,29 +285,20 @@ export struct NavRail {
     })
   }
 
+  /** A group's box height as web lays it out, rounded to a whole pixel. */
+  private boxHeight(count: number): number {
+    return Math.round(this.groupHeight(count));
+  }
+
   /** Web's tile label: the first name. */
   private firstName(): string {
     const parts = this.profileName.trim().split(' ');
     return parts[0].length > 0 ? parts[0] : this.profileName;
   }
 
-  /** Gap that puts the profile group at its web position under the groups above it. */
-  private profileGroupMargin(): number {
-    let used = this.groupHeight(this.items.length);
-    let top = TvGeometry.navGroupTop;
-    if (this.primaryItems.length > 0) {
-      top = top - (this.groupHeight(this.primaryItems.length) + TvGeometry.navGroupGap);
-      used = used + this.groupHeight(this.primaryItems.length) + TvGeometry.navGroupGap;
-    }
-    if (this.secondaryItems.length > 0) {
-      used = used + this.groupHeight(this.secondaryItems.length) + TvGeometry.navGroupGap;
-    }
-    return Math.max(0, PROFILE_GROUP_TOP - top - used - TvGeometry.navGroupGap);
-  }
-
   @Builder
-  private profileGroup(): void {
-    Column({ space: tv(4) }) {
+  private profileGroup(top: number): void {
+    Stack({ alignContent: Alignment.TopStart }) {
       Column({ space: NAV_TILE_ICON_LABEL_GAP }) {
         ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
           .focusable(false)
@@ -322,49 +318,50 @@ export struct NavRail {
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
       .borderRadius(tv(TvGeometry.navTileRadius))
+      .position({ x: NAV_TILE_X - 1, y: Math.round(NAV_TILE_Y0) - 1 })
       .focusable(true)
       .onClick(() => {
         this.onSelect(PROFILE_NAV_ID);
       })
     }
-    .padding({
-      left: tv(TvGeometry.navGroupPaddingH),
-      right: tv(TvGeometry.navGroupPaddingH),
-      top: tv(TvGeometry.navGroupPaddingV),
-      bottom: tv(TvGeometry.navGroupPaddingV),
-    })
+    .width(NAV_GROUP_WIDTH)
+    .height(this.boxHeight(1))
+    .position({ x: 0, y: top })
     .borderRadius(tv(TvGeometry.navGroupRadius))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, TvGeometry.navGroupBackgroundOpacity))
     .border({
       width: tv(TvGeometry.navGroupBorderWidth),
       color: toResourceColorWithAlpha(activeColors().ink, TvGeometry.navGroupBorderOpacity),
     })
-    .margin({ top: tv(this.profileGroupMargin()) })
+  }
+
+  @Builder
+  private versionText(): void {
     Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
       .fontSize(tv(8))
+      .letterSpacing(1.36) // web's run is 30.73 wide
       .fontColor(toResourceColor(activeColors().ink))
-      .width(tv(TvGeometry.navTileSize + 2 * TvGeometry.navGroupPaddingH))
+      .width(NAV_GROUP_WIDTH)
+      .position({ x: 0, y: 1037 })
       .textAlign(TextAlign.Center)
   }
 
   build() {
-    Column({ space: tv(TvGeometry.navGroupGap) }) {
+    Stack({ alignContent: Alignment.TopStart }) {
       if (this.primaryItems.length > 0) {
-        this.group(this.primaryItems)
+        this.group(this.primaryItems, NAV_TOPS[0])
       }
-      this.group(this.items)
+      this.group(this.items, NAV_TOPS[1])
       if (this.secondaryItems.length > 0) {
-        this.group(this.secondaryItems)
+        this.group(this.secondaryItems, NAV_TOPS[2])
       }
       if (this.profileName.length > 0) {
-        this.profileGroup()
+        this.profileGroup(NAV_TOPS[3])
+        this.versionText()
       }
     }
-    .alignItems(HorizontalAlign.Start)
-    .position({
-      x: tv(TvGeometry.navStart),
-      y: tv(TvGeometry.navGroupTop - (this.primaryItems.length > 0 ?
-        this.groupHeight(this.primaryItems.length) + TvGeometry.navGroupGap : 0)),
-    })
+    .width(NAV_GROUP_WIDTH)
+    .height('100%')
+    .position({ x: tv(NAV_X), y: 0 })
   }
 }
