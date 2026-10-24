@@ -21,10 +21,9 @@ mkdir -p "$O"
 for t in $THEMES; do
   rm -f -- "$O/$t"/*.png
   "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
-  "$H/pmcap3.sh" "$O/$t" "theme:$t" </dev/null
   # One route per call, each retried: a display repaint glitch can outlast one stability window.
   for r in home movies series music calendar-month calendar-week calendar-agenda search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions; do
-    for try in 1 2 3; do WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "$r" </dev/null && break; [ "$try" = 3 ] && exit 1; done
+    for try in 1 2 3; do WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$r" </dev/null && break; [ "$try" = 3 ] && exit 1; done
   done
   # Player: its own start, paused at 2 s with the controls pinned, like the web ref. Colour bars trip the green guard.
   PLAYARR_KEEP_CONTROLS=1 PLAYARR_PARITY_PAUSE_MS=2000 "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
