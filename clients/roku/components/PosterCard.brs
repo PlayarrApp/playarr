@@ -19,8 +19,6 @@ sub init()
     m.title = m.top.findNode("title")
     m.overlayNumber = m.top.findNode("overlayNumber")
     m.captionPrefix = m.top.findNode("captionPrefix")
-    m.overlayNumber.font = PlayarrMakeFont(600, 21)
-    m.captionPrefix.font = PlayarrMakeFont(700, 10)
     m.kind = m.top.findNode("kind")
     m.titleFont0 = m.title.font
     m.kindFont0 = m.kind.font
@@ -113,8 +111,9 @@ sub onContentChanged()
     hasPrefix = content.captionPrefix <> invalid and content.captionPrefix <> ""
     m.captionPrefix.visible = hasPrefix
     if hasPrefix
+        m.captionPrefix.tracking = EpisodeCodeTracking(content.captionPrefix, -0.433)
         m.captionPrefix.text = content.captionPrefix
-        m.title.translation = [m.captionPrefix.boundingRect().width + 8, m.titleY]
+        m.title.translation = [m.captionPrefix.textWidth + 8.8, m.titleY]
     else
         m.title.translation = [m.cardTitleX, m.titleY]
     end if
@@ -224,12 +223,15 @@ sub onFocusChanged()
     m.focusShadow.opacity = shadowOpacity
     applyCaptionFocus()
     ' A focused card's caption is white (web .is-focused).
-    if shadowOpacity > 0.5 and not m.cardListMode and not m.top.findNode("circleMask").visible
+    chapterCard = m.captionPrefix.visible and Left(m.captionPrefix.text, 2) <> "S "
+    if (shadowOpacity > 0.5 or chapterCard) and not m.cardListMode and not m.top.findNode("circleMask").visible
         m.title.color = ThemeColor("cardFocusInk")
         m.kind.color = ThemeColor("cardFocusInk")
+        m.captionPrefix.color = ThemeColor("cardFocusInk")
     else
         m.title.color = ThemeColor("ink")
         m.kind.color = ThemeColor("inkMuted")
+        m.captionPrefix.color = ThemeColor("inkMuted")
     end if
     m.restShadow.opacity = 1 - shadowOpacity
     ' Web --card-glow: a brand ring and soft glow on the focused media card (not the round cast headshots).
@@ -410,8 +412,8 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.title.font = m.titleFont0
         m.kind.font = m.kindFont0
     end if
-    m.overlayNumber.translation = [artW - 70, artH - 39]
-    m.captionPrefix.translation = [0, artH + 12]
+    m.overlayNumber.translation = [artW - 70 - 0.6, artH - 36.6]
+    m.captionPrefix.translation = [0, artH + 14.5]
 end sub
 
 ' Web .tv-title-card-copy strong: one line, text-overflow ellipsis at the card's width.
@@ -446,6 +448,7 @@ sub onParityLayoutCard()
     if m.homeCardFocusStyle = true and m.top.focusPercent * m.top.activeRailFactor > 0.5 then m.parityDy = m.parityDy - 6.25
     ' A focus animation that has not run to its end leaves the fields part-way: report the settled state.
     m.parityGrid = content.parityGrid
+    m.parityOpen = content.parityOpen
     ParityCard(m.top)
     ctx = { measure: CreateObject("roSGNode", "Label"), count: 0 }
     ParityLayoutWalk(m.cardRoot, 1.0, ctx)

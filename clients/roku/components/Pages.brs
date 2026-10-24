@@ -380,15 +380,16 @@ end function
 ' tiny label. Used for every header action (Calendar link, Filters).
 ' Shared page header pieces (web PageHeader): the round Back button, the title spec and the right-hand action tile. Every page
 ' (Pages, Library, Detail, Search) draws these here and nowhere else; clients/roku/tests/test_page_anatomy.py enforces it.
-sub pgBackButton(parent as Object, x as Float, name = "Back to Home" as String, role = "link" as String)
+function pgBackButton(parent as Object, x as Float, name = "Back to Home" as String, role = "link" as String) as Object
     pgRound(parent, x, 56.3, 50, 50, 25, "surface", 179)
     pgRound(parent, x, 56.3, 50, 50, 25, "line", -1, true)
     pgIcon(parent, x + 16.4, 73, 17, "arrow-left.png", "inkSoft")
-    pgMark(parent, role, name, x, 56.2, 50, 50, 50, "c:1f1b1f:fefefd")
+    back = pgMark(parent, role, name, x, 56.2, 50, 50, 50, "c:1f1b1f:fefefd")
     ' The web draws the arrow as a text glyph: the same box, reported as the text it is.
     arrow = pgMark(parent, "text", "←", x + 16.4, 69.2, 17.3, 23, 0, "c:1f1b1f:fefefd")
     arrow.addFields({ parityText: "←", paritySize: 17.28, parityWeight: 720, parityColor: "inkSoft" })
-end sub
+    return back
+end function
 
 function PageTitleSpec(text as String) as Object
     return { text: text, size: 33.6, weight: 580, tracking: -1.523, role: "ink" }
@@ -2731,6 +2732,6 @@ sub layoutHeaderSub(titleW as Float, label as Object, divider as Object, rule as
         rule.width = titleW
         rule.height = 1
         rule.visible = true
-        label.translation = [226.6, 117]
+        label.translation = [226.6, 119.1]
     end if
 end sub

@@ -5205,6 +5205,8 @@ sub showDetail(detail as Object)
     ' the split is kicker=kind, meta=year+genres rather than one combined
     ' string.
     m.detailStage.stageTitle = work.title
+    m.detailActions.workTitle = work.title
+    m.global.parityWorkTitle = work.title
     ' Hero art: backdrop with the web stage treatment.
     setStageKeyArt(m.detailStage, heroArtworkUrl(work))
     overview = JsonString(work.overview)
@@ -6006,7 +6008,7 @@ sub updateSeriesEpisodeHeader()
     ep = epDetail.episode
     season = group.season
     work = m.selectedDetail.work
-    code = "S" + twoDigits(season.season_number) + " · E" + twoDigits(ep.episode_number)
+    code = "S " + twoDigits(season.season_number) + " · E " + twoDigits(ep.episode_number)
     m.detailStage.stageKicker = code
     m.detailStage.stageMeta = ""
     titleLines = m.detailStage.findNode("stageTitleLabel").lineCount
@@ -6015,11 +6017,11 @@ sub updateSeriesEpisodeHeader()
     epTitle = JsonString(ep.title)
     if epTitle = "" then epTitle = "Episode " + ep.episode_number.ToStr()
     m.detailEpisodeTitle.visible = true
-    m.detailEpisodeTitle.translation = [153.6, titleBottom + 19.5]
-    m.detailEpisodeTitle.spec = { text: epTitle, size: 21, weight: 600, tracking: -0.739, role: "inkSoft", width: 312, lineHeight: 24.3, maxLines: 1 }
-    metaY = titleBottom + 69.7
+    m.detailEpisodeTitle.translation = [153.6, titleBottom + 17.5]
+    m.detailEpisodeTitle.spec = { text: epTitle, size: 21.12, weight: 570, tracking: -0.743, role: "inkSoft", aria: "heading", width: 312, lineHeight: 24.3, maxLines: 1 }
+    metaY = titleBottom + 70.7
     parts = []
-    parts.Push({ text: "Season " + season.season_number.ToStr(), role: "inkSoft", weight: 700 })
+    parts.Push({ text: "Season " + season.season_number.ToStr(), role: "inkSoft", weight: 680 })
     parts.Push({ text: code, role: "inkMuted", weight: 400 })
     if ep.runtime_minutes <> invalid and ep.runtime_minutes > 0 then parts.Push({ text: ep.runtime_minutes.ToStr() + " min", role: "inkMuted", weight: 400 })
     if work.release_date <> invalid and work.release_date.Len() >= 4 then parts.Push({ text: WorkYearLabel(work), role: "inkMuted", weight: 400 })
@@ -6030,7 +6032,7 @@ sub updateSeriesEpisodeHeader()
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: -0.3, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: EpisodeCodeTracking(parts[i].text, -0.494), role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -6050,7 +6052,7 @@ sub updateSeriesEpisodeHeader()
     overview = JsonString(ep.overview)
     if overview = "" then overview = JsonString(work.overview)
     m.detailSynopsis.translation = [153.6, nextY]
-    m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 5 }
+    m.detailSynopsis.spec = { text: overview, size: 12.86, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 5 }
     m.detailActions.translation = [0, nextY + 20.33 * m.detailSynopsis.lineCount + 11 - 508.6]
     m.detailActions.layoutKind = "series"
     label = "Start"
@@ -6105,7 +6107,7 @@ sub buildEpisodeContent(groups as Object, kind as String)
                 item.AddField("overlayNumber", "string", false)
                 item.overlayNumber = twoDigits(ep.episode_number)
                 item.AddField("captionPrefix", "string", false)
-                item.captionPrefix = "S" + twoDigits(season.season_number) + " · E" + twoDigits(ep.episode_number)
+                item.captionPrefix = "S " + twoDigits(season.season_number) + " · E " + twoDigits(ep.episode_number)
                 item.AddField("showKind", "boolean", false)
                 item.showKind = false
                 item.AddField("watchState", "string", false)
@@ -7569,9 +7571,9 @@ end sub
 
 sub detailChromeInit()
     holder = m.top.findNode("detailGroup")
-    pgBackButton(holder, 153.6)
+    m.detailBackMark = pgBackButton(holder, 153.6, "Back to Movies", "button")
     m.detailHeaderTitle = CreateObject("roSGNode", "TrackedText")
-    m.detailHeaderTitle.translation = [226.6, 56.2]
+    m.detailHeaderTitle.translation = [226.6, 58.2]
     holder.AppendChild(m.detailHeaderTitle)
     m.detailHeaderDivider = pgRect(holder, 348, 73, 1, 16, "line")
     m.detailHeaderRule = pgRect(holder, 226.6, 112, 1, 1, "line")
@@ -7599,6 +7601,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if work.kind = "site" then heading = "Sites"
     if work.kind = "artist" then heading = "Music"
     m.detailHeaderTitle.spec = PageTitleSpec(heading)
+    if m.detailBackMark <> invalid then m.detailBackMark.parityName = "Back to " + heading
         layoutHeaderSub(m.detailHeaderTitle.textWidth, m.detailHeaderChip, m.detailHeaderDivider, m.detailHeaderRule, work.title)
     ' Kicker: the first genre, like the library preview.
     kicker = UCase(work.kind)
@@ -7614,7 +7617,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if titleLines < 1 then titleLines = 1
     metaY = 303.5 + 62.208 * titleLines + 27
     parts = []
-    parts.Push({ text: CapitalizeFirst(work.kind), role: "inkSoft", weight: 700 })
+    parts.Push({ text: CapitalizeFirst(work.kind), role: "inkSoft", weight: 680 })
     if detail.runtime_ms <> invalid and detail.runtime_ms > 0 then parts.Push({ text: formatRuntime(detail.runtime_ms), role: "inkMuted", weight: 400 })
     if work.release_date <> invalid and work.release_date.Len() >= 4
         parts.Push({ text: WorkYearLabel(work), role: "inkMuted", weight: 400 })
@@ -7631,7 +7634,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: -0.3, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: EpisodeCodeTracking(parts[i].text, -0.494), role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7641,7 +7644,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     overview = JsonString(work.overview)
     if overview = "" then overview = "No description is available."
     m.detailSynopsis.translation = [153.6, metaY + 37.5]
-    m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
+    m.detailSynopsis.spec = { text: overview, size: 12.86, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
     m.detailActionsTop = metaY + 37.5 + 20.33 * m.detailSynopsis.lineCount + 38
 end sub
 
@@ -7658,9 +7661,9 @@ end function
 sub setDetailRailHead(slot as Integer, y as Float, title as String, caption as String)
     head = m.detailHeads[slot]
     head.title.translation = [0, y]
-    head.title.spec = { text: title, size: 18, weight: 600, tracking: -0.53, role: "ink" }
-    head.sub.translation = [0, y + 30.5]
-    head.sub.spec = { text: caption, size: 10, weight: 400, tracking: 0, role: "inkMuted" }
+    head.title.spec = { text: title, size: 17.66, weight: 610, tracking: -0.534, role: "ink", aria: "heading" }
+    head.sub.translation = [0, y + 29.5]
+    head.sub.spec = { text: caption, size: 9.98, weight: 400, tracking: 0, role: "inkMuted" }
     head.title.visible = true
     head.sub.visible = true
 end sub

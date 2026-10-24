@@ -152,6 +152,7 @@ end function
 ' The colour the web reports as "behind" an element: a theme token (dock and header: bg, page content: surface, art: surfaceSoft).
 function ParityToken(token as String) as String
     if token = "sample" or token = "" or token = "inherit" then return ""
+    if token = "brandStrong" then return "#a52745"
     if Left(token, 1) = "#" then return token
     ' "c:<dark>:<light>": the web's composited background of a translucent fill, per theme (read from the web layout document).
     if Left(token, 2) = "c:"
@@ -322,7 +323,7 @@ sub ParityCard(card as Object)
     kind = card.findNode("kind")
     inGrid = bgNode.width > 300 and card.findNode("progressTrack") <> invalid and not card.findNode("progressTrack").visible
     inGrid = false
-    if m.parityGrid = true then inGrid = true
+    if m.parityGrid = true or m.parityOpen = true then inGrid = true
     name = title.text
     if inGrid
         name = "Open " + title.text
@@ -332,14 +333,28 @@ sub ParityCard(card as Object)
     ' The web scales the whole card by 1.015 on focus and its art a further 1.025: the art's scale is the device's own focus state.
     ls = 1.0
     if bgNode.width > 300 and m.parityGrid = true and s > 1.001 then ls = s / (1 + (s - 1) * 0.6219)
+    num = card.findNode("overlayNumber")
+    isEpisode = num <> invalid and num.visible
+    capH = 29.38
+    cr = 12.48
+    if isEpisode
+        capH = 28.7
+        cr = 13.44
+        pre = card.findNode("captionPrefix")
+        if Left(pre.text, 2) = "S "
+            name = num.text + " " + pre.text.Replace("S 0", "S0").Replace("E 0", "E0") + " " + title.text
+        else
+            name = "Play " + m.global.parityWorkTitle + " from " + title.text
+        end if
+    end if
     lw = bgNode.width * ls
-    lh = (bgNode.height + 29.38) * ls
+    lh = (bgNode.height + capH) * ls
     lx = r.x + r.width / 2 - lw / 2
-    ly = r.y + r.height / 2 + 14.69 * ls - lh / 2 + (s - 1) * 0
+    ly = r.y + r.height / 2 + capH / 2 * ls - lh / 2 + (s - 1) * 0
     lr = 0
     if m.parityGrid = true then lr = 12
     ParityBox("link", name, lx, ly, lw, lh, lr, "surface")
-    ParityBox("container", "", r.x, r.y, r.width, r.height, 12.48, "surfaceSoft")
+    ParityBox("container", "", r.x, r.y, r.width, r.height, cr, "surfaceSoft")
     ParityBox("image", "", r.x, r.y, r.width, r.height, 0, "surfaceSoft")
     badge = card.findNode("unwatchedBadge")
     if badge <> invalid and badge.visible
@@ -388,6 +403,7 @@ sub ParityPageShell()
         panel = true
     else if state = "detail"
         art = true
+        panel = true
     else if state = "search"
         panel = true
     else if state = "page" and m.pageKind = "calendar"
@@ -420,6 +436,9 @@ sub ParityPrepareCards()
         end for
     end if
     lists.Push(m.browseGrid)
+    if m.detailSimilar <> invalid then lists.Push(m.detailSimilar)
+    if m.detailEpisodes <> invalid then lists.Push(m.detailEpisodes)
+    if m.detailChapters <> invalid then lists.Push(m.detailChapters)
     if m.profilesRow <> invalid then lists.Push(m.profilesRow)
     if m.searchGrid <> invalid then lists.Push(m.searchGrid)
     for each list in lists
@@ -428,12 +447,17 @@ sub ParityPrepareCards()
             ' A rail item reports its box relative to the rail: add the rail's scene origin (measured: the list sits 8 px right and
             ' 14.6 px below the sum of its ancestors' translations, the room reserved for the focus ring).
             o = ParityOrigin(list)
-            row = list.content.getChild(0)
-            if row = invalid then continue for
             lead = 96
-            if list.id = "profilesRow" then lead = 0
-            for j = 0 to row.getChildCount() - 1
-                ParityPlace(row.getChild(j), o[0] + lead + j * (list.rowItemSize[0][0] + list.rowItemSpacing[0][0]), o[1])
+            if list.id = "profilesRow" or list.id = "detailSimilar" or list.id = "detailEpisodes" or list.id = "detailChapters" then lead = 0
+            for r = 0 to list.content.getChildCount() - 1
+                row = list.content.getChild(r)
+                ry = o[1]
+                for k = 0 to r - 1
+                    ry = ry + ParityAt(list.rowHeights, k, 0)
+                end for
+                for j = 0 to row.getChildCount() - 1
+                    ParityPlace(row.getChild(j), o[0] + lead + j * (ParityAt(list.rowItemSize, r, 0) + ParityAt(list.rowItemSpacing, r, 0)), ry, false, list.id = "detailSimilar")
+                end for
             end for
         else
             ' A grid item reports its box in the scene already; the cell offset is what it lacks.
@@ -447,9 +471,10 @@ sub ParityPrepareCards()
     end for
 end sub
 
-sub ParityPlace(item as Object, x as Float, y as Float, grid = false as Boolean)
-    if not item.hasField("parityDx") then item.addFields({ parityDx: 0.0, parityDy: 0.0, parityGrid: false })
+sub ParityPlace(item as Object, x as Float, y as Float, grid = false as Boolean, openName = false as Boolean)
+    if not item.hasField("parityDx") then item.addFields({ parityDx: 0.0, parityDy: 0.0, parityGrid: false, parityOpen: false })
     item.parityGrid = grid
+    item.parityOpen = openName
     item.parityDx = x
     item.parityDy = y
 end sub
@@ -581,3 +606,53 @@ sub ParitySearch()
         ParityBox("image", "", 1163.6, 359.8, 54, 36, 0, etok)
     end if
 end sub
+
+' The detail page action tiles. specs hold the tile boxes and the glyph and label metrics buildTiles laid out.
+sub ParityTiles(specs as Object, title as String)
+    for each t in specs
+        if t.gw = invalid then continue for
+        outline = "c:1f1c1f:fefefd"
+        tok = outline
+        name = "+ " + t.text
+        role = "button"
+        if t.icon = "nav-playlists.png" then name = "Playback settings for " + title
+        inkOn = t.ink = true and t.hot <> true
+        if t.primary or t.ink = true
+            role = "link"
+            name = "Play " + title
+            if m.top.layoutKind = "series" then name = t.text + " " + title
+            tok = "brandStrong"
+            if inkOn then tok = "ink"
+        end if
+        if t.ink = true and m.top.layoutKind = "series" then role = "button"
+        radius = 999
+        ParityBox(role, name, t.x, t.y, t.w, t.h, radius, tok)
+        cy = t.y + t.h / 2
+        glyph = "+"
+        if t.icon = "nav-playlists.png" then glyph = "☷"
+        if t.icon = "player-play.png" then glyph = "▶"
+        grole = "brandInk"
+        if t.primary then grole = "playerInk"
+        if inkOn then grole = "bg"
+        if t.ink = true and not inkOn then grole = "playerInk"
+        gh = Int(t.glyphSize * 1.011 + 0.5) + Int(t.glyphSize * 0.353 + 0.5)
+        if glyph = "▶" then gh = t.glyphSize * 1.46
+        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(tok), id: "tile", text: glyph, x: t.startX, y: cy - 0.65 - gh / 2, w: t.gw, h: gh, op: 1, role: "", color: ParityHex(ThemeColor(grole)), lines: 1, tracking: 0, size: t.glyphSize, font: PlayarrFontPath(400) })
+        lrole = "ink"
+        if t.primary then lrole = "playerInk"
+        if inkOn then lrole = "bg"
+        if t.ink = true and not inkOn then lrole = "playerInk"
+        lh = Int(t.labelSize * 1.011 + 0.5) + Int(t.labelSize * 0.353 + 0.5)
+        if t.labelSize > 11.5 then lh = 17
+        ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(tok), id: "tile", text: t.text, x: t.startX + t.gw + t.gap, y: cy - 0.95 - lh / 2, w: t.lw, h: lh, op: 1, role: "", color: ParityHex(ThemeColor(lrole)), lines: 1, tracking: 0, size: t.labelSize, font: PlayarrFontPath(700) })
+    end for
+end sub
+
+' Entry i of a per-row array (the last entry holds for later rows); rowItemSize entries are [w, h] pairs, the others numbers.
+function ParityAt(arr as Object, i as Integer, which as Integer) as Float
+    if arr = invalid or arr.Count() = 0 then return 0
+    if i >= arr.Count() then i = arr.Count() - 1
+    v = arr[i]
+    if type(v) = "roArray" then return v[which]
+    return v
+end function

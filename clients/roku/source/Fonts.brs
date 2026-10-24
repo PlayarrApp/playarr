@@ -200,3 +200,9 @@ function PlayarrFontMetaOf(font as Object) as Dynamic
     if font = invalid or g.fontMeta = invalid then return invalid
     return g.fontMeta[font.uri + "|" + Str(font.size)]
 end function
+
+' The web sets an episode code ("S 01 · E 01") tighter than the plain advances: tracking in px for text that starts like one.
+function EpisodeCodeTracking(text as String, tracking as Float) as Float
+    if Left(text, 2) = "S " and Instr(1, text, "·") > 0 then return tracking
+    return 0
+end function

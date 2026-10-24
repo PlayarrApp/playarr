@@ -113,7 +113,7 @@ end sub
 
 sub onStageKickerChange()
     ' Web .tv-provider: 12.3 px, weight 820, 0.08em tracking, upper case, brand colour.
-    m.stageKickerLabel.spec = { text: m.top.stageKicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
+    m.stageKickerLabel.spec = { text: m.top.stageKicker, size: 12.29, weight: 840, tracking: EpisodeCodeTracking(m.top.stageKicker, 0.173 - 0.97) + 0.97, role: "brandInk", upper: true }
 end sub
 
 sub onStageTitleChange()
