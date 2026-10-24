@@ -18,12 +18,12 @@
     <Grid x:Name="Root">
         <!-- Web TV profile picker: logo top left, "PROFILES" eyebrow, large title, 270 px avatar circles. -->
         <Image
-            Source="ms-appx:///Assets/Square44x44Logo.png"
-            Width="40"
-            Height="40"
+            Source="ms-appx:///Assets/PlayarrIcon.png"
+            Width="42"
+            Height="42"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
-            Margin="63,60,0,0" />
+            Margin="60.6,60.2,0,0" />
 
         <StackPanel
             x:Name="ContentPanel"

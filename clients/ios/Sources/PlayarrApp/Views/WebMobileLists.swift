@@ -65,7 +65,7 @@ private struct WMListMeta: View {
 
     var body: some View {
         Text(parts.joined(separator: "   "))
-            .font(WM.font(12.3, 400))
+            .wm(12.3, 400)
             .foregroundStyle(WM.muted)
             .lineLimit(1)
     }
@@ -77,7 +77,7 @@ private struct WMListNote: View {
 
     var body: some View {
         Text(text)
-            .font(WM.font(8.8, 400))
+            .wm(8.8, 400)
             .foregroundStyle(tone)
     }
 }
@@ -99,10 +99,10 @@ private struct WMListEmpty: View {
     private var errorBody: some View {
         VStack(spacing: 8) {
             Text(title)
-                .font(WM.font(17.6, 650))
+                .wm(17.6, 650)
                 .foregroundStyle(isError ? WM.pink : WM.ink)
             Text(description)
-                .font(WM.font(12.3, 400))
+                .wm(12.3, 400)
                 .foregroundStyle(WM.muted)
         }
         .multilineTextAlignment(.center)
@@ -123,7 +123,7 @@ private struct WMPrimaryPill: View {
 
     var body: some View {
         Text(label)
-            .font(WM.font(15, 400))
+            .wm(15, 400)
             .foregroundStyle(WM.ink)
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
@@ -138,7 +138,7 @@ private struct WMSmallPill: View {
 
     var body: some View {
         Text(label)
-            .font(WM.font(7.68, 400))
+            .wm(7.68, 400)
             .foregroundStyle(WM.ink)
             .padding(.horizontal, 14.4)
             .frame(height: 34)

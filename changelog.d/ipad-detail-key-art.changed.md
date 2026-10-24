@@ -1,0 +1,1 @@
+- Draw the iPad film and series detail key art like the web (grey, faded, nav-clearance offset).

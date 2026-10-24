@@ -43,6 +43,7 @@ internal static class Pages
         var view = route.Contains("view=month") ? Playarr.Core.Models.CalendarView.Month : route.Contains("view=week") ? Playarr.Core.Models.CalendarView.Week : Playarr.Core.Models.CalendarView.Agenda;
         var screen = new CalendarScreen(env, view);
         if (route.Contains("panel=filters")) screen.OpenFiltersFromRoute();
+        else if (route.Contains("panel=link")) screen.OpenLinkFromRoute();
         return screen;
     }
 

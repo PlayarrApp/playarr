@@ -122,7 +122,7 @@ internal sealed class DetailScreen : IPage
         var tsize = primary ? 11.904f : 11.136f;
         var textW = Ui.TextWidth(text, tsize, 700, 0);
         var startX = (w - (gw + 8.8f + textW)) / 2;
-        var glyphLabel = Ui.Text(glyph, startX, 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, gw + 4, 19.2f);
+        var glyphLabel = Ui.Text(glyph, startX, 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.Bg : _t.BrandInk, gw + 4, 19.2f);
         var textLabel = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, fg, textW + 20, 16.7f);
         box.Add(glyphLabel); box.Add(textLabel);
         if (name is not null) Sem.Tag(box, role, name, radius: 999);
@@ -178,7 +178,7 @@ internal sealed class DetailScreen : IPage
         clip.Add(stack);
         _content.Add(clip);
         stack.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", d.Work.Title + " chapters and people"));
-        stack.Add(Ui.Text("Chapters", RailX, ChaptersHeadingY, 17.664f, 700, _t.Ink, 400, 26.496f, spacing: -0.53f));
+        stack.Add(Ui.Text("Chapters", RailX, ChaptersHeadingY, 17.664f, 610, _t.Ink, 400, 26.496f, spacing: -0.53f));
         stack.Add(Ui.Text($"{chapters.Count} {(generated ? "scene markers" : "chapters")}", RailX, ChaptersHeadingY + 30.5f, 9.984f, 400, _t.InkMuted, 400, 14.976f));
         _chapterRow.PositionY = 620.7f; _chapterRow.Size = new Size(6000, 230);
         stack.Add(_chapterRow);

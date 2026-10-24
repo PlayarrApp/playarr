@@ -10,7 +10,7 @@ GSK=cairo "$H/pmrun.sh" >/dev/null 2>&1; sleep 30
 "$H/pmtap.sh" 600 1325 40; S series
 "$H/pmtap.sh" 240 1325 25; "$H/pmtap.sh" 360 190 10; "$H/pmtype.py" "bro" noenter; sleep 45; S search
 "$H/pmtap.sh" 360 1325 30; "$H/pmtap.sh" 300 350 45; S film-detail
-"$H/pmtap.sh" 165 888 50; "$H/vnc.sh" postmarketos move 360 800 click 1 pause 2 capture "$O/player-controls.png" >/dev/null 2>&1
+"$H/pmtap.sh" 165 888 50; "$H/display.sh" postmarketos move 360 800 click 1 pause 2 capture "$O/player-controls.png" >/dev/null 2>&1
 "$H/pmtap.sh" 96 153 25; "$H/pmtap.sh" 45 108 25
 "$H/pmtap.sh" 600 1325 40; "$H/pmtap.sh" 110 330 45; S series-detail
 "$H/pmtap.sh" 45 108 25

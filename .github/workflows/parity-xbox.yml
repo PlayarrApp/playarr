@@ -24,7 +24,7 @@ on:
       screens:
         description: Comma-separated Xbox screens; player-controls is opt-in and requires the configured direct-play fixture secret
         type: string
-        default: home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters
+        default: home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters,profiles,actions,player-controls
 
 concurrency:
   group: xbox-wall-device-test-account
@@ -143,7 +143,7 @@ jobs:
           PLAYARR_DEVICE_TEST_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
           PLAYARR_DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
           PART: ${{ matrix.part }}
-          SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters' }}
+          SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters,profiles,actions,player-controls' }}
           PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID: ${{ secrets.PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID }}
           XBOX_DEBUG_DIR: ${{ github.workspace }}/out/debug
         working-directory: scripts/parity
@@ -153,11 +153,12 @@ jobs:
           case "$PART" in
             screens-*)
               T=${PART#screens-}
-              SCREENS=$(node -e 'const requested = process.env.SCREENS_INPUT.split(","); const allowed = new Set(["home", "movies", "series", "music", "search", "settings", "calendar-agenda", "calendar-week", "calendar-month", "film-detail", "series-detail", "filters", "player-controls"]); if (!requested.length || requested.some((id) => !allowed.has(id)) || new Set(requested).size !== requested.length) { console.error("screens must be a unique comma-separated subset of home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters,player-controls"); process.exit(1); } process.stdout.write(requested.join(","));')
+              SCREENS=$(node -e 'const requested = process.env.SCREENS_INPUT.split(","); const allowed = new Set(["home", "movies", "series", "music", "search", "settings", "calendar-agenda", "calendar-week", "calendar-month", "film-detail", "series-detail", "filters", "profiles", "actions", "player-controls"]); if (!requested.length || requested.some((id) => !allowed.has(id)) || new Set(requested).size !== requested.length) { console.error("screens must be a unique comma-separated subset of home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters,profiles,actions,player-controls"); process.exit(1); } process.stdout.write(requested.join(","));')
               if [[ ",$SCREENS," == *",home,"* ]]; then
                 node suite-run.mjs --driver ./drivers/web.mjs --reference --only screens --screens home --themes "$T" --via route --out "$OUT/web-home" --expected "$OUT/web-home/expected.json"
               fi
               node suite-run.mjs --driver ./xbox/driver.mjs --only screens --screens "$SCREENS" --themes "$T" --via route --out "$OUT/run" --expected "$OUT/none.json"
+              node xbox/extra-captures.mjs --theme "$T" --out "$OUT/run" || echo "calendar-link capture failed"
               mkdir -p "$OUT/dev/light"
               if [ "$T" = light ]; then cp "$OUT"/run/light/*.png "$OUT/dev/light/"; else cp "$OUT"/run/dark/*.png "$OUT/dev/"; fi
               # Layout-score exports (docs/parity/LAYOUT.md) go to dev/layout/<theme>/<screen>.json.

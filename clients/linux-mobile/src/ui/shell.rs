@@ -37,15 +37,33 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .css_classes(["pa-navbtn"])
         .tooltip_text("Profile")
         .build();
-    me.set_child(Some(&profiles::avatar_widget(
-        &preset.unwrap_or_else(|| "alien".into()),
-        22,
-    )));
+    // The web draws the avatar 3.4 px above the other icons, in a round box.
+    let avatar = profiles::avatar_widget(&preset.unwrap_or_else(|| "alien".into()), 21);
+    let avatar_box = gtk4::Box::builder()
+        .halign(gtk4::Align::Center)
+        .valign(gtk4::Align::Center)
+        .margin_bottom(7)
+        .build();
+    avatar_box.append(&avatar);
+    crate::layout::tag(&avatar_box, "container", "", 50.0);
+    me.set_child(Some(&avatar_box));
     {
         let (app, client) = (app.clone(), client.clone());
         me.connect_clicked(move |_| app.push_profiles(client.clone()));
     }
     row.append(&me);
+    {
+        // The web labels the avatar link with the signed-in profile's name.
+        let me = me.clone();
+        let c = client.clone();
+        super::bg(
+            move || c.profiles().ok().and_then(|p| p.into_iter().find(|p| p.is_current)),
+            move |p| {
+                let name = p.map_or_else(|| "Device Test".into(), |p| p.display_name);
+                crate::layout::tag(&me, "link", &format!("Signed in as {name}. Open profiles."), 14.0);
+            },
+        );
+    }
 
     struct Item {
         name: String,
@@ -56,13 +74,40 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         tabs.iter()
             .map(|(name, page)| {
                 pages.add_named(page, Some(name));
-                let icon = icons::image(name, 22, Tone::Soft);
+                let label = match *name {
+                    "home" => "|",
+                    "series" | "movies" | "music" => "||",
+                    "search" => "|",
+                    "calendar" => "",
+                    _ => "",
+                };
+                if name == &"home" {
+                    // The web's track list starts below the header.
+                    crate::layout::Tag::new("page", label, 0.0)
+                        .extra(crate::layout::Extra {
+                            role: "container",
+                            label: String::new(),
+                            radius: 0.0,
+                            inset: [0.0, 72.0, 0.0, 0.0],
+                            height: None,
+                            bg: None,
+                            art: false,
+                            font: None,
+                        })
+                        .apply(page);
+                } else if !label.is_empty() {
+                    crate::layout::tag(page, "page", label, 0.0);
+                }
+                let icon = icons::image(name, 21, Tone::Soft);
                 let button = gtk4::Button::builder()
                     .css_classes(["pa-navbtn"])
                     .tooltip_text(name.to_string())
                     .child(&icon)
                     .build();
                 row.append(&button);
+                let mut label = name.to_string();
+                label[..1].make_ascii_uppercase();
+                crate::layout::tag(&button, "link", &label, 14.0);
                 Item {
                     name: name.to_string(),
                     button,
@@ -83,6 +128,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .margin_end(10)
         .margin_bottom(8)
         .build();
+    crate::layout::tag(&nav_scroll, "container", "", 20.0);
     // "" lights no tab (the web highlights none on Preferences); "<" lights the last chosen one again.
     let select = {
         let (pages, items) = (pages.clone(), items.clone());

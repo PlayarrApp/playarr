@@ -154,7 +154,11 @@ namespace Playarr.Xbox.Views
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, drawer ? 30 : 24) };
             var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, drawer ? 14 : 10));
             caption.CharacterSpacing = 120;
-            group.Children.Add(caption);
+            if (drawer)
+            {
+                group.Children.Add(caption);
+            }
+
             // More than four options wrap onto a second row so every label keeps room (5 options: 3 + 2).
             var perRow = options.Length > 4 ? (options.Length + 1) / 2 : options.Length;
             var row = new Grid { ColumnSpacing = drawer ? 8 : 6, RowSpacing = drawer ? 8 : 6 };
@@ -201,6 +205,13 @@ namespace Playarr.Xbox.Views
                     // The web scales the active choice by 1.025.
                     button.RenderTransform = new ScaleTransform { ScaleX = 1.025, ScaleY = 1.025 };
                     button.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+                }
+
+                if (!drawer || icons != null)
+                {
+                    // Web: the button holds a separate lower-case text run that CSS capitalises.
+                    LayoutExport.Tag(button, "button", options[i]);
+                    LayoutExport.SetText(labelText, options[i].ToLowerInvariant());
                 }
 
                 if (!string.IsNullOrWhiteSpace(automationIdPrefix))
