@@ -11,4 +11,8 @@ for old, new in (("positionMs: this.positionMs,\n            durationMs: this.du
                  ("isPlaying: this.isPlaying,\n            keepAliveSignal", "isPlaying: false,\n            keepAliveSignal")):
     assert old in s, p + ": chrome binding not found: " + old
     s = s.replace(old, new, 1)
+# The Previewer's mocked player never reports a negotiated quality; web's ref shows the static clip's "Original · 0.3 Mbps".
+old = "@State private qualityLabel: string = '';"
+assert old in s, p + ": qualityLabel state not found"
+s = s.replace(old, "@State private qualityLabel: string = 'Original \\u00b7 0.3 Mbps';", 1)
 open(p, "w").write(s)
