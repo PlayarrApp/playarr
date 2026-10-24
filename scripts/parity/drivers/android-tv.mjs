@@ -254,7 +254,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       const displaySize = requestedSurface ? await shell("wm", "size") : "";
       const displayWidth = requestedSurface ? Number(/Override size:\s*(\d+)x/.exec(displaySize)?.[1] ?? /Physical size:\s*(\d+)x/.exec(displaySize)?.[1]) : 0;
       const deadline = now() + readinessTimeoutMs;
-      let previous = "", previousMarker = "", stable = 0;
+      let previous = "", previousMarker = "", stable = 0, lastReason = "";
       while (now() < deadline) {
         const lines = await parityLines();
         if (phase === "capture") {
@@ -267,6 +267,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
           }) ?? "";
           const lastRouteLine = lines.findLast((line) => line.startsWith("route=")) ?? "";
           const currentRoute = /^route=(\S+)/.exec(lastRouteLine)?.[1]?.split("/")[0];
+          lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : focus !== previous ? "focus still changing" : "marker still changing";
           if (stableCaptureObservation(
             { marker: previousMarker, focus: previous },
             { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus },
@@ -300,7 +301,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         previous = focus ?? "";
         await sleep(Math.min(readinessPollMs, Math.max(0, deadline - now())));
       }
-      throw new Error(`Android ${phase} readiness timed out without stable focused content`);
+      throw new Error(`Android ${phase} readiness timed out without stable focused content${lastReason ? ` (${lastReason})` : ""}`);
     },
     async setCaptureTarget(screen) {
       captureTarget = screen in EXPECTED_ROUTE ? screen : null;
