@@ -399,7 +399,7 @@ struct WMDetailPage: View {
             }
             if let synopsis, !synopsis.isEmpty {
                 Text(synopsis)
-                    .font(WM.font(11.52))
+                    .wm(11.52)
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
                     // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
@@ -463,7 +463,7 @@ struct WMDetailPage: View {
         label: String, labelSize: CGFloat, labelColor: Color, gap: CGFloat
     ) -> some View {
         HStack(spacing: gap) {
-            Text(glyph).font(WM.font(glyphSize)).foregroundStyle(glyphColor)
+            Text(glyph).wm(glyphSize).foregroundStyle(glyphColor)
             WMText(label, labelSize, 700, color: labelColor, lh: labelSize * 1.5).fixedSize()
         }
         .frame(width: width, height: height)

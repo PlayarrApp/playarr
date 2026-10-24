@@ -310,7 +310,7 @@ struct HomeView: View {
 
                 if let overview = work.overview {
                     Text(overview)
-                        .font(WM.font(11.5, 500))
+                        .wm(11.5, 500)
                         .foregroundStyle(PlayarrStyle.inkSoft)
                         .lineSpacing(2.5)
                         .lineLimit(4)
