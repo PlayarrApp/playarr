@@ -253,7 +253,7 @@ def player_held_at_2s(folder):
     if not os.path.exists(raw):
         raise SystemExit("player did not report its state: no layout tree")
     tree = open(raw, encoding="utf-8").read()
-    if "0:02 / 1:00" not in tree or "px:button:Play" not in tree:
+    if not re.search(r"0:02\s+/\s+1:00", tree) or "px:button:Play" not in tree:
         raise SystemExit("player is not held paused at 2.000 s")
 
 
@@ -281,8 +281,9 @@ def export_layout(name, image=None):
         count = layout_export.write(raw, name, "light" if THEME == "light" else "dark", viewport, os.path.join(out, "layout"),
                                     clock_pinned=True, image=image)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)
+        MISSING.append("layout:" + name)
 
 
 def debug(name, image=None):
@@ -877,7 +878,7 @@ else:
         captured = [name for name in requested if os.path.isfile(os.path.join(folder, name + ".png"))]
         selection, absent = phone_core_manifest_selection(requested, captured, SKIP_PLAYER)
         missing = list(dict.fromkeys(MISSING + absent))
-        manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
+        manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": (int(os.environ["PARITY_PR"]) if os.environ.get("PARITY_PR", "").isdigit() else None), "server": "static server",
                     "theme": THEME, "missing": missing, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     "screen_selection": {**selection, "captured": {THEME: selection["captured"]}}}
         if PLAYER_FIXTURE_SOURCE is not None:
@@ -972,7 +973,7 @@ else:
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
     guarded("player-controls", lambda: (route(configured_player_route(), 20), snap("player-controls", folder, 30000), player_held_at_2s(folder)))
 import datetime
-manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
+manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": (int(os.environ["PARITY_PR"]) if os.environ.get("PARITY_PR", "").isdigit() else None), "server": "static server",
             "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
 if PLAYER_FIXTURE_SOURCE is not None:
     manifest["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
