@@ -23,6 +23,8 @@ internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, f
     public float? ExportOpacity { get; init; }
     /// <summary>Radius web reports for image children of this view (a poster with rounded corners draws its img with the same radius).</summary>
     public float? ChildImageRadius { get; init; }
+    /// <summary>Rect (relative to this view) web reports for its image children: the CSS box before whole-pixel snapping.</summary>
+    public (float DX, float DY, float W, float H)? ChildImageBox { get; init; }
     /// <summary>The element's own fill is a color-mix on web, which the web refs carry no background for.</summary>
     public bool IgnoreOwnBg { get; init; }
     /// <summary>A text element with no drawn label (web exports visually hidden text such as the calendar period status).</summary>
@@ -33,9 +35,9 @@ internal static class Sem
 {
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, SemInfo> Table = new();
 
-    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false, (float Size, int Weight, Rgba Color)? style = null, Func<Rgba>? backdropNow = null, float? exportOpacity = null, float? childImageRadius = null) where T : View
+    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false, (float Size, int Weight, Rgba Color)? style = null, Func<Rgba>? backdropNow = null, float? exportOpacity = null, float? childImageRadius = null, (float DX, float DY, float W, float H)? childImageBox = null) where T : View
     {
-        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { ChildImageRadius = childImageRadius, ExportOpacity = exportOpacity, BoxNow = boxNow, Backdrop = backdrop, BackdropNow = backdropNow, IgnoreOwnBg = ignoreOwnBg, Style = style }); return v;
+        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { ChildImageBox = childImageBox, ChildImageRadius = childImageRadius, ExportOpacity = exportOpacity, BoxNow = boxNow, Backdrop = backdrop, BackdropNow = backdropNow, IgnoreOwnBg = ignoreOwnBg, Style = style }); return v;
     }
 }
 
@@ -94,7 +96,7 @@ internal static class LayoutExport
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
 
     // (vx, vy): visual top-left of the parent; s: accumulated scale; bg: composited background so far (over white); op: accumulated opacity
-    private static void Walk(Container parent, float vx, float vy, float sx, float sy, (float R, float G, float B) bg, float op, List<Node> outList, float parentRadius = 0)
+    private static void Walk(Container parent, float vx, float vy, float sx, float sy, (float R, float G, float B) bg, float op, List<Node> outList, float parentRadius = 0, (float DX, float DY, float W, float H)? imageBox = null, float px = 0, float py = 0, float psx = 1, float psy = 1)
     {
         var parentClips = parent is View pv && pv.ClippingMode == ClippingModeType.ClipChildren;
         foreach (var child in parent.Children.OfType<View>().ToArray())
@@ -140,13 +142,16 @@ internal static class LayoutExport
             else if (sem is not null && sem.Role != "none")
             {
                 var (bx, by, bw, bh) = (sem.BoxNow?.Invoke() ?? sem.Box) is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
-                outList.Add(new Node(sem.Role is "container" or "img" ? "" : sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
+                outList.Add(new Node(sem.Role is "img" ? "" : sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
             }
             if (child is ImageView && w > 1 && h > 1)
-                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, parentRadius, sem?.ExportOpacity ?? cop));
+            {
+                if (imageBox is { } ib) outList.Add(new Node("", "image", px + ib.DX * psx, py + ib.DY * psy, ib.W * psx, ib.H * psy, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, parentRadius, sem?.ExportOpacity ?? cop));
+                else outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, parentRadius, sem?.ExportOpacity ?? cop));
+            }
             else if (paints && sem is null)
                 outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, Radius(child.CornerRadius.X * csx, w, h), cop));
-            Walk(child, cx, cy, csx, csy, cbg, cop, outList, sem?.ChildImageRadius ?? 0);
+            Walk(child, cx, cy, csx, csy, cbg, cop, outList, sem?.ChildImageRadius ?? 0, sem?.ChildImageBox, cx, cy, csx, csy);
         }
     }
 

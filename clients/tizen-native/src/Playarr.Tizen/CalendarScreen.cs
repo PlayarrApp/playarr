@@ -54,7 +54,7 @@ internal sealed class CalendarScreen : IPage
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
         Sem.Tag(_root, "container", "Calendar");
-        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container", "Calendar")); } // web: the focused entry's backdrop under the agenda panel's frost
+        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); _root.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", "Calendar")); } // web: the focused entry's backdrop under the agenda panel's frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
@@ -332,7 +332,7 @@ internal sealed class CalendarScreen : IPage
         var y = 162f;
         foreach (var g in byDay)
         {
-            var band = Ui.Box(0, y, 1033.4f, 44, _t.Bg, 0);
+            var band = Ui.Box(0, y, 1033.4f, 44, _t.Name == "dark" ? _t.Bg : _t.Surface, 0); // web --agenda-heading-base: --bg dark, --surface light
             Sem.Tag(band, "heading", ignoreOwnBg: false);
             var head = g.Key.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"));
             band.Add(Ui.Text(head, 0, 8.2f, 18.4f, 640, g.Key == _today ? _t.Accent : _t.Ink, 400, 27.6f));
@@ -408,14 +408,14 @@ internal sealed class CalendarScreen : IPage
         var day = CalendarRules.ReleaseInstant(e) is { } when // web: Intl dateStyle full + timeStyle short, or the day heading then All day
             ? when.ToLocalTime().ToString("dddd, d MMMM yyyy", gb) + " at " + when.ToLocalTime().ToString("HH:mm")
             : CalendarRules.LocalDay(e).ToString("dddd d MMMM", gb) + " \u00b7 All day";
-        Ui.MetaRow(_panel, string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, _t.InkSoft, 19.584f);
+        Ui.MetaRow(_panel, string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, DetailsPanel.Soft(_t), 19.584f);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
         pill.Add(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
         _panel.Add(pill);
-        var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, _t.InkSoft, 336, 21.842f, 0, 5);
+        var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, DetailsPanel.Soft(_t), 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
         var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);
         open.Add(Sem.Tag(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center), "button", radius: 999, backdrop: _t.Accent));

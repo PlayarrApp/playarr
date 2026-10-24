@@ -71,6 +71,7 @@ internal sealed class SeriesDetailScreen : IPage
         _progress = rows.ToDictionary(r => r.MediaFileId);
         var w = detail.Work;
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
+        Sem.Tag(_root, "container", w.Title);
 
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
@@ -82,7 +83,7 @@ internal sealed class SeriesDetailScreen : IPage
         _content.Add(_copy);
 
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
-        clip.Add(Sem.Tag(new View { PositionX = ClipX, Size = new Size(1190.4f, 1080) }, "container"));
+        clip.Add(Sem.Tag(new View { PositionX = ClipX, Size = new Size(1190.4f, 1080) }, "container", w.Title + " seasons and episodes"));
         clip.Add(_stack);
         _content.Add(clip);
 
