@@ -31,6 +31,8 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   wrappers, nav groups, unstyled link boxes); `display: none`, `visibility: hidden`, effective opacity 0; boxes clipped away by an
   `overflow` ancestor or entirely outside the viewport; descendants of `[inert]`; descendants of `[aria-hidden="true"]` when that
   host contains something focusable (a hidden page region; decorative aria-hidden glyphs such as a "+" icon stay, they are visible);
+  screen-reader-only elements (the element or an ancestor is 1x1 or smaller with `overflow`, `clip` or `clip-path` set, or has
+  `clip: rect(0,0,0,0)` / `clip-path: inset(50%)`; no client can draw them, e.g. the calendar range `status`);
   and elements fully covered by an overlay. Occlusion is sampled deterministically: `elementFromPoint` at a 3x3 grid (20%, 50%, 80%)
   of the element's rect clipped to the viewport; the element is occluded when every sample lands on an element outside its own
   subtree that paints (an image/video/canvas/svg, or a background of alpha 0.5 or more, a background image, or a backdrop filter,
@@ -62,6 +64,20 @@ Matching (deterministic, in web order): 1. normalised text and role, nearest rec
 Score = web elements matched and equal / scored web elements. Tolerances: each rect edge 1 px, colour and background CIE76 deltaE 2
 (translucent colours composited first), font size 0.5 px, weight 50, radius 1 px, opacity 0.05. Every failure lists the field,
 the web and device values, and the delta. Extra device elements are counted, not penalised.
+
+## Per-client exclusions
+
+`scripts/parity/layout-exclusions.json`, keyed by legend client dir (`roku`, `firetv`, `xbox`, ...): web elements a
+client legitimately cannot have because the product documents a capability gap (no downloads on Roku, Fire TV Vega, Xbox and
+Nura; no in-app updater on Roku, Fire TV Vega, Xbox). Each entry is
+`{ screen ("*" = all), match: { role?, text | textPrefix | textRegex }, reason, doc: "<repo path>#<heading anchor>" }`, and the doc
+line must state the gap (`DEVICES.md` downloads and updater tables, `fire-tv.md`, `versioning-policy.md`). An entry without a
+citation makes the loader throw.
+
+`layout-score.mjs --client <dir>` (or `scoreLayout(ref, dev, { client, exclusions: loadExclusions() })`) removes the matched web
+elements from the denominator and lists them as `excluded` with reason and doc. Nothing else moves: neighbouring elements keep
+their web positions and are scored as before, so an exclusion can never excuse a shifted layout. Never use an exclusion for
+styling differences or bugs; a missing element that web draws and the product supports is a failure.
 
 ## Volatile content
 

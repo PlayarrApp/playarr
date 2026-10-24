@@ -104,7 +104,7 @@
  */
 
 import { t } from '../core/Language';
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -133,7 +133,8 @@ import type { Choice } from '../design/components/ChoiceSegments';
 import { alphabetFor, firstIndexAtOrAfter, workLetter } from '../core/AlphabetIndex';
 import { Spacing, Radii } from '../core/Tokens';
 
-import { getCatalog, getCatalogKinds, getLanguageFacets, listWatchProgress } from '../data/CatalogRepository';
+import { getCatalog, getCatalogKinds, getLanguageFacets, getWorkDetail, listWatchProgress } from '../data/CatalogRepository';
+import { formatRuntimeLabel } from '../core/RuntimeLabel';
 import type { LanguageFacet } from '../core/Types/Catalog';
 import { MultiSelect } from '../design/components/MultiSelect';
 import { indexWatchProgressByWork, watchMarkFor } from '../core/WatchState';
@@ -166,7 +167,7 @@ const COVER_ASPECT_RATIO: number = 1.5;
 /** Web phone Screen view card: 16:9 art. */
 const TOUCH_LANDSCAPE_RATIO: number = 9 / 16;
 /** Web phone Screen view: 232 vp between card tops with a 185 vp card and its caption. */
-const TOUCH_LANDSCAPE_ROW_GAP: number = 36;
+const TOUCH_LANDSCAPE_ROW_GAP: number = 34.96; // web row pitch 127.45 = 103.45 card + 24
 const TOUCH_GUTTER: number = 16;
 /** The letter rail's column: a 44 vp target with 4 vp of margin each side. */
 const TOUCH_ALPHA_RAIL: number = 52;
@@ -175,7 +176,7 @@ const TOUCH_CARD_GAP: number = 12;
 const TOUCH_ROW_GAP: number = 26.4;
 const TOUCH_GRID_TOP: number = 12;
 /** Web phone card caption (the poster card's title size at 360 vp). */
-const TOUCH_LIBRARY_TITLE_SIZE: number = 8;
+const TOUCH_LIBRARY_TITLE_SIZE: number = 8.8; // web dump
 /** The TV card caption size (`PosterCard`'s own default), passed through unchanged. */
 const TV_LIBRARY_TITLE_SIZE: number = 11.904;
 
@@ -355,7 +356,7 @@ struct LibraryChip {
 
   build() {
 
-    Text(this.label).fontFamily(nunito(500))
+    Text(this.label).fontFamily(nunitoAt(500, 13))
       .fontSize(13)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor((this.selected ? activeColors().onAccent : activeColors().ink)))
@@ -417,6 +418,8 @@ struct LibraryGridCell {
   /** Web `WatchStateOverlay` (`core/WatchState.ts`); the watch list loads after the cards. */
   @Prop unseen: boolean = false;
   @Prop progress: number = -1;
+  /** Phone: the first card of the page, which web focuses on open. */
+  firstCard: boolean = false;
 
   /** Plain (non-reactive) callback field, called with the activated card's
    * `Work.id`. */
@@ -455,6 +458,7 @@ struct LibraryGridCell {
       subtitle: this.landscape || !isTvMetrics() ? '' : releaseYearOf(this.work),
       titleFontSize: isTvMetrics() ? TV_LIBRARY_TITLE_SIZE : TOUCH_LIBRARY_TITLE_SIZE,
       softCaption: !isTvMetrics(),
+      focusedCaption: this.firstCard && !isTvMetrics(),
       unseen: this.unseen,
       progress: this.progress,
       onSelect: () => {
@@ -496,6 +500,9 @@ export struct Library {
   @State private heroArtwork: image.PixelMap | undefined = undefined;
   private heroArtworkGeneration: number = 0;
   private heroArtworkWorkId: string = '';
+  /** The hero's runtime label from its work detail ('' until it loads), keyed by `heroRuntimeId` (web `useFocusedDetail`). */
+  @State private heroRuntime: string = '';
+  private heroRuntimeId: string = '';
   private pendingHeroArtworkWorkId: string = '';
   /** The A-Z rail's current letter: the hero's (web `activeLetter`). */
   @State private activeLetter: string = '#';
@@ -570,6 +577,21 @@ export struct Library {
     return watchMarkFor(this.watchIndex.get(work.id), this.watchLoaded);
   }
 
+  /** Web: focus reaches Filters by moving right along the hero's row, so the hero is that row's last card when the drawer opens. */
+  private heroToRowEnd(): void {
+    const columns = this.card(false).columns;
+    const hero = this.hero;
+    if (hero === undefined || columns < 1) {
+      return;
+    }
+    const at = this.items.findIndex((w: Work): boolean => w.id === hero.id);
+    if (at < 0) {
+      return;
+    }
+    const end = Math.min(this.items.length - 1, Math.floor(at / columns) * columns + columns - 1);
+    this.setHero(this.items[end]);
+  }
+
   private setHero(work: Work | undefined): void {
     if (work === undefined) {
       this.heroArtworkGeneration += 1;
@@ -583,6 +605,9 @@ export struct Library {
 
     const sameWork = this.hero !== undefined && this.hero.id === work.id;
     this.hero = work;
+    if (!sameWork) {
+      this.loadHeroRuntime(work.id);
+    }
     this.activeLetter = workLetter(work.sort_title, work.title);
     if (!isTvMetrics()) {
       return;
@@ -594,6 +619,15 @@ export struct Library {
     const generation = ++this.heroArtworkGeneration;
     this.pendingHeroArtworkWorkId = work.id;
     this.loadHeroArtwork(work.id, generation);
+  }
+
+  private async loadHeroRuntime(workId: string): Promise<void> {
+    this.heroRuntimeId = workId;
+    this.heroRuntime = '';
+    const result = await getWorkDetail(workId);
+    if (result.kind === 'ok' && this.heroRuntimeId === workId) {
+      this.heroRuntime = formatRuntimeLabel(result.value.runtime_ms ?? null);
+    }
   }
 
   private async loadHeroArtwork(workId: string, generation: number): Promise<void> {
@@ -676,7 +710,7 @@ export struct Library {
   }
 
   private gridCardRadiusVp(): number {
-    return isTvMetrics() ? tv(TvGeometry.libraryGridCardRadius) : Radii.homeCardArtworkTouch;
+    return isTvMetrics() ? tv(TvGeometry.libraryGridCardRadius) : 8; // web dump: 8
   }
 
   private gridColumnCount(): number {
@@ -891,6 +925,7 @@ export struct Library {
   private touchFiltersButton(): void {
     TouchIconButton({
       icon: $r('app.media.action_filters'),
+      label: 'Filters',
       onTap: (): void => {
         this.filtersOpen = true;
         this.loadLanguageFacets();
@@ -967,7 +1002,7 @@ export struct Library {
         }
 
         if (this.loadMoreFailed && !this.isLoadingMore) {
-          Text("Couldn't load more. Scroll to try again.").fontFamily(nunito(400))
+          Text("Couldn't load more. Scroll to try again.").fontFamily(nunitoAt(400, 12))
             .fontSize(12)
             .fontColor(toResourceColor(activeColors().inkMuted))
             .textAlign(TextAlign.Center)
@@ -1005,6 +1040,7 @@ export struct Library {
                     cardHeight: this.touchCardHeightVp(),
                     cardRadius: this.gridCardRadiusVp(),
                     landscape: this.view !== 'cover',
+                    firstCard: this.items.length > 0 && this.items[0].id === work.id,
                     unseen: this.markFor(work).unseen,
                     progress: this.markFor(work).progress,
                     onSelect: (workId: string) => {
@@ -1193,14 +1229,14 @@ export struct Library {
         (work: Work) => {
           ListItem() {
             Row({ space: tv(16) }) {
-              Text(work.title).fontFamily(nunito(700))
+              Text(work.title).fontFamily(nunitoAt(700, tv(16.32)))
                 .fontSize(tv(16.32))
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .layoutWeight(1)
-              Text(releaseYearOf(work)).fontFamily(nunito(400))
+              Text(releaseYearOf(work)).fontFamily(nunitoAt(400, tv(13.4)))
                 .fontSize(tv(13.4))
                 .fontColor(toResourceColor(activeColors().inkMuted))
             }
@@ -1304,7 +1340,7 @@ export struct Library {
       keyArt: this.heroArtwork ?? '',
       kicker: this.hero !== undefined && this.hero.genres.length > 0 ? this.hero.genres[0] : '',
       title: this.hero !== undefined ? this.hero.title : '',
-      metaLines: this.hero !== undefined ? heroMetaLines(this.hero) : [],
+      metaRuns: this.hero !== undefined ? heroMetaRuns(this.hero, this.heroRuntime) : [],
       synopsis: this.hero !== undefined && this.hero.overview !== null ? this.hero.overview : '',
       scrollRails: false,
       railFrost: true,
@@ -1319,6 +1355,7 @@ export struct Library {
       label: t('pages.library.filters', 'Filters'),
       slot: 0,
       onActivate: (): void => {
+        this.heroToRowEnd();
         this.filtersOpen = true;
         this.loadLanguageFacets();
       },
@@ -1443,8 +1480,8 @@ function yearRangeOf(work: Work): string {
   return end > start ? start + '\u2013' + end : start;
 }
 
-/** Web library hero meta: "2003  Action · Crime" (year, then genres). */
-function heroMetaLines(work: Work): string[] {
+/** Web library hero meta: "2003  Action · Crime  1 min" (year, genres, then the runtime once the detail has loaded). */
+function heroMetaRuns(work: Work, runtime: string): string[] {
   const parts: string[] = [];
   const year = yearRangeOf(work);
   if (year.length > 0) {
@@ -1453,7 +1490,10 @@ function heroMetaLines(work: Work): string[] {
   if (work.genres.length > 0) {
     parts.push(work.genres.slice(0, 2).join(' · '));
   }
-  return parts.length > 0 ? [parts.join('    ')] : [];
+  if (runtime.length > 0) {
+    parts.push(runtime);
+  }
+  return parts;
 }
 
 /**

@@ -52,8 +52,18 @@ struct TVPlayerView: View {
     var body: some View {
         // The player is full screen like the web's player page: the shell hides its nav and clock.
         screen
-            .onAppear { setShellChromeHidden(true) }
-            .onDisappear { setShellChromeHidden(false) }
+            .onAppear {
+                setShellChromeHidden(true)
+                #if DEBUG && (os(tvOS) || os(macOS))
+                TVParityState.setPlayer(mediaFileID)
+                #endif
+            }
+            .onDisappear {
+                setShellChromeHidden(false)
+                #if DEBUG && (os(tvOS) || os(macOS))
+                TVParityState.setPlayer(nil)
+                #endif
+            }
     }
 
     @ViewBuilder

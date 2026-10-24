@@ -22,7 +22,7 @@
  */
 
 import { LengthMetrics } from '@kit.ArkUI';
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -62,7 +62,7 @@ const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
-const SYNOPSIS_FONT_WEIGHT: number = 400;
+const SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref: 600 at 13.82, in the copy colour
 const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
 const SYNOPSIS_MAX_WIDTH: number = 324;
@@ -70,14 +70,14 @@ const SYNOPSIS_MAX_WIDTH: number = 324;
 const SYNOPSIS_LETTER_SPACING: number = -0.24;
 const SYNOPSIS_MAX_LINES: number = 5;
 // Measured on the 2026-10-18 Library refs: 5 lines at a 21.7 pitch, about 334 wide for 50 characters.
-const LIBRARY_SYNOPSIS_FONT_SIZE: number = 14.4;
+const LIBRARY_SYNOPSIS_FONT_SIZE: number = 13.82;
 const LIBRARY_SYNOPSIS_LINE_HEIGHT: number = 21.7;
 const LIBRARY_SYNOPSIS_MAX_WIDTH: number = 345;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
-const GAP_KICKER_TITLE: number = 34;
-const GAP_TITLE_META: number = 22;
-const GAP_META_SYNOPSIS: number = 21;
+const GAP_KICKER_TITLE: number = 27.6; // web title content box starts 6.4 higher (line box 62 inside a 94 content area)
+const GAP_TITLE_META: number = 29.82;
+const GAP_META_SYNOPSIS: number = 19.58;
 
 @Component
 export struct FeatureCopy {
@@ -100,6 +100,8 @@ export struct FeatureCopy {
   @Prop metaLines: string[] = [];
   /** Detail pages: the meta as web chips (replaces `metaLines` when set). */
   @Prop metaChips: string[] = [];
+  /** Library hero: the meta as separate runs (year, genres, runtime), 12.8 apart, one text element each as on web. */
+  @Prop metaRuns: string[] = [];
   /** Synopsis body copy, clamped to `SYNOPSIS_MAX_LINES` lines with an
    * ellipsis. Empty string hides it entirely -- the home Stage hero
    * renders no synopsis in the source design (only Detail supplies one). */
@@ -155,7 +157,7 @@ export struct FeatureCopy {
   build() {
     Column() {
       if (this.kicker.length > 0) {
-        Text(this.kicker).fontFamily(nunito(KICKER_FONT_WEIGHT))
+        Text(this.kicker).fontFamily(nunitoAt(KICKER_FONT_WEIGHT, tv(KICKER_FONT_SIZE)))
           .fontSize(tv(KICKER_FONT_SIZE))
           .fontWeight(KICKER_FONT_WEIGHT)
           .letterSpacing(tv(KICKER_LETTER_SPACING))
@@ -165,7 +167,8 @@ export struct FeatureCopy {
       }
 
       if (this.title.length > 0) {
-        Text(this.balancedTitle()).fontFamily(nunito(HERO_TITLE_FONT_WEIGHT))
+        Text(this.balancedTitle()).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
+          .id('px:heading:' + this.title)
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
@@ -175,7 +178,7 @@ export struct FeatureCopy {
       }
 
       if (this.subtitle.length > 0) {
-        Text(this.subtitle).fontFamily(nunito(EPISODE_TITLE_FONT_WEIGHT))
+        Text(this.subtitle).fontFamily(nunitoAt(EPISODE_TITLE_FONT_WEIGHT, tv(EPISODE_TITLE_FONT_SIZE)))
           .fontSize(tv(EPISODE_TITLE_FONT_SIZE))
           .fontWeight(EPISODE_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(EPISODE_TITLE_LETTER_SPACING))
@@ -190,7 +193,7 @@ export struct FeatureCopy {
           ForEach(
             this.metaChips,
             (chip: string, index: number) => {
-              Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
+              Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, tv(META_CHIP_FONT_SIZE)))
                 .fontSize(tv(META_CHIP_FONT_SIZE))
                 .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
                 .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
@@ -200,12 +203,26 @@ export struct FeatureCopy {
         }
         .width('100%')
         .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META) })
+      } else if (this.metaRuns.length > 0) {
+        Row({ space: tv(12.8) }) {
+          ForEach(
+            this.metaRuns,
+            (run: string) => {
+              Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
+                .fontSize(tv(COPY_TEXT_FONT_SIZE))
+                .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
+                .fontColor(this.copyTextColor())
+            },
+            (run: string, index: number) => `${index}-${run}`
+          )
+        }
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META + this.metaGapAdjust) })
       } else if (this.metaLines.length > 0) {
         Column() {
           ForEach(
             this.metaLines,
             (line: string) => {
-              Text(line).fontFamily(nunito(COPY_TEXT_FONT_WEIGHT))
+              Text(line).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE))
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
                 .fontColor(this.copyTextColor())
@@ -219,16 +236,16 @@ export struct FeatureCopy {
 
       if (this.synopsis.length > 0) {
         // web `.tv-detail-synopsis`: --ink-muted, no weight set (body 400)
-        Text(this.synopsis).fontFamily(nunito(SYNOPSIS_FONT_WEIGHT))
+        Text(this.synopsis).fontFamily(nunitoAt(SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
           .fontWeight(SYNOPSIS_FONT_WEIGHT)
           .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))
           .letterSpacing(tv(SYNOPSIS_LETTER_SPACING))
-          .fontColor(toResourceColor(activeColors().inkMuted))
+          .fontColor(this.copyTextColor())
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 1.5 : 0)) })
+          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : 1.22)) })
       }
     }
     .width('100%')

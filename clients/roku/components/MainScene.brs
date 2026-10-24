@@ -58,11 +58,11 @@ sub init()
     m.profilesTitle = m.top.findNode("profilesTitle")
     if m.profilesKicker <> invalid
         m.profilesKicker.ObserveField("textWidth", "centerProfilesKicker")
-        m.profilesKicker.spec = { text: "PROFILES", size: 10, weight: 800, tracking: 1.35, role: "brandInk", upper: true }
+        m.profilesKicker.spec = { text: "PROFILES", size: 10.37, weight: 820, tracking: 1.342, role: "brandInk", upper: true }
     end if
     if m.profilesTitle <> invalid
         m.profilesTitle.ObserveField("textWidth", "centerProfilesTitle")
-        m.profilesTitle.spec = { text: "Who’s watching?", size: 81, weight: 500, tracking: -5.806, role: "ink" }
+        m.profilesTitle.spec = { text: "Who’s watching?", size: 80.64, weight: 500, tracking: -5.812, role: "ink", aria: "heading" }
     end if
     m.profileActionsGroup = m.top.findNode("profileActionsGroup")
     m.profilesSettingsBtn = m.top.findNode("profilesSettingsBtn")
@@ -109,6 +109,7 @@ sub init()
         m.navHighlights.Push(m.top.findNode("navHighlight" + i.ToStr()))
         m.navIcons.Push(m.top.findNode("navIcon" + i.ToStr()))
         m.navLabels.Push(m.top.findNode("navLabel" + i.ToStr()))
+        m.navLabels[i].setFields({ size: 8.83, weight: 680, tracking: 0.31 })
     end for
     m.browseGroup = m.top.findNode("browseGroup")
     m.browseGrid = m.top.findNode("browseGrid")
@@ -1695,14 +1696,14 @@ sub centerProfilesKicker()
     if m.profilesKicker = invalid then return
     width = m.profilesKicker.textWidth
     if width <= 0 then return
-    m.profilesKicker.translation = [Int((1920 - width) / 2), 162]
+    m.profilesKicker.translation = [(1920 - width) / 2, 162]
 end sub
 
 sub centerProfilesTitle()
     if m.profilesTitle = invalid then return
     width = m.profilesTitle.textWidth
     if width <= 0 then return
-    m.profilesTitle.translation = [Int((1920 - width) / 2), 169]
+    m.profilesTitle.translation = [(1920 - width) / 2, 167.8]
 end sub
 
 sub applyProfilesChromeFocus()
@@ -1789,12 +1790,12 @@ sub updateProfileActionsLayout()
         rowY = m.profilesRow.translation[1]
     end if
     centerX = rowX + targetIndex * (itemWidth + spacing) + Int(itemWidth / 2)
-    actionsW = 158 ' 44 gear + 10 gap + 104 Sign out pill
+    actionsW = 154 ' 44 gear + 8.8 gap + 101.2 Sign out pill
     x = centerX - Int(actionsW / 2)
     if x < 40 then x = 40
     if x > 1920 - actionsW - 40 then x = 1920 - actionsW - 40
     ' Sit just under the name/status block (web profile-actions margin below it).
-    y = rowY + 376
+    y = rowY + 374.6
     if y > 980 then y = 980
     m.profileActionsGroup.translation = [x, y]
     m.profileActionsGroup.opacity = 1
@@ -1915,7 +1916,7 @@ sub buildProfileAvatarContent(profiles as Object)
     rowWidth = count * itemWidth + (count - 1) * spacing
     x = 960 - Int(rowWidth / 2)
     if x < 40 then x = 40
-    m.profilesRow.translation = [x, 328]
+    m.profilesRow.translation = [x, 329.4]
     itemHeight = 392
     m.profilesRow.rowItemSize = [[itemWidth, itemHeight]]
     m.profilesRow.rowItemSpacing = [[spacing, 0]]
@@ -2699,17 +2700,17 @@ sub buildAlphabetStrip()
     m.browseAlphabet.AppendChild(m.alphabetDot)
     y = 0
     for each letter in letters
-        label = CreateObject("roSGNode", "Label")
-        label.translation = [0, y]
-        label.width = 44
-        label.height = 44
+        ' Web: a 44 px button, the letter 9.22 px, its text box 15.2 px below the button top.
+        label = CreateObject("roSGNode", "WebLabel")
+        label.translation = [0, y + 16.2]
+        label.setFields({ size: 9.22, weight: 400, width: 44, height: 12, horizAlign: "center" })
         label.text = letter
-        label.horizAlign = "center"
-        label.vertAlign = "center"
         label.color = ThemeColor("inkMuted")
-        label.font = PlayarrMakeFont(400, 9)
         m.browseAlphabet.AppendChild(label)
         m.alphabetLabels.Push(label)
+        name = letter
+        if letter = "#" then name = "Numbers and symbols"
+        pgMark(m.browseAlphabet, "button", name, -0.5, y, 44, 44, 50)
         y += 44
     end for
     m.browseLetterIndex = 0
@@ -2899,8 +2900,8 @@ sub updateBrowsePreview(work as Object)
     if work.genres <> invalid and work.genres.Count() > 0
         kicker = UCase(work.genres[0])
     end if
-    m.browsePreviewKind.spec = { text: kicker, size: 12, weight: 800, tracking: 0.983, role: "brandInk", upper: true }
-    m.browsePreviewTitle.spec = { text: work.title, size: 69, weight: 560, tracking: -4.53, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
+    m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
     year = ""
     ' Web LibraryPreview: release year only (never the added date).
     if work.release_date <> invalid and work.release_date.Len() >= 4 then year = work.release_date.Left(4)
@@ -2914,19 +2915,19 @@ sub updateBrowsePreview(work as Object)
     if titleLines < 1 then titleLines = 1
     metaY = 303.5 + 62.208 * titleLines + 27
     m.browsePreviewMeta.translation = [153.6, metaY]
-    m.browsePreviewMeta.spec = { text: year, size: 13.2, weight: 400, tracking: 0, role: "inkSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta.spec = { text: year, size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
     metaX = 153.6
-    if year <> "" then metaX = 153.6 + m.browsePreviewMeta.textWidth + 14.4
+    if year <> "" then metaX = 153.6 + m.browsePreviewMeta.textWidth + 12.8
     m.browsePreviewMeta2.translation = [metaX, metaY]
-    m.browsePreviewMeta2.spec = { text: genreLine, size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 300, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta2.spec = { text: genreLine, size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 300, lineHeight: 18.144, maxLines: 1 }
     m.browseMetaY = metaY
     m.browseMetaGenreLine = genreLine
     m.homeHeroFocusedWorkId = work.id
     showBrowsePreviewRuntime(work.id)
     overview = work.overview
-    if overview = invalid or overview = "" then overview = "No synopsis available."
-    m.browsePreviewOverview.translation = [153.6, metaY + 39.8]
-    m.browsePreviewOverview.spec = { text: overview, size: 15.4, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 23, maxLines: 5 }
+    if overview = invalid or overview = "" then overview = "No synopsis is available."
+    m.browsePreviewOverview.translation = [153.6, metaY + 41.3]
+    m.browsePreviewOverview.spec = { text: overview, size: 13.82, weight: 600, tracking: 0, role: "heroSoft", width: 336, lineHeight: 23, maxLines: 5 }
     ' Defer key-art download so acceptBrowseCatalog paints the grid first.
     ' Home hero uses sync GetToFile successfully; here it must not block paint.
     if m.browseKeyArt <> invalid
@@ -2937,7 +2938,7 @@ sub updateBrowsePreview(work as Object)
             m.browseArtTelemetryArmed = false
             previewSlot = m.artActiveScope + "-preview"
             if uri <> ""
-                emitArtSlot(m.artActiveGeneration, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+                emitArtSlot(m.artActiveGeneration, m.artActiveScope, previewSlot, true, 133.03, -22.9, 900, 1190.6, m.browseArtTelemetryVersion)
                 emitArtStatus(m.artActiveGeneration, m.artActiveScope, previewSlot, "pending", m.browseArtTelemetryVersion)
             else
                 emitArtOptionalEmpty(m.artActiveGeneration, m.artActiveScope, previewSlot, m.browseArtTelemetryVersion)
@@ -2971,7 +2972,7 @@ sub onBrowseKeyArtTimer()
     g = GetGlobalAA()
     if g.playarrArtHeaders <> invalid then agent.SetHeaders(g.playarrArtHeaders)
     m.browseKeyArt.SetHttpAgent(agent)
-    m.browseKeyArt.loadWidth = 1038
+    m.browseKeyArt.loadWidth = 900
     m.browseKeyArt.loadHeight = 1191
     m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series" or m.artActiveScope = "music") and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
@@ -3006,7 +3007,7 @@ sub declareCurrentBrowsePreviewArt(generation as Integer)
     if m.browseArtTelemetryVersion < 1 then m.browseArtTelemetryVersion = 1
     m.browseArtTelemetryArmed = true
     previewSlot = m.artActiveScope + "-preview"
-    emitArtSlot(generation, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+    emitArtSlot(generation, m.artActiveScope, previewSlot, true, 133.03, -22.9, 900, 1190.6, m.browseArtTelemetryVersion)
     emitArtStatus(generation, m.artActiveScope, previewSlot, "pending", m.browseArtTelemetryVersion)
     if m.browseKeyArt.uri = uri then sampleBrowseKeyArtStatus()
 end sub
@@ -3048,6 +3049,8 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         ' The browse grid sits 8 px higher and each card 8 px lower in its cell: the lift and ring are not clipped at the top row.
         item.AddField("padTop", "float", false)
         if grid.id = "browseGrid" then item.padTop = 8
+        ' Web rows sit 240.33 px apart and the grid takes whole pixels: from the third row the card is 1 px lower (tops 162, 402, 643, 883).
+        if grid.id = "browseGrid" and m.browseArtworkSize <> "small" and m.browseArtworkSize <> "large" and artIndex >= 2 * m.browseGrid.numColumns then item.padTop = 9
         ' Screen view reserves the focus lift, ring and glow overflow inside the grid's clip (8 px sides, 15 px top, grid shifted to match).
         if grid.id = "browseGrid" and (m.browseView = "screen" or m.browseView = "cover")
             item.AddField("focusRingOutsideArt", "boolean", false)
@@ -3165,14 +3168,14 @@ sub searchChromeInit()
     m.searchTitle.visible = false
     pgBackButton(holder, 153.6)
     m.searchHeaderTitle = CreateObject("roSGNode", "TrackedText")
-    m.searchHeaderTitle.translation = [226.6, 56.2]
+    m.searchHeaderTitle.translation = [226.6, 58.2]
     m.searchHeaderTitle.spec = PageTitleSpec("Search")
     holder.AppendChild(m.searchHeaderTitle)
     m.searchHeaderDivider = pgRect(holder, 348, 73, 1, 16, "line")
     m.searchHeaderRule = pgRect(holder, 226.6, 112, 1, 1, "line")
     m.searchHeaderCount = CreateObject("roSGNode", "TrackedText")
     holder.AppendChild(m.searchHeaderCount)
-    pgIcon(holder, 181.6, 199, 22, "nav-search.png", "inkSoft")
+    pgIcon(holder, 178.6, 198.8, 24, "nav-search.png", "inkSoft")
     m.searchClearLabel = CreateObject("roSGNode", "Label")
     m.searchClearLabel.translation = [655, 201]
     m.searchClearLabel.width = 70
@@ -3183,6 +3186,7 @@ sub searchChromeInit()
     m.searchClearLabel.visible = false
     ThemeSetRole(m.searchClearLabel, "inkSoft")
     holder.AppendChild(m.searchClearLabel)
+    pgShellTile(holder, shellActionX(), shellActionY(0), "Filters", "tile-filters.png")
     setSearchHeader("")
 end sub
 
@@ -3235,7 +3239,7 @@ sub showSearchEmptyState(empty as Boolean)
     if m.searchPreviewOverview <> invalid then m.searchPreviewOverview.visible = not empty
     ' Empty shell: Filters summary label; after results, type-filter Labels.
     chip = m.top.findNode("searchFiltersChip")
-    if chip <> invalid then chip.visible = empty
+    if chip <> invalid then chip.visible = false
     if m.searchFilterLabels <> invalid
         for each lab in m.searchFilterLabels
             if lab <> invalid then lab.visible = not empty
@@ -3431,7 +3435,7 @@ sub updateSearchPreview(work as Object)
     end if
     m.searchPreviewMeta.text = meta
     overview = work.overview
-    if overview = invalid or overview = "" then overview = "No synopsis available."
+    if overview = invalid or overview = "" then overview = "No synopsis is available."
     m.searchPreviewOverview.text = overview
 end sub
 
@@ -3974,7 +3978,8 @@ sub enterHome(profileName as String)
     m.top.screenState = "home"
     if m.homeStage <> invalid
         m.homeStage.stageTitle = "Home"
-        m.homeStage.stageKicker = "PLAYARR"
+        m.homeStage.kickerWeight = 860
+    m.homeStage.stageKicker = "PLAYARR"
         m.homeStage.stageMeta = ""
         m.homeStage.stageOverview = ""
         m.homeStage.callFunc("revealStage")
@@ -4394,7 +4399,7 @@ sub finishHomeLoad()
         m.homeStage.artTelemetryVersion = 0
         m.homeStage.artTelemetryActive = heroUri <> ""
         if heroUri <> ""
-            emitArtSlot(m.artActiveGeneration, "home", "home-hero", true, -20, -22.9, 1038, 1191, 0)
+            emitArtSlot(m.artActiveGeneration, "home", "home-hero", true, 133.03, -22.9, 900, 1190.6, 0)
         end if
     else
         m.homeStage.artTelemetryActive = false
@@ -4471,6 +4476,7 @@ sub updateHeroFromWork(work as Object)
     if work.genres <> invalid and work.genres.Count() > 0
         kicker = kicker + " · " + UCase(work.genres[0])
     end if
+    m.homeStage.kickerWeight = 860
     m.homeStage.stageKicker = kicker
     meta = ""
     if work.release_date <> invalid and work.release_date.Len() >= 4
@@ -4501,7 +4507,7 @@ end sub
 
 ' Web LibraryPreview third span: the focused work's runtime, filled in once its detail is known (same cache and request as the Home hero).
 sub showBrowsePreviewRuntime(workId as String)
-    m.browsePreviewMeta3.spec = { text: "", size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta3.spec = { text: "", size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 120, lineHeight: 18.144, maxLines: 1 }
     if workId = "" or m.homeHeroDetailTimer = invalid then return
     runtimeMs = m.homeHeroRuntimeById.Lookup(workId)
     if runtimeMs <> invalid
@@ -4516,10 +4522,10 @@ end sub
 
 sub placeBrowsePreviewRuntime(runtimeMs as Dynamic)
     label = formatRuntime(runtimeMs)
-    x = m.browsePreviewMeta2.translation[0] + 13.6
+    x = m.browsePreviewMeta2.translation[0] + 12.8
     if m.browseMetaGenreLine <> invalid and m.browseMetaGenreLine <> "" then x = x + m.browsePreviewMeta2.textWidth
     m.browsePreviewMeta3.translation = [x, m.browseMetaY]
-    m.browsePreviewMeta3.spec = { text: label, size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta3.spec = { text: label, size: 13.06, weight: 600, tracking: 0, role: "heroSoft", width: 120, lineHeight: 18.144, maxLines: 1 }
 end sub
 
 sub onHomeHeroDetailTimer()
@@ -4651,8 +4657,8 @@ end sub
 ' Home headings keep the same Web typography regardless of which rail owns card focus.
 sub setRailTitle(rail as Object)
     if rail.label = invalid then return
-    rail.title.spec = { text: rail.label, size: 18, weight: 600, tracking: -0.53, role: "ink" }
-    rail.title.translation = [0, -21]
+    rail.title.spec = { text: rail.label, size: 17.66, weight: 610, tracking: -0.53, role: "ink", aria: "heading" }
+    rail.title.translation = [0, -19.9]
 end sub
 
 sub onHomeItemSelected(event as Object)
@@ -4869,7 +4875,7 @@ sub layoutNavDock()
     itemSize = 67
     itemStep = 73.6
     groupPad = 5.8
-    groupGap = 13.7
+    groupGap = 13.59
     dockLeft = 42
     ' Groups match web NAV_GROUPS: Downloads+Search | library kinds | Playlists, Watchlist, Requests, Calendar.
     ' Downloads (offline storage) cannot exist on Roku, so the first group is Search alone.
@@ -4890,7 +4896,7 @@ sub layoutNavDock()
     end for
     ' Web's first group starts at y 120 whatever the other groups hold. Roku has no Downloads, so Search sits first in it
     ' (the Roku web reference hides Downloads and packs the group the same way).
-    y = 120
+    y = 119.11
     for g = 0 to groupRanges.Count() - 1
         range = groupRanges[g]
         groupStartY = y
@@ -4905,11 +4911,22 @@ sub layoutNavDock()
                 m.navIcons[i].translation = [dockLeft + 5.2 + 23.6, itemY + 16]
                 m.navIcons[i].width = 20
                 m.navIcons[i].height = 20
-                m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 41.6]
+                m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 39.6]
                 itemY = itemY + itemStep
             end if
         end for
         bg = m.top.findNode("navGroupBg" + g.ToStr())
+        shadow = m.top.findNode("navGroupShadow" + g.ToStr())
+        if shadow <> invalid
+            shadow.visible = visibleCount > 0
+            if visibleCount > 0
+                shadow.uri = "pkg:/images/nav-group-shadow-" + visibleCount.ToStr() + ".png"
+                faceH = Int(groupPad + visibleCount * itemStep + 0.5)
+                shadow.width = 78 + 160
+                shadow.height = faceH + 160
+                shadow.translation = [dockLeft - 80, groupStartY - 80]
+            end if
+        end if
         if bg <> invalid
             if visibleCount > 0
                 faceH = Int(groupPad + visibleCount * itemStep + 0.5)
@@ -5070,15 +5087,30 @@ sub renderNavDockFocus()
                     end if
                 end if
             end if
-            if isFocused
+            ' The web scales an active or focused tile 1.05 about its centre: the icon is 21 px and the label 1.05 times as large.
+            base = m.navIcons[i].translation
+            if showChip
                 m.navIcons[i].opacity = 1
                 m.navLabels[i].color = ThemeColor("ink")
-            else if isActive
-                m.navIcons[i].opacity = 1
-                m.navLabels[i].color = ThemeColor("ink")
+                if m.navIcons[i].width <> 21
+                    m.navIcons[i].translation = [base[0] - 0.5, base[1] - 0.8]
+                    m.navIcons[i].width = 21
+                    m.navIcons[i].height = 21
+                    m.navLabels[i].setFields({ size: 9.27, tracking: 0.325 })
+                    lt = m.navLabels[i].translation
+                    m.navLabels[i].translation = [lt[0], lt[1] + 0.3]
+                end if
             else
                 m.navIcons[i].opacity = 0.72
                 m.navLabels[i].color = ThemeColor("inkMuted")
+                if m.navIcons[i].width <> 20
+                    m.navIcons[i].translation = [base[0] + 0.5, base[1] + 0.8]
+                    m.navIcons[i].width = 20
+                    m.navIcons[i].height = 20
+                    m.navLabels[i].setFields({ size: 8.83, tracking: 0.31 })
+                    lt = m.navLabels[i].translation
+                    m.navLabels[i].translation = [lt[0], lt[1] - 0.3]
+                end if
             end if
         end if
     end for
@@ -5176,6 +5208,8 @@ sub showDetail(detail as Object)
     ' the split is kicker=kind, meta=year+genres rather than one combined
     ' string.
     m.detailStage.stageTitle = work.title
+    m.detailActions.workTitle = work.title
+    m.global.parityWorkTitle = work.title
     ' Hero art: backdrop with the web stage treatment.
     setStageKeyArt(m.detailStage, heroArtworkUrl(work))
     overview = JsonString(work.overview)
@@ -5420,7 +5454,7 @@ sub layoutDetailRails()
             m.detailChapters.translation = [-8, y + 65.7]
             slot = slot + 1
             y = y + 314.3
-            if m.detailCastList = invalid or m.detailCastList.Count() = 0 then y = y + 36
+            if m.detailCastList = invalid or m.detailCastList.Count() = 0 then y = y + 37.7
         end if
         if m.detailSimilar.visible and (m.detailCastList = invalid or m.detailCastList.Count() = 0)
             ' Similar Titles (web grid-sized cards): heading 350 px under Chapters', cards 67 px below it.
@@ -5429,7 +5463,7 @@ sub layoutDetailRails()
             titles = n.ToStr() + " titles"
             if n = 1 then titles = "1 title"
             setDetailRailHead(slot, y, "Similar Titles", titles)
-            m.detailSimilar.translation = [-8, y + 66.7]
+            m.detailSimilar.translation = [-8, y + 65.0]
         else if m.detailSimilar.visible
             n = 0
             if m.detailCastList <> invalid then n = m.detailCastList.Count()
@@ -5977,7 +6011,7 @@ sub updateSeriesEpisodeHeader()
     ep = epDetail.episode
     season = group.season
     work = m.selectedDetail.work
-    code = "S" + twoDigits(season.season_number) + " · E" + twoDigits(ep.episode_number)
+    code = "S " + twoDigits(season.season_number) + " · E " + twoDigits(ep.episode_number)
     m.detailStage.stageKicker = code
     m.detailStage.stageMeta = ""
     titleLines = m.detailStage.findNode("stageTitleLabel").lineCount
@@ -5986,11 +6020,11 @@ sub updateSeriesEpisodeHeader()
     epTitle = JsonString(ep.title)
     if epTitle = "" then epTitle = "Episode " + ep.episode_number.ToStr()
     m.detailEpisodeTitle.visible = true
-    m.detailEpisodeTitle.translation = [153.6, titleBottom + 19.5]
-    m.detailEpisodeTitle.spec = { text: epTitle, size: 21, weight: 600, tracking: -0.739, role: "inkSoft", width: 312, lineHeight: 24.3, maxLines: 1 }
-    metaY = titleBottom + 69.7
+    m.detailEpisodeTitle.translation = [153.6, titleBottom + 17.5]
+    m.detailEpisodeTitle.spec = { text: epTitle, size: 21.12, weight: 570, tracking: -0.743, role: "inkSoft", aria: "heading", width: 312, lineHeight: 24.3, maxLines: 1 }
+    metaY = titleBottom + 70.7
     parts = []
-    parts.Push({ text: "Season " + season.season_number.ToStr(), role: "inkSoft", weight: 700 })
+    parts.Push({ text: "Season " + season.season_number.ToStr(), role: "inkSoft", weight: 680 })
     parts.Push({ text: code, role: "inkMuted", weight: 400 })
     if ep.runtime_minutes <> invalid and ep.runtime_minutes > 0 then parts.Push({ text: ep.runtime_minutes.ToStr() + " min", role: "inkMuted", weight: 400 })
     if work.release_date <> invalid and work.release_date.Len() >= 4 then parts.Push({ text: WorkYearLabel(work), role: "inkMuted", weight: 400 })
@@ -6001,7 +6035,7 @@ sub updateSeriesEpisodeHeader()
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: -0.3, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: EpisodeCodeTracking(parts[i].text, -0.494), role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -6021,7 +6055,7 @@ sub updateSeriesEpisodeHeader()
     overview = JsonString(ep.overview)
     if overview = "" then overview = JsonString(work.overview)
     m.detailSynopsis.translation = [153.6, nextY]
-    m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 5 }
+    m.detailSynopsis.spec = { text: overview, size: 12.86, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 20.33, maxLines: 5 }
     m.detailActions.translation = [0, nextY + 20.33 * m.detailSynopsis.lineCount + 11 - 508.6]
     m.detailActions.layoutKind = "series"
     label = "Start"
@@ -6076,7 +6110,7 @@ sub buildEpisodeContent(groups as Object, kind as String)
                 item.AddField("overlayNumber", "string", false)
                 item.overlayNumber = twoDigits(ep.episode_number)
                 item.AddField("captionPrefix", "string", false)
-                item.captionPrefix = "S" + twoDigits(season.season_number) + " · E" + twoDigits(ep.episode_number)
+                item.captionPrefix = "S " + twoDigits(season.season_number) + " · E " + twoDigits(ep.episode_number)
                 item.AddField("showKind", "boolean", false)
                 item.showKind = false
                 item.AddField("watchState", "string", false)
@@ -7013,8 +7047,8 @@ sub showOnly(name as String)
     m.settingsGroup.visible = name = "settings"
     m.pageGroup.visible = name = "page"
     ' Web .app-clock is at the same place on every screen.
-    m.clockTime.translation = [481, 68]
-    m.clockDate.translation = [535, 73]
+    m.clockTime.translation = [481, 68.2]
+    m.clockDate.translation = [535.4, 75]
     m.libraryGroup.visible = name = "library"
     m.homeGroup.visible = name = "home"
     m.browseGroup.visible = name = "browse"
@@ -7540,9 +7574,9 @@ end sub
 
 sub detailChromeInit()
     holder = m.top.findNode("detailGroup")
-    pgBackButton(holder, 153.6)
+    m.detailBackMark = pgBackButton(holder, 153.6, "Back to Movies", "button")
     m.detailHeaderTitle = CreateObject("roSGNode", "TrackedText")
-    m.detailHeaderTitle.translation = [226.6, 56.2]
+    m.detailHeaderTitle.translation = [226.6, 58.2]
     holder.AppendChild(m.detailHeaderTitle)
     m.detailHeaderDivider = pgRect(holder, 348, 73, 1, 16, "line")
     m.detailHeaderRule = pgRect(holder, 226.6, 112, 1, 1, "line")
@@ -7570,6 +7604,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if work.kind = "site" then heading = "Sites"
     if work.kind = "artist" then heading = "Music"
     m.detailHeaderTitle.spec = PageTitleSpec(heading)
+    if m.detailBackMark <> invalid then m.detailBackMark.parityName = "Back to " + heading
         layoutHeaderSub(m.detailHeaderTitle.textWidth, m.detailHeaderChip, m.detailHeaderDivider, m.detailHeaderRule, work.title)
     ' Kicker: the first genre, like the library preview.
     kicker = UCase(work.kind)
@@ -7585,7 +7620,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if titleLines < 1 then titleLines = 1
     metaY = 303.5 + 62.208 * titleLines + 27
     parts = []
-    parts.Push({ text: CapitalizeFirst(work.kind), role: "inkSoft", weight: 700 })
+    parts.Push({ text: CapitalizeFirst(work.kind), role: "inkSoft", weight: 680 })
     if detail.runtime_ms <> invalid and detail.runtime_ms > 0 then parts.Push({ text: formatRuntime(detail.runtime_ms), role: "inkMuted", weight: 400 })
     if work.release_date <> invalid and work.release_date.Len() >= 4
         parts.Push({ text: WorkYearLabel(work), role: "inkMuted", weight: 400 })
@@ -7602,7 +7637,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
         node = m.detailMetaParts[i]
         if i < parts.Count()
             node.translation = [x, metaY]
-            node.spec = { text: parts[i].text, size: 12, weight: parts[i].weight, tracking: -0.3, role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
+            node.spec = { text: parts[i].text, size: 10.56, weight: parts[i].weight, tracking: EpisodeCodeTracking(parts[i].text, -0.494), role: parts[i].role, width: 400, lineHeight: 15.84, maxLines: 1 }
             node.visible = true
             x = x + node.textWidth + 13.6
         else
@@ -7612,7 +7647,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     overview = JsonString(work.overview)
     if overview = "" then overview = "No description is available."
     m.detailSynopsis.translation = [153.6, metaY + 37.5]
-    m.detailSynopsis.spec = { text: overview, size: 14, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
+    m.detailSynopsis.spec = { text: overview, size: 12.86, weight: 400, tracking: 0, role: "inkMuted", width: 325, lineHeight: 20.33, maxLines: 5 }
     m.detailActionsTop = metaY + 37.5 + 20.33 * m.detailSynopsis.lineCount + 38
 end sub
 
@@ -7629,9 +7664,9 @@ end function
 sub setDetailRailHead(slot as Integer, y as Float, title as String, caption as String)
     head = m.detailHeads[slot]
     head.title.translation = [0, y]
-    head.title.spec = { text: title, size: 18, weight: 600, tracking: -0.53, role: "ink" }
-    head.sub.translation = [0, y + 30.5]
-    head.sub.spec = { text: caption, size: 10, weight: 400, tracking: 0, role: "inkMuted" }
+    head.title.spec = { text: title, size: 17.66, weight: 610, tracking: -0.534, role: "ink", aria: "heading" }
+    head.sub.translation = [0, y + 29.5]
+    head.sub.spec = { text: caption, size: 9.98, weight: 400, tracking: 0, role: "inkMuted" }
     head.title.visible = true
     head.sub.visible = true
 end sub
@@ -7744,3 +7779,11 @@ end function
 function homeCentredTop() as Float
     return 422.9
 end function
+
+' Parity layout dump (source/LayoutDump.brs), requested by the driver through ECP input.
+sub onParityLayoutRequest()
+    if m.global.parityArtEnabled <> true then return
+    ParityPrepareCards()
+    m.global.parityLayoutSeq = m.global.parityLayoutSeq + 1
+    ParityLayoutDump(m.top)
+end sub

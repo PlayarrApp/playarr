@@ -3,7 +3,7 @@
  * fields and saved with PATCH /api/v1/media/{id}/playback-options. The next time the file plays it opens with these choices.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { Drawer } from './Drawer';
 import { SelectField } from './SelectField';
 import type { Choice } from './ChoiceSegments';
@@ -93,7 +93,7 @@ export struct PlaybackOptionsDrawer {
 
   @Builder
   private heading(text: string): void {
-    Text(text).fontFamily(nunito(700))
+    Text(text).fontFamily(nunitoAt(700, tv(HEADING_SIZE)))
       .fontSize(tv(HEADING_SIZE))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
@@ -102,7 +102,7 @@ export struct PlaybackOptionsDrawer {
 
   @Builder
   private pill(label: string, onTap: () => void): void {
-    Text(label).fontFamily(nunito(400))
+    Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
       .fontSize(tv(PILL_SIZE))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
@@ -149,7 +149,7 @@ export struct PlaybackOptionsDrawer {
           void this.save();
         })
       } else if (this.failed) {
-        Text('Playback options could not be loaded').fontFamily(nunito(400))
+        Text('Playback options could not be loaded').fontFamily(nunitoAt(400, tv(HEADING_SIZE)))
           .fontSize(tv(HEADING_SIZE))
           .fontColor(toResourceColor(activeColors().danger))
           .width(tv(SECTION_WIDTH))

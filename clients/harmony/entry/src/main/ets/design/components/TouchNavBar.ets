@@ -21,7 +21,7 @@ const BAR_SIDE: number = 10;
 const BAR_BOTTOM: number = 8;
 const BAR_PADDING: number = 5;
 const BAR_RADIUS: number = 20;
-const TILE_WIDTH: number = 44;
+const TILE_WIDTH: number = 42;
 const TILE_HEIGHT: number = 46;
 const TILE_RADIUS: number = 14;
 const ICON_SIZE: number = 21;
@@ -50,6 +50,7 @@ export struct TouchNavBar {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('currentProfileId') private profileId: string = '';
+  @StorageProp('currentProfileName') private profileName: string = '';
   @StorageProp('currentAvatarPreset') private avatarOverride: string = ''; // the profile's saved avatar, as on the TV rail
   @StorageProp('safeBottom') private safeBottom: number = 0;
   @StorageProp('safeLeft') private safeLeft: number = 0;
@@ -82,6 +83,8 @@ export struct TouchNavBar {
         .draggable(false)
         .focusable(false)
     }
+    .id('px:link:' + item.label)
+    .flexShrink(0)
     .width(TILE_WIDTH)
     .height(TILE_HEIGHT)
     .justifyContent(FlexAlign.Center)
@@ -104,7 +107,11 @@ export struct TouchNavBar {
               illustrationRatio: 0.86,
             })
               .focusable(false)
+              .margin({ bottom: 7 }) // web's avatar sits 9 px below the tile top, not centred
           }
+          .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
+          .borderRadius(TILE_RADIUS)
+          .flexShrink(0)
           .width(TILE_WIDTH)
           .height(TILE_HEIGHT)
           .justifyContent(FlexAlign.Center)
@@ -117,8 +124,9 @@ export struct TouchNavBar {
         }
         .padding({ left: BAR_PADDING, right: BAR_PADDING })
         // web `justify-content: space-around`: spread over the bar when the tiles fit, scroll when they do not
+        .width((this.items.length + 1) * 44 + 8) // every tile at its full width: the Scroll clips, the Row must not shrink them
         .constraintSize({ minWidth: '100%' })
-        .justifyContent(FlexAlign.SpaceAround)
+        .justifyContent(FlexAlign.Start) // nine 44 tiles never fit the bar, so web's space-around degenerates to a plain 2 vp gap
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
@@ -129,6 +137,7 @@ export struct TouchNavBar {
     .width(`calc(100% - ${atLeast(BAR_SIDE, this.safeLeft) + atLeast(BAR_SIDE, this.safeRight)}vp)`)
     .height(BAR_HEIGHT)
     .alignItems(VerticalAlign.Center)
+    .id('px:navbar')
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.88)) // web: 0.88 measured over the Chapters thumbnail, both themes
     .borderRadius(BAR_RADIUS)
     .shadow({ radius: 20, color: 'rgba(31, 14, 20, 0.2)', offsetY: 14 })

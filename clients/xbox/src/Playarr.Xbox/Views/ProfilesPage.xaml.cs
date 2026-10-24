@@ -51,6 +51,9 @@ namespace Playarr.Xbox.Views
         public ProfilesPage()
         {
             InitializeComponent();
+            WebFont.Apply(EyebrowText, 820);
+            WebFont.Apply(TitleText, 500);
+            LayoutExport.SetRole(TitleText, "heading");
             _viewModel = new ProfilesViewModel(App.Environment);
             CardFocus.ReserveFocusRoom(ProfilesScrollViewer);
             BuildTopControls();
@@ -176,7 +179,7 @@ namespace Playarr.Xbox.Views
             gear.Click += (s, e) => App.Navigation.Navigate(typeof(SettingsPage));
             var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Thickness(0) };
             label.Children.Add(Glyph("\uE7E8", 14, "PlayarrInkSoft"));
-            label.Children.Add(new TextBlock { Text = "Sign out", FontSize = 11.5, FontWeight = FontWeights.Bold, Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"], VerticalAlignment = VerticalAlignment.Center });
+            label.Children.Add(new TextBlock { Text = "Sign out", FontSize = 10.75, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"], VerticalAlignment = VerticalAlignment.Center });
             var signOut = ChromeButton(label, 101, 44, 22);
             signOut.Click += (s, e) => SignOut();
             row.Children.Add(gear);
@@ -242,7 +245,7 @@ namespace Playarr.Xbox.Views
             avatarHost.Children.Add(ring);
 
             var nameRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center };
-            nameRow.Children.Add(new TextBlock { Text = name, FontSize = 18, FontWeight = FontWeights.SemiBold });
+            nameRow.Children.Add(LayoutExport.Tag(new TextBlock { Text = name, FontSize = 17.28, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), LineHeight = 24, LineStackingStrategy = LineStackingStrategy.BlockLineHeight }, "text"));
             if (nameLock)
             {
                 // Segoe MDL2 Assets's lock glyph: a built-in PIN-lock indicator with no image asset.
@@ -255,8 +258,8 @@ namespace Playarr.Xbox.Views
             content.Children.Add(new TextBlock
             {
                 Text = status,
-                FontSize = 10,
-                FontWeight = FontWeights.SemiBold,
+                FontSize = 9.41,
+                FontFamily = WebFont.Face(690), FontWeight = WebFont.Weight(690),
                 CharacterSpacing = 60,
                 Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"],
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -364,8 +367,8 @@ namespace Playarr.Xbox.Views
             plate.Children.Add(new TextBlock
             {
                 Text = "+",
-                FontSize = 86,
-                FontWeight = FontWeights.Light,
+                FontSize = 76.8,
+                FontFamily = WebFont.Face(300), FontWeight = WebFont.Weight(300),
                 Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"],
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -385,7 +388,7 @@ namespace Playarr.Xbox.Views
             icon.HorizontalAlignment = HorizontalAlignment.Right;
             icon.Margin = new Thickness(0, 0, 14, 0);
             layout.Children.Add(icon);
-            var label = new TextBlock { Text = text, FontSize = 14, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
+            var label = new TextBlock { Text = text, FontSize = 11.52, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(label, 1);
             layout.Children.Add(label);
             var chevron = Glyph("\uE70D", 10, "PlayarrInkMuted");

@@ -1,5 +1,6 @@
 sub init()
-    PlayarrFontifyTree(m.top)
+    PlayarrFontifyTree(m.top, "PosterCard")
+    m.global.observeField("parityLayoutSeq", "onParityLayoutCard")
     ThemeSetRole(m.top.findNode("posterBg"), "surfaceSoft")
     for each id in ["cornerTL", "cornerTR", "cornerBL", "cornerBR"]
         ThemeSetRole(m.top.findNode(id), "surface")
@@ -18,8 +19,6 @@ sub init()
     m.title = m.top.findNode("title")
     m.overlayNumber = m.top.findNode("overlayNumber")
     m.captionPrefix = m.top.findNode("captionPrefix")
-    m.overlayNumber.font = PlayarrMakeFont(600, 21)
-    m.captionPrefix.font = PlayarrMakeFont(700, 10)
     m.kind = m.top.findNode("kind")
     m.titleFont0 = m.title.font
     m.kindFont0 = m.kind.font
@@ -112,12 +111,16 @@ sub onContentChanged()
     hasPrefix = content.captionPrefix <> invalid and content.captionPrefix <> ""
     m.captionPrefix.visible = hasPrefix
     if hasPrefix
+        m.title.setFields({ size: 11.52, tracking: -0.177 })
+        m.captionPrefix.tracking = EpisodeCodeTracking(content.captionPrefix, -0.433)
         m.captionPrefix.text = content.captionPrefix
-        m.title.translation = [m.captionPrefix.boundingRect().width + 8, m.titleY]
+        m.title.translation = [m.captionPrefix.textWidth + 8.8, m.titleY]
     else
+        m.title.setFields({ size: 11.9, tracking: -0.183 })
         m.title.translation = [m.cardTitleX, m.titleY]
     end if
     clampCardTitle(content.title, hasPrefix)
+    applyCaptionFocus()
     watchState = ""
     if content.watchState <> invalid then watchState = content.watchState
     m.unwatchedBadge.visible = watchState = "unseen"
@@ -125,7 +128,7 @@ sub onContentChanged()
     if watchState = "part"
         pct = 0
         if content.progressPct <> invalid then pct = content.progressPct
-        fill = 220 * pct / 100
+        fill = m.progressTrack.width * pct / 100
         if fill < 3 then fill = 3
         m.progressFill.width = fill
     end if
@@ -215,11 +218,25 @@ end sub
 sub onFocusChanged()
     effective = m.top.focusPercent * m.top.activeRailFactor
     ' A drawer over the page owns focus: the cards behind it draw no focus (web keeps the ring on the drawer's control).
+    ' Caption ink follows the card's own focus, which an open drawer does not take away (web keeps the text colour).
+    inkFocus = effective
     if m.global.cardFocusOff = true then effective = 0
     shadowOpacity = effective
     if shadowOpacity > 1 then shadowOpacity = 1
     if shadowOpacity < 0 then shadowOpacity = 0
     m.focusShadow.opacity = shadowOpacity
+    applyCaptionFocus()
+    ' A focused card's caption is white (web .is-focused).
+    chapterCard = m.captionPrefix.visible and Left(m.captionPrefix.text, 2) <> "S "
+    if (inkFocus > 0.5 or chapterCard) and not m.cardListMode and not m.top.findNode("circleMask").visible
+        m.title.color = ThemeColor("cardFocusInk")
+        m.kind.color = ThemeColor("cardFocusInk")
+        m.captionPrefix.color = ThemeColor("cardFocusInk")
+    else
+        m.title.color = ThemeColor("ink")
+        m.kind.color = ThemeColor("inkMuted")
+        m.captionPrefix.color = ThemeColor("inkMuted")
+    end if
     m.restShadow.opacity = 1 - shadowOpacity
     ' Web --card-glow: a brand ring and soft glow on the focused media card (not the round cast headshots).
     ringOn = shadowOpacity > 0.5 and not m.top.findNode("circleMask").visible
@@ -329,7 +346,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.top.findNode("cornerTR").translation = [artW - 12, 0]
     m.top.findNode("cornerBL").translation = [0, artH - 12]
     m.top.findNode("cornerBR").translation = [artW - 12, artH - 12]
-    m.unwatchedBadge.translation = [artW - 23.5, 9.5]
+    m.unwatchedBadge.translation = [artW - 24.5, 9.56]
     m.progressTrack.translation = [0, artH - 3]
     m.progressTrack.width = artW
     ' Home RowList items reserve a 3 px inset around the art so this outer ring stays inside the item viewport.
@@ -379,11 +396,11 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     if cardScale > 1 then titleGap = 11.5
     m.titleY = artH + titleGap
     m.cardTitleY = m.titleY
-    m.cardTitleX = 0
+    m.cardTitleX = 1.94
     m.cardArtW = artW
-    m.title.translation = [0, m.titleY]
-    m.title.width = artW
-    m.kind.translation = [0, artH + titleGap + 19.5]
+    m.title.translation = [1.94, m.titleY]
+    m.title.width = artW - 3.9
+    m.kind.translation = [1.94, artH + titleGap + 19.5]
     m.kind.width = artW
     if listMode
         ' Web list row: the art on the left, the title and the genre line centred beside it.
@@ -399,8 +416,8 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         m.title.font = m.titleFont0
         m.kind.font = m.kindFont0
     end if
-    m.overlayNumber.translation = [artW - 70, artH - 39]
-    m.captionPrefix.translation = [0, artH + 12]
+    m.overlayNumber.translation = [artW - 70 - 0.6, artH - 36.6]
+    m.captionPrefix.translation = [0, artH + 14.5]
 end sub
 
 ' Web .tv-title-card-copy strong: one line, text-overflow ellipsis at the card's width.
@@ -421,4 +438,42 @@ sub clampCardTitle(text as String, hasPrefix as Boolean)
         end while
     end if
     m.title.width = fixedWidth
+end sub
+
+' Parity layout dump: a grid item is not reachable from the scene, so each card prints its own boxes and captions on request.
+sub onParityLayoutCard()
+    if m.global.parityArtEnabled <> true then return
+    content = m.top.itemContent
+    if content = invalid or not content.hasField("parityDx") then return
+    m.parityDx = content.parityDx
+    m.parityDy = content.parityDy
+    m.parityRoot = m.top
+    ' A rail lifts its focused item as a whole (the lift is outside the item, so its fields do not show it): 6.25 px, measured.
+    if m.homeCardFocusStyle = true and m.top.focusPercent * m.top.activeRailFactor > 0.5 then m.parityDy = m.parityDy - 6.25
+    ' A focus animation that has not run to its end leaves the fields part-way: report the settled state.
+    m.parityGrid = content.parityGrid
+    m.parityOpen = content.parityOpen
+    ParityCard(m.top)
+    ctx = { measure: CreateObject("roSGNode", "Label"), count: 0 }
+    ParityLayoutWalk(m.cardRoot, 1.0, ctx)
+end sub
+
+' A focused grid card is scaled 1.015 as a whole and lifted 5 px: its caption follows (web .tv-title-card:focus).
+sub applyCaptionFocus()
+    effective = m.top.focusPercent * m.top.activeRailFactor
+    if m.global.cardFocusOff = true then effective = 0
+    if effective > 1 then effective = 1
+    if effective < 0 then effective = 0
+    m.title.scale = [1, 1]
+    m.kind.scale = [1, 1]
+    if m.cardScaleValue > 1 and m.homeCardFocusStyle <> true and m.cardListMode <> true and m.cardArtW <> invalid and m.cardArtW > 0 and effective > 0
+        k = 1 + 0.015 * effective
+        cx = m.cardArtW / 2
+        cy = (m.top.findNode("posterBg").height + 29.38) / 2
+        lift = -5 * effective
+        m.title.scale = [k, k]
+        m.title.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY - cy) * k + lift]
+        m.kind.scale = [k, k]
+        m.kind.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY + 19.5 - cy) * k + lift]
+    end if
 end sub

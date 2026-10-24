@@ -17,7 +17,7 @@ namespace Playarr.Xbox.Views
         public static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 
         public static TextBlock Text(string text, double size, FontWeight weight, string brushKey, Thickness margin = default) =>
-            new TextBlock { Text = text, FontSize = size, FontWeight = weight, Foreground = Res(brushKey), Margin = margin };
+            new TextBlock { Text = text, FontSize = size, FontFamily = WebFont.Face(weight.Weight), FontWeight = WebFont.Weight(weight.Weight), Foreground = Res(brushKey), Margin = margin };
 
         /// <summary>The web page header: round Back button, title and an optional pink count line, at the shell content edge.</summary>
         public static PageHeaderParts PageHeader(Panel host, string title, string? subtitle, Action back)
@@ -25,7 +25,7 @@ namespace Playarr.Xbox.Views
             var backButton = BackButton(back);
             host.Children.Add(backButton);
             var titles = new StackPanel { Margin = new Thickness(226.63, 58.16, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"], FontSize = 33.6, FontWeight = new FontWeight { Weight = 580 }, LineHeight = 46, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"], FontSize = 33.6, FontFamily = WebFont.Face(580), FontWeight = WebFont.Weight(580), LineHeight = 46, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, CharacterSpacing = -52 };
             LayoutExport.SetRole(titleText, "heading");
             var subtitleText = new TextBlock { Text = subtitle ?? string.Empty };
             LayoutHeader(titles, titleText, subtitleText);
@@ -70,7 +70,7 @@ namespace Playarr.Xbox.Views
             titles.Children.Clear();
             subtitle.Text = subtitle.Text.ToUpperInvariant();
             subtitle.FontSize = 11.14; // web: clamp(0.62rem, 0.58vw, 0.72rem) at 1920
-            subtitle.FontWeight = new FontWeight { Weight = 680 };
+            WebFont.Apply(subtitle, 680);
             subtitle.LineHeight = 15;
             subtitle.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
             subtitle.CharacterSpacing = 45; // web: 0.045em
@@ -133,7 +133,7 @@ namespace Playarr.Xbox.Views
             button.HorizontalAlignment = HorizontalAlignment.Left;
             button.VerticalAlignment = VerticalAlignment.Top;
             // The web draws Back as the text arrow, small and lightweight, not an icon-font arrow.
-            button.Content = new TextBlock { Text = "\u2190", FontSize = 17.28, FontWeight = new FontWeight { Weight = 720 }, LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            button.Content = new TextBlock { Text = "\u2190", FontSize = 17.28, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             return button;
         }
 
@@ -264,7 +264,7 @@ namespace Playarr.Xbox.Views
             BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Child = new TextBlock { Text = text, FontSize = web ? 13.44 : 9, FontWeight = web ? new FontWeight { Weight = 750 } : FontWeights.SemiBold, LineHeight = web ? 19 : 0, LineStackingStrategy = web ? LineStackingStrategy.BlockLineHeight : LineStackingStrategy.MaxHeight, Foreground = web ? Res("PlayarrInk") : new SolidColorBrush(color) },
+            Child = new TextBlock { Text = text, FontSize = web ? 13.44 : 9, FontFamily = WebFont.Face(web ? 750 : 600), FontWeight = WebFont.Weight(web ? 750 : 600), LineHeight = web ? 19 : 0, LineStackingStrategy = web ? LineStackingStrategy.BlockLineHeight : LineStackingStrategy.MaxHeight, Foreground = web ? Res("PlayarrInk") : new SolidColorBrush(color) },
         };
     }
 }

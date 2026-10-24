@@ -5,7 +5,7 @@
  */
 
 import { atLeast } from '../../core/SafeInsets';
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -33,11 +33,11 @@ const TOUCH_BODY_GAP: number = 29;
 const TOUCH_KICKER_GAP: number = 7.3;
 const TOUCH_CLOSE_RING_OUTSET: number = 5.3;
 const TOUCH_CLOSE_LIFT: number = -0.6; // static web ref: the button is 2 vp lower than the older ref
-const TOUCH_TITLE_SIZE: number = 24;
-const TOUCH_TITLE_LETTER_SPACING: number = -2.1; // web's title is 12% narrower than this font draws at -0.8
+const TOUCH_TITLE_SIZE: number = 22.4;
+const TOUCH_TITLE_LETTER_SPACING: number = -1.227; // web -0.0548em at 22.4
 const TOUCH_BODY_RING_ROOM: number = 6;
-const TOUCH_CLOSE_SIZE: number = 43;
-const TOUCH_CLOSE_GLYPH_SIZE: number = 17;
+const TOUCH_CLOSE_SIZE: number = 44;
+const TOUCH_CLOSE_GLYPH_SIZE: number = 16;
 const SHADOW_COLOR: string = 'rgba(40, 26, 24, 0.24)';
 
 @Component
@@ -65,26 +65,28 @@ export struct Drawer {
     Column() {
       Row() {
         Column({ space: isTvMetrics() ? tv(6.5) : TOUCH_KICKER_GAP }) {
-          Text(this.kicker).fontFamily(nunito(700))
+          Text(this.kicker).fontFamily(nunitoAt(700, isTvMetrics() ? tv(KICKER_SIZE) : 7.2))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
             .letterSpacing(tv(KICKER_LETTER_SPACING))
             .textCase(TextCase.UpperCase)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-          Text(this.title).fontFamily(nunito(500))
+            .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
+          Text(this.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
             .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
             .lineHeight(isTvMetrics() ? tv(57) : 0) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
+            .id('px:heading:' + this.title)
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
         Stack() {
-          Text('×').fontFamily(nunito(isTvMetrics() ? 700 : 500))
+          Text('×').fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE))
             .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
             .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))
+            .id(isTvMetrics() ? '' : 'px:button:Close')
             .textAlign(TextAlign.Center)
             .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
             .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)

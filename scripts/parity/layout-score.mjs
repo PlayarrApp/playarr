@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // Deterministic layout score (docs/parity/LAYOUT.md).
-//   node layout-score.mjs --ref <web layout json> --device <device layout json> [--json] [--max 40]
+//   node layout-score.mjs --ref <web layout json> --device <device layout json> [--client <legend dir>] [--exclusions <json>] [--json] [--max 40]
 // score = web elements that matched a device element with every field inside tolerance / scored web elements.
 // Self-contained on purpose: the legend service keeps a copy of this single file.
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const TOL = Object.freeze({ edge: 1, deltaE: 2, fontSize: 0.5, fontWeight: 50, radius: 1, opacity: 0.05 });
 const FIXTURE_CLOCK = "2026-10-07T12:00:00Z";
@@ -32,6 +34,24 @@ export function deltaE(a, b, under = "#ffffff") {
   const [l1, l2] = [lab(flat(pa)), lab(flat(pb))];
   return Math.hypot(l1[0] - l2[0], l1[1] - l2[1], l1[2] - l2[2]);
 }
+
+/** Per-client exclusions (layout-exclusions.json, docs/parity/LAYOUT.md): documented capability gaps only. Every entry needs reason and doc. */
+export function loadExclusions(path = join(dirname(fileURLToPath(import.meta.url)), "layout-exclusions.json")) {
+  const table = JSON.parse(readFileSync(path, "utf8"));
+  for (const [client, list] of Object.entries(table)) {
+    if (client.startsWith("$")) continue;
+    for (const x of list) {
+      const m = x.match ?? {};
+      if (!x.screen || !x.reason || !/^\S+#\S+$/.test(x.doc ?? "") || !(m.text || m.textPrefix || m.textRegex)) throw new Error(`layout-exclusions: bad entry for ${client}: ${JSON.stringify(x)}`);
+    }
+  }
+  return table;
+}
+const matchesExclusion = (x, e) => {
+  const m = x.match, t = normText(e.text);
+  return (m.role === undefined || m.role === e.role) && (m.text === undefined || t === normText(m.text)) &&
+    (m.textPrefix === undefined || t.startsWith(m.textPrefix)) && (m.textRegex === undefined || new RegExp(m.textRegex).test(t));
+};
 
 const center = (r) => [r.x + r.w / 2, r.y + r.h / 2];
 const iou = (a, b) => {
@@ -68,13 +88,21 @@ function compare(w, d, { scoreText, edge = TOL.edge }) {
 }
 
 /** Score `device` against the web layout `ref`. Pure and deterministic: same inputs, same output. */
-export function scoreLayout(ref, device, { edge = TOL.edge } = {}) {
+export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions } = {}) {
   const clockPinned = device.clockPinned === true;
   // "system" elements are OS chrome (status bar, home indicator): never matched, never reported.
   const dev = device.elements.map((e, i) => ({ ...e, i })).filter((e) => e.role !== "system");
   const taken = new Set();
   const web = ref.elements.map((e, i) => ({ ...e, i }));
-  const scored = web.filter((e) => !e.maskOnly);
+  // Excluded web elements leave the denominator; every other element keeps its web position and is scored as before.
+  const rules = client && exclusions ? (exclusions[client] ?? []).filter((x) => x.screen === "*" || x.screen === ref.screen) : [];
+  const excluded = [];
+  const scored = web.filter((e) => {
+    if (e.maskOnly) return false;
+    const x = rules.find((r) => matchesExclusion(r, e));
+    if (x) excluded.push({ text: e.text, role: e.role, rect: e.rect, reason: x.reason, doc: x.doc });
+    return !x;
+  });
   const pairs = new Map();
   const pick = (w, ok, rank) => {
     let best = null;
@@ -123,12 +151,14 @@ export function scoreLayout(ref, device, { edge = TOL.edge } = {}) {
     clock: { pinned: clockPinned, equalsFixture: clockSeen.length ? clockSeen.every(Boolean) : null, fixture: FIXTURE_CLOCK },
     extras: dev.length - pairs.size,
     occluded: ref.occluded ?? 0,
+    excluded,
     failures,
   };
 }
 
 export const formatReport = (r, max = 40) => {
-  const lines = [`${r.screen}/${r.theme}: layout ${r.score}% (${r.equal}/${r.total} equal, ${r.matched} matched, ${r.extras} extra device elements, ${r.occluded} occluded web elements dropped); clock pinned ${r.clock.pinned}, equals fixture ${r.clock.equalsFixture}`];
+  const lines = [`${r.screen}/${r.theme}: layout ${r.score}% (${r.equal}/${r.total} equal, ${r.matched} matched, ${r.extras} extra device elements, ${r.occluded} occluded web elements dropped, ${(r.excluded ?? []).length} excluded); clock pinned ${r.clock.pinned}, equals fixture ${r.clock.equalsFixture}`];
+  for (const x of r.excluded ?? []) lines.push(`  excluded ${x.role} "${String(x.text).slice(0, 40)}": ${x.reason} (${x.doc})`);
   for (const f of r.failures.slice(0, max)) {
     const rc = f.ref.rect;
     lines.push(`  ${f.ref.role} "${String(f.ref.text).slice(0, 40)}" @${rc.x},${rc.y} ${rc.w}x${rc.h}${f.device ? "" : "  NOT FOUND ON DEVICE"}`);
@@ -141,7 +171,8 @@ export const formatReport = (r, max = 40) => {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
-  if (!opt("ref") || !opt("device")) { console.error("usage: layout-score.mjs --ref <web json> --device <device json> [--json] [--max N]"); process.exit(2); }
-  const result = scoreLayout(JSON.parse(readFileSync(opt("ref"), "utf8")), JSON.parse(readFileSync(opt("device"), "utf8")));
+  if (!opt("ref") || !opt("device")) { console.error("usage: layout-score.mjs --ref <web json> --device <device json> [--client <dir>] [--exclusions <json>] [--json] [--max N]"); process.exit(2); }
+  const client = opt("client");
+  const result = scoreLayout(JSON.parse(readFileSync(opt("ref"), "utf8")), JSON.parse(readFileSync(opt("device"), "utf8")), client ? { client, exclusions: loadExclusions(opt("exclusions")) } : {});
   console.log(args.includes("--json") ? JSON.stringify(result, null, 2) : formatReport(result, Number(opt("max") ?? 40)));
 }

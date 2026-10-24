@@ -34,16 +34,20 @@
             Spacing="0">
 
             <TextBlock
+                x:Name="EyebrowText"
                 Text="PROFILES"
-                FontSize="11"
-                FontWeight="Bold"
+                FontSize="10.37"
+                LineHeight="14"
+                LineStackingStrategy="BlockLineHeight"
                 CharacterSpacing="120"
                 Foreground="{StaticResource PlayarrBrandInk}"
                 HorizontalAlignment="Center" />
             <TextBlock
                 Text="Who&#x2019;s watching?"
-                FontSize="80"
-                FontWeight="SemiBold"
+                x:Name="TitleText"
+                FontSize="80.64"
+                LineHeight="110"
+                LineStackingStrategy="BlockLineHeight"
                 CharacterSpacing="-40"
                 HorizontalAlignment="Center"
                 Margin="0,0,0,90" />

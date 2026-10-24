@@ -111,6 +111,20 @@ def group(n: int) -> None:
     # Web dock group: 77.5 wide, 73.6 per item plus 5.8 padding; fill is --surface at .56 (token tint, alpha baked).
     h = round(73.6 * n + 5.8)
     rounded(78, h, 22, 143).save(IMAGES / f"nav-group-{n}.png")
+    # Group shadow (0 14px 42px rgba(56,38,33,.10), a gaussian of sigma 21), drawn outside the box only as CSS does. Own bitmap
+    # so the group fill's theme tint does not recolour it; PAD px of room on every side.
+    from PIL import ImageFilter
+    pad = 80
+    size = (78 + 2 * pad, h + 2 * pad)
+    mask = Image.new("L", size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((pad, pad + 14, pad + 77, pad + 14 + h - 1), radius=22, fill=round(255 * 0.10))
+    mask = mask.filter(ImageFilter.GaussianBlur(21))
+    hole = Image.new("L", size, 255)
+    ImageDraw.Draw(hole).rounded_rectangle((pad, pad, pad + 77, pad + h - 1), radius=22, fill=0)
+    mask = Image.composite(mask, Image.new("L", size, 0), hole)
+    shadow = Image.new("RGBA", size, (56, 38, 33, 0))
+    shadow.putalpha(mask)
+    shadow.save(IMAGES / f"nav-group-shadow-{n}.png")
 
 
 SHARED_AVATARS = Path(__file__).resolve().parents[2] / "shared" / "profile-avatars"

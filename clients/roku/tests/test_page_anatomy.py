@@ -54,7 +54,7 @@ class PageAnatomyGuard(unittest.TestCase):
     def test_back_button_is_drawn_only_by_the_shared_helper(self) -> None:
         # The calendar's Previous arrow reuses the glyph on a 1629 px control, not the Back button.
         self.assertEqual(self.offenders(r'56\.3, 50, 50, 25, "surface", 179', "back"), [])
-        stray = [f for f, s in self.rest.items() if re.search(r'"arrow-left\.png"', re.sub(r"^.*1646\.5.*$", "", s, flags=re.M))]
+        stray = [f for f, s in self.rest.items() if re.search(r'"arrow-left\.png"', re.sub(r"^.*(1646\.5|pgCalendarCircle).*$", "", s, flags=re.M))]
         self.assertEqual(sorted(set(stray) - {f for f, r in UNMIGRATED if r == "back"}), [])
 
     def test_header_title_spec_comes_from_the_shared_helper(self) -> None:

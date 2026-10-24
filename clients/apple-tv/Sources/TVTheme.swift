@@ -91,6 +91,7 @@ struct PlayarrLogoMark: View {
 struct TVStageBackground: View {
     var body: some View {
         DesignTokens.Color.backgroundBase.ignoresSafeArea()
+            .parityBox("container", fill: DesignTokens.Stage.bg)
     }
 }
 
@@ -522,7 +523,7 @@ enum TVNavTab: String, CaseIterable, Identifiable {
         switch self {
         case .downloads: return "arrow.down.to.line"
         case .watchlist: return "bookmark"
-        case .requests: return "text.badge.plus"
+        case .requests: return "plus.circle"
         case .calendar: return "calendar"
         case .search: return "magnifyingglass"
         case .home: return "house"
@@ -685,6 +686,7 @@ private struct TVNavVectorIcon: View {
             }
             .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
             .accessibilityHidden(true)
+            .parityBox("image", fill: DesignTokens.Stage.surface)
         } else {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 20, weight: .medium))
@@ -712,7 +714,10 @@ struct TVHomeCardFocusRequest: Equatable, Identifiable {
 
 enum TVHomeNavFocusGeometry {
     static func nearestTarget(from source: CGRect, navFrames: [TVNavTab: CGRect]) -> TVNavTab? {
-        navFrames.compactMap { tab, frame -> (tab: TVNavTab, score: CGFloat)? in
+        // The web lands on Home from the first rail's leading card (static D-pad `home-left-nav`); a hosted run reached
+        // Downloads from this card by the geometry below, so the first rail (centre above y 520) is pinned to Home.
+        if let home = navFrames[.home], home.width > 0, source.midY < 520 { return .home }
+        return navFrames.compactMap { tab, frame -> (tab: TVNavTab, score: CGFloat)? in
             guard frame.width > 0, frame.height > 0,
                   let score = scoreLeftCandidate(from: source, to: frame) else { return nil }
             return (tab, score)
@@ -970,6 +975,7 @@ struct TVFloatingNav: View {
         }
         .padding(.vertical, DesignTokens.Shell.navGroupPadding)
         .padding(.horizontal, DesignTokens.Shell.navGroupPadding)
+        .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface)
         .modifier(TVNavPanelShadow())
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
@@ -991,6 +997,7 @@ struct TVFloatingNav: View {
                         .tracking(0.3)
                         .lineLimit(1)
                         .foregroundStyle(DesignTokens.Color.textDisabled)
+                        .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 9, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textDisabled, tracking: 0.3)
                 }
                 .frame(width: DesignTokens.Shell.navItemSize, height: DesignTokens.Shell.navItemSize)
                 .modifier(TVNavItemFocusFill())
@@ -1044,14 +1051,10 @@ struct TVFloatingNav: View {
             VStack(spacing: 5) {
                 TVNavVectorIcon(tab: tab)
                 Text(tab.title)
-                    #if os(macOS)
                     .font(TVTheme.font(size: 8.832, css: 680)) // web .app-nav-label: .46vw / 680 / .035em
                     .tracking(0.31)
-                    #else
-                    .font(TVTheme.font(size: 9, weight: .semibold))
-                    .tracking(0.3)
-                    #endif
                     .lineLimit(1)
+                    .parityLayout(text: tab.title, size: 8.832, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31)
             }
             .foregroundStyle(
                 isActive || isFocused
@@ -1062,6 +1065,7 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
+            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Stage.surfaceSoft : DesignTokens.Stage.surface)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
@@ -1154,20 +1158,16 @@ struct TVNavProfile {
 }
 
 /// A row or nav item's focus: the selected fill (web TV), driven by the system focus; no ring, no platter.
-/// Web `.app-nav-group { box-shadow: 0 14px 42px rgba(56, 38, 33, .1) }`. Mac only: the shadow sits on an opaque page-coloured
+/// Web `.app-nav-group { box-shadow: 0 14px 42px rgba(56, 38, 33, .1) }`. the shadow sits on an opaque page-coloured
 /// plate under the translucent panel fill, so it does not darken the panel through the fill.
 struct TVNavPanelShadow: ViewModifier {
     func body(content: Content) -> some View {
-        #if os(macOS)
         content.background(
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
                 .fill(DesignTokens.Stage.bg)
                 .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.1), radius: 42,
                         y: 14)
         )
-        #else
-        content
-        #endif
     }
 }
 
@@ -1188,11 +1188,7 @@ struct TVShellHeader: View {
     var frozenClock: Bool = false
     /// Web `.app-clock`: x 476.1 on every TV page (live web, 2026-10-11). The web right-aligns it (ink 483 to 632 on the
     /// 2026-10-18 refs); the Mac's font metrics put the same text 4.5 pt left, so the Mac starts 4.5 pt further right.
-    #if os(macOS)
-    var clockLeading: CGFloat = 480.6
-    #else
-    var clockLeading: CGFloat = 476.1
-    #endif
+    var clockLeading: CGFloat = 480.97 // the web glyph run starts at 480.97 (layout dump)
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -1204,10 +1200,12 @@ struct TVShellHeader: View {
                     .font(TVTheme.font(size: 17.28, css: 760))
                     .tracking(-0.52)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .parityLayout(text: Self.timeString(frozen: frozenClock), role: "text", size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52, lineHeight: 25.92, onPage: true)
                 Text(Self.dateString(frozen: frozenClock))
                     .font(TVTheme.font(size: 11.136, css: 640))
                     .tracking(0.45)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .parityLayout(text: Self.dateString(frozen: frozenClock), size: 11.136, weight: 640, color: DesignTokens.Color.textPrimary, tracking: 0.45, lineHeight: 12.25, onPage: true)
             }
             }
             .placed(x: clockLeading, y: 68.2, h: 25.9)
@@ -1253,6 +1251,7 @@ struct TVProfileChip: View {
                 Text(name)
                     .font(TVTheme.font(size: 13, weight: .semibold))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .parityLayout(text: name, size: 13, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
             }
             .padding(.leading, 6)
             .padding(.trailing, 14)
@@ -1265,6 +1264,7 @@ struct TVProfileChip: View {
                 Text(version)
                     .font(TVTheme.font(size: 10, weight: .medium))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: version, size: 10, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textDisabled)
                     .padding(.leading, 44)
             }
         }
@@ -1319,6 +1319,7 @@ struct TVHeaderPill: View {
                 .font(TVTheme.font(size: 14.72, css: 720))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
                 .lineLimit(1)
+                .parityLayout(text: label, size: 14.72, weight: Int(720), color: DesignTokens.Color.textSecondary)
                 .frame(width: width, height: 50)
                 .background(Capsule().fill(DesignTokens.Color.backgroundElevated))
                 .overlay(Capsule().stroke(DesignTokens.Stage.line.opacity(0.35), lineWidth: 1))
@@ -1335,6 +1336,7 @@ struct TVHeaderPill: View {
                 .font(TVTheme.font(size: 8.256, css: 700))
                 .tracking(0.165)
                 .lineLimit(1)
+                .parityLayout(text: label, size: 8.256, weight: Int(700), tracking: 0.165)
         }
         .foregroundStyle(DesignTokens.Stage.inkMuted)
         .frame(width: width, height: Self.height)

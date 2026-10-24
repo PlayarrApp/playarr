@@ -1,0 +1,1 @@
+- Parity: per-client layout exclusions (`scripts/parity/layout-exclusions.json`, `layout-score.mjs --client`) for documented capability gaps, listed as `excluded` in the report.

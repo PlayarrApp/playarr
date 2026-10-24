@@ -6,8 +6,10 @@
 // (TVParityState in clients/apple-tv), read through `simctl get_app_container`. Screenshots are `simctl io screenshot`.
 import { execFileSync } from "node:child_process";
 import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { PNG } from "pngjs";
 import { FIXTURE_FILM, staticRoute } from "../apple/static-route.mjs";
+import { mapRaw } from "../apple/layout-map.mjs";
 
 // IDB (path of the idb client, with its companion running): headless keys as USB HID usages, no Simulator window, no host keyboard.
 const HID = { up: 82, down: 81, left: 80, right: 79, select: 40, back: 41 };
@@ -143,6 +145,25 @@ function readState(work) {
   const env = {};
   if (existsSync(f)) for (const line of readFileSync(f, "utf8").split("\n")) { const m = /^([A-Z_]+)=(.*)$/.exec(line); if (m) env[m[1]] = m[2].replace(/^'(.*)'$/, "$1").replace(/\\(.)/g, "$1"); }
   return env;
+}
+
+
+// The colour behind an element: the most common pixel in a 2 px ring just outside its box (ancestors composited, as the web dump).
+function addBackgrounds(layout, file) {
+  const png = PNG.sync.read(readFileSync(file));
+  const k = png.width / (layout.viewport?.w || 1920);
+  const at = (x, y) => { const i = (Math.min(png.height - 1, Math.max(0, y)) * png.width + Math.min(png.width - 1, Math.max(0, x))) * 4; return (png.data[i] << 16) | (png.data[i + 1] << 8) | png.data[i + 2]; };
+  for (const e of layout.elements) {
+    const { x, y, w, h } = e.rect;
+    const x0 = Math.round((x - 2) * k), x1 = Math.round((x + w + 1) * k), y0 = Math.round((y - 2) * k), y1 = Math.round((y + h + 1) * k);
+    const counts = new Map();
+    const add = (px, py) => { const c = at(px, py); counts.set(c, (counts.get(c) ?? 0) + 1); };
+    for (let px = x0; px <= x1; px += 2) { add(px, y0); add(px, y1); }
+    for (let py = y0; py <= y1; py += 2) { add(x0, py); add(x1, py); }
+    let best = null, n = 0;
+    for (const [c, v] of counts) if (v > n) { best = c; n = v; }
+    if (best !== null) e.background = "#" + best.toString(16).padStart(6, "0");
+  }
 }
 
 export async function createDriver({ args = [], out } = {}) {
@@ -410,6 +431,21 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       } else run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", file]);
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if ((state().route ?? "").startsWith("/login")) throw new Error("signed out");
+      // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames, written beside the screenshot.
+      try {
+        const base = mac ? dirname(macState) : join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents");
+        for (let i = 0; i < 20 && !existsSync(join(base, "parity-layout.json")); i += 1) await sleep(500); // the app writes it once the view is idle
+        const layout = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
+        const themeDir = dirname(file), id = basename(file, ".png");
+        if (!/^(dark|light)$/.test(basename(themeDir))) throw new Error("not a screen capture");
+        const dir = join(dirname(themeDir), "layout", basename(themeDir));
+        mkdirSync(dir, { recursive: true });
+        const rawDir = join(dirname(themeDir), "layout-raw", basename(themeDir)); // the unmapped tree, for local replay
+        mkdirSync(rawDir, { recursive: true });
+        writeFileSync(join(rawDir, `${id}.json`), JSON.stringify(layout));
+        writeFileSync(join(dir, `${id}.json`), JSON.stringify(mapRaw(layout, id, basename(themeDir))));
+        rmSync(join(base, "parity-layout.json"), { force: true });
+      } catch { /* a build without the exporter, a crop, or a screen that registers nothing */ }
     },
     // Cases a and b: launch straight into the player (-PlayarrPlayFile) and read its state from parity-state.json. The
     // caller serialises runs (one device at a time, playback.lock rules); a 503/404 at a pod restart gets one re-run.

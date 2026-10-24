@@ -32,6 +32,11 @@ namespace Playarr.Xbox.Views
 
         public static void SetText(DependencyObject element, string text) => element.SetValue(TextProperty, text);
 
+        /// <summary>Grows the exported box of an element by this inset (the web's title box includes the line-height half-leading above and below the glyphs).</summary>
+        public static readonly DependencyProperty PadProperty = DependencyProperty.RegisterAttached("Pad", typeof(Thickness), typeof(LayoutExport), new PropertyMetadata(default(Thickness)));
+
+        public static void SetPad(DependencyObject element, Thickness pad) => element.SetValue(PadProperty, pad);
+
         public static void SetBox(DependencyObject element, Rect box) => element.SetValue(BoxProperty, box);
 
         public static void SetShell(DependencyObject element, bool shell) => element.SetValue(ShellProperty, shell);
@@ -74,7 +79,8 @@ namespace Playarr.Xbox.Views
         {
             double Width(int weight, int spacing)
             {
-                var block = new TextBlock { Text = "Downloads Movies", FontSize = 20, FontWeight = new Windows.UI.Text.FontWeight { Weight = (ushort)weight }, CharacterSpacing = spacing };
+                var block = new TextBlock { Text = "Downloads Movies", FontSize = 20, CharacterSpacing = spacing };
+                WebFont.Apply(block, weight);
                 block.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 return Math.Round(block.DesiredSize.Width, 2);
             }
@@ -106,7 +112,7 @@ namespace Playarr.Xbox.Views
                     return; // a drawn icon is one image, not its strokes
                 }
 
-                if (element is Button { Content: TextBlock } && GetRole(element) == null)
+                if (element is Button { Content: TextBlock } && (GetRole(element) == null || GetRole(element) == "button"))
                 {
                     return; // the web's label button is one element carrying the text run and its style
                 }
@@ -127,6 +133,11 @@ namespace Playarr.Xbox.Views
             double? fontSize = null;
             int? fontWeight = null;
             var rect = Bounds(element, root, scale);
+            if (element.GetValue(PadProperty) is Thickness pad && pad != default)
+            {
+                rect = new Rect(rect.X - pad.Left, rect.Y + pad.Top, rect.Width + pad.Left + pad.Right, rect.Height - pad.Top + pad.Bottom);
+            }
+
             if (element.GetValue(BoxProperty) is Rect box)
             {
                 rect = box;
@@ -144,8 +155,17 @@ namespace Playarr.Xbox.Views
                 role ??= "text";
                 color = Hex(block.Foreground);
                 fontSize = Math.Round(block.FontSize, 2);
-                fontWeight = block.FontWeight.Weight;
+                fontWeight = WebFont.WeightOf(block);
                 rect = TextRun(block, root, scale) ?? rect;
+            }
+            else if (element is Button { Content: TextBlock drawerLabel } && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
+            {
+                role = "button";
+                text = (string?)drawerLabel.GetValue(TextProperty) ?? (string.IsNullOrEmpty(name) ? drawerLabel.Text : name);
+                color = Hex(drawerLabel.Foreground);
+                fontSize = Math.Round(drawerLabel.FontSize, 2);
+                fontWeight = WebFont.WeightOf(drawerLabel);
+                rect = TextRun(drawerLabel, root, scale) ?? rect;
             }
             else if (role != null)
             {
@@ -161,7 +181,7 @@ namespace Playarr.Xbox.Views
                 text = string.IsNullOrEmpty(name) ? label.Text : name;
                 color = Hex(label.Foreground);
                 fontSize = Math.Round(label.FontSize, 2);
-                fontWeight = label.FontWeight.Weight;
+                fontWeight = WebFont.WeightOf(label);
                 rect = TextRun(label, root, scale) ?? rect;
             }
             else if (element is Button || element is ToggleButton || element is ListViewItem || element is GridViewItem)
@@ -169,7 +189,7 @@ namespace Playarr.Xbox.Views
                 role = "button";
                 text = string.IsNullOrEmpty(name) ? null : name;
             }
-            else if (element is Border border && Hex(border.Background) is not null)
+            else if (element is Border border && (Hex(border.Background) is not null || (border.BorderBrush != null && border.BorderThickness.Left > 0)))
             {
                 role = "container";
             }
@@ -213,8 +233,7 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                // The web reports the rail group's own fill as the page background; its children sit on the lifted fill.
-                background = pill != null || (element is Border { Background: var fill } && ReferenceEquals(fill, Application.Current.Resources["PlayarrRailFill"])) ? BackgroundBehind(pill ?? element) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
+                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,

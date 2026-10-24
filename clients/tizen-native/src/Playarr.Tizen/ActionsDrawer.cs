@@ -21,8 +21,8 @@ internal sealed class ActionsDrawer
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Sem.Tag(panel, "dialog", "", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
         Root.Add(panel);
-        Root.Add(Ui.Text("Title actions", 1606, 55, 9.6f, 720, t.InkMuted, 200, 14.4f, upper: true, spacing: 0.8f));
-        { var lines = Ui.Paragraph(Root, card.Title, 1606, 74, 38.4f, 590, t.Ink, 215, 56.8f, -1.5f, 2, role: "heading"); }
+        Root.Add(Ui.Text("Title actions", 1606, 54, 9.6f, 720, t.InkMuted, 200, 14.4f, upper: true, spacing: 0.8f));
+        { var lines = Ui.Paragraph(Root, card.Title, 1606, 72, 38.4f, 590, t.Ink, 215, 56.8f, -1.5f, 2, role: "heading"); }
         var x = Ui.Box(1826, 54, 48, 50, t.SurfaceSoft, 25);
         Sem.Tag(x, "button", "Close", radius: 50);
         x.Add(Ui.Text("×", 0, 4.5f, 26.88f, 720, t.Ink, 48, 40, HorizontalAlignment.Center));
@@ -40,7 +40,7 @@ internal sealed class ActionsDrawer
         };
         for (var i = 0; i < actions.Length; i++)
         {
-            var y = 222 + i * 81.5f; var a = actions[i];
+            var y = 221 + i * 82f; var a = actions[i];
             var b = Ui.Box(1606, y, 268, 68, t.SurfaceSoft, 14);
             Sem.Tag(b, "button", a.Glyph + " " + a.Text, radius: 14);
             b.Add(Ui.Text(a.Glyph, 18, 21, 19.52f, 400, t.Brand, 24, 26));
