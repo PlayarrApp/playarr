@@ -171,13 +171,13 @@ const WEEK_HEADING_HEIGHT: number = 28;
 const WEEK_HEADING_GAP: number = 6;
 const MONTH_HEAD_HEIGHT: number = 31;
 const MONTH_WEEKDAY_SIZE: number = 12;
-const MONTH_LINE_HEIGHT: number = 25;
+const MONTH_LINE_HEIGHT: number = 44; // web's entry button
 // Web phone month (static ref): the TV's cell type (12.48 vp, 9 vp dot) in cells 103 vp high, the day number 25.5 vp above the bottom.
-const TOUCH_MONTH_LINE_HEIGHT: number = 25;
+const TOUCH_MONTH_LINE_HEIGHT: number = MONTH_LINE_HEIGHT;
 const TOUCH_MONTH_CELL_HEIGHT: number = 103;
 const TOUCH_MONTH_FOOT_HEIGHT: number = 51;
 const MONTH_LINE_SIZE: number = 12.48;
-const MONTH_DOT_SIZE: number = 9;
+const MONTH_DOT_SIZE: number = 8.8;
 const MONTH_FOOT_HEIGHT: number = 44;
 /** Conservative phone cell inset: 2vp top padding plus a 2vp border on each edge. */
 const TOUCH_MONTH_CELL_VERTICAL_INSET: number = 6;
@@ -466,6 +466,7 @@ export struct ReleaseCalendar {
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
+    .id('pcal')
     .border({
       width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
       color: {
@@ -627,10 +628,11 @@ export struct ReleaseCalendar {
       Column() {
         ForEach(groupSeriesEpisodes(cell.entries).slice(0, this.monthLinesFor(cellHeight)), (item: CalendarItem) => {
           Row({ space: tv(7) }) {
-            Circle()
+            Column()
               .width(tv(MONTH_DOT_SIZE))
               .height(tv(MONTH_DOT_SIZE))
-              .fill(toResourceColor(toneColor(itemPillTone(item, this.today))))
+              .borderRadius(tv(MONTH_DOT_SIZE / 2))
+              .backgroundColor(toResourceColor(toneColor(itemPillTone(item, this.today))))
             Text(itemLineText(item)).fontFamily(nunitoAt(item.grouped ? 700 : 400, tv(MONTH_LINE_SIZE)))
               .fontSize(tv(MONTH_LINE_SIZE))
               .fontWeight(item.grouped ? FontWeight.Bold : FontWeight.Normal)
@@ -639,9 +641,12 @@ export struct ReleaseCalendar {
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .layoutWeight(1)
           }
-          .height(isTvMetrics() ? tv(MONTH_LINE_HEIGHT) : TOUCH_MONTH_LINE_HEIGHT)
-          .width('100%')
-          .padding({ left: tv(6) })
+          .height(MONTH_LINE_HEIGHT)
+          .width('calc(100% - 9.8vp)')
+          .id('px:button:' + item.title + ', ' + pillLabel(itemPillTone(item, this.today)) + ', ' + dayHeading(cell.day))
+          .borderRadius(4)
+          .margin({ left: 4.8, right: 5 }) // web: a 44 vp button 5.8 vp in from the cell edge, its content centred
+          .padding({ left: 5.6 })
         }, (item: CalendarItem): string => item.key)
       }
       .layoutWeight(1)
@@ -1164,6 +1169,7 @@ export struct ReleaseCalendar {
     .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 7 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
+    .id('pcal')
     .border({
       width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
       color: {

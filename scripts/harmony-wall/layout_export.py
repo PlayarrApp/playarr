@@ -202,6 +202,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             nid = str(attrs.get("id", ""))
             if nid.endswith("-nav-tile") and dpr == 3:
                 w, h = 42.0, 46.0  # the inspector clips a tile that scrolls past the bar's edge
+            if nid == "pcal":  # a calendar entry card: web's button is named by every text in it
+                el = {"text": " ".join(all_texts(node)), "role": "button", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None, "radius": num(attrs.get("borderRadius"), 0.0) or 12}
+                out.append(el)
             if nid.endswith("-nav-tile") or nid == "pcard":  # functional focus ids: the control's name is its first text
                 label = first_text(node)
                 texts = all_texts(node)
@@ -285,8 +289,11 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     attrs = dict(attrs); attrs["borderRadius"] = str(as_text[0][2]) if as_text[0][2] else "0"
                 el = {"text": " ".join(str(text).replace("\ufe0e", "").replace("\ufe0f", "").split()), "role": prole or "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, parent_bg)), "background": hex_of(parent_bg), "fontSize": size, "fontWeight": weight}
+                radius = num(attrs.get("borderRadius"), 0.0)
                 if as_text[0] is not None and as_text[0][0] == el["text"] and as_text[0][2]:
-                    el["radius"] = as_text[0][2]  # a text-only pill keeps its shape on the text element; other text never carries a radius in web
+                    el["radius"] = as_text[0][2]  # a text-only pill keeps its shape on the text element
+                elif radius and not (len(el["text"]) <= 1 or all(ch in "\u2190\u2192" for ch in el["text"])):  # a glyph's or letter's circle belongs to its button
+                    el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
                 out.append(el)
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "dialog" if id(node) in dialogs else "container")
