@@ -1,4 +1,5 @@
 sub init()
+    m.global.observeField("parityLayoutSeq", "onParityLayoutTiles")
     m.tilesGroup = m.top.findNode("tiles")
     m.focusIdx = 0
     m.top.focusable = true
@@ -53,20 +54,43 @@ sub buildTiles()
             ThemeSetRole(fill, "surfaceStrong", 199)
         end if
         m.tilesGroup.AppendChild(fill)
-        x = t.x
         ic = invalid
         plus = invalid
+        ' Web: a glyph, 8.8 px, then the label, centred as a group in the pill. Widths are the web's own glyph and text advances.
+        gw = 7.7
+        glyphSize = 12.81
+        if t.icon = "nav-playlists.png" then gw = 11.5
+        if t.icon = "player-play.png"
+            gw = 8.2
+            glyphSize = 10.12
+            if t.ink = true and m.top.layoutKind = "series" then gw = 7.8
+        end if
+        labelSize = 11.14
+        if t.primary or t.ink = true then labelSize = 11.9
+        lw = PlayarrTextWidth(t.text, labelSize, 700, 0)
+        gap = 8.8
+        if t.ink = true then gap = 11.1
+        if t.ink = true and m.top.layoutKind = "series" then gap = 10.3
+        startX = t.x + (t.w - (gw + gap + lw)) / 2
+        centreY = t.y + t.h / 2
+        glyphRole = "brandInk"
+        labelRole = "ink"
+        if t.primary
+            glyphRole = "playerInk"
+            labelRole = "playerInk"
+        end if
+        if t.ink = true
+            glyphRole = "bg"
+            labelRole = "bg"
+        end if
         if t.icon <> ""
             ic = CreateObject("roSGNode", "Poster")
             ic.uri = "pkg:/images/" + t.icon
             ic.width = 16
             ic.height = 16
-            ic.translation = [t.x + 34, t.y + t.h / 2 - 8]
-            roleName = "brandInk"
-            if t.primary then roleName = "playerInk"
-            if t.ink = true then roleName = "bg"
-            ic.blendColor = ThemeColor(roleName)
-            ThemeSetRole(ic, roleName)
+            ic.translation = [startX + gw / 2 - 8, centreY - 0.65 - 8]
+            ic.blendColor = ThemeColor(glyphRole)
+            ThemeSetRole(ic, glyphRole)
             m.tilesGroup.AppendChild(ic)
         else
             plus = CreateObject("roSGNode", "Label")
@@ -74,28 +98,23 @@ sub buildTiles()
             plus.font = PlayarrMakeFont(400, 13)
             plus.color = ThemeColor("brandInk")
             ThemeSetRole(plus, "brandInk")
-            plus.translation = [t.x + 20, t.y + t.h / 2 - 11]
+            plus.translation = [startX, centreY - 0.65 - 11]
             m.tilesGroup.AppendChild(plus)
         end if
-        label = CreateObject("roSGNode", "Label")
+        label = CreateObject("roSGNode", "WebLabel")
+        label.setFields({ size: labelSize, weight: 700, height: 16 })
+        label.addFields({ parityHidden: true })
         label.text = t.text
-        label.font = PlayarrMakeFont(700, 12)
-        roleName = "ink"
-        if t.primary then roleName = "playerInk"
-        if t.ink = true then roleName = "bg"
-        label.color = ThemeColor(roleName)
-        ThemeSetRole(label, roleName)
-        ' Web centres the glyph and label in the pill: the glyph sits 18 px (icon) or 17 px (plus) before the label.
-        lead = 17
-        if t.icon <> "" then lead = 18
-        startX = t.x + (t.w - (lead + label.boundingRect().width)) / 2
-        label.translation = [startX + lead, t.y + t.h / 2 - 9]
-        if ic <> invalid
-            ic.translation = [startX, t.y + t.h / 2 - 8]
-        else
-            plus.translation = [startX, t.y + t.h / 2 - 11]
-        end if
+        label.color = ThemeColor(labelRole)
+        ThemeSetRole(label, labelRole)
+        label.translation = [startX + gw + gap, centreY - 0.95 - Int(labelSize * 1.011 + 0.5) / 2 - Int(labelSize * 0.353 + 0.5) / 2]
         m.tilesGroup.AppendChild(label)
+        t.gw = gw
+        t.gap = gap
+        t.startX = startX
+        t.glyphSize = glyphSize
+        t.labelSize = labelSize
+        t.lw = lw
         ring = CreateObject("roSGNode", "Poster")
         ring.uri = "pkg:/images/round-ring-r32.9.png"
         ring.translation = [t.x - 3, t.y - 3]
@@ -131,6 +150,7 @@ sub applyFocus()
         t = specFor(key.toInt())
         if t <> invalid and t.ink = true
             hot = on and key = m.focusIdx.ToStr()
+            t.hot = hot
             fillRole = "ink"
             textRole = "bg"
             if hot
@@ -205,3 +225,17 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     return false
 end function
+
+' Parity layout dump: the tiles answer for themselves (web buttons, glyphs and labels).
+sub onParityLayoutTiles()
+    if m.global.parityArtEnabled <> true or m.specs = invalid then return
+    anc = m.top
+    while anc <> invalid
+        if anc.hasField("visible") and anc.visible = false then return
+        anc = anc.getParent()
+    end while
+    o = ParityOrigin(m.top)
+    m.parityDx = o[0]
+    m.parityDy = o[1]
+    ParityTiles(m.specs, m.top.workTitle)
+end sub

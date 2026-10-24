@@ -1,5 +1,5 @@
 sub init()
-    PlayarrFontifyTree(m.top)
+    PlayarrFontifyTree(m.top, "ProfileAvatar")
     ThemeInitComponent()
     m.circleGroup = m.top.findNode("circleGroup")
     m.focusShadow = m.top.findNode("focusShadow")
@@ -10,8 +10,8 @@ sub init()
     m.initial = m.top.findNode("initial")
     m.name = m.top.findNode("name")
     m.status = m.top.findNode("status")
-    m.name.font = PlayarrMakeFont(700, 17)
-    m.status.font = PlayarrMakeFont(700, 9)
+    m.itemGroup = m.top.findNode("itemGroup")
+    m.global.observeField("parityLayoutSeq", "onParityLayoutProfile")
     ThemeSetRole(m.focusRing, "cardGlow")
     m.focusRing.blendColor = ThemeColor("cardGlow")
     ThemeSetRole(m.focusShadow, "profileShadow")
@@ -66,15 +66,27 @@ sub onFocusChanged()
     m.focusShadow.opacity = effective * 0.28
     updateProfileNameColor()
     if m.circleGroup = invalid then return
-    scale = 1 + (effective * 0.09)
-    m.circleGroup.scale = [scale, scale]
-    ' Subtle lift (web translateY(-8px)) without shifting RowList slot.
-    lift = Int(-10 * effective)
-    m.circleGroup.translation = [61, 53 + lift]
+    ' Web: the button grows 1.045 and lifts 8 px, its circle a further 1.035.
+    k = 1 + 0.045 * effective
+    m.itemGroup.scale = [k, k]
+    m.itemGroup.translation = [0, -8 * effective]
+    c = 1 + 0.035 * effective
+    m.circleGroup.scale = [c, c]
 end sub
 
 sub updateProfileNameColor()
     if m.name = invalid then return
     effective = m.top.focusPercent * m.top.activeRailFactor
     if effective > 0 then m.name.color = ThemeColor("ink") else m.name.color = ThemeColor("inkSoft")
+end sub
+
+' Parity layout dump: the item answers for itself (web profile button, circle, art and captions).
+sub onParityLayoutProfile()
+    if m.global.parityArtEnabled <> true then return
+    content = m.top.itemContent
+    if content = invalid or not content.hasField("parityDx") then return
+    m.parityDx = content.parityDx
+    m.parityDy = content.parityDy
+    m.parityRoot = m.top
+    ParityProfile(m.top, content)
 end sub

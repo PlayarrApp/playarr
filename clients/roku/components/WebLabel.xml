@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  WebLabel: a drop-in for Label whose text is set the way the web sets it. Roku rounds every glyph advance to whole pixels, so a
+  Label is narrower or wider than the web's text; WebLabel places each word at the web's own advance (fonts/NunitoSans-<w>.json,
+  kerning included) through a TrackedText child. It takes the Label fields the channel uses: text, color, font (a PlayarrMakeFont
+  node), width, height, horizAlign, vertAlign, wrap, maxLines, lineSpacing. `textWidth` and `lineCount` report the laid-out text.
+  `role` (theme colour) is what pgLabel binds; `color` overrides it.
+-->
+<component name="WebLabel" extends="Group">
+  <interface>
+    <field id="text" type="string" onChange="refresh" />
+    <field id="color" type="integer" value="-1" onChange="refresh" />
+    <field id="font" type="node" onChange="onFont" />
+    <field id="size" type="float" value="0" onChange="refresh" />
+    <field id="weight" type="integer" value="400" onChange="refresh" />
+    <field id="width" type="float" value="0" onChange="refresh" />
+    <field id="height" type="float" value="0" onChange="refresh" />
+    <field id="horizAlign" type="string" value="left" onChange="refresh" />
+    <field id="vertAlign" type="string" value="top" onChange="refresh" />
+    <field id="wrap" type="boolean" value="false" onChange="refresh" />
+    <field id="maxLines" type="integer" value="1" onChange="refresh" />
+    <field id="lineSpacing" type="float" value="0" onChange="refresh" />
+    <field id="lineHeight" type="float" value="0" onChange="refresh" />
+    <field id="tracking" type="float" value="0" onChange="refresh" />
+    <field id="rectH" type="float" value="0" />
+    <field id="aria" type="string" value="" />
+    <field id="fitWidth" type="float" value="0" onChange="refresh" />
+    <field id="textWidth" type="float" value="0" />
+    <field id="lineCount" type="integer" value="0" />
+  </interface>
+  <children>
+    <TrackedText id="run" />
+  </children>
+  <script type="text/brightscript" uri="pkg:/source/Fonts.brs" />
+  <script type="text/brightscript" uri="pkg:/source/Theme.brs" />
+  <script type="text/brightscript" uri="pkg:/components/WebLabel.brs" />
+</component>
