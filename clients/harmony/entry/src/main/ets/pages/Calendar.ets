@@ -1357,6 +1357,7 @@ export struct ReleaseCalendar {
       PageShell({
         railFrostWidthPct: this.view === 'agenda' ? -1 : 0,
         title: t('pages.calendar.title', 'Calendar'),
+        backLabel: 'Back to home',
         touch: true,
         touchContent: (): void => {
           this.touchContentBody();

@@ -2334,6 +2334,8 @@ struct Detail {
   private tvLayout(): void {
     PageShell({
       title: this.shellTitle(),
+      backLabel: 'Back to ' + this.shellTitle(),
+      backRole: 'button',
       kicker: (this.detail !== null ? this.detail.work.title.toUpperCase() : ''),
       selectedId: this.shellNavId(),
       content: (): void => {

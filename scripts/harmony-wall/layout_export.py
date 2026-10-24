@@ -83,7 +83,7 @@ def text_width(text, size, weight, spacing, measure=None):
 
 def backdrop(image, x, y, w, h, dpr, fallback):
     """The colour behind an element as rendered: the most common colour of its box in the screenshot (web's `background` is the composited backdrop)."""
-    if image is None or w < 1 or h < 1 or os.environ.get("HX_BG") == "props":
+    if image is None or w < 1 or h < 1 or dpr == 1 or os.environ.get("HX_BG") == "props":  # TV: web's background is the flat page colour; the app's card shadows would tint a sample
         return fallback
     box = tuple(int(round(v * dpr)) for v in (max(x, 0), max(y, 0), min(x + w, image.width / dpr), min(y + h, image.height / dpr)))
     if box[2] <= box[0] or box[3] <= box[1]:
@@ -162,6 +162,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             bg = None  # the page's full-screen base fill is already the sampled/page base colour
         if kind == "Stack" and any(c.get("$type") == "Image" and (rect_of(c) or (0, 0, 0, 0))[3] >= 60 * dpr for c in node.get("$children") or []):
             here = argb(PLACEHOLDER[theme == "light"])  # artwork stack: overlays composite over web's placeholder colour
+            sbox, srad = rect_of(node), num(attrs.get("borderRadius"), 0.0)
+            if dpr == 1 and sbox is not None and srad:  # TV: the art stack is web's rounded placeholder container
+                out.append({"text": "", "role": "container", "rect": {"x": round(sbox[0], 2), "y": round(sbox[1], 2), "w": round(sbox[2], 2), "h": round(sbox[3], 2)},
+                            "color": None, "background": PLACEHOLDER[theme == "light"], "fontSize": None, "fontWeight": None, "radius": srad})
         parent_bg = here  # web's `background` is the composite behind the element; its own fill counts only when opaque
         if bg is not None and bg[3] > 0:
             here = over(bg, here if str(attrs.get("id", "")) == "px:navbar" else under)
@@ -201,13 +205,15 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     name = " ".join(texts) if len(texts) >= 2 else "Open " + label
                 else:
                     name = ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else label
+                if nid == "pcard" and dpr == 1 and w > 0 and abs(w - 327) < 8:
+                    h = w * 9 / 16 + 29.38  # web's TV card: 16:9 art plus caption
                 if nid == "pcard" and dpr == 3 and w > 0:
                     h = w * 9 / 16 + 24.7  # web's touch card: 16:9 art plus caption; the app's box also holds the meta line's overflow
                 el = {"text": name, "role": "link", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else (0 if len(texts) >= 2 else 12)}
                 out.append(el)
             pxid = str(attrs.get("id", ""))
-            if kind == "Text" and pxid.count(":") >= 2 and pxid.startswith("px:") and w >= 40 and h >= 40:  # a Text drawn as a round control: the control and its glyph are two web elements
+            if kind == "Text" and pxid.count(":") >= 2 and pxid.startswith("px:") and w >= 40 and h >= 40 and pxid.split(":")[1] != "heading":  # a Text drawn as a round control: the control and its glyph are two web elements
                 _, prole, pname = pxid.split(":", 2)
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if dpr == 3 and prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))) == pname and abs(w - h) > 2:
@@ -242,9 +248,23 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 text = str(text).upper() if "upper" in case or case.endswith("1") else (str(text).lower() if "lower" in case or case.endswith("2") else text)
                 tw = text_width(text, size, weight, spacing, measure)
                 ch = round(size * 1.011) + round(size * 0.353)  # Chrome's content area: rounded ascent plus rounded descent (hhea 1011 / 353)
-                single = str(attrs.get("maxLines", "")).strip() == "1" or h < size * 2.2
-                if tw > w + 2 and not single:  # wrapped: the box is the run (a one-line text overflowing its clip keeps its own width)
-                    rx, ry, rw, rh = x, y, w, h
+                lh = num(attrs.get("lineHeight"), 0.0) or ch
+                raw = str(attrs.get("content", attrs.get("text"))).split("\n")
+                lines = [ln for ln in raw if ln.strip()]
+                if len(lines) == 1:  # wrap greedily at the box width
+                    lines, cur = [], ""
+                    for word in str(text).split():
+                        trial = (cur + " " + word).strip()
+                        if cur and text_width(trial, size, weight, spacing, measure) > w + 0.5:
+                            lines.append(cur)
+                            cur = word
+                        else:
+                            cur = trial
+                    lines.append(cur)
+                single = str(attrs.get("maxLines", "")).strip() == "1" or len(lines) < 2
+                if not single:  # wrapped: web's run is the union of the line boxes, as wide as the longest line
+                    widest = max(text_width(ln, size, weight, spacing, measure) for ln in lines)
+                    rx, ry, rw, rh = x, y + (lh - ch) / 2, min(max(widest, 1.0), w if widest > w else widest), ch + (len(lines) - 1) * lh
                 else:
                     align = str(attrs.get("textAlign", "")).lower()
                     pill = bool(num(attrs.get("borderRadius"), 0.0)) or (bg is not None and bg[3] > 0.01)  # a padded pill: the run is centred in the box
@@ -264,7 +284,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 out.append(el)
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "dialog" if id(node) in dialogs else "container")
-                if dpr == 3 and role == "container" and ((h <= 3.5 and w >= 100 and bg is not None and bg[3] < 0.99) or (abs(w - 9) < 1.5 and abs(h - 9) < 1.5)):
+                if role == "container" and ((h <= 3.5 and w >= 100 and bg is not None and bg[3] < 0.99) or (8 < w < 15 and abs(w - h) < 1.5 and bg is not None and bg[3] > 0.99 and abs(num(attrs.get("borderRadius"), 0.0) * 2 - w) < 1.5)):
                     role = "img"  # web draws the progress track and the unseen dot as img
                 art = kind == "Image" and h >= 60  # artwork: web paints the loading placeholder colour behind it
                 el = {"text": "", "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},

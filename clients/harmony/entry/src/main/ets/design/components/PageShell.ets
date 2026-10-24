@@ -127,6 +127,7 @@ export struct PageShell {
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
       .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
+      .id('px:' + this.backRole + ':' + this.backLabel)
       .focusable(true)
       .onClick(() => {
         popRoute(getNavStack());

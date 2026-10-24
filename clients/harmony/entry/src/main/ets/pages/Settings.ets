@@ -104,15 +104,15 @@ const AUDIO_CHOICES: Choice[] = AUDIO_LANGUAGES.map((language: AudioLanguage): C
 
 // Web `.settings-option`: 480x92 rows from (154, 162); number at +32/+24, title at +92, arrow at +432.
 const LIST_TOP: number = 162;
-const ROW_WIDTH: number = 480;
+const ROW_WIDTH: number = 470.4; // web row box 470.41
 const ROW_HEIGHT: number = 92;
 const NUMBER_LEFT: number = 32;
-const NUMBER_TOP: number = 24;
+const NUMBER_TOP: number = 28.3;
 const NUMBER_SIZE: number = 9.92;
 const TITLE_LEFT: number = 92;
 const TITLE_SIZE: number = 29.6;
 const TITLE_LETTER_SPACING: number = -1.036;
-const ARROW_LEFT: number = 432;
+const ARROW_LEFT: number = 422.6; // the unselected rows sit 5 px further left
 const ARROW_SIZE: number = 20.8;
 // Web `.settings-section-content`: the panel copy starts at (774, 210), 1042 wide.
 const PANEL_LEFT: number = 774;
@@ -296,12 +296,13 @@ export struct SettingsScreen {
         .position({ x: tv(TITLE_LEFT), y: 0 })
       Text('→').fontFamily(arrowFont(400))
         .fontSize(tv(ARROW_SIZE))
-        .fontColor(toResourceColor(activeColors().ink))
+        .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
         .height(tv(ROW_HEIGHT))
-        .position({ x: tv(ARROW_LEFT), y: 0 })
+        .position({ x: tv(section.id === this.openSection ? ARROW_LEFT : ARROW_LEFT - 5), y: 0 })
     }
     .width(tv(ROW_WIDTH))
     .height(tv(ROW_HEIGHT))
+    .id('px:link:' + section.number + ' ' + section.title + ' →')
     .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
     .focusable(true)
     .onFocus(() => {
