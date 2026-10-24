@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
+import { PNG } from "pngjs";
 import { FIXTURE_FILM, staticRoute } from "../apple/static-route.mjs";
 
 // IDB (path of the idb client, with its companion running): headless keys as USB HID usages, no Simulator window, no host keyboard.
@@ -143,6 +144,25 @@ function readState(work) {
   const env = {};
   if (existsSync(f)) for (const line of readFileSync(f, "utf8").split("\n")) { const m = /^([A-Z_]+)=(.*)$/.exec(line); if (m) env[m[1]] = m[2].replace(/^'(.*)'$/, "$1").replace(/\\(.)/g, "$1"); }
   return env;
+}
+
+
+// The colour behind an element: the most common pixel in a 2 px ring just outside its box (ancestors composited, as the web dump).
+function addBackgrounds(layout, file) {
+  const png = PNG.sync.read(readFileSync(file));
+  const k = png.width / (layout.viewport?.w || 1920);
+  const at = (x, y) => { const i = (Math.min(png.height - 1, Math.max(0, y)) * png.width + Math.min(png.width - 1, Math.max(0, x))) * 4; return (png.data[i] << 16) | (png.data[i + 1] << 8) | png.data[i + 2]; };
+  for (const e of layout.elements) {
+    const { x, y, w, h } = e.rect;
+    const x0 = Math.round((x - 2) * k), x1 = Math.round((x + w + 1) * k), y0 = Math.round((y - 2) * k), y1 = Math.round((y + h + 1) * k);
+    const counts = new Map();
+    const add = (px, py) => { const c = at(px, py); counts.set(c, (counts.get(c) ?? 0) + 1); };
+    for (let px = x0; px <= x1; px += 2) { add(px, y0); add(px, y1); }
+    for (let py = y0; py <= y1; py += 2) { add(x0, py); add(x1, py); }
+    let best = null, n = 0;
+    for (const [c, v] of counts) if (v > n) { best = c; n = v; }
+    if (best !== null) e.background = "#" + best.toString(16).padStart(6, "0");
+  }
 }
 
 export async function createDriver({ args = [], out } = {}) {
@@ -419,6 +439,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         if (!/^(dark|light)$/.test(basename(themeDir))) throw new Error("not a screen capture");
         const dir = join(dirname(themeDir), "layout", basename(themeDir));
         mkdirSync(dir, { recursive: true });
+        addBackgrounds(layout, file);
         writeFileSync(join(dir, `${id}.json`), JSON.stringify({ screen: id, theme: basename(themeDir), ...layout }));
         rmSync(join(base, "parity-layout.json"), { force: true });
       } catch { /* a build without the exporter, a crop, or a screen that registers nothing */ }

@@ -376,7 +376,7 @@ struct TVHomeView: View {
                             .tracking(1.2)
                             .foregroundStyle(DesignTokens.Color.brandPrimary)
                             .textCase(.uppercase)
-                            .parityLayout(text: kindKicker(hero), size: 12, weight: Int(TVTheme.cssWeight(.heavy)), color: DesignTokens.Color.brandPrimary, tracking: 1.2)
+                            .parityLayout(text: (kindKicker(hero)).uppercased(), size: 12, weight: Int(TVTheme.cssWeight(.heavy)), color: DesignTokens.Color.brandPrimary, tracking: 1.2)
                         TVHeroTitle(title: hero.title)
                             .padding(.top, 28)
                         if let overview = hero.overview, !overview.isEmpty {

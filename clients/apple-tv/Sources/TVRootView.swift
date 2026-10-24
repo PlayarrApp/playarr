@@ -1120,7 +1120,7 @@ struct TVProfilesView: View {
                         .foregroundStyle(palette.inkMuted)
                         .frame(minHeight: 12 * s)
                         .offset(y: active ? 4.6 : 0)
-                        .parityLayout(text: statusLabel(for: profile, busy: busy), size: 9.41 * s, weight: Int(TVTheme.cssWeight(.bold)), color: palette.inkMuted, tracking: 0.42 * s)
+                        .parityLayout(text: (statusLabel(for: profile, busy: busy)).uppercased(), size: 9.41 * s, weight: Int(TVTheme.cssWeight(.bold)), color: palette.inkMuted, tracking: 0.42 * s)
                 }
                 .frame(width: size)
             }

@@ -97,7 +97,6 @@ final class TVParityLayoutRegistry {
         let width = (text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width
         let height = (1.011 * size).rounded() + (0.353 * size).rounded()
         out.rect = CGRect(x: item.rect.minX, y: item.rect.midY - height / 2, width: min(width, item.rect.width), height: height)
-        if size >= 14 && weight >= 560 { out.role = "heading" }
         return out
     }
 
