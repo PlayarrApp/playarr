@@ -73,6 +73,21 @@ final class ParityLayoutRegistry {
         func visit(_ object: NSObject, depth: Int) {
             guard visited < 4000, depth < 40 else { return }
             visited += 1
+            if let label = object as? UILabel, let text = label.text, !text.isEmpty, label.window != nil {
+                // A UIKit label (the iPad title): its own font, weight axis and colour, in glyph-run bounds.
+                var weight = 400
+                if let variation = label.font.fontDescriptor.fontAttributes[UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String)] as? [NSNumber: NSNumber] {
+                    for (axis, value) in variation where axis.uint32Value == 0x77676874 { weight = Int(value.doubleValue.rounded()) }
+                }
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                label.textColor.resolvedColor(with: label.traitCollection).getRed(&r, green: &g, blue: &b, alpha: &a)
+                func byte(_ v: CGFloat) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
+                let text_rect = label.textRect(forBounds: label.bounds, limitedToNumberOfLines: label.numberOfLines)
+                let frame = label.convert(text_rect, to: nil)
+                found.append(Item(text: text, role: label.font.pointSize >= 14 ? "heading" : "text", size: label.font.pointSize, weight: weight,
+                                  color: String(format: "#%02x%02x%02x", byte(r), byte(g), byte(b)), rect: frame))
+                return
+            }
             if object.isAccessibilityElement {
                 let traits = object.accessibilityTraits
                 var role = "container"
