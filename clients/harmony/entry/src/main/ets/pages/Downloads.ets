@@ -6,7 +6,7 @@
  * attention, Delete or Edit keep-until on a downloaded one (a few presets in the shared drawer).
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { tv } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
@@ -88,7 +88,7 @@ export struct DownloadsScreen {
 
   @Builder
   private heading(text: string): void {
-    Text(text).fontFamily(nunito(700))
+    Text(text).fontFamily(nunitoAt(700, tv(HEADING_SIZE)))
       .fontSize(tv(HEADING_SIZE))
       .fontWeight(FontWeight.Bold)
       .letterSpacing(tv(0.76))
@@ -98,7 +98,7 @@ export struct DownloadsScreen {
 
   @Builder
   private pill(label: string, onTap: () => void): void {
-    Text(label).fontFamily(nunito(400))
+    Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
       .fontSize(tv(PILL_SIZE))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
@@ -113,7 +113,7 @@ export struct DownloadsScreen {
   private row(record: DownloadRecord): void {
     Row({ space: tv(PILL_GAP) }) {
       Column({ space: tv(COPY_GAP) }) {
-        Text(record.title).fontFamily(nunito(700))
+        Text(record.title).fontFamily(nunitoAt(700, tv(TITLE_SIZE_ROW)))
           .fontSize(tv(TITLE_SIZE_ROW))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
@@ -121,19 +121,19 @@ export struct DownloadsScreen {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         Row({ space: tv(META_GAP) }) {
           ForEach(downloadMetaParts(record), (part: string) => {
-            Text(part).fontFamily(nunito(400))
+            Text(part).fontFamily(nunitoAt(400, tv(META_SIZE)))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().inkMuted))
           }, (part: string): string => part)
           if (record.status === 'ready') {
-            Text(keepUntilLabel(record.keepUntil)).fontFamily(nunito(400))
+            Text(keepUntilLabel(record.keepUntil)).fontFamily(nunitoAt(400, tv(META_SIZE)))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().inkMuted))
           }
         }
         if (record.errorMessage !== undefined && record.errorMessage !== null && record.errorMessage.length > 0 &&
           (record.status === 'failed' || record.status === 'expired')) {
-          Text(record.errorMessage).fontFamily(nunito(400))
+          Text(record.errorMessage).fontFamily(nunitoAt(400, tv(META_SIZE)))
             .fontSize(tv(META_SIZE))
             .fontColor(toResourceColor(activeColors().danger))
         }
@@ -226,12 +226,12 @@ export struct DownloadsScreen {
         .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
     } else if (this.records.length === 0) {
       Column({ space: tv(8) }) {
-        Text('No downloads yet').fontFamily(nunito(500))
+        Text('No downloads yet').fontFamily(nunitoAt(500, tv(26.4)))
           .fontSize(tv(26.4))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(-0.924))
           .fontColor(toResourceColor(activeColors().ink))
-        Text('Download a title from its detail page to watch it without a connection.').fontFamily(nunito(400))
+        Text('Download a title from its detail page to watch it without a connection.').fontFamily(nunitoAt(400, tv(13.824)))
           .fontSize(tv(13.824))
           .fontColor(toResourceColor(activeColors().inkSoft))
       }

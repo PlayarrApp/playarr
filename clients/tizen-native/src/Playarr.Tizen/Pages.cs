@@ -29,13 +29,14 @@ internal static class Pages
     {
         var parts = route[8..].Split('?');
         if (!Guid.TryParse(parts[0], out var file)) return null;
-        long start = 0; string? local = null;
+        long start = 0, hold = -1; string? local = null;
         foreach (var q in parts.Skip(1).SelectMany(p => p.Split('&')))
         {
             if (q.StartsWith("t=")) long.TryParse(q[2..], out start);
+            else if (q.StartsWith("hold=")) long.TryParse(q[5..], out hold);
             else if (q.StartsWith("local=")) local = q[6..];
         }
-        return new PlayerScreen(env, file, start, local);
+        return new PlayerScreen(env, file, start, local) { HoldAtMs = hold };
     }
 
     private static IPage CalendarFor(AppEnv env, string route)

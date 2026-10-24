@@ -99,6 +99,8 @@ jobs:
         run: |
           sudo -n apt-get update -qq
           sudo -n apt-get install -y --no-install-recommends libgl1
+      - name: Free runner disk (a cold SDK fetch needs about 10 GB)
+        run: sudo -n rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
       - name: Fetch the OpenHarmony SDK + Command Line Tools
         run: bash clients/harmony/scripts/fetch-sdk.sh
       - name: Configure the @ohos registry
@@ -231,6 +233,8 @@ jobs:
           path: |
             capture/dark
             capture/light
+            capture/layout
+            capture/layout-raw
             capture/poster
             capture/motion
             capture/build.json

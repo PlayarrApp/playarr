@@ -2,6 +2,20 @@
 ' action rows. One builder for every drawer; the title actions drawer below is its first user. The caller supplies the rows
 ' ({ id, label, glyph, icon }) and handles the chosen id in drawerChoose().
 
+' The drawer panel, kicker, title and close button at the web's numbers (360 px panel, content from x 1606). Marks carry the web names.
+' dialogBg is the web's composited panel colour for this drawer ("c:<dark>:<light>").
+sub drawerChrome(g as Object, kicker as String, title as String, dialogBg as String, closeName as String, titleLines = 1 as Integer)
+    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
+    pgMark(g, "dialog", "", 1560, 0, 360, 1080, 0, dialogBg)
+    pgLabel(g, 1606, 54, 190, 13, UCase(kicker), 9.6, 720, "inkMuted", { tracking: 0.669 })
+    tt = pgTrackedText(g, 1606, 73.6, 214, title, 38.4, 590, -2.113, "ink", false, "left", 2, 57.6)
+    pgRound(g, 1826, 54, 48, 50, 25, "surfaceSoft")
+    pgRound(g, 1826, 54, 48, 50, 25, "line", -1, true)
+    pgIcon(g, 1839, 67, 24, "player-close.png", "ink")
+    pgMark(g, "button", closeName, 1826, 54, 48, 50, 50, "surfaceSoft")
+    pgMarkText(g, "×", 1841.9, 60.8, 16.1, 36, 26.88, 720, "ink", "surfaceSoft", "text", 0)
+end sub
+
 sub drawerOpen(kicker as String, title as String, items as Object, returnTo as String)
     if m.drawerGroup = invalid
         m.drawerGroup = CreateObject("roSGNode", "Group")
@@ -16,32 +30,38 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
     m.drawerOpen = true
     m.global.cardFocusOff = true
     ' Web draws the drawer over the page with no scrim: the page behind keeps its full strength.
-    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
-    pgLabel(g, 1606, 52, 190, 16, UCase(kicker), 11, 700, "inkMuted")
-    pgLabel(g, 1606, 75, 214, 120, title, 36, 600, "ink", { wrap: true, maxLines: 2, lineSpacing: 7 })
-    pgRound(g, 1826.5, 54.5, 49, 49, 25, "surfaceSoft")
-    pgRound(g, 1826.5, 54.5, 49, 49, 25, "line", -1, true)
-    pgIcon(g, 1839, 67, 24, "player-close.png", "ink")
+    drawerChrome(g, kicker, title, "c:201c20:fefefe", "Close")
     m.drawerRings = []
     for i = 0 to items.Count() - 1
-        y = 221 + 82 * i
-        pgRound(g, 1602, y, 276, 68, 14, "surfaceSoft")
+        ' The web lists Download second; the channel cannot download, so that slot stays empty and the rows keep the web's places.
+        slot = i
+        if i > 0 then slot = i + 1
+        y = 221 + 82 * slot
+        pgRound(g, 1606, y, 268, 68, 14, "surfaceSoft")
         icon = items[i].icon
         if icon = "plus"
-            pgRect(g, 1626, y + 31, 14, 2, "brand")
-            pgRect(g, 1632, y + 25, 2, 14, "brand")
+            pgRect(g, 1628.5, y + 33, 14, 2, "brand")
+            pgRect(g, 1634.5, y + 27, 2, 14, "brand")
         else if icon = "circle"
-            pgIcon(g, 1625, y + 29, 10, "circle-outline.png", "brand")
+            pgIcon(g, 1624.5, y + 29, 10, "circle-outline.png", "brand")
         else if icon = "player-play.png"
             ' The web's play glyph is 14 px wide; the bitmap carries padding, so it is drawn larger.
             pgIcon(g, 1614.5, y + 18.5, 32, icon, "brand")
         else if icon <> invalid and icon <> ""
             pgIcon(g, 1624, y + 24, 20, icon, "brand")
         end if
-        pgLabel(g, 1666, y, 200, 68, items[i].label, 19, 700, "ink", { vertAlign: "center" })
+        pgLabel(g, 1666, y + 20.6, 200, 26, items[i].label, 19.2, 700, "ink")
+        glyph = items[i].glyph
+        gw = 16.4
+        if glyph = "▶" then gw = 15.0
+        if glyph = "+" then glyph = "＋"
+        if glyph = "＋" then gw = 19.5
+        if glyph = "○" then gw = 11.8
+        pgMark(g, "button", glyph + " " + items[i].label, 1606, y, 268, 68, 14, "surfaceSoft")
+        pgMarkText(g, glyph, 1624, y + 20.4, gw, 27, 19.52, 400, "brand", "surfaceSoft", "text", 0)
         ring = CreateObject("roSGNode", "Group")
-        pgRound(ring, 1599, y - 3, 282, 74, 16, "focusRing", -1, true)
-        pgRound(ring, 1600, y - 2, 280, 72, 15, "focusRing", -1, true)
+        pgRound(ring, 1603, y - 3, 274, 74, 16, "focusRing", -1, true)
+        pgRound(ring, 1604, y - 2, 272, 72, 15, "focusRing", -1, true)
         ring.visible = false
         g.AppendChild(ring)
         m.drawerRings.Push(ring)

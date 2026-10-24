@@ -1,0 +1,1 @@
+- HarmonyOS: TV key-art, rails panel and clock geometry follow the web layout refs; the layout exporter, the phone Detail hero scale and the poster-stall guard are tuned to match.

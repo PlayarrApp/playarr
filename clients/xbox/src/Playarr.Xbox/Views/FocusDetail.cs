@@ -46,10 +46,11 @@ namespace Playarr.Xbox.Views
             VerticalAlignment = VerticalAlignment.Top,
         };
         private readonly Rectangle _stageWashLeft = new Rectangle { IsHitTestVisible = false };
-        private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12.29, FontWeight = new FontWeight { Weight = 860 }, CharacterSpacing = 120, LineHeight = 16, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69.12, FontWeight = new FontWeight { Weight = 560 }, CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 36.4, 0, 0) };
-        private readonly TextBlock _meta = new TextBlock { FontSize = 13.06, FontWeight = new FontWeight { Weight = 600 }, LineHeight = 18, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Margin = new Thickness(0, 16.6, 0, 0) };
-        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontWeight = new FontWeight { Weight = 600 }, LineHeight = 20, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 24, 0, 0) };
+        private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12.29, FontFamily = WebFont.Face(860), FontWeight = WebFont.Weight(860), CharacterSpacing = 100, LineHeight = 16, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69.12, FontFamily = WebFont.Face(560), FontWeight = WebFont.Weight(560), CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 36.4, 0, 0) };
+        private readonly StackPanel _metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12.9, Margin = new Thickness(0, 16.6, 0, 0) };
+        private readonly TextBlock _meta = new TextBlock { FontSize = 13.06, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 18, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 20, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 26.2, 0, 0) };
         private readonly StackPanel _panel;
 
         public FocusDetail()
@@ -74,14 +75,16 @@ namespace Playarr.Xbox.Views
             _panel = new StackPanel
             {
                 Width = 380,
-                Margin = new Thickness(ShellChrome.ContentLeft, 259, 0, 0),
+                Margin = new Thickness(ShellChrome.ContentLeft, 260.2, 0, 0),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
             };
             LayoutExport.SetRole(_title, "heading");
+            LayoutExport.SetPad(_title, new Thickness(0, -23.5, 0, 8.7));
             _panel.Children.Add(_eyebrow);
             _panel.Children.Add(_title);
-            _panel.Children.Add(_meta);
+            _metaRow.Children.Add(_meta);
+            _panel.Children.Add(_metaRow);
             _panel.Children.Add(_overview);
             Children.Add(_panel);
         }
@@ -170,7 +173,26 @@ namespace Playarr.Xbox.Views
             return probe.DesiredSize.Width;
         }
 
-        public void SetMeta(string text) => _meta.Text = text;
+        public void SetMeta(string text) => SetMetaParts(new[] { text });
+
+        /// <summary>The web's meta line is one run per part (year, genres, runtime), 13 px apart.</summary>
+        private void SetMetaParts(IEnumerable<string> parts)
+        {
+            var list = parts.Where(p => p.Length > 0).ToList();
+            _metaRow.Children.Clear();
+            foreach (var part in list)
+            {
+                var block = part == list[0] ? _meta : new TextBlock { FontSize = _meta.FontSize, FontFamily = _meta.FontFamily, FontWeight = _meta.FontWeight, LineHeight = _meta.LineHeight, LineStackingStrategy = _meta.LineStackingStrategy, Foreground = _meta.Foreground };
+                block.Text = part;
+                _metaRow.Children.Add(block);
+            }
+
+            if (_metaRow.Children.Count == 0)
+            {
+                _meta.Text = string.Empty;
+                _metaRow.Children.Add(_meta);
+            }
+        }
 
         /// <param name="withKind">Home shows "MOVIE · ACTION"; the library shows the genre alone.</param>
         public void Show(Work? work, bool withKind = false)
@@ -208,9 +230,9 @@ namespace Playarr.Xbox.Views
             }
 
             // Home shows only the runtime, which arrives once the title's detail has loaded (SetMeta).
-            _meta.Text = withKind ? string.Empty : string.Join("   ", meta);
+            SetMetaParts(withKind ? new string[0] : meta);
             _overview.Text = work.Overview ?? string.Empty;
-            _meta.Tag = string.Join("   ", meta);
+            _meta.Tag = meta;
             _ = ShowRuntimeAsync(work.Id, withKind);
         }
 
@@ -236,7 +258,7 @@ namespace Playarr.Xbox.Views
                 {
                     var detail = await App.Environment.ApiClient.GetWorkAsync(id);
                     var minutes = detail.RuntimeMs is { } ms && ms > 0 ? Math.Max(1, (int)Math.Round(ms / 60000.0)) : 0;
-                    label = minutes == 0 ? string.Empty : minutes < 60 ? $"{minutes}m" : minutes % 60 == 0 ? $"{minutes / 60}h" : $"{minutes / 60}h {minutes % 60}m";
+                    label = minutes == 0 ? string.Empty : minutes < 60 ? $"{minutes} min" : minutes % 60 == 0 ? $"{minutes / 60}h" : $"{minutes / 60}h {minutes % 60}m";
                 }
                 catch (Exception)
                 {
@@ -248,8 +270,8 @@ namespace Playarr.Xbox.Views
 
             if (_runtimeFor == id)
             {
-                var basis = homeHero ? string.Empty : (string)(_meta.Tag ?? string.Empty);
-                _meta.Text = basis.Length == 0 ? label : label.Length == 0 ? basis : basis + "   " + label;
+                var basis = homeHero ? new List<string>() : (_meta.Tag as List<string> ?? new List<string>());
+                SetMetaParts(basis.Concat(new[] { label }));
             }
         }
     }

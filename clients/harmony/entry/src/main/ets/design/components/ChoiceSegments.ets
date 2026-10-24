@@ -3,7 +3,7 @@
  * a small uppercase heading over equal-width choice tiles, the chosen one filled with ink.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -30,7 +30,7 @@ const DESCRIPTION_SIZE: number = 13.824;
 const SECTION_GAP: number = 30;
 // Web phone drawer choices: 46.7 high, 11.5 type, sections 8 vp closer than the TV's.
 const TOUCH_CHOICE_HEIGHT: number = 48; // web: 144 px inactive; the selected choice is 1.025 scaled
-const TOUCH_CHOICE_LABEL_SIZE: number = 11.5;
+const TOUCH_CHOICE_LABEL_SIZE: number = 11.52;
 const TOUCH_SECTION_GAP: number = 23.7;
 const LARGE_HEADING_SIZE: number = 26.4;
 const LARGE_HEADING_LETTER_SPACING: number = -0.924;
@@ -70,38 +70,98 @@ export struct ChoiceSegments {
     return (total - CHOICE_GAP * (count - 1)) / count;
   }
 
+  /** One outlined shape of a phone View button (web draws them as 1 px bordered boxes). */
+  @Builder
+  private viewShape(w: number, h: number): void {
+    Column()
+      .width(w)
+      .height(h)
+      .borderRadius(1)
+      .backgroundColor('#05000000') // near-transparent: it is an outline in web, yet a visible box for the layout export
+      .border({ width: 1, color: toResourceColor(activeColors().inkMuted) })
+  }
+
+  @Builder
+  private viewShapes(value: string): void {
+    if (value === 'list') {
+      Column({ space: 2 }) {
+        this.viewShape(20, 2)
+        this.viewShape(20, 2)
+        this.viewShape(20, 2)
+      }
+    } else if (value === 'screen') {
+      Row({ space: 2.06 }) {
+        this.viewShape(5.46, 3.86)
+        this.viewShape(5.46, 3.86)
+        this.viewShape(5.48, 3.86)
+      }
+    } else {
+      Row({ space: 2 }) {
+        this.viewShape(4, 13)
+        this.viewShape(4, 13)
+        this.viewShape(4, 13)
+      }
+    }
+  }
+
   build() {
     Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP) }) {
       if (this.large) {
-        Text(this.heading).fontFamily(nunito(500))
+        Text(this.heading).fontFamily(nunitoAt(500, tv(LARGE_HEADING_SIZE)))
           .fontSize(tv(LARGE_HEADING_SIZE))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
-          .margin({ bottom: this.description === '' ? tv(5) : 0 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
+          .id('px:heading:' + this.heading)
+          .margin({ top: -2.5, bottom: (this.description === '' ? tv(5) : 0) + 2.5 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
-          Text(this.description).fontFamily(nunito(400))
+          Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE))
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: tv(-5), bottom: tv(1) })
         }
       } else {
-        Text(this.heading).fontFamily(nunito(700))
+        Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
           .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
           .fontWeight(FontWeight.Bold)
           .letterSpacing(tv(HEADING_LETTER_SPACING))
           .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColor(activeColors().inkSoft))
+          .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
+          .id(isTvMetrics() ? '' : 'px:heading:' + this.heading.toUpperCase())
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
-          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? choice.label : capitalWords(choice.label))).fontFamily(nunito(700))
+         if (!isTvMetrics() && choice.icon !== undefined && choice.icon.length > 0) {
+          // phone View buttons: web draws three outlined bars (list, screen, cover) over a lower-case 900-weight word
+          Column({ space: 6.85 }) {
+            this.viewShapes(choice.value)
+            Text(choice.label.toLowerCase()).fontFamily(nunito(900))
+              .fontSize(TOUCH_CHOICE_LABEL_SIZE)
+              .fontWeight(FontWeight.Bolder)
+              .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
+          }
+          .id('px:button:' + choice.label)
+          .width(tv(this.choiceWidth()))
+          .height(TOUCH_CHOICE_HEIGHT)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
+            toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
+          .borderRadius(CHOICE_RADIUS)
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
+          .scale(choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
+          .focusable(true)
+          .onClick(() => {
+            this.onChoose(choice.value);
+          })
+         } else {
+          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? (this.large ? choice.label.toLowerCase() : choice.label) : capitalWords(choice.label))).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CHOICE_LABEL_SIZE)) : nunito(680))
+            .id((isTvMetrics() && !this.large) || (choice.icon !== undefined && choice.icon.length > 0) ? '' : 'px:button:' + choice.label)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)
             .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
             .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkSoft))
+            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : (isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted)))
             .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
               toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
             .borderRadius(tv(CHOICE_RADIUS))
@@ -111,6 +171,7 @@ export struct ChoiceSegments {
             .onClick(() => {
               this.onChoose(choice.value);
             })
+         }
         }, (choice: Choice): string => choice.value)
       }
     }

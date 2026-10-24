@@ -72,7 +72,7 @@ internal sealed class CalendarScreen : IPage
 
     private void BuildNav()
     {
-        var wide = _view == CalendarView.Agenda ? 145f : _view == CalendarView.Week ? 113f : 107f;
+        var wide = _view == CalendarView.Agenda ? 133f : _view == CalendarView.Week ? 110.7f : 104.1f; // the label's width plus 40.5 px, right edge fixed
         var x = 1613.1f - wide;
         _period = Sem.Tag(Ui.Text("", x, 70.2f, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center), "button", radius: 999);
         Pill(x, wide, "", () => { }, "period");
@@ -200,7 +200,7 @@ internal sealed class CalendarScreen : IPage
                 var outside = day.Month != _anchor.Month;
                 var cell = Ui.Box(x, y, CellW, CellH, new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, outside ? 0.35f : 0.7f), 0);
                 cell.BorderlineWidth = 1; cell.BorderlineColor = Ui.C(_t.Line);
-                Sem.Tag(cell, "container", ignoreOwnBg: true);
+                Sem.Tag(cell, "container", ignoreOwnBg: !outside); // web: only the days outside the month carry a visible fill
                 _body.Add(cell);
                 var list = byDay.TryGetValue(day, out var l) ? l : new List<CalendarEntry>();
                 var shown = Math.Min(4, list.Count);
@@ -215,7 +215,7 @@ internal sealed class CalendarScreen : IPage
                     var multi = e.Members is { Count: > 1 } m ? $" · {m.Count}×" : "";
                     cell.Add(Ui.Text(e.Title + multi, 27.4f, ly, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
                 }
-                cell.Add(Ui.Text(day.Day.ToString(), 8.8f, CellH - 33, 12.8f, 640, day == _today ? _t.Brand : outside ? _t.InkMuted : _t.Ink, 30, 19.2f));
+                cell.Add(Ui.Text(day.Day.ToString(), 8.8f, CellH - 33, 12.8f, 640, day == _today ? _t.Ink : outside ? _t.InkMuted : _t.Ink, 30, 19.2f));
                 if (list.Count > shown) cell.Add(Ui.Text($"+{list.Count - shown} more", 43, CellH - 33, 12.48f, 400, _t.InkSoft, 90, 18.72f));
                 var cx = x; var cy = y; var d = day;
                 _focus.Items.Add(new Focusable { Rect = () => new Box(cx, cy, CellW, CellH), Label = "day " + d.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")).ToLowerInvariant(), Style = f => { cell.BorderlineWidth = f ? 3 : 1; cell.BorderlineColor = f ? (_t.Name == "light" ? Ui.C(_t.Ink) : new Color(1, 1, 1, 0.9f)) : Ui.C(_t.Line); } });
@@ -375,7 +375,7 @@ internal sealed class CalendarScreen : IPage
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
-        var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
+        var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f); // web color-mix(tone 14 %, --surface)
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
         pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text", radius: 999));
         Sem.Tag(pill, "none");

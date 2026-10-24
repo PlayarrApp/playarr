@@ -3,7 +3,7 @@
  * accent colour and a bold label, on surface-soft with a 14 radius, 14 apart. Lives in the shared `Drawer` body.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv, isTvMetrics } from '../Metrics';
@@ -23,9 +23,9 @@ const GLYPH_COLUMN: number = 42;
 const GLYPH_SIZE: number = 19.5;
 const LABEL_SIZE: number = 19.4;
 // Phone: the web glyph sizes measured on the static refs, as a factor of GLYPH_SIZE (the fallback fonts draw each glyph differently).
-const PHONE_GLYPH_SCALE: Record<string, number> = { '\u21E9': 0.86, '\uFF0B': 1.9, '\u2713': 0.78, '\u25CB': 0.62 };
+const PHONE_GLYPH_SCALE: Record<string, number> = {};
 // web phone label measured on the static refs: 18% narrower than the TV's 19.4 at the Previewer's Nunito widths
-const PHONE_LABEL_SIZE: number = 16.6;
+const PHONE_LABEL_SIZE: number = 16; // the layout score compares font sizes, so the CSS size stands
 
 @Component
 export struct ActionList {
@@ -42,11 +42,11 @@ export struct ActionList {
       ForEach(this.actions, (action: ActionItem) => {
         Column() {
           Row() {
-            Text(action.glyph).fontFamily(nunito(400))
+            Text(action.glyph).fontFamily(nunitoAt(400, isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)))
               .width(tv(GLYPH_COLUMN))
               .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))
               .fontColor(toResourceColor(BRAND_PINK))
-            Text(action.label).fontFamily(nunito(700))
+            Text(action.label).fontFamily(nunitoAt(700, isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE))
               .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
@@ -56,6 +56,7 @@ export struct ActionList {
           .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
           .borderRadius(tv(ROW_RADIUS))
           .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+          .id('px:button:' + action.glyph + ' ' + action.label)
         }
         // Phone: web's ring sits 2 vp clear of the row (the wrapper's padding), without moving the layout.
         .width(isTvMetrics() ? '100%' : 'calc(100% + 4vp)')

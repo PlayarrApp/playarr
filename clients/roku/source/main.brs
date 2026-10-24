@@ -12,7 +12,7 @@ sub Main(args as Dynamic)
         pin.FromISO8601String(args.parityNow)
         parityNowSeconds = pin.AsSeconds()
     end if
-    screen.getGlobalNode().addFields({ themeMode: ResolvePairingTheme(LoadPairingThemePreference()), cardFocusOff: false, parityArtEnabled: parityArtEnabled, parityNowSeconds: parityNowSeconds })
+    screen.getGlobalNode().addFields({ themeMode: ResolvePairingTheme(LoadPairingThemePreference()), cardFocusOff: false, parityArtEnabled: parityArtEnabled, parityNowSeconds: parityNowSeconds, parityLayoutSeq: 0, parityWorkTitle: "" })
     scene = screen.CreateScene("MainScene")
     ' ECP deep link (launch with contentId=<media file id>): signed-in devices play that file as soon as the profile is known.
     if type(args) = "roAssociativeArray" and args.contentId <> invalid and args.contentId <> "" then scene.deepLink = args.contentId
@@ -20,11 +20,16 @@ sub Main(args as Dynamic)
     if parityArtEnabled and args.route <> invalid and args.route <> "" then scene.deepRoute = args.route
     screen.Show()
     scene.SetFocus(true)
+    input = CreateObject("roInput")
+    input.SetMessagePort(port)
 
     while true
         message = wait(0, port)
         if type(message) = "roSGScreenEvent" and message.IsScreenClosed()
             return
+        else if type(message) = "roInputEvent"
+            info = message.GetInfo()
+            if parityArtEnabled and info <> invalid and info.parityLayout = "1" then scene.parityLayoutRequest = true
         end if
     end while
 end sub

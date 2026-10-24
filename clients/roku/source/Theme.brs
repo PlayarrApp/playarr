@@ -30,6 +30,8 @@ function ThemeTokens(mode as String) as Object
             ink: &h382621FF
             inkSoft: &h443A40FF
             inkMuted: &h4D4248FF
+            heroSoft: &h4F3F3BFF
+            cardFocusInk: &h000000FF
             ' --accent, --accent-soft, --on-accent
             accent: &h4D4248FF
             accentSoft: &hC5B8BDFF
@@ -87,6 +89,8 @@ function ThemeTokens(mode as String) as Object
         ink: &hF4F0F1FF
         inkSoft: &hCDC1C6FF
         inkMuted: &hC2B5BBFF
+        heroSoft: &hDAD6D7FF
+        cardFocusInk: &hFFFFFFFF
         accent: &hDFDCDDFF
         accentSoft: &h675961FF
         onAccent: &h211D21FF
@@ -228,7 +232,7 @@ end sub
 
 sub ThemeApplyWalk(node as Object, tokens as Object)
     kind = node.subtype()
-    if kind = "Label"
+    if kind = "Label" or kind = "WebLabel"
         ThemeBindRole(node, "color", true)
         ThemeApplyNode(node, tokens)
     else if kind = "Rectangle"

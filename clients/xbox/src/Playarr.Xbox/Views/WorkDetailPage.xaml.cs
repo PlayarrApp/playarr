@@ -990,7 +990,7 @@ namespace Playarr.Xbox.Views
             Text = text,
             Style = (Style)Application.Current.Resources["PlayarrRailTitle"],
             FontSize = 17.66,
-            FontWeight = new FontWeight { Weight = 610 },
+            FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610),
             Margin = new Thickness(0, 0, 0, 2),
             LineHeight = 24,
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight,

@@ -4,7 +4,7 @@
  * It only reports a pick; `pages/Player.ets` attaches the subtitle or renegotiates the audio.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { Drawer } from '../design/components/Drawer';
 import { ActionList } from '../design/components/ActionList';
 import type { ActionItem } from '../design/components/ActionList';
@@ -51,7 +51,7 @@ export struct PlayerTracksDrawer {
 
   @Builder
   private heading(text: string): void {
-    Text(text).fontFamily(nunito(700))
+    Text(text).fontFamily(nunitoAt(700, tv(HEADING_SIZE)))
       .fontSize(tv(HEADING_SIZE))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))

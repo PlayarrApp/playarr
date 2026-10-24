@@ -49,6 +49,8 @@ internal sealed class PlayerScreen : IPage
     public float FocusCentreY => 990;
 
     private readonly string? _local;
+    /// <summary>Parity capture: after the first frame, seek to exactly this position and hold it paused (the capture reads the position back before it shoots).</summary>
+    public long HoldAtMs { get; init; } = -1;
 
     public PlayerScreen(AppEnv env, Guid file, long startMs = 0, string? local = null)
     {
@@ -202,6 +204,13 @@ internal sealed class PlayerScreen : IPage
             // A recovered session keeps the viewer's play state: a player that was paused shows its frame and stays paused.
             if (!PlaybackRecovery.StartPlaying(startPaused)) { _player.Pause(); _paused = true; _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); RelabelPlay("play"); }
             else { _paused = false; _playIcon.ResourceUrl = Ui.ResPath("icons/pause.svg"); }
+            if (HoldAtMs >= 0 && _player is not null)
+            {
+                _player.Pause(); _paused = true; _playIcon.ResourceUrl = Ui.ResPath("icons/play.svg"); RelabelPlay("play");
+                await _player.SetPlayPositionAsync((int)HoldAtMs, false);
+                for (var i = 0; i < 100 && _player is not null && _player.GetPlayPosition() != HoldAtMs; i++) await Task.Delay(50);
+                OnTick();
+            }
             Dbg.Log("PLAY started");
             if (_pendingToggle) { _pendingToggle = false; TogglePause(); }
             _tick.Start(); _hide.Start();
@@ -254,7 +263,7 @@ internal sealed class PlayerScreen : IPage
     private void OnTick()
     {
         if (_player is null || _info is null) return;
-        var pos = PositionMs;
+        var pos = HoldAtMs >= 0 && _paused ? HoldAtMs : PositionMs; // a held capture shows its exact position whatever the decoder reports
         var frac = _info.DurationMs > 0 ? Math.Clamp(pos / (float)_info.DurationMs, 0, 1) : 0;
         _progress.Size = new Size(Math.Max(0, TrackW * frac), 6);
         _now.Text = DetailModel.Clock(pos);
@@ -451,7 +460,7 @@ internal sealed class PlayerScreen : IPage
     {
         get
         {
-            try { return _player is { State: PlayerState.Playing } ? (true, PositionMs) : (false, 0); }
+            try { return _player is null ? (false, 0) : (_player.State == PlayerState.Playing, HoldAtMs >= 0 && _paused ? HoldAtMs : PositionMs); }
             catch (Exception) { return (false, 0); }
         }
     }

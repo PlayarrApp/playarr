@@ -88,7 +88,7 @@ internal sealed class DetailScreen : IPage
     private void BuildCopy(Work w, WorkDetail d)
     {
         _content.Add(Ui.Text(w.Genres.FirstOrDefault() ?? "Movie", 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var lines = Ui.Paragraph(_content, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true);
+        var lines = Ui.Paragraph(_content, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true, role: "heading");
         var bas = 303.5f + 62.208f * lines;
         var meta = new List<string> { "Movie" };
         if (d.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(d.RuntimeMs.Value));
@@ -96,7 +96,7 @@ internal sealed class DetailScreen : IPage
         if (w.ReleaseDate is { Length: > 0 } rel && DateTime.TryParse(rel, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var released)) meta.Add("Released " + released.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(3));
         { var mx = 153.6f; for (var mi = 0; mi < meta.Count; mi++) { var first = mi == 0; _content.Add(Ui.Text(meta[mi], mx, bas + 27, 10.56f, first ? 680 : 400, first ? _t.InkSoft : _t.InkMuted, 0, 15.84f)); mx += Ui.TextWidth(meta[mi], 10.56f, first ? 680 : 400, 0) + 13.6f; } } // web: one span per part, 13.6 px apart
-        var ovLines = Ui.Paragraph(_content, w.Overview ?? "", 153.6f, bas + 64.5f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
+        var ovLines = Ui.Paragraph(_content, w.Overview ?? "", 153.6f, bas + 64.5f, 12.864f, 400, _t.InkMuted, 300, 20.325f, 0, 5);
 
         // the action rows follow the overview: 5 lines put them at +203.8 (web), each line fewer lifts them by one line height
         var y1 = bas + 203.8f - (5 - Math.Max(1, ovLines)) * 20.325f; var y2 = y1 + 76f;

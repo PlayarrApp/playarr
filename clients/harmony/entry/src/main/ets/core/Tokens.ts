@@ -208,6 +208,8 @@ export interface TvGeometryTokens {
   keyArtHeightPct: number;
   keyArtHeightPx: number;
   keyArtOffsetY: number;
+  keyArtImageWidthPx: number;
+  keyArtImageLeft: number;
   keyArtScale: number;
   keyArtObjectPositionYPct: number;
   keyArtMaskFadeStartPct: number;
@@ -332,6 +334,8 @@ export const TvGeometry: TvGeometryTokens = {
   keyArtHeightPct: 106,
   keyArtHeightPx: 1145,
   keyArtOffsetY: -33,
+  keyArtImageWidthPx: 865.3, // web layout ref: the key-art img is 865.3 x 1145 at (150.3, 0), scaled 1.04 about its centre
+  keyArtImageLeft: 150.3,
   keyArtScale: 1.04,
   keyArtObjectPositionYPct: 20,
   keyArtMaskFadeStartPct: 72,
@@ -389,7 +393,7 @@ export const TvGeometry: TvGeometryTokens = {
   // Web TV shell: logo at (61, 60), clock row starting at x=478, 56..106 high.
   logoLeft: 61,
   logoTop: 60,
-  clockLeft: 478,
+  clockLeft: 480.97,
 
   homeRailCardWidthLandscape: 327,
   homeRailCardWidthCover: 172,
@@ -407,7 +411,7 @@ export const TvGeometry: TvGeometryTokens = {
   libraryGridCardWidth: 327,
   libraryGridCardHeight: 184,
   // Web row pitch is 240.5; its caption box sits 12 below the art where PosterCard's sits 5 below.
-  libraryGridRowGap: 28, // 38 before the caption moved 10 vp lower (row pitch stays 240)
+  libraryGridRowGap: 30.4, // web row pitch 240 (the caption sits 1.45 higher now)
   libraryGridColumnGap: 26.5,
   libraryGridCardRadius: 12.48,
   azIndexRailRight: 22,
@@ -424,25 +428,25 @@ export const TvGeometry: TvGeometryTokens = {
   libraryBackdropLeftPct: 52,
   libraryResultsWidthRatio: 0.65,
   libraryResultsBackgroundOpacity: 0.93,
-  navStart: 42,
+  navStart: 42.23,
   navGroupRadius: 22,
   navGroupBackgroundOpacity: 0.56,
   navGroupBorderWidth: 1,
   navGroupBorderOpacity: 0.053,
   navGroupShadow: 42,
-  navGroupPaddingH: 7,
-  navGroupPaddingV: 8,
-  navGroupItemGap: 9,
+  navGroupPaddingH: 5.75,
+  navGroupPaddingV: 6.72,
+  navGroupItemGap: 9.59,
   navTileSize: 64,
   navTileRadius: 16,
   navTileIconSize: 20,
   navTileLabelSize: 8.832,
   // ArkUI takes weights in steps of 100; web uses 680.
-  navTileLabelWeight: 700,
+  navTileLabelWeight: 680,
   // Web TV library group (Home, Series, Movies, Music) top edge; the Downloads/Search group sits above it on web.
-  navGroupTop: 286,
+  navGroupTop: 285.73,
   // Web gap between nav groups (586 -> 600).
-  navGroupGap: 14,
+  navGroupGap: 13.59,
   navGroupShadowOffsetY: 14,
   playerControlBarPaddingH: 48,
   playerControlBarTitleSize: 19,
