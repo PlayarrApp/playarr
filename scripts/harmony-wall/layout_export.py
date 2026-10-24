@@ -19,7 +19,7 @@ def num(value, default=None):
 
 def rect_of(node):
     v = [float(x) for x in _NUM.findall(str(node.get("$rect", "")))]
-    return (v[0], v[1], v[2] - v[0], v[3] - v[1]) if len(v) == 4 else None
+    return (v[0], v[1], v[2], v[3]) if len(v) == 4 else None  # "[x, y],[width, height]" in px (the inspector's second pair is the size)
 
 
 def argb(value):
@@ -101,7 +101,13 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None):
                 if op != 1.0:
                     el["opacity"] = op
                 out.append(el)
-        for child in node.get("$children") or []:
+        kids = node.get("$children") or []
+        pages = [c for c in kids if c.get("$type") == "NavDestination"]
+        for child in kids:
+            if child.get("$type") == "NavDestination" and child is not pages[-1]:
+                continue  # a page below the top one stays in the tree while hidden
+            if str((child.get("$attrs") or child).get("visibility", "")).lower().endswith(("hidden", "none", "1", "2")):
+                continue
             walk(child, here)
 
     walk(tree, (255, 255, 255, 1.0))

@@ -58,7 +58,7 @@ methods = """
       // parity layout export: the component tree (box, text, font, colours) goes to the bridge, which keeps it for the capture driver
       try {
         const tree: string = this.getUIContext().getFilteredInspectorTree(['$rect', 'content', 'text', 'fontSize', 'fontColor', 'fontFamily', 'fontWeight',
-          'backgroundColor', 'borderRadius', 'opacity', 'letterSpacing', 'textAlign', 'maxLines', 'lineHeight', 'id']);
+          'backgroundColor', 'borderRadius', 'opacity', 'letterSpacing', 'textAlign', 'maxLines', 'lineHeight', 'id', 'visibility']);
         this.previewReq.request('http://127.0.0.1:%s/layout-put?id=' + encodeURIComponent(name.substring(11)),
           { method: http.RequestMethod.POST, extraData: tree, connectTimeout: 5000, readTimeout: 5000 }).catch((): void => {});
       } catch (err) {
