@@ -1756,6 +1756,7 @@ struct Detail {
         .fontWeight(FontWeight.Bold)
         .fontColor(this.playInk())
     }
+    .id(this.pillId(this.primaryLabel(), '', true))
     .layoutWeight(1)
     .height(height)
     .padding({ left: Spacing.lg, right: Spacing.lg })
@@ -1872,6 +1873,7 @@ struct Detail {
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
         .maxLines(1)
     }
+    .id(this.pillId(label, primary ? '' : glyph, primary))
     .height(tv(PILL_HEIGHT))
     .constraintSize({ minWidth: tv(primary ? PILL_PRIMARY_MIN_WIDTH : PILL_SECONDARY_MIN_WIDTH) })
     .padding({ left: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X), right: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X) })
@@ -2331,6 +2333,21 @@ struct Detail {
     return this.synopsisText();
   }
 
+  /** The web accessible name and role of an action pill: Play is a link, Download and Playback carry the title, the rest read glyph and label. */
+  private pillId(label: string, glyph: string, primary: boolean): string {
+    const title = this.detail !== null ? this.detail.work.title : '';
+    if (primary) {
+      return (this.detail !== null && this.detail.work.kind === 'series' ? 'px:button:' : 'px:link:') + (this.detail !== null && this.detail.work.kind === 'series' ? label : label) + ' ' + title;
+    }
+    if (label === t('components.mediaContextMenu.download', 'Download')) {
+      return 'px:button:' + label + ' ' + title;
+    }
+    if (label === t('pages.workDetail.playbackButtonLabel', 'Playback')) {
+      return 'px:button:Playback settings for ' + title;
+    }
+    return 'px:button:' + (glyph.length > 0 ? glyph + ' ' : '') + label;
+  }
+
   private phoneKindTitle(): string {
     return this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '';
   }
@@ -2451,6 +2468,7 @@ struct Detail {
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
+      .id(this.pillId(label, glyph, false))
       .height(44)
       .justifyContent(FlexAlign.Center)
       .padding({ left: 16, right: 16 })
@@ -2478,6 +2496,7 @@ struct Detail {
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
+    .id(this.pillId(label, '+', false))
     .layoutWeight(1)
     .height(44)
     .justifyContent(FlexAlign.Center)
@@ -2502,6 +2521,7 @@ struct Detail {
           .maxLines(1)
           .fontColor(toResourceColor(activeColors().bg))
       }
+      .id(this.pillId(this.primaryLabel(), '', true))
       .width(100)
       .height(44)
       .justifyContent(FlexAlign.Center)
