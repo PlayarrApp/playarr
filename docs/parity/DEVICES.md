@@ -257,3 +257,13 @@ list. The branch, commit and arguments must still match. Inspect at least three 
 before asking the coordinator to validate a new exporter; automated scoring does not replace that audit.
 Set `PARITY_IOS_INSPECT_ONLY=1` for the first capture of a changed exporter to stop before publication, inspect its
 downloaded images and layouts, then resume the same run without that setting after the sanity check.
+
+Task 17.484 remains blocked on a reference-export discrepancy: Actions has a 44 px Close circle, but its web
+layout reports the CSS percentage `50%` as a radius of 50 px instead of the drawn 22 px. The native exporter must
+keep reporting the actual radius. Resolution belongs to the reference coordinator; the iOS lane must not alter
+the web or substitute reference values in its export.
+
+iOS layout scores are not validated. Remaining exporter gaps include text after truncation, ancestor clipping
+and opacity, and backgrounds composited through translucent or material ancestors. Resolve those gaps, obtain
+an independent CLEAN audit and coordinator validation, then run two complete captures at the same commit.
+Missing screenshots or layout files fail coverage; rescoring one capture twice does not establish determinism.
