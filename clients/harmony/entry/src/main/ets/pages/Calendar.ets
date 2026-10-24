@@ -657,7 +657,7 @@ export struct ReleaseCalendar {
         Text(String(dayOfMonth(cell.day))).fontFamily(nunito(640))
           .fontSize(tv(MONTH_DAY_SIZE))
           .fontWeight(FontWeight.Medium)
-          .margin({ top: 3.84 })
+          .margin({ top: isTvMetrics() ? 1 : 3.84 })
           .fontColor(toResourceColor(cell.inMonth ? activeColors().ink : activeColors().inkMuted))
         if (groupSeriesEpisodes(cell.entries).length > this.monthLinesFor(cellHeight)) {
           Text(`+${groupSeriesEpisodes(cell.entries).length - this.monthLinesFor(cellHeight)} more`).fontFamily(nunitoAt(400, tv(MONTH_LINE_SIZE)))

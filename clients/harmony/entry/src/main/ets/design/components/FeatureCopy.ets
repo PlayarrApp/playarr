@@ -112,6 +112,8 @@ export struct FeatureCopy {
   @Prop metaGapAdjust: number = 0;
   /** The layout export's role for the title (web's calendar hero is plain text, the others a heading). */
   @Prop titleRole: string = 'heading';
+  /** Home, Calendar and Library heroes set the synopsis in the copy colour at weight 600; Detail keeps the muted regular one. */
+  @Prop strongSynopsis: boolean = true;
   @Prop synopsisGapAdjust: number = 0;
   /** Library hero: web sets its meta lighter and its synopsis at 14.4 / 21.6 in a wider column than Home and Detail. */
   @Prop libraryCopy: boolean = false;
@@ -205,7 +207,7 @@ export struct FeatureCopy {
           )
         }
         .width('100%')
-        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : (GAP_TITLE_META - (this.libraryCopy ? 0 : 1.42))) })
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META) })
       } else if (this.metaRuns.length > 0) {
         Row({ space: tv(12.8) }) {
           ForEach(
@@ -219,7 +221,7 @@ export struct FeatureCopy {
             (run: string, index: number) => `${index}-${run}`
           )
         }
-        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : (GAP_TITLE_META - (this.libraryCopy ? 0 : 1.42)) + this.metaGapAdjust) })
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META + this.metaGapAdjust) })
       } else if (this.metaLines.length > 0) {
         Column() {
           ForEach(
@@ -234,21 +236,21 @@ export struct FeatureCopy {
           )
         }
         .alignItems(HorizontalAlign.Start)
-        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : (GAP_TITLE_META - (this.libraryCopy ? 0 : 1.42)) + this.metaGapAdjust) })
+        .margin({ top: tv(this.subtitle.length > 0 ? EPISODE_META_MARGIN_TOP : GAP_TITLE_META + this.metaGapAdjust) })
       }
 
       if (this.synopsis.length > 0) {
         // web `.tv-detail-synopsis`: --ink-muted, no weight set (body 400)
-        Text(this.synopsis).fontFamily(nunitoAt(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
+        Text(this.synopsis).fontFamily(nunitoAt((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
-          .fontWeight(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
+          .fontWeight((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
           .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))
-          .letterSpacing(tv(this.libraryCopy ? SYNOPSIS_LETTER_SPACING : -0.24))
-          .fontColor(this.libraryCopy ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
+          .letterSpacing(tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24))
+          .fontColor((this.libraryCopy || this.strongSynopsis) ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : 1.42)) })
+          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : (this.strongSynopsis ? 1.42 : 5.58))) })
       }
     }
     .width('100%')

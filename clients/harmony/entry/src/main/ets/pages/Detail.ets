@@ -2235,6 +2235,7 @@ struct Detail {
           subtitle: this.tvCopySubtitle(),
           metaChips: this.detail !== null ? metaChips(this.detail, this.hasResumeTarget() ? this.resumePlan : null) : [],
           synopsis: this.tvCopySynopsis(),
+          strongSynopsis: false,
         })
         this.tvActions()
       }
