@@ -26,6 +26,9 @@ export function assertCaptureState(state, expectedUsername, { player = false, de
   }
   if (state.screenContentReady !== true) throw new Error("iOS parity app has not reported screen content ready");
   if (player && state.directPlay !== true) throw new Error("iOS parity app did not confirm direct play for the pinned fixture");
+  if (player && (state.playerCapture?.position !== 2 || state.playerCapture?.paused !== true || state.playerCapture?.itemReady !== true)) {
+    throw new Error("iOS parity player is not ready and paused at exactly 2.000 seconds");
+  }
   if (deterministic) {
     if (state.animationsDisabled !== true) throw new Error("iOS parity app did not confirm SwiftUI animations are disabled");
     if (!fixedNow || !state.frozenNow || Date.parse(state.frozenNow) !== Date.parse(fixedNow)) throw new Error("iOS parity app did not confirm the requested fixed capture clock");
@@ -356,7 +359,15 @@ export async function createDriver() {
       // A frame only counts while the app still reports the screen ready: a Home that reloads after the first ready
       // (frozen animations make the spinner look "stable") must not be captured as "Preparing your home...".
       const stillReady = async () => {
-        for (let t = 0; t < 120; t += 1) { if (state().screenContentReady === true) return; await sleep(500); }
+        for (let t = 0; t < 120; t += 1) {
+          const current = state();
+          if (current.failure) throw new Error(`iOS parity app failed: ${String(current.failure)}`);
+          if (current.screenContentReady === true) {
+            assertCaptureState(current, expectedUsername, { player: id === "player-controls", deterministic: deterministicCapture, fixedNow });
+            return;
+          }
+          await sleep(500);
+        }
         throw new Error(`iOS parity screen ${id} left the ready state and did not recover within 60 seconds`);
       };
       const layout = await captureStableScreen(async () => {
@@ -367,6 +378,7 @@ export async function createDriver() {
       }, readLayout, { attempts: 8, intervalMs: 4000, wait: sleep });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       assertScreenshotFile(file);
+      if (id === "player-controls") writeFileSync(`${file}.player-state.json`, JSON.stringify(state().playerCapture));
       // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames, written beside the screenshot.
       const dir = join(dirname(dirname(file)), "layout", theme);
       run("mkdir", ["-p", dir]);
