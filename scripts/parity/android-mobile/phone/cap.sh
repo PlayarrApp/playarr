@@ -21,7 +21,7 @@ for m in re.finditer(r'content-desc=\"([^\"]*)\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(
 shot() { sleep "${2:-2}"; for i in 1 2 3; do adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { echo "not foreground"; sleep 4; continue; }
   adb exec-out screencap -p > "$O/$1.png"; if [ "$(stat -c%s "$O/$1.png")" -gt 20000 ]; then
     if adb shell "rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml >/dev/null; cat /sdcard/ui.xml" | grep -qiE "try again|reach the playarr|couldn.t|could not be loaded|sign in to playarr|isn.t responding|keeps stopping|has stopped|not responding"; then sleep 4; continue; fi
-    python3 -I "$HERE/../layout.py" "$1" "$(echo "$T" | tr A-Z a-z)" phone "$O/$1.png" "$O/layout/$1.json" >/dev/null 2>&1 || echo "layout export failed $1"; echo "ok $1"; return 0; fi; sleep 2; done; rm -f "$O/$1.png"; echo "FAIL $1"; return 1; }
+    python3 -I "$HERE/../layout.py" "$1" "$(echo "$T" | tr A-Z a-z)" phone "$O/layout/$1.json" >/dev/null 2>&1 || echo "layout export failed $1"; echo "ok $1"; return 0; fi; sleep 2; done; rm -f "$O/$1.png"; echo "FAIL $1"; return 1; }
 run() { case $1 in
   home) open home 16; shot $1 ;;
   movies) open movies 16; python3 -I $HERE/uiexpect.py 'Amber Thicket 3' || { echo "wrong screen movies"; return 1; }; shot $1 ;;

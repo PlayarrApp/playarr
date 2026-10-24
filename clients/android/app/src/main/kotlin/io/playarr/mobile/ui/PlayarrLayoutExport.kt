@@ -15,7 +15,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
@@ -39,7 +39,7 @@ import java.io.File
 /** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
 internal var parityLayoutEnabled = false
 
-private class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
+private class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var radiusDp: Float = 0f, var circle: Boolean = false, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
 
 private val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
@@ -47,14 +47,20 @@ private val parityBoxes = java.util.Collections.synchronizedSet(java.util.Linked
  * Records this node's window bounds for the layout export (docs/parity/LAYOUT.md): a painted container, an image, a control
  * (cards are `link` with their accessible name, as the web's `Open <title>` links). A no-op unless the debug build enabled it.
  */
-internal fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified): Modifier =
+internal fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, radiusDp: Float = 0f, circle: Boolean = false): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
         val box = remember { ParityBox(view, role, label, radius, opacity, background) }
-        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background
+        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.radiusDp = radiusDp; box.circle = circle
         DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
-        onGloballyPositioned { box.bounds = it.boundsInWindow() }
+        onGloballyPositioned { box.bounds = androidx.compose.ui.geometry.Rect(it.localToWindow(androidx.compose.ui.geometry.Offset.Zero), it.localToWindow(androidx.compose.ui.geometry.Offset(it.size.width.toFloat(), it.size.height.toFloat()))) } // unclipped: the web boxes run past the viewport too
     }
+
+/** Bridge for the design-system hook (`parityTag`). */
+internal object ParityBoxes {
+    fun Modifier.box(role: String, label: String, radiusDp: Float, circle: Boolean, background: androidx.compose.ui.graphics.Color, opacity: Float): Modifier =
+        parityBox(role, label, 0f, opacity, background, radiusDp, circle)
+}
 
 internal object PlayarrLayoutExport {
     const val ACTION = "io.playarr.mobile.PARITY_LAYOUT"
@@ -94,6 +100,7 @@ internal object PlayarrLayoutExport {
         val roots = rootViews(activity)
         val mainView = activity.window.decorView
         mainOrigin = IntArray(2).also { mainView.getLocationOnScreen(it) }
+        viewW = mainView.width; viewH = mainView.height
         val bitmap = Bitmap.createBitmap(mainView.width, mainView.height, Bitmap.Config.ARGB_8888)
         PixelCopy.request(activity.window, bitmap, { result ->
             runCatching {
@@ -121,13 +128,18 @@ internal object PlayarrLayoutExport {
                         if (!box.view.isShown || box.bounds.width < 1f || box.bounds.height < 1f) continue
                         val loc = IntArray(2).also { box.view.getLocationOnScreen(it) }
                         val x = box.bounds.left + loc[0] - mainLoc[0]; val y = box.bounds.top + loc[1] - mainLoc[1]
+                        if (x + box.bounds.width <= 0f || y + box.bounds.height <= 0f || x >= mainView.width || y >= mainView.height) continue
                         val w = box.bounds.width; val h = box.bounds.height
                         val e = JSONObject().put("text", box.label).put("role", box.role)
                             .put("rect", JSONObject().put("x", r2(x)).put("y", r2(y)).put("w", r2(w)).put("h", r2(h)))
                             .put("color", JSONObject.NULL)
                             .put("background", if (box.background != androidx.compose.ui.graphics.Color.Unspecified) hex(box.background.toArgb()) else insideColour(bmp, x.toInt(), y.toInt(), w.toInt(), h.toInt()) ?: JSONObject.NULL)
                             .put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
-                        if (box.radius > 0f) e.put("radius", box.radius.toDouble())
+                        // radius: raw px (TV), or radiusDp scaled to px; a circle exports 50 as the web does for border-radius: 50% (scaled with the viewport so CSS px stay 50).
+                        val density = box.view.resources.displayMetrics.density
+                        if (box.circle) e.put("radius", 50.0 * mainView.width / viewportCssWidth(mainView))
+                        else if (box.radiusDp > 0f) e.put("radius", (box.radiusDp * density).toDouble())
+                        else if (box.radius > 0f) e.put("radius", box.radius.toDouble())
                         if (box.opacity < 1f) e.put("opacity", box.opacity.toDouble())
                         elements.put(e)
                     }
@@ -141,6 +153,13 @@ internal object PlayarrLayoutExport {
                 parityLog("layout_export ok count=${elements.length()}")
             }.onFailure { parityLog("layout_export failed ${it.javaClass.simpleName} ${it.message?.take(120)}") }
         }, Handler(Looper.getMainLooper()))
+    }
+
+    /** CSS viewport width of the web layout this window is compared with: 390 phone, 1280 tablet; a TV is 1:1. */
+    private fun viewportCssWidth(v: View): Float = when {
+        v.width <= 800 -> 390f
+        v.width in 2000..2800 -> 1280f
+        else -> v.width.toFloat()
     }
 
     private fun r2(v: Float) = Math.round(v * 100) / 100.0
@@ -171,13 +190,16 @@ internal object PlayarrLayoutExport {
     }
 
     private var mainOrigin = IntArray(2)
+    private var viewW = 0
+    private var viewH = 0
 
     private fun walk(node: SemanticsNode, dx: Int, dy: Int, bitmap: Bitmap?, out: JSONArray) {
         val config = node.config
         val bounds = node.boundsInRoot
         val x = bounds.left + dx; val y = bounds.top + dy
         val text = config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()
-        if (text.isNotEmpty() && node.layoutInfo.isPlaced) {
+        val onScreen = bounds.width >= 1f && bounds.height >= 1f && x + bounds.width > 0f && y + bounds.height > 0f && x < viewW && y < viewH
+        if (text.isNotEmpty() && node.layoutInfo.isPlaced && onScreen) {
             val results = mutableListOf<TextLayoutResult>()
             config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
             val layout = results.firstOrNull()
@@ -191,7 +213,7 @@ internal object PlayarrLayoutExport {
                 for (i in 0 until layout.lineCount) {
                     if (layout.getLineEnd(i, true) == layout.getLineStart(i)) continue
                     l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
-                    top = minOf(top, layout.getLineTop(i)); bottom = maxOf(bottom, layout.getLineBottom(i))
+                    top = minOf(top, layout.getLineBaseline(i) - 1.011f * size); bottom = maxOf(bottom, layout.getLineBaseline(i) + 0.353f * size)
                 }
                 if (r > l) {
                     val colour = style.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified }

@@ -64,10 +64,12 @@ internal fun PhoneKeyArt(
                     .fillMaxWidth()
                     .height(boxHeight * 0.55f)
                     .graphicsLayer {
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) // web: 405.6 px wide from x 0, centred vertically
                         scaleX = 1.04f
                         scaleY = 1.04f
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
+                    .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f, background = surface)
                     .drawWithContent {
                         drawContent()
                         // mask-image: linear-gradient(90deg, #000 0%, #000 72%, transparent 100%)

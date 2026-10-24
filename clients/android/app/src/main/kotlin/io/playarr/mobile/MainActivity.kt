@@ -216,7 +216,7 @@ class MainActivity : ComponentActivity() {
             )
         }
         io.playarr.mobile.ui.PlayarrCaptureReadiness.begin(captureGeneration, captureScreen)
-        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) { io.playarr.mobile.ui.parityLayoutEnabled = true; io.playarr.mobile.ui.PlayarrLayoutExport.install(this) }
+        if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) { io.playarr.mobile.ui.parityLayoutEnabled = true; io.playarr.mobile.ui.PlayarrLayoutExport.install(this); io.playarr.shared.designsystem.page.PlayarrParityHook.box = { m, role, label, r, circle, bg, op -> with(io.playarr.mobile.ui.ParityBoxes) { m.box(role, label, r, circle, bg, op) } } }
         io.playarr.mobile.ui.parityPauseAtMs = intent.getLongExtra("parity_pause_at_ms", -1L).takeIf {
             it >= 0L && (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         }

@@ -2119,7 +2119,8 @@ private fun ExperienceNavigation(
     Surface(
         modifier = Modifier
             .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
-            .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav),
+            .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav)
+            .parityBox("container", label = if (isTelevision) "" else "Primary navigation", radiusDp = if (isTelevision) 0f else 20f, background = WebBackground),
         color = Color.Transparent,
         shape = phoneNavShape,
         tonalElevation = 0.dp,
@@ -2132,35 +2133,45 @@ private fun ExperienceNavigation(
             contentPadding = PaddingValues(0.dp),
         ) {
             if (tvProfile != null) item(key = "profile") {
+                // The web link is 44 wide inside a 46 px slot.
+                Box(Modifier.width(46.dp), contentAlignment = Alignment.Center) {
                 Surface(
                     onClick = tvProfile.onClick,
                     color = Color.Transparent,
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.height(46.dp).semantics { contentDescription = tvProfile.description },
+                    modifier = Modifier.height(46.dp).width(if (isTelevision) 46.dp else 44.dp).semantics { contentDescription = tvProfile.description }.parityBox("link", tvProfile.description, radiusDp = 14f, background = WebBackground),
                 ) {
-                    Box(Modifier.width(46.dp), contentAlignment = Alignment.Center) {
-                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp), glyphSize = 13.sp) // web: 39 device px
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", circle = true, background = WebBackground).parityBox("image", background = WebBackground), glyphSize = 13.sp) // web: 39 device px
                     }
                 }
+                }
             }
-            items(destinations, key = { it.route }) { destination ->
+            itemsIndexed(destinations, key = { _, d -> d.route }) { navIndex, destination ->
                 val selected = currentRoute == destination.route
                 val label = playarrString(destination.label)
                 // Web phone bar: the selected pill is 43.4 css px wide inside a 46 px slot, and idle icons are the muted ink.
-                Box(Modifier.width(46.dp).height(46.dp), contentAlignment = Alignment.Center) {
+                // Web slots are 46 css px (84.8 device px): whole-pixel slots drift 0.2 px per item, so the width follows the cumulative rounding.
+                val slotDensity = LocalDensity.current
+                val slotWidth = if (isTelevision || !parityNoInsets) 46.dp else with(slotDensity) { // parity captures only (719 px wide = 390 css)
+                    val unit = 46f * 719f / 390f
+                    val px = Math.round((navIndex + 1 + (if (tvProfile != null) 1 else 0)) * unit) - Math.round((navIndex + (if (tvProfile != null) 1 else 0)) * unit)
+                    px.toDp()
+                }
+                Box(Modifier.width(slotWidth).height(46.dp), contentAlignment = Alignment.Center) {
                 Surface(
                     onClick = { onNavigate(destination.route) },
                     color = if (selected) WebInk else Color.Transparent,
                     contentColor = if (selected) WebBackground else PlayarrWebTheme.palette.webInkMuted,
                     shape = RoundedCornerShape(if (isTelevision) 16.dp else 14.dp),
-                    modifier = Modifier.width(43.4.dp).height(46.dp),
+                    modifier = Modifier.width(43.4.dp).height(46.dp).parityBox("link", label, radiusDp = 14f, background = if (selected) WebInk else WebBackground),
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = if (selected && isTelevision) 16.dp else if (isTelevision) 12.dp else 11.2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        Icon(destination.icon, contentDescription = label, modifier = Modifier.size(21.dp))
+                        Icon(destination.icon, contentDescription = label, modifier = Modifier.size(21.dp).parityBox("image", background = if (selected) WebInk else WebBackground))
                         AnimatedVisibility(visible = selected && isTelevision) {
                             Text(
                                 label.uppercase(LocalPlayarrLanguage.current.locale),
@@ -3666,7 +3677,7 @@ internal fun ExperienceLandscapeCard(
     Box(
         modifier = modifier
             .width(width)
-            .parityBox("link", background = WebBackground, label = listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "))
+            .parityBox("link", background = WebSurface, label = if (webPhone) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), radiusDp = if (webPhone) 12f else 0f)
             .then(
                 if (webPhone) {
                     Modifier.graphicsLayer { scaleX = scale; scaleY = scale; translationY = 0f }
@@ -3712,7 +3723,7 @@ internal fun ExperienceLandscapeCard(
             // Web `--card-glow-color`: brand-strong in light, brand-ink in dark (the palette's card glow), on TV as on the phone.
             focusGlowColor = if (webPhone || webTvStyle) PlayarrWebTheme.palette.phoneCardGlow else null,
             modifier = Modifier.fillMaxWidth()
-                .parityBox("container", radius = if (webTvStyle) 12.48f else 10f, background = WebSurfaceSoft)
+                .parityBox("container", radius = if (webPhone) 0f else if (webTvStyle) 12.48f else 10f, background = WebSurfaceSoft, radiusDp = if (webPhone) 8f else 0f)
                 .aspectRatio(if (homeView == PlayarrHomeViewPreference.Cover) 2f / 3f else 16f / 9f)
                 .then(
                     if (stackCount > 1) {
@@ -3820,7 +3831,7 @@ internal fun ExperienceLandscapeCard(
                 displayTitle, color = WebInk, fontSize = 8.8.sp, lineHeight = 13.2.sp, fontWeight = FontWeight(610),
                 letterSpacing = (-0.132).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 // Web library caption: 1 px lower than before (measured against the fresh phone refs); the row gap below gives it back.
-                modifier = Modifier.padding(start = 1.9.dp, top = 12.dp),
+                modifier = Modifier.padding(start = 1.9.dp - 0.3.dp, top = 11.6.dp),
             )
         } else {
         Text(displayTitle, color = WebInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 7.dp))
@@ -3896,7 +3907,8 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
             else Modifier)
             .background(UnwatchedDotColour, CircleShape)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
-            .semantics { contentDescription = label },
+            .semantics { contentDescription = label }
+            .parityBox("img", label, circle = true, background = UnwatchedDotColour),
     )
 }
 
@@ -4693,7 +4705,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
                             val active = shownLetter == letter
                             Box(
-                                Modifier.height(25.dp).fillMaxWidth().clickable { activeLetter = letter },
+                                Modifier.height(25.dp).fillMaxWidth().parityBox("button", if (letter == "#") "Numbers and symbols" else letter, circle = true, background = WebSurface).clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (active) Box(Modifier.size(22.dp).then(if (savedSelectedId == null) Modifier.drawBehind {
@@ -4701,7 +4713,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                     val grow = 1.5.dp.toPx() + 1.dp.toPx()
                                     drawCircle(UnwatchedDotColour, radius = size.minDimension / 2f + grow, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
                                 } else Modifier).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
-                                Text(letter, color = if (active) WebBackground else WebInkSoft, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
+                                Text(letter, color = if (active) WebBackground else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
                             }
                         }
                     }

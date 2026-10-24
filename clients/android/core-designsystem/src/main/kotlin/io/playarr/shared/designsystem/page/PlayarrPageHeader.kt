@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
@@ -127,7 +128,7 @@ internal fun PlayarrPageHeaderRow(
                         focusScale = if (spec.backActive) 1.055f else 1f,
                     ) {
                         // Web draws the arrow as the text glyph "←" at 12.8 px, weight 720.
-                        Text("←", color = if (spec.backActive) palette.background else palette.inkSoft, fontSize = 12.8.sp, fontWeight = FontWeight(720))
+                        Text("←", color = if (spec.backActive) palette.background else palette.inkSoft, fontSize = 12.8.sp, fontWeight = FontWeight(720), modifier = Modifier.offset(y = (-0.8).dp))
                     }
                 }
             }.first().measure(Constraints.fixed(backSize, backHeight))
@@ -277,6 +278,7 @@ private fun PlayarrPhoneBackPill(
             modifier = Modifier.size(metrics.controlWidth, metrics.control).graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (below != null) Modifier.focusProperties { down = below } else Modifier)
                 .then(if (focused || focusScale > 1f) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
+                .parityTag("link", contentDescription, circle = true, background = palette.surface)
                 .semantics { this.contentDescription = contentDescription },
             shape = androidx.compose.foundation.shape.CircleShape,
             color = if (active) palette.ink else palette.surfaceStrong.copy(alpha = 0.7f),
