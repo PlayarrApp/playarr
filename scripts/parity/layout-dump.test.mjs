@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { chromium } from "playwright-core";
-import { layoutPageFn } from "./layout-dump.mjs";
+import { layoutPageFn, volatileFor } from "./layout-dump.mjs";
 
 const exe = [process.env.PARITY_CHROME, "/usr/bin/chromium", "/usr/bin/google-chrome-stable", "/usr/bin/google-chrome"].find((p) => p && existsSync(p));
 const skip = exe ? false : "no Chromium on this host";
@@ -68,4 +68,16 @@ test("transparent text is not text; gradient-clipped text reports the first stop
   assert.deepEqual(d.elements.map((e) => [e.text, e.color]), [["", null], ["fill", "#ff0000"], ["grad", "#ff0000"]]);
   assert.equal(d.elements[2].colorGradient, true);
   assert.equal(d.elements[1].colorGradient, undefined);
+});
+
+test("the nav-rail app version is a volatile element with its box exported", { skip }, async () => {
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
+    await page.setContent(`<span class="app-user-version" aria-hidden="true" style="position:absolute;top:10px;font-size:11px">v 0.1.0</span>`);
+    const d = await page.evaluate(layoutPageFn, volatileFor("home"));
+    assert.equal(d.elements.length, 1);
+    assert.equal(d.elements[0].volatile, "app-version");
+    assert.equal(d.elements[0].fontSize, 11);
+  } finally { await browser.close(); }
 });

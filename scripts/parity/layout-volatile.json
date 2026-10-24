@@ -5,6 +5,7 @@
     { "name": "header-date", "selector": ".app-clock-date", "clock": true },
     { "name": "calendar-link-url", "selector": ".calendar-subscription-url" },
     { "name": "calendar-link-qr", "selector": ".calendar-link-secret > :last-child" },
+    { "name": "app-version", "selector": ".app-user-version" },
     { "name": "video-frame", "selector": "video, #parity-video-frame", "maskOnly": true }
   ],
   "settings-server": [
