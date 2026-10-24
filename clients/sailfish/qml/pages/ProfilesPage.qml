@@ -93,25 +93,13 @@ PlayarrPage {
                 onClicked: navigationActivate()
                 onPressAndHold: remorse.execute(qsTr("Removing profile"), function () { Api.removeProfile(modelData.userId) })
                 // Dark ring colour as WorkCard (web captures measure 197,138,151); light keeps the brand ink.
-                readonly property color ringColor: Tokens.dark ? Qt.rgba(197 / 255, 138 / 255, 151 / 255, 1) : Tokens.brandInk
+                readonly property color ringColor: Tokens.dark ? Qt.rgba(94 / 255, 30 / 255, 46 / 255, 1) : Qt.rgba(216 / 255, 153 / 255, 167 / 255, 1)   // web: 0 0 0 4px brand at 42 %, measured on the static refs
                 // Web: the signed-in profile holds the default focus, so its card carries the focused shadow stack (as WorkCard).
-                RectangularGlow {
+                RectangularGlow {   // web .profile-choice.is-selected .profile-avatar: 0 22px 52px rgba(31,14,20,.18)
                     visible: modelData.active
-                    x: av.x; y: av.y + 24 * Tokens.u; width: av.width; height: av.width
-                    glowRadius: 24 * Tokens.u; spread: 0.1; cornerRadius: width / 2 + glowRadius
-                    color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.3)
-                }
-                RectangularGlow {
-                    visible: modelData.active
-                    x: av.x; y: av.y + 10 * Tokens.u; width: av.width; height: av.width
-                    glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: width / 2 + glowRadius
-                    color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.2)
-                }
-                RectangularGlow {   // the ring's own glow as WorkCard: 0 0 20px 4px at 45 %; dark only, light scored lower with it
-                    visible: modelData.active && Tokens.dark
-                    x: av.x; y: av.y; width: av.width; height: av.width
-                    glowRadius: 10 * Tokens.u; spread: 0.25; cornerRadius: width / 2 + glowRadius
-                    color: Qt.rgba(ringColor.r, ringColor.g, ringColor.b, 0.45)
+                    x: av.x; y: av.y + 22 * Tokens.u; width: av.width; height: av.width
+                    glowRadius: 26 * Tokens.u; spread: 0.1; cornerRadius: width / 2 + glowRadius
+                    color: Qt.rgba(31 / 255, 14 / 255, 20 / 255, 0.18)
                 }
                 Avatar {
                     id: av
@@ -126,7 +114,7 @@ PlayarrPage {
                         font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
                 Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 34.2 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.inkMuted
-                        font.family: Tokens.family; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
+                        font.family: Tokens.family610; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
             }
         }
         MouseArea {
@@ -178,7 +166,7 @@ PlayarrPage {
                     font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
             Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.inkMuted
-                    font.family: Tokens.family; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
+                    font.family: Tokens.family610; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
         }
     }
     Row {
