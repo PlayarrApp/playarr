@@ -1132,6 +1132,19 @@ export function createDriver({ out, args = [] } = {}) {
       if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
       if (artEnabled && screen === "browse" && ["artist", "music"].includes(browse)) await waitForArt("music");
       if (artEnabled && screen === "page" && page === "calendar" && ["week", "agenda"].includes(parityState.calendarView)) await waitForArt("calendar");
+      // A title page fetches its Similar Titles last: wait until the rail is on the page (up to 30 s) before the frame is taken.
+      if (screen === "detail" && artEnabled && process.env.ROKU_PARITY_LAYOUT !== "0") {
+        for (let i = 0; i < 10; i += 1) {
+          layoutLines = [];
+          await sendEcp("input?parityLayout=1");
+          for (let k = 0; k < 40 && !layoutLines.includes("end"); k += 1) await sleep(250);
+          await sleep(1000);
+          const has = layoutLines.some((l) => l.includes("Similar Titles"));
+          layoutLines = null;
+          if (has) break;
+          await sleep(2000);
+        }
+      }
       // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).
       let { jpeg, generation } = captureFrame();
       for (let i = 0; i < 8; i += 1) {
