@@ -411,6 +411,7 @@ export struct MediaRail {
     Column({ space: this.headingGap }) {
       if (this.heading.length > 0) {
         Text(this.heading).fontFamily(nunito(this.headingWeight))
+          .id('px:heading:' + this.heading)
           .fontSize(this.headingSize)
           .fontWeight(this.headingWeight)
           .fontColor(toResourceColor(activeColors().ink))

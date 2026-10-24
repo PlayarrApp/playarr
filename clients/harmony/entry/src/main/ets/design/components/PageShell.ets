@@ -135,7 +135,8 @@ export struct PageShell {
 
   @Builder
   private headerTitle(): void {
-    Text(this.title).fontFamily(nunito(500))
+    Text(this.title).fontFamily(nunito(580))
+      .id('px:heading:' + this.title)
       .fontSize(tv(TITLE_SIZE))
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(TITLE_LETTER_SPACING))
@@ -255,6 +256,7 @@ export struct PageShell {
             })
           Column() {
             Text(this.title).fontFamily(nunito(580))
+              .id('px:heading:' + this.title)
               .fontSize(21.6) // web 1.35rem
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-0.972) // web -0.045em

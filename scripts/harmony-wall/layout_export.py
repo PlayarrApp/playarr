@@ -196,7 +196,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 parent_bg = backdrop(image, rx, ry, rw, rh, dpr, parent_bg)
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
                 prole = str(attrs.get("id", "")).split(":")[1] if str(attrs.get("id", "")).startswith("px:") else None
-                el = {"text": " ".join(str(text).split()), "role": prole or ("heading" if size >= 21 else "text"), "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
+                el = {"text": " ".join(str(text).split()), "role": prole or "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, parent_bg)), "background": hex_of(parent_bg), "fontSize": size, "fontWeight": weight}
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:

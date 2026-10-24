@@ -168,6 +168,7 @@ export struct FeatureCopy {
 
       if (this.title.length > 0) {
         Text(this.balancedTitle()).fontFamily(nunito(HERO_TITLE_FONT_WEIGHT))
+          .id('px:heading:' + this.title)
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
