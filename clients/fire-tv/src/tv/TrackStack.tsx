@@ -12,7 +12,7 @@ import {focusNode} from '../platform';
 import {useTheme} from '../theme/ThemeProvider';
 import {EdgeFade, TRACK_GUTTER} from './EdgeFade';
 import {Box, T, u} from './kit';
-import {MediaFocus} from './mediaFocus';
+import {CardCaption, MediaFocus} from './mediaFocus';
 import {WatchState} from './WatchState';
 import {reportFocus} from '../debug/parityControl';
 
@@ -22,6 +22,10 @@ const TRACK_VIEW_W = 1920 - TRACK_VIEW_X;
 const CARD_W = 268;
 const CARD_H = 150.8;
 const CARD_PITCH = 293;
+// Similar Titles uses the library's title card (web .tv-title-card-art): 327.2 x 184, 352.1 px apart, 12.48 px corners.
+const TITLE_W = 327.2;
+const TITLE_H = 184;
+const TITLE_PITCH = 352.1;
 const TRACK_PITCH = 314.8;
 // Measured on the web film page: Chapters to Cast is 351 px, and each cast or crew track is 284.2 px tall.
 const CHAPTERS_PITCH = 351;
@@ -62,6 +66,8 @@ export interface TrackItem {
   title: string;
   /** People tracks put the role under the name instead of before it. */
   stacked?: boolean;
+  /** A title of the library (Similar Titles): drawn as the library's wide title card. */
+  wide?: boolean;
   /** A cast or crew headshot: drawn as web's circular person card. */
   person?: boolean;
   initials?: string;
@@ -119,8 +125,9 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
     props.onFocus({track: trackIndex, item: itemIndex});
     const visible = 1920 - TRACK_X;
     const person = isPersonTrack(track);
-    const left = itemIndex * (person ? PERSON_PITCH : CARD_PITCH);
-    const width = person ? PERSON_CELL : CARD_W;
+    const wide = track.items[0]?.wide === true;
+    const left = itemIndex * (person ? PERSON_PITCH : wide ? TITLE_PITCH : CARD_PITCH);
+    const width = person ? PERSON_CELL : wide ? TITLE_W : CARD_W;
     let target = scrollTargets.current[track.id] ?? 0;
     if (left + width + 46 > target + visible) target = left + width + 46 - visible;
     if (left < target + 8) target = Math.max(0, left - 8);
@@ -135,7 +142,7 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
           {tracks.map((track, trackIndex) => {
             const y = trackY(tracks, restY, trackIndex);
             const offset = offsets[track.id] ?? 0;
-            const pitch = isPersonTrack(track) ? PERSON_PITCH : CARD_PITCH;
+            const pitch = isPersonTrack(track) ? PERSON_PITCH : track.items[0]?.wide === true ? TITLE_PITCH : CARD_PITCH;
             const first = Math.max(0, Math.floor(offset / pitch) - 1);
             const last = Math.min(track.items.length, Math.ceil((offset + 1038) / pitch) + 1);
             const active = focus?.track === trackIndex;
@@ -235,9 +242,9 @@ function TrackCard({item, x, token, selected, preferred, onFocus}: {item: TrackI
       hasTVPreferredFocus={preferred}
       onFocus={onFocus}
       onPress={item.onPress}
-      style={{position: 'absolute', left: u(x), top: 0, width: u(CARD_W)}}
+      style={{position: 'absolute', left: u(x), top: 0, width: u(item.wide ? TITLE_W : CARD_W)}}
     >
-      <MediaFocus focused={selected} width={CARD_W} height={CARD_H} radius={13.44}>
+      <MediaFocus focused={selected} width={item.wide ? TITLE_W : CARD_W} height={item.wide ? TITLE_H : CARD_H} radius={item.wide ? 12.48 : 13.44}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft, alignItems: 'center', justifyContent: 'center'}}>
           {item.art ? (
             <ArtworkImage uri={item.art} accessToken={token} style={{position: 'absolute', left: 0, top: 0, width: '100%', height: '100%'}} resizeMode="cover" focalY={item.person ? 0.2 : undefined} />
@@ -249,12 +256,13 @@ function TrackCard({item, x, token, selected, preferred, onFocus}: {item: TrackI
         </View>
         {item.badge ? (
           <>
+            {/* web .tv-episode-art::after: linear-gradient(135deg, rgba(0,0,0,.05), rgba(0,0,0,.48)); the 135deg line of a 268 x 150.8 box runs from (0.109, -0.194) to (0.891, 1.194). */}
             <LinearGradient
               pointerEvents="none"
-              style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: u(60)}}
-              start={{x: 0, y: 0}}
-              end={{x: 0, y: 1}}
-              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.5)']}
+              style={{position: 'absolute', left: 0, right: 0, top: 0, bottom: 0}}
+              start={{x: 0.109, y: -0.194}}
+              end={{x: 0.891, y: 1.194}}
+              colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.48)']}
             />
             <View style={{position: 'absolute', right: u(11.6), bottom: u(8.9)}}>
               <T size={19.2} weight={560} lh={28.8} color="#ffffff">
@@ -266,6 +274,7 @@ function TrackCard({item, x, token, selected, preferred, onFocus}: {item: TrackI
         <WatchState progress={item.progress} showUnwatched={item.unseenDot === true} dot={13} inset={10.5} />
       </MediaFocus>
       <View style={{marginTop: u(11.4)}}>
+        <CardCaption focused={selected} artH={item.wide ? TITLE_H : CARD_H} gap={11.4}>
         {item.stacked ? (
           <>
             <T size={11.52} weight={610} ls={-0.1728} lh={17.3} color={colour.ink} lines={1}>
@@ -280,7 +289,7 @@ function TrackCard({item, x, token, selected, preferred, onFocus}: {item: TrackI
             ) : null}
           </>
         ) : (
-          <View style={{flexDirection: 'row', alignItems: 'center', width: u(CARD_W)}}>
+          <View style={{flexDirection: 'row', alignItems: 'center', width: u(item.wide ? TITLE_W : CARD_W)}}>
             {item.small ? (
               <View style={{marginRight: u(8)}}>
                 <T size={8.832} weight={700} lh={13.2} color={colour.inkMuted}>
@@ -295,6 +304,7 @@ function TrackCard({item, x, token, selected, preferred, onFocus}: {item: TrackI
             </View>
           </View>
         )}
+      </CardCaption>
       </View>
     </Pressable>
   );

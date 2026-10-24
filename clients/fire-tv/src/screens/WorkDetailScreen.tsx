@@ -354,6 +354,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
         const kind = preferredArtworkKind(entry, ['backdrop', 'poster']);
         return {
           id: entry.id,
+          wide: true,
           art: kind ? workArtworkUrl(baseUrl, entry.id, kind) : undefined,
           small: entry.kind === 'series' ? t('pages.home.workKind.series') : entry.kind === 'artist' ? t('pages.home.workKind.artist') : entry.kind === 'site' ? t('pages.home.workKind.site') : t('pages.home.workKind.movie'),
           title: entry.title,
