@@ -8,7 +8,8 @@
 // The device must already be signed in as the Device Test profile and out of touch mode (a fresh emulator boot is).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { guardAndroidDeviceAccount } from "../capture-state.mjs";
 
@@ -154,6 +155,23 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   };
   // Each adb call gets the full command timeout: clamping it to the time left before a readiness deadline gave calls a few
   // milliseconds near the end, which a real process cannot meet (a flaky "timed out after 26ms").
+  // docs/parity/LAYOUT.md: the debug app writes its own layout (semantics tree: text style, glyph-run bounds, controls) in the same state as the screenshot.
+  const exportLayout = async (pngFile) => {
+    const theme = basename(dirname(pngFile)), screen = basename(pngFile, ".png");
+    await shell("run-as", pkg, "rm", "-f", "files/parity-layout.json").catch(() => {});
+    await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme);
+    for (let i = 0; i < 20; i++) {
+      await sleep(500);
+      const json = await adb("exec-out", "run-as", pkg, "cat", "files/parity-layout.json").catch(() => "");
+      if (json.startsWith("{")) {
+        const dir = join(dirname(dirname(pngFile)), "layout", theme);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, `${screen}.json`), json);
+        return;
+      }
+    }
+    console.log(`layout export skipped for ${theme}/${screen}`);
+  };
   const tree = async () => {
     try {
       await adbWithTimeout(commandTimeoutMs, "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml");
@@ -397,6 +415,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         ? (await execBounded("import", ["-window", "root", "png:-"], { encoding: "buffer", maxBuffer: 64 << 20, env: { ...env, DISPLAY: env.PARITY_XDISPLAY }, label: "screen capture import" })).stdout
         : (await execBounded(adbBin, ["exec-out", "screencap", "-p"], { encoding: "buffer", maxBuffer: 64 << 20, label: "adb exec-out screencap" })).stdout;
       writeFileSync(file, png);
+      if (env.PARITY_LAYOUT !== "0") await exportLayout(file);
     },
     // Plays media file `c.file` through the player route and watches the position the debug log reports.
     async play(c, expect) {
