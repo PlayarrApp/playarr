@@ -17,7 +17,12 @@ export function fontFromUri(uri = "") {
 
 function sampler(pngFile) {
   const png = PNG.sync.read(readFileSync(pngFile));
-  return (x, y, w, h) => {
+  const at = (px, py) => {
+    px = Math.max(0, Math.min(png.width - 1, Math.round(px))); py = Math.max(0, Math.min(png.height - 1, Math.round(py)));
+    const i = (py * png.width + px) * 4;
+    return "#" + [0, 1, 2].map((k) => png.data[i + k].toString(16).padStart(2, "0")).join("");
+  };
+  const ring = (x, y, w, h) => {
     // Most common colour on the ring just outside the box: the colour behind the element.
     const counts = new Map();
     const put = (px, py) => {
@@ -31,6 +36,8 @@ function sampler(pngFile) {
     const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "0,0,0";
     return "#" + best.split(",").map((v) => Number(v).toString(16).padStart(2, "0")).join("");
   };
+  ring.at = at;
+  return ring;
 }
 
 export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned }) {
@@ -48,15 +55,18 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
       if (it.k === "label") {
         if (it.align === "center") x = it.x + (it.w - textW) / 2; else if (it.align === "right") x = it.x + it.w - textW;
       }
-      let y = it.y;
+      let y = it.y + 0.03 * it.size; // Roku draws the line box 0.03 em higher than the web, for the same ink
       if (it.k === "label" && it.vert === "center") y = it.y + (it.h - lineH) / 2;
       const h = it.k === "label" && (it.wrap || it.lines > 1) ? it.h : lineH;
       const colour = it.color;
       elements.push({
         text: it.text.replace(/\s+/g, " ").trim(), role: it.role === "ink" && it.k === "tracked" && it.size >= 30 ? "heading" : "text",
-        rect: { x, y, w: textW, h }, color: colour ? hex(colour) : null, background: bg(x, y, textW, h),
+        rect: { x, y, w: textW, h }, color: colour ? hex(colour) : null, background: it.bg ?? bg(x, y, textW, h),
         fontSize: it.size, fontWeight: f.weight, ...(it.op < 0.995 ? { opacity: Math.round(it.op * 100) / 100 } : {}), _id: it.id, _tracked: it.k === "tracked" ? it.role : undefined,
       });
+    } else if (it.k === "box") {
+      const background = it.bg ?? bg(it.x, it.y, it.w, it.h);
+      elements.push({ text: it.text ?? "", role: it.role, rect: { x: it.x, y: it.y, w: it.w, h: it.h }, color: null, background, fontSize: null, fontWeight: null, ...(it.radius ? { radius: it.radius } : {}), ...(it.opacity ? { opacity: it.opacity } : {}) });
     } else if (it.k === "poster" && it.w > 0 && it.h > 0) {
       elements.push({ text: "", role: "image", rect: { x: it.x, y: it.y, w: it.w, h: it.h }, color: null, background: bg(it.x, it.y, it.w, it.h), fontSize: null, fontWeight: null, _id: it.id, _uri: it.uri });
     } else if (it.k === "rect") {

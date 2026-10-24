@@ -1,5 +1,6 @@
 sub init()
     PlayarrFontifyTree(m.top)
+    m.global.observeField("parityLayoutSeq", "onParityLayoutCard")
     ThemeSetRole(m.top.findNode("posterBg"), "surfaceSoft")
     for each id in ["cornerTL", "cornerTR", "cornerBL", "cornerBR"]
         ThemeSetRole(m.top.findNode(id), "surface")
@@ -421,4 +422,27 @@ sub clampCardTitle(text as String, hasPrefix as Boolean)
         end while
     end if
     m.title.width = fixedWidth
+end sub
+
+' Parity layout dump: a grid item is not reachable from the scene, so each card prints its own boxes and captions on request.
+sub onParityLayoutCard()
+    if m.global.parityArtEnabled <> true then return
+    ' The grid places each item itself, so the scene position of an item is its cell origin: add the cell offset here.
+    m.parityDx = 0
+    m.parityDy = 0
+    grid = m.top.getParent()
+    while grid <> invalid and grid.id <> "browseGrid" and grid.id <> "searchGrid"
+        grid = grid.getParent()
+    end while
+    if grid <> invalid
+        cols = grid.numColumns
+        index = m.top.index
+        if cols < 1 or index < 0 or Int(index / cols) >= grid.numRows then return
+        ' The grid takes whole pixels: a 353.5 x 240.5 cell steps 353 x 240.
+        m.parityDx = (index mod cols) * Int(grid.itemSize[0] + grid.itemSpacing[0])
+        m.parityDy = Int(index / cols) * Int(grid.itemSize[1] + grid.itemSpacing[1])
+    end if
+    ParityCard(m.top)
+    ctx = { measure: CreateObject("roSGNode", "Label"), count: 0 }
+    ParityLayoutWalk(m.cardRoot, 1.0, ctx)
 end sub

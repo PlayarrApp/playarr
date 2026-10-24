@@ -1155,6 +1155,7 @@ export function createDriver({ out, args = [] } = {}) {
         layoutLines = [];
         await sendEcp("input?parityLayout=1");
         for (let i = 0; i < 40 && !layoutLines.includes("end"); i += 1) await sleep(250);
+        await sleep(1500); // grid cards answer from their own components, after the scene
         const lines = layoutLines.filter((l) => l !== "end");
         const done = layoutLines.includes("end");
         layoutLines = null;

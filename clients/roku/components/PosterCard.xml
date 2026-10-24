@@ -2,6 +2,7 @@
 <component name="PosterCard" extends="Group">
   <interface>
     <field id="itemContent" type="node" onChange="onContentChanged" />
+    <field id="index" type="integer" value="-1" />
     <!-- Both drive onFocusChanged: focusPercent alone caused a real bug
          confirmed live. RowList always shows its own "currently selected"
          item at focusPercent=1, regardless of whether that RowList itself
@@ -148,5 +149,6 @@
   </children>
   <script type="text/brightscript" uri="pkg:/source/Fonts.brs" />
   <script type="text/brightscript" uri="pkg:/source/Theme.brs" />
+  <script type="text/brightscript" uri="pkg:/source/LayoutDump.brs" />
   <script type="text/brightscript" uri="pkg:/components/PosterCard.brs" />
 </component>

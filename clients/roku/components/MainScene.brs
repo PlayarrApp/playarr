@@ -388,7 +388,7 @@ sub init()
     m.profileLabel.text = FirstWord(m.session.profileName)
     ' The build label under the tile reads like web's (major.minor.0).
     ai = CreateObject("roAppInfo")
-    m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
+    m.top.findNode("userVersion").text = "v " + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
     m.profileId = m.session.profileId
     if m.profileId = invalid then m.profileId = ""
     m.avatarKind = ""
@@ -4908,7 +4908,7 @@ sub layoutNavDock()
                 m.navIcons[i].translation = [dockLeft + 5.2 + 23.6, itemY + 16]
                 m.navIcons[i].width = 20
                 m.navIcons[i].height = 20
-                m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 39.4]
+                m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 38.4]
                 itemY = itemY + itemStep
             end if
         end for
@@ -7761,5 +7761,7 @@ end function
 
 ' Parity layout dump (source/LayoutDump.brs), requested by the driver through ECP input.
 sub onParityLayoutRequest()
-    if m.global.parityArtEnabled = true then ParityLayoutDump(m.top)
+    if m.global.parityArtEnabled <> true then return
+    m.global.parityLayoutSeq = m.global.parityLayoutSeq + 1
+    ParityLayoutDump(m.top)
 end sub

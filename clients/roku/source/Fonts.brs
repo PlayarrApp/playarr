@@ -98,6 +98,21 @@ function PlayarrIsMonoLabel(id as String) as Boolean
     return id = "pairingCode"
 end function
 
+' The web type of labels declared in XML, by id: CSS px size, weight and letter-spacing (px) read from the web layout dump
+' (docs/parity/LAYOUT.md). A label without an entry keeps the size its `scale` implies.
+function PlayarrTypeFor(id as String) as Dynamic
+    g = GetGlobalAA()
+    if g.typeTable = invalid
+        g.typeTable = {
+            clockTime: { size: 17.28, weight: 760, tracking: 0 }
+            clockDate: { size: 11.14, weight: 640, tracking: 0 }
+            profileLabel: { size: 8.83, weight: 680, tracking: 0.31 }
+            userVersion: { size: 8, weight: 700, tracking: 0.86 }
+        }
+    end if
+    return g.typeTable[id]
+end function
+
 ' Replace an XML Label (sized by `scale`) by a WebLabel of the same id and the geometry the scale produced (scale about
 ' scaleRotateCenter), so text is set at the web's own advances (see components/WebLabel.xml). `weight` < 0 picks from the id.
 function PlayarrFontifyLabel(label as Object, weight = -1 as Integer) as Object
@@ -121,7 +136,14 @@ function PlayarrFontifyLabel(label as Object, weight = -1 as Integer) as Object
     web = CreateObject("roSGNode", "WebLabel")
     web.id = label.id
     web.translation = [x, t[1] + c[1] * (1 - sx)]
-    web.setFields({ size: size, weight: weight, width: newW, height: label.height * sx, horizAlign: label.horizAlign, vertAlign: label.vertAlign, wrap: label.wrap, maxLines: label.maxLines, visible: label.visible, opacity: label.opacity })
+    tracking = 0.0
+    typed = PlayarrTypeFor(label.id)
+    if typed <> invalid
+        size = typed.size
+        weight = typed.weight
+        tracking = typed.tracking
+    end if
+    web.setFields({ size: size, weight: weight, tracking: tracking, width: newW, height: label.height * sx, horizAlign: label.horizAlign, vertAlign: label.vertAlign, wrap: label.wrap, maxLines: label.maxLines, visible: label.visible, opacity: label.opacity })
     if label.lineSpacing <> 0 then web.lineSpacing = label.lineSpacing * sx
     web.color = label.color
     web.text = label.text
