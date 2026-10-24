@@ -194,7 +194,7 @@ internal sealed class LibraryScreen : IPage
             new FilterSection("Order", new[] { "A-Z", "Z-A" }, _order == "asc" ? 0 : 1, i => ApplySort(_sort, i == 0 ? "asc" : "desc")),
             audioSection, subsSection,
         };
-        _filters = new FiltersDrawer(_env, "Library controls", sections, CloseFilters, Toast);
+        _filters = new FiltersDrawer(_env, "Library controls", sections, CloseFilters, Toast, _title + " display filters");
         LoadFacetsAsync(audioSection, subsSection);
         _root.Add(_filters.Root);
         _tile?.Show(false); // the drawer blurs what is behind it on web; nothing of the tile shows through
@@ -336,7 +336,9 @@ internal sealed class LibraryScreen : IPage
         var card = _items[index];
         _panel.Show(card, kickerOverride: card.Kicker.Contains('·') ? card.Kicker[(card.Kicker.IndexOf('·') + 2)..] : card.Kicker, metaLead: HomeModel.MetaLead(card));
         _keyArt.Set(card.BackdropUrl);
-        SetActiveLetter(_works[index].SortTitle is { Length: > 0 } st ? st : card.Title);
+        // web: the rail follows the first visible row, not the focused card
+        var topIndex = Math.Clamp((int)Math.Floor(_scroll / RowPitch) * Columns, 0, _works.Count - 1);
+        SetActiveLetter(_works[topIndex].SortTitle is { Length: > 0 } st ? st : _items[topIndex].Title);
         if (index > _items.Count - 40 && _items.Count < _total) _ = LoadAsync(_items.Count);
     }
 
