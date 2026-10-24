@@ -88,6 +88,7 @@ internal sealed class Shell : View
         _chrome.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
         _clockTime = Ui.Text("", 481f, 68.2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f);
         _clockDate = Ui.Text("", 535.4f, 75f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f);
+        Sem.Tag(_clockTime, "text", null, blockified: true); Sem.Tag(_clockDate, "text", null, blockified: true);
         _chrome.Add(_clockTime); _chrome.Add(_clockDate);
         UpdateClock();
         var tick = new global::Tizen.NUI.Timer(15000);
@@ -158,7 +159,7 @@ internal sealed class Shell : View
         nv.Label.TextColor = tint;
     }
 
-    public void SetProfileName(string name) { if (_profileLabel is not null) { _profileLabel.Text = name; if (_nav.Count > 0) Sem.Tag(_nav[^1].Item64, "link", $"Signed in as {name}. Open profiles.", radius: 16); } }
+    public void SetProfileName(string name) { if (_profileLabel is not null) { _profileLabel.Text = name; if (_nav.Count > 0) Sem.Tag(_nav[^1].Item64, "link", $"Signed in as {(_env.ProfileFull.Length > 0 ? _env.ProfileFull : name)}. Open profiles.", radius: 16); } }
 
     // ---- routing ----
 

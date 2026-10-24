@@ -92,8 +92,10 @@ internal static class LayoutExport
                 var c = label.TextColor;
                 // The drawn glyph run: the label centres its font line (ascent 1.011 em, descent 0.353 em) in its box; Chromium's run is the rounded ascent plus rounded descent
                 var asc = (float)Math.Round(1.011 * m.Size); var content = asc + (float)Math.Round(0.353 * m.Size);
-                var th = content;
-                var runTop = cy + (h - 1.364f * m.Size) / 2f + 1.011f * m.Size - asc;
+                var blockified = Sem.Table.TryGetValue(label, out var ls) && ls.Blockified;
+                var th = blockified ? m.LineHeight : content;
+                // the CSS line box top (before the baseline snap), content area centred in it with half-leading
+                var runTop = cy + m.Dy * sy + (m.LineHeight - th) / 2f;
                 var role = Sem.Table.TryGetValue(label, out var rs) ? rs.Role : Math.Abs(m.Size - 33.6f) < 0.01f || Math.Abs(m.Size - 17.664f) < 0.01f ? "heading" : "text"; // page title and rail headings are h1/h2 on web
                 outList.Add(new Node(label.Text, role, tx, runTop, tw, th, Hex(c.R, c.G, c.B, c.A * cop), Hex(bg.R, bg.G, bg.B, 1), m.Size, m.Weight, 0, cop, m.Group));
                 continue;
@@ -107,7 +109,9 @@ internal static class LayoutExport
             if (child is ImageView img && w > 1 && h > 1)
                 outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, 0, cop));
             var bc = child.BackgroundColor;
-            if (child is not ImageView && bc.A > 0.02f && w > 1 && h > 1 && !IsMixedSurface(bc))
+            if (child is not ImageView && bc.A > 0.02f && w > 1 && h > 1 && IsMixedSurface(bc) && !Sem.Table.TryGetValue(child, out _))
+                outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, child.CornerRadius.X * csx, cop));
+            else if (child is not ImageView && bc.A > 0.02f && w > 1 && h > 1 && !IsMixedSurface(bc))
             {
                 var a = bc.A * cop;
                 cbg = (bg.R * (1 - a) + bc.R * a, bg.G * (1 - a) + bc.G * a, bg.B * (1 - a) + bc.B * a);

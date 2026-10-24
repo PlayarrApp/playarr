@@ -66,12 +66,14 @@ internal sealed class AppEnv
     }
 
     /// <summary>The current profile's first name for the nav chip (web shows e.g. "Device" for "Device Test").</summary>
+    public string ProfileFull { get; private set; } = "";
+
     public async Task LoadProfileNameAsync(Action<string> set)
     {
         try
         {
             var current = (await Api.ListProfilesAsync()).FirstOrDefault(p => p.IsCurrent);
-            if (current is not null) SynchronizationContextHolder.Post(() => set(current.DisplayName.Split(' ')[0]));
+            if (current is not null) { ProfileFull = current.DisplayName; SynchronizationContextHolder.Post(() => set(current.DisplayName.Split(' ')[0])); }
             CurrentAvatar = await LoadAvatarPresetAsync() ?? (current is null ? null : AvatarPresets.Default(current.Id.ToString()));
         }
         catch (Exception e) { Dbg.Log("PROFILE load failed: " + e.Message); }
