@@ -78,9 +78,9 @@ def main(out, screens):
         elif s == "household-blocked":
             pass  # sign in as fx-child-locked first: the blocked screen replaces the app
         elif s == "profile-switcher":
-            tap(contains="Profiles for")
+            tap(contains="Open profiles")
         elif s == "settings":
-            tap(contains="Profiles for"); time.sleep(2); tap_xy(159, 1299)  # gear on the profile picker
+            tap(contains="Open profiles"); time.sleep(2); tap_xy(159, 1299)  # gear on the profile picker
         elif s in ("player-controls", "player-quality-menu"):
             # Debug launch extra parity_pause_at_ms=2000 pauses the player at 2.0 s once it is playing.
             tap(desc="Movies"); time.sleep(1.5); tap(text="Test Movie A"); time.sleep(2.5)
