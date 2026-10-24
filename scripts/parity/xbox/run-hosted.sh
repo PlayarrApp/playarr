@@ -5,7 +5,8 @@
 set -euo pipefail
 LEGEND=${1:?legend dir}; REF=${2:-integration/parity}
 REPO=PlayarrApp/playarr
-gh workflow run parity-xbox.yml -R "$REPO" --ref main -f "ref=$REF"
+# Workflow files come from main; set WORKFLOW_REF to a branch to run a workflow change before it reaches main.
+gh workflow run parity-xbox.yml -R "$REPO" --ref "${WORKFLOW_REF:-main}" -f "ref=$REF"
 sleep 20
 RUN=$(gh run list -R "$REPO" -w parity-xbox.yml -L 1 --json databaseId -q '.[0].databaseId')
 gh run watch "$RUN" -R "$REPO" --exit-status --interval 60 >/dev/null

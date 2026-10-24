@@ -303,6 +303,7 @@ namespace Playarr.Xbox.Views
                 // Grid title: the web's 11.9 px (--card-title-size) sits 2 px higher than Home's; rows keep the same pitch.
                 FontSize = caption ? 13 : 11.9,
                 FontWeight = caption ? FontWeights.SemiBold : new FontWeight { Weight = 610 },
+                CharacterSpacing = caption ? 0 : -15,
                 Margin = new Thickness(2, caption ? 12 : 11, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 // Library grid rows repeat every 240.5 px, as the web: 184 px art, 12 px gap, 19 px title and a 25.5 px row gap (25 here: layout rounding lifts each 240.5 px row to 241).

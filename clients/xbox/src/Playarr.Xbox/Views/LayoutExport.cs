@@ -21,6 +21,16 @@ namespace Playarr.Xbox.Views
         /// <summary>The web role (heading, link, button, tab, textbox, search, img, status ...) an element exports as; unset elements derive one from their type.</summary>
         public static readonly DependencyProperty RoleProperty = DependencyProperty.RegisterAttached("Role", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
 
+        /// <summary>Layout box to export for an element whose drawn box differs from its layout box (the scaled key-art backdrop): x, y, w, h.</summary>
+        public static readonly DependencyProperty BoxProperty = DependencyProperty.RegisterAttached("Box", typeof(object), typeof(LayoutExport), new PropertyMetadata(null));
+
+        /// <summary>Marks the shell chrome (rail, clock): it sits on the page background, everything else on the page surface.</summary>
+        public static readonly DependencyProperty ShellProperty = DependencyProperty.RegisterAttached("Shell", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
+
+        public static void SetBox(DependencyObject element, Rect box) => element.SetValue(BoxProperty, box);
+
+        public static void SetShell(DependencyObject element, bool shell) => element.SetValue(ShellProperty, shell);
+
         public static void SetRole(DependencyObject element, string role) => element.SetValue(RoleProperty, role);
 
         public static string? GetRole(DependencyObject element) => (string?)element.GetValue(RoleProperty);
@@ -94,6 +104,11 @@ namespace Playarr.Xbox.Views
             double? fontSize = null;
             int? fontWeight = null;
             var rect = Bounds(element, root, scale);
+            if (element.GetValue(BoxProperty) is Rect box)
+            {
+                rect = box;
+            }
+
             var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(element);
             if (element is TextBlock block)
             {
@@ -226,8 +241,10 @@ namespace Playarr.Xbox.Views
         private static string BackgroundBehind(DependencyObject node)
         {
             var layers = new List<Color>();
+            var shell = false;
             for (var parent = VisualTreeHelper.GetParent(node); parent != null; parent = VisualTreeHelper.GetParent(parent))
             {
+                shell |= parent.GetValue(ShellProperty) is true;
                 var brush = parent switch
                 {
                     Border border => border.Background,
@@ -235,6 +252,11 @@ namespace Playarr.Xbox.Views
                     Control control => control.Background,
                     _ => null,
                 };
+                if (ReferenceEquals(brush, Application.Current.Resources["PlayarrRailFill"]))
+                {
+                    continue; // the web reports the rail's own fill as the page background
+                }
+
                 if (brush is SolidColorBrush solid && solid.Color.A > 0)
                 {
                     layers.Add(Color.FromArgb((byte)Math.Round(solid.Color.A * solid.Opacity), solid.Color.R, solid.Color.G, solid.Color.B));
@@ -242,13 +264,7 @@ namespace Playarr.Xbox.Views
             }
 
             // The page stage is the surface colour; the shell (rail, clock) sits on the page background.
-            var underPage = false;
-            for (var parent = VisualTreeHelper.GetParent(node); parent != null && !underPage; parent = VisualTreeHelper.GetParent(parent))
-            {
-                underPage = parent is Page;
-            }
-
-            var result = underPage ? Theme.Surface : Theme.Bg;
+            var result = shell ? Theme.Bg : Theme.Surface;
             for (var i = layers.Count - 1; i >= 0; i--)
             {
                 var l = layers[i];

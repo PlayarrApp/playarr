@@ -33,7 +33,7 @@ namespace Playarr.Xbox.Views
         private readonly List<(Button Button, Type Page, WorkKind? Kind)> _items = new List<(Button, Type, WorkKind?)>();
         private readonly TextBlock _time = new TextBlock { FontSize = 17.28, FontWeight = new FontWeight { Weight = 760 }, CharacterSpacing = -30, LineHeight = 25.92, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
         private readonly TextBlock _date = new TextBlock { FontSize = 11.14, FontWeight = new FontWeight { Weight = 640 }, CharacterSpacing = 40, LineHeight = 12.25, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, VerticalAlignment = VerticalAlignment.Center };
-        private readonly TextBlock _profileName = new TextBlock { FontSize = 8.83, FontWeight = new FontWeight { Weight = 680 }, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
+        private readonly TextBlock _profileName = new TextBlock { FontSize = 8.83, FontWeight = new FontWeight { Weight = 680 }, CharacterSpacing = 34, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
         private readonly List<(TextBlock Label, string Key)> _labels = new List<(TextBlock, string)>();
         private Border _avatar = null!;
         private bool _avatarLoaded;
@@ -48,6 +48,7 @@ namespace Playarr.Xbox.Views
             Root = new Grid { XYFocusKeyboardNavigation = Windows.UI.Xaml.Input.XYFocusKeyboardNavigationMode.Enabled };
             Root.PreviewKeyDown += EnterRailLevel;
             Root.Children.Add(frame);
+            LayoutExport.SetShell(_chrome, true);
             Root.Children.Add(_chrome);
             Build();
             _frame.Navigated += (s, e) => Sync(e);

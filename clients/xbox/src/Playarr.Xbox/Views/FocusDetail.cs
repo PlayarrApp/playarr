@@ -60,6 +60,7 @@ namespace Playarr.Xbox.Views
             _meta.Foreground = soft;
             _overview.Foreground = soft;
             _backdropLayer.Opacity = Theme.KeyArtGroupOpacity;
+            LayoutExport.SetBox(_backdrop, new Windows.Foundation.Rect(133.03, -22.9, 899.97, 1190.59));
             _backdropLayer.Children.Add(_backdrop);
             Children.Add(_backdropLayer);
             _imageMaskWash.Fill = Theme.KeyArtImageMaskWash();

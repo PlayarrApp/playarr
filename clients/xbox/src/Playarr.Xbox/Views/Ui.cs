@@ -87,9 +87,9 @@ namespace Playarr.Xbox.Views
             {
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 subtitle.VerticalAlignment = VerticalAlignment.Center;
-                subtitle.Margin = new Thickness(0, 6, 0, 0);
+                subtitle.Margin = new Thickness(0, -1.7, 0, 0);
                 row.Children.Add(title);
-                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(23, 8, 23, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(22, 8, 21, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(subtitle);
                 titles.Children.Add(row);
             }
