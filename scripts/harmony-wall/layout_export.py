@@ -42,6 +42,11 @@ def over(top, below):
 
 
 def weight_of(attrs):
+    fam = str(attrs.get("fontFamily", ""))
+    if "PlayarrArrowsRegular" in fam:
+        return 400
+    if "PlayarrArrows" in fam:
+        return 720
     m = re.search(r"NunitoSansW(\d+)", str(attrs.get("fontFamily", "")))
     if m:
         return int(m.group(1))
@@ -139,7 +144,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None}
                 if radius:
-                    el["radius"] = 999 if radius >= min(w, h) / 2 - 0.5 else radius
+                    el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
                 out.append(el)
                 attrs = dict(attrs); attrs["id"] = ""; attrs["borderRadius"] = "0"
             text = attrs.get("content", attrs.get("text")) if kind == "Text" else None
@@ -166,7 +171,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                       "color": hex_of(over(col, here)), "background": hex_of(here), "fontSize": size, "fontWeight": weight}
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:
-                    el["radius"] = 999 if radius >= min(w, h) / 2 - 0.5 else radius
+                    el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
                 out.append(el)
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "container")
