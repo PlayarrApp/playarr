@@ -1,5 +1,5 @@
 /**
- * Chromium 94's ICU writes a same-month range as "19–25 Oct"; current Chromium (the web reference) writes "19 – 25 Oct".
+ * Older ICU data (Chromium 94, the Tizen TV browser) writes a same-month range as "19–25 Oct"; current Chromium (the web reference) writes "19 – 25 Oct".
  * This restores the spaced en dash when a range has digits on both sides of an unspaced one.
  *
  * @param {string} text

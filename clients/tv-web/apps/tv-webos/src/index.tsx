@@ -4,7 +4,7 @@ import {
 } from "./webosLifecycle.mjs";
 import { installWebOsDownloadToasts } from "./webosNotifications.mjs";
 import { installWebOsDynamicRange, queryWebOsHdr } from "./webosCaps.mjs";
-import { installSpacedRanges } from "./webosIntl.mjs";
+import { installSpacedRanges } from "../../../tooling/spaced-range.mjs";
 import { installLineBoxFix } from "./webosLineBoxes.mjs";
 import { installLegacyHas } from "../../../tooling/legacy-has.mjs";
 import "./webosCompatibility.css";

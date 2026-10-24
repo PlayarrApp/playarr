@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { installSpacedRanges, spacedRange } from "./webosIntl.mjs";
+import { installSpacedRanges, spacedRange } from "./spaced-range.mjs";
 
 test("spacedRange spaces a digit-to-digit en dash only", () => {
   assert.equal(spacedRange("19–25 Oct"), "19 – 25 Oct");
