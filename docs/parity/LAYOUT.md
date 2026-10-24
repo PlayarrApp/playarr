@@ -66,7 +66,7 @@ the web and device values, and the delta. Extra device elements are counted, not
 ## Volatile content
 
 `scripts/parity/layout-volatile.json` (keyed by screen, `*` = all): elements whose text is expected to differ while box and style
-must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player buffered bar (`omit`: left out of the refs, its length follows download timing). The video
+must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player audio button (web Chromium shows "Audio: Unavailable" because it lacks `audioTracks` support, a native app shows the clip's real track); the player buffered bar (`omit`: left out of the refs, its length follows download timing). The video
 frame is `maskOnly`: not scored, and the pixel scorer blanks its rect. OS bars are exported as role `system`. The web document marks
 such elements with `volatile`; the scorer matches them by role and overlap and skips their text.
 

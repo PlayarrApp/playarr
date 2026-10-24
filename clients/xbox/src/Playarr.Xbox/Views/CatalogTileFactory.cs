@@ -125,7 +125,7 @@ namespace Playarr.Xbox.Views
                         }
                     }
 
-                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25, 25)));
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25, 27)));
                     _gridCardContainerStyle = style;
                 }
 
@@ -233,7 +233,7 @@ namespace Playarr.Xbox.Views
             {
                 Width = width,
                 Height = height,
-                CornerRadius = new CornerRadius(12),
+                CornerRadius = new CornerRadius(12.48),
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
             var episode = work.OnDeckEpisode;
@@ -272,39 +272,50 @@ namespace Playarr.Xbox.Views
             else if (work.ShowUnwatched)
             {
                 // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
-                art.Children.Add(new Windows.UI.Xaml.Shapes.Ellipse
+                art.Children.Add(LayoutExport.Tag(new Border
                 {
                     Width = 13,
                     Height = 13,
-                    Margin = new Thickness(0, 10, 10, 0),
+                    CornerRadius = new CornerRadius(6.5),
+                    Margin = new Thickness(0, 10, 11, 0),
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Top,
-                    Fill = (Brush)Application.Current.Resources["PlayarrBrand"],
-                    Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
-                    StrokeThickness = 2,
+                    Background = (Brush)Application.Current.Resources["PlayarrBrand"],
+                    BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
+                    BorderThickness = new Thickness(2),
                     IsHitTestVisible = false,
-                });
+                }, "img", "Unwatched"));
             }
 
             var root = new StackPanel { Width = width, Spacing = 0, Tag = work.Id };
+            if (!caption)
+            {
+                // The web's library card is one link ("Open <title>"): the art plus its caption, 213 px tall.
+                LayoutExport.Tag(root, "link", "Open " + work.Title);
+                root.Height = height + 29.41;
+            }
+
             root.Children.Add(RestingShadow(width, height));
             root.Children.Add(art);
             root.Children.Add(new TextBlock
             {
                 Text = episode != null ? (string.IsNullOrEmpty(episode.Title) ? work.Title : episode.Title) : work.Title,
                 // Grid title: the web's 11.9 px (--card-title-size) sits 2 px higher than Home's; rows keep the same pitch.
-                FontSize = caption ? 13 : 11.5,
-                FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(2, caption ? 12 : 10, 0, 0),
+                FontSize = caption ? 13 : 11.9,
+                FontWeight = caption ? FontWeights.SemiBold : new FontWeight { Weight = 610 },
+                CharacterSpacing = caption ? 0 : -15,
+                Margin = new Thickness(2, caption ? 12 : 11, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 // Library grid rows repeat every 240.5 px, as the web: 184 px art, 12 px gap, 19 px title and a 25.5 px row gap (25 here: layout rounding lifts each 240.5 px row to 241).
-                LineHeight = caption ? 0 : 21,
+                LineHeight = caption ? 0 : 16,
                 LineStackingStrategy = caption ? LineStackingStrategy.MaxHeight : LineStackingStrategy.BlockLineHeight,
             });
             if (!caption)
             {
                 return root;
             }
+
+            LayoutExport.Tag(root, "link", work.Title + " " + (episode != null ? WorkLabels.OnDeckCaption(work) : WorkLabels.KindWithYear(work)));
 
             root.Children.Add(new TextBlock
             {

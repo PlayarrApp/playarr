@@ -39,7 +39,7 @@ namespace Playarr.Xbox.Views
         {
             Visibility = Visibility.Collapsed,
             IsReadOnly = true,
-            FontSize = 10,
+            FontSize = 12,
             TextWrapping = TextWrapping.NoWrap,
             Background = Ui.Res("PlayarrSurface"),
             BorderBrush = Ui.Res("PlayarrLineStrong"),
@@ -49,8 +49,8 @@ namespace Playarr.Xbox.Views
         private readonly Border _qr = new Border
         {
             Visibility = Visibility.Collapsed,
-            Width = 168,
-            Height = 168,
+            Width = 240,
+            Height = 240,
             Padding = new Thickness(10),
             CornerRadius = new CornerRadius(10),
             Background = new SolidColorBrush(Colors.White),
@@ -141,22 +141,21 @@ namespace Playarr.Xbox.Views
         private CalendarLinkPanel()
         {
             ScrollViewer.SetHorizontalScrollBarVisibility(_url, ScrollBarVisibility.Auto);
-            AddText("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", 10.5, "PlayarrInkSoft");
+            AddText("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", 12.8, "PlayarrInkSoft");
             _body.Children.Add(_error);
             _body.Children.Add(_state);
             _body.Children.Add(_url);
             _copy.Click += (s, e) => CopyLink();
             _body.Children.Add(_copy);
-            _body.Children.Add(_qrLabel);
-            _body.Children.Add(_qr);
+                        _body.Children.Add(_qr);
             _body.Children.Add(_otherDevice);
 
-            var heading = AddText("ADD IT TO YOUR CALENDAR APP", 9, "PlayarrInkSoft");
+            var heading = AddText("ADD IT TO YOUR CALENDAR APP", 9.6, "PlayarrInkSoft");
             heading.FontWeight = FontWeights.Bold;
             heading.CharacterSpacing = 120;
-            AddText("Google Calendar: Other calendars (+) > From URL, then paste the link.", 10, "PlayarrInkSoft");
-            AddText("Apple Calendar: File > New Calendar Subscription, then paste the link.", 10, "PlayarrInkSoft");
-            AddText("Outlook: Add calendar > Subscribe from web, then paste the link.", 10, "PlayarrInkSoft");
+            AddText("\u2022  Google Calendar: Other calendars (+) > From URL, then paste the link.", 12, "PlayarrInkSoft");
+            AddText("\u2022  Apple Calendar: File > New Calendar Subscription, then paste the link.", 12, "PlayarrInkSoft");
+            AddText("\u2022  Outlook: Add calendar > Subscribe from web, then paste the link.", 12, "PlayarrInkSoft");
 
             _reset.Click += (s, e) => ShowConfirmation(true);
             _body.Children.Add(_reset);

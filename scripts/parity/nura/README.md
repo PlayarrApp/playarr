@@ -1,25 +1,31 @@
 # Nura (postmarketOS) parity capture scripts
 
 Helpers for capturing the native Linux phone client (`clients/linux-mobile`) on the postmarketOS qemu VM
-(`pmbootstrap` qemu-amd64, ssh on 127.0.0.1:2231, display over VNC). Run from this directory; each script resolves paths from its own location.
+(`pmbootstrap` qemu-amd64, ssh on 127.0.0.1:2231, headless: no VNC, the display is read and driven through QEMU's QMP socket). Run from this directory; each script resolves paths from its own location.
 The VM key is read from `$PLAYARR_NURA_KEY` (default `run/pmkey` next to the scripts); see Local files.
 
 | Script | Use |
 |---|---|
 | `pmsync.sh <playarr dir>` | Copy `clients/linux-mobile` and the shared avatars to the VM, then build there with `cargo build --release`. |
-| `pmrun.sh` | (Re)start the app on the VM. Honours `PLAYARR_ROUTE`, `PLAYARR_CONTROL`, `PLAYARR_KEEP_CONTROLS`. |
+| `pmrun.sh` | (Re)start the app on the VM. Honours `PLAYARR_ROUTE`, `PLAYARR_CONTROL`, `PLAYARR_KEEP_CONTROLS`, `PLAYARR_PARITY_PAUSE_MS`. |
 | `nudge.sh` | Click the display's left margin and wait. `pmcap3.sh` runs it once per route before the first screenshot: after the app has sat idle for tens of seconds the VM display keeps showing the frame from before a sheet or drawer opened until an input event reaches the app (a click does it; a pointer move or key press does not). |
 | `pmcap3.sh <outdir> <route>...` | Verify the signed-in device identity, send routes to an already-running app through its control file, and capture each screen only after it stabilises. Routes: see `PLAYARR_ROUTE` in the README, plus `rail-end:<n>` (focus the last card of Home rail n) and `theme:dark\|light`. |
 | `nogreen.py <frame.png>` | Exit 1 when the frame holds a solid block of the VM display's green fill (an unpainted tile that stays until the guest repaints). `pmcap3.sh` runs it on every screenshot, nudges the display and recaptures instead of accepting such a frame; override with `PLAYARR_CAPTURE_GREEN_CHECK`. |
 | `nogreen.test.sh` | Mock-frame check of `nogreen.py` (needs `PLAYARR_TEST_TMPDIR`): green block and black tile with a green edge rejected, plain black art accepted. |
 | `cap2all.sh <dark\|light> <outdir>` | Capture all 14 screens for one theme. |
 | `pmcapture.sh <outdir> <dark\|light>` | Tap-driven run that also reaches `player-controls`. |
+| `display.py`, `display.sh` | Headless display I/O over QMP: `capture <png>`, `tap <x> <y>`, `key <qcode>...`, `type` (text on stdin). `display.sh` accepts the older `capture` and `move x y click 1` word form. |
+| `signin.py` | Sign the app in as the static-server `parity` account (needs `PLAYARR_NURA_SERVER`, and the password from `~/.secrets` or the environment) and print its account id. |
+| `guard.sh` | The identity guard for `pmcap3.sh`: fails unless the running app is signed in as `PLAYARR_NURA_EXPECTED_SUB`. |
+| `run.sh <outdir> [theme...]` | The full reproduce command: sign in, capture the 15 screens in both themes with the pinned clock, score against the refs, publish to the legend `dev` dir. See Reproduce. |
 | `pmtap.sh`, `pmfocus.sh` | Tap the display; bring the app forward if Phosh shows the overview. |
 
-`cap.sh`, `nudge.sh` and `pmcap3.sh` call `vnc.sh <vm> capture|move|click ...`, a thin wrapper around vncdotool for the VM's VNC
-display. It holds the VNC address and password for your host, so it is not committed: provide your own next to
-these scripts. Captures are 720x1440; crop to y 64..1410 (720x1346) before scoring against the web refs.
-Run `reset-deck-canonical.mjs` (parity scratch) right before the Home capture so On deck is the canonical state.
+`cap.sh`, `nudge.sh`, `pmtap.sh` and `pmcapture.sh` call `display.sh postmarketos capture|move ... click 1`, which runs `display.py` against
+the VM's QMP socket (`$XDG_RUNTIME_DIR/emu-postmarketos.qmp`, or `PLAYARR_NURA_QMP`): `screendump` for captures and absolute
+tablet events for taps. Start QEMU with `-display none -qmp unix:<socket>,server,nowait` and no `-vnc`. Captures are 720x1440; crop to y 64..1410
+(720x1346) before scoring against the web refs. `display.py type` sends text from stdin as key events.
+Run `reset-deck-canonical.mjs` (parity scratch) right before the Home capture so On deck is the canonical state (not needed on the static server, which
+ignores progress writes).
 `cap.sh <name> <out.png>` preserves the full-size capture. Scaling requires both a positive divisor and an
 explicit destination: `cap.sh <name> <out.png> <scale-div> <scaled-out.png>`.
 
@@ -40,14 +46,27 @@ with `PLAYARR_NURA_SSH`, `PLAYARR_NURA_CAP`, and
 through `PLAYARR_CAPTURE_ACK_ATTEMPTS`, `PLAYARR_CAPTURE_STABILITY_ATTEMPTS`,
 and `PLAYARR_CAPTURE_STABILITY_DELAY`.
 
+## Reproduce
+
+With the VM running headless and unlocked (`display.py key ret` then the PIN) and the app built (`pmsync.sh <worktree>`, then `cargo build --release` on the VM):
+
+```sh
+PLAYARR_NURA_SERVER=<static server URL as the VM sees it> PARITY_ROOT=<legend scratch root> \
+  BRANCH=<branch> SHA=<sha> PR=<pr> scripts/parity/nura/run.sh <outdir> [dark] [light]
+```
+
+It signs in as `parity`, pins the clock (`PLAYARR_PARITY_CLOCK=2026-10-07T12:00:00Z`), captures every screen (Home without a ring, the player paused at 2 s
+with the controls pinned), scores each theme with `score.mjs` and writes the cropped captures and `build.json` to `$PARITY_ROOT/postmarketos/dev`
+(`PUBLISH=0` skips the copy). Nura is a touch client: it has no D-pad checks (`dpadNA` in the legend), so only screens are scored.
+
 ## Local files (not committed)
 
-`run/` and `vnc.sh` hold secrets and host addresses, so they stay out of git (`run/` is ignored here).
+`run/` holds secrets and host addresses, so it stays out of git (`run/` is ignored here).
 
+- `venv/`: a Python venv with Pillow and numpy (the capture hash, the green-tile check and `cap.sh` scaling use it; `nogreen.py` also needs numpy). Not committed.
 - `run/pmkey`: the VM login key. Create it once with `ssh-keygen -t ed25519 -N '' -f run/pmkey` and append `run/pmkey.pub` to
   `~/.ssh/authorized_keys` of user `user` inside the VM (for example via `pmbootstrap chroot` on the image, or a password login
   once). Alternatively point `PLAYARR_NURA_KEY` at an existing private key. `pmssh.sh` fails with a clear message when the key is missing.
-- `vnc.sh`: see above.
 
 ## Scoring and canonical state
 

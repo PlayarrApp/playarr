@@ -46,7 +46,8 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             _root = RootGrid;
             _root.Children.Add(_content);
-            Ui.PageHeader(_root, "Calendar", null, () => App.Navigation.GoBack());
+            var header = Ui.PageHeader(_root, "Calendar", null, () => App.Navigation.GoBack());
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(header.Back, "Back to home"); // the web names it with a lower-case home here
 
             var controls = new StackPanel
             {
@@ -96,7 +97,7 @@ namespace Playarr.Xbox.Views
         {
             var pill = Ui.Pill(text, onClick, minWidth);
             pill.Background = Ui.Res("PlayarrSurfaceStrong");
-            pill.Content = Ui.Text(text, 15, FontWeights.Bold, "PlayarrInkMuted");
+            pill.Content = Ui.Text(text, 14.72, new FontWeight { Weight = 720 }, "PlayarrInkSoft");
             return pill;
         }
 
@@ -105,7 +106,8 @@ namespace Playarr.Xbox.Views
         {
             var button = Ui.RoundButton(string.Empty, onClick);
             button.Background = Ui.Res("PlayarrSurfaceStrong");
-            button.Content = new TextBlock { Text = arrow, FontSize = 14, Foreground = Ui.Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            LayoutExport.Tag(button, "button", arrow == "\u2190" ? "Previous" : "Next");
+            button.Content = new TextBlock { Text = arrow, FontSize = 14.72, FontWeight = new FontWeight { Weight = 720 }, Foreground = Ui.Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             return button;
         }
 
@@ -498,10 +500,18 @@ namespace Playarr.Xbox.Views
                 }
 
                 var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, list.Children.Count == 0 ? 0 : 30.5, 0, 33.5) };
-                heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 18.4, FontWeights.SemiBold, "PlayarrInk"));
+                heading.Children.Add(Ui.Text(day.ToString("dddd d MMMM", Uk), 18.4, new FontWeight { Weight = 640 }, day == ParityClock.Today ? "PlayarrInkSoft" : "PlayarrInk"));
                 if (day == ParityClock.Today)
                 {
-                    heading.Children.Add(Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color));
+                    var today = Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color);
+                    var todayText = (TextBlock)today.Child;
+                    todayText.FontSize = 11.2;
+                    todayText.FontWeight = new FontWeight { Weight = 640 };
+                    todayText.LineHeight = 15;
+                    todayText.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+                    todayText.Foreground = Ui.Res("PlayarrInkSoft");
+                    today.Padding = new Thickness(9, 3, 9, 4);
+                    heading.Children.Add(today);
                 }
 
                 list.Children.Add(heading);
@@ -533,10 +543,12 @@ namespace Playarr.Xbox.Views
         private void ShowAgendaDetail(StackPanel detail, CalendarEntry entry)
         {
             detail.Children.Clear();
-            var eyebrow = Ui.Text($"{KindLabel(entry).ToUpperInvariant()} · {ReleaseLabel(entry).ToUpperInvariant()}", 12, FontWeights.Bold, "PlayarrBrandInk");
+            var eyebrow = Ui.Text($"{KindLabel(entry).ToUpperInvariant()} · {ReleaseLabel(entry).ToUpperInvariant()}", 12.29, new FontWeight { Weight = 860 }, "PlayarrBrandInk");
+            eyebrow.LineHeight = 16;
+            eyebrow.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
             eyebrow.CharacterSpacing = 120;
             detail.Children.Add(eyebrow);
-            var title = Ui.Text(entry.Title, 69, FontWeights.SemiBold, "PlayarrInk");
+            var title = Ui.Text(entry.Title, 69.12, new FontWeight { Weight = 560 }, "PlayarrInk");
             title.HorizontalAlignment = HorizontalAlignment.Left;
             title.LineHeight = 62;
             title.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
@@ -546,11 +558,18 @@ namespace Playarr.Xbox.Views
             title.TextWrapping = TextWrapping.WrapWholeWords;
             detail.Children.Add(title);
             var when = CalendarRules.LocalDay(entry).ToString("dddd, d MMMM yyyy", Uk) + (TimeLabel(entry) is var t && t != "All day" ? " at " + t : string.Empty);
-            detail.Children.Add(Ui.Text(string.IsNullOrEmpty(Code(entry)) ? when : Code(entry) + "   " + when, 14, FontWeights.Normal, "PlayarrInk", new Thickness(0, 16.6, 0, 19)));
+            var metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 13, Margin = new Thickness(0, 16.6, 0, 19) };
+            if (Join(Code(entry), entry.Subtitle ?? string.Empty) is { Length: > 0 } codeLine)
+            {
+                metaRow.Children.Add(Ui.Text(codeLine, 13.06, new FontWeight { Weight = 600 }, "PlayarrInkSoft"));
+            }
+
+            metaRow.Children.Add(Ui.Text(when, 13.06, new FontWeight { Weight = 600 }, "PlayarrInkSoft"));
+            detail.Children.Add(metaRow);
             detail.Children.Add(TonePill(entry, true));
             if (!string.IsNullOrEmpty(entry.Overview))
             {
-                var overview = Ui.Text(entry.Overview!, 14, FontWeights.Normal, "PlayarrInk", new Thickness(0, 23, 0, 0));
+                var overview = Ui.Text(entry.Overview!, 13.82, new FontWeight { Weight = 600 }, "PlayarrInkSoft", new Thickness(0, 23, 0, 0));
                 overview.TextWrapping = TextWrapping.WrapWholeWords;
                 overview.LineHeight = 22;
                 overview.MaxLines = 5;
@@ -564,11 +583,11 @@ namespace Playarr.Xbox.Views
                 var open = Ui.Pill(entry.MediaKind == "movie" ? "Open movie" : "Open series", () => App.Navigation.Navigate(typeof(WorkDetailPage), workId), 0);
                 open.Height = 58;
                 open.Background = Ui.Res("PlayarrInk");
-                open.Content = Ui.Text(((TextBlock)open.Content).Text, 15, FontWeights.Bold, "PlayarrSurfaceStrong");
+                open.Content = Ui.Text(((TextBlock)open.Content).Text, 14.72, new FontWeight { Weight = 720 }, "PlayarrSurfaceStrong");
                 actions.Children.Add(open);
                 var watch = Ui.Pill("+  Add to watchlist", null, 0);
                 watch.Height = 58;
-                watch.Content = Ui.Text("+  Add to watchlist", 15, FontWeights.Bold, "PlayarrInkMuted");
+                watch.Content = Ui.Text("+  Add to watchlist", 14.72, new FontWeight { Weight = 900 }, "PlayarrInkSoft");
                 watch.Click += async (s, e) =>
                 {
                     try
@@ -627,18 +646,18 @@ namespace Playarr.Xbox.Views
 
             row.Children.Add(poster);
             var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-            text.Children.Add(Ui.Text(entry.Title, web ? 19 : 15, FontWeights.SemiBold, "PlayarrInk"));
+            text.Children.Add(Ui.Text(entry.Title, web ? 19.2 : 15, web ? new FontWeight { Weight = 640 } : FontWeights.SemiBold, "PlayarrInk"));
             var line2Text = Join(Code(entry), entry.Subtitle ?? string.Empty);
             if (!autoHeight || line2Text.Length > 0)
             {
-                var line2 = Ui.Text(line2Text, web ? 19 : 14, FontWeights.Normal, "PlayarrInkSoft");
+                var line2 = Ui.Text(line2Text, web ? 19.2 : 14, FontWeights.Normal, "PlayarrInkSoft");
                 line2.TextTrimming = TextTrimming.CharacterEllipsis;
                 text.Children.Add(line2);
             }
             var meta = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, autoHeight ? 5 : 3, 0, 0) };
             foreach (var part in new[] { TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry) })
             {
-                meta.Children.Add(Ui.Text(part, web ? 12.7 : 9, FontWeights.SemiBold, "PlayarrInkSoft"));
+                meta.Children.Add(Ui.Text(part, web ? 12.8 : 9, web ? FontWeights.Normal : FontWeights.SemiBold, web ? "PlayarrInkMuted" : "PlayarrInkSoft"));
             }
 
             meta.Children.Add(TonePill(entry, web));

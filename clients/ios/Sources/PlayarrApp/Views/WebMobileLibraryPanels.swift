@@ -47,8 +47,9 @@ private struct WMPanelFrame<Content: View>: View {
                 .padding(.horizontal, 34)
                 .padding(.top, 51 + WM.safeTop)
             } else {
-                WMText(kicker.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1).offset(x: 21, y: 17 + WM.safeTop)
-                WMText(title, 24, 520, lh: 34, ls: -1).offset(x: 21, y: 33 + WM.safeTop)
+                // Web `.tv-filter-drawer > header p` 7.04 px / 720 / 0.07em and `h2` 22.4 px / 590 / -0.055em.
+                WMText(kicker.uppercased(), 7.04, 720, color: WM.muted, lh: 13, ls: 0.49).offset(x: 21, y: 17.7 + WM.safeTop)
+                WMText(title, 22.4, 590, lh: 34, ls: -1.232).offset(x: 21, y: 33 + WM.safeTop)
                 // A touch web page shows no focus ring on the close button (refs recaptured with focus blurred).
                 HStack { Spacer(); WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose) }
                     .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
@@ -69,6 +70,8 @@ private struct WMPanelFrame<Content: View>: View {
     }
 }
 
+private let wmIsPad = UIDevice.current.userInterfaceIdiom == .pad
+
 private struct WMChoice: View {
     @Environment(\.colorScheme) private var scheme
     let label: String
@@ -81,7 +84,7 @@ private struct WMChoice: View {
         Button(action: action) {
             VStack(spacing: 5) {
                 if let symbol { Image(systemName: symbol).font(.system(size: 13, weight: .semibold)) }
-                Text(label).font(WM.font(11.5, selected ? 700 : 600))
+                Text(label).wm(wmIsPad ? 11.5 : 11.52, wmIsPad ? (selected ? 700 : 600) : 680)
             }
             .foregroundStyle(selected ? WM.page : WM.inkSoft)
             .frame(maxWidth: .infinity).frame(height: height)
@@ -125,7 +128,7 @@ private struct WMLanguageSelector: View {
         VStack(spacing: 8) {
             Button { isExpanded.toggle() } label: {
                 HStack {
-                    Text(selectedNames).font(WM.font(10.5, 600)).foregroundStyle(WM.inkSoft).lineLimit(1)
+                    Text(selectedNames).wm(wmIsPad ? 10.5 : 9.3, wmIsPad ? 600 : 680).foregroundStyle(WM.inkSoft).lineLimit(1)
                     Spacer(minLength: 8)
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 7, weight: .bold)).foregroundStyle(WM.muted)
@@ -144,14 +147,14 @@ private struct WMLanguageSelector: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if error != nil && options.isEmpty {
                         Text("Languages could not be loaded")
-                            .font(WM.font(11, 500)).foregroundStyle(WM.muted).padding(12)
+                            .wm(11, 500).foregroundStyle(WM.muted).padding(12)
                             .accessibilityLabel("\(label): languages could not be loaded")
                     } else if isLoading && facets == nil {
                         ProgressView().frame(maxWidth: .infinity).padding(14)
                             .accessibilityLabel("Loading \(label.lowercased())")
                     } else if options.isEmpty && error == nil {
                         Text("No languages available")
-                            .font(WM.font(11, 500)).foregroundStyle(WM.muted).padding(12)
+                            .wm(11, 500).foregroundStyle(WM.muted).padding(12)
                     } else if !options.isEmpty {
                         ForEach(options) { facet in
                             Button { onToggle(facet.code) } label: {
@@ -164,7 +167,7 @@ private struct WMLanguageSelector: View {
                                         Text(count.formatted()).foregroundStyle(WM.muted)
                                     }
                                 }
-                                .font(WM.font(11, 500))
+                                .wm(11, 500)
                                 .padding(.horizontal, 13).frame(minHeight: 42)
                                 .contentShape(Rectangle())
                             }
@@ -188,7 +191,7 @@ struct WMLibraryFiltersPanel: View {
     @State private var expandedLanguage: String?
 
     private func section(_ name: String) -> some View {
-        WMText(name.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1)
+        wmIsPad ? WMText(name.uppercased(), 8.6, 700, color: WM.muted, lh: 13, ls: 1.1) : WMText(name.uppercased(), 7.04, 720, color: WM.muted, lh: 13, ls: 0.49)
     }
 
     var body: some View {
@@ -196,21 +199,21 @@ struct WMLibraryFiltersPanel: View {
             VStack(alignment: .leading, spacing: 0) {
                 section("View")
                 HStack(spacing: 8) {
-                    WMChoice(label: "List", symbol: "list.bullet", selected: viewModel.viewMode == .list, height: 47) { viewModel.viewMode = .list }
-                    WMChoice(label: "Screen", symbol: "rectangle.grid.3x1", selected: viewModel.viewMode == .screen, height: 47) { viewModel.viewMode = .screen }
-                    WMChoice(label: "Cover", symbol: "square.grid.3x1.below.line.grid.1x2", selected: viewModel.viewMode == .cover, height: 47) { viewModel.viewMode = .cover }
-                }.padding(.top, 9)
-                section("Sort by").padding(.top, 26)
+                    WMChoice(label: "List", symbol: "list.bullet", selected: viewModel.viewMode == .list, height: wmIsPad ? 47 : 48) { viewModel.viewMode = .list }
+                    WMChoice(label: "Screen", symbol: "rectangle.grid.3x1", selected: viewModel.viewMode == .screen, height: wmIsPad ? 47 : 48) { viewModel.viewMode = .screen }
+                    WMChoice(label: "Cover", symbol: "square.grid.3x1.below.line.grid.1x2", selected: viewModel.viewMode == .cover, height: wmIsPad ? 47 : 48) { viewModel.viewMode = .cover }
+                }.padding(.top, wmIsPad ? 9 : 12.4)
+                section("Sort by").padding(.top, wmIsPad ? 26 : 21.5)
                 HStack(spacing: 8) {
                     WMChoice(label: "Title", selected: viewModel.sort == "title", height: 48) { viewModel.sort = "title" }
                     WMChoice(label: "Date Added", selected: viewModel.sort == "date_added", height: 48) { viewModel.sort = "date_added" }
-                }.padding(.top, 9)
-                section("Order").padding(.top, 26)
+                }.padding(.top, wmIsPad ? 9 : 11.5)
+                section("Order").padding(.top, wmIsPad ? 26 : 22)
                 HStack(spacing: 8) {
                     WMChoice(label: viewModel.sort == "title" ? "A-Z" : "Oldest", selected: viewModel.order == "asc", height: 48) { viewModel.order = "asc" }
                     WMChoice(label: viewModel.sort == "title" ? "Z-A" : "Newest", selected: viewModel.order == "desc", height: 48) { viewModel.order = "desc" }
-                }.padding(.top, 9)
-                section("Audio language").padding(.top, 26)
+                }.padding(.top, wmIsPad ? 9 : 11.8)
+                section("Audio language").padding(.top, wmIsPad ? 26 : 20.7)
                 WMLanguageSelector(
                     label: "Audio language", identifier: "library-filter-audio-language",
                     selectedCodes: viewModel.selectedAudioLanguages,
@@ -219,8 +222,8 @@ struct WMLibraryFiltersPanel: View {
                     error: viewModel.languageFacetError,
                     isExpanded: Binding(get: { expandedLanguage == "audio" }, set: { expandedLanguage = $0 ? "audio" : nil }),
                     onToggle: { code in Task { await viewModel.toggleAudioLanguage(code) } }
-                ).padding(.top, 9)
-                section("Subtitle language").padding(.top, 22)
+                ).padding(.top, wmIsPad ? 9 : 13.3)
+                section("Subtitle language").padding(.top, wmIsPad ? 22 : 22.2)
                 WMLanguageSelector(
                     label: "Subtitle language", identifier: "library-filter-subtitle-language",
                     selectedCodes: viewModel.selectedSubtitleLanguages,
@@ -229,12 +232,12 @@ struct WMLibraryFiltersPanel: View {
                     error: viewModel.languageFacetError,
                     isExpanded: Binding(get: { expandedLanguage == "subtitle" }, set: { expandedLanguage = $0 ? "subtitle" : nil }),
                     onToggle: { code in Task { await viewModel.toggleSubtitleLanguage(code) } }
-                ).padding(.top, 9)
+                ).padding(.top, wmIsPad ? 9 : 11.8)
                 if !viewModel.selectedAudioLanguages.isEmpty || !viewModel.selectedSubtitleLanguages.isEmpty {
                     Button("Clear language filters") {
                         Task { await viewModel.clearLanguageFilters() }
                     }
-                    .font(WM.font(11, 600))
+                    .wm(11, 600)
                     .foregroundStyle(WM.ink)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -243,6 +246,7 @@ struct WMLibraryFiltersPanel: View {
                     .accessibilityIdentifier("library-filter-languages-clear")
                 }
             }
+            .offset(y: wmIsPad ? 0 : -2.4) // phone: first label centre at 99 pt like the web
         }
         .task { await viewModel.loadLanguageFacets() }
     }
@@ -260,11 +264,12 @@ struct WMTitleActionsPanel: View {
     private func row(_ glyph: String, _ label: String, focused: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 0) {
-                Text(glyph).font(WM.font(15, 700)).foregroundStyle(WM.pink).frame(width: isPad ? 42 : 30)
-                Text(label).font(WM.font(15, 600)).foregroundStyle(WM.ink).padding(.leading, isPad ? 0 : 14)
+                // Web `.media-context-actions button`: a 42 px icon column (1.22rem glyph, left-aligned) then the label.
+                Text(glyph).wm(isPad ? 15 : 19.5, 700).foregroundStyle(WM.pink).frame(width: 42, alignment: isPad ? .center : .leading).offset(x: isPad ? 0 : -3)
+                Text(label).wm(isPad ? 15 : 16, isPad ? 600 : 650).foregroundStyle(WM.ink).padding(.leading, isPad ? 0 : -1.2)
                 Spacer()
             }
-            .padding(.horizontal, isPad ? 18 : 17)
+            .padding(.horizontal, 18)
             .frame(minHeight: isPad ? 68 : 67, maxHeight: isPad ? nil : 67)
             .background(
                 WM.artFill,

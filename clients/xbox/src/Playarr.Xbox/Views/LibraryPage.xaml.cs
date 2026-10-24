@@ -374,16 +374,17 @@ namespace Playarr.Xbox.Views
                     var button = new Button
                     {
                         Content = LetterContent(letter, letter == _activeLetter),
-                        Width = 40,
+                        Width = 44,
                         Height = 44,
                         Padding = new Thickness(0),
-                        CornerRadius = new CornerRadius(20),
+                        CornerRadius = new CornerRadius(22),
                         HorizontalContentAlignment = HorizontalAlignment.Center,
                         Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent),
                         BorderThickness = new Thickness(0),
                         Tag = letter,
                     };
                     button.Click += LetterButton_Click;
+                    LayoutExport.Tag(button, "button", letter == '#' ? "Numbers and symbols" : letter.ToString());
                     LetterRail.Children.Add(button);
                 }
                 _renderedActiveLetter = _activeLetter;
@@ -397,7 +398,7 @@ namespace Playarr.Xbox.Views
         {
             var top = Math.Max(214, Math.Min(height * 0.25, 286));
             var bottomPadding = Math.Max(48, Math.Min(height * 0.06, 78));
-            LetterRailScrollViewer.Margin = new Thickness(0, top, 21, 0);
+            LetterRailScrollViewer.Margin = new Thickness(0, top, 19, 0);
             LetterRailContent.Padding = new Thickness(0, 8, 0, bottomPadding);
         }
 
@@ -425,7 +426,7 @@ namespace Playarr.Xbox.Views
                         Child = new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = surface },
                     },
                 }
-                : new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = soft };
+                : new TextBlock { Text = letter.ToString(), FontSize = 9.22, FontWeight = FontWeights.Normal, Foreground = Ui.Res("PlayarrInkMuted") };
         }
 
         private void UpdateLetterRail()

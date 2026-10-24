@@ -131,3 +131,20 @@ test("Tizen screenshot guard rechecks the active account before the final sample
   assert.equal(identityReads, 2);
   assert.deepEqual(captures, ["final.png.stability.png"]);
 });
+
+test("Tizen screenshots write the app's layout document next to the capture", async () => {
+  const written = [];
+  const driver = await createDriver({
+    env: accountEnv, secrets, setupForward: () => {}, delay: async () => {},
+    request: async (_method, path) => {
+      if (path === "/identity") return identity;
+      if (path.startsWith("/layout")) return { json: JSON.stringify({ screen: "home", theme: "dark", elements: [] }) };
+      return { ready: true, pending: 0, route: "/", focused: "home", position: null, theme: "dark", playing: false, animationMode: "none" };
+    },
+    captureScreenshot: () => {}, pixelSignature: () => "same", writeLayout: (target, text) => written.push([target, text]),
+  });
+  await driver.screenshot("out/dark/home.png");
+  assert.equal(written.length, 1);
+  assert.match(written[0][0], /out[\\/]layout[\\/]dark[\\/]home\.json$/);
+  assert.equal(JSON.parse(written[0][1]).screen, "home");
+});
