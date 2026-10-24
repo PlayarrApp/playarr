@@ -1203,11 +1203,12 @@ struct TVShellHeader: View {
                     .font(TVTheme.font(size: 17.28, css: 760))
                     .tracking(-0.52)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: Self.timeString(frozen: frozenClock), size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52)
+                    .parityLayout(text: Self.timeString(frozen: frozenClock), role: "text", size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52)
                 Text(Self.dateString(frozen: frozenClock))
                     .font(TVTheme.font(size: 11.136, css: 640))
                     .tracking(0.45)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .parityLayout(text: Self.dateString(frozen: frozenClock), size: 11.136, weight: 640, color: DesignTokens.Color.textPrimary, tracking: 0.45)
             }
             }
             .placed(x: clockLeading, y: 68.2, h: 25.9)

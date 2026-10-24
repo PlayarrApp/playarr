@@ -17,6 +17,7 @@ final class TVParityLayoutRegistry {
         var color: String?
         var rect: CGRect = .zero
         var tracking: CGFloat = 0
+        var background: String?
     }
 
     private var items: [UUID: Item] = [:]
@@ -108,7 +109,7 @@ final class TVParityLayoutRegistry {
                 "role": item.role,
                 "rect": ["x": Double(item.rect.minX), "y": Double(item.rect.minY), "w": Double(item.rect.width), "h": Double(item.rect.height)],
                 "color": item.color as Any? ?? NSNull(),
-                "background": NSNull(),
+                "background": item.background as Any? ?? NSNull(),
                 "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
             ]
@@ -134,8 +135,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     @Environment(\.self) private var environment
     @State private var id = UUID()
 
-    private var hex: String? {
-        guard let color else { return nil }
+    private func hex(_ color: Color) -> String {
         let r = color.resolve(in: environment)
         func byte(_ value: Float) -> Int { max(0, min(255, Int((value * 255).rounded()))) }
         let base = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
@@ -156,7 +156,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking))
+        TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: frame, tracking: tracking, background: hex(DesignTokens.Stage.bg)))
     }
 }
 #endif
