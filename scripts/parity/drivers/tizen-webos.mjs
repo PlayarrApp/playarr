@@ -209,7 +209,8 @@ export async function createDriver() {
   async function ev(expr) {
     if (device === "tizen") {
       const id = `d${Date.now()}${evalSeq++}`;
-      writeFileSync(`${NETLOG}/cmd.txt`, `eval:${id}:${expr.replace(/\n/g, " ")}`);
+      // Newlines stay: a line comment in the expression (fetchCurrentIdentity has some) would swallow the rest of a collapsed line.
+      writeFileSync(`${NETLOG}/cmd.txt`, `eval:${id}:${expr}`);
       for (let i = 0; i < 40; i += 1) {
         await sleep(500);
         const hit = readFileSync(`${NETLOG}/log.txt`, "utf8").split("\n").reverse().find((l) => l.includes(`"id":"${id}"`));
