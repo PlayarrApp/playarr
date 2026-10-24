@@ -2,6 +2,29 @@ import PlayarrKit
 import SwiftUI
 import UIKit
 
+private struct WMPanelCloseButton: View {
+    let size: CGFloat
+    let focused: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            WMText("×", size, 720, lh: 44)
+                .frame(width: 44, height: 44)
+                .background(WM.artFill, in: Circle())
+                .parityBox("button", name: "Close", background: WM.artFill, radius: 22)
+                .overlay {
+                    if focused {
+                        Circle().stroke(WM.ink, lineWidth: 3).padding(-3.5)
+                            .allowsHitTesting(false)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Close")
+    }
+}
+
 /// Web phone panels of the library: "Filters" (`LIBRARY CONTROLS`) and "Title actions". Both are full-page panels that
 /// leave the floating nav visible, with the 44 pt close button at the top right (measured on the live web at 393 pt).
 private struct WMPanelFrame<Content: View>: View {
@@ -30,35 +53,33 @@ private struct WMPanelFrame<Content: View>: View {
         ZStack(alignment: .topLeading) {
             panelBackground
             if isPad {
-                HStack(alignment: .center, spacing: 12) {
+                HStack(alignment: .top, spacing: 16) {
                     VStack(alignment: .leading, spacing: 5) {
-                        WMText(kicker.uppercased(), 7.2, 700, color: WM.muted, lh: 11, ls: 1)
-                        WMText(title, 27.32, 520, lh: 33, ls: -0.8)
+                        WMText(kicker.uppercased(), 7.04, 720, color: WM.muted, lh: 11, ls: 0.4928)
+                        WMText(title, 27.32, 590, lh: 40.98, ls: -1.5026, role: "heading")
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose)
-                        // Web Drawer.tsx focuses the close button on open: the circle carries the 3 pt focus ring 2 pt outside it.
-                        .overlay(alignment: .trailing) { if closeFocused { Circle().stroke(WM.ink, lineWidth: 3).frame(width: 50, height: 50).offset(x: 3.5, y: 0).allowsHitTesting(false) } }
+                    WMPanelCloseButton(size: 19.12, focused: closeFocused, action: onClose)
                 }
-                .padding(.horizontal, 34)
-                .padding(.top, 51 + WM.safeTop)
+                .padding(.horizontal, 34.15)
+                .padding(.top, 51.2 + WM.safeTop)
             } else {
                 // Web `.tv-filter-drawer > header p` 7.04 px / 720 / 0.07em and `h2` 22.4 px / 590 / -0.055em.
-                WMText(kicker.uppercased(), 7.04, 720, color: WM.muted, lh: 13, ls: 0.49).offset(x: 21, y: 17.7 + WM.safeTop)
-                WMText(title, 22.4, 590, lh: 34, ls: -1.232).offset(x: 21, y: 33 + WM.safeTop)
+                WMText(kicker.uppercased(), 7.04, 720, color: WM.muted, lh: 13, ls: 0.4928).offset(x: 20, y: 17.7 + WM.safeTop)
+                WMText(title, 22.4, 590, lh: 34, ls: -1.232, role: "heading").offset(x: 20, y: 33 + WM.safeTop)
                 // A touch web page shows no focus ring on the close button (refs recaptured with focus blurred).
-                HStack { Spacer(); WMHeaderCircleButton(width: 43, height: 43, glyph: "✕", action: onClose) }
-                    .padding(.trailing, 21).offset(y: 22 + WM.safeTop)
+                HStack { Spacer(); WMPanelCloseButton(size: 16, focused: false, action: onClose) }
+                    .padding(.trailing, 20).offset(y: 20 + WM.safeTop)
             }
             // The whole panel scrolls (web: the drawer body scrolls to its last row, clear of the floating nav).
             ScrollView(.vertical) {
                 content()
-                    .padding(.horizontal, isPad ? 34 : 21)
-                    .padding(.top, (isPad ? 140 : 95) + WM.safeTop)
+                    .padding(.horizontal, isPad ? 34.15 : 20)
+                    .padding(.top, (isPad ? 138.58 : 95.2) + WM.safeTop)
                     .padding(.bottom, isPad ? 96 : 130)
             }
             .scrollIndicators(.hidden)
@@ -266,23 +287,25 @@ struct WMTitleActionsPanel: View {
         Button(action: action) {
             HStack(spacing: 0) {
                 // Web `.media-context-actions button`: a 42 px icon column (1.22rem glyph, left-aligned) then the label.
-                Text(glyph).wm(isPad ? 15 : 19.5, 700, color: WM.pink).foregroundStyle(WM.pink).frame(width: 42, alignment: isPad ? .center : .leading).offset(x: isPad ? 0 : -3)
-                Text(label).wm(isPad ? 15 : 16, isPad ? 600 : 650, color: WM.ink).foregroundStyle(WM.ink).padding(.leading, isPad ? 0 : -1.2)
+                WMText(glyph, 19.52, 400, color: WM.pink, lh: 29.28)
+                    .frame(width: 42, alignment: .leading)
+                    .accessibilityHidden(true)
+                WMText(label, isPad ? 15 : 16, 700, lh: isPad ? 22.5 : 24)
                 Spacer()
             }
             .padding(.horizontal, 18)
-            .frame(minHeight: isPad ? 68 : 67, maxHeight: isPad ? nil : 67)
-            .parityBox("button", name: "\(glyph) \(label)", background: WM.artFill, radius: 14)
+            .frame(height: 68)
+            .parityBox("button", name: label, background: WM.artFill, radius: 14)
             .background(
                 WM.artFill,
-                in: RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 14, style: .circular)
             )
-            .overlay(RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous).stroke(WM.line.opacity(0.1), lineWidth: 1))
             .overlay {
-                if focused { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(WM.ink, lineWidth: 3).padding(-3.5).allowsHitTesting(false) }
+                if focused { RoundedRectangle(cornerRadius: 17.5, style: .circular).stroke(WM.ink, lineWidth: 3).padding(-3.5).allowsHitTesting(false) }
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private func mark(watched: Bool) {
@@ -296,10 +319,10 @@ struct WMTitleActionsPanel: View {
 
     var body: some View {
         WMPanelFrame(kicker: "Title actions", title: work.title, onClose: onClose, closeFocused: false) {
-            VStack(spacing: isPad ? 14 : 15) {
+            VStack(spacing: 14) {
                 row("▶\u{FE0E}", "Play", focused: isPad, action: onPlay)
                 row("⇩", "Download", action: onDownload)
-                row("+", "Add to Playlist", action: onPlay)
+                row("＋", "Add to Playlist", action: onPlay)
                 row("✓", "Mark as Watched") { mark(watched: true) }
                 row("○", "Mark as Unwatched") { mark(watched: false) }
             }
