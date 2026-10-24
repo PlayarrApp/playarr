@@ -241,10 +241,15 @@ namespace Playarr.Xbox.Views
         private static string BackgroundBehind(DependencyObject node)
         {
             var layers = new List<Color>();
-            var shell = false;
+            var underPage = false;
             for (var parent = VisualTreeHelper.GetParent(node); parent != null; parent = VisualTreeHelper.GetParent(parent))
             {
-                shell |= parent.GetValue(ShellProperty) is true;
+                if (parent is Page)
+                {
+                    underPage = true; // the page stage (a gradient) is reported as the surface colour; nothing above it counts
+                    break;
+                }
+
                 var brush = parent switch
                 {
                     Border border => border.Background,
@@ -264,7 +269,7 @@ namespace Playarr.Xbox.Views
             }
 
             // The page stage is the surface colour; the shell (rail, clock) sits on the page background.
-            var result = shell ? Theme.Bg : Theme.Surface;
+            var result = underPage ? Theme.Surface : Theme.Bg;
             for (var i = layers.Count - 1; i >= 0; i--)
             {
                 var l = layers[i];
