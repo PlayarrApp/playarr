@@ -686,6 +686,7 @@ private struct TVNavVectorIcon: View {
             }
             .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
             .accessibilityHidden(true)
+            .parityBox("image", fill: DesignTokens.Stage.surface)
         } else {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 20, weight: .medium))

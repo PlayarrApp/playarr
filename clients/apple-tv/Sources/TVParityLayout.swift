@@ -126,36 +126,12 @@ final class TVParityLayoutRegistry {
     }
     #endif
 
-    /// Web text boxes are the glyph run: the text width by the font's content-area height (Chromium: rounded ascent plus
-    /// rounded descent of Nunito Sans), centred in the frame the view was given.
-    private func glyphRun(_ item: Item) -> Item {
-        guard let size = item.size, let weight = item.weight,
-              let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) else { return item }
-        let content = (1.011 * size).rounded() + (0.353 * size).rounded()
-        func width(_ text: String) -> CGFloat { (text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width }
-        var out = item
-        if let lines = item.lines, !lines.isEmpty {
-            let top = item.rect.minY + item.pitch / 2 - content / 2
-            out.rect = CGRect(x: item.rect.minX, y: top, width: lines.map(width).max() ?? 0, height: item.pitch * CGFloat(lines.count - 1) + content)
-            return out
-        }
-        guard let text = item.text else { return item }
-        let w = width(text)
-        if w > item.rect.width + 0.5 { return item } // wrapped: the view's own box is the text block
-        let height = item.lineHeight ?? content
-        out.rect = CGRect(x: item.rect.minX, y: item.rect.midY - height / 2, width: w, height: height)
-        return out
-    }
-
+    /// The raw tree, before any mapping to the web's boxes: every reported item with its measured text width, plus the
+    /// accessibility entries. `scripts/parity/apple/layout-map.mjs` maps it (so the mapping iterates without a hosted run).
     private func snapshot() -> Data? {
         let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-        let styled = order.compactMap { items[$0] }
-        let plain = accessibilityElements().filter { entry in
-            !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
-        }
-        let elements: [[String: Any]] = (styled.map(glyphRun) + plain).compactMap { item in
-            guard item.rect.width > 0, item.rect.height > 0, item.rect.intersects(screen) else { return nil } // off-viewport lazy items are dropped
-            var element: [String: Any] = [
+        func measure(_ item: Item) -> [String: Any] {
+            var raw: [String: Any] = [
                 "text": item.text ?? "",
                 "role": item.role,
                 "rect": ["x": Double(item.rect.minX), "y": Double(item.rect.minY), "w": Double(item.rect.width), "h": Double(item.rect.height)],
@@ -163,14 +139,29 @@ final class TVParityLayoutRegistry {
                 "background": item.background as Any? ?? NSNull(),
                 "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
+                "tracking": Double(item.tracking),
+                "radius": Double(item.radius),
+                "pitch": Double(item.pitch),
             ]
-            if item.radius > 0 { element["radius"] = Double(item.radius) }
-            return element
+            if let lh = item.lineHeight { raw["lineHeight"] = Double(lh) }
+            if let size = item.size, let weight = item.weight,
+               let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) {
+                func width(_ text: String) -> Double { Double((text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width) }
+                if let lines = item.lines { raw["lines"] = lines; raw["width"] = lines.map(width).max() ?? 0 }
+                else if let text = item.text { raw["width"] = width(text) }
+            }
+            return raw
+        }
+        let styled = order.compactMap { items[$0] }.filter { $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }
+        var raws = styled.map(measure)
+        for var entry in accessibilityElements() where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
+            entry.background = nil
+            var raw = measure(entry); raw["source"] = "ax"; raws.append(raw)
         }
         let document: [String: Any] = [
             "viewport": ["w": 1920.0, "h": 1080.0, "dpr": 1.0],
             "clockPinned": TVParityLaunch.pinnedClock,
-            "elements": elements,
+            "raw": raws,
         ]
         return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
     }
