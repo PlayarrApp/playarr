@@ -2059,7 +2059,8 @@ struct Detail {
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
     Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 4) }) {
-      Text(heading).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
+      Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
+        .id('px:heading:' + heading)
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
       Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11)))
@@ -2328,6 +2329,10 @@ struct Detail {
       return planSynopsis(this.detail, this.resumePlan);
     }
     return this.synopsisText();
+  }
+
+  private phoneKindTitle(): string {
+    return this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '';
   }
 
   @Builder
@@ -2604,6 +2609,7 @@ struct Detail {
               .fontColor(brandInk())
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunitoAt(560, 36))
+              .id('px:heading:' + (this.detail !== null ? this.detail.work.title : ''))
               .fontSize(36) // measured against the static refs
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-1.5)
@@ -2615,7 +2621,8 @@ struct Detail {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
                 .fontSize(14.4)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(toResourceColor(activeColors().ink))
+                .fontColor(toResourceColor(activeColors().inkSoft))
+                .id('px:heading:' + planEpisodeTitle(this.detail, this.resumePlan))
                 .maxLines(1)
                 .margin({ top: 5.7 })
             }
@@ -2711,11 +2718,14 @@ struct Detail {
           .borderRadius(PHONE_BACK_SIZE / 2)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+          .id('px:button:Back to ' + this.phoneKindTitle())
           .onClick(() => {
             popRoute(getNavStack());
           })
-        Text(this.detail !== null ? (this.detail.work.kind === 'series' ? t('pages.home.workKind.series', 'Series') : kindLabel(this.detail.work.kind) + 's') : '').fontFamily(nunitoAt(500, 22))
-          .fontSize(22)
+        Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
+          .id('px:heading:' + this.phoneKindTitle())
+          .fontSize(21.6)
+          .letterSpacing(-0.972)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
       }

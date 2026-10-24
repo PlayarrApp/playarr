@@ -184,17 +184,14 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 _, prole, pname = str(attrs["id"]).split(":", 2)  # the app tags controls "px:<web role>:<accessible name>"
                 if pname in ("Filters", "Calendar link"):
                     parent_bg = root_bg  # fixed-position header actions: web composites them over the body
-                if dpr == 3 and first_text(node) == pname and prole in ("button", "link"):
-                    as_text[0] = (pname, prole, 0)  # web's text-only control: the text run itself is the button
-                else:
-                    el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                          "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
-                    radius = num(attrs.get("borderRadius"), 0.0)
-                    if radius:
-                        el["radius"] = radius
-                    elif dpr == 3 and prole == "button" and abs(w - h) < 2 and w >= 40:
-                        el["radius"] = 50  # the app's circle is drawn by the glyph inside
-                    out.append(el)
+                el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
+                radius = num(attrs.get("borderRadius"), 0.0)
+                if radius:
+                    el["radius"] = (50 if abs(w - h) < 2 or len(pname) <= 1 or pname == "Numbers and symbols" else 999) if radius >= min(w, h) / 2 - 0.5 and dpr == 3 else radius
+                elif dpr == 3 and prole == "button" and abs(w - h) < 2 and w >= 40:
+                    el["radius"] = 50  # the app's circle is drawn by the glyph inside
+                out.append(el)
             nid = str(attrs.get("id", ""))
             if nid.endswith("-nav-tile") and dpr == 3:
                 w, h = 42.0, 46.0  # the inspector clips a tile that scrolls past the bar's edge
@@ -278,9 +275,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     attrs = dict(attrs); attrs["borderRadius"] = str(as_text[0][2]) if as_text[0][2] else "0"
                 el = {"text": " ".join(str(text).replace("\ufe0e", "").replace("\ufe0f", "").split()), "role": prole or "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, parent_bg)), "background": hex_of(parent_bg), "fontSize": size, "fontWeight": weight}
-                radius = num(attrs.get("borderRadius"), 0.0)
-                if radius and not (dpr == 3 and prole is None and all(ch in "\u2190\u2192" for ch in text) and w >= 40):  # an arrow's circle belongs to its button
-                    el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
+                if as_text[0] is not None and as_text[0][0] == el["text"] and as_text[0][2]:
+                    el["radius"] = as_text[0][2]  # a text-only pill keeps its shape on the text element; other text never carries a radius in web
                 out.append(el)
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "dialog" if id(node) in dialogs else "container")
