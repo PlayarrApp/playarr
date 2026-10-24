@@ -518,6 +518,7 @@ impl Cal {
                 .label("TODAY")
                 .css_classes(["pa-today-chip"])
                 .valign(gtk4::Align::Center)
+                .margin_top(2)
                 .build();
             crate::layout::tag(&chip, "text", "", 999.0);
             head.append(&chip);

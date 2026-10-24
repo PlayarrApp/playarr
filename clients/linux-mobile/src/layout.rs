@@ -533,7 +533,7 @@ impl Walk<'_> {
                 whole.extents().1.width() as f32 / s
             };
             el["rect"] = json!({
-                "x": b.x() + ox as f32 + logical.x() as f32 / s, "y": b.y() + oy as f32 + y,
+                "x": b.x() + ox as f32 + if l.wraps() { 0.0 } else { logical.x() as f32 / s }, "y": b.y() + oy as f32 + y,
                 "w": full, "h": h,
             });
             if tag_of(w).map_or(true, |t| t.label.is_empty()) {

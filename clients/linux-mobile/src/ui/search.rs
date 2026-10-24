@@ -64,8 +64,9 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .spacing(19)
         .margin_start(16)
         .margin_end(16)
-        .margin_top(19)
+        .margin_top(21)
         .build();
+    crate::layout::tag(&ring, "container", "", 50.0);
     empty.append(&ring);
     empty.append(&status);
     // Hide the ring with the prompt when results are shown.

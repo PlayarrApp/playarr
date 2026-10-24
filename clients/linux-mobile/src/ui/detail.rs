@@ -191,7 +191,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
 /// A web action pill: fixed 44 px tall, icon then label.
 fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) -> gtk4::Button {
     let row = gtk4::Box::builder()
-        .spacing(if primary { 10 } else { 8 })
+        .spacing(if primary || icon == "downloads" { 10 } else { 8 })
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Center)
         .build();
@@ -357,7 +357,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     gap(
         &body,
         if film {
-            5
+            4
         } else if two {
             9
         } else {
@@ -376,7 +376,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     gap(
         &body,
         if film {
-            4
+            5
         } else if two {
             7
         } else {
