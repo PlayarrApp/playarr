@@ -511,7 +511,7 @@ namespace Playarr.Xbox.Views
             var detail = new StackPanel { Width = 380, Margin = new Thickness(ShellChrome.ContentLeft, 263, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             root.Children.Add(detail);
 
-            var list = new StackPanel { Width = 1033, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(783, 168.5, 0, 48), Spacing = 10 };
+            var list = new StackPanel { Width = 1033, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(783, 171.1, 0, 48), Spacing = 10 };
             CalendarEntry? first = null;
             for (var day = start; day <= end; day = day.AddDays(1))
             {
@@ -520,7 +520,7 @@ namespace Playarr.Xbox.Views
                     continue;
                 }
 
-                var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, list.Children.Count == 0 ? 0 : 30.5, 0, 33.5) };
+                var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, list.Children.Count == 0 ? 0 : 30, 0, 30.9) };
                 var dayTitle = Ui.Text(day.ToString("dddd d MMMM", Uk), 18.4, new FontWeight { Weight = 640 }, day == ParityClock.Today ? "PlayarrInkSoft" : "PlayarrInk");
                 dayTitle.CharacterSpacing = 28;
                 heading.Children.Add(dayTitle);
@@ -636,7 +636,8 @@ namespace Playarr.Xbox.Views
             {
                 Width = width,
                 Height = autoHeight ? double.NaN : web ? 106 : 100,
-                Padding = web ? new Thickness(16, 8, 12, 8) : new Thickness(16, 10, 16, 10),
+                Padding = web ? new Thickness(16, autoHeight ? 6.5 : 8, 12, autoHeight ? 6.5 : 8) : new Thickness(16, 10, 16, 10),
+                MinHeight = autoHeight ? 78 : 0,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 CornerRadius = new CornerRadius(web ? 12 : 10),
@@ -661,7 +662,7 @@ namespace Playarr.Xbox.Views
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             // Availability is the entry's left accent (owner rule: have it versus not, never the library).
-            var poster = new Border { Width = web ? 40 : 34, Height = web ? 60 : 52, CornerRadius = new CornerRadius(web ? 6 : 3), Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] };
+            var poster = LayoutExport.Tag(new Border { Width = web ? 40 : 34, Height = web ? 60 : 52, CornerRadius = new CornerRadius(web ? 6 : 3), Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"] }, "image");
             if (Uri.TryCreate(entry.PosterUrl, UriKind.Absolute, out var posterUri))
             {
                 poster.Child = new Image { Source = new BitmapImage(posterUri) { DecodePixelWidth = web ? 80 : 68 }, Stretch = Stretch.UniformToFill };
@@ -688,6 +689,12 @@ namespace Playarr.Xbox.Views
             Grid.SetColumn(text, 1);
             row.Children.Add(text);
             card.Content = row;
+            if (web)
+            {
+                LayoutExport.Tag(card, "button", string.Join(" ", new[] { entry.Title, Join(Code(entry), entry.Subtitle ?? string.Empty), TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry), TonePillLabel(entry) }.Where(x => x.Length > 0)));
+                LayoutExport.SetSplit(card, true);
+            }
+
 
             var accent = new Grid();
             accent.Children.Add(card);
@@ -720,6 +727,14 @@ namespace Playarr.Xbox.Views
 
             return CalendarRules.EpisodeCode(entry.SeasonNumber, entry.EpisodeNumber);
         }
+
+        private static string TonePillLabel(CalendarEntry entry) => CalendarRules.Tone(entry, ParityClock.Today) switch
+        {
+            CalendarTone.Available => "Available",
+            CalendarTone.Upcoming => "Upcoming",
+            CalendarTone.Missing => "Missing",
+            _ => "Not tracked",
+        };
 
         private static string Join(string a, string b) =>
             string.IsNullOrEmpty(a) ? b : string.IsNullOrEmpty(b) ? a : $"{a} · {b}";

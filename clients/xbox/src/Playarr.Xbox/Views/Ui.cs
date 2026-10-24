@@ -240,11 +240,11 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>The web action pill's brand-pink leading glyph ahead of the label (the pill's text stays settable).</summary>
-        public static Button WithIcon(Button pill, string glyph)
+        public static Button WithIcon(Button pill, string glyph, string brushKey = "PlayarrBrand")
         {
             var label = (TextBlock)pill.Content;
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-            row.Children.Add(Text(glyph, 12, FontWeights.SemiBold, "PlayarrBrand"));
+            row.Children.Add(Text(glyph, 12, FontWeights.SemiBold, brushKey));
             row.Children.Add(label);
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(pill, label.Text);
             pill.Content = row;

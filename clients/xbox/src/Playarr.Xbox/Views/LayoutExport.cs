@@ -53,6 +53,11 @@ namespace Playarr.Xbox.Views
 
         public static void SetSplit(DependencyObject element, bool value) => element.SetValue(SplitProperty, value);
 
+        /// <summary>Export a text block's runs as separate elements at this separator (the web's meta line is one span per part).</summary>
+        public static readonly DependencyProperty SplitOnProperty = DependencyProperty.RegisterAttached("SplitOn", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
+
+        public static void SetSplitOn(DependencyObject element, string separator) => element.SetValue(SplitOnProperty, separator);
+
         public static void SetBox(DependencyObject element, Rect box) => element.SetValue(BoxProperty, box);
 
         public static void SetShell(DependencyObject element, bool shell) => element.SetValue(ShellProperty, shell);
@@ -160,6 +165,12 @@ namespace Playarr.Xbox.Views
             }
 
             var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(element);
+            if (element is TextBlock split && split.GetValue(SplitOnProperty) is string separator && split.Text.Contains(separator))
+            {
+                AddRuns(split, separator, root, scale, output);
+                return;
+            }
+
             if (element is TextBlock block)
             {
                 text = (string?)block.GetValue(TextProperty) ?? block.Text;
@@ -255,6 +266,50 @@ namespace Playarr.Xbox.Views
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
                 opacity = element.Opacity < 1 ? (double?)Math.Round(element.Opacity, 2) : null,
             });
+        }
+
+        private static void AddRuns(TextBlock block, string separator, FrameworkElement root, double scale, List<object> output)
+        {
+            var text = block.Text;
+            var start = 0;
+            foreach (var part in text.Split(new[] { separator }, StringSplitOptions.None))
+            {
+                var begin = start;
+                start += part.Length + separator.Length;
+                if (part.Length == 0)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var first = block.ContentStart.GetPositionAtOffset(begin + 1, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Backward) ?? block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+                    var lastPos = block.ContentStart.GetPositionAtOffset(begin + 1 + part.Length, LogicalDirection.Backward);
+                    var last = lastPos?.GetCharacterRect(LogicalDirection.Backward) ?? first;
+                    var transform = block.TransformToVisual(root);
+                    var a = transform.TransformPoint(new Point(first.X, 0));
+                    var z = transform.TransformPoint(new Point(last.X, 0));
+                    var box = Bounds(block, root, scale);
+                    var size = block.FontSize * scale;
+                    var ascent = Math.Round(1.011 * size, MidpointRounding.AwayFromZero);
+                    var height = ascent + Math.Round(0.353 * size, MidpointRounding.AwayFromZero);
+                    var baseline = box.Y + block.BaselineOffset * scale;
+                    output.Add(new
+                    {
+                        text = part,
+                        role = "text",
+                        rect = new { x = Math.Round(a.X * scale, 1), y = Math.Round(baseline - ascent, 1), w = Math.Round(Math.Max(0, (z.X - a.X) * scale), 1), h = height },
+                        color = Hex(block.Foreground),
+                        background = BackgroundBehind(block),
+                        fontSize = Math.Round(block.FontSize, 2),
+                        fontWeight = WebFont.WeightOf(block),
+                    });
+                }
+                catch (Exception)
+                {
+                    // A run whose position cannot be read is left out rather than guessed.
+                }
+            }
         }
 
         private static Rect Bounds(FrameworkElement element, FrameworkElement root, double scale)
