@@ -190,7 +190,7 @@ internal sealed class LibraryScreen : IPage
                 ApplyView(i == 2);
                 return true;
             }),
-            new FilterSection("Sort by", new[] { "Title", "Date Added" }, _sort == "title" ? 0 : 1, i => ApplySort(i == 0 ? "title" : "date_added", _order)),
+            new FilterSection("Sort by", new[] { "Title", "Date added" }, _sort == "title" ? 0 : 1, i => ApplySort(i == 0 ? "title" : "date_added", _order)),
             new FilterSection("Order", new[] { "A-Z", "Z-A" }, _order == "asc" ? 0 : 1, i => ApplySort(_sort, i == 0 ? "asc" : "desc")),
             audioSection, subsSection,
         };

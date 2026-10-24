@@ -49,10 +49,10 @@ internal sealed class FiltersDrawer
 
     private static void AddViewGlyph(View b, int i, float w, Rgba c)
     {
-        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Ui.Box(w / 2 - 9, 14 + k * 4.5f, 18, 1.8f, c, 0.9f)); return; }
+        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Sem.Tag(Ui.Box(w / 2 - 9, 14 + k * 4.5f, 18, 1.8f, c, 0.9f), "container", ignoreOwnBg: true)); return; }
         for (var k = 0; k < 3; k++)
         {
-            var r = Ui.Box(w / 2 - 10 + k * 7.5f, 13, 5, 13, null, 1.5f);
+            var r = Sem.Tag(Ui.Box(w / 2 - 10 + k * 7.5f, 13, 5, 13, null, 1.5f), "container", ignoreOwnBg: true);
             r.BorderlineWidth = 1.5f; r.BorderlineColor = Ui.C(c); b.Add(r);
         }
     }
@@ -76,6 +76,7 @@ internal sealed class FiltersDrawer
         foreach (var c in Root.Children.ToArray()) { Root.Remove(c); c.Dispose(); }
         _focus.Items.Clear(); _listView = null;
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
+        Sem.Tag(Root, "none", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
         var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Sem.Tag(panel, "dialog", "", backdropNow: () => DrawerBackdrop(t));
@@ -83,7 +84,7 @@ internal sealed class FiltersDrawer
         var clip = new View { PositionY = 130, Size = new Size(1920, 950), ClippingMode = ClippingModeType.ClipChildren };
         _c = new View { PositionY = -130 - _scroll };
         clip.Add(_c);
-        Root.Add(Ui.Text(kicker, 1606, 54, 9.6f, 800, t.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));
+        Root.Add(Ui.Text(kicker, 1606, 54, 9.6f, 720, t.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));
         Root.Add(Sem.Tag(Ui.Text("Filters", 1606, 71.6f, 38.4f, 590, t.Ink, 200, 57.6f, spacing: -2.1f), "heading"));
         var x = Ui.Box(1826, 54, 48, 50, t.SurfaceSoft, 25);
         Sem.Tag(x, "button", "Close filters", radius: 50);
@@ -105,7 +106,7 @@ internal sealed class FiltersDrawer
                     : s.Picked.Count == 0 ? "Any language" : string.Join(", ", s.Picked.Select(c => LanguageNames.Display(c, s.Facets.FirstOrDefault(f => f.Code == c)?.Name)));
                 var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
-                Sem.Tag(box, "group", s.Heading, radius: 12);
+                Sem.Tag(box, "group", "", radius: 12);
                 box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", label + " ⌄", radius: 10));
                 box.Add(Ui.Text(label, 19.4f, 20.5f, 11.84f, 680, t.Ink, 200, 17.76f));
                 box.Add(Ui.Text(_openMulti == si ? "\u2303" : "\u2304", 238.6f, 20.5f, 11.84f, 700, t.InkMuted, 12, 17.76f));
@@ -125,7 +126,7 @@ internal sealed class FiltersDrawer
             {
                 var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
-                Sem.Tag(box, "group", s.Heading, radius: 12);
+                Sem.Tag(box, "group", "", radius: 12);
                 box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", s.Options[s.Selected] + " ⌄", radius: 10));
                 box.Add(Ui.Text(s.Options[s.Selected], 19.4f, 20.5f, 11.84f, 680, t.Ink, 200, 17.76f));
                 box.Add(Ui.Text("\u2304", 238.6f, 20.5f, 11.84f, 700, t.InkMuted, 12, 17.76f));

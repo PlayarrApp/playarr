@@ -64,7 +64,9 @@ internal sealed class MediaCard
         // Chromium snaps an image's rect to whole device pixels (left and right edges rounded); a fractional rect resamples and blurs the poster
         var snapX = (float)Math.Round(x); var snapY = (float)Math.Round(y); var snapW = (float)Math.Round(x + W) - snapX; var snapH = (float)Math.Round(y + H) - snapY;
         _artDy = snapY - y; Art.PositionX = snapX - x; Art.PositionY = _artDy;
-        Art.Size = new Size(snapW, snapH); Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
+        Art.Size = new Size(snapW, snapH);
+        { var cssBox = (-Art.PositionX, -_artDy, W, H); Sem.Tag(Art, "container", radius: 12.48f, box: cssBox, childImageBox: cssBox); } // the layout export reports the CSS box, not the pixel-snapped one
+        Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
         Art.ClippingMode = ClippingModeType.ClipChildren;
         env.Images.Apply(Art, card.ThumbUrl, snapW, snapH, 12.48f);
         if (card.Progress > 0)
@@ -643,7 +645,7 @@ internal sealed class DetailsPanel
         Root.Add(scrim); scrim.LowerToBottom();
     }
 
-    private static Rgba Soft(PlayarrTheme t) => t.Name == "dark" ? new Rgba(0.855f, 0.84f, 0.844f) : t.InkSoft;
+    internal static Rgba Soft(PlayarrTheme t) => t.Name == "dark" ? new Rgba(0.855f, 0.84f, 0.844f) : Rgba.Hex(0x4f3f3b); // web color-mix of the ink
 
     public static string Runtime(long ms) => DetailModel.Runtime(ms); // web runtimeLabel: rounded, not truncated
 }

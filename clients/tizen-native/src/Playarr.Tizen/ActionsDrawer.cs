@@ -16,6 +16,7 @@ internal sealed class ActionsDrawer
     {
         var t = env.Theme; _close = close;
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
+        Sem.Tag(Root, "none", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
         var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Sem.Tag(panel, "dialog", "", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));

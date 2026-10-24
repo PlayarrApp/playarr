@@ -56,6 +56,7 @@ internal sealed class PlayerScreen : IPage
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _controls.Size = _root.Size;
         for (var layer = 0; layer < 4; layer++) _root.Add(Sem.Tag(new View { Size = _root.Size }, "container", backdrop: new Rgba(0, 0, 0))); // web: the black page layers behind the video
+        Sem.Tag(_controls, "none", backdrop: new Rgba(0, 0, 0));
         _root.Add(_controls);
 
         var white = new Rgba(1, 1, 1);
@@ -64,7 +65,7 @@ internal sealed class PlayerScreen : IPage
         _controls.Add(Sem.Tag(new View { PositionX = TrackX, PositionY = TrackY - 19, Size = new Size(TrackW, 44) }, "slider", "Seek", backdrop: new Rgba(0, 0, 0)));
         // seek track
         _controls.Add(Ui.Box(TrackX, TrackY, TrackW, 6, new Rgba(1, 1, 1, 0.18f), 3));
-        _progress = Ui.Box(TrackX, TrackY, 0, 6, _t.Brand, 3);
+        _progress = Ui.Box(TrackX, TrackY, 0, 6, _t.Brand, 0);
         _controls.Add(_progress);
 
         // top-right: minimise, close
@@ -75,7 +76,7 @@ internal sealed class PlayerScreen : IPage
         AddIcon("prev", 92, 980, "previous", dim: true);
         var play = Ui.Box(147.6f, 958, 64, 64, new Rgba(1, 1, 1, 0.14f), 32);
         Sem.Tag(play, "button", "Play", radius: 50); _playButton = play;
-        _playIcon = Ui.Icon("pause", 22, 22, 20, white);
+        _playIcon = Sem.Tag(Ui.Icon("pause", 22, 22, 20, white), "none");
         play.Add(_playIcon);
         var playRing = Ring.Make(64, 64, 32, white, themed: false); playRing.Show(false); play.Add(playRing);
         _controls.Add(play);
@@ -125,11 +126,13 @@ internal sealed class PlayerScreen : IPage
 
     private void AddIcon(string icon, float x, float y, string label, bool dim, Action? select = null)
     {
-        var iconView = Ui.Icon(icon, x, y, 20, new Rgba(1, 1, 1, dim ? 1f : 0.8f));
-        if (dim) iconView.Opacity = 0.28f; // web: a disabled control draws at 28 %
+        var disabledLook = dim || label == "audio"; // web: a disabled control (no previous, no next, no audio track) draws at 28 %
+        var iconView = Ui.Icon(icon, x, y, 20, new Rgba(1, 1, 1, disabledLook ? 1f : 0.8f));
+        if (disabledLook) iconView.Opacity = 0.28f;
+        Sem.Tag(iconView, "none", exportOpacity: disabledLook ? 0.28f : 1f);
         _controls.Add(iconView);
         var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", _ => "Play on another device" };
-        var tagged = Sem.Tag(new View { PositionX = x - 22, PositionY = y - 22, Size = new Size(64, 64), Opacity = dim ? 0.28f : 1f }, "button", buttonName, radius: 50, backdrop: new Rgba(0, 0, 0));
+        var tagged = Sem.Tag(new View { PositionX = x - 22, PositionY = y - 22, Size = new Size(64, 64), Opacity = disabledLook ? 0.28f : 1f }, "button", buttonName, radius: 50, backdrop: new Rgba(0, 0, 0));
         _controls.Add(tagged);
         if (dim) return; // web: previous and next are disabled (not focusable) when nothing precedes or follows
         var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
