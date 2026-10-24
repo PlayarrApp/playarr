@@ -144,11 +144,11 @@ internal sealed class ProfilesScreen : IPage
         if (y < 900) Sem.Tag(box, "button", icon == "signout" ? "Sign out " + label[..^" sign out".Length] : label, radius: 999);
         if (icon == "signout")
         {
-            box.Add(Ui.Icon("log-out", 18, 15, 14, _t.InkSoft));
+            box.Add(Ui.Icon("log-out", 17, 13, 18, _t.InkSoft));
             box.Add(Ui.Text(text, 42, 13.9f, 10.752f, 700, _t.InkSoft, w - 42, 16.128f));
         }
         else if (text.Length > 0) { var tl = Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center); box.Add(y >= 900 ? Sem.Tag(tl, "button", radius: 999) : tl); }
-        else box.Add(Ui.Icon("settings", 14, 14, 16, _t.Brand));
+        else box.Add(Ui.Icon("settings", 13, 13, 18, _t.Brand));
         var ring = Ring.Make(w, 44, 22, new Rgba(1, 1, 1)); ring.Show(false);
         box.Add(ring);
         _body.Add(box);

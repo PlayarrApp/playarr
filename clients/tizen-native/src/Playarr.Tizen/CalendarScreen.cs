@@ -72,7 +72,7 @@ internal sealed class CalendarScreen : IPage
 
     private void BuildNav()
     {
-        var wide = _view == CalendarView.Agenda ? 145f : _view == CalendarView.Week ? 113f : 107f;
+        var wide = _view == CalendarView.Agenda ? 133f : _view == CalendarView.Week ? 110.7f : 104.1f; // the label's width plus 40.5 px, right edge fixed
         var x = 1613.1f - wide;
         _period = Sem.Tag(Ui.Text("", x, 70.2f, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center), "button", radius: 999);
         Pill(x, wide, "", () => { }, "period");
@@ -375,7 +375,7 @@ internal sealed class CalendarScreen : IPage
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
-        var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
+        var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f); // web color-mix(tone 14 %, --surface)
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
         pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text", radius: 999));
         Sem.Tag(pill, "none");
