@@ -1,6 +1,7 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityText
 import io.playarr.shared.designsystem.page.parityNavGlass
 import io.playarr.shared.designsystem.page.parityNavSelected
 import io.playarr.shared.designsystem.page.parityLineBox
@@ -3858,6 +3859,7 @@ internal fun WebDetailPill(
     ink: Boolean = false,
     /** The accessible name the web gives this control (layout export only). */
     exportLabel: String? = null,
+    exportRole: String? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
     val scale = rememberPlayarrFocusScale(focused = focused, focusedScale = 1.06f, label = "detailPillFocus")
@@ -3880,7 +3882,7 @@ internal fun WebDetailPill(
                 ambientColor = Color(0xFF382621).copy(alpha = 0.12f), spotColor = Color(0xFF382621).copy(alpha = if (primary) 0.18f else 0.12f),
             ))
             .scale(scale)
-            .parityBox(if (primary) "link" else "button", exportLabel ?: listOfNotNull(glyph?.takeIf { it == "+" }, label).joinToString(" "), 999f, background = Color(
+            .parityBox(exportRole ?: if (primary) "link" else "button", exportLabel ?: listOfNotNull(glyph?.takeIf { it == "+" }, label).joinToString(" "), 999f, background = Color(
                 red = pillFill.red * pillFill.alpha + WebSurface.red * (1 - pillFill.alpha), green = pillFill.green * pillFill.alpha + WebSurface.green * (1 - pillFill.alpha), blue = pillFill.blue * pillFill.alpha + WebSurface.blue * (1 - pillFill.alpha)))
             .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused },
@@ -7021,6 +7023,7 @@ private fun VideoDetailCopy(
                 fontWeight = FontWeight(820),
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
+                modifier = if (episodeNumber != null) Modifier.parityText("S ${seasonNumber.toString().padStart(2, '0')} \u00B7 E ${episodeNumber.toString().padStart(2, '0')}") else Modifier,
             )
             WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp + (if (LocalStageScale.current != 1f) 3.7.dp else 0.dp)))
             episode?.episode?.title?.let { title ->
@@ -7042,6 +7045,7 @@ private fun VideoDetailCopy(
                 chips.forEachIndexed { index, item ->
                     Text(
                         item,
+                        modifier = Modifier.parityText(item.replace(Regex("S(\\d+) \u00B7 E(\\d+)"), "S $1 \u00B7 E $2")),
                         color = if (index == 0) WebInkSoft else WebInkMuted,
                         // Web `.tv-detail-meta`: clamp(7.68, 0.55 vw, 10.88) css px (10.56 at 1920).
                         fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp,
@@ -7251,6 +7255,7 @@ private fun VideoDetailActions(
                     }
                 },
                 exportLabel = smartDescription ?: "Play $title",
+                exportRole = if (work.kind == WorkKind.Movie && episode == null) "link" else "button",
                 modifier = Modifier.focusRequester(playFocus).then(
                     if (smartDescription != null) Modifier.semantics { contentDescription = smartDescription } else Modifier,
                 ),
@@ -8073,6 +8078,7 @@ private fun WebEpisodeCard(
     cardWidth: Dp = 268.dp,
     artHeight: Dp = 150.8.dp,
     copyTopInset: Dp = 0.dp,
+    exportLabel: String? = null,
     art: @Composable () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -8082,12 +8088,12 @@ private fun WebEpisodeCard(
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick),
     ) {
-    Column(Modifier.fillMaxWidth().mediaCardLift(focused)) {
+    Column(Modifier.fillMaxWidth().mediaCardLift(focused).parityBox("link", exportLabel ?: listOfNotNull(badge, lead, title).joinToString(" ").replace(Regex("S(\\d+) \u00B7 E(\\d+)"), "S $1 \u00B7 E $2"), background = WebSurface)) {
         WebShadowedBox(
             shadows = if (focused) webCardFocusShadows else webCardRestShadows,
             shape = RoundedCornerShape(13.44.dp),
             focusGlow = focused,
-            modifier = Modifier.fillMaxWidth().height(artHeight),
+            modifier = Modifier.fillMaxWidth().height(artHeight).parityBox("container", "", 13.44f, background = WebSurfaceSoft),
             innerModifier = Modifier.background(WebSurfaceSoft),
         ) {
             WebEpisodeArt { art() }
@@ -8104,11 +8110,11 @@ private fun WebEpisodeCard(
         }
         Row(Modifier.padding(top = copyTopInset).height(28.8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (lead != null) {
-                Text(lead, color = WebInkMuted, fontSize = 8.832.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.5.dp))
+                Text(lead, color = if (focused) Color.White else WebInkMuted, fontSize = 8.832.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(26.5.dp).parityText(lead.replace(Regex("S(\\d+) \u00B7 E(\\d+)"), "S $1 \u00B7 E $2").replace(Regex("^S(\\d+)\\s*\u00B7\\s*E(\\d+)$"), "S $1 \u00B7 E $2")))
             } else {
                 Spacer(Modifier.width(33.dp))
             }
-            Text(title, color = WebInk, fontSize = 11.52.sp, fontWeight = FontWeight(610), letterSpacing = (-0.17).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = if (focused) Color.White else WebInk, fontSize = 11.52.sp, fontWeight = FontWeight(610), letterSpacing = (-0.17).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
     }
