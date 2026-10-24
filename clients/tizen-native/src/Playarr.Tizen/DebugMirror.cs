@@ -148,8 +148,11 @@ internal sealed class DebugMirror
             {
                 try
                 {
+                    var measured = -1f;
                     switch (path)
                     {
+                        // parity tooling: natural single-line width of /measure?text=&size=&weight=&spacing= as the app would lay it out
+                        case "/measure": measured = Ui.TextWidth(q["text"] ?? "", float.Parse(q["size"] ?? "16", System.Globalization.CultureInfo.InvariantCulture), int.Parse(q["weight"] ?? "400"), float.Parse(q["spacing"] ?? "0", System.Globalization.CultureInfo.InvariantCulture)); break;
                         case "/key":
                             var name = q["name"] ?? "";
                             _shell().OnKey(name switch { "up" => RemoteKey.Up, "down" => RemoteKey.Down, "left" => RemoteKey.Left, "right" => RemoteKey.Right,
@@ -166,7 +169,7 @@ internal sealed class DebugMirror
                             break;
                     }
                     var st = (_shell().Page as PlayerScreen)?.Status ?? (false, 0L);
-                    done.SetResult(new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().VisualWork.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name, animationMode = "none" });
+                    done.SetResult(new { playing = st.Item1, positionMs = st.Item2, route = _shell().Route, focused = _shell().FocusedLabel, nav = _shell().NavFocused, ready = _shell().Ready, pending = _env().VisualWork.Pending, position = _shell().FocusPosition is { } fp ? new { rail = fp.Rail, index = fp.Index } : null, theme = _env().Theme.Name, animationMode = "none", measured });
                 }
                 catch (Exception e) { done.SetException(e); }
             });
