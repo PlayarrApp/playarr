@@ -101,6 +101,12 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
+            // Only what is on screen counts: scrolled-away and virtualised items are not part of the captured state.
+            if (rect.Right <= 0 || rect.Bottom <= 0 || rect.X >= 1920 || rect.Y >= 1080 || rect.Width < 1 || rect.Height < 1)
+            {
+                return;
+            }
+
             var radius = element is Border b ? b.CornerRadius.TopLeft : element is Control c ? c.CornerRadius.TopLeft : 0;
             output.Add(new
             {
