@@ -150,7 +150,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 out.append(el)
             nid = str(attrs.get("id", ""))
             if nid == "px:navbar":
-                out.append({"text": "Primary navigation", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                out.append({"text": "", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                             "color": None, "background": hex_of(root_bg), "fontSize": None, "fontWeight": None, "radius": 20})
             if nid.endswith("-nav-tile") or nid == "pcard":  # functional focus ids: the control's name is its first text
                 label = first_text(node)
