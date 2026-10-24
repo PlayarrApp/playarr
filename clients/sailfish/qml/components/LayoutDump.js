@@ -12,6 +12,7 @@ function r2(v) { return Math.round(v * 100) / 100 }
 function dump(root, u, weights, log) {
     var fills = []
     function bgAt(cx, cy) {
+        cx = Math.min(cx, root.width - 1); cy = Math.min(cy, root.height - 1)   // a box running off the screen takes the colour at its visible edge
         var bg = [255, 255, 255]
         for (var i = 0; i < fills.length; ++i) {
             var f = fills[i]
@@ -30,7 +31,20 @@ function dump(root, u, weights, log) {
         var op = opAcc * item.opacity
         if (op <= 0.001) return
         var p = item.mapToItem(null, 0, 0), x = p.x, y = p.y, w = item.width, h = item.height
+        if (x >= root.width || x + w <= 0 || y >= root.height || y + h <= 0) return   // off screen: not drawn, so not part of the web document either
+        if (item.layoutOpacity !== undefined) op = opAcc * item.layoutOpacity
         var skip = item.layoutSkip === true
+        var els = item.layoutEls
+        if (els) for (var q = 0; q < els.length; ++q) {
+            var le = els[q], lx = le.x !== undefined ? le.x : p.x / u + (le.dx || 0), ly = le.y !== undefined ? le.y : p.y / u + (le.dy || 0)
+            var lw = le.w !== undefined ? le.w : w / u, lh = le.h !== undefined ? le.h : h / u
+            var lo = le.opacity !== undefined ? le.opacity : op
+            var lr = { text: le.text || "", role: le.role || "container", rect: { x: r2(lx), y: r2(ly), w: r2(lw), h: r2(lh) }, color: le.color || null,
+                background: le.bg || bgAt((lx + lw / 2) * u, (ly + lh / 2) * u), fontSize: le.fontSize || null, fontWeight: le.fontWeight || null }
+            if (le.radius) lr.radius = le.radius
+            if (lo < 0.999) lr.opacity = r2(lo)
+            emit(lr)
+        }
         if (skip) {
         } else if (typeof item.text === "string" && item.contentWidth !== undefined && item.font !== undefined && item.text.length > 0 && item.color !== undefined) {
             var cw = item.contentWidth, ch = item.contentHeight
@@ -42,7 +56,7 @@ function dump(root, u, weights, log) {
             var t = String(item.text)
             if (item.font.capitalization === 1) t = t.toUpperCase()
             // glyph-run bounds: ascent plus descent of the font per line (Nunito Sans 1.364 em), not Qt's taller line box
-            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), gh = ch * 0.944
+            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = (lines - 1) * (ch / lines) + Math.floor(1.364 * fs / u) * u
             var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y0 + (ch - gh) / 2, cw, gh),
                 color: hex(item.color), background: bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2((item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333) / u), fontWeight: wt }
             if (op < 0.999) el.opacity = r2(op)
@@ -52,7 +66,7 @@ function dump(root, u, weights, log) {
             if (filled) fills.push({ x: x, y: y, w: w, h: h, c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
             if (filled || item.border.width > 0) {
                 var rc = { text: String(item.layoutLabel || ""), role: item.parityRole || "container", rect: rect(x, y, w, h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null }
-                if (item.radius > 0) rc.radius = r2(Math.min(item.radius, Math.min(w, h) / 2) / u)
+                if (item.radius > 0) rc.radius = item.radius >= Math.min(w, h) / 2 - 0.5 ? 50 : r2(Math.min(item.radius, Math.min(w, h) / 2) / u)   // a full circle is the web's border-radius 50%
                 if (op < 0.999) rc.opacity = r2(op)
                 emit(rc)
             }

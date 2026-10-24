@@ -28,10 +28,11 @@ Item {
         layer.enabled: true
         Image {
             id: im
-            width: parent.width
+            width: root.imgH > 0 ? parent.width * 1.04 : parent.width   // Home: the web draws the picture 4 % larger, 7.5 px up and 7.8 px left
+            x: root.imgH > 0 ? -parent.width * 0.02 : 0
             fillMode: root.imgH > 0 ? Image.PreserveAspectCrop : Image.Stretch   // Home: object-fit cover in the tall box
-            height: root.imgH > 0 ? parent.height : (implicitWidth > 0 ? width * implicitHeight / implicitWidth : 0)
-            y: root.imgH > 0 ? 0 : -Math.max(0, height - parent.height) * 0.22   // object-position: center 22%
+            height: root.imgH > 0 ? (parent.height + root.over) * 1.04 : (implicitWidth > 0 ? width * implicitHeight / implicitWidth : 0)
+            y: root.imgH > 0 ? -7.51 * Tokens.u : -Math.max(0, height - parent.height) * 0.22   // object-position: center 22%
             source: work ? Api.artwork(work.id, work.images || [], root.kinds, true) : ""
             asynchronous: true
             smooth: true
@@ -39,7 +40,7 @@ Item {
             layer.enabled: true
             layer.effect: Desaturate { desaturation: 1.0 }
         }
-        Rectangle { anchors.fill: parent; color: "black"; opacity: Tokens.dark ? 0.4 : 0 }   // brightness(.6)
+        Rectangle { property bool layoutSkip: true; anchors.fill: parent; color: "black"; opacity: Tokens.dark ? 0.4 : 0 }   // brightness(.6)
         Rectangle {   // the web masks the picture out over its right 28%
             anchors.centerIn: parent
             width: parent.height; height: parent.width; rotation: -90
