@@ -78,14 +78,14 @@ PlayarrPage {
                 width: parent.width
                 height: 46.4 * Tokens.u + Math.min(2, titleLbl.lineCount) * 33 * Tokens.u
                 Column {
-                    anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 19 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
-                    spacing: 4 * Tokens.u
-                    Label { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.6 * Tokens.u; font.letterSpacing: 0.8 * Tokens.u }
+                    anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
+                    spacing: 5 * Tokens.u
+                    Label { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: 6.4 * Tokens.u; font.letterSpacing: 0.8 * Tokens.u }
                     Label { renderType: Text.NativeRendering;
                         id: titleLbl
                         width: parent.width; text: page.work.title; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
                         lineHeightMode: Text.FixedHeight; lineHeight: 33 * Tokens.u
-                        color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -0.6 * Tokens.u; font.pixelSize: 24 * Tokens.u
+                        color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -1.25 * Tokens.u; font.pixelSize: 22.6 * Tokens.u
                     }
                 }
                 MouseArea {
