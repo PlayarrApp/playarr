@@ -194,24 +194,16 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Center)
         .build();
-    // The web's film Play pill is crimson; the other primary pills (Start, Resume) keep the ink fill.
-    let crimson = primary && label == "Play";
-    let tone = if crimson {
-        Tone::White
-    } else if primary {
-        Tone::OnAccent
-    } else {
-        Tone::Brand
-    };
+    let tone = if primary { Tone::OnAccent } else { Tone::Brand };
     // The web draws these two as the text glyphs U+21E9 and U+2637, not icons.
-    match (icon, crimson, primary) {
-        ("downloads", _, false) => row.append(
+    match (icon, primary) {
+        ("downloads", false) => row.append(
             &gtk4::Label::builder()
                 .label("\u{21E9}")
                 .css_classes(["pa-glyph", "s"])
                 .build(),
         ),
-        ("list", _, false) => row.append(
+        ("list", false) => row.append(
             &gtk4::Label::builder()
                 .label("\u{2637}")
                 .css_classes(["pa-glyph"])
@@ -231,23 +223,14 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     );
     let b = gtk4::Button::builder()
         .child(&row)
-        .css_classes(if crimson {
-            vec!["pa-action", "primary", "crimson"]
-        } else if primary {
+        .css_classes(if primary {
             vec!["pa-action", "primary"]
         } else {
             vec!["pa-action"]
         })
         .valign(gtk4::Align::Start)
         .build();
-    if crimson {
-        // The web's Play pill is 47 px tall (focus scale) and sits 3 px left of the row's gap.
-        b.set_size_request(width, 47);
-        b.set_margin_start(-3);
-        b.set_margin_top(-3);
-    } else {
-        b.set_size_request(width, 44);
-    }
+    b.set_size_request(width, 44);
     b
 }
 

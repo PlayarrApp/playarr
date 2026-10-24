@@ -230,7 +230,7 @@ impl Lib {
             }
             let cover = self.cover.get();
             let opts = CardOpts {
-                selected: first,
+                selected: false,
                 home_art: true,
                 unseen: self.app.is_unseen(&w),
                 art_h: cover.then(super::cards::cover_art_h),
