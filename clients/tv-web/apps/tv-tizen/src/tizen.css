@@ -151,3 +151,42 @@ html[data-platform="tv-tizen"] .calendar-line-text {
 html[data-platform="tv-tizen"] .status-pill {
   min-height: calc(1.4em + 0.36rem + 2px);
 }
+
+/*
+ * Symbols the design font lacks (arrows, play and check marks) fall back to whatever the TV firmware ships, so their width and
+ * shape differ from the web, which draws them with Liberation Sans (arrows, circle) and DejaVu Sans (the rest). These subsets
+ * (free licences, fonts/LICENSE-*.txt) give every TV the glyphs the web reference draws.
+ */
+@font-face {
+  font-family: "Playarr Symbols";
+  font-style: normal;
+  font-weight: 100 599;
+  src: url("./fonts/liberation-sans-arrows.woff2") format("woff2");
+  unicode-range: U+2190, U+2192, U+25CB;
+}
+
+@font-face {
+  font-family: "Playarr Symbols";
+  font-style: normal;
+  font-weight: 600 1000;
+  src: url("./fonts/liberation-sans-arrows-bold.woff2") format("woff2");
+  unicode-range: U+2190, U+2192, U+25CB;
+}
+
+@font-face {
+  font-family: "Playarr Symbols";
+  font-style: normal;
+  font-weight: 100 1000;
+  src: url("./fonts/dejavu-sans-symbols.woff2") format("woff2");
+  unicode-range: U+21E9, U+2304, U+25B6, U+2637, U+2713;
+}
+
+html:root {
+  --font: "Nunito Sans", "Playarr Symbols", "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+/* The TV browser's own stylesheet makes strong and b plain bold; Chromium (the web reference) makes them bolder than the parent, so a strong in a 680 button is 900. */
+strong,
+b {
+  font-weight: bolder;
+}
