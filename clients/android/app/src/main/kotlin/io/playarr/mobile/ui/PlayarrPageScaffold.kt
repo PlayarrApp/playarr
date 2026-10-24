@@ -414,12 +414,13 @@ private fun PlayarrTvDrawer(
         val padX = if (tablet) webVw(26f, 2.5f, 46f) else 46.dp
         val padTop = if (tablet) webVu(38f, 5f, 62f) else 54.dp
         val titleSize = if (tablet) webVw(22.4f, 2f, 38.4f).value else 38.4f
-        val gap = if (tablet) webVu(22f, 2.8f, 34f) else 30.dp
+        val gap = if (tablet) webVu(22f, 2.8f, 34f) else 28.57.dp
         Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = dismiss)) {
             val shadow = Color(0x3D281A18)
             Box(
                 Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(drawerWidth)
                     .parityCaptureSurface(captureToken, captureSurface)
+                    .parityBox("dialog", "", background = WebSurfaceStrong)
                     .drawBehind {
                         drawRect(
                             androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, shadow), startX = -122.dp.toPx(), endX = 0f),
@@ -441,7 +442,7 @@ private fun PlayarrTvDrawer(
                             }
                             androidx.compose.material3.ProvideTextStyle(
                                 androidx.compose.ui.text.TextStyle(color = WebInk, fontSize = titleSize.sp, lineHeight = (titleSize * 1.5f).sp, fontWeight = FontWeight(590), letterSpacing = (-0.055f * titleSize).sp),
-                            ) { Box(Modifier.padding(top = if (kicker != null) 4.dp else 0.dp)) { titleContent?.invoke() } }
+                            ) { Box(Modifier.padding(top = if (kicker != null) 2.6.dp else 0.dp)) { titleContent?.invoke() } }
                         }
                         if (dismissible) {
                             val source = remember { MutableInteractionSource() }
