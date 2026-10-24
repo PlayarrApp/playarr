@@ -50,6 +50,9 @@ internal static class LayoutExport
         var nodes = new List<Node>();
         Walk(root, 0, 0, 1, 1, (1f, 1f, 1f), 1f, nodes);
         nodes = Merge(nodes);
+        // web: the page section and its stage are two full-viewport layers on the same surface
+        for (var i = 0; i < nodes.Count; i++)
+            if (nodes[i] is { Role: "container", W: >= 1900, H: >= 1000 } full && full.Background != "#151315" && !(i + 1 < nodes.Count && nodes[i + 1] is { Role: "container", W: >= 1900, H: >= 1000 })) { nodes.Insert(i + 1, full); i++; }
         var sb = new StringBuilder();
         string N(float v) => v.ToString("0.##", CultureInfo.InvariantCulture);
         sb.Append("{\"screen\":").Append(Q(screen)).Append(",\"theme\":").Append(Q(theme)).Append(",\"viewport\":{\"w\":1920,\"h\":1080,\"dpr\":1},\"clockPinned\":").Append(clockPinned ? "true" : "false").Append(",\"elements\":[");
@@ -116,7 +119,7 @@ internal static class LayoutExport
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
                 var lines = m.Multiline ? Ui.WrapLines(label.Text, m.Size, m.Weight, m.Spacing, w, 9) : null;
-                var tw = lines is not null ? lines.Max(l => Ui.TextWidth(l, m.Size, m.Weight, m.Spacing)) : label.Text is "←" or "→" ? m.Size : Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing); // the arrows come from a fallback font whose advance NUI reports differently; web advances one em
+                var tw = lines is not null ? lines.Max(l => Ui.TextWidth(l, m.Size, m.Weight, m.Spacing, m.Family)) : label.Text is "←" or "→" ? m.Size : Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing, m.Family); // the arrows come from a fallback font whose advance NUI reports differently; web advances one em
                 var box = label.WidthResizePolicy == ResizePolicyType.Fixed ? w : tw;
                 var tx = cx + (m.Align == HorizontalAlignment.Center ? (box - tw) / 2 : m.Align == HorizontalAlignment.End ? box - tw : 0);
                 var c = label.TextColor;
@@ -142,7 +145,7 @@ internal static class LayoutExport
             else if (sem is not null && sem.Role != "none")
             {
                 var (bx, by, bw, bh) = (sem.BoxNow?.Invoke() ?? sem.Box) is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
-                outList.Add(new Node(sem.Role is "img" ? "" : sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
+                outList.Add(new Node(sem.Role is "img" or "container" ? "" : sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
             }
             if (child is ImageView && w > 1 && h > 1)
             {

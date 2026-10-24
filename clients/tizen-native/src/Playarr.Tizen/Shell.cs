@@ -123,13 +123,14 @@ internal sealed class Shell : View
         pv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
         _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 10 };
         pv.Icon = null!;
+        Sem.Tag(_avatarIcon, "container", radius: 50);
         pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
         Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.", radius: 16, backdropNow: () => NavBackdrop(_nav.Count - 1));
         _chrome.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
-        _chrome.Add(Ui.Text("v 0.1.0", RailX, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f));
+        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono), "text", blockified: true));
     }
 
     /// <summary>What a rail item sits on for the layout export: the group fill over the shell, plus the tile fill of the active or focused item.</summary>
@@ -217,7 +218,7 @@ internal sealed class Shell : View
         BackgroundColor = page.Fullscreen ? new Color(0, 0, 0, 0) : Ui.C(_theme.Bg);
         _chrome.Show(!page.HideChrome);
         var prev = _active;
-        var owner = route.StartsWith("/profiles") || route.StartsWith("/settings") ? "/profiles" : NavModel.Owner(route);
+        var owner = route.StartsWith("/profiles") ? "/profiles" : route.StartsWith("/settings") ? "" : NavModel.Owner(route); // web: Settings highlights no rail item
         _active = _nav.FindIndex(n => n.Item.Route == owner);
         if (prev >= 0) StyleNav(prev);
         if (_active >= 0) StyleNav(_active);
