@@ -107,7 +107,7 @@ namespace Playarr.Xbox.Views
             var button = Ui.RoundButton(string.Empty, onClick);
             button.Background = Ui.Res("PlayarrSurfaceStrong");
             LayoutExport.Tag(button, "button", arrow == "\u2190" ? "Previous" : "Next");
-            button.Content = new TextBlock { Text = arrow, FontSize = 14.72, FontWeight = new FontWeight { Weight = 720 }, Foreground = Ui.Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            button.Content = new TextBlock { Text = arrow, FontSize = 14.72, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), Foreground = Ui.Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             return button;
         }
 
@@ -506,7 +506,7 @@ namespace Playarr.Xbox.Views
                     var today = Ui.StatusPill("TODAY", ((SolidColorBrush)Theme.FocusRing).Color);
                     var todayText = (TextBlock)today.Child;
                     todayText.FontSize = 11.2;
-                    todayText.FontWeight = new FontWeight { Weight = 640 };
+                    WebFont.Apply(todayText, 640);
                     todayText.LineHeight = 15;
                     todayText.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
                     todayText.Foreground = Ui.Res("PlayarrInkSoft");

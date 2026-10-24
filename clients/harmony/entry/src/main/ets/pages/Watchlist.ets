@@ -8,7 +8,7 @@
  * live-updates revalidation web does.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv } from '../design/Metrics';
@@ -89,7 +89,7 @@ export struct WatchlistScreen {
 
   @Builder
   private pill(label: string, onTap: () => void): void {
-    Text(label).fontFamily(nunito(400))
+    Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
       .fontSize(tv(PILL_SIZE))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
@@ -104,7 +104,7 @@ export struct WatchlistScreen {
   private row(entry: WatchlistEntry): void {
     Row({ space: tv(PILL_GAP) }) {
       Column({ space: tv(COPY_GAP) }) {
-        Text(entry.title.title).fontFamily(nunito(700))
+        Text(entry.title.title).fontFamily(nunitoAt(700, tv(TITLE_SIZE_ROW)))
           .fontSize(tv(TITLE_SIZE_ROW))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
@@ -112,18 +112,18 @@ export struct WatchlistScreen {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         Row({ space: tv(META_GAP) }) {
           if (entry.title.year !== undefined && entry.title.year !== null) {
-            Text(String(entry.title.year)).fontFamily(nunito(400))
+            Text(String(entry.title.year)).fontFamily(nunitoAt(400, tv(META_SIZE)))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().inkMuted))
           }
           ForEach(sourceChips(entry.title.sources), (chip: string) => {
-            Text(chip).fontFamily(nunito(400))
+            Text(chip).fontFamily(nunitoAt(400, tv(META_SIZE)))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().inkMuted))
           }, (chip: string): string => chip)
         }
         ForEach(explainedReasons(entry.actions), (line: string) => {
-          Text(line).fontFamily(nunito(400))
+          Text(line).fontFamily(nunitoAt(400, tv(META_SIZE)))
             .fontSize(tv(META_SIZE))
             .fontColor(toResourceColor(activeColors().inkMuted))
         }, (line: string): string => line)
@@ -168,12 +168,12 @@ export struct WatchlistScreen {
         .position({ x: tv(MESSAGE_LEFT), y: tv(MESSAGE_TOP) })
     } else if (this.entries.length === 0) {
       Column({ space: tv(8) }) {
-        Text('Your watchlist is empty').fontFamily(nunito(500))
+        Text('Your watchlist is empty').fontFamily(nunitoAt(500, tv(26.4)))
           .fontSize(tv(26.4))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(-0.924))
           .fontColor(toResourceColor(activeColors().ink))
-        Text('Add titles from search or a title page to keep them here on every device.').fontFamily(nunito(400))
+        Text('Add titles from search or a title page to keep them here on every device.').fontFamily(nunitoAt(400, tv(13.824)))
           .fontSize(tv(13.824))
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -188,7 +188,7 @@ export struct WatchlistScreen {
         }, (entry: WatchlistEntry): string => entry.title.title_key)
         if (this.removeError.length > 0) {
           ListItem() {
-            Text(this.removeError).fontFamily(nunito(400))
+            Text(this.removeError).fontFamily(nunitoAt(400, tv(META_SIZE)))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().danger))
           }

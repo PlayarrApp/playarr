@@ -43,7 +43,7 @@
  * now-consumed pairing code.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { getDeviceAuthService, getServerDirectory } from '../AppContainer';
 import { Spacing, Radii } from '../core/Tokens';
 import type { DeviceCodeResponse } from '../core/Types/Auth';
@@ -188,7 +188,7 @@ struct Pairing {
   build() {
     NavDestination() {
       Column({ space: Spacing.xl }) {
-        Text($r('app.string.pairing_title')).fontFamily(nunito(700))
+        Text($r('app.string.pairing_title')).fontFamily(nunitoAt(700, 24))
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
@@ -215,22 +215,22 @@ struct Pairing {
               .focusable(false)
 
             Column({ space: Spacing.sm }) {
-              Text('Scan the QR code, or visit').fontFamily(nunito(400))
+              Text('Scan the QR code, or visit').fontFamily(nunitoAt(400, 18))
                 .fontSize(18)
                 .fontColor(toResourceColor(activeColors().inkSoft))
-              Text(this.deviceCode.verification_uri).fontFamily(nunito(700))
+              Text(this.deviceCode.verification_uri).fontFamily(nunitoAt(700, 24))
                 .fontSize(24)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
-              Text('and enter this code').fontFamily(nunito(400))
+              Text('and enter this code').fontFamily(nunitoAt(400, 18))
                 .fontSize(18)
                 .fontColor(toResourceColor(activeColors().inkSoft))
-              Text(this.deviceCode.user_code).fontFamily(nunito(700))
+              Text(this.deviceCode.user_code).fontFamily(nunitoAt(700, USER_CODE_FONT_SIZE))
                 .fontSize(USER_CODE_FONT_SIZE)
                 .fontWeight(FontWeight.Bold)
                 .letterSpacing(USER_CODE_LETTER_SPACING)
                 .fontColor(toResourceColor(activeColors().ink))
-              Text($r('app.string.pairing_waiting')).fontFamily(nunito(400))
+              Text($r('app.string.pairing_waiting')).fontFamily(nunitoAt(400, 16))
                 .fontSize(16)
                 .fontColor(toResourceColor(activeColors().inkMuted))
             }

@@ -299,7 +299,7 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
     {
         // The web's agenda chip is 21 px tall, sitting 1.5 px below the meta text.
         chip.add_css_class("agenda");
-        chip.set_valign(gtk4::Align::Center);
+        chip.set_valign(gtk4::Align::Start);
         // The web wraps the chip to its own line when the row is full (the week card's column is 32 px narrower); a FlowBox would do it but its minimum width is
         // the whole row, so the measured natural widths are compared with the column.
         let width = meta_width + f64::from(chip.measure(gtk4::Orientation::Horizontal, -1).1);
@@ -314,7 +314,7 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         };
         if width > if week { 213.0 } else { 245.0 } {
             col.append(&clip(&meta));
-            chip.set_margin_top(4);
+            chip.set_margin_top(0);
             col.append(&chip);
         } else {
             meta.append(&chip);
@@ -545,7 +545,7 @@ impl Cal {
         let sec = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .spacing(13)
-            .margin_bottom(if week { 19 } else { 31 })
+            .margin_bottom(if week { 19 } else { 32 })
             .build();
         head.set_margin_bottom(0);
         sec.append(&head);
@@ -554,6 +554,10 @@ impl Cal {
             // The web's week cards sit 15 px apart; the 8 px column spacing only covers the day heading.
             if week && i > 0 {
                 card.set_margin_top(7);
+            }
+            // The web gap after a card without a subtitle line is 1 px wider (its box is a fraction shorter).
+            if !week && card.has_css_class("nosub") {
+                sec.set_margin_bottom(33);
             }
             sec.append(&card);
         }
@@ -575,6 +579,10 @@ impl Cal {
             sec.set_spacing(if dt == today() { 5 } else { 7 });
             head.set_height_request(22);
             head.set_margin_top(5);
+        }
+        // The web's later agenda days sit 1 px nearer their heading, and the gap before them is 1 px wider.
+        if !week && parent.first_child().is_some() {
+            sec.set_spacing(12);
         }
         parent.append(&sec);
     }
@@ -794,6 +802,17 @@ impl Cal {
                     height: None,
                     bg: None,
                     art: true,
+                    font: None,
+                });
+                // ... and a full-page layer for its list.
+                t = t.extra(crate::layout::Extra {
+                    role: "container",
+                    label: String::new(),
+                    radius: 0.0,
+                    inset: [0.0, 0.0, 0.0, 0.0],
+                    height: Some(673.0),
+                    bg: None,
+                    art: false,
                     font: None,
                 });
             }

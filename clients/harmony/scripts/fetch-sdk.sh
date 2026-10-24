@@ -79,7 +79,7 @@ trap _cleanup_stage_dirs EXIT
 
 new_stage_dir() {
     local d
-    d="$(mktemp -d)"
+    d="$(mktemp -d "$OHOS_SDK_CACHE/stage.XXXXXX")" # same filesystem as the cache, so hard links work
     _TMP_STAGE_DIRS+=("$d")
     echo "$d"
 }
@@ -146,11 +146,13 @@ fetch_sdk() {
     tar -xzf "$tarball" -C "$stage" linux/
 
     mkdir -p "$SDK_HOME"
+    rm -f "$tarball" # 2 GB; the extracted tree is what the cache keeps
     if [ -d "$stage/linux" ]; then
         # Merge whatever the tarball put under linux/ into SDK_HOME. This
         # may already be a full SDK tree, or a flat pile of per-component
         # zips: unzip_nested handles the latter.
-        cp -a "$stage/linux/." "$SDK_HOME/"
+        cp -al "$stage/linux/." "$SDK_HOME/" # hard links: no second copy on a small runner disk
+        rm -rf "$stage"
     else
         echo "ERROR: expected a linux/ directory inside $tarball, found none." >&2
         exit 1
@@ -183,6 +185,7 @@ fetch_cli_tools() {
 
     log "Extracting Command Line Tools"
     unzip -q "$zipfile" -d "$stage"
+    rm -f "$zipfile" # free the disk before the move
 
     local src="$stage"
     if [ -d "$stage/command-line-tools" ]; then
@@ -193,7 +196,9 @@ fetch_cli_tools() {
     fi
 
     mkdir -p "$CLI_HOME"
-    cp -a "$src/." "$CLI_HOME/"
+    # same filesystem, so a move needs no second copy of the tree
+    cp -al "$src/." "$CLI_HOME/"
+    rm -rf "$stage"
 
     if ! cli_populated; then
         warn "Unpacked Command Line Tools do not contain ohpm/bin/ohpm at $CLI_HOME as expected."

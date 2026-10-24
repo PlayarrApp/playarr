@@ -4,7 +4,7 @@
  * rest of this client today.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -13,12 +13,12 @@ import { currentLanguage } from '../../core/Language';
 
 // ArkUI takes weights in steps of 100; web uses 760 (time) and 640 (date).
 const TIME_FONT_SIZE: number = 17.28;
-const TIME_FONT_WEIGHT: number = 800;
+const TIME_FONT_WEIGHT: number = 760;
 const TIME_LETTER_SPACING: number = -0.518;
 const DATE_FONT_SIZE: number = 11.136;
-const DATE_FONT_WEIGHT: number = 600;
+const DATE_FONT_WEIGHT: number = 640;
 const DATE_LETTER_SPACING: number = 0.445;
-const TIME_DATE_GAP: number = 11;
+const TIME_DATE_GAP: number = 11.19;
 const MINUTE_MS: number = 60000;
 
 @Component
@@ -48,12 +48,12 @@ export struct Clock {
 
   build() {
     Row({ space: tv(TIME_DATE_GAP) }) {
-      Text(clockTime(this.now)).fontFamily(nunito(TIME_FONT_WEIGHT))
+      Text(clockTime(this.now)).fontFamily(nunitoAt(TIME_FONT_WEIGHT, tv(TIME_FONT_SIZE)))
         .fontSize(tv(TIME_FONT_SIZE))
         .fontWeight(TIME_FONT_WEIGHT)
         .letterSpacing(tv(TIME_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(clockDate(this.now, currentLanguage())).fontFamily(nunito(DATE_FONT_WEIGHT))
+      Text(clockDate(this.now, currentLanguage())).fontFamily(nunitoAt(DATE_FONT_WEIGHT, tv(DATE_FONT_SIZE)))
         .fontSize(tv(DATE_FONT_SIZE))
         .fontWeight(DATE_FONT_WEIGHT)
         .letterSpacing(tv(DATE_LETTER_SPACING))

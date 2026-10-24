@@ -41,8 +41,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .label("Start typing to search.")
         .css_classes(["pa-empty-text"])
         .xalign(0.0)
-        .wrap(true)
-        .hexpand(true)
+        .halign(gtk4::Align::Start)
+        .margin_start(3)
         .build();
     let ring = gtk4::Box::builder()
         .css_classes(["pa-empty-ring"])
@@ -59,6 +59,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     icon.set_hexpand(true);
     icon.set_valign(gtk4::Align::Center);
     ring.set_halign(gtk4::Align::Start);
+    ring.set_hexpand(false);
     ring.append(&icon);
     let empty = gtk4::Box::builder()
         .spacing(19)

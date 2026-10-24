@@ -44,7 +44,7 @@
  * established for their own routes in this same slice.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import type { AvailableProfileResponse } from '../core/Types/Profiles.ts';
 import { resolveAvatarPreset } from '../core/AvatarPreset.ts';
 import { BRAND_PINK, BRAND_PINK_SOFT, Spacing, Radii } from '../core/Tokens';
@@ -119,13 +119,13 @@ const TOUCH_AVATAR_DIAMETER: number = 104;
 const PHONE_CHOICE_WIDTH: number = 144;
 const PHONE_CHOICE_GAP: number = 23;
 const PHONE_CHOICES_LEFT: number = 25;
-const PHONE_HEADING_LEFT: number = 32.5;
-const PHONE_HEADING_SIZE: number = 38.4;
+const PHONE_HEADING_LEFT: number = 32.2;
+const PHONE_HEADING_SIZE: number = 39.6; // web dump
 const PHONE_KICKER_TOP: number = 68;
-const PHONE_CHOICES_TOP: number = 64.3;
+const PHONE_CHOICES_TOP: number = 55.6; // 64.3 less the 8.7 the heading moved down
 const PHONE_SELECT_HEIGHT: number = 48;
 const PHONE_SELECT_FONT: number = 11.7;
-const PHONE_SELECT_RADIUS: number = 2;
+const PHONE_SELECT_RADIUS: number = 0;
 const PHONE_SELECT_WIDTH: number = 112.5;
 const PHONE_SELECT_TOP: number = 14;
 const PHONE_SELECT_RIGHT: number = 14;
@@ -330,6 +330,11 @@ struct Profiles {
     });
   }
 
+  private choiceLabel(choices: Choice[], value: string): string {
+    const found = choices.find((choice: Choice) => choice.value === value);
+    return found !== undefined ? found.label : '';
+  }
+
   private languageChoices(): Choice[] {
     const choices: Choice[] = [{ value: 'system', label: t('settings.language.optionSystem', 'Auto') }];
     for (const language of SUPPORTED_LANGUAGES) {
@@ -348,8 +353,8 @@ struct Profiles {
   /** Web's foot-of-page pills (Check for updates, Clients): a 44 px pill on surface-strong at 0.64, text only. */
   @Builder
   private footerPill(label: string, x: number, y: number, onTap: () => void, phone: boolean = false): void {
-    Text(label).fontFamily(nunito(700))
-      .fontSize(phone ? tv(TV_ACTION_TEXT) * 0.73 : tv(TV_ACTION_TEXT))
+    Text(label).fontFamily(nunitoAt(phone ? 720 : 700, phone ? 7.68 : tv(TV_ACTION_TEXT)))
+      .fontSize(phone ? 7.68 : tv(TV_ACTION_TEXT))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .height(tv(TV_ACTION_HEIGHT))
@@ -372,8 +377,8 @@ struct Profiles {
         .height(tv(TV_ACTION_ICON))
         .colorFilter(tintFilter(tint))
       if (label.length > 0) {
-        Text(label).fontFamily(nunito(700))
-          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : tv(TV_ACTION_TEXT) * 0.7)
+        Text(label).fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68))
+          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -382,6 +387,7 @@ struct Profiles {
     .constraintSize({ minWidth: tv(TV_ACTION_HEIGHT) })
     .justifyContent(FlexAlign.Center)
     .padding({ left: label.length > 0 ? tv(17) : 0, right: label.length > 0 ? tv(17) : 0 })
+    .id(isTvMetrics() ? '' : 'px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
     .borderRadius(tv(TV_ACTION_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -395,8 +401,8 @@ struct Profiles {
   @Builder
   private tvPicker(): void {
     Stack({ alignContent: Alignment.Top }) {
-      PlayarrLogo({ logoSize: this.pick(TvGeometry.logoSize, 25) })
-        .position({ x: this.pick(TvGeometry.logoLeft, 25), y: this.pick(TvGeometry.logoTop, 26) })
+      PlayarrLogo({ logoSize: this.pick(TvGeometry.logoSize, 30) })
+        .position({ x: this.pick(TvGeometry.logoLeft, 21), y: this.pick(TvGeometry.logoTop, 20) })
       // Web's foot-of-page pills: Check for updates (bottom left) and the Clients link (bottom right). HarmonyOS has
       // no in-app installer, so the update check says what web says for a build that cannot update itself.
       if (isTvMetrics()) {
@@ -405,7 +411,7 @@ struct Profiles {
         })
       }
       if (this.updateNote.length > 0 && isTvMetrics()) {
-        Text(this.updateNote).fontFamily(nunito(400))
+        Text(this.updateNote).fontFamily(nunitoAt(400, tv(13.4)))
           .fontSize(tv(13.4))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .position({ x: tv(FOOTER_LEFT), y: tv(FOOTER_TOP - 28) })
@@ -421,6 +427,7 @@ struct Profiles {
         SelectField({
           options: themeChoices(),
           lead: isTvMetrics() ? '' : 'sun',
+          controlName: isTvMetrics() ? '' : 'Theme: ' + this.choiceLabel(themeChoices(), this.themeSetting),
           labelWeight: isTvMetrics() ? 700 : 500,
           labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
           value: this.themeSetting,
@@ -435,6 +442,7 @@ struct Profiles {
         SelectField({
           options: this.languageChoices(),
           lead: isTvMetrics() ? '' : 'globe',
+          controlName: isTvMetrics() ? '' : this.choiceLabel(this.languageChoices(), this.languageChoice),
           labelWeight: isTvMetrics() ? 700 : 500,
           labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
           value: this.languageChoice,
@@ -454,22 +462,23 @@ struct Profiles {
         .markAnchor(isTvMetrics() ? { x: 0, y: 0 } : { x: PHONE_SELECT_RIGHT + PHONE_SELECT_WIDTH * 2 + 8, y: 0 })
         .zIndex(2)
       Column() {
-      Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunito(900))
-        .fontSize(isTvMetrics() ? tv(10.368) : tv(10.368) * 0.705)
+      Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunitoAt(isTvMetrics() ? 900 : 820, isTvMetrics() ? tv(10.368) : 7.36))
+        .fontSize(isTvMetrics() ? tv(10.368) : 7.36)
         .fontWeight(FontWeight.Bolder)
         .letterSpacing(isTvMetrics() ? tv(1.348) : tv(1.348) * 0.705)
         .textCase(TextCase.UpperCase)
         .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : BRAND_INK_LIGHT))
         .height(tv(16))
-        .margin({ top: this.pick(162, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 145 })
+        .margin({ top: this.pick(162, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 142.3 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
-      Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunito(500))
+      Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunitoAt(500, this.pick(80.64, PHONE_HEADING_SIZE)))
+        .id('px:heading:' + t('pages.profiles.heading', 'Who’s watching?'))
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(this.pick(-5.806, -2.77))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
-        .margin({ top: this.pick(-13, -3), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
+        .margin({ top: this.pick(-13, 5.7), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Row({ space: this.pick(TV_CHOICE_GAP, PHONE_CHOICE_GAP) }) {
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
@@ -489,17 +498,17 @@ struct Profiles {
               // web phone: the current avatar throws a wide crimson glow (0.28 at the ring, 0.11 at 17 vp out on the static ref, light theme; none above it)
               .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
               .shadow(profile.is_current && !isTvMetrics() ? { radius: 40, color: 'rgba(130, 40, 66, 0.56)', offsetY: 16 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
-            Text(profile.display_name).fontFamily(nunito(700))
-              .fontSize(this.pick(17.28, 12))
+            Text(profile.display_name).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
+              .fontSize(this.pick(17.28, 13.12))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: this.pick(6, profile.is_current ? 5.5 : 10.8) })  // web phone: the lifted current avatar pulls its name up
-            Text(this.statusLabel(profile)).fontFamily(nunito(700))
-              .fontSize(this.pick(9.408, 7.3))
+            Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
+              .fontSize(this.pick(9.408, 6.72))
               .fontWeight(FontWeight.Bold)
               .letterSpacing(this.pick(0.423, 0.33))
               .textCase(TextCase.UpperCase)
-              .fontColor(toResourceColor(activeColors().inkSoft))
+              .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
               .margin({ top: this.pick(9, profile.is_current ? 14 : 12) })
             if (profile.is_current) {
               Row({ space: tv(9) }) {
@@ -514,6 +523,7 @@ struct Profiles {
             }
           }
           .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
+          .id(isTvMetrics() ? '' : 'px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
         // Web on TV: the tile opens the QR sign-in (/login/qr); a successful link returns to the picker.
@@ -533,8 +543,8 @@ struct Profiles {
                 radius: this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH) * 0.27,
                 colors: [['rgba(255, 255, 255, 0.28)', 0], ['rgba(255, 255, 255, 0)', 1]],
               })
-            Text('+').fontFamily(nunito(300))
-              .fontSize(this.pick(76.8, 45))
+            Text('+').fontFamily(nunitoAt(300, this.pick(76.8, 38.4)))
+              .fontSize(this.pick(76.8, 38.4))
               .fontWeight(FontWeight.Lighter)
               .fontColor(toResourceColor(activeColors().inkSoft))
           }
@@ -543,21 +553,22 @@ struct Profiles {
           .borderRadius(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH) / 2)
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
-          Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunito(700))
-            .fontSize(this.pick(17.28, 12))
+          Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
+            .fontSize(this.pick(17.28, 13.12))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: this.pick(9, 10.8) })
-          Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunito(700))
-            .fontSize(this.pick(9.408, 7.3))
+          Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
+            .fontSize(this.pick(9.408, 6.72))
             .fontWeight(FontWeight.Bold)
             .letterSpacing(this.pick(0.423, 0.33))
             .textCase(TextCase.UpperCase)
             .textAlign(TextAlign.Center)
-            .fontColor(toResourceColor(activeColors().inkSoft))
+            .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
             .margin({ top: this.pick(9, 12) })
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
+        .id(isTvMetrics() ? '' : 'px:button:+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase())
         .focusable(true)
         .onClick(() => {
           pushRoute(getNavStack(), ROUTES.Pairing);
@@ -572,6 +583,15 @@ struct Profiles {
     }
     .width('100%')
     .height('100%')
+  }
+
+  private currentName(): string {
+    for (const profile of this.profiles) {
+      if (profile.is_current) {
+        return profile.display_name;
+      }
+    }
+    return '';
   }
 
   /** A TV size scaled to the window, or the phone's own size (web phone profile picker). */
@@ -626,7 +646,7 @@ struct Profiles {
         } else {
         Scroll() {
           Column({ space: Spacing.xl }) {
-            Text($r('app.string.profiles_heading')).fontFamily(nunito(700))
+            Text($r('app.string.profiles_heading')).fontFamily(nunitoAt(700, HEADING_FONT_SIZE))
               .fontSize(HEADING_FONT_SIZE)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
@@ -660,16 +680,16 @@ struct Profiles {
                         },
                       })
 
-                      Text(profile.display_name).fontFamily(nunito(400))
+                      Text(profile.display_name).fontFamily(nunitoAt(400, PROFILE_NAME_FONT_SIZE))
                         .fontSize(PROFILE_NAME_FONT_SIZE)
                         .fontColor(toResourceColor(activeColors().ink))
 
                       if (profile.is_current) {
-                        Text($r('app.string.profiles_current_badge')).fontFamily(nunito(400))
+                        Text($r('app.string.profiles_current_badge')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
                           .fontSize(PROFILE_STATUS_FONT_SIZE)
                           .fontColor(toResourceColor(activeColors().accent))
                       } else if (profile.pin_locked) {
-                        Text($r('app.string.profiles_pin_locked_badge')).fontFamily(nunito(400))
+                        Text($r('app.string.profiles_pin_locked_badge')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
                           .fontSize(PROFILE_STATUS_FONT_SIZE)
                           .fontColor(toResourceColor(activeColors().inkMuted))
                       }
@@ -685,7 +705,7 @@ struct Profiles {
                 // management stays on Playarr Server's own admin surface.
                 Column({ space: Spacing.sm }) {
                   Column() {
-                    Text('+').fontFamily(nunito(400))
+                    Text('+').fontFamily(nunitoAt(400, ADD_PROFILE_GLYPH_FONT_SIZE))
                       .fontSize(ADD_PROFILE_GLYPH_FONT_SIZE)
                       .fontColor(toResourceColor(activeColors().inkMuted))
                   }
@@ -696,11 +716,11 @@ struct Profiles {
                   .justifyContent(FlexAlign.Center)
                   .alignItems(HorizontalAlign.Center)
 
-                  Text($r('app.string.profiles_add_profile')).fontFamily(nunito(400))
+                  Text($r('app.string.profiles_add_profile')).fontFamily(nunitoAt(400, PROFILE_NAME_FONT_SIZE))
                     .fontSize(PROFILE_NAME_FONT_SIZE)
                     .fontColor(toResourceColor(activeColors().inkMuted))
 
-                  Text($r('app.string.profiles_add_profile_hint')).fontFamily(nunito(400))
+                  Text($r('app.string.profiles_add_profile_hint')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
                     .fontSize(PROFILE_STATUS_FONT_SIZE)
                     .fontColor(toResourceColor(activeColors().inkMuted))
                     .textAlign(TextAlign.Center)
@@ -772,12 +792,12 @@ struct Profiles {
                 onSelect: () => {},
               })
 
-              Text($r('app.string.profiles_pin_title')).fontFamily(nunito(700))
+              Text($r('app.string.profiles_pin_title')).fontFamily(nunitoAt(700, PIN_TITLE_FONT_SIZE))
                 .fontSize(PIN_TITLE_FONT_SIZE)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
 
-              Text(this.pinTargetProfile.display_name).fontFamily(nunito(400))
+              Text(this.pinTargetProfile.display_name).fontFamily(nunitoAt(400, SUBHEADING_FONT_SIZE))
                 .fontSize(SUBHEADING_FONT_SIZE)
                 .fontColor(toResourceColor(activeColors().inkSoft))
 
@@ -791,7 +811,7 @@ struct Profiles {
                 })
 
               if (this.pinError.length > 0) {
-                Text(this.pinError).fontFamily(nunito(400))
+                Text(this.pinError).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
                   .fontSize(PROFILE_STATUS_FONT_SIZE)
                   .fontColor(toResourceColor(activeColors().danger))
               }
