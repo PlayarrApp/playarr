@@ -111,6 +111,7 @@ internal sealed class Shell : View
             nv.Icon = Ui.Icon(item.Icon, 22, 15.1f, 20, _theme.InkMuted);
             nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center);
             nv.Item64.Add(nv.Tile); nv.Item64.Add(nv.Icon); nv.Item64.Add(nv.Label);
+            Sem.Tag(nv.Item64, "link", item.Label, radius: 16);
             _chrome.Add(nv.Item64);
             _nav.Add(nv);
         }
@@ -122,6 +123,7 @@ internal sealed class Shell : View
         pv.Icon = null!;
         pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
+        Sem.Tag(pv.Item64, "link", null, radius: 16);
         _chrome.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;

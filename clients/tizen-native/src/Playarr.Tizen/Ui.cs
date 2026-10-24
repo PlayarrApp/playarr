@@ -25,10 +25,17 @@ internal static class Ui
         TextWrap.WrapLines(text, s => TextWidth(s, size, weight, spacing, family), width, maxLines, balance);
 
     /// <summary>A wrapped paragraph as one single-line label per line (CSS line height <paramref name="lh"/>); returns the number of lines.</summary>
-    public static int Paragraph(View parent, string text, float x, float y, float size, int weight, Rgba color, float width, float lh, float spacing = 0, int maxLines = int.MaxValue, bool balance = false)
+    public static int Paragraph(View parent, string text, float x, float y, float size, int weight, Rgba color, float width, float lh, float spacing = 0, int maxLines = int.MaxValue, bool balance = false, string role = "text")
     {
         var lines = WrapLines(text, size, weight, spacing, width, maxLines, balance: balance);
-        for (var i = 0; i < lines.Count; i++) parent.Add(Text(lines[i], x, y + i * lh, size, weight, color, width, lh, spacing: spacing));
+        var group = new object();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var label = Text(lines[i], x, y + i * lh, size, weight, color, width, lh, spacing: spacing);
+            TextMeta.TryGetValue(label, out var meta); if (meta is not null) meta.Group = group;
+            if (role != "text") Sem.Tag(label, role);
+            parent.Add(label);
+        }
         return lines.Count;
     }
 
@@ -259,4 +266,8 @@ internal static class Ui
 }
 
 /// <summary>The CSS values a label was made from (the layout exporter reports these, not NUI's scaled internals). Dy: CSS line top minus the label's own top.</summary>
-internal sealed record TextMetaInfo(float Size, int Weight, float LineHeight, float Dy, float Spacing, HorizontalAlignment Align, Rgba Color, bool Multiline);
+internal sealed record TextMetaInfo(float Size, int Weight, float LineHeight, float Dy, float Spacing, HorizontalAlignment Align, Rgba Color, bool Multiline)
+{
+    /// <summary>Lines of one wrapped paragraph share a group: web has one element for the whole block.</summary>
+    public object? Group { get; set; }
+}

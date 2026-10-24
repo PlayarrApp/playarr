@@ -69,7 +69,7 @@ internal sealed class MediaCard
         env.Images.Apply(Art, card.ThumbUrl, snapW, snapH, 12.48f);
         if (card.Progress > 0)
         {
-            Art.Add(Ui.Box(0, H - 3, W, 3, new Rgba(1, 1, 1, 0.2f)));
+            Art.Add(Sem.Tag(Ui.Box(0, H - 3, W, 3, new Rgba(1, 1, 1, 0.2f)), "img", $"{(int)Math.Round(card.Progress * 100)}% watched"));
             Art.Add(Ui.Box(0, H - 3, Math.Max(3, W * (float)card.Progress), 3, t.Brand));
         }
         if (card.StackOptions > 1) AddStack(card, snapW);
@@ -93,11 +93,14 @@ internal sealed class MediaCard
         {
             var dot = Ui.Box(W - 23.6f, 11.1f, 13, 13, t.Brand, 6.5f);
             dot.BorderlineWidth = 2; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
+            Sem.Tag(dot, "img", "Unwatched", radius: 6.5f);
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         var drop = card.StackOptions > 1 ? StackDrop : 0;
         Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 610, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
+        // web: the whole card is one link; Home names it "<title> <sub>", grids "Open <title>"
+        Sem.Tag(Box, "link", showSub ? $"{card.Title} {card.Sub}" : "Open " + card.Title, (0, 0, W, H + 29.4f), 12);
         _titleY = Title.PositionY; _titleX = Title.PositionX; _subY = H + 31.9f + drop;
         if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
@@ -612,7 +615,7 @@ internal sealed class DetailsPanel
         foreach (var child in Root.Children.ToArray()) { Root.Remove(child); child.Dispose(); }
         var ky = _flow ? 286.6f : 259.2f; var tsize = _flow ? 49.92f : 69.12f; var tlh = _flow ? 47.424f : 62.208f; var tw = _flow ? 420f : 369f; var ty = _flow ? 330.9f : 303.5f;
         Root.Add(Ui.Text(kicker ?? card.Kicker, 153.6f, ky, 12.288f, 800, t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, titleMaxLines, balance: true);
+        var lines = Ui.Paragraph(Root, card.Title, 153.6f, ty, tsize, 600, t.Ink, tw, tlh, _flow ? -3f : -4.98f, titleMaxLines, balance: true, role: "heading");
         var metaY = ty + tlh * lines + (_flow ? 27f : 22.6f) + (_library ? 4f : 0); // library panels: measured 4 px lower on web
         var metaSize = _library ? 13.056f : 12.864f;
         var meta = string.Join("   ", new[] { lead, runtimeMs is > 0 ? Runtime(runtimeMs.Value) : null }.Where(s => !string.IsNullOrEmpty(s)));

@@ -9,14 +9,28 @@ namespace Playarr.Tizen;
 /// Parity layout document (docs/parity/LAYOUT.md): walks the NUI visual tree of the running page. Text rects are the laid-out glyph run (measured
 /// width, CSS line box height), not the label frame; fonts and colours are the CSS values the label was built from.
 /// </summary>
+/// <summary>Accessible role and name of a native view, as web's DOM exposes it (link "Open <title>", heading, button "A"). <see cref="Box"/> overrides the view's own frame (a web link wraps art and caption).</summary>
+internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, float W, float H)? Box = null, float? Radius = null, bool Blockified = false);
+
+internal static class Sem
+{
+    internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, SemInfo> Table = new();
+
+    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false) where T : View
+    {
+        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified)); return v;
+    }
+}
+
 internal static class LayoutExport
 {
-    private sealed record Node(string Text, string Role, float X, float Y, float W, float H, string? Color, string Background, float? FontSize, int? FontWeight, float Radius, float Opacity);
+    private sealed record Node(string Text, string Role, float X, float Y, float W, float H, string? Color, string Background, float? FontSize, int? FontWeight, float Radius, float Opacity, object? Group = null);
 
     public static string Json(string screen, string theme, bool clockPinned, Container root)
     {
         var nodes = new List<Node>();
         Walk(root, 0, 0, 1, 1, (1f, 1f, 1f), 1f, nodes);
+        nodes = Merge(nodes);
         var sb = new StringBuilder();
         string N(float v) => v.ToString("0.##", CultureInfo.InvariantCulture);
         sb.Append("{\"screen\":").Append(Q(screen)).Append(",\"theme\":").Append(Q(theme)).Append(",\"viewport\":{\"w\":1920,\"h\":1080,\"dpr\":1},\"clockPinned\":").Append(clockPinned ? "true" : "false").Append(",\"elements\":[");
@@ -32,6 +46,20 @@ internal static class LayoutExport
             sb.Append('}');
         }
         return sb.Append("]}").ToString();
+    }
+
+    // lines of one wrapped paragraph (same group, consecutive) become one element: joined text, union of the line runs
+    private static List<Node> Merge(List<Node> nodes)
+    {
+        var merged = new List<Node>();
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var n = nodes[i];
+            if (n.Group is null || merged.Count == 0 || !ReferenceEquals(merged[^1].Group, n.Group)) { merged.Add(n); continue; }
+            var p = merged[^1]; var x0 = Math.Min(p.X, n.X); var y0 = Math.Min(p.Y, n.Y);
+            merged[^1] = p with { Text = p.Text + " " + n.Text, X = x0, Y = y0, W = Math.Max(p.X + p.W, n.X + n.W) - x0, H = Math.Max(p.Y + p.H, n.Y + n.H) - y0 };
+        }
+        return merged;
     }
 
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
@@ -58,8 +86,17 @@ internal static class LayoutExport
                 var box = label.WidthResizePolicy == ResizePolicyType.Fixed ? w : tw;
                 var tx = cx + (m.Align == HorizontalAlignment.Center ? (box - tw) / 2 : m.Align == HorizontalAlignment.End ? box - tw : 0);
                 var c = label.TextColor;
-                outList.Add(new Node(label.Text, m.Size >= 24 ? "heading" : "text", tx, cy + m.Dy * csx, tw, m.LineHeight, Hex(c.R, c.G, c.B, c.A * cop), Hex(bg.R, bg.G, bg.B, 1), m.Size, m.Weight, 0, cop));
+                var asc = (float)Math.Round(1.011 * m.Size); var content = asc + (float)Math.Round(0.353 * m.Size); // Chromium's inline box: rounded ascent plus rounded descent
+                var blockified = Sem.Table.TryGetValue(label, out var ls) && ls.Blockified;
+                var th = blockified ? m.LineHeight : content;
+                var role = Sem.Table.TryGetValue(label, out var rs) ? rs.Role : Math.Abs(m.Size - 33.6f) < 0.01f || Math.Abs(m.Size - 17.664f) < 0.01f ? "heading" : "text"; // page title and rail headings are h1/h2 on web
+                outList.Add(new Node(label.Text, role, tx, cy + m.Dy * sy + (m.LineHeight - th) / 2, tw, th, Hex(c.R, c.G, c.B, c.A * cop), Hex(bg.R, bg.G, bg.B, 1), m.Size, m.Weight, 0, cop, m.Group));
                 continue;
+            }
+            if (Sem.Table.TryGetValue(child, out var sem) && child is not TextLabel)
+            {
+                var (bx, by, bw, bh) = sem.Box is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
+                outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(bg.R, bg.G, bg.B, 1), null, null, sem.Radius ?? child.CornerRadius.X * csx, cop));
             }
             if (child is ImageView img && w > 1 && h > 1)
                 outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, child.CornerRadius.X * csx, cop));

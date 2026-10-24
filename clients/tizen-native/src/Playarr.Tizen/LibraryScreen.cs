@@ -80,6 +80,7 @@ internal sealed class LibraryScreen : IPage
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
+        Sem.Tag(back, "link", "Back to Home", radius: 50);
         _root.Add(back);
         _root.Add(Ui.Text(_title, 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _subtitle = new PageSubtitle(_env, _root, _title);
