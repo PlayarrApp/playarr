@@ -204,11 +204,13 @@ internal object PlayarrLayoutExport {
                 val heading = config.contains(SemanticsProperties.Heading)
                 // The web exports one run per text node (`Range.getBoundingClientRect`): the union of the font's content areas
                 // (Nunito Sans: ascent 1.011 em, descent 0.353 em, each rounded to whole px) from the first to the last line.
+                // Compose counts the letter spacing after the last glyph of a line; the browser's run bounds do not when it is negative.
+                val trailing = (style.letterSpacing.takeIf { it.isSp }?.value ?: 0f).let { if (it < 0f) it * density.fontScale * density.density else 0f }
                 val ascent = Math.round(1.011f * size); val descent = Math.round(0.353f * size)
                 var l = Float.MAX_VALUE; var r = 0f; var top = Float.MAX_VALUE; var bottom = 0f
                 for (i in 0 until layout.lineCount) {
                     if (layout.getLineEnd(i, true) == layout.getLineStart(i)) continue
-                    l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
+                    l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i) - trailing)
                     top = minOf(top, layout.getLineBaseline(i) - ascent); bottom = maxOf(bottom, layout.getLineBaseline(i) + descent)
                 }
                 if (r > l) {

@@ -112,7 +112,7 @@ fun PlayarrActionPill(
                     verticalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterVertically),
                 ) {
                     if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp).parityBox("image", background = palette.background))
-                    Text(label, fontSize = 8.256.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1)
+                    Text(label, fontSize = 8.256.sp, lineHeight = 12.384.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1)
                     if (count > 0) {
                         Surface(color = palette.accent, shape = CircleShape) {
                             Text(

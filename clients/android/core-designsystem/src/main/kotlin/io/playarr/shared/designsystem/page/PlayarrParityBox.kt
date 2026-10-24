@@ -4,7 +4,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import android.view.View
 import androidx.compose.ui.semantics.semantics
@@ -26,7 +25,11 @@ fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opa
         val box = remember { ParityBox(view, role, label, radius, opacity, background, fit) }
         box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit
         DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
-        onGloballyPositioned { box.bounds = it.boundsInWindow() }
+        onGloballyPositioned {
+            // Corners through the layers, unclipped: the web exports boxes that run past the viewport edge.
+            val a = it.localToWindow(androidx.compose.ui.geometry.Offset.Zero); val b = it.localToWindow(androidx.compose.ui.geometry.Offset(it.size.width.toFloat(), it.size.height.toFloat()))
+            box.bounds = androidx.compose.ui.geometry.Rect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
+        }
     }
 
 

@@ -2398,7 +2398,7 @@ private fun TvNavTile(
                         ),
                     ),
                 ),
-                modifier = Modifier.padding(top = (web?.labelGap ?: 2.3.dp) + if (selected && web == null) 3.dp else 0.dp, start = 4.dp, end = 4.dp),
+                modifier = Modifier.padding(top = (web?.labelGap ?: 3.3.dp), start = 4.dp, end = 4.dp),
             )
         }
     }
@@ -2517,7 +2517,7 @@ private fun ProfileControl(
     }
 }
 
-internal fun profileVersionLabel(versionName: String): String = "v$versionName"
+internal fun profileVersionLabel(versionName: String): String = "v $versionName"
 
 @Composable
 internal fun PlayarrLogo(modifier: Modifier = Modifier, iconSize: Dp = 42.dp) {
@@ -3331,7 +3331,9 @@ internal fun WebHeroTitle(title: String, modifier: Modifier = Modifier, maxLines
         while (at < tokens.size && left > 0) { val end = solve(at, left)!!.second; out += lineText(at, end); at = end; left-- }
         return@remember out
     }
-    Column(modifier.semantics(mergeDescendants = true) { contentDescription = title }) {
+    val widest = remember(lines, style) { lines.maxOfOrNull { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width.toFloat() + style.letterSpacing.value } ?: 0f }
+    // Web run bounds: the glyph box of the first to the last line (the 62.2 px line boxes are shorter than the 94 px glyph box).
+    Column(modifier.parityBox("heading", title, background = WebSurface, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top - 15.84f, r.left + widest, r.bottom + 15.84f) }).semantics(mergeDescendants = true) { contentDescription = title }) {
         lines.forEach { line ->
             Box(Modifier.height(62.208.dp)) {
                 Text(
@@ -3379,6 +3381,7 @@ private fun FeatureCopy(work: Work, isTelevision: Boolean = false, style: Featur
                 letterSpacing = 0.983.sp,
                 lineHeight = 18.432.sp,
                 style = glow,
+                modifier = Modifier.offset(y = 1.dp),
             )
             WebHeroTitle(work.title, Modifier.padding(top = 25.9.dp + (if (tabletHero) 3.7.dp else 0.dp)))
             val runtime = runtimeMs?.let { formatPlayarrVideoRuntime(it, language) }
