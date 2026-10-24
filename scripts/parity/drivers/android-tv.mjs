@@ -283,7 +283,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       const displaySize = requestedSurface ? await shell("wm", "size") : "";
       const displayWidth = requestedSurface ? Number(/Override size:\s*(\d+)x/.exec(displaySize)?.[1] ?? /Physical size:\s*(\d+)x/.exec(displaySize)?.[1]) : 0;
       const deadline = now() + readinessTimeoutMs;
-      let previous = "", previousMarker = "", stable = 0, lastReason = "";
+      let previous = "", previousMarker = "", previousPosition = "", stable = 0, lastReason = "";
       while (now() < deadline) {
         const lines = await parityLines();
         if (phase === "capture") {
@@ -296,15 +296,18 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
           }) ?? "";
           const lastRouteLine = lines.findLast((line) => line.startsWith("route=")) ?? "";
           const currentRoute = /^route=(\S+)/.exec(lastRouteLine)?.[1]?.split("/")[0];
-          lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : focus !== previous ? "focus still changing" : "marker still changing";
-          if (stableCaptureObservation(
-            { marker: previousMarker, focus: previous },
-            { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus },
-          )) {
+          // The player's capture marker flips between ready and loading as the controls auto-hide, so it never repeats: the paused frame
+          // is the evidence instead. Ready, on the player route, a focused control and the same paused position for three consecutive polls.
+          const playerPosition = target === "player-controls" ? lines.findLast((line) => line.startsWith("player positionMs="))?.slice(18) ?? "" : null;
+          const steady = playerPosition !== null
+            ? Boolean(capture.ready && currentRoute === EXPECTED_ROUTE[target] && focus && playerPosition && playerPosition === previousPosition)
+            : stableCaptureObservation({ marker: previousMarker, focus: previous }, { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus });
+          lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : playerPosition !== null ? "paused frame still moving" : focus !== previous ? "focus still changing" : "marker still changing";
+          if (steady) {
             stable += 1;
-            // The player's capture state flips between ready and loading every few seconds (controls auto-hide) and a UI dump takes seconds on a loaded host: one agreeing poll is all it offers.
-            if (stable >= (target === "player-controls" ? 1 : 2)) return;
+            if (stable >= (playerPosition !== null ? 3 : 2)) return;
           } else stable = 0;
+          if (playerPosition !== null) previousPosition = playerPosition;
           previous = focus;
           previousMarker = capture.ready ? capture.marker : "";
           await sleep(Math.min(readinessPollMs, Math.max(0, deadline - now())));

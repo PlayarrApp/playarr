@@ -1,0 +1,1 @@
+- Nura (linux-mobile): the film Play pill uses the ink fill, the library draws no focus ring on its first card, text takes the web's letter spacing, the current profile ring is translucent crimson, and the calendar controls use the web padding.

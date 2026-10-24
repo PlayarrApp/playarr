@@ -155,7 +155,7 @@ namespace Playarr.Xbox.Views
                 Padding = new Thickness(0),
                 CornerRadius = new CornerRadius(radius),
                 HorizontalContentAlignment = HorizontalAlignment.Center,
-                Background = new SolidColorBrush(Color.FromArgb(0xA3, 0x21, 0x1D, 0x21)),
+                Background = new SolidColorBrush(Theme.IsLight ? Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xA3, 0x21, 0x1D, 0x21)),
                 BorderBrush = (Brush)Application.Current.Resources["PlayarrLineStrong"],
                 BorderThickness = new Thickness(1),
                 UseSystemFocusVisuals = false,
@@ -343,8 +343,8 @@ namespace Playarr.Xbox.Views
                     EndPoint = new Windows.Foundation.Point(0.7, 1),
                     GradientStops =
                     {
-                        new GradientStop { Color = Color.FromArgb(0xFF, 0x6C, 0x28, 0x3E), Offset = 0 },
-                        new GradientStop { Color = Color.FromArgb(0xFF, 0x9E, 0x29, 0x4E), Offset = 1 },
+                        new GradientStop { Color = Theme.IsLight ? Color.FromArgb(0xFF, 0xE9, 0xB4, 0xC2) : Color.FromArgb(0xFF, 0x6C, 0x28, 0x3E), Offset = 0 },
+                        new GradientStop { Color = Theme.IsLight ? Color.FromArgb(0xFF, 0xBA, 0x4A, 0x6C) : Color.FromArgb(0xFF, 0x9E, 0x29, 0x4E), Offset = 1 },
                     },
                 },
             });

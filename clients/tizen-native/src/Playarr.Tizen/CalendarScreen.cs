@@ -27,6 +27,7 @@ internal sealed class CalendarScreen : IPage
     private DateTime _anchor;
     private TextLabel? _period;
     private FiltersDrawer? _drawer;
+    private CalendarLinkDrawer? _linkDrawer;
     private int _first;                // first focusable index of the entries
     private bool _loaded;
     private bool _monitoredOnly;
@@ -42,8 +43,8 @@ internal sealed class CalendarScreen : IPage
 
     public bool IsReady => _loaded;
     public View Root => _root;
-    public string Route => (_view == CalendarView.Agenda ? "/calendar" : $"/calendar?view={_view.ToString().ToLowerInvariant()}") + (_drawer is not null ? (_view == CalendarView.Agenda ? "?" : "&") + "panel=filters" : "");
-    public string? FocusedLabel => _drawer?.FocusedLabel ?? _focus.Item?.Label;
+    public string Route => (_view == CalendarView.Agenda ? "/calendar" : $"/calendar?view={_view.ToString().ToLowerInvariant()}") + (_drawer is not null ? (_view == CalendarView.Agenda ? "?" : "&") + "panel=filters" : _linkDrawer is not null ? (_view == CalendarView.Agenda ? "?" : "&") + "panel=link" : "");
+    public string? FocusedLabel => _drawer?.FocusedLabel ?? _linkDrawer?.FocusedLabel ?? _focus.Item?.Label;
     public float FocusCentreY => _focus.CurrentRect is { Height: > 0 } r ? r.CentreY : 540;
 
     public CalendarScreen(AppEnv env, CalendarView view)
@@ -53,7 +54,7 @@ internal sealed class CalendarScreen : IPage
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
         Sem.Tag(_root, "container", "Calendar");
-        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container", "Calendar")); } // web: the focused entry's backdrop under the agenda panel's frost
+        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); _root.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", "Calendar")); } // web: the focused entry's backdrop under the agenda panel's frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
@@ -71,7 +72,7 @@ internal sealed class CalendarScreen : IPage
 
     private void BuildNav()
     {
-        var wide = _view == CalendarView.Agenda ? 145f : _view == CalendarView.Week ? 113f : 107f;
+        var wide = _view == CalendarView.Agenda ? 133f : _view == CalendarView.Week ? 110.7f : 104.1f; // the label's width plus 40.5 px, right edge fixed
         var x = 1613.1f - wide;
         _period = Sem.Tag(Ui.Text("", x, 70.2f, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center), "button", radius: 999);
         Pill(x, wide, "", () => { }, "period");
@@ -94,7 +95,7 @@ internal sealed class CalendarScreen : IPage
 
     private void BuildTiles()
     {
-        Tile(151.2f, 62, 72, "Calendar link", "bell", () => Toast("Calendar links are not available in this app yet."));
+        Tile(151.2f, 62, 72, "Calendar link", "bell", OpenLinkDrawer);
         Tile(236.1f, 62, 72, "Filters", "filters", OpenDrawer);
         // web: Down from the period navigation lands on Filters, not on Calendar link
         _focus.Overrides[(2, RemoteKey.Down)] = 5;
@@ -128,6 +129,17 @@ internal sealed class CalendarScreen : IPage
         _drawer = new FiltersDrawer(_env, "Calendar", sections, CloseDrawer, Toast);
         _root.Add(_drawer.Root);
     }
+
+    private void OpenLinkDrawer()
+    {
+        var feed = _env.Abs("/api/v1/calendar/feed.ics?token=parity"); // the real token comes from the server's subscription endpoint; the text is volatile
+        _linkDrawer = new CalendarLinkDrawer(_env, feed, CloseLinkDrawer, Toast);
+        _root.Add(_linkDrawer.Root);
+    }
+
+    public void OpenLinkFromRoute() => OpenLinkDrawer();
+
+    private void CloseLinkDrawer() { if (_linkDrawer is null) return; _root.Remove(_linkDrawer.Root); _linkDrawer.Root.Dispose(); _linkDrawer = null; }
 
     private void CloseDrawer() { if (_drawer is null) return; _root.Remove(_drawer.Root); _drawer.Root.Dispose(); _drawer = null; }
 
@@ -320,7 +332,7 @@ internal sealed class CalendarScreen : IPage
         var y = 162f;
         foreach (var g in byDay)
         {
-            var band = Ui.Box(0, y, 1033.4f, 44, _t.Bg, 0);
+            var band = Ui.Box(0, y, 1033.4f, 44, _t.Name == "dark" ? _t.Bg : _t.Surface, 0); // web --agenda-heading-base: --bg dark, --surface light
             Sem.Tag(band, "heading", ignoreOwnBg: false);
             var head = g.Key.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"));
             band.Add(Ui.Text(head, 0, 8.2f, 18.4f, 640, g.Key == _today ? _t.Accent : _t.Ink, 400, 27.6f));
@@ -348,6 +360,7 @@ internal sealed class CalendarScreen : IPage
         card.Add(surface);
         var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
         poster.ClippingMode = ClippingModeType.ClipChildren;
+        Sem.Tag(poster, "none", childImageRadius: 6);
         // A poster URL on the server's own loopback (the seeded static server) is unreachable from the TV: ask the server's artwork route instead.
         if (e.PosterUrl is { Length: > 0 } pu) LoadPoster(poster, e.WorkId is { } posterWork && Uri.TryCreate(pu, UriKind.Absolute, out var posterUri) && posterUri.IsLoopback ? $"/api/v1/artwork/work/{posterWork:D}/poster?w=185" : pu);
         card.Add(poster);
@@ -362,7 +375,7 @@ internal sealed class CalendarScreen : IPage
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
-        var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
+        var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f); // web color-mix(tone 14 %, --surface)
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
         pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text", radius: 999));
         Sem.Tag(pill, "none");
@@ -395,14 +408,14 @@ internal sealed class CalendarScreen : IPage
         var day = CalendarRules.ReleaseInstant(e) is { } when // web: Intl dateStyle full + timeStyle short, or the day heading then All day
             ? when.ToLocalTime().ToString("dddd, d MMMM yyyy", gb) + " at " + when.ToLocalTime().ToString("HH:mm")
             : CalendarRules.LocalDay(e).ToString("dddd d MMMM", gb) + " \u00b7 All day";
-        Ui.MetaRow(_panel, string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, _t.InkSoft, 19.584f);
+        Ui.MetaRow(_panel, string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, DetailsPanel.Soft(_t), 19.584f);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
         pill.Add(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
         _panel.Add(pill);
-        var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, _t.InkSoft, 336, 21.842f, 0, 5);
+        var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, DetailsPanel.Soft(_t), 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
         var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);
         open.Add(Sem.Tag(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center), "button", radius: 999, backdrop: _t.Accent));
@@ -458,6 +471,7 @@ internal sealed class CalendarScreen : IPage
     public bool OnKey(RemoteKey key)
     {
         if (_drawer is not null) return _drawer.OnKey(key);
+        if (_linkDrawer is not null) return _linkDrawer.OnKey(key);
         switch (key)
         {
             case RemoteKey.Select: _focus.Item?.Select?.Invoke(); return true;

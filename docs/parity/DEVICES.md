@@ -43,7 +43,7 @@ parity server with the pinned clock (`2026-10-07T12:00:00Z`). Prerequisites: the
 (Xvfb, never a VNC server), the debug tpk (`clients/tizen-native/scripts/deploy.sh` with `PLAYARR_BUILD_ARGS=-p:PlayarrDebug=true`)
 installed and signed in as the static `parity` account (uninstall first for a fresh sign-in), `PARITY_LOCK_DIR` set to a scratch
 directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the tizen-webos lane. Output is `<out>/dark`, `<out>/light`
-`<out>/dpad.json` and the layout documents `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md; the debug mirror's `POST /layout` walks the NUI view tree, the driver writes it with every screenshot; `PARITY_NO_LAYOUT=1` skips it); point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens.
+`<out>/dpad.json` (the screens run includes the ref-only `calendar-link` through `--extra-screens`) and the layout documents `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md; the debug mirror's `POST /layout` walks the NUI view tree, the driver writes it with every screenshot; `PARITY_NO_LAYOUT=1` skips it); point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens.
 
 ### Tizen and webOS: how the shared runs work
 
@@ -105,7 +105,7 @@ D-pad column as n/a.
 | Android phone | Android Emulator, phone image | `adb shell input` | `adb exec-out screencap` | Software codecs | `android-phone` |
 | HarmonyOS phone | DevEco Previewer | Previewer input | Previewer screenshot | UI only, no real playback | `harmony-phone` |
 | Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad | Display capture over VNC | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
-| Nura (postmarketOS) | `pmbootstrap` qemu-amd64 | QEMU input | QEMU screendump | Slow; software rendering | `postmarketos` |
+| Nura (postmarketOS) | `pmbootstrap` qemu-amd64, headless (no VNC) | QEMU QMP tablet taps and the app's route control file; touch phone, so no D-pad checks (`dpadNA`) | QEMU `screendump` over QMP | Slow; software rendering. Reproduce: `scripts/parity/nura/run.sh <outdir>` (see `scripts/parity/nura/README.md`) | `postmarketos` |
 
 ## Sailfish emulator: cold boot
 
@@ -141,6 +141,21 @@ ships its download engine.
 Notifications (a live system notification per download) and the now-playing entry are checked only where the driver sets
 `supports.notifications` and `supports.nowPlaying`; elsewhere the suite records "not supported".
 
+## Check for updates: which clients have an in-app updater
+
+The web profile page shows a "Check for updates" button only where the shell can install a new build itself
+(`isAndroidTv` in `clients/tv-web/web/src/pages/Profiles.tsx`, bridge in `androidTvUpdate.ts`). The layout score drops it
+from the denominator (`scripts/parity/layout-exclusions.json`) for the clients below, whose packages change only through a
+store or a sideload. Native packages and their update paths are in `docs/versioning-policy.md`.
+
+| Client | In-app updater | Evidence |
+| --- | --- | --- |
+| Android TV, Android phone and tablet | Yes | Google Play In-App Updates and the sideload installer bridge |
+| iOS and iPadOS | Yes | `PlayarrKit/Update` module |
+| Roku | No | Channel Store updates only; Roku has no API to install a channel from inside a channel |
+| Fire TV (Vega OS) | No | `.vpkg` is immutable once installed (`docs/versioning-policy.md`) |
+| Xbox | No | MSIX: Microsoft Store or sideload (`docs/versioning-policy.md`) |
+
 ## Legend and build.json rules
 
 - After every capture run, unmerged branches included, write captures to the legend dir, refresh `web/` in the same
@@ -160,3 +175,15 @@ Boot the emulator headless (`-no-window`), then `scripts/parity/android-mobile/e
 
 Layout export (Android phone and tablet): every capture also writes `<cand>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md) from the debug build's own `PlayarrLayoutExport` (`am broadcast -a io.playarr.mobile.PARITY_LAYOUT`): Compose semantics text runs with the resolved text style, plus `parityBox` / `parityTag` records for links, buttons, images, painted containers with their resolved fill, radius and alpha. `run.sh` scores each file with `layout-score.mjs` and prints `layout-scores.txt`. The tablet emulator runs as the user unit `playarr-android-tablet.service` (headless, own cgroup); `emu-recycle.sh` restarts a unit when its memory passes a limit.
 
+## Apple TV and macOS: one-command hosted run
+
+`scripts/parity/apple/run.sh <tvos|macos> [app-ref] [workflow-ref]` dispatches `parity-apple.yml` (static server, pinned
+clock `2026-10-07T12:00:00Z`, screens in both themes plus the D-pad checks), waits for it, downloads the artifacts and
+writes them into the legend directory named by `LEGEND_ROOT` (`apple/tvos` or `macos/dev`, with `dpad.json` and
+`build.json`). The workflow ref defaults to the app ref, so driver changes run before they reach `main`.
+## iPhone and iPad: reproduce command
+
+Hosted only (no local Apple toolchain), static server, pinned clock `2026-10-07T12:00:00Z` (the workflow default):
+`gh workflow run parity-apple-ios.yml --ref main -f devices=iphone,ipad -f ref=<40-character app commit SHA>`, then
+download the `apple-wall-<device>-<run id>-dark|light` artifacts into `ios-phone/dev` and `ios-tablet/dev`
+(light screens in the `light/` subfolder) and write `build.json`. Touch devices: no D-pad checks.

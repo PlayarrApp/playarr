@@ -42,7 +42,7 @@ struct WMPanelButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(WM.font(11.52, 720))
+                .wm(11.52, 720)
                 .foregroundStyle(primary ? PlayarrStyle.onAccent : WM.inkSoft)
                 .frame(width: width, height: height)
                 .background {
@@ -82,7 +82,7 @@ struct WMFieldBox<Field: View>: View {
 
     var body: some View {
         field()
-            .font(WM.font(14, 400))
+            .wm(14, 400)
             .foregroundStyle(WM.ink)
             .padding(.horizontal, 14)
             .frame(width: 318, height: 48, alignment: .leading)
@@ -148,7 +148,7 @@ struct WMPanelPage<Content: View>: View {
             }
             Button(action: onBack) {
                 Text("\u{2190}")
-                    .font(WM.font(12.8, 720))
+                    .wm(12.8, 720)
                     .foregroundStyle(WM.shell)
                     .frame(width: 44, height: 40)
                     .background(WM.ink, in: Ellipse())

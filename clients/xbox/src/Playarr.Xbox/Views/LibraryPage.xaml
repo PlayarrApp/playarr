@@ -27,8 +27,8 @@
         <!-- Web A-Z jump rail at the right edge. -->
         <ScrollViewer
             x:Name="LetterRailScrollViewer"
-            Width="40"
-            Margin="0,270,21,65"
+            Width="44"
+            Margin="0,270,19,65"
             HorizontalAlignment="Right"
             VerticalAlignment="Stretch"
             VerticalScrollBarVisibility="Hidden"

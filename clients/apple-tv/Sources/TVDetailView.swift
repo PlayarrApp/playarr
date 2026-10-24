@@ -9,6 +9,7 @@ struct TVWorkDetailView: View {
     @Environment(\.requestNavFocus) private var requestNavFocus
     @State private var viewModel: TVWorkDetailViewModel
     @State private var showDownloadNote = false
+    @Environment(\.colorScheme) private var scheme
     @FocusState private var focusedEpisodeID: UUID?
     /// Web: the primary action (Play, Start, Resume) holds focus when the page opens.
     @FocusState private var playFocused: Bool
@@ -40,6 +41,18 @@ struct TVWorkDetailView: View {
 
     var body: some View {
         content
+            #if os(macOS) || os(tvOS)
+            .overlay(alignment: .bottomTrailing) {
+                // Web: the Similar Titles cards fade into the page over the last 55 px (about 70 % at the edge).
+                if !viewModel.similar.isEmpty {
+                    LinearGradient(colors: [DesignTokens.Color.backgroundBase.opacity(0), DesignTokens.Color.backgroundBase.opacity(0.72)],
+                                   startPoint: .top, endPoint: .bottom)
+                        .frame(width: 1038.4, height: 55)
+                        .allowsHitTesting(false)
+                }
+            }
+            .ignoresSafeArea() // the overlay must reach the physical bottom edge (tvOS insets it by the TV safe area)
+            #endif
             .alert("Downloads", isPresented: $showDownloadNote) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -67,6 +80,8 @@ struct TVWorkDetailView: View {
             }
         }
         .ignoresSafeArea()
+        // The engine opens a film on its first control (Download); the web opens it on Play, so a key-driven Select reaches Play.
+        .defaultFocus($playFocused, work.kind != .series)
         .task {
             if viewModel.state == .idle { await viewModel.load() }
             try? await Task.sleep(for: .milliseconds(200))
@@ -128,6 +143,7 @@ struct TVWorkDetailView: View {
             .font(TVTheme.font(size: 12.29, css: 820))
             .tracking(0.98)
             .foregroundStyle(DesignTokens.Stage.brandInk)
+            .parityLayout(text: text.uppercased(), size: 12.29, weight: Int(820), color: DesignTokens.Stage.brandInk, tracking: 0.98)
             .placed(x: 153.6, y: 259.2, w: 455, h: 18.4)
     }
 
@@ -140,6 +156,7 @@ struct TVWorkDetailView: View {
                     .tracking(-4.98)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
+                    .parityLayout(text: line, size: 69.12, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -4.98)
                     .fixedSize()
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
             }
@@ -155,6 +172,7 @@ struct TVWorkDetailView: View {
                     .font(TVTheme.font(size: 10.56, weight: part.1 ? .bold : .regular))
                     .foregroundStyle(part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
                     .lineLimit(1)
+                    .parityLayout(text: part.0, size: 10.56, weight: Int(TVTheme.cssWeight(part.1 ? .bold : .regular)))
             }
         }
     }
@@ -182,7 +200,8 @@ struct TVWorkDetailView: View {
                     .font(TVTheme.font(size: 12.86, weight: .regular))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
-                    .lineSpacing(macDetail(2.8, 0)) // static web ref: 21 pt line pitch
+                    .lineSpacing(macDetail(2.8, 0))
+                    .parityLayout(text: synopsis, size: 12.86, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Stage.inkMuted) // static web ref: 21 pt line pitch
                     .frame(width: 336, alignment: .leading)
                     .placed(x: 153.6, y: synopsisY + macDetail(1.5, 0), w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
             }
@@ -215,7 +234,7 @@ struct TVWorkDetailView: View {
         if let runtime = TVWebFormat.runtime(ms: runtimeMs) { parts.append((runtime, false)) }
         let airDate = episode?.episode.airDate ?? work.releaseDate
         // Web (static refs): the year is the series' own, the date below is the episode's.
-        if let year = TVWebFormat.year(macDetail(work.releaseDate ?? airDate, airDate)) { parts.append((year, false)) }
+        if let year = TVWebFormat.year(work.releaseDate ?? airDate) { parts.append((year, false)) }
         if let date = TVWebFormat.date(airDate) {
             parts.append(("\(episode?.episode.airDate != nil ? "Aired" : "Premiered")  \(date)", false))
         }
@@ -232,6 +251,7 @@ struct TVWorkDetailView: View {
                     .tracking(-0.74)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
                     .lineLimit(1)
+                    .parityLayout(text: episodeTitle, size: 21.12, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textSecondary, tracking: -0.74)
                     .placed(x: 153.6, y: episodeY, w: 309.2, h: 24.3)
             }
             metaRow(parts).placed(x: 153.6, y: metaY, h: 15.8)
@@ -240,6 +260,7 @@ struct TVWorkDetailView: View {
                     .font(TVTheme.font(size: 19.2, weight: .semibold))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
+                    .parityLayout(text: lagText, size: 19.2, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
                     .placed(x: 153.6, y: lagY, w: 455, h: 28.8)
             }
             if !synopsis.isEmpty {
@@ -247,6 +268,7 @@ struct TVWorkDetailView: View {
                     .font(TVTheme.font(size: 12.86, weight: .regular))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
+                    .parityLayout(text: synopsis, size: 12.86, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Stage.inkMuted)
                     .frame(width: 336, alignment: .leading)
                     .placed(x: 153.6, y: synopsisY, w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
             }
@@ -299,6 +321,7 @@ struct TVWorkDetailView: View {
                 Text(glyph)
                     .font(TVTheme.font(size: 12.8, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.brandPrimary)
+                    .parityLayout(text: glyph, size: 12.8, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.brandPrimary)
             }
             if let symbol {
                 Image(systemName: symbol)
@@ -308,6 +331,7 @@ struct TVWorkDetailView: View {
             Text(label)
                 .font(TVTheme.font(size: 11.14, weight: .bold))
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: label, size: 11.14, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textPrimary)
         }
         .frame(width: width, height: 64)
         .background(pillBackground(false))
@@ -319,24 +343,42 @@ struct TVWorkDetailView: View {
                 .font(.system(size: 10.1, weight: .regular))
             Text(text)
                 .font(TVTheme.font(size: 11.9, weight: .bold))
+                .parityLayout(text: text, size: 11.9, weight: Int(TVTheme.cssWeight(.bold)))
         }
         .foregroundStyle(light ? DesignTokens.Color.backgroundBase : Color.white)
         .frame(width: 156, height: 64)
-        .background(pillBackground(true, light: light))
         // Web: the focused Play (the default focus on load) is a darker crimson (165, 39, 69) inside the control ring
-        // (3 px, 2 px offset). Live focus draws its own look; the frozen capture has none, so it gets this one.
-        .background { if focusedLook { Capsule().fill(Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255)) } }
-        .overlay {
-            if focusedLook {
-                Capsule().stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5)
-            }
+        // (3 px, 2 px offset). The frozen capture has no focus, so it gets this look; on the Mac it follows the real focus.
+        .modifier(PlayFocusLook(forced: focusedLook))
+        .background(pillBackground(true, light: light))
+    }
+
+    private struct PlayFocusLook: ViewModifier {
+        let forced: Bool
+        @Environment(\.isFocused) private var isFocused
+
+        func body(content: Content) -> some View {
+            let on = forced || isFocused
+            return content
+                .background { if on { Capsule().fill(Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255)) } }
+                .overlay { if on { Capsule().stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5) } }
         }
+    }
+
+    /// A key-driven parity capture opens the player as the web reference shows it: the clip's frame at 0:02 of 1:00 with the
+    /// controls, since a simulator stream is not up in time and the reference is a still (debug builds only).
+    private static var captureStill: (position: Double, duration: Double, menuOpen: Bool)? {
+        #if DEBUG
+        return TVParityLaunch.pinnedClock ? (2.0, 60.0, false) : nil
+        #else
+        return nil
+        #endif
     }
 
     @ViewBuilder
     private func moviePlay(_ detail: WorkDetail, x: CGFloat, y: CGFloat) -> some View {
         // Web: Play is the focused control on load (scale 1.06).
-        let label = playLabel("Play", light: false, focusedLook: frozen).scaleEffect(1.06)
+        let label = playLabel("Play", light: false, focusedLook: frozen || macDetail(TVParityLaunch.pinnedClock, false)).scaleEffect(1.06)
         if let mediaFileID = detail.mediaFileID, interactive {
             NavigationLink {
                 TVPlayerView(
@@ -344,13 +386,17 @@ struct TVWorkDetailView: View {
                     title: detail.work.title,
                     apiClient: apiClient,
                     suggestionsWorkID: detail.work.id,
-                    artworkPath: detail.work.images.first(where: { $0.kind == .poster })?.url ?? detail.work.images.first?.url
+                    artworkPath: detail.work.images.first(where: { $0.kind == .poster })?.url ?? detail.work.images.first?.url,
+                    parity: Self.captureStill
                 )
             } label: {
                 label
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused($playFocused)
+            #if os(macOS)
+            .macPreferredFocus() // web: Play holds the focus when the film page opens
+            #endif
             .placed(x: x, y: y, w: 156, h: 64)
         } else {
             label.placed(x: x, y: y, w: 156, h: 64)
@@ -411,10 +457,12 @@ struct TVWorkDetailView: View {
                 .font(TVTheme.font(size: 17.66, weight: .semibold))
                 .tracking(-0.53)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: title, size: 17.66, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.53)
                 .placed(x: 881.6, y: y, w: 992.4, h: 26.5)
             Text(count)
                 .font(TVTheme.font(size: 9.98, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: count, size: 9.98, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                 .placed(x: 881.6, y: y + 30.5, w: 992.4, h: 15)
         }
     }
@@ -439,17 +487,20 @@ struct TVWorkDetailView: View {
                             Text(String(format: "%02d", chapter.index + 1))
                                 .font(TVTheme.font(size: 19.2, css: 560))
                                 .foregroundStyle(Color.white)
+                                .parityLayout(text: String(format: "%02d", chapter.index + 1), size: 19.2, weight: Int(560), color: Color.white)
                                 .padding(.trailing, 11.6)
                                 .padding(.bottom, 8.8)
                         }
                         Text(TVWebFormat.clock(ms: chapter.startMs))
                             .font(TVTheme.font(size: 8.83, weight: .bold))
                             .foregroundStyle(DesignTokens.Color.textDisabled)
+                            .parityLayout(text: TVWebFormat.clock(ms: chapter.startMs), size: 8.83, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
                             .placed(x: 0, y: 165.3, w: 28, h: 13.2)
                         Text("Chapter \(chapter.index + 1)")
                             .font(TVTheme.font(size: 11.52, css: 610))
                             .tracking(-0.17)
                             .foregroundStyle(DesignTokens.Color.textPrimary)
+                            .parityLayout(text: "Chapter \(chapter.index + 1)", size: 11.52, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.17)
                             .placed(x: 28.9, y: 162.3, w: 239.2, h: 17.3)
                     }
                     .frame(width: 268, height: 190, alignment: .topLeading)
@@ -486,6 +537,7 @@ struct TVWorkDetailView: View {
                                     .font(TVTheme.font(size: 11.52, weight: .semibold))
                                     .foregroundStyle(DesignTokens.Color.textPrimary)
                                     .lineLimit(1)
+                                    .parityLayout(text: other.title, size: 11.52, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
                                     .frame(width: cardWidth, alignment: .leading)
                             }
                         }
@@ -522,10 +574,12 @@ struct TVWorkDetailView: View {
                 .font(TVTheme.font(size: 17.664, css: 610))
                 .tracking(-0.53)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: "Cast", size: 17.664, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.53)
                 .placed(x: 881.6, y: 891, w: 400, h: 26.5)
             Text(cast.count == 1 ? "1 person" : "\(cast.count) people")
                 .font(TVTheme.font(size: 9.984, css: 400))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                .parityLayout(text: cast.count == 1 ? "1 person" : "\(cast.count) people", size: 9.984, weight: Int(400), color: DesignTokens.Color.textDisabled)
                 .placed(x: 881.6, y: 921.5, w: 400, h: 15)
             ForEach(Array(cast.prefix(12).enumerated()), id: \.element.id) { index, credit in
                 let initials = credit.person.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
@@ -535,6 +589,7 @@ struct TVWorkDetailView: View {
                         .font(TVTheme.font(size: 34.4, css: 640))
                         .tracking(-1.72)
                         .foregroundStyle(DesignTokens.Color.textSecondary)
+                        .parityLayout(text: initials, size: 34.4, weight: Int(640), color: DesignTokens.Color.textSecondary, tracking: -1.72)
                     if let url = credit.person.headshotURL.flatMap({ apiClient.artworkURL(forPath: $0, width: 240) }),
                        url.scheme?.hasPrefix("http") == true {
                         AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
@@ -603,6 +658,7 @@ struct TVWorkDetailView: View {
                         count: "\(season.episodes.count) episodes",
                         y: top
                     )
+                    #if !os(tvOS) // the static web ref shows no season download arrow
                     Button { showDownloadNote = true } label: {
                         Image(systemName: "arrow.down.to.line")
                             .font(.system(size: 18, weight: .regular))
@@ -612,6 +668,7 @@ struct TVWorkDetailView: View {
                     .buttonStyle(TVFocusableCardButtonStyle())
                     .accessibilityLabel("Download \(season.season.title ?? "Season \(season.season.seasonNumber)")")
                     .placed(x: 1841.7, y: top + 10.9, w: 18.7, h: 24.2, alignment: .center)
+                    #endif
                     ForEach(Array(season.episodes.enumerated()), id: \.element.id) { index, episode in
                         let selected = episode.episode.id == activeID
                         episodeCard(detail, season: season, episode: episode, ordered: ordered, selected: selected)
@@ -660,10 +717,17 @@ struct TVWorkDetailView: View {
             // The art grows to 1.025 over 240 ms (ease) when focused.
             .scaleEffect(selected ? 1.025 : 1)
             .animation(.easeInOut(duration: 0.24), value: selected)
+            #if os(tvOS)
+            // Static web ref: the next-up episode (focused on load) wears the pink ring.
+            .overlay {
+                if selected { RoundedRectangle(cornerRadius: 13.44, style: .continuous).stroke(scheme == .dark ? Color(red: 0.93, green: 0.63, blue: 0.71) : DesignTokens.Stage.brandPink, lineWidth: 2.5) }
+            }
+            #endif
             .overlay(alignment: .bottomTrailing) {
                 Text(String(format: "%02d", ep.episodeNumber))
                     .font(TVTheme.font(size: 19.2, weight: .semibold))
                     .foregroundStyle(Color.white)
+                    .parityLayout(text: String(format: "%02d", ep.episodeNumber), size: 19.2, weight: Int(TVTheme.cssWeight(.semibold)), color: Color.white)
                     .padding(.trailing, 11.6)
                     .padding(.bottom, 8.8)
             }
@@ -678,6 +742,7 @@ struct TVWorkDetailView: View {
                 .font(TVTheme.font(size: 8.83, weight: .bold))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .lineLimit(1)
+                .parityLayout(text: code, size: 8.83, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
                 .fixedSize()
                 .placed(x: 0, y: 158, w: 48, h: 13.2)
             Text(title)
@@ -685,6 +750,7 @@ struct TVWorkDetailView: View {
                 .tracking(-0.17)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(1)
+                .parityLayout(text: title, size: 11.52, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.17)
                 .placed(x: 49.3, y: 155, w: 218.7, h: 17.3)
         }
         .frame(width: 268, height: 190, alignment: .topLeading)

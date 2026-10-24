@@ -1,0 +1,1 @@
+- The parity layout export includes accessibility elements (buttons, links, headings, images).

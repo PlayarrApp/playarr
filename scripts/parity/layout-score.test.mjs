@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deltaE, formatReport, scoreLayout } from "./layout-score.mjs";
+import { deltaE, formatReport, loadExclusions, scoreLayout } from "./layout-score.mjs";
 import { layoutPageFn, volatileFor } from "./layout-dump.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -75,4 +76,74 @@ test("the report carries the web occluded count", () => {
   assert.equal(r.occluded, 3);
   assert.equal(scoreLayout(load("web.json"), load("device-ok.json")).occluded, 0);
   assert.match(formatReport(r), /3 occluded web elements dropped/);
+});
+
+test("the player audio button is volatile: a device 'Audio: English' at the same box passes, a moved one fails", () => {
+  assert.ok(volatileFor("player-controls").some((v) => v.name === "player-audio"));
+  const box = { x: 1500, y: 980, w: 48, h: 48 };
+  const el = (text, rect, extra = {}) => ({ text, role: "button", rect, color: "#ffffff", background: "#202020", fontSize: null, fontWeight: null, ...extra });
+  const web = { screen: "player-controls", theme: "dark", viewport: { w: 1920, h: 1080, dpr: 1 }, elements: [el("", box, { volatile: "player-audio" })] };
+  const dev = (text, rect) => ({ ...web, elements: [el(text, rect)] });
+  assert.equal(scoreLayout(web, dev("Audio: English", box)).score, 100);
+  assert.ok(scoreLayout(web, dev("Audio: English", { ...box, x: 1560 })).score < 100);
+});
+
+const slug = (h) => h.toLowerCase().replace(/[^\w\- ]/g, "").replace(/ /g, "-");
+const box = (x) => ({ x, y: 10, w: 100, h: 20 });
+const el = (text, role, x) => ({ text, role, rect: box(x), color: null, background: "#101010", fontSize: null, fontWeight: null });
+const exRef = { screen: "film-detail", theme: "dark", viewport: { w: 1920, h: 1080, dpr: 1 }, elements: [el("Play", "button", 0), el("Download Film 1", "button", 120), el("Download", "text", 130), el("Info", "button", 240)] };
+const exRules = { roku: [
+  { screen: "film-detail", match: { role: "button", textPrefix: "Download " }, reason: "no downloads", doc: "docs/parity/DEVICES.md#x" },
+  { screen: "film-detail", match: { text: "Download" }, reason: "no downloads", doc: "docs/parity/DEVICES.md#x" },
+  { screen: "profiles", match: { text: "Info" }, reason: "other screen", doc: "docs/parity/DEVICES.md#x" },
+] };
+const exDev = (shift = 0) => ({ ...exRef, elements: [el("Play", "button", 0), el("Info", "button", 240 + shift)] });
+
+test("excluded web elements leave the denominator and are listed with the reason", () => {
+  const r = scoreLayout(exRef, exDev(), { client: "roku", exclusions: exRules });
+  assert.equal(r.total, 2);
+  assert.equal(r.score, 100);
+  assert.deepEqual(r.excluded.map((x) => x.text), ["Download Film 1", "Download"]);
+  assert.equal(r.excluded[0].reason, "no downloads");
+  assert.match(formatReport(r), /excluded button "Download Film 1": no downloads/);
+  // without the client, or for another client, nothing is excluded and the missing tile fails
+  assert.equal(scoreLayout(exRef, exDev()).score, 50);
+  assert.equal(scoreLayout(exRef, exDev(), { client: "firetv", exclusions: exRules }).excluded.length, 0);
+});
+
+test("an exclusion never shifts neighbours: a moved neighbour still fails at its web position", () => {
+  const r = scoreLayout(exRef, exDev(30), { client: "roku", exclusions: exRules });
+  assert.equal(r.score, 50);
+  assert.equal(r.failures[0].ref.text, "Info");
+  assert.equal(r.failures[0].problems[0].delta, 30);
+  const run = () => JSON.stringify(scoreLayout(exRef, exDev(30), { client: "roku", exclusions: exRules }));
+  assert.equal(run(), run());
+});
+
+test("layout-exclusions.json: every entry cites a doc heading that exists and the loader rejects uncited entries", () => {
+  const table = loadExclusions();
+  const root = join(here, "../..");
+  let n = 0;
+  for (const [client, list] of Object.entries(table)) {
+    if (client.startsWith("$")) continue;
+    for (const x of list) {
+      n += 1;
+      const [path, anchor] = x.doc.split("#");
+      const heads = readFileSync(join(root, path), "utf8").split("\n").filter((l) => /^#+ /.test(l)).map((l) => slug(l.replace(/^#+ /, "")));
+      assert.ok(heads.includes(anchor), `${client}: ${x.doc} has no such heading`);
+    }
+  }
+  assert.ok(n > 0);
+  const tmp = join(mkdtempSync(join(tmpdir(), "excl-")), "x.json");
+  writeFileSync(tmp, JSON.stringify({ roku: [{ screen: "*", match: { text: "A" }, reason: "r" }] }));
+  assert.throws(() => loadExclusions(tmp), /bad entry/);
+});
+
+test("CLI --client reports the exclusions", () => {
+  const dir = mkdtempSync(join(tmpdir(), "excl-"));
+  writeFileSync(join(dir, "ref.json"), JSON.stringify({ ...exRef, screen: "actions", elements: [el("Play", "button", 0), el("⇩ Download", "button", 120), el("Download", "text", 130)] }));
+  writeFileSync(join(dir, "dev.json"), JSON.stringify(exDev()));
+  const out = execFileSync("node", [join(here, "layout-score.mjs"), "--ref", join(dir, "ref.json"), "--device", join(dir, "dev.json"), "--client", "roku"], { encoding: "utf8" });
+  assert.match(out, /2 excluded/);
+  assert.match(out, /excluded text "Download"/);
 });

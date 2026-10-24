@@ -75,6 +75,7 @@ struct TVCalendarView: View {
             Text(message)
                 .font(TVTheme.font(size: 19.2, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.stateError)
+                .parityLayout(text: message, size: 19.2, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.stateError)
                 .placed(x: 153.6, y: 260, w: 900)
         case .loaded:
             switch model.mode {
@@ -83,6 +84,7 @@ struct TVCalendarView: View {
                     Text("Nothing scheduled")
                         .font(TVTheme.font(size: 22.4, weight: .bold))
                         .foregroundStyle(DesignTokens.Color.textPrimary)
+                        .parityLayout(text: "Nothing scheduled", size: 22.4, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textPrimary)
                         .placed(x: 783.4, y: 170, w: 600, h: 33.6)
                 } else {
                     agendaList(model)
@@ -152,6 +154,7 @@ struct TVCalendarView: View {
             Text(glyph)
                 .font(TVTheme.font(size: 14.72, css: 720))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
+                .parityLayout(text: glyph, size: 14.72, weight: Int(720), color: DesignTokens.Color.textSecondary)
                 .frame(width: 50, height: 50)
                 .background(Circle().fill(DesignTokens.Color.backgroundElevated))
                 .overlay(Circle().stroke(DesignTokens.Stage.line.opacity(0.35), lineWidth: 1))
@@ -221,11 +224,13 @@ struct TVCalendarView: View {
             Text(Self.dayHeading(day))
                 .font(TVTheme.font(size: 18.4, css: 640))
                 .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: Self.dayHeading(day), size: 18.4, weight: Int(640), color: DesignTokens.Color.textPrimary)
             if day == today {
                 Text("TODAY")
                     .font(TVTheme.font(size: 11.2, css: 640))
                     .tracking(0.896)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .parityLayout(text: "TODAY", size: 11.2, weight: Int(640), color: DesignTokens.Color.textPrimary, tracking: 0.896)
                     .padding(.horizontal, 9)
                     .frame(height: 22)
                     .overlay(Capsule().stroke(DesignTokens.Color.textPrimary.opacity(0.6), lineWidth: 1))
@@ -254,6 +259,7 @@ struct TVCalendarView: View {
                 Text("This title is not in your catalogue yet.")
                     .font(TVTheme.font(size: 19.2, css: 400))
                     .foregroundStyle(DesignTokens.Color.textSecondary)
+                    .parityLayout(text: "This title is not in your catalogue yet.", size: 19.2, weight: Int(400), color: DesignTokens.Color.textSecondary)
             }
         } label: {
             entryCard(item, width: width, today: today)
@@ -284,11 +290,13 @@ struct TVCalendarView: View {
                     .font(TVTheme.font(size: 19.2, css: 640))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
+                    .parityLayout(text: Self.title(of: item), size: 19.2, weight: Int(640), color: DesignTokens.Color.textPrimary)
                     .frame(height: 28.8)
                 Text(subtitle)
                     .font(TVTheme.font(size: 19.2, css: 400))
                     .foregroundStyle(DesignTokens.Color.textSecondary)
                     .lineLimit(1)
+                    .parityLayout(text: subtitle, size: 19.2, weight: Int(400), color: DesignTokens.Color.textSecondary)
                     .frame(height: 28.8)
                 HStack(spacing: 12) {
                     Text(entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day")
@@ -344,6 +352,7 @@ struct TVCalendarView: View {
                             Text("Nothing scheduled")
                                 .font(TVTheme.font(size: 12.8, css: 400))
                                 .foregroundStyle(DesignTokens.Color.textDisabled)
+                                .parityLayout(text: "Nothing scheduled", size: 12.8, weight: Int(400), color: DesignTokens.Color.textDisabled)
                         }
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(alignment: .leading, spacing: 13.6) {
@@ -386,6 +395,7 @@ struct TVCalendarView: View {
                     .font(TVTheme.font(size: 12, css: 400))
                     .tracking(0.96)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: name.uppercased(), size: 12, weight: Int(400), color: DesignTokens.Color.textDisabled, tracking: 0.96)
                     .frame(width: 237.6, height: 30.8)
                     .placed(x: 153.6 + 237.6 * CGFloat(index), y: 174, w: 237.6, h: 30.8)
             }
@@ -416,6 +426,7 @@ struct TVCalendarView: View {
                                 .font(TVTheme.font(size: 12.48, css: item.entries.count > 1 ? 680 : 400))
                                 .foregroundStyle(DesignTokens.Color.textPrimary)
                                 .lineLimit(1)
+                                .parityLayout(text: item.entries.count > 1 ? "\(Self.title(of: item)) \u{00B7} \(item.entries.count)\u{00D7}" : Self.title(of: item), size: 12.48, weight: Int(item.entries.count > 1 ? 680 : 400), color: DesignTokens.Color.textPrimary)
                         }
                         .frame(height: 15)
                     }
@@ -427,10 +438,12 @@ struct TVCalendarView: View {
                     Text(String(Int(day.suffix(2)) ?? 0))
                         .font(TVTheme.font(size: 12.8, css: 640))
                         .foregroundStyle(DesignTokens.Color.textSecondary)
+                        .parityLayout(text: String(Int(day.suffix(2)) ?? 0), size: 12.8, weight: Int(640), color: DesignTokens.Color.textSecondary)
                     if items.count > shown.count {
                         Text("+\(items.count - shown.count) more")
                             .font(TVTheme.font(size: 12.48, css: 400))
                             .foregroundStyle(DesignTokens.Color.textSecondary)
+                            .parityLayout(text: "+\(items.count - shown.count) more", size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)
                     }
                 }
                 .padding(.leading, 11.8)
@@ -479,29 +492,31 @@ struct TVCalendarView: View {
             Text("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
                 .font(TVTheme.font(size: 12.48, css: 400))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
+                .parityLayout(text: "Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             switch model.feedState {
             case .unknown, .loading:
-                Text("Checking subscription\u{2026}").font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled)
+                Text("Checking subscription\u{2026}").font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled).parityLayout(text: "Checking subscription\u{2026}", size: 12.48, weight: Int(400), color: DesignTokens.Color.textDisabled)
             case .inactive:
-                Text("No subscription link").font(TVTheme.font(size: 12.48, css: 640)).foregroundStyle(DesignTokens.Color.textPrimary)
+                Text("No subscription link").font(TVTheme.font(size: 12.48, css: 640)).foregroundStyle(DesignTokens.Color.textPrimary).parityLayout(text: "No subscription link", size: 12.48, weight: Int(640), color: DesignTokens.Color.textPrimary)
                 linkButton("Create subscription link") { Task { await model.createFeed() } }
             case .active:
-                Text("Subscription link active").font(TVTheme.font(size: 12.48, css: 640)).foregroundStyle(DesignTokens.Color.textPrimary)
+                Text("Subscription link active").font(TVTheme.font(size: 12.48, css: 640)).foregroundStyle(DesignTokens.Color.textPrimary).parityLayout(text: "Subscription link active", size: 12.48, weight: Int(640), color: DesignTokens.Color.textPrimary)
                 Text("For security the link is not shown again. Regenerate it to get a new one.")
                     .font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: "For security the link is not shown again. Regenerate it to get a new one.", size: 12.48, weight: Int(400), color: DesignTokens.Color.textDisabled)
                     .fixedSize(horizontal: false, vertical: true)
                 linkButton("Reset link") { Task { await model.createFeed() } }
                 linkButton("Revoke link") { Task { await model.revokeFeed() } }
             case .created(let url):
-                Text("Scan to add to your phone's calendar").font(TVTheme.font(size: 12.48, css: 640)).foregroundStyle(DesignTokens.Color.textPrimary)
+                Text("Scan to add to your phone's calendar").font(TVTheme.font(size: 12.48, css: 640)).foregroundStyle(DesignTokens.Color.textPrimary).parityLayout(text: "Scan to add to your phone's calendar", size: 12.48, weight: Int(640), color: DesignTokens.Color.textPrimary)
                 TVLocalQRCodeImage(value: url).frame(width: 200, height: 200)
                 Text(url).font(TVTheme.mono(size: 10, css: 500)).foregroundStyle(DesignTokens.Color.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             case .unsupported:
-                Text("This server does not offer calendar links.").font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled)
+                Text("This server does not offer calendar links.").font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.textDisabled).parityLayout(text: "This server does not offer calendar links.", size: 12.48, weight: Int(400), color: DesignTokens.Color.textDisabled)
             case .failed(let message):
-                Text(message).font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.stateError)
+                Text(message).font(TVTheme.font(size: 12.48, css: 400)).foregroundStyle(DesignTokens.Color.stateError).parityLayout(text: message, size: 12.48, weight: Int(400), color: DesignTokens.Color.stateError)
             }
         }
         .frame(width: 268, alignment: .leading)
@@ -512,6 +527,7 @@ struct TVCalendarView: View {
             Text(label)
                 .font(TVTheme.font(size: 12.48, css: 720))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
+                .parityLayout(text: label, size: 12.48, weight: Int(720), color: DesignTokens.Color.textSecondary)
                 .frame(width: 268, height: 50)
                 .background(Capsule().fill(DesignTokens.Color.backgroundElevated))
                 .overlay(Capsule().stroke(DesignTokens.Stage.line.opacity(0.35), lineWidth: 1))
@@ -561,6 +577,7 @@ struct TVCalendarView: View {
                 .font(TVTheme.font(size: 12.288, css: 860))
                 .tracking(0.98)
                 .foregroundStyle(DesignTokens.Stage.brandInk)
+                .parityLayout(text: "\(Self.kindLabel(entry)) \u{00B7} \(Self.releaseLabel(entry))".uppercased(), size: 12.288, weight: Int(860), color: DesignTokens.Stage.brandInk, tracking: 0.98)
                 .placed(x: 153.6, y: 263.2, w: 455, h: 18.4)
             TVHeroTitle(title: title)
                 .placed(x: 153.6, y: 291.5, w: 379.5, h: 62.2 * CGFloat(lines), alignment: .topLeading)
@@ -627,6 +644,7 @@ struct TVCalendarView: View {
                 Text(hint)
                     .font(TVTheme.font(size: 12.48, css: 400))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
+                    .parityLayout(text: hint, size: 12.48, weight: Int(400), color: DesignTokens.Stage.inkMuted)
                     .placed(x: 153.6, y: y + 58 + 14 + CGFloat(index) * 24, w: 570, h: 18.7)
             }
         }
@@ -636,6 +654,7 @@ struct TVCalendarView: View {
         Text(label)
             .font(TVTheme.font(size: 14.72, css: primary ? 720 : 900))
             .foregroundStyle(primary ? DesignTokens.Stage.onAccent : DesignTokens.Color.textSecondary)
+            .parityLayout(text: label, size: 14.72, weight: Int(primary ? 720 : 900))
             .frame(width: width, height: 58)
             .background(
                 Capsule()

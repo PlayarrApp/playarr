@@ -647,6 +647,7 @@ private struct AuthenticatedPlayarrShell: View {
                                 )
                                 .offset(x: 0.33, y: 0.5) // measured: web glyphs sit 1 px right and 1.5 px lower (3x)
                                 .frame(width: 44, height: 46)
+                                .parityBox("link", name: destination.title, background: phoneSelectedDestination == destination ? WM.ink : WM.chip, radius: 14)
                                 .background(
                                     phoneSelectedDestination == destination ? WM.ink : .clear,
                                     in: RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -689,7 +690,7 @@ private struct AuthenticatedPlayarrShell: View {
                 #endif
                 HStack(alignment: .firstTextBaseline, spacing: 11) {
                     Text(clockDate.formatted(headerTimeStyle))
-                        .font(WM.font(12.5, 800))
+                        .wm(12.5, 800)
                     Text(clockDate.formatted(headerDateStyle).uppercased())
                         .font(WM.font(8, 700)).tracking(0.6)
                         .foregroundStyle(PlayarrStyle.inkSoft)
@@ -749,11 +750,12 @@ private struct AuthenticatedPlayarrShell: View {
                     VStack(spacing: 6) {
                         WMIconView(icon: destination.webIcon, color: selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft, size: 18)
                         Text(destination.title)
-                            .font(WM.font(8.5, 700))
+                            .wm(8.5, 700)
                             .lineLimit(1)
                     }
                     .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
                     .frame(width: 64, height: 64)
+                    .parityBox("link", name: destination.title, background: PlayarrStyle.surfaceStrong, radius: 16)
                     .background(
                         selected == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -783,7 +785,7 @@ private struct AuthenticatedPlayarrShell: View {
             VStack(spacing: 4) {
                 currentAvatar(size: 20)
                 Text((environment.currentUserName ?? "").split(separator: " ").first.map(String.init) ?? "Profile")
-                    .font(WM.font(7.2, 700))
+                    .wm(7.2, 700)
                     .foregroundStyle(PlayarrStyle.muted)
                     .lineLimit(1)
             }

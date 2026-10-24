@@ -158,7 +158,7 @@ internal sealed class SettingsScreen : IPage
         var (homeView, artworkSize) = _env.Store.Appearance();
         AppearanceSection(402, "Home screen artwork", "Show portrait covers instead of wide media thumbnails on the home screen.", new[] { "Thumbnails", "Covers" }, homeView == "cover" ? 1 : 0,
             i => _env.Store.SaveAppearance(i == 1 ? "cover" : "thumbnail", _env.Store.Appearance().ArtworkSize), "Home screen view saved.");
-        AppearanceSection(600, "Artwork size", "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.", new[] { "Small", "Medium", "Large" }, artworkSize == "small" ? 0 : artworkSize == "large" ? 2 : 1,
+        AppearanceSection(601.2f, "Artwork size", "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.", new[] { "Small", "Medium", "Large" }, artworkSize == "small" ? 0 : artworkSize == "large" ? 2 : 1,
             i => _env.Store.SaveAppearance(_env.Store.Appearance().HomeView, i == 0 ? "small" : i == 2 ? "large" : "medium"), "Artwork size saved.");
         // web moves Up and Down between the setting rows by column; the geometric search would pick the nearer list row on the left
         var p0 = _listCount; int[] sizes = { 3, 2, 3 }; var start = new int[3];

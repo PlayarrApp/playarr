@@ -7,7 +7,7 @@ namespace Playarr.Tizen;
 /// <summary>Web page header: the title with a 1 px divider and the subtitle beside it (not below, not brand-coloured); the clock follows the subtitle.</summary>
 internal sealed class PageSubtitle
 {
-    private const float TitleX = 226.6f, TitleSize = 33.6f, TitleSpacing = -1.51f, DividerGap = 23f, TextGap = 24f, ClockGap = 25f, MaxTextWidth = 640f, WrappedRuleY = 112f, WrappedTextY = 116f, WrappedClockGap = 16f, ClockLeft = 481f, FitMargin = 16f;
+    private const float TitleX = 226.6f, TitleSize = 33.6f, TitleSpacing = -1.51f, DividerGap = 23f, TextGap = 23f, ClockGap = 25f, MaxTextWidth = 640f, WrappedRuleY = 112f, WrappedTextY = 116f, WrappedClockGap = 16f, ClockLeft = 481f, FitMargin = 16f;
     private readonly AppEnv _env;
     private readonly View _parent;
     private readonly PlayarrTheme _t;

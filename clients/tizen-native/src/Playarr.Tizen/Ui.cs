@@ -90,7 +90,7 @@ internal static class Ui
     private static (string Family, int Weight) Face(string family, int weight, float size)
     {
         if (family != Font) return (family, weight);
-        if (WebBySize.TryGetValue((int)Math.Round(size * 1000), out var ws)) weight = ws.OrderBy(w => Math.Abs(w - weight)).First();
+        if (WebBySize.TryGetValue((int)Math.Round(size * 1000), out var ws)) { var near = ws.OrderBy(w => Math.Abs(w - weight)).First(); if (Math.Abs(near - weight) <= 45) weight = near; }
         return Array.IndexOf(WebWeights.Instanced, weight) >= 0 ? ($"{Font} W{weight}", 400) : (family, weight);
     }
 
@@ -112,6 +112,7 @@ internal static class Ui
     public static TextLabel Text(string text, float x, float y, float size, int weight, Rgba color, float w = 0, float lh = 0,
         HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0)
     {
+        var cssFamily = family;
         (family, weight) = Face(family, weight, size);
         var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
         var cssY = y;
@@ -139,7 +140,7 @@ internal static class Ui
         else { t.WidthResizePolicy = ResizePolicyType.UseNaturalSize; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(0, boxH * TextScale); }
         t.PivotPoint = global::Tizen.NUI.PivotPoint.TopLeft; t.PositionUsesPivotPoint = true; t.ParentOrigin = global::Tizen.NUI.ParentOrigin.TopLeft;
         t.Scale = new Vector3(1 / TextScale, 1 / TextScale, 1);
-        TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline));
+        TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline) { Family = cssFamily });
         return t;
     }
 
@@ -281,6 +282,7 @@ internal static class Ui
 /// <summary>The CSS values a label was made from (the layout exporter reports these, not NUI's scaled internals). Dy: CSS line top minus the label's own top.</summary>
 internal sealed record TextMetaInfo(float Size, int Weight, float LineHeight, float Dy, float Spacing, HorizontalAlignment Align, Rgba Color, bool Multiline)
 {
+    public string Family { get; set; } = Ui.Font;
     /// <summary>Lines of one wrapped paragraph share a group: web has one element for the whole block.</summary>
     public object? Group { get; set; }
 }

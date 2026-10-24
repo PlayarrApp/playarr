@@ -15,6 +15,7 @@
 		0CF9FBCCA50DB5E7B13A6C76 /* TVSettingsPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AFC578F55F9037ED72E28A1 /* TVSettingsPanels.swift */; };
 		117D4A5CF5F5BFDB9BC9AB72 /* JetBrainsMono-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3EFF15A5904B45253194E290 /* JetBrainsMono-Variable.ttf */; };
 		1D8A16240B1443F2FA25D9C9 /* TVEndOfPlaybackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001803E02BF7072969FB6832 /* TVEndOfPlaybackView.swift */; };
+		AA11BB22CC33DD44EE550001 /* TVParityLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE550003 /* TVParityLayout.swift */; };
 		1E15699717F807C5C2328D70 /* TVWebLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0407D09C4DFEB24B19FA7B /* TVWebLayout.swift */; };
 		1FB32CB44E536AB04E7853A7 /* NunitoSans-wght-web.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 428807A834AC49027A995EE5 /* NunitoSans-wght-web.ttf */; };
 		1FD7B53EFC37E7FA8C7ED353 /* PlayarrAvatarAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 241A992A98612B3F0FFD67A1 /* PlayarrAvatarAsset.swift */; };
@@ -58,6 +59,7 @@
 		B3106D278BEB5C717AF146C8 /* TVSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61029885CE1ECACC599117A4 /* TVSettingsView.swift */; };
 		B5A9B35E8AFA816D3E80A229 /* TVSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61029885CE1ECACC599117A4 /* TVSettingsView.swift */; };
 		B8BB4DB695155CAD66215459 /* TVEndOfPlaybackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001803E02BF7072969FB6832 /* TVEndOfPlaybackView.swift */; };
+		AA11BB22CC33DD44EE550002 /* TVParityLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE550003 /* TVParityLayout.swift */; };
 		B9818F586D0E0C5A92007932 /* MacFocus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CE44B5934F69BA3080EA60 /* MacFocus.swift */; };
 		BDE28F6F95544F39B3758DF4 /* TVServerAddressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FAD6061A7EC7A3F76D02CF /* TVServerAddressTests.swift */; };
 		C5DCCF897EE190A6F46E698E /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D16D13DD80C8A8F4BD72913 /* DesignTokens.swift */; };
@@ -97,6 +99,7 @@
 
 /* Begin PBXFileReference section */
 		001803E02BF7072969FB6832 /* TVEndOfPlaybackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVEndOfPlaybackView.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE550003 /* TVParityLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVParityLayout.swift; sourceTree = "<group>"; };
 		12E4DA2002EFA25EC8BDF5D8 /* TVDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVDetailView.swift; sourceTree = "<group>"; };
 		12FAD6061A7EC7A3F76D02CF /* TVServerAddressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVServerAddressTests.swift; sourceTree = "<group>"; };
 		1924B5B48CE922D766369127 /* TVDisplayPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVDisplayPreferences.swift; sourceTree = "<group>"; };
@@ -272,6 +275,7 @@
 				12E4DA2002EFA25EC8BDF5D8 /* TVDetailView.swift */,
 				1924B5B48CE922D766369127 /* TVDisplayPreferences.swift */,
 				001803E02BF7072969FB6832 /* TVEndOfPlaybackView.swift */,
+				AA11BB22CC33DD44EE550003 /* TVParityLayout.swift */,
 				E06F9596C88F40ABC2BD98A7 /* TVHouseholdView.swift */,
 				F39006E3292B3C3FCE2911BE /* TVLibraryViews.swift */,
 				6C9E5548A58EDC968449C063 /* TVParityArtwork.swift */,
@@ -490,6 +494,7 @@
 				6F5A36FFB57C2C1E17D2D9A8 /* TVDetailView.swift in Sources */,
 				DE5373DB4E681A1AA39B5719 /* TVDisplayPreferences.swift in Sources */,
 				1D8A16240B1443F2FA25D9C9 /* TVEndOfPlaybackView.swift in Sources */,
+				AA11BB22CC33DD44EE550001 /* TVParityLayout.swift in Sources */,
 				984330250A689C49E788C710 /* TVHouseholdView.swift in Sources */,
 				043DACB6C9D4BB0A66B435B2 /* TVLibraryViews.swift in Sources */,
 				3B646336789F98F4AFD278E2 /* TVParityArtwork.swift in Sources */,
@@ -545,6 +550,7 @@
 				E767AB886D58490C7EEB8970 /* TVDetailView.swift in Sources */,
 				9B585CD0E75FC8DEA810B5D2 /* TVDisplayPreferences.swift in Sources */,
 				B8BB4DB695155CAD66215459 /* TVEndOfPlaybackView.swift in Sources */,
+				AA11BB22CC33DD44EE550002 /* TVParityLayout.swift in Sources */,
 				398B276AED34960B6D1EA1A6 /* TVHouseholdView.swift in Sources */,
 				9C02BF2443FB6202643F7608 /* TVLibraryViews.swift in Sources */,
 				D78810CAA824CE5479E67804 /* TVParityArtwork.swift in Sources */,

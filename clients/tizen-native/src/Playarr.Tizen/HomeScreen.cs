@@ -107,7 +107,7 @@ internal sealed class HomeScreen : IPage
         for (var i = 0; i < model.Count; i++)
         {
             var rv = new RailView { Model = model[i], Y = y };
-            _stack.Add(Ui.Text(model[i].Title, RailX, y, 17.664f, 700, _t.Ink, 800, 26.496f, spacing: -0.53f));
+            _stack.Add(Ui.Text(model[i].Title, RailX, y, 17.664f, 610, _t.Ink, 800, 26.496f, spacing: -0.53f));
             rv.Row.PositionY = y + 61.8f; rv.Row.Size = new Size(4000, _layout.ArtHeight + 76);
             for (var c = 0; c < model[i].Cards.Count; c++)
             {

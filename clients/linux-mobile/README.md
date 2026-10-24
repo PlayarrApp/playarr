@@ -32,6 +32,8 @@ playback goes through a loopback proxy in the app process (`src/proxy.rs`).
 
 ## Font
 
+Symbol glyphs (play, download, check, caret) use DejaVu Sans as the web does: the Alpine package depends on `font-dejavu` and the GNOME runtime ships it. On a bare VM copy `DejaVuSans.ttf` next to the Nunito Sans files.
+
 `data/fonts/` holds Nunito Sans (SIL OFL, see `OFL-NunitoSans.txt`) converted from the web app's woff2. Packages
 install it under the system font directory so fontconfig finds it.
 

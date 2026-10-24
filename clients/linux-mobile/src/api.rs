@@ -465,6 +465,17 @@ impl Client {
             }
         }
     }
+    /// The source's video bitrate, for the player's "Original · 0.3 Mbps" label.
+    pub fn original_bitrate_bps(&self, media_file_id: &str) -> Option<i64> {
+        let options: crate::model::PlaybackOptions = self
+            .get(&format!("/api/v1/media/{media_file_id}/playback-options"))
+            .ok()?;
+        options
+            .quality_options
+            .iter()
+            .find(|q| q.id == "original")?
+            .video_bitrate_bps
+    }
     pub fn report_progress(
         &self,
         media_file_id: &str,
