@@ -105,7 +105,7 @@ export struct ChoiceSegments {
   }
 
   build() {
-    Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP) }) {
+    Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP + (isTvMetrics() ? 1.8 : 0)) }) {
       if (this.large) {
         Text(this.heading).fontFamily(nunitoAt(500, tv(LARGE_HEADING_SIZE)))
           .fontSize(tv(LARGE_HEADING_SIZE))
@@ -127,13 +127,13 @@ export struct ChoiceSegments {
           .letterSpacing(tv(HEADING_LETTER_SPACING))
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
-          .id(isTvMetrics() ? '' : 'px:heading:' + this.heading.toUpperCase())
+          .id('px:heading:' + this.heading.toUpperCase())
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
          if (choice.icon !== undefined && choice.icon.length > 0) {
           // phone View buttons: web draws three outlined bars (list, screen, cover) over a lower-case 900-weight word
-          Column({ space: 6.85 }) {
+          Column({ space: isTvMetrics() ? 7.4 : 6.85 }) {
             this.viewShapes(choice.value)
             Text(choice.label.toLowerCase()).fontFamily(nunito(900))
               .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
@@ -148,7 +148,7 @@ export struct ChoiceSegments {
             toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
           .borderRadius(CHOICE_RADIUS)
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
-          .scale(!isTvMetrics() && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
+          .scale(choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
           .focusable(true)
           .onClick(() => {
             this.onChoose(choice.value);
