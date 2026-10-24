@@ -43,6 +43,7 @@ namespace Playarr.Xbox.Views
             public string Number = "";
             public string Title = "";
             public Button? Tab;
+            public TextBlock? Arrow;
             public System.Action? Render;
             public FrameworkElement? Host;
         }
@@ -65,20 +66,23 @@ namespace Playarr.Xbox.Views
             {
                 var def = section;
                 var row = new Grid();
-                row.Children.Add(new TextBlock { Text = def.Number, FontSize = 10, FontWeight = Windows.UI.Text.FontWeights.Bold, Margin = new Thickness(0, -22, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-                row.Children.Add(new TextBlock { Text = def.Title, FontSize = 28, Margin = new Thickness(60, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-                row.Children.Add(new TextBlock { Text = "\u2192", FontSize = 18, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new TextBlock { Text = def.Number, FontSize = 9.92, FontWeight = new Windows.UI.Text.FontWeight { Weight = 760 }, LineHeight = 14, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Margin = new Thickness(0, -23.4, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new TextBlock { Text = def.Title, FontSize = 29.6, FontWeight = new Windows.UI.Text.FontWeight { Weight = 480 }, LineHeight = 40, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Margin = new Thickness(60, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+                var arrow = new TextBlock { Text = "\u2192", FontSize = 20.8, LineHeight = 28, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+                row.Children.Add(arrow);
+                def.Arrow = arrow;
                 def.Tab = new Button
                 {
-                    Width = 470,
-                    Height = 92,
-                    Padding = new Thickness(32, 0, 32, 0),
+                    Width = 470.4,
+                    Height = 91.9,
+                    Padding = new Thickness(32, 0, 27, 0),
                     HorizontalContentAlignment = HorizontalAlignment.Stretch,
                     CornerRadius = new CornerRadius(0),
                     BorderThickness = new Thickness(0),
                     Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent),
                     Content = row,
                 };
+                LayoutExport.Tag(def.Tab, "link", $"{def.Number} {def.Title} \u2192");
                 def.Tab.Click += (s, e) => ShowSection(_sections.IndexOf(def));
                 TabsPanel.Children.Add(def.Tab);
             }
@@ -99,6 +103,7 @@ namespace Playarr.Xbox.Views
             for (var i = 0; i < _sections.Count; i++)
             {
                 _sections[i].Tab!.Background = i == section ? Ui.Res("PlayarrSurfaceSoft") : none;
+                _sections[i].Arrow!.Foreground = Ui.Res(i == section ? "PlayarrInk" : "PlayarrInkMuted");
             }
 
             _sections[section].Host!.Visibility = Visibility.Visible;
@@ -347,10 +352,10 @@ namespace Playarr.Xbox.Views
         private static StackPanel SettingGroup(string title, string? note, string[] options, int selected, System.Action<int> onSelect, bool first = false, bool divider = true, string? automationIdPrefix = null)
         {
             var group = new StackPanel { Margin = new Thickness(0, first ? 16 : 38, 0, 0) };
-            group.Children.Add(Ui.Text(title, 17.5, Windows.UI.Text.FontWeights.SemiBold, "PlayarrInk"));
+            group.Children.Add(Ui.Text(title, 26.4, new Windows.UI.Text.FontWeight { Weight = 560 }, "PlayarrInk"));
             if (note != null)
             {
-                var text = Ui.Text(note, 11, Windows.UI.Text.FontWeights.Normal, "PlayarrInkSoft", new Thickness(0, 6, 0, 0));
+                var text = Ui.Text(note, 13.12, Windows.UI.Text.FontWeights.Normal, "PlayarrInkMuted", new Thickness(0, 6, 0, 0));
                 text.TextWrapping = TextWrapping.WrapWholeWords;
                 group.Children.Add(text);
             }
