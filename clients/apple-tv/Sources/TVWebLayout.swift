@@ -777,6 +777,7 @@ struct TVCardButton<Label: View>: View {
         } label: {
             label().parityFocusTag(work.title, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index,
                                    gridPosition: parityGridPosition)
+                .modifier(TVLibraryLinkBox(title: parityGridPosition == nil ? nil : "Open \(work.title)"))
         }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now, id: work.id.uuidString,
@@ -1067,3 +1068,11 @@ private struct MacEdgeFade: ViewModifier {
     private func alpha(_ t: Double) -> Double { endFloor + (1 - endFloor) * t }
 }
 #endif
+
+/// Layout export: a library grid card is a link named "Open <title>" (web accessible name).
+private struct TVLibraryLinkBox: ViewModifier {
+    let title: String?
+    func body(content: Content) -> some View {
+        if let title { content.parityBox("link", text: title, fill: DesignTokens.Stage.surface) } else { content }
+    }
+}
