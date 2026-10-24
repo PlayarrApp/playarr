@@ -16,6 +16,9 @@ MouseArea {
     property bool poster: false
     property bool compact: false        // library grids: title only
     property bool showUnwatched: true
+    property string parityRole: "link"
+    readonly property string layoutLabel: work ? ((work.deckTitle || work.title) + " " + (work.deckSub ? work.deckSub : kindLabel(work.kind) + (work.release_date ? " \u00B7 " + work.release_date.substr(0, 4) : ""))) : ""
+    readonly property real layoutH: art.height + 24.7 * Tokens.u
     property bool ring: false           // web focuses the first library card at rest and draws its ring
     readonly property var prog: work ? Progress.byWork[work.id] : undefined
     signal opened(var work)

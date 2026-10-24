@@ -22,6 +22,7 @@ Column {
         x: Tokens.pad
         text: root.title
         color: Tokens.ink
+        property string parityRole: "heading"
         font.family: Tokens.family580
         font.pixelSize: 15.2 * Tokens.u
     }

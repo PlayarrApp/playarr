@@ -26,11 +26,13 @@ function dump(root, u, weights, log) {
     var out = []
     function emit(e) { out.push(e) }
     function walk(item, opAcc) {
-        if (!item || !item.visible) return
+        if (!item || !item.visible || item.layoutSkipTree === true) return
         var op = opAcc * item.opacity
         if (op <= 0.001) return
         var p = item.mapToItem(null, 0, 0), x = p.x, y = p.y, w = item.width, h = item.height
-        if (typeof item.text === "string" && item.contentWidth !== undefined && item.font !== undefined && item.text.length > 0 && item.color !== undefined) {
+        var skip = item.layoutSkip === true
+        if (skip) {
+        } else if (typeof item.text === "string" && item.contentWidth !== undefined && item.font !== undefined && item.text.length > 0 && item.color !== undefined) {
             var cw = item.contentWidth, ch = item.contentHeight
             var ha = item.horizontalAlignment, va = item.verticalAlignment
             var x0 = x + (ha === 4 ? (w - cw) / 2 : ha === 2 ? w - cw : 0)
@@ -39,7 +41,9 @@ function dump(root, u, weights, log) {
             if (wt === undefined) wt = item.font.weight >= 75 ? 700 : item.font.weight >= 63 ? 600 : 400
             var t = String(item.text)
             if (item.font.capitalization === 1) t = t.toUpperCase()
-            var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y0, cw, ch),
+            // glyph-run bounds: ascent plus descent of the font per line (Nunito Sans 1.364 em), not Qt's taller line box
+            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), gh = ch * 0.944
+            var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y0 + (ch - gh) / 2, cw, gh),
                 color: hex(item.color), background: bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2((item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333) / u), fontWeight: wt }
             if (op < 0.999) el.opacity = r2(op)
             if (el.text !== "") emit(el)
@@ -47,7 +51,7 @@ function dump(root, u, weights, log) {
             var filled = item.color.a > 0 && !item.gradient
             if (filled) fills.push({ x: x, y: y, w: w, h: h, c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
             if (filled || item.border.width > 0) {
-                var rc = { text: "", role: "container", rect: rect(x, y, w, h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null }
+                var rc = { text: String(item.layoutLabel || ""), role: item.parityRole || "container", rect: rect(x, y, w, h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null }
                 if (item.radius > 0) rc.radius = r2(Math.min(item.radius, Math.min(w, h) / 2) / u)
                 if (op < 0.999) rc.opacity = r2(op)
                 emit(rc)
@@ -57,7 +61,7 @@ function dump(root, u, weights, log) {
             if (op < 0.999) im.opacity = r2(op)
             emit(im)
         } else if (item.navigationFocusable === true && w > 0 && h > 0) {
-            emit({ text: String(item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, w, h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null })
+            emit({ text: String(item.layoutLabel || item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, w, item.layoutH !== undefined ? item.layoutH : h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null })
         }
         var kids = item.children
         for (var i = 0; i < kids.length; ++i) walk(kids[i], op)
