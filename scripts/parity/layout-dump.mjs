@@ -156,7 +156,7 @@ export function layoutPageFn(volatile) {
     if (!vol && !own && !control && !media && !painted) continue;
     if (occluded(el, r)) { dropped++; continue; }
     var label = el.getAttribute("aria-label") || el.getAttribute("alt") || "";
-    var text = own || norm(label) || (control ? norm(el.innerText || el.value) : "");
+    var text = own || (control || media ? norm(label) : "") || (control ? norm(el.innerText || el.value) : "");
     var zoom = zoomOf(el);
     var radius = (parseFloat(cs.borderTopLeftRadius) || 0) * zoom;
     var row = {

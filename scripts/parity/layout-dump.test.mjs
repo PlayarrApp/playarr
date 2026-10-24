@@ -87,3 +87,9 @@ test("a background identical to what is already behind it is not a visible fill"
     <div class="abs" style="top:30px;width:50px;height:20px;background:#fefefe"></div>`);
   assert.deepEqual(d.elements.map((e) => e.background), ["#fefefe"]);
 });
+
+test("an aria-label on a painted container is not visible text; on a control it is the name", { skip }, async () => {
+  const d = await dump(`<section aria-label="Movies titles" class="abs" style="top:0;width:80px;height:20px;background:#123456"></section>
+    <a class="abs" href="#" aria-label="Open Film" style="top:30px;width:80px;height:20px"></a>`);
+  assert.deepEqual(d.elements.map((e) => e.text), ["", "Open Film"]);
+});
