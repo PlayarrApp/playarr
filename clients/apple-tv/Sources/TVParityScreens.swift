@@ -97,7 +97,7 @@ extension TVParityLaunch {
     /// The clock and calendar "now" are the web refs' instant: live routes, and key-driven captures (the driver passes
     /// `-PlayarrParityNow` or `-PlayarrParityState`) so the dates match the seeded server.
     static var pinnedClock: Bool {
-        isLive || ProcessInfo.processInfo.arguments.contains { $0 == "-PlayarrParityNow" || $0 == "-PlayarrParityState" }
+        isLive || ProcessInfo.processInfo.arguments.contains { $0 == "-PlayarrParityNow" || $0 == "-PlayarrParityState" || $0 == "-PlayarrMuted" }
     }
 
     /// Static chrome (floating nav, no focus effects, frozen clock): fixture screens and live routes.
