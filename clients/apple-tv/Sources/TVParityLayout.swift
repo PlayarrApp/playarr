@@ -22,6 +22,11 @@ final class TVParityLayoutRegistry {
         var tracking: CGFloat = 0
         var background: String?
         var radius: CGFloat = 0
+        /// The CSS line box of a single-line element, when the web box is not the font's content area (the view's own line frame).
+        var lineHeight: CGFloat?
+        /// A wrapped heading: its lines and the line pitch (the web element spans first ascent to last descent).
+        var lines: [String]?
+        var pitch: CGFloat = 0
     }
 
     private var items: [UUID: Item] = [:]
@@ -124,13 +129,21 @@ final class TVParityLayoutRegistry {
     /// Web text boxes are the glyph run: the text width by the font's content-area height (Chromium: rounded ascent plus
     /// rounded descent of Nunito Sans), centred in the frame the view was given.
     private func glyphRun(_ item: Item) -> Item {
-        guard let text = item.text, let size = item.size, let weight = item.weight,
+        guard let size = item.size, let weight = item.weight,
               let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) else { return item }
+        let content = (1.011 * size).rounded() + (0.353 * size).rounded()
+        func width(_ text: String) -> CGFloat { (text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width }
         var out = item
-        let width = (text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width
-        let height = (1.011 * size).rounded() + (0.353 * size).rounded()
-        if width > item.rect.width + 0.5 { return item } // wrapped: the view's own box is the text block
-        out.rect = CGRect(x: item.rect.minX, y: item.rect.midY - height / 2, width: min(width, item.rect.width), height: height)
+        if let lines = item.lines, !lines.isEmpty {
+            let top = item.rect.minY + item.pitch / 2 - content / 2
+            out.rect = CGRect(x: item.rect.minX, y: top, width: lines.map(width).max() ?? 0, height: item.pitch * CGFloat(lines.count - 1) + content)
+            return out
+        }
+        guard let text = item.text else { return item }
+        let w = width(text)
+        if w > item.rect.width + 0.5 { return item } // wrapped: the view's own box is the text block
+        let height = item.lineHeight ?? content
+        out.rect = CGRect(x: item.rect.minX, y: item.rect.midY - height / 2, width: w, height: height)
         return out
     }
 
@@ -175,6 +188,10 @@ private struct TVParityLayoutModifier: ViewModifier {
     let weight: Int?
     let color: Color?
     let tracking: CGFloat
+    var lineHeight: CGFloat? = nil
+    var lines: [String]? = nil
+    var pitch: CGFloat = 0
+    var onPage = false
     @Environment(\.self) private var environment
     @State private var id = UUID()
 
@@ -200,7 +217,8 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     private func report(_ frame: CGRect) {
         TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: frame, tracking: tracking,
-                                                 background: hex(frame.minY < 130 ? DesignTokens.Stage.bg : DesignTokens.Stage.surface))) // web: header on the page, content on the surface
+                                                 background: hex(onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface),
+                                                 lineHeight: lineHeight, lines: lines, pitch: pitch)) // web: header on the page, content on the surface
     }
 }
 
@@ -253,9 +271,9 @@ extension View {
 
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0) -> some View {
+    func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, lineHeight: CGFloat? = nil, lines: [String]? = nil, pitch: CGFloat = 0, onPage: Bool = false) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking))
+        modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, lineHeight: lineHeight, lines: lines, pitch: pitch, onPage: onPage))
         #else
         self
         #endif
