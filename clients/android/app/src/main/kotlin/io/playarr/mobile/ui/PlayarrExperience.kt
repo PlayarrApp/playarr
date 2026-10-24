@@ -9879,6 +9879,8 @@ private fun ExperiencePlayerScreen(
         // Polled every 5 ms so the pause lands at the target, not up to 100 ms late (the web ref pauses at 0:02 exactly).
         while (viewModel.timelineSnapshot().positionMs < pauseAt) kotlinx.coroutines.delay(5)
         viewModel.player.pause()
+        // Paused, an exact seek to the target presents the frame at that instant (the web ref shows frame 30 at 0:02.000), not whichever frame the render lag left up.
+        viewModel.player.seekTo(pauseAt)
     }
     LaunchedEffect(state, activeMediaFileId) {
         if (state !is ExperienceLoad.Ready) return@LaunchedEffect

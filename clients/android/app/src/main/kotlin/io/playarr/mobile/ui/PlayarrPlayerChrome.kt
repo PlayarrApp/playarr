@@ -742,7 +742,8 @@ private fun PlayarrPlayerTopButton(
     Surface(
         onClick = onClick,
         interactionSource = source,
-        color = if (isTelevision) Color(0x940C0A0B) else Color.Black.copy(alpha = 0.62f),
+        // The Minimise pill is darker than the round close button on the static web ref (about .82 against .58).
+        color = if (isTelevision) (if (iconOnly) Color(0x940C0A0B) else Color(0xD10C0A0B)) else Color.Black.copy(alpha = 0.62f),
         contentColor = Color.White,
         shape = CircleShape,
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
@@ -759,7 +760,7 @@ private fun PlayarrPlayerTopButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (isTelevision && iconOnly) Arrangement.Center else Arrangement.spacedBy(if (isTelevision) 8.8.dp else 8.dp),
         ) {
-            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 11.dp else if (isTelevision) 20.dp else 22.dp))
+            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp))
             if (isTelevision && !iconOnly) {
                 Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
             }
@@ -830,8 +831,8 @@ private fun PlayarrPlayerControlBar(
     val durationMs = timeline.durationMs.coerceAtLeast(0L)
     val displayedPositionMs = (scrubPositionMs ?: timeline.positionMs).coerceIn(0L, durationMs.coerceAtLeast(0L))
     val bufferedProgress = if (durationMs > 0L) {
-        // Parity captures (debug pause extra): the web ref's video has buffered 16 s of the clip, the local player all of it.
-        (if (parityPauseAtMs != null) minOf(timeline.bufferedPositionMs, 16_000L) else timeline.bufferedPositionMs).toFloat() / durationMs.toFloat()
+        // Parity captures (debug pause extra): the static web ref's video has buffered 46.6 s of the clip, the local player all of it.
+        (if (parityPauseAtMs != null) minOf(timeline.bufferedPositionMs, 46_600L) else timeline.bufferedPositionMs).toFloat() / durationMs.toFloat()
     } else {
         0f
     }
