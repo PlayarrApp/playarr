@@ -114,6 +114,7 @@ export async function createDriver() {
     if (path === "/series") return [["wait", ...section("series")], 14];
     if (path === "/music") return [["wait", ...section("music")], 14];
     if (path === "/search") return [["wait", ...section("search")], 12];
+    if (path === "/calendar" && q?.includes("panel=link")) return [["wait", ...calendar("agenda"), "wait", `js:pageStack.push('${PAGES}/CalendarLinkPage.qml')`], 20];
     if (path === "/calendar") return [["wait", ...calendar(view ?? "agenda")], 18];
     const movieId = path.match(/^\/movies\/([^/]+)\/?$/)?.[1];
     if (movieId === ":id") return [["wait", `js:${firstMovie}`], 16];
