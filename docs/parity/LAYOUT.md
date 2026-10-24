@@ -26,7 +26,7 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
 - Which elements the web exports: exactly what a user can see. Leaf text elements, focusable controls (a card is a `link` named
   "Open <title>", nav items are `tab`/`link`, kept even without a visible box because natives must export them with their accessible
   name), images/svg/canvas/video, and containers with a visible fill: a background colour or image with alpha above 0, a border
-  with width and a non-transparent colour, or a box shadow. Order is DOM order, so two exports of the same page are identical.
+  with width and a non-transparent colour, or a box shadow; a background colour identical to the one already behind it is not a fill. Order is DOM order, so two exports of the same page are identical.
 - Dropped by the exporter (so a native app never has to invent them): elements without text, visible fill or focusability (page
   wrappers, nav groups, unstyled link boxes); `display: none`, `visibility: hidden`, effective opacity 0; boxes clipped away by an
   `overflow` ancestor or entirely outside the viewport; descendants of `[inert]`; descendants of `[aria-hidden="true"]` when that
@@ -37,6 +37,10 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   looking up to the common ancestor). Transparent click layers and `pointer-events: none` elements never occlude. A partly covered
   element stays. The document counts what it dropped as `occluded`; `layout-score.mjs` prints it, so a drawer screen shows a
   non-zero count and a screen without an overlay shows 0.
+- Text colour: the exporter reads `-webkit-text-fill-color` (which defaults to `color`). Fully transparent text (loading skeleton
+  lines use `color: transparent` over a painted bar) is not text: the element exports as a container with its background and no
+  text, font or colour. Text clipped to a gradient (`background-clip: text`) reports the gradient's first stop colour and
+  `colorGradient: true`; the scorer compares it with the normal deltaE.
 - Font size and scale: `fontSize` is the computed `font-size` in CSS px of the layout viewport (`viewport.w` x `viewport.h`),
   multiplied by every `zoom` on the element and its ancestors. The refs are rendered at the stage size (TV 1920x1080 at dpr 1,
   where the TV stage scale `tvStageScale.ts` is neutral, zoom 1; phone groups at their own CSS viewport), so no root zoom or
@@ -62,7 +66,7 @@ the web and device values, and the delta. Extra device elements are counted, not
 ## Volatile content
 
 `scripts/parity/layout-volatile.json` (keyed by screen, `*` = all): elements whose text is expected to differ while box and style
-must still match: header clock and date, calendar-link URL and QR, the settings-server address, the player time code. The video
+must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player buffered bar (`omit`: left out of the refs, its length follows download timing). The video
 frame is `maskOnly`: not scored, and the pixel scorer blanks its rect. OS bars are exported as role `system`. The web document marks
 such elements with `volatile`; the scorer matches them by role and overlap and skips their text.
 

@@ -29,6 +29,7 @@
             "required": ["x", "y", "w", "h"],
             "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "w": { "type": "number" }, "h": { "type": "number" } }
           },
+          "colorGradient": { "type": "boolean", "description": "Web only: the text is clipped to a gradient; color is the gradient's first stop." },
           "color": { "type": ["string", "null"], "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" },
           "background": { "type": ["string", "null"], "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" },
           "fontSize": { "type": ["number", "null"] },
