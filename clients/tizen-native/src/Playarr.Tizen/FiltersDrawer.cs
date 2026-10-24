@@ -49,11 +49,14 @@ internal sealed class FiltersDrawer
 
     private static void AddViewGlyph(View b, int i, float w, Rgba c)
     {
-        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Sem.Tag(Ui.Box(w / 2 - 9, 14 + k * 4.5f, 18, 1.8f, c, 0.9f), "container", ignoreOwnBg: true)); return; }
+        // web: List is three 20x2.9 bars, Screen three 5.5x13.1 blocks, Cover three 4x13 slats
+        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Sem.Tag(Ui.Box(w / 2 - 10, 11.4f + k * 4.95f, 20, 2.9f, c, 1f), "container")); return; }
         for (var k = 0; k < 3; k++)
         {
-            var r = Sem.Tag(Ui.Box(w / 2 - 10 + k * 7.5f, 13, 5, 13, null, 1.5f), "container", ignoreOwnBg: true);
-            r.BorderlineWidth = 1.5f; r.BorderlineColor = Ui.C(c); b.Add(r);
+            var bw = i == 1 ? 5.5f : 4f; var pitch = i == 1 ? 7.5f : 6f; var x0 = i == 1 ? w / 2 - 10.2f : w / 2 - 8f;
+            var r = Sem.Tag(Ui.Box(x0 + k * pitch, 11.3f, bw, 13.05f, i == 1 ? c : null, 1f), "container");
+            if (i != 1) { r.BorderlineWidth = 1.5f; r.BorderlineColor = Ui.C(c); }
+            b.Add(r);
         }
     }
     public View Root { get; } = new();
@@ -161,6 +164,7 @@ internal sealed class FiltersDrawer
                     var label = Ui.Text(s.Options[i], 0, n == 3 ? 33 : 22.2f, 10.56f, n == 3 ? 900 : 680, active ? t.Bg : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
                     if (n == 3) { Sem.Tag(label, "text", s.Options[i].ToLowerInvariant()); Sem.Tag(b, "button", s.Options[i], radius: 12); } else Sem.Tag(label, "button", radius: 12);
                     b.Add(label);
+                    if (active) b.Scale = new Vector3(1.025f, 1.025f, 1);
                     if (n == 3) AddViewGlyph(b, i, w, active ? t.OnAccent : t.InkMuted); // web: a small List / Screen / Cover glyph above the label
                     var ring = Ring.Make(w, 56, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
                     _c.Add(b);
@@ -173,6 +177,7 @@ internal sealed class FiltersDrawer
                         {
                             var (choice, text) = choices[choiceIndex];
                             var selected = choiceIndex == sec.Selected;
+                            choice.Scale = selected ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1);
                             choice.BackgroundColor = selected ? Ui.C(t.Ink) : new Color(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f);
                             text.TextColor = Ui.C(selected ? t.Bg : t.InkMuted);
                         }

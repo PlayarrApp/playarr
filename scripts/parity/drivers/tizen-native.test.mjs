@@ -72,26 +72,26 @@ test("Tizen visual readiness ignores an advancing player clock", async () => {
   assert.equal(samples, 2);
 });
 
-test("Tizen player captures restart at 2 s, pause, blur and refuse a still-playing player", async () => {
-  for (const pauses of [true, false]) {
+test("Tizen player captures hold exactly 2.000 s paused and refuse any other position", async () => {
+  for (const exact of [true, false]) {
     const calls = [];
-    let playing = true, route = "/player/test";
+    let route = "/player/test";
     const driver = await createDriver({
       env: accountEnv, secrets, setupForward: () => {}, delay: async () => {},
       request: async (method, path) => {
         calls.push(`${method} ${path}`);
         if (path === "/identity") return identity;
         if (path.startsWith("/route")) route = decodeURIComponent(path.split("=")[1]);
-        if (path === "/key?name=pause" && pauses) playing = false;
-        return { ready: true, pending: 0, route, focused: "pause", position: null, theme: "dark", playing, positionMs: 2100, animationMode: "none" };
+        return { ready: true, pending: 0, route, focused: "play", position: null, theme: "dark", playing: false, positionMs: exact ? 2000 : 2100, animationMode: "none" };
       },
       captureScreenshot: () => {}, pixelSignature: () => "same",
     });
-    if (pauses) {
+    if (exact) {
       await driver.screenshot("ignored.png");
-      assert.ok(calls.includes("POST /route?path=%2Fplayer%2Ftest%3Ft%3D2000"));
-      assert.ok(calls.indexOf("POST /key?name=pause") < calls.indexOf("POST /blur"));
-    } else await assert.rejects(driver.screenshot("ignored.png"), /did not pause/);
+      assert.ok(calls.includes("POST /route?path=%2Fplayer%2Ftest%3Ft%3D2000%26hold%3D2000"));
+      assert.ok(!calls.some((c) => c.includes("name=pause")));
+      assert.ok(calls.includes("POST /blur"));
+    } else await assert.rejects(driver.screenshot("ignored.png"), /did not hold 2.000 s/);
   }
 });
 
