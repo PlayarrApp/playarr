@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # calib.py <cand dir>: per font size, median (web top - device top) and (web h - device h) of text elements matched by text, over all screens (dark)
 import json,glob,os,sys,statistics,collections
-L="/home/Storage/Projects/repositories/.data/ThomasMcFarlane/playarr/scratch/20261011-parity/tizen-native/web/layout/dark/"
+L=os.environ["PARITY_WEB_LAYOUT_DIR"].rstrip("/")+"/dark/"  # <legend dir>/tizen-native/web/layout
 cand=sys.argv[1]
 dt=collections.defaultdict(list); dh=collections.defaultdict(list)
 for f in glob.glob(L+"*.json"):

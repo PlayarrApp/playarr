@@ -1,5 +1,5 @@
 // node dytable.cjs <cand dir> <ref dir> <dom dir> screens... : per-element best vertical/horizontal shift of native text vs web, grouped by font size
-const { createRequire } = require("module"); const r = createRequire("/home/Storage/Projects/repositories/.data/PlayarrApp/playarr/scratch/20261011-wall/legend/package.json");
+const { createRequire } = require("module"); const r = createRequire(require("path").resolve(__dirname, "../package.json")); // pixelmatch and pngjs come from scripts/parity
 const { PNG } = r("pngjs"); const fs = require("fs");
 const [cand, ref, dom, ...screens] = process.argv.slice(2); const bySize = {};
 for (const s of screens) {
