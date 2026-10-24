@@ -203,6 +203,13 @@ namespace Playarr.Xbox.Views
                     button.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
                 }
 
+                if (!drawer || icons != null)
+                {
+                    // Web: the button holds a separate lower-case text run that CSS capitalises.
+                    LayoutExport.Tag(button, "button", options[i]);
+                    LayoutExport.SetText(labelText, options[i].ToLowerInvariant());
+                }
+
                 if (!string.IsNullOrWhiteSpace(automationIdPrefix))
                 {
                     AutomationProperties.SetAutomationId(button, $"{automationIdPrefix}.{i}");

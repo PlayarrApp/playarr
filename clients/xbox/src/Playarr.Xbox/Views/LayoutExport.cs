@@ -27,6 +27,11 @@ namespace Playarr.Xbox.Views
         /// <summary>Marks the shell chrome (rail, clock): it sits on the page background, everything else on the page surface.</summary>
         public static readonly DependencyProperty ShellProperty = DependencyProperty.RegisterAttached("Shell", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
 
+        /// <summary>Text to export instead of the displayed text (the web's DOM holds "system" and capitalises it with CSS).</summary>
+        public static readonly DependencyProperty TextProperty = DependencyProperty.RegisterAttached("Text", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
+
+        public static void SetText(DependencyObject element, string text) => element.SetValue(TextProperty, text);
+
         public static void SetBox(DependencyObject element, Rect box) => element.SetValue(BoxProperty, box);
 
         public static void SetShell(DependencyObject element, bool shell) => element.SetValue(ShellProperty, shell);
@@ -58,9 +63,27 @@ namespace Playarr.Xbox.Views
                 screen,
                 theme,
                 viewport = new { w = 1920, h = 1080, dpr = 1 },
+                probe = Probe(),
                 clockPinned = true,
                 elements,
             });
+        }
+
+        /// <summary>Measured widths that show whether the font weight and tracking requests take effect (not part of the schema; for diagnosis).</summary>
+        private static object Probe()
+        {
+            double Width(int weight, int spacing)
+            {
+                var block = new TextBlock { Text = "Downloads Movies", FontSize = 20, FontWeight = new Windows.UI.Text.FontWeight { Weight = (ushort)weight }, CharacterSpacing = spacing };
+                block.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                return Math.Round(block.DesiredSize.Width, 2);
+            }
+
+            return new
+            {
+                w400 = Width(400, 0), w600 = Width(600, 0), w680 = Width(680, 0), w700 = Width(700, 0), w720 = Width(720, 0), w760 = Width(760, 0), w800 = Width(800, 0), w900 = Width(900, 0),
+                s0 = Width(400, 0), s100 = Width(400, 100), s_100 = Width(400, -100),
+            };
         }
 
         private static void Walk(DependencyObject node, FrameworkElement root, double scale, List<object> output)
@@ -112,7 +135,7 @@ namespace Playarr.Xbox.Views
             var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(element);
             if (element is TextBlock block)
             {
-                text = block.Text;
+                text = (string?)block.GetValue(TextProperty) ?? block.Text;
                 if (string.IsNullOrWhiteSpace(text))
                 {
                     return;
