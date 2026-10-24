@@ -10,6 +10,7 @@ import { createServer } from "node:http";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
+import { dumpLayout } from "../layout-dump.mjs";
 import { assertAllowedDeviceTestUsername, assertDeviceTestPage, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl, trustedLoginUsername } from "../device-test-guard.mjs";
 
 // True when no card-art in view (and none cut by the viewport edge) lacks a loaded poster img. A card-art with no img at all and a text
@@ -453,6 +454,32 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     return { mode: info?.mode ?? null, playMethod: health.play_method ?? null, quality: q ? { id: q.id, height: q.height, bitrate: q.video_bitrate_bps } : null, health, decoded: size,
       timeToFirstFrameSeconds: r.startSeconds ?? null, negotiationStatuses: neg.statuses, no_transcode_capacity: neg.statuses.includes(503), stalled: r.state === "stalled" };
   };
+  const waitProfileName = async () => {
+    const name = await page.evaluate(async () => {
+      try {
+        const tok = JSON.parse(localStorage.getItem("playarr:session")).accessToken, base = localStorage.getItem("playarr:apiBaseUrl").replace(/"/g, "");
+        const claims = JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        const res = await fetch(`${base}/api/v1/users/profiles`, { headers: { Authorization: "Bearer " + tok } });
+        return (await res.json()).find((p) => Object.values(claims).includes(p.id))?.display_name?.trim() || null;
+      } catch { return null; }
+    });
+    if (!name) throw new Error("profile display name could not be resolved for the nav chip check");
+    // A fresh sign-in stores the typed username; only a session restore swaps in the display name, and that swap does not always land (the light theme kept "parity").
+    // Store the display name the way a restore does and reload, so every theme and rerun renders the same chip.
+    const chip = () => page.waitForFunction((n) => { const el = document.querySelector(".app-user-identity"); return !el || el.getAttribute("title") === n; }, name, { timeout: 5000 });
+    if (await chip().then(() => false, () => true)) {
+      await page.evaluate((n) => {
+        localStorage.setItem("playarr.currentUserName", n);
+        for (const [key, rename] of [["playarr.activeProfile.v1", (v) => ({ ...v, name: n })], ["playarr.profileSessions.v4", (v) => v.map((p) => ({ ...p, name: n }))]]) {
+          const raw = localStorage.getItem(key);
+          if (raw) localStorage.setItem(key, JSON.stringify(rename(JSON.parse(raw))));
+        }
+      }, name);
+      await page.reload({ waitUntil: "load" });
+      await page.waitForSelector(".app-nav-link", { timeout: 30000 });
+      await page.waitForFunction((n) => document.querySelector(".app-user-identity")?.getAttribute("title") === n, name, { timeout: 30000 });
+    }
+  };
   const waitReady = async ({ screen, phase }) => {
     await guard();
     await drainApiErrors();
@@ -461,6 +488,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // /profiles sits outside the nav shell, so it has no nav links to wait for.
     if (path === "/profiles") await page.waitForSelector(".profile-choice", { timeout: 30000 });
     else if (!path.startsWith("/player/")) await page.waitForSelector(".app-nav-link", { timeout: 30000 });
+    // The nav chip first shows the typed username, then swaps to the server's display name once the profile list resolves: wait for the swap so every theme and rerun captures the same label.
+    if (path !== "/profiles" && !path.startsWith("/player/")) await waitProfileName();
     if (screen === "home") await page.waitForSelector(".tv-home-card", { timeout: 30000 });
     if (["movies", "series", "calendar", "search"].includes(screen)) await page.waitForSelector("main", { timeout: 30000 });
     if (["/movies", "/series", "/music"].includes(path)) {
@@ -814,6 +843,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await guard();
       await page.screenshot({ path: file });
     },
+    // The layout schema document (docs/parity/LAYOUT.md) of the page as it is now; call right after screenshot().
+    async layoutDump({ screen, theme }) { await guard(); return dumpLayout(page, { screen, theme }); },
     // Facts about the page as it is now, for the reference verifier: theme, the title on detail pages and action drawers, loading
     // placeholders, open dialogs, broken images, fonts.
     async inspect() {
