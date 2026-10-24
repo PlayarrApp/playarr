@@ -1,7 +1,8 @@
 // Suite driver for the Sailfish OS client on the SDK emulator (or a device) reached over ssh. Contract: docs/parity/SUITE.md.
 //   PLAYARR_SF_SSH_KEY (private key), PLAYARR_SF_SSH_PORT (default 2223), PLAYARR_SF_SSH_HOST (default 127.0.0.1),
-//   PLAYARR_SF_VNC_HELPER (credential-safe wrapper accepting `sailfish <vncdo args...>`).
-// D-pad checks send keys through VNC and read the app's QML focus and route telemetry.
+//   PLAYARR_SF_VBOXMANAGE (VBoxManage binary, default `VBoxManage`), PLAYARR_SF_VM (VM name, default `sailfish`).
+// The VM runs headless with no remote display: screenshots use `VBoxManage controlvm screenshotpng`, keys use
+// `controlvm keyboardputscancode`. D-pad checks read the app's QML focus and route telemetry.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, chmodSync, mkdirSync, mkdtempSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -61,7 +62,8 @@ export async function createDriver() {
   const launch = async (steps, detail = null) => {
     const marker = newProcessMarker();
     const resolvedSteps = typeof steps === "function" ? steps(marker) : steps;
-    const checkedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id))] : resolvedSteps;
+    // Detail refs are at the page top, but the series page scrolls itself to the next-up episode.
+    const checkedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id)), "js:pageStack.currentPage.scrollTop()"] : resolvedSteps;
     const script = serializeSteps(theme, checkedSteps);
     writeFileSync(join(tmp, "steps"), script);
     execFileSync("scp", ["-i", env.PLAYARR_SF_SSH_KEY, "-P", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", join(tmp, "steps"), `defaultuser@${host}:/run/user/100000/pa-steps.txt`]);
@@ -140,12 +142,17 @@ export async function createDriver() {
       settle = planned[1];
       return planned[0];
     }, detail);
-    await sleep(settle * 1000);
+    // The scroll-to-top step is the last of 12 steps 1.5 s apart (about 21 s after launch).
+    await sleep((detail ? Math.max(settle, 24) : settle) * 1000);
     if (detail) requireRouteReady(readOwnedRouteLog(ssh, ownedProcess), ownedProcess.marker);
   }
-  const vnc = (...args) => {
-    if (!env.PLAYARR_SF_VNC_HELPER) throw new Error("PLAYARR_SF_VNC_HELPER must point to the credential-safe VNC wrapper");
-    execFileSync(env.PLAYARR_SF_VNC_HELPER, ["sailfish", ...args], { stdio: "ignore" });
+  const vbox = (...args) => execFileSync(env.PLAYARR_SF_VBOXMANAGE ?? "VBoxManage", ["controlvm", env.PLAYARR_SF_VM ?? "sailfish", ...args], { stdio: "ignore", timeout: 30000 });
+  // PS/2 set 1 make and break codes; arrows are extended (e0 prefix).
+  const SCANCODES = { LEFT: ["e0", "4b"], RIGHT: ["e0", "4d"], UP: ["e0", "48"], DOWN: ["e0", "50"], ENTER: ["1c"], ESC: ["01"] };
+  const keyEdge = (keysym, up) => {
+    const [pre, code] = SCANCODES[keysym].length === 2 ? SCANCODES[keysym] : [null, SCANCODES[keysym][0]];
+    const brk = (parseInt(code, 16) | 0x80).toString(16);
+    vbox("keyboardputscancode", ...(pre ? [pre] : []), up ? brk : code);
   };
   const waitForKeyAcks = async (after) => {
     const deadline = Date.now() + 10000;
@@ -216,7 +223,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
       const keysym = keyCommand(name);
       const previous = parseParityEvents(readParityLog(ssh, ownedProcess)).keyAcks;
       if (long) {
-        vnc("keydown", keysym);
+        keyEdge(keysym, false);
         const pressDeadline = Date.now() + 10000;
         while (Date.now() < pressDeadline) {
           const current = parseParityEvents(readParityLog(ssh, ownedProcess)).keyAcks;
@@ -227,8 +234,8 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
           throw new Error("Sailfish Qt did not acknowledge the press of the newly injected long key");
         }
         await sleep(800);
-        vnc("keyup", keysym);
-      } else vnc("key", keysym);
+        keyEdge(keysym, true);
+      } else { keyEdge(keysym, false); keyEdge(keysym, true); }
       const sequence = await waitForKeyAcks(previous.length);
       await waitForKeyCompletion(sequence);
     },
@@ -263,7 +270,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
       if (current.pid !== ownedProcess.pid || current.starttime !== ownedProcess.starttime) {
         throw new Error("Sailfish process identity changed before capture");
       }
-      vnc("capture", file);
+      vbox("screenshotpng", file);
       if (!existsSync(file)) throw new Error("capture failed");
     },
     // Plays case.file straight in the player and reads the engine position from the app's own log.
