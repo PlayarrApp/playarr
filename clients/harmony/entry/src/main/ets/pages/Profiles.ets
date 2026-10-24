@@ -427,7 +427,8 @@ struct Profiles {
         SelectField({
           options: themeChoices(),
           lead: isTvMetrics() ? '' : 'sun',
-          controlName: isTvMetrics() ? '' : 'Theme: ' + this.choiceLabel(themeChoices(), this.themeSetting),
+          controlName: isTvMetrics() ? '' : 'x',
+          controlPrefix: 'Theme: ',
           labelWeight: isTvMetrics() ? 700 : 500,
           labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
           value: this.themeSetting,
@@ -442,7 +443,7 @@ struct Profiles {
         SelectField({
           options: this.languageChoices(),
           lead: isTvMetrics() ? '' : 'globe',
-          controlName: isTvMetrics() ? '' : this.choiceLabel(this.languageChoices(), this.languageChoice),
+          controlName: isTvMetrics() ? '' : 'x',
           labelWeight: isTvMetrics() ? 700 : 500,
           labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
           value: this.languageChoice,
