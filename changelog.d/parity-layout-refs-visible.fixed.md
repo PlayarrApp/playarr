@@ -1,0 +1,1 @@
+- Parity: web layout refs export only what a user can see (no unstyled wrappers, inert or covered elements) and report an occluded count.

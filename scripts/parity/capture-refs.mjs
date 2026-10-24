@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // One command regenerates every web reference screenshot (the pixel reference native clients are scored against).
-//   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--layout-only] [--bak <backup dir name>] [--dry] [--allow-stale-web]
+//   node capture-refs.mjs --parity-root <dir holding the client dirs> [--groups tv,iphone] [--screens home,movies] [--work <dir>] [--no-copy] [--no-reset] [--layout-only] [--skip-dirs vidaa] [--bak <backup dir name>] [--dry] [--allow-stale-web]
 //   The capture clock is always FIXTURE_CLOCK (PARITY_FIXED_NOW is ignored).
 //   Every capture also writes <work>/<group>/<theme>/layout/<id>.json (the layout schema, docs/parity/LAYOUT.md) and publishes it to <dir>/web/layout/<theme>/<id>.json.
 //   --layout-only publishes only those layout files (no PNG, no backup, no build.json): the pixel refs stay as they are.
@@ -27,6 +27,7 @@ import { readSecrets } from "./dpad-account.mjs";
 import { FIXTURE_CLOCK } from "../fixtures/catalog.mjs";
 import { PNG } from "pngjs";
 import { verifyDir } from "./verify-refs.mjs";
+import { themeTextDrift } from "./layout-theme-drift.mjs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const here = dirname(fileURLToPath(import.meta.url));
@@ -42,6 +43,7 @@ const bakName = opt("bak", `web.bak-${manifest.date}`); // --bak <name>: partial
 const partial = args.includes("--bak");
 const layoutOnly = args.includes("--layout-only");
 const copy = !args.includes("--no-copy");
+const skipDirs = (opt("skip-dirs", "")).split(",").filter(Boolean); // --skip-dirs vidaa: never publish into these legend dirs
 if (copy && !root) throw new Error("--parity-root <dir> is required (or --no-copy)");
 
 // The web build the refs come from: its sha goes into every refs folder's build.json (sha = web build, repoSha = this checkout).
@@ -186,6 +188,11 @@ for (const name of groups) {
 
 // 3. Verify the capture, then back up and publish.
 let bad = 0;
+// Both themes must show the same text (nav profile chip included); only the theme picker labels may differ.
+for (const name of groups) for (const s of screens) {
+  const read = (theme) => JSON.parse(readFileSync(join(work, name, theme, "layout", `${s.id}.json`), "utf8"));
+  for (const d of themeTextDrift(read("dark"), read("light"))) { console.log(`BAD ${name}/${s.id}: theme text drift, ${d}`); bad++; }
+}
 for (const name of groups) {
   const problems = verifyDir(join(work, name), manifest.groups[name], manifest, wantScreens);
   for (const p of problems) console.log(`BAD ${name}: ${p}`);
@@ -212,7 +219,7 @@ for (const name of groups) {
 if (copy) {
   for (const name of groups) {
     const g = manifest.groups[name];
-    for (const d of g.dirs) {
+    for (const d of g.dirs.filter((x) => !skipDirs.includes(x))) {
       const web = join(root, d, "web"), bak = join(root, d, bakName);
       for (const theme of ["dark", "light"]) {
         mkdirSync(join(web, "layout", theme), { recursive: true });
