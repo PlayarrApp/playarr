@@ -48,6 +48,8 @@ export struct SelectField {
   @Prop lead: string = '';
   @Prop labelWeight: number = 700;
   @Prop labelSize: number = FONT;
+  /** The control's accessible name for the layout export (web's trigger button), empty for none. */
+  @Prop controlName: string = '';
   onChange: (value: string) => void = () => {};
 
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
@@ -105,6 +107,7 @@ export struct SelectField {
         }
       }
       .width(tv(this.selectWidth))
+      .id(this.controlName.length > 0 ? 'px:button:' + this.controlName : '')
       .constraintSize({ minHeight: tv(this.minHeight) })
       .padding({ left: tv(PADDING_H), right: tv(PADDING_H), top: tv(PADDING_V), bottom: tv(PADDING_V) })
       .borderRadius(tv(this.radius))

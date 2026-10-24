@@ -125,7 +125,7 @@ const PHONE_KICKER_TOP: number = 68;
 const PHONE_CHOICES_TOP: number = 55.6; // 64.3 less the 8.7 the heading moved down
 const PHONE_SELECT_HEIGHT: number = 48;
 const PHONE_SELECT_FONT: number = 11.7;
-const PHONE_SELECT_RADIUS: number = 2;
+const PHONE_SELECT_RADIUS: number = 0;
 const PHONE_SELECT_WIDTH: number = 112.5;
 const PHONE_SELECT_TOP: number = 14;
 const PHONE_SELECT_RIGHT: number = 14;
@@ -330,6 +330,11 @@ struct Profiles {
     });
   }
 
+  private choiceLabel(choices: Choice[], value: string): string {
+    const found = choices.find((choice: Choice) => choice.value === value);
+    return found !== undefined ? found.label : '';
+  }
+
   private languageChoices(): Choice[] {
     const choices: Choice[] = [{ value: 'system', label: t('settings.language.optionSystem', 'Auto') }];
     for (const language of SUPPORTED_LANGUAGES) {
@@ -396,8 +401,8 @@ struct Profiles {
   @Builder
   private tvPicker(): void {
     Stack({ alignContent: Alignment.Top }) {
-      PlayarrLogo({ logoSize: this.pick(TvGeometry.logoSize, 25) })
-        .position({ x: this.pick(TvGeometry.logoLeft, 25), y: this.pick(TvGeometry.logoTop, 26) })
+      PlayarrLogo({ logoSize: this.pick(TvGeometry.logoSize, 30) })
+        .position({ x: this.pick(TvGeometry.logoLeft, 21), y: this.pick(TvGeometry.logoTop, 20) })
       // Web's foot-of-page pills: Check for updates (bottom left) and the Clients link (bottom right). HarmonyOS has
       // no in-app installer, so the update check says what web says for a build that cannot update itself.
       if (isTvMetrics()) {
@@ -422,6 +427,7 @@ struct Profiles {
         SelectField({
           options: themeChoices(),
           lead: isTvMetrics() ? '' : 'sun',
+          controlName: isTvMetrics() ? '' : 'Theme: ' + this.choiceLabel(themeChoices(), this.themeSetting),
           labelWeight: isTvMetrics() ? 700 : 500,
           labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
           value: this.themeSetting,
@@ -436,6 +442,7 @@ struct Profiles {
         SelectField({
           options: this.languageChoices(),
           lead: isTvMetrics() ? '' : 'globe',
+          controlName: isTvMetrics() ? '' : this.choiceLabel(this.languageChoices(), this.languageChoice),
           labelWeight: isTvMetrics() ? 700 : 500,
           labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
           value: this.languageChoice,
