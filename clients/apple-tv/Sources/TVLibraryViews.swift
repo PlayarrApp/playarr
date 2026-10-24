@@ -1030,6 +1030,7 @@ struct TVWebHomeCard: View {
                         .fill(DesignTokens.Color.brandPrimary)
                         .frame(width: 11.6, height: 11.6)
                         .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
+                        .parityBox("img", radius: 7, fill: DesignTokens.Stage.surfaceSoft)
                         .padding(11.5)
                 }
             }
