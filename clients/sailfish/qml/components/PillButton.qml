@@ -23,7 +23,9 @@ MouseArea {
     property string layoutMode: ""
     property real labelSpacing: 0
     property real contentGap: 9
-    property string layoutBgS: ""
+    property real padCss: 16
+    property string parityRole: "button"
+    property string layoutBgS: primary ? String(Tokens.primary) : lift ? (Tokens.dark ? "#1f1c1f" : "#fefefd") : ""
     property int layoutRadiusV: 0
     property string layoutLabel: ""
     property bool layoutSkip: layoutMode !== ""
@@ -39,7 +41,7 @@ MouseArea {
     property bool restRing: false   // web draws the focus ring on the first focusable control at rest (calendar Today)
     property bool lift: false   // web detail actions: box-shadow 0 14px 38px rgba(56,38,33,.12)
     property bool natural: icon !== "" || iconImage !== ""
-    readonly property real naturalWidth: Math.ceil(iconW + 9 * Tokens.u + tm.implicitWidth) + 32 * Tokens.u
+    readonly property real naturalWidth: Math.ceil(iconW + contentGap * Tokens.u + tm.implicitWidth) + 2 * padCss * Tokens.u
     implicitHeight: 40 * Tokens.u
     implicitWidth: natural ? naturalWidth : label.implicitWidth + 40 * Tokens.u
     RectangularGlow {
@@ -62,7 +64,7 @@ MouseArea {
         anchors { fill: parent; margins: -4 * Tokens.u }
         radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary
     }
-    Label { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.pixelSize: root.fontSize; }
+    Label { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.letterSpacing: root.labelSpacing; font.pixelSize: root.fontSize; }
     Row {
         id: content
         visible: root.icon !== "" || root.iconImage !== ""
@@ -79,13 +81,14 @@ MouseArea {
             visible: root.iconImage === ""
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
+            font.family: Tokens.family400
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
         }
         Label { renderType: Text.NativeRendering;
             id: label2
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 32 * Tokens.u - root.iconW - 9 * Tokens.u)
+            width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 2 * root.padCss * Tokens.u - root.iconW - root.contentGap * Tokens.u)
             text: label.text
             wrapMode: Text.Wrap
             maximumLineCount: 2

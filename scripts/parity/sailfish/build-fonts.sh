@@ -8,7 +8,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 src="$root/docs/parity/fonts/NunitoSans-wght-web.ttf"
 out="$root/clients/sailfish/fonts"
 tmp=$(mktemp -d)
-for w in 300 400 480 580 610 640 680 700 720 760 820 900; do
+for w in 300 400 480 560 580 610 640 680 700 720 760 820 900; do
   "$py" -m fontTools.varLib.instancer "$src" wght=$w -q -o "$tmp/i.ttf"
   "$py" - "$tmp/i.ttf" "$out/NunitoSans-$w.ttf" "$w" <<'PY'
 import sys
