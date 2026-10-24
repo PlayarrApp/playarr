@@ -100,7 +100,7 @@ PlayarrPage {
                     anchors { right: parent.right; rightMargin: 20 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u }
                     width: 44 * Tokens.u; height: width
                     onClicked: pageStack.pop()
-                    Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: width / 2; color: Tokens.dark ? "#262226" : "#dedcdd"; border.width: 1; border.color: Tokens.lineStrong }
+                    Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: width / 2; color: Tokens.surfaceSoft; border.width: 1; border.color: Tokens.lineStrong }
                     Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u00D7"; color: Tokens.ink; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(16) }
                 }
             }

@@ -42,6 +42,7 @@ function dump(root, u, weights, log) {
             var lr = { text: le.text || "", role: le.role || "container", rect: { x: r2(lx), y: r2(ly), w: r2(lw), h: r2(lh) }, color: le.color || null,
                 background: le.bg || bgAt((lx + lw / 2) * u, (ly + lh / 2) * u), fontSize: le.fontSize || null, fontWeight: le.fontWeight || null }
             if (le.radius) lr.radius = le.radius
+            if (le.bg && le.fill !== false && le.role !== "text") fills.push({ x: lx * u, y: ly * u, w: lw * u, h: lh * u, c: [parseInt(le.bg.substr(1, 2), 16), parseInt(le.bg.substr(3, 2), 16), parseInt(le.bg.substr(5, 2), 16)], a: 1 })
             if (lo < 0.999) lr.opacity = r2(lo)
             emit(lr)
         }
