@@ -1,0 +1,1 @@
+- webOS: multi-line text on engines before Chromium 105 keeps the web block height (fractional line heights are no longer truncated per line).

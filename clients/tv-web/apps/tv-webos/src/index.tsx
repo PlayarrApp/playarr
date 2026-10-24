@@ -4,6 +4,8 @@ import {
 } from "./webosLifecycle.mjs";
 import { installWebOsDownloadToasts } from "./webosNotifications.mjs";
 import { installWebOsDynamicRange, queryWebOsHdr } from "./webosCaps.mjs";
+import { installSpacedRanges } from "../../../tooling/spaced-range.mjs";
+import { installLineBoxFix } from "./webosLineBoxes.mjs";
 import { installLegacyHas } from "../../../tooling/legacy-has.mjs";
 import "./webosCompatibility.css";
 
@@ -11,6 +13,10 @@ document.documentElement.dataset.platform = "tv-webos";
 installWebOsLifecycle();
 // Chromium 94 (webOS 23) has no :has(); the build rewrites those rules for this runtime.
 installLegacyHas();
+// Engines before Chromium 105 truncate fractional line heights; restore the web box heights.
+installLineBoxFix(window);
+// Chromium 94 writes "19–25 Oct" for date ranges; the web writes "19 – 25 Oct".
+installSpacedRanges(window);
 
 async function startPlayarr(): Promise<void> {
   await loadWebOsRuntimeConfig(`${import.meta.env.BASE_URL}playarr-config.json`);
