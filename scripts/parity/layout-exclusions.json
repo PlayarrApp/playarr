@@ -2,6 +2,15 @@
   "$comment": "Documented capability gaps only (docs/parity/LAYOUT.md, Per-client exclusions). Web elements matched here leave the layout denominator for that client and are listed as excluded. Never for styling or bugs. Every entry needs reason and doc (repo path#heading anchor).",
   "roku": [
     {
+      "screen": "player-controls",
+      "match": {
+        "role": "button",
+        "text": "Play on another device"
+      },
+      "reason": "Roku is itself a cast target and a channel cannot start a cast session (real platform limit); no cast button is drawn",
+      "doc": "docs/parity/DEVICES.md#roku-player-chrome-what-is-native-and-what-is-a-platform-limit"
+    },
+    {
       "screen": "film-detail",
       "match": {
         "role": "button",
