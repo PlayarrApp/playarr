@@ -625,17 +625,21 @@ enum TVParityState {
     private static func focusState() -> (label: String?, item: String?) { (nil, nil) }
     #endif
 
+    /// The state file: `-PlayarrParityState <path>` (the Mac driver) or the app's Documents folder.
+    static var stateURL: URL? {
+        let args = ProcessInfo.processInfo.arguments
+        let explicit = args.firstIndex(of: "-PlayarrParityState").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
+        return explicit.map { URL(fileURLWithPath: $0) }
+            ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("parity-state.json")
+    }
+
     private static func write() {
         let found = focusState()
         let state: [String: Any] = ["route": route, "userID": currentUserID, "focused": (tag ?? found.label) as Any, "item": found.item as Any,
                                     "at": Date().timeIntervalSince1970, "playback": playback as Any, "position": position as Any,
                                     "items": items as Any]
         // `-PlayarrParityState <path>`: an explicit file (the Mac driver); otherwise the app's Documents folder.
-        let args = ProcessInfo.processInfo.arguments
-        let explicit = args.firstIndex(of: "-PlayarrParityState").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
-        guard let data = try? JSONSerialization.data(withJSONObject: state),
-              let target = explicit.map({ URL(fileURLWithPath: $0) })
-                ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("parity-state.json") else { return }
+        guard let data = try? JSONSerialization.data(withJSONObject: state), let target = stateURL else { return }
         do { try data.write(to: target, options: .atomic) } catch { NSLog("PlayarrParity: cannot write %@: %@", target.path, String(describing: error)) }
     }
 }

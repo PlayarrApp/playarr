@@ -155,6 +155,7 @@ struct TVPageHeader: View {
                 .tracking(-1.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .fixedSize()
+                .parityLayout(text: title, role: "heading", size: 33.6, weight: 580, color: DesignTokens.Color.textPrimary, tracking: -1.5)
             let subtitle = detail.map {
                 Text($0.uppercased())
                     .font(TVTheme.font(size: 11.14, css: 680))
@@ -162,6 +163,7 @@ struct TVPageHeader: View {
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
                     .fixedSize()
+                    .parityLayout(text: $0.uppercased(), size: 11.14, weight: 680, color: DesignTokens.Color.textPrimary, tracking: 0.5)
             }
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: headerSpacing) {

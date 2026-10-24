@@ -25,8 +25,8 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 gh run download "$id" -R "$repo" -D "$tmp"
 mkdir -p "$dest/light"
-for d in "$tmp"/apple-wall-"$device"-dark-*; do cp "$d"/dark/*.png "$dest/"; cp "$d"/dpad.json "$dest/dpad.json"; done
-for d in "$tmp"/apple-wall-"$device"-light-*; do cp "$d"/light/*.png "$dest/light/"; done
+for d in "$tmp"/apple-wall-"$device"-dark-*; do cp "$d"/dark/*.png "$dest/"; cp "$d"/dpad.json "$dest/dpad.json"; [[ ! -d $d/layout ]] || { mkdir -p "$dest/layout"; cp -r "$d"/layout/. "$dest/layout/"; }; done
+for d in "$tmp"/apple-wall-"$device"-light-*; do cp "$d"/light/*.png "$dest/light/"; [[ ! -d $d/layout ]] || { mkdir -p "$dest/layout"; cp -r "$d"/layout/. "$dest/layout/"; }; done
 printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","server":"static server","run":"%s"}\n' \
   "$ref" "$(git rev-parse HEAD)" "$(date -u +%FT%TZ)" "$id" > "$dest/build.json"
 echo "captures in $dest"

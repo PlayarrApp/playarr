@@ -6,7 +6,7 @@
 // (TVParityState in clients/apple-tv), read through `simctl get_app_container`. Screenshots are `simctl io screenshot`.
 import { execFileSync } from "node:child_process";
 import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, statSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { FIXTURE_FILM, staticRoute } from "../apple/static-route.mjs";
 
 // IDB (path of the idb client, with its companion running): headless keys as USB HID usages, no Simulator window, no host keyboard.
@@ -410,6 +410,17 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       } else run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", file]);
       if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
       if ((state().route ?? "").startsWith("/login")) throw new Error("signed out");
+      // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames, written beside the screenshot.
+      try {
+        const base = mac ? dirname(macState) : join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents");
+        const layout = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
+        const themeDir = dirname(file), id = basename(file, ".png");
+        if (!/^(dark|light)$/.test(basename(themeDir))) throw new Error("not a screen capture");
+        const dir = join(dirname(themeDir), "layout", basename(themeDir));
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, `${id}.json`), JSON.stringify({ screen: id, theme: basename(themeDir), ...layout }));
+        rmSync(join(base, "parity-layout.json"), { force: true });
+      } catch { /* a build without the exporter, a crop, or a screen that registers nothing */ }
     },
     // Cases a and b: launch straight into the player (-PlayarrPlayFile) and read its state from parity-state.json. The
     // caller serialises runs (one device at a time, playback.lock rules); a 503/404 at a pod restart gets one re-run.
