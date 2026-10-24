@@ -152,6 +152,10 @@ internal sealed class DebugMirror
                     object? custom = null;
                     switch (path)
                     {
+                        // parity tooling: process memory (RSS, managed heap, handles) to catch growth across routes
+                        case "/mem":
+                            { var rss = File.ReadLines("/proc/self/status").FirstOrDefault(l => l.StartsWith("VmRSS")) ?? ""; var fds = Directory.GetFiles("/proc/self/fd").Length; custom = new { rss, managed = GC.GetTotalMemory(false), fds, gen2 = GC.CollectionCount(2) }; }
+                            break;
                         case "/layout": custom = new { json = LayoutExport.Json(q["screen"] ?? "", q["theme"] ?? "", _env().ClockPinned, global::Tizen.NUI.Window.Instance.GetDefaultLayer()) }; break;
                         // parity tooling: natural single-line width of /measure?text=&size=&weight=&spacing= as the app would lay it out
                         case "/measure": measured = Ui.TextWidth(q["text"] ?? "", float.Parse(q["size"] ?? "16", System.Globalization.CultureInfo.InvariantCulture), int.Parse(q["weight"] ?? "400"), float.Parse(q["spacing"] ?? "0", System.Globalization.CultureInfo.InvariantCulture)); break;
