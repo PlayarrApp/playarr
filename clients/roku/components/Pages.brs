@@ -2230,9 +2230,9 @@ sub renderCalendarMonth(entries as Object)
         x = gx + (i mod 7) * cw
         y = gy + Int(i / 7) * ch
         if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12)
-        ' Light theme: today's cell carries a faint brand tint (web .is-today).
-        if day = calendarTodayString() and m.global.themeMode = "light" then pgRect(m.pageBody, x, y, cw, ch, "brand", 7)
-        pgMark(m.pageBody, "container", "", x, y, cw, ch, 0, "sample")
+        cellBg = "surface"
+        if Mid(day, 6, 2) <> monthOf then cellBg = "c:241f23:f0eeee"
+        pgMark(m.pageBody, "container", "", x, y, cw, ch, 0, cellBg)
     end for
     for rr = 0 to rows
         pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
