@@ -120,7 +120,7 @@ internal sealed class SettingsScreen : IPage
             var y = 162 + i * 91.9f; var idx = i;
             var card = Ui.Box(153.6f, y, 470.4f, 91.9f, i == 0 ? _t.SurfaceSoft : new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, 0.0f), 18);
             card.Add(Ui.Text(Numbers[i], 32, 26.8f, 9.92f, 800, _t.Ink, 40, 14.88f));
-            card.Add(Ui.Text(Options[i], 92, 23.8f, 29.6f, 500, _t.Ink, 307.6f, 44.4f, spacing: -1.04f));
+            card.Add(Ui.Text(Options[i], 92, 23.8f, 29.6f, 500, _t.Ink, 307.6f, 44.4f, spacing: -1.08f));
             card.Add(Ui.Text("→", i == 0 ? 422.6f : 417.6f, 31f, 20.8f, 400, i == 0 ? _t.Ink : _t.InkMuted, 30, 31.2f)); // web: the open row nudges its arrow 5 px
             Sem.Tag(card, "link", $"{Numbers[i]} {Options[i]} →", radius: 0);
             var ring = Ring.Make(470.4f, 91.9f, 18, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);

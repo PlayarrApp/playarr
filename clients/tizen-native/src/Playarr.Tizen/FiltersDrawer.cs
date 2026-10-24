@@ -161,8 +161,8 @@ internal sealed class FiltersDrawer
                     var idx = i; var bx = 1606 + i % columns * (w + gap); var by = top + i / columns * 64; var active = i == s.Selected;
                     var b = Ui.Box(bx, by, w, 56, active ? t.Ink : new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                     b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(t, 0.15f);
-                    var label = Ui.Text(s.Options[i], 0, n == 3 ? 33 : 22.2f, 10.56f, n == 3 ? 900 : 680, active ? t.Bg : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
-                    if (n == 3) { Sem.Tag(label, "text", s.Options[i].ToLowerInvariant()); Sem.Tag(b, "button", s.Options[i], radius: 12); } else Sem.Tag(label, "button", radius: 12);
+                    var label = Ui.Text(n == 3 ? s.Options[i] : System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(s.Options[i]), 0, n == 3 ? 33 : 22.2f, 10.56f, n == 3 ? 900 : 680, active ? t.Bg : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
+                    if (n == 3) { Sem.Tag(label, "text", s.Options[i].ToLowerInvariant()); Sem.Tag(b, "button", s.Options[i], radius: 12); } else Sem.Tag(label, "button", s.Options[i], radius: 12);
                     b.Add(label);
                     if (active) b.Scale = new Vector3(1.025f, 1.025f, 1);
                     if (n == 3) AddViewGlyph(b, i, w, active ? t.OnAccent : t.InkMuted); // web: a small List / Screen / Cover glyph above the label

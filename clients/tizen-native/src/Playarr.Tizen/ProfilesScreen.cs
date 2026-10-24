@@ -29,7 +29,7 @@ internal sealed class ProfilesScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Bg);
         _root.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
         _root.Add(Ui.Text("Profiles", 0, 162, 10.368f, 800, _t.BrandInk, 1920, 15.552f, HorizontalAlignment.Center, upper: true, spacing: 1.35f));
-        _root.Add(Sem.Tag(Ui.Text("Who’s watching?", 0, 184.8f, 80.64f, 500, _t.Ink, 1920, 76.6f, HorizontalAlignment.Center, spacing: -5.8f), "heading"));
+        _root.Add(Sem.Tag(Ui.Text("Who’s watching?", 0, 184.8f, 80.64f, 500, _t.Ink, 1920, 76.6f, HorizontalAlignment.Center, spacing: -6.24f), "heading"));
         _root.Add(_body);
         AddDropdown(1551.8f, 144, _t.Name == "dark" ? "Dark" : "Light", "theme", () => _env.SetTheme(_t.Name == "dark" ? "light" : "dark"));
         AddDropdown(1709.8f, 168, "Auto", "language", () => { });
