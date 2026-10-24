@@ -297,3 +297,8 @@ test('two pending fragments for one new ID with different titles fail; same titl
   assert.match(bad.stderr, /row 7 title mismatch: .*pending fragment/);
   assert.equal(run({ '7.md': a, '7b.md': a.replace('x', 'z') }, ['--check']).r.status, 0);
 });
+
+test('a trailing date on section: still resolves to an undated heading', async () => {
+  const { resolveSection } = await import('./lib/board.mjs');
+  assert.deepEqual(resolveSection('Pixel parity campaign (2026-10-07)', ['3. Pixel parity campaign']), { heading: '3. Pixel parity campaign' });
+});
