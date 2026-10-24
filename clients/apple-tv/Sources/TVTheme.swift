@@ -994,6 +994,7 @@ struct TVFloatingNav: View {
                         .tracking(0.3)
                         .lineLimit(1)
                         .foregroundStyle(DesignTokens.Color.textDisabled)
+                        .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 9, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textDisabled, tracking: 0.3)
                 }
                 .frame(width: DesignTokens.Shell.navItemSize, height: DesignTokens.Shell.navItemSize)
                 .modifier(TVNavItemFocusFill())
@@ -1254,6 +1255,7 @@ struct TVProfileChip: View {
                 Text(name)
                     .font(TVTheme.font(size: 13, weight: .semibold))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .parityLayout(text: name, size: 13, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
             }
             .padding(.leading, 6)
             .padding(.trailing, 14)
@@ -1267,6 +1269,7 @@ struct TVProfileChip: View {
                     .font(TVTheme.font(size: 10, weight: .medium))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
                     .padding(.leading, 44)
+                    .parityLayout(text: version, size: 10, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textDisabled)
             }
         }
     }
@@ -1323,6 +1326,7 @@ struct TVHeaderPill: View {
                 .frame(width: width, height: 50)
                 .background(Capsule().fill(DesignTokens.Color.backgroundElevated))
                 .overlay(Capsule().stroke(DesignTokens.Stage.line.opacity(0.35), lineWidth: 1))
+                .parityLayout(text: label, size: 14.72, weight: Int(720), color: DesignTokens.Color.textSecondary)
         } else {
             tile
         }
@@ -1336,6 +1340,7 @@ struct TVHeaderPill: View {
                 .font(TVTheme.font(size: 8.256, css: 700))
                 .tracking(0.165)
                 .lineLimit(1)
+                .parityLayout(text: label, size: 8.256, weight: Int(700), tracking: 0.165)
         }
         .foregroundStyle(DesignTokens.Stage.inkMuted)
         .frame(width: width, height: Self.height)

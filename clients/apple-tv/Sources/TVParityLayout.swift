@@ -36,12 +36,20 @@ final class TVParityLayoutRegistry {
         schedule()
     }
 
+    private var lastSnapshot: Data?
+
+    /// Export only once the view is idle: the file is written when two consecutive snapshots, 0.4 s apart, are identical.
     private func schedule() {
         pending?.cancel()
+        lastSnapshot = nil
         pending = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            guard !Task.isCancelled, let self else { return }
-            self.write()
+            for _ in 0..<40 {
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                guard !Task.isCancelled, let self else { return }
+                guard let data = self.snapshot() else { continue }
+                if data == self.lastSnapshot { self.publish(data); return }
+                self.lastSnapshot = data
+            }
         }
     }
 
@@ -93,7 +101,8 @@ final class TVParityLayoutRegistry {
         return out
     }
 
-    private func write() {
+    private func snapshot() -> Data? {
+        let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         let styled = order.compactMap { items[$0] }
         #if os(tvOS)
         let plain = accessibilityElements().filter { entry in
@@ -103,7 +112,7 @@ final class TVParityLayoutRegistry {
         let plain: [Item] = []
         #endif
         let elements: [[String: Any]] = (styled.map(glyphRun) + plain).compactMap { item in
-            guard item.rect.width > 0, item.rect.height > 0 else { return nil }
+            guard item.rect.width > 0, item.rect.height > 0, item.rect.intersects(screen) else { return nil } // off-viewport lazy items are dropped
             return [
                 "text": item.text ?? "",
                 "role": item.role,
@@ -119,8 +128,11 @@ final class TVParityLayoutRegistry {
             "clockPinned": TVParityLaunch.pinnedClock,
             "elements": elements,
         ]
-        guard let data = try? JSONSerialization.data(withJSONObject: document),
-              let url = TVParityState.stateURL?.deletingLastPathComponent().appendingPathComponent("parity-layout.json") else { return }
+        return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
+    }
+
+    private func publish(_ data: Data) {
+        guard let url = TVParityState.stateURL?.deletingLastPathComponent().appendingPathComponent("parity-layout.json") else { return }
         try? data.write(to: url, options: .atomic)
     }
 }

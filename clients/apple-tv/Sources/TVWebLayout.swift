@@ -146,6 +146,7 @@ struct TVPageHeader: View {
                     Text("\u{2190}")
                         .font(TVTheme.font(size: 17.3, weight: .semibold))
                         .foregroundStyle(DesignTokens.Color.textSecondary)
+                        .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
                 )
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
@@ -345,6 +346,7 @@ struct TVWebProfileChip: View {
                 .lineLimit(1)
                 .fixedSize()
                 .placed(x: 110, y: 1013, w: nameWidth, h: 16.7)
+                .parityLayout(text: name, size: 11.14, weight: Int(690), color: DesignTokens.Color.textSecondary, tracking: 0.22)
             Text(version)
                 .font(TVTheme.mono(size: 8, css: 700))
                 .tracking(0.32)
@@ -469,6 +471,7 @@ struct TVHeroTitle: View {
                     .lineLimit(1)
                     .fixedSize()
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
+                    .parityLayout(text: line, size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98)
             }
         }
     }
@@ -540,12 +543,14 @@ struct TVDrawer<Content: View>: View {
                         .tracking(0.672)
                         .foregroundStyle(DesignTokens.Color.textDisabled)
                         .frame(height: 14.4)
+                        .parityLayout(text: kicker.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                     Text(title)
                         .font(TVTheme.font(size: 38.4, css: 590))
                         .tracking(-2.1)
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .lineLimit(2)
                         .frame(width: 204, alignment: .leading)
+                        .parityLayout(text: title, size: 38.4, weight: Int(590), color: DesignTokens.Color.textPrimary, tracking: -2.1)
                 }
                 Spacer(minLength: 0)
                 Button(action: onClose) {
@@ -554,6 +559,7 @@ struct TVDrawer<Content: View>: View {
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .frame(width: 48, height: 50)
                         .background(RoundedRectangle(cornerRadius: Self.closeRadius, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
+                        .parityLayout(text: "\u{00D7}", size: 26.88, weight: Int(720), color: DesignTokens.Color.textPrimary)
                         #if os(macOS)
                         // Web `.drawer-close`: a round button with the shared dark focus ring; the frozen capture draws the ring of
                         // the focused close button too (the web reference opens with it focused).
@@ -630,6 +636,7 @@ struct TVChoiceSection<Value: Hashable>: View {
                 .tracking(0.672)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .frame(height: 14.4)
+                .parityLayout(text: title.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
             HStack(spacing: 8) {
                 ForEach(options, id: \.value) { option in
                     let active = option.value == selection
@@ -863,10 +870,12 @@ struct TVActionRow: View {
                     .font(TVTheme.font(size: 19.52, css: 400))
                     .foregroundStyle(DesignTokens.Stage.brandPink)
                     .frame(width: 42, alignment: .leading)
+                    .parityLayout(text: glyph, size: 19.52, weight: Int(400), color: DesignTokens.Stage.brandPink)
                 Text(label)
                     .font(TVTheme.font(size: 19.2, css: 700))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
+                    .parityLayout(text: label, size: 19.2, weight: Int(700), color: DesignTokens.Color.textPrimary)
                 Spacer(minLength: 0)
             }
             .padding(.leading, 18)
@@ -903,12 +912,14 @@ struct TVMultiSelectSection: View {
                 .tracking(0.672)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .frame(height: 14.4)
+                .parityLayout(text: title.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
             if !loaded {
                 RoundedRectangle(cornerRadius: 12).fill(DesignTokens.Stage.surfaceSoft.opacity(0.5)).frame(width: 268, height: 58.8)
             } else if (facets ?? []).isEmpty, selection.isEmpty {
                 Text("No languages to filter by.")
                     .font(TVTheme.font(size: 11.84, css: 400))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: "No languages to filter by.", size: 11.84, weight: Int(400), color: DesignTokens.Color.textDisabled)
             } else {
                 Button { open.toggle() } label: {
                     HStack {
@@ -916,10 +927,12 @@ struct TVMultiSelectSection: View {
                             .font(TVTheme.font(size: 11.84, css: 680))
                             .foregroundStyle(DesignTokens.Color.textPrimary)
                             .lineLimit(1)
+                            .parityLayout(text: summary, size: 11.84, weight: Int(680), color: DesignTokens.Color.textPrimary)
                         Spacer(minLength: 0)
                         Text(open ? "\u{2303}" : "\u{2304}")
                             .font(TVTheme.font(size: 11.84, css: 680))
                             .foregroundStyle(DesignTokens.Color.textSecondary)
+                            .parityLayout(text: open ? "\u{2303}" : "\u{2304}", size: 11.84, weight: Int(680), color: DesignTokens.Color.textSecondary)
                     }
                     .padding(.horizontal, 19.4)
                     .frame(width: 268, height: 58.8)
@@ -988,6 +1001,7 @@ struct TVStatusPill: View {
             .background(Capsule().fill(colour.opacity(0.14)).background(Capsule().fill(DesignTokens.Stage.surface)))
             .overlay(Capsule().stroke(colour.opacity(0.6), lineWidth: 1))
             .fixedSize()
+            .parityLayout(text: label, size: 13.44, weight: Int(750), color: DesignTokens.Color.textPrimary)
     }
 
     private var label: String {

@@ -413,6 +413,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
       // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames, written beside the screenshot.
       try {
         const base = mac ? dirname(macState) : join(run("xcrun", ["simctl", "get_app_container", udid, bundle, "data"]).trim(), "Documents");
+        for (let i = 0; i < 20 && !existsSync(join(base, "parity-layout.json")); i += 1) await sleep(500); // the app writes it once the view is idle
         const layout = JSON.parse(readFileSync(join(base, "parity-layout.json"), "utf8"));
         const themeDir = dirname(file), id = basename(file, ".png");
         if (!/^(dark|light)$/.test(basename(themeDir))) throw new Error("not a screen capture");

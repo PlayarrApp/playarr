@@ -94,6 +94,7 @@ struct TVPlayerChrome: View {
                 Text("Minimise")
                     .font(TVTheme.font(size: 11.2, weight: .bold))
                     .tracking(0.22)
+                    .parityLayout(text: "Minimise", size: 11.2, weight: Int(TVTheme.cssWeight(.bold)), tracking: 0.22)
             }
             .foregroundStyle(Color.white)
             .frame(width: 124, height: 48)
@@ -169,14 +170,17 @@ struct TVPlayerChrome: View {
                 .font(TVTheme.font(size: 10.88, weight: .regular))
                 .foregroundStyle(Color.white)
                 .placed(x: 302.8, y: 981.8, w: 30, h: 16.3)
+                .parityLayout(text: Self.clock(state.position), size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color.white)
             Text("/")
                 .font(TVTheme.font(size: 10.88, weight: .regular))
                 .foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
                 .placed(x: 330.6, y: 981.8, w: 8, h: 16.3)
+                .parityLayout(text: "/", size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
             Text(Self.clock(state.duration))
                 .font(TVTheme.font(size: 10.88, weight: .regular))
                 .foregroundStyle(Color.white)
                 .placed(x: 340.2, y: 981.8, w: 30, h: 16.3)
+                .parityLayout(text: Self.clock(state.duration), size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color.white)
         }
     }
 
@@ -192,11 +196,13 @@ struct TVPlayerChrome: View {
                         .tracking(0.31)
                         .foregroundStyle(Color.white)
                         .frame(width: 28, height: 20)
+                        .parityLayout(text: "HD", size: 7.68, weight: Int(TVTheme.cssWeight(.bold)), color: Color.white, tracking: 0.31)
                     Text(state.qualityLabel)
                         .font(TVTheme.font(size: 10.56, weight: .bold))
                         .tracking(0.11)
                         .foregroundStyle(Color.white)
                         .lineLimit(1)
+                        .parityLayout(text: state.qualityLabel, size: 10.56, weight: Int(TVTheme.cssWeight(.bold)), color: Color.white, tracking: 0.11)
                 }
                 .padding(.horizontal, 15.5)
                 .frame(width: 173.4, height: 60.5, alignment: .leading)
@@ -253,6 +259,7 @@ struct TVPlayerChrome: View {
                 .tracking(1.3)
                 .foregroundStyle(Color.white.opacity(0.56))
                 .placed(x: 1084.6, y: 549.8, w: 600, h: 28.9)
+                .parityLayout(text: "QUALITY", size: 8.64, weight: Int(TVTheme.cssWeight(.heavy)), tracking: 1.3)
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(DesignTokens.Color.brandPrimary.opacity(0.22))
                 .overlay(
@@ -264,20 +271,24 @@ struct TVPlayerChrome: View {
                 .font(TVTheme.font(size: 12.48, weight: .bold))
                 .foregroundStyle(Color.white)
                 .placed(x: 1095.5, y: 591.4, w: 300, h: 18.7)
+                .parityLayout(text: state.qualityLabel, size: 12.48, weight: Int(TVTheme.cssWeight(.bold)), color: Color.white)
             Text("Source quality")
                 .font(TVTheme.font(size: 9.28, weight: .regular))
                 .foregroundStyle(white54)
                 .placed(x: 1095.5, y: 612, w: 300, h: 13.9)
+                .parityLayout(text: "Source quality", size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
             Text("\u{2713}")
                 .font(TVTheme.font(size: 11.84, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.brandPrimary)
                 .placed(x: 1658.1, y: 599.8, w: 16, h: 17.8)
+                .parityLayout(text: "\u{2713}", size: 11.84, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.brandPrimary)
             ForEach(columns, id: \.0) { column in
                 Text(column.0.uppercased())
                     .font(TVTheme.font(size: 10.24, weight: .heavy))
                     .tracking(0.82)
                     .foregroundStyle(white54)
                     .placed(x: column.1, y: 646.7, w: 156.6, h: 27.5, alignment: .center)
+                    .parityLayout(text: column.0.uppercased(), size: 10.24, weight: Int(TVTheme.cssWeight(.heavy)), tracking: 0.82)
             }
             ForEach(Array(Self.tiers.enumerated()), id: \.offset) { row, tier in
                 let top = 680.2 + CGFloat(row) * 66
@@ -285,10 +296,12 @@ struct TVPlayerChrome: View {
                     .font(TVTheme.font(size: 12.16, weight: .heavy))
                     .foregroundStyle(Color.white)
                     .placed(x: 1088.6, y: top + 13, w: 104.7, h: 18.2)
+                    .parityLayout(text: tier.name, size: 12.16, weight: Int(TVTheme.cssWeight(.heavy)), color: Color.white)
                 Text(tier.height)
                     .font(TVTheme.font(size: 9.28, weight: .regular))
                     .foregroundStyle(white54)
                     .placed(x: 1088.6, y: top + 33.1, w: 104.7, h: 13.9)
+                    .parityLayout(text: tier.height, size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
                 ForEach(Array(columns.enumerated()), id: \.offset) { column, spec in
                     ZStack(alignment: .topLeading) {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -302,10 +315,12 @@ struct TVPlayerChrome: View {
                             .font(TVTheme.font(size: 12.48, weight: .bold))
                             .foregroundStyle(Color.white)
                             .placed(x: 10.9, y: 12.7, w: 130, h: 18.7)
+                            .parityLayout(text: "\(tier.mbps[column]) Mbps", size: 12.48, weight: Int(TVTheme.cssWeight(.bold)), color: Color.white)
                         Text(spec.0)
                             .font(TVTheme.font(size: 9.28, weight: .regular))
                             .foregroundStyle(white54)
                             .placed(x: 10.9, y: 33.3, w: 130, h: 13.9)
+                            .parityLayout(text: spec.0, size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
                     }
                     .frame(width: 156.6, height: 60, alignment: .topLeading)
                     .placed(x: spec.1, y: top, w: 156.6, h: 60)
