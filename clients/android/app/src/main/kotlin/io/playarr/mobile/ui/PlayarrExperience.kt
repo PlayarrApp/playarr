@@ -4691,7 +4691,11 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                 Modifier.height(25.dp).fillMaxWidth().clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (active) Box(Modifier.size(22.dp).webFocusRing(savedSelectedId == null, offset = 1.dp).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
+                                if (active) Box(Modifier.size(22.dp).then(if (savedSelectedId == null) Modifier.drawBehind {
+                                    // Web's letter ring is crimson, 2 css px, 1.5 px off the disc, and is drawn in touch mode too (programmatic focus).
+                                    val grow = 1.5.dp.toPx() + 1.dp.toPx()
+                                    drawCircle(UnwatchedDotColour, radius = size.minDimension / 2f + grow, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+                                } else Modifier).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
                                 Text(letter, color = if (active) WebBackground else WebInkSoft, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
                             }
                         }
