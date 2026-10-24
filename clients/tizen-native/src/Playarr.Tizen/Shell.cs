@@ -45,7 +45,7 @@ internal sealed class Shell : View
     {
         // The parity suite pins UTC (screens.json determinism.timezone) and hands over UTC wall time; show release times (ToLocalTime) in the same zone.
         if (now is not null) { Environment.SetEnvironmentVariable("TZ", "UTC"); TimeZoneInfo.ClearCachedData(); }
-        _env.ClockNow = () => now ?? DateTime.Now;
+        _env.ClockNow = () => now ?? DateTime.Now; _env.ClockPinned = now is not null;
         UpdateClock();
     }
     private void UpdateClock()
