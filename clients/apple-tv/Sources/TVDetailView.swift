@@ -347,11 +347,7 @@ struct TVWorkDetailView: View {
         @Environment(\.isFocused) private var isFocused
 
         func body(content: Content) -> some View {
-            #if os(macOS)
             let on = forced || isFocused
-            #else
-            let on = forced
-            #endif
             return content
                 .background { if on { Capsule().fill(Color(red: 165 / 255, green: 39 / 255, blue: 69 / 255)) } }
                 .overlay { if on { Capsule().stroke(DesignTokens.Stage.focusRing, lineWidth: 3).padding(-3.5) } }
