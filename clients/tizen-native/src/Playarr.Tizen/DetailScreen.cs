@@ -202,7 +202,7 @@ internal sealed class DetailScreen : IPage
             var first = c.Index == 0; // web: the first rail item reads as the selected one (full-contrast ink)
             var maxInk = _t.Name == "dark" ? new Rgba(1, 1, 1) : new Rgba(0, 0, 0);
             box.Add(Ui.Text(DetailModel.Clock(c.StartMs), 0, 165.3f, 8.832f, 700, first ? maxInk : _t.InkMuted, 40, 13.248f));
-            var tt = Ui.Text(c.Title, 25.8f, 162.3f, 11.52f, 610, first ? maxInk : _t.Ink, 242, 17.28f, spacing: -0.17f);
+            var tt = Ui.Text(c.Title, Ui.TextWidth(DetailModel.Clock(c.StartMs), 8.832f, 700, 0) + 8.8f, 162.3f, 11.52f, 610, first ? maxInk : _t.Ink, 242, 17.28f, spacing: -0.17f);
             box.Add(tt);
             _chapterRow.Add(box);
             var idx = c.Index; var startMs = c.StartMs;
