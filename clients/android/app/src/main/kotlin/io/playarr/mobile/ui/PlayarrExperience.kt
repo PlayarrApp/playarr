@@ -4654,7 +4654,8 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         serverUrl = serverUrl,
                         accessToken = accessToken,
                         isTelevision = isTelevision,
-                        selectedId = selectedId,
+                        // Web phone: nothing is selected on load; the focus ring sits on the active letter of the index until a card is touched.
+                        selectedId = if (!isTelevision && savedSelectedId == null) "" else selectedId,
                         progressByWork = progressByWork,
                         progressLoaded = progressLoaded,
                         onSelected = { savedSelectedId = it.id },
@@ -4690,7 +4691,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                                 Modifier.height(25.dp).fillMaxWidth().clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (active) Box(Modifier.size(22.dp).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
+                                if (active) Box(Modifier.size(22.dp).webFocusRing(savedSelectedId == null, offset = 1.dp).clip(CircleShape).background(WebInk.copy(alpha = 0.78f)))
                                 Text(letter, color = if (active) WebBackground else WebInkSoft, fontSize = 8.96.sp, lineHeight = 9.sp, style = WebTextStyle.copy(fontWeight = FontWeight(700)))
                             }
                         }

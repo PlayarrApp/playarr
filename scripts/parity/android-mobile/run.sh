@@ -3,6 +3,7 @@
 #   PARITY_LEGEND_ROOT=<legend evidence root> PARITY_OUT=<scratch dir> scripts/parity/android-mobile/run.sh <phone|tablet> [screen...]
 # Needs the emulator booted headless and signed in (emu-setup.sh, signin.sh) and the sideload debug APK installed.
 # Defaults: all 15 screens (the player-controls screen plays the 60 s clip and pauses it at 2 s). Captures land in
+# PARITY_EMU_UNIT: the emulator's systemd user unit (phone: playarr-android-phone-vnc.service); the unit is restarted when its memory is high.
 # $PARITY_OUT/<device>/{dark,light}, are scored against <legend>/android-<device>/web, and replace <legend>/android-<device>/dev
 # (old PNGs removed, JSON kept) with a build.json. PARITY_PUBLISH=0 scores only.
 set -euo pipefail
@@ -20,7 +21,11 @@ eval "$(node "$here/../parity-config.mjs" --shell)"
 export PARITY_CLOCK
 for t in Dark Light; do
   d=$out/$(echo "$t" | tr A-Z a-z); rm -rf "$d"; mkdir -p "$d"
-  "$cap" "$d" "$t" "${screens[@]}"
+  # The swiftshader emulator leaks host memory per launch (emu-recycle.sh): capture in chunks of 5 screens and recycle in between.
+  for ((i = 0; i < ${#screens[@]}; i += 5)); do
+    "$here/emu-recycle.sh" "${PARITY_EMU_UNIT:-}" "$ANDROID_SERIAL" "${PARITY_EMU_MAX_GIB:-5}"
+    "$cap" "$d" "$t" "${screens[@]:i:5}"
+  done
 done
 mkdir -p "$out"
 node "$here/score.mjs" "$legend/web" "$out" --json "$out/scores.json"
