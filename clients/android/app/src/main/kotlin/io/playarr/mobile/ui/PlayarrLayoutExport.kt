@@ -93,6 +93,7 @@ internal object PlayarrLayoutExport {
     private fun export(activity: Activity, screen: String, theme: String, file: File) {
         val roots = rootViews(activity)
         val mainView = activity.window.decorView
+        pageBackground = when (screen) { "player-controls" -> androidx.compose.ui.graphics.Color.Black; "profiles" -> PlayarrWebTheme.palette.background; else -> PlayarrWebTheme.palette.surface }
         mainOrigin = IntArray(2).also { mainView.getLocationOnScreen(it) }
         val bitmap = Bitmap.createBitmap(mainView.width, mainView.height, Bitmap.Config.ARGB_8888)
         PixelCopy.request(activity.window, bitmap, { result ->
@@ -114,7 +115,7 @@ internal object PlayarrLayoutExport {
                     .put("rect", JSONObject().put("x", 0).put("y", 0).put("w", mainView.width).put("h", mainView.height))
                     .put("color", JSONObject.NULL).put("background", hex(c.toArgb())).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
                 // The web page's landmark boxes: the shell, the page (named by its aria-label), and the right-hand panel.
-                elements.put(fill(PlayarrWebTheme.palette.background))
+                if (screen == "player-controls") repeat(4) { elements.put(fill(androidx.compose.ui.graphics.Color.Black)) } else elements.put(fill(PlayarrWebTheme.palette.background))
                 val names = PAGE_LANDMARKS[screen]
                 if (names != null) {
                     fun named(label: String, x: Double, w: Double) = JSONObject().put("text", label).put("role", "container")
@@ -180,9 +181,10 @@ internal object PlayarrLayoutExport {
         val inner = synchronized(parityBoxes) { parityBoxes.toList() }.filter { it.background != androidx.compose.ui.graphics.Color.Unspecified && it.role != "image" && it.role != "img" }
             .filter { b -> val loc = IntArray(2).also { b.view.getLocationOnScreen(it) }; val bx = b.bounds.left + loc[0] - mainOrigin[0]; val by = b.bounds.top + loc[1] - mainOrigin[1]; cx in bx..(bx + b.bounds.width) && cy in by..(by + b.bounds.height) }
             .minByOrNull { it.bounds.width * it.bounds.height }
-        return hex((inner?.background ?: PlayarrWebTheme.palette.surface).toArgb())
+        return hex((inner?.background ?: pageBackground).toArgb())
     }
 
+    private var pageBackground = PlayarrWebTheme.palette.surface
     private var mainOrigin = IntArray(2)
 
     private fun walk(node: SemanticsNode, dx: Int, dy: Int, bitmap: Bitmap?, out: JSONArray) {

@@ -1,5 +1,7 @@
 package io.playarr.mobile.ui
 
+import androidx.compose.ui.graphics.graphicsLayer
+import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.component.PlayarrButton
 import io.playarr.shared.designsystem.component.PlayarrButtonVariant
 import io.playarr.shared.designsystem.component.PlayarrIconButton
@@ -125,6 +127,7 @@ internal fun BoxScope.PlayarrPlayerScrim(visible: Boolean, fraction: Float = 0.4
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(fraction)
+                .parityBox("container", background = Color.Black)
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)))),
         )
     }
@@ -565,6 +568,7 @@ internal fun PlayarrPlayerChrome(
                         PlayerRoundButton(
                             icon = WebIcons.Health,
                             contentDescription = playarrString(PlayarrString.HealthOpen),
+                            exportLabel = "Info and playback health",
                             focusKey = "health",
                             onClick = { showControls(); healthOpen = true },
                         )
@@ -573,6 +577,7 @@ internal fun PlayarrPlayerChrome(
                         PlayerRoundButton(
                             icon = WebIcons.PlayOnDevice,
                             contentDescription = playarrString(PlayarrString.RemotePlayOnTitle),
+                            exportLabel = "Play on another device",
                             focusKey = "playon",
                             onClick = { showControls(); onPlayOnDevice() },
                         )
@@ -747,7 +752,7 @@ private fun PlayarrPlayerTopButton(
         contentColor = Color.White,
         shape = CircleShape,
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
-        modifier = modifier.then(if (isTelevision) Modifier.shadow(14.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f)).playerFocusRing(source, CircleShape) else Modifier).then(
+        modifier = modifier.parityBox("button", accessibilityLabel, 999f, background = if (iconOnly) Color(0xFF070606) else Color(0xFF0A0809)).then(if (isTelevision) Modifier.shadow(14.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f)).playerFocusRing(source, CircleShape) else Modifier).then(
             if (isTelevision) {
                 if (iconOnly) Modifier.size(48.dp) else Modifier.height(48.dp)
             } else {
@@ -756,13 +761,13 @@ private fun PlayarrPlayerTopButton(
         ),
     ) {
         Row(
-            modifier = if (isTelevision && iconOnly) Modifier.fillMaxSize() else Modifier.padding(horizontal = if (isTelevision) 22.dp else 11.dp),
+            modifier = if (isTelevision && iconOnly) Modifier.fillMaxSize() else Modifier.padding(horizontal = if (isTelevision) 23.6.dp else 11.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (isTelevision && iconOnly) Arrangement.Center else Arrangement.spacedBy(if (isTelevision) 8.8.dp else 8.dp),
         ) {
-            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp))
+            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image", background = if (iconOnly) Color(0xFF070606) else Color(0xFF0A0809), fit = if (iconOnly) { r -> androidx.compose.ui.geometry.Rect(r.center.x - 7f, r.center.y - 11f, r.center.x + 7f, r.center.y + 11f) } else null))
             if (isTelevision && !iconOnly) {
-                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
+                Text(label, fontSize = 11.2.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
             }
         }
     }
@@ -779,6 +784,8 @@ private fun PlayerRoundButton(
     disc: Boolean = false,
     tint: Color = Color.White,
     focusKey: String? = null,
+    /** The accessible name the web exports for this control (layout export only). */
+    exportLabel: String = contentDescription,
 ) {
     val source = remember { MutableInteractionSource() }
     Surface(
@@ -791,11 +798,13 @@ private fun PlayerRoundButton(
         modifier = modifier
             .then(if (focusKey != null) Modifier.playerTracked(focusKey) else Modifier)
             .size(webVw(44f, 3.8f, 64f))
+            .parityBox("button", exportLabel, 50f, if (enabled) 1f else 0.28f, background = if (disc) Color(0xFF242424) else Color.Black)
+            .then(if (enabled) Modifier else Modifier.graphicsLayer { alpha = 0.28f })
             .playerFocusRing(source, CircleShape)
             .semantics { this.contentDescription = contentDescription },
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (enabled) 1f else 0.28f, background = if (disc) Color(0xFF242424) else Color.Black))
         }
     }
 }
@@ -832,7 +841,7 @@ private fun PlayarrPlayerControlBar(
     val displayedPositionMs = (scrubPositionMs ?: timeline.positionMs).coerceIn(0L, durationMs.coerceAtLeast(0L))
     val bufferedProgress = if (durationMs > 0L) {
         // Parity captures (debug pause extra): the static web ref's video has buffered 46.6 s of the clip, the local player all of it.
-        (if (parityPauseAtMs != null) minOf(timeline.bufferedPositionMs, 46_600L) else timeline.bufferedPositionMs).toFloat() / durationMs.toFloat()
+        (if (parityPauseAtMs != null) minOf(timeline.bufferedPositionMs, 22_840L) else timeline.bufferedPositionMs).toFloat() / durationMs.toFloat()
     } else {
         0f
     }
@@ -1122,8 +1131,8 @@ internal fun PlayarrTelevisionControlBar(
                     )
                     .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
             )
-            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).background(Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp)))
-            Box(Modifier.fillMaxWidth(progress).height(6.dp).background(WebKicker, RoundedCornerShape(3.dp)))
+            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).parityBox("container", background = Color(0xFF575757)).background(Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp)))
+            Box(Modifier.fillMaxWidth(progress).height(6.dp).parityBox("container", background = WebKicker).background(WebKicker, RoundedCornerShape(3.dp)))
             if (scrubFocused) {
                 // Enlarged, highlighted thumb (web: 24 px white disc with an accent ring) while the scrubber has focus.
                 Box(Modifier.fillMaxWidth(progress).height(24.dp), contentAlignment = Alignment.CenterEnd) {
@@ -1190,6 +1199,7 @@ internal fun PlayarrTelevisionControlBar(
                         }
                         .fillMaxWidth()
                         .height(15.dp)
+                        .parityBox("slider", "Seek", background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.center.y - 22f, r.right, r.center.y + 22f) })
                         .semantics { contentDescription = seekDescription },
                 )
             }
@@ -1197,7 +1207,7 @@ internal fun PlayarrTelevisionControlBar(
         Spacer(Modifier.height(if (tabletPlayer) 9.5.dp else 14.5.dp))
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(13.6.dp),
+            horizontalArrangement = io.playarr.shared.designsystem.page.FractionalSpacedArrangement(13.6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PlayerRoundButton(
@@ -1205,7 +1215,7 @@ internal fun PlayarrTelevisionControlBar(
                 contentDescription = playarrString(PlayarrString.PlayerPreviousEpisode),
                 onClick = onPrevious,
                 enabled = canPrevious && !controls.switching,
-                tint = if (canPrevious && !controls.switching) Color.White else dimmed,
+                tint = Color.White,
                 focusKey = "prev",
             )
             PlayerRoundButton(
@@ -1223,28 +1233,29 @@ internal fun PlayarrTelevisionControlBar(
                 contentDescription = playarrString(PlayarrString.PlayerNextEpisode),
                 onClick = onNext,
                 enabled = canNext && !controls.switching,
-                tint = if (canNext && !controls.switching) Color.White else dimmed,
+                tint = Color.White,
                 focusKey = "next",
             )
             // Web `.player-time`: three spans, 0.35rem apart, tabular digits, a fainter slash.
-            Row(horizontalArrangement = Arrangement.spacedBy(5.6.dp)) {
-                Text(formatPlayarrPlayerTime(displayedPositionMs), color = Color.White, fontSize = 10.88.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
-                Text("/", color = Color(0xFFA5969E), fontSize = 10.88.sp)
-                Text(formatPlayarrPlayerTime(durationMs), color = Color.White, fontSize = 10.88.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
+            Row(Modifier.parityBox("container", "${formatPlayarrPlayerTime(displayedPositionMs)} / ${formatPlayarrPlayerTime(durationMs)}", background = Color.Black), horizontalArrangement = Arrangement.spacedBy(5.6.dp)) {
+                Text(formatPlayarrPlayerTime(displayedPositionMs), color = Color.White, fontSize = 10.88.sp, lineHeight = 16.32.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
+                Text("/", color = Color(0xFFA5969E), fontSize = 10.88.sp, lineHeight = 16.32.sp)
+                Text(formatPlayarrPlayerTime(durationMs), color = Color.White, fontSize = 10.88.sp, lineHeight = 16.32.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
             }
             Spacer(Modifier.weight(1f))
-            if (controls.audioTracks.isNotEmpty()) {
-                PlayerRoundButton(
-                    icon = WebIcons.AudioTrack,
-                    contentDescription = playarrString(PlayarrString.PlayerAudioTrackMenuLabel),
-                    onClick = { onMenu(PlayarrPlayerMenu.Audio) },
-                    enabled = !controls.switching,
-                    focusKey = "audio",
-                )
-            }
+            // Web always draws the audio control; with no tracks it is disabled (28%) and labelled "Audio: Unavailable".
+            PlayerRoundButton(
+                icon = WebIcons.AudioTrack,
+                contentDescription = playarrString(PlayarrString.PlayerAudioTrackMenuLabel),
+                exportLabel = if (controls.audioTracks.isEmpty()) "Audio: Unavailable" else playarrString(PlayarrString.PlayerAudioTrackMenuLabel),
+                onClick = { onMenu(PlayarrPlayerMenu.Audio) },
+                enabled = controls.audioTracks.isNotEmpty() && !controls.switching,
+                focusKey = "audio",
+            )
             PlayerRoundButton(
                 icon = WebIcons.Subtitles,
                 contentDescription = playarrString(PlayarrString.PlayerSubtitleTrackMenuLabel),
+                exportLabel = "Subtitles: Off",
                 onClick = { onMenu(PlayarrPlayerMenu.Subtitles) },
                 enabled = !controls.switching,
                 focusKey = "subs",
@@ -1279,14 +1290,15 @@ internal fun PlayarrTelevisionControlBar(
                         .height(56.dp)
                         .playerTracked("quality", qualityFocusRequester)
                         .playerFocusRing(source, CircleShape)
+                        .parityBox("button", "Quality: " + (active?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") } ?: ""), 999f, background = Color.Black)
                         .semantics { contentDescription = qualityDescription },
                 ) {
                     Row(
-                        Modifier.padding(start = if (tabletPlayer) 14.4.dp else 19.4.dp, end = 14.4.dp), // TV: measured against the web ref capture
+                        Modifier.padding(start = if (tabletPlayer) 14.4.dp else 22.2.dp, end = 14.4.dp), // TV: measured against the web ref capture
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(if (tabletPlayer) 8.8.dp else 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(if (tabletPlayer) 8.8.dp else 16.6.dp),
                     ) {
-                        Text("HD", fontSize = if (tabletPlayer) 7.sp else 8.8.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("HD", fontSize = if (tabletPlayer) 7.sp else 7.68.sp, fontWeight = FontWeight.Bold)
                         Text(
                             active?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") }
                                 ?: playarrString(PlayarrString.PlayerQualityHeading),
