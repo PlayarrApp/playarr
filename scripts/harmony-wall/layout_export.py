@@ -129,13 +129,12 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             here = app_bg(node) or under  # the page's own colour is the base of everything on it
         if str(attrs.get("id", "")) == "px:navbar":
             here = root_bg  # web composites the nav bar over the body, not over the page
-        if kind in ("Navigation", "NavDestination", "root") or str(attrs.get("id", "")) == "px:navbar":
-            bg = None  # system containers and the nav bar's own fill: web composites its children over the page behind (static refs)
+        if kind in ("Navigation", "NavDestination", "root"):
+            bg = None  # system containers
         parent_bg = here  # web's `background` is the composite behind the element; its own fill counts only when opaque
         if bg is not None and bg[3] > 0:
-            here = over(bg, under)
-            if bg[3] > 0.99:
-                parent_bg = here
+            here = over(bg, here if str(attrs.get("id", "")) == "px:navbar" else under)
+            parent_bg = here  # the refs' background is the colour behind and including the element
         if box is not None:
             x, y, w, h = (v / dpr for v in box)
             if str(attrs.get("id", "")).startswith("px:") and str(attrs.get("id", "")).count(":") >= 2 and kind != "Text":
