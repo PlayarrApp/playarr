@@ -11,7 +11,6 @@ sub init()
     m.name = m.top.findNode("name")
     m.status = m.top.findNode("status")
     m.itemGroup = m.top.findNode("itemGroup")
-    m.global.observeField("parityLayoutSeq", "onParityLayoutProfile")
     ThemeSetRole(m.focusRing, "cardGlow")
     m.focusRing.blendColor = ThemeColor("cardGlow")
     ThemeSetRole(m.focusShadow, "profileShadow")
@@ -80,13 +79,3 @@ sub updateProfileNameColor()
     if effective > 0 then m.name.color = ThemeColor("ink") else m.name.color = ThemeColor("inkSoft")
 end sub
 
-' Parity layout dump: the item answers for itself (web profile button, circle, art and captions).
-sub onParityLayoutProfile()
-    if m.global.parityArtEnabled <> true then return
-    content = m.top.itemContent
-    if content = invalid or not content.hasField("parityDx") then return
-    m.parityDx = content.parityDx
-    m.parityDy = content.parityDy
-    m.parityRoot = m.top
-    ParityProfile(m.top, content)
-end sub

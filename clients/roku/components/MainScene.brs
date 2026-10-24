@@ -2710,7 +2710,6 @@ sub buildAlphabetStrip()
         m.alphabetLabels.Push(label)
         name = letter
         if letter = "#" then name = "Numbers and symbols"
-        pgMark(m.browseAlphabet, "button", name, -0.5, y, 44, 44, 50)
         y += 44
     end for
     m.browseLetterIndex = 0
@@ -5209,7 +5208,6 @@ sub showDetail(detail as Object)
     ' string.
     m.detailStage.stageTitle = work.title
     m.detailActions.workTitle = work.title
-    m.global.parityWorkTitle = work.title
     ' Hero art: backdrop with the web stage treatment.
     setStageKeyArt(m.detailStage, heroArtworkUrl(work))
     overview = JsonString(work.overview)
@@ -7574,7 +7572,7 @@ end sub
 
 sub detailChromeInit()
     holder = m.top.findNode("detailGroup")
-    m.detailBackMark = pgBackButton(holder, 153.6, "Back to Movies", "button")
+    pgBackButton(holder, 153.6)
     m.detailHeaderTitle = CreateObject("roSGNode", "TrackedText")
     m.detailHeaderTitle.translation = [226.6, 58.2]
     holder.AppendChild(m.detailHeaderTitle)
@@ -7604,7 +7602,6 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if work.kind = "site" then heading = "Sites"
     if work.kind = "artist" then heading = "Music"
     m.detailHeaderTitle.spec = PageTitleSpec(heading)
-    if m.detailBackMark <> invalid then m.detailBackMark.parityName = "Back to " + heading
         layoutHeaderSub(m.detailHeaderTitle.textWidth, m.detailHeaderChip, m.detailHeaderDivider, m.detailHeaderRule, work.title)
     ' Kicker: the first genre, like the library preview.
     kicker = UCase(work.kind)
@@ -7780,20 +7777,15 @@ function homeCentredTop() as Float
     return 422.9
 end function
 
-' Parity layout dump (source/LayoutDump.brs), requested by the driver through ECP input.
-sub onParityLayoutRequest()
-    if m.global.parityArtEnabled <> true then return
-    ParityPrepareCards()
-    m.global.parityLayoutSeq = m.global.parityLayoutSeq + 1
-    ParityLayoutDump(m.top)
-end sub
-
 ' Parity capture only: seek the video to an exact position (ms) and hold it paused there.
 sub onParitySeek()
     if m.global.parityArtEnabled <> true or m.top.paritySeek < 0 then return
     m.paritySeekTarget = m.top.paritySeek / 1000
-    m.video.ObserveField("position", "onParitySeekStep")
-    m.video.ObserveField("state", "onParitySeekStep")
+    ' Scoped observers: the channel's own state observer stays in place when this one is removed.
+    m.video.ObserveFieldScoped("position", "onParitySeekStep")
+    m.video.ObserveFieldScoped("state", "onParitySeekStep")
+    if m.video.hasField("seekMode") then m.video.seekMode = "accurate"
+    if m.video.hasField("autoplayAfterSeek") then m.video.autoplayAfterSeek = false
     m.video.control = "pause"
     m.video.seek = m.paritySeekTarget
 end sub
@@ -7804,10 +7796,11 @@ sub onParitySeekStep()
     if m.video.state = "playing"
         m.video.control = "pause"
     else if m.video.state = "paused"
-        if Abs(m.video.position - m.paritySeekTarget) < 0.0005
+        if Abs(m.video.position - m.paritySeekTarget) < 0.001
             m.video.control = "pause"
-            m.video.UnobserveField("position")
-            m.video.UnobserveField("state")
+            print "PARITY|seekat|" + Str(Int(m.video.position * 1000 + 0.5)).Trim()
+            m.video.UnobserveFieldScoped("position")
+            m.video.UnobserveFieldScoped("state")
             m.paritySeekTarget = invalid
         else
             m.video.seek = m.paritySeekTarget

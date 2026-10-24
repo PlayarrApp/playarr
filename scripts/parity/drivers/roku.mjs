@@ -607,9 +607,12 @@ export function createDriver({ out, args = [] } = {}) {
     return response;
   };
 
-  let layoutLines = null;
+  // The firmware's own tree of rendered nodes (bounds, colour, text, visibility): the source of the layout document.
+  const fetchAppUi = async () => (await sendEcp("query/app-ui", "GET")).text();
+  let seekAt = -1;
   const ingest = (line) => {
-    if (layoutLines && line.includes("PARITY|layout|")) { layoutLines.push(line.slice(line.indexOf("PARITY|layout|") + 14).replace(/\r$/, "")); return; }
+    const at = /PARITY\|seekat\|(\d+)/.exec(line);
+    if (at) seekAt = Number(at[1]); // the channel's own Video position once it holds the seek, in ms
     if (!applyParityLine(parityState, line)) return;
     screen = parityState.screen;
     screenSeq = parityState.screenSeq;
@@ -859,19 +862,18 @@ export function createDriver({ out, args = [] } = {}) {
     let hits = 0;
     let lastSeen = "none";
     let sent = false;
-    let sentAt = 0; // a seek that leaves the pipeline playing is re-sent every 5 s
     let lastMs = -1;
     const seekDeadline = Date.now() + 30000;
     while (hits < 2) {
       if (Date.now() > seekDeadline) throw new Error(`Roku player did not settle at 2.000 s (last ${lastSeen})`);
-      if (!sent || Date.now() - sentAt > 5000) { sentAt = Date.now(); await sendEcp(`input?paritySeek=2000`); sent = true; }
+      if (!sent) { seekAt = -1; await sendEcp(`input?paritySeek=2000`); sent = true; }
       await sleep(900);
       const xml = await (await sendEcp("query/media-player", "GET")).text();
       const ms = Number(/<position>(\d+) ms/.exec(xml)?.[1] ?? "0");
       const paused = /<player\b[^>]*\bstate="pause"/i.test(xml);
       lastSeen = `${paused ? "pause" : "other"} ${ms} ms`;
-      // ECP reports the pipeline frame time (about 2.07 s after a node seek to 2.000), so accept a stable paused reading within 150 ms of the target.
-      hits = paused && Math.abs(ms - 2000) <= 150 && ms === lastMs ? hits + 1 : 0;
+      // ECP's own position is the pipeline's (about 2.1 s here); the exact position is the channel's Video node, reported once held.
+      hits = paused && seekAt === 2000 && ms === lastMs ? hits + 1 : 0;
       lastMs = ms;
     }
     await sendEcp("keypress/Down");
@@ -1152,14 +1154,8 @@ export function createDriver({ out, args = [] } = {}) {
       // A title page fetches its Similar Titles last: wait until the rail is on the page (up to 30 s) before the frame is taken.
       if (screen === "detail" && artEnabled && process.env.ROKU_PARITY_LAYOUT !== "0") {
         for (let i = 0; i < 10; i += 1) {
-          layoutLines = [];
-          await sendEcp("input?parityLayout=1");
-          for (let k = 0; k < 40 && !layoutLines.includes("end"); k += 1) await sleep(250);
-          await sleep(1000);
-          const has = layoutLines.some((l) => l.includes("Similar Titles"));
-          layoutLines = null;
-          if (has) break;
-          await sleep(2000);
+          if (/text="Titles"/.test(await fetchAppUi())) break; // the heading is set one Label per word
+          await sleep(3000);
         }
       }
       // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).
@@ -1190,17 +1186,11 @@ export function createDriver({ out, args = [] } = {}) {
       }, null, 2));
       // The layout document (docs/parity/LAYOUT.md) of the screen just captured: same state as the screenshot.
       if (artEnabled && process.env.ROKU_PARITY_LAYOUT !== "0") {
-        layoutLines = [];
-        await sendEcp("input?parityLayout=1");
-        for (let i = 0; i < 40 && !layoutLines.includes("end"); i += 1) await sleep(250);
-        await sleep(1500); // grid cards answer from their own components, after the scene
-        const lines = layoutLines.filter((l) => l !== "end");
-        const done = layoutLines.includes("end");
-        layoutLines = null;
-        if (!done) throw new Error("Roku layout dump did not finish");
+        const appUi = await fetchAppUi();
+        writeFileSync(`${file}.appui.xml`, appUi); // the measured tree, kept so the export can be redone offline
         const themeDir = dirname(resolve(file));
         const id = resolve(file).split("/").pop().replace(/\.png$/, "");
-        const doc = buildLayoutDocument(lines, { screen: id, theme: themeDir.split("/").pop(), pngFile: file, clockPinned: pinArg !== "" });
+        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), pngFile: file, clockPinned: pinArg !== "" });
         const layoutDir = resolve(themeDir, "..", "layout", themeDir.split("/").pop());
         mkdirSync(layoutDir, { recursive: true });
         writeFileSync(resolve(layoutDir, `${id}.json`), JSON.stringify(doc, null, 1));

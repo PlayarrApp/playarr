@@ -12,7 +12,7 @@ sub Main(args as Dynamic)
         pin.FromISO8601String(args.parityNow)
         parityNowSeconds = pin.AsSeconds()
     end if
-    screen.getGlobalNode().addFields({ themeMode: ResolvePairingTheme(LoadPairingThemePreference()), cardFocusOff: false, parityArtEnabled: parityArtEnabled, parityNowSeconds: parityNowSeconds, parityLayoutSeq: 0, parityWorkTitle: "" })
+    screen.getGlobalNode().addFields({ themeMode: ResolvePairingTheme(LoadPairingThemePreference()), cardFocusOff: false, parityArtEnabled: parityArtEnabled, parityNowSeconds: parityNowSeconds })
     scene = screen.CreateScene("MainScene")
     ' ECP deep link (launch with contentId=<media file id>): signed-in devices play that file as soon as the profile is known.
     if type(args) = "roAssociativeArray" and args.contentId <> invalid and args.contentId <> "" then scene.deepLink = args.contentId
@@ -29,7 +29,6 @@ sub Main(args as Dynamic)
             return
         else if type(message) = "roInputEvent"
             info = message.GetInfo()
-            if parityArtEnabled and info <> invalid and info.parityLayout = "1" then scene.parityLayoutRequest = true
             if parityArtEnabled and info <> invalid and info.paritySeek <> invalid then scene.paritySeek = Val(info.paritySeek)
         end if
     end while

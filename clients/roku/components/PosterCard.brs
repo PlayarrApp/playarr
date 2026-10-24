@@ -1,6 +1,5 @@
 sub init()
     PlayarrFontifyTree(m.top, "PosterCard")
-    m.global.observeField("parityLayoutSeq", "onParityLayoutCard")
     ThemeSetRole(m.top.findNode("posterBg"), "surfaceSoft")
     for each id in ["cornerTL", "cornerTR", "cornerBL", "cornerBR"]
         ThemeSetRole(m.top.findNode(id), "surface")
@@ -440,23 +439,6 @@ sub clampCardTitle(text as String, hasPrefix as Boolean)
     m.title.width = fixedWidth
 end sub
 
-' Parity layout dump: a grid item is not reachable from the scene, so each card prints its own boxes and captions on request.
-sub onParityLayoutCard()
-    if m.global.parityArtEnabled <> true then return
-    content = m.top.itemContent
-    if content = invalid or not content.hasField("parityDx") then return
-    m.parityDx = content.parityDx
-    m.parityDy = content.parityDy
-    m.parityRoot = m.top
-    ' A rail lifts its focused item as a whole (the lift is outside the item, so its fields do not show it): 6.25 px, measured.
-    if m.homeCardFocusStyle = true and m.top.focusPercent * m.top.activeRailFactor > 0.5 then m.parityDy = m.parityDy - 6.25
-    ' A focus animation that has not run to its end leaves the fields part-way: report the settled state.
-    m.parityGrid = content.parityGrid
-    m.parityOpen = content.parityOpen
-    ParityCard(m.top)
-    ctx = { measure: CreateObject("roSGNode", "Label"), count: 0 }
-    ParityLayoutWalk(m.cardRoot, 1.0, ctx)
-end sub
 
 ' A focused grid card is scaled 1.015 as a whole and lifted 5 px: its caption follows (web .tv-title-card:focus).
 sub applyCaptionFocus()
