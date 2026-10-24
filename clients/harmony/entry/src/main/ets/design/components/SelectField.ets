@@ -68,7 +68,7 @@ export struct SelectField {
 
   private fill(active: boolean): ResourceColor {
     // web phone corner selects (`.language-dropdown-trigger`): the opaque page colour
-    if (!active && !isTvMetrics() && this.lead.length > 0) {
+    if (!active && this.lead.length > 0) {
       return toResourceColor(activeColors().bg);
     }
     return active ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().surfaceSoft, BG_ALPHA);
@@ -81,12 +81,12 @@ export struct SelectField {
   build() {
     Column({ space: tv(STACK_GAP) }) {
       // Phone: a tighter row gap (the lead's margin keeps the label start), so a 112 vp select fits "Light" and "Auto" on one line.
-      Row({ space: isTvMetrics() ? tv(GAP) : 8 }) {
+      Row({ space: this.lead.length === 0 ? tv(GAP) : 8 }) {
         if (this.lead.length > 0) {
           Image(this.lead === 'sun' ? $r('app.media.select_sun') : $r('app.media.select_globe'))
             .width(this.labelSize * 1.5)
             .height(this.labelSize * 1.5)
-            .margin({ right: isTvMetrics() ? 0 : 3.52 })
+            .margin({ right: 3.52 })
             .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
         }
         Text(this.labelOf(this.value)).fontFamily(nunitoAt(this.labelWeight, tv(this.labelSize)))
@@ -94,7 +94,7 @@ export struct SelectField {
           .fontWeight(this.labelWeight >= 700 ? FontWeight.Bold : FontWeight.Medium)
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .layoutWeight(1)
-        if (isTvMetrics()) {
+        if (this.lead.length === 0) {
           Text('⌄').fontFamily(nunitoAt(400, tv(FONT)))
             .fontSize(tv(FONT))
             .fontColor(this.textColor(this.highlighted === '#trigger'))

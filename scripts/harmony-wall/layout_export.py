@@ -144,6 +144,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
 
     parents = []
     panel_done = [False]
+    scales = []
 
     def vp(value):
         return num(value, 0.0) if value not in (None, "") else 0.0
@@ -264,6 +265,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     out.append(el)
                 attrs = dict(attrs); attrs["id"] = ""; attrs["borderRadius"] = "0"
             circle = num(attrs.get("borderRadius"), 0.0)
+            if kind == "Stack" and dpr == 1 and w > 100 and abs(circle * 2 - w) < 1.5 and screen == "profiles":  # a TV profile avatar: web's round container over its illustration
+                out.append({"text": "", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                            "color": None, "background": hex_of(page_colour[0] or under), "fontSize": None, "fontWeight": None, "radius": 50})
             if kind == "Stack" and 8 <= w <= 30 and abs(circle * 2 - w) < 1:  # a profile avatar: web has a round container and an image of the same box
                 for role, extra in (("container", {"radius": 50}), ("image", {})):
                     out.append(dict({"text": "", "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
@@ -315,7 +319,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     rx, rw = rx, tw
                 if dpr == 1 and str(attrs.get("id", "")).endswith(":linebox"):
                     parent_bg = root_bg  # the TV clock sits over the body colour in web
-                if len(str(text).strip()) == 1 and (str(text).isalnum() or text == "#") and bg is not None and bg[3] > 0.99 and dpr == 3 and abs(w - h) < 2:
+                if len(str(text).strip()) == 1 and (str(text).isalnum() or text == "#") and bg is not None and bg[3] > 0.99 and abs(w - h) < 2:
                     parent_bg = under  # an alphabet-rail letter disc: web's text background is the page behind the disc
                 else:
                     parent_bg = backdrop(None if screen == "profiles" else image, rx, ry, rw, rh, dpr, parent_bg)  # profiles: web background is the flat page colour, the app paints a wash  # profiles: web's background is the flat page colour, the app paints a wash
@@ -332,7 +336,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 elif radius and not (len(el["text"]) <= 1 or all(ch in "\u2190\u2192" for ch in el["text"])):  # a glyph's or letter's circle belongs to its button
                     el["radius"] = (50 if abs(w - h) < 2 else 999) if radius >= min(w, h) / 2 - 0.5 else radius
                 out.append(el)
-            elif kind in ("Column", "Row") and dpr == 3 and screen == "calendar-month" and num(attrs.get("borderWidth"), 0.0) >= 1 and w > 60 and h > 60:
+            elif kind in ("Column", "Row") and screen == "calendar-month" and num(attrs.get("borderWidth"), 0.0) >= 1 and w > 60 and h > 60:
                 cell_bg = argb(attrs.get("backgroundColor"))  # a month cell: web's container with a hairline border
                 out.append({"text": "", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                             "color": None, "background": hex_of(over(cell_bg, under) if cell_bg is not None and cell_bg[3] > 0 else under), "fontSize": None, "fontWeight": None})
@@ -398,6 +402,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 e["background"] = shells[-1]["background"]
             for e in out:
                 if e["role"] == "container" and e["rect"]["x"] == 729.6:
+                    e["background"] = shells[-1]["background"]
+            for e in out[len(shells):]:  # the page colour sits behind every header, rail and card element but the logo and clock, which web draws over the body
+                keep = e["rect"]["x"] < 130 or (e["rect"]["y"] < 110 and 470 < e["rect"]["x"] < 650 and e["role"] == "text")
+                if e["background"] == hex_of(root_bg) and not keep:
                     e["background"] = shells[-1]["background"]
             if len(shells) == 2 and screen != "player-controls":
                 out.insert(out.index(shells[1]), dict(shells[1], rect=dict(shells[1]["rect"])))

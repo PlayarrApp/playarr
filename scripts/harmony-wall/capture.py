@@ -246,6 +246,17 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
     print("captured", name, get("/health").decode().strip()[:80], flush=True)
 
 
+def player_held_at_2s(folder):
+    """The preview build holds the player paused at exactly 2.000 s (patch_player_still.py; docs/parity/DEVICES.md, 'Pausing the player at
+    exactly 2.000 s'). Refuse the capture unless the app's own tree reports that position, paused (the Play button, not Pause)."""
+    raw = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark", "player-controls.json")
+    if not os.path.exists(raw):
+        raise SystemExit("player did not report its state: no layout tree")
+    tree = open(raw, encoding="utf-8").read()
+    if "0:02 / 1:00" not in tree or "px:button:Play" not in tree:
+        raise SystemExit("player is not held paused at 2.000 s")
+
+
 def export_layout(name, image=None):
     """Layout document next to the screenshot (same screen state): the app dumps its component tree, layout_export maps it to the schema.
     A failed dump is logged, never fatal: the pixel capture stays valid."""
@@ -347,7 +358,7 @@ def extra_screens(folder):
     else:
         try:
             route(configured_player_route(), 20)
-            click(960, 540); time.sleep(3); snap("player-controls", folder, 30000)
+            click(960, 540); time.sleep(3); snap("player-controls", folder, 30000); player_held_at_2s(folder)
         except SystemExit:
             print("player-controls not captured", flush=True)
 
@@ -881,7 +892,7 @@ else:
     if PHONE_CORE_ONLY:
         # The player chrome is the fifteenth core screen unless explicitly skipped for a diagnostic capture.
         if not SKIP_PLAYER:
-            guarded("player-controls", lambda: (route(configured_player_route(), 20), snap("player-controls", folder, 30000)))
+            guarded("player-controls", lambda: (route(configured_player_route(), 20), snap("player-controls", folder, 30000), player_held_at_2s(folder)))
         sys.exit(0 if write_phone_core_manifest() else 2)
 
     # extras beyond the 15: search with results, the period picker (calibration), the three settings panels
@@ -959,7 +970,7 @@ else:
     for nm, btn in (("library-covers-medium", MEDIUM_BTN), ("library-covers-small", SMALL_BTN), ("library-covers-large", LARGE_BTN)):
         guarded(nm, lambda nm=nm, btn=btn: library_covers(nm, btn))
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
-    guarded("player-controls", lambda: (route(configured_player_route(), 20), snap("player-controls", folder, 30000)))
+    guarded("player-controls", lambda: (route(configured_player_route(), 20), snap("player-controls", folder, 30000), player_held_at_2s(folder)))
 import datetime
 manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": None,
             "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}

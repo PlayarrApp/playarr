@@ -19,3 +19,12 @@ s = s[:m.end()] + still + s[m.end():]
 old = "@State private qualityLabel: string = '';"
 assert old in s, p + ": qualityLabel state not found"
 open(p, "w").write(s.replace(old, "@State private qualityLabel: string = 'Original \\u00b7 0.3 Mbps';", 1))
+
+# Hold the player paused at exactly 2.000 s (no play-then-pause): the chrome is handed a fixed position and the paused state, so the time
+# label, progress fill and Play glyph match the web ref's pinned frame every run (see docs/parity/DEVICES.md).
+s = open(p).read()
+for old, new in (("positionMs: this.positionMs,\n            durationMs: this.durationMs,", "positionMs: 2000,\n            durationMs: this.durationMs,"),
+                 ("isPlaying: this.isPlaying,\n            keepAliveSignal", "isPlaying: false,\n            keepAliveSignal")):
+    assert old in s, p + ": chrome binding not found: " + old
+    s = s.replace(old, new, 1)
+open(p, "w").write(s)

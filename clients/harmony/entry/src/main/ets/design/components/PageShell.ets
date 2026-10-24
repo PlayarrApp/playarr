@@ -158,6 +158,7 @@ export struct PageShell {
       .border(inline ? { width: { left: tv(1) }, color: toResourceColor(activeColors().lineStrong) }
         : { width: { top: tv(1) }, color: toResourceColor(activeColors().lineStrong) })
       .width(inline ? this.detailTextWidth() + tv(HEADER_GAP + 2) : '100%')
+      .translate(inline ? { x: -2, y: -1.2 } : { x: 0, y: 0 }) // web: the count sits 2 px left and 1.2 px higher
   }
 
   /** Web page header: Back, title and, beside it after a divider, the detail; when that cannot fit before the clock the detail wraps
