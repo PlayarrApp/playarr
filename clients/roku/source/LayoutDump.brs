@@ -123,6 +123,7 @@ sub ParityLayoutTracked(node as Object, spec as Object, colour as Dynamic, op as
     if Left(tid, 8) = "navLabel" and spec.size > 9 then reported = spec.size / 1.05
     if spec.weight <> invalid then meta = { px: reported, weight: spec.weight }
     item = { k: "tracked", bg: ParityTextBg(tid, x0, y0), id: tid, text: text, x: x0, y: y0, w: x1 - x0, h: y1 - y0, op: op, role: spec.role, color: ParityColour(spec, colour), lines: node.lineCount, tracking: spec.tracking }
+    if spec.aria <> invalid then item.aria = spec.aria
     if meta <> invalid
         item.size = meta.px
         item.font = PlayarrFontPath(spec.weight)
@@ -147,6 +148,7 @@ end function
 
 ' The colour the web reports as "behind" an element: a theme token (dock and header: bg, page content: surface, art: surfaceSoft).
 function ParityToken(token as String) as String
+    if Left(token, 1) = "#" then return token
     if token = "accent" then return "#cf3157"
     if token = "progressTrackBg" then return "#5a5559"
     return Left(ParityHex(ThemeColor(token)), 7)
@@ -154,7 +156,15 @@ end function
 
 ' One box.
 sub ParityBox(role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius as Float, bgToken as String, opacity = 1.0 as Float)
-    item = { k: "box", role: role, text: name, x: x, y: y, w: w, h: h, radius: radius, bg: ParityToken(bgToken) }
+    ' The web reports 999 for a pill and 50 for a circle (border-radius 50 %); a device radius that rounds the whole short side is the same shape.
+    r = radius
+    short = w
+    if h < short then short = h
+    if r > 0 and r * 2 >= short - 0.5
+        r = 999
+        if Abs(w - h) < 1 then r = 50
+    end if
+    item = { k: "box", role: role, text: name, x: x, y: y, w: w, h: h, radius: r, bg: ParityToken(bgToken) }
     if opacity < 0.995 then item.opacity = opacity
     ParityLayoutEmit(item)
 end sub
@@ -269,9 +279,9 @@ end function
 ' A node marked by pgMark (components/Pages.brs).
 sub ParityAnnotated(node as Object, op as Float)
     r = node.sceneBoundingRect()
-    if node.parityRole = "text"
+    if node.hasField("parityText")
         c = ThemeColor(node.parityColor)
-        ParityLayoutEmit({ k: "tracked", bg: ParityToken("surface"), id: "mark", text: node.parityText, x: r.x, y: r.y, w: r.width, h: r.height, op: op, role: "", color: ParityHex(c), lines: 1, tracking: 0, size: node.paritySize, font: PlayarrFontPath(node.parityWeight) })
+        ParityLayoutEmit({ k: "tracked", bg: ParityToken(node.parityBg), id: "mark", text: node.parityText, x: r.x, y: r.y, w: r.width, h: r.height, op: op, role: "", aria: node.parityRole, color: ParityHex(c), lines: 1, tracking: 0, radius: node.parityRadius, size: node.paritySize, font: PlayarrFontPath(node.parityWeight) })
         return
     end if
     ParityBox(node.parityRole, node.parityName, r.x, r.y, r.width, r.height, node.parityRadius, node.parityBg, op)

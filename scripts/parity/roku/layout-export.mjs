@@ -60,9 +60,9 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
       const h = it.k === "tracked" ? it.h : Math.round(it.size * 1.011) + Math.round(it.size * 0.353);
       const colour = it.color;
       elements.push({
-        text: it.text.replace(/\s+/g, " ").trim(), role: it.role === "ink" && it.k === "tracked" && it.size >= 30 ? "heading" : "text",
+        text: it.text.replace(/\s+/g, " ").trim(), role: it.aria ?? it.arole ?? (it.role === "ink" && it.k === "tracked" && it.size >= 30 ? "heading" : "text"),
         rect: { x, y, w: textW, h }, color: colour ? hex(colour) : null, background: it.bg ?? bg(x, y, textW, h),
-        fontSize: it.size, fontWeight: f.weight, ...(it.op < 0.995 ? { opacity: Math.round(it.op * 100) / 100 } : {}), _id: it.id, _tracked: it.k === "tracked" ? it.role : undefined,
+        fontSize: it.size, fontWeight: f.weight, ...(it.radius ? { radius: it.radius } : {}), ...(it.op < 0.995 ? { opacity: Math.round(it.op * 100) / 100 } : {}), _id: it.id, _tracked: it.k === "tracked" ? it.role : undefined,
       });
     } else if (it.k === "box") {
       const background = it.bg ?? bg(it.x, it.y, it.w, it.h);

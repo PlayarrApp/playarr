@@ -94,7 +94,7 @@ function pgSegmented(x as Float, y as Float, h as Float, labels as Object, activ
     total = 0.0
     for each text in labels
         probe = pgLabel(m.pageBody, x, y, 0, h, text, 12, 700, "inkSoft")
-        w = probe.boundingRect().width + 36
+        w = probe.textWidth + 36
         m.pageBody.removeChild(probe)
         widths.Push(w)
         total = total + w
