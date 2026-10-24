@@ -112,7 +112,8 @@ internal sealed class Shell : View
             nv.Icon = Ui.Icon(item.Icon, 22, 15.1f, 20, _theme.InkMuted);
             nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
             nv.Item64.Add(nv.Tile); nv.Item64.Add(nv.Icon); nv.Item64.Add(nv.Label);
-            Sem.Tag(nv.Item64, "link", item.Label, radius: 16);
+            var navIndex = _nav.Count; // this item's index once added just below
+            Sem.Tag(nv.Item64, "link", item.Label, radius: 16, backdropNow: () => NavBackdrop(navIndex));
             _chrome.Add(nv.Item64);
             _nav.Add(nv);
         }
@@ -124,11 +125,22 @@ internal sealed class Shell : View
         pv.Icon = null!;
         pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
-        Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.", radius: 16);
+        Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.", radius: 16, backdropNow: () => NavBackdrop(_nav.Count - 1));
         _chrome.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
         _chrome.Add(Ui.Text("v 0.1.0", RailX, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f));
+    }
+
+    /// <summary>What a rail item sits on for the layout export: the group fill over the shell, plus the tile fill of the active or focused item.</summary>
+    private Rgba NavBackdrop(int i)
+    {
+        var dark = _theme.Name == "dark";
+        var ink = dark ? new Rgba(0.957f, 0.941f, 0.945f) : _theme.Ink;
+        var a = i == _navFocus ? 0.16f : i == _active ? 0.09f : 0f;
+        Rgba Over(Rgba top, float alpha, Rgba under) => new(top.R * alpha + under.R * (1 - alpha), top.G * alpha + under.G * (1 - alpha), top.B * alpha + under.B * (1 - alpha));
+        var group = dark ? Over(_theme.SurfaceStrong, 0.56f, _theme.Bg) : Over(_theme.SurfaceStrong, 0.56f, _theme.Surface);
+        return a > 0 ? Over(ink, a, group) : group;
     }
 
     private void AddGroup(float y, float h)
@@ -159,7 +171,7 @@ internal sealed class Shell : View
         nv.Label.TextColor = tint;
     }
 
-    public void SetProfileName(string name) { if (_profileLabel is not null) { _profileLabel.Text = name; if (_nav.Count > 0) Sem.Tag(_nav[^1].Item64, "link", $"Signed in as {(_env.ProfileFull.Length > 0 ? _env.ProfileFull : name)}. Open profiles.", radius: 16); } }
+    public void SetProfileName(string name) { if (_profileLabel is not null) { _profileLabel.Text = name; if (_nav.Count > 0) Sem.Tag(_nav[^1].Item64, "link", $"Signed in as {(_env.ProfileFull.Length > 0 ? _env.ProfileFull : name)}. Open profiles.", radius: 16, backdropNow: () => NavBackdrop(_nav.Count - 1)); } }
 
     // ---- routing ----
 

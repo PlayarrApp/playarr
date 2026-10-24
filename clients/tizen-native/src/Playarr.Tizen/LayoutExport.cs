@@ -17,6 +17,8 @@ internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, f
     public Func<(float DX, float DY, float W, float H)>? BoxNow { get; init; }
     /// <summary>Backdrop colour the element and its children sit on (overrides the composited ancestors): web places the action tiles on the shell, cards on their surface.</summary>
     public Rgba? Backdrop { get; init; }
+    /// <summary>Evaluated at export time (the active nav tile changes its fill).</summary>
+    public Func<Rgba>? BackdropNow { get; init; }
     /// <summary>The element's own fill is a color-mix on web, which the web refs carry no background for.</summary>
     public bool IgnoreOwnBg { get; init; }
     /// <summary>A text element with no drawn label (web exports visually hidden text such as the calendar period status).</summary>
@@ -27,9 +29,9 @@ internal static class Sem
 {
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, SemInfo> Table = new();
 
-    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false, (float Size, int Weight, Rgba Color)? style = null) where T : View
+    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false, (float Size, int Weight, Rgba Color)? style = null, Func<Rgba>? backdropNow = null) where T : View
     {
-        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { BoxNow = boxNow, Backdrop = backdrop, IgnoreOwnBg = ignoreOwnBg, Style = style }); return v;
+        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { BoxNow = boxNow, Backdrop = backdrop, BackdropNow = backdropNow, IgnoreOwnBg = ignoreOwnBg, Style = style }); return v;
     }
 }
 
@@ -104,7 +106,7 @@ internal static class LayoutExport
             var csx = sx * scale.X; var csy = sy * scale.Y;
             var w = size.Width * csx; var h = size.Height * csy;
             Sem.Table.TryGetValue(child, out var sem);
-            var ebg = sem?.Backdrop is { } bd ? (bd.R, bd.G, bd.B) : bg; // what the element (and, unless it paints, its children) sit on
+            var ebg = (sem?.BackdropNow?.Invoke() ?? sem?.Backdrop) is { } bd ? (bd.R, bd.G, bd.B) : bg; // what the element (and, unless it paints, its children) sit on
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
                 var lines = m.Multiline ? Ui.WrapLines(label.Text, m.Size, m.Weight, m.Spacing, w, 9) : null;
@@ -123,7 +125,7 @@ internal static class LayoutExport
             }
             var bc = child.BackgroundColor;
             var paints = child is not ImageView && bc.A > 0.02f && w > 1 && h > 1;
-            var mixed = paints && (IsMixedSurface(bc) || sem is { IgnoreOwnBg: true });
+            var mixed = paints && sem is { IgnoreOwnBg: true }; // an own fill that is only a border trick (a card's left border colour) or that web leaves unpainted
             (float R, float G, float B) cbg = ebg;
             if (paints && !mixed) { var a = bc.A * cop; cbg = (ebg.Item1 * (1 - a) + bc.R * a, ebg.Item2 * (1 - a) + bc.G * a, ebg.Item3 * (1 - a) + bc.B * a); }
             if (sem is { Style: { } hs } && !string.IsNullOrEmpty(sem.Name))
@@ -134,10 +136,10 @@ internal static class LayoutExport
             else if (sem is not null && sem.Role != "none")
             {
                 var (bx, by, bw, bh) = (sem.BoxNow?.Invoke() ?? sem.Box) is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
-                outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
+                outList.Add(new Node(sem.Role is "container" or "img" ? "" : sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
             }
             if (child is ImageView && w > 1 && h > 1)
-                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, parentClips ? parentRadius : 0, cop));
+                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, 0, cop));
             else if (paints && sem is null)
                 outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, Radius(child.CornerRadius.X * csx, w, h), cop));
             Walk(child, cx, cy, csx, csy, cbg, cop, outList, child.CornerRadius.X * csx);
