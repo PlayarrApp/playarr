@@ -27,6 +27,7 @@ final class TVParityLayoutRegistry {
         /// A wrapped heading: its lines and the line pitch (the web element spans first ascent to last descent).
         var lines: [String]?
         var pitch: CGFloat = 0
+        var layer = 0
     }
 
     private var items: [UUID: Item] = [:]
@@ -63,8 +64,14 @@ final class TVParityLayoutRegistry {
     }
 
     #if os(tvOS)
-    private func accessibilityElements() -> [Item] {
+    private func accessibilityElements(onlyPresented: Bool) -> [Item] {
         guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return [] }
+        var root: NSObject = window
+        if onlyPresented {
+            var controller = window.rootViewController
+            while let presented = controller?.presentedViewController { controller = presented }
+            if let view = controller?.view { root = view }
+        }
         var found: [Item] = []
         var visited = 0
         func visit(_ object: NSObject, depth: Int) {
@@ -92,12 +99,13 @@ final class TVParityLayoutRegistry {
             }
             if let view = object as? UIView { for sub in view.subviews { visit(sub, depth: depth + 1) } }
         }
-        visit(window, depth: 0)
+        visit(root, depth: 0)
         return found
     }
     #elseif os(macOS)
     /// The Mac's accessibility tree (AppKit): frames and names for what views did not report themselves.
-    private func accessibilityElements() -> [Item] {
+    private func accessibilityElements(onlyPresented: Bool) -> [Item] {
+        if onlyPresented { return [] } // the Mac draws presentations as styled items only
         guard let window = NSApp.keyWindow ?? NSApp.windows.first, let content = window.contentView else { return [] }
         var found: [Item] = []
         var visited = 0
@@ -152,9 +160,10 @@ final class TVParityLayoutRegistry {
             }
             return raw
         }
-        let styled = order.compactMap { items[$0] }.filter { $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }
+        let top = items.values.map(\.layer).max() ?? 0
+        let styled = order.compactMap { items[$0] }.filter { $0.layer == top && $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }
         var raws = styled.map(measure)
-        for var entry in accessibilityElements() where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
+        for var entry in accessibilityElements(onlyPresented: top > 0) where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
             entry.background = nil
             var raw = measure(entry); raw["source"] = "ax"; raws.append(raw)
         }
@@ -187,6 +196,21 @@ struct TVParityTransform: Equatable {
         return CGRect(x: ax + (rect.minX - ax) * scale, y: ay + (rect.minY - ay) * scale + lift,
                       width: rect.width * scale, height: rect.height * scale)
     }
+}
+
+/// The presentation layer of a view: 0 for the shell, +1 for each full-screen presentation (Who's watching, the player).
+/// Only the topmost layer is exported, as only it is visible.
+private struct TVParityLayerKey: EnvironmentKey { static let defaultValue = 0 }
+extension EnvironmentValues {
+    var parityLayer: Int {
+        get { self[TVParityLayerKey.self] }
+        set { self[TVParityLayerKey.self] = newValue }
+    }
+}
+
+private struct TVParityLayerScope: ViewModifier {
+    @Environment(\.parityLayer) private var layer
+    func body(content: Content) -> some View { content.environment(\.parityLayer, layer + 1) }
 }
 
 private struct TVParityTransformKey: EnvironmentKey { static let defaultValue = TVParityTransform() }
@@ -226,6 +250,8 @@ private struct TVParityLayoutModifier: ViewModifier {
     var onPage = false
     @Environment(\.self) private var environment
     @Environment(\.parityTransform) private var transform
+    @Environment(\.parityLayer) private var layer
+    @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
 
     private func hex(_ color: Color) -> String {
@@ -244,6 +270,8 @@ private struct TVParityLayoutModifier: ViewModifier {
                         .onAppear { report(frame) }
                         .onChange(of: frame) { _, new in report(new) }
                         .onChange(of: transform) { _, _ in report(frame) }
+                        .onChange(of: scheme) { _, _ in report(frame) }
+                        .onChange(of: text) { _, _ in report(frame) }
                 }
             )
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
@@ -252,7 +280,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     private func report(_ frame: CGRect) {
         TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: transform.apply(frame), tracking: tracking,
                                                  background: hex(onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface),
-                                                 lineHeight: lineHeight, lines: lines, pitch: pitch)) // web: header on the page, content on the surface
+                                                 lineHeight: lineHeight, lines: lines, pitch: pitch, layer: layer)) // web: header on the page, content on the surface
     }
 }
 
@@ -263,6 +291,8 @@ private struct TVParityBoxModifier: ViewModifier {
     let fill: Color?
     @Environment(\.self) private var environment
     @Environment(\.parityTransform) private var transform
+    @Environment(\.parityLayer) private var layer
+    @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
 
     func body(content: Content) -> some View {
@@ -274,6 +304,8 @@ private struct TVParityBoxModifier: ViewModifier {
                         .onAppear { report(frame) }
                         .onChange(of: frame) { _, new in report(new) }
                         .onChange(of: transform) { _, _ in report(frame) }
+                        .onChange(of: scheme) { _, _ in report(frame) }
+                        .onChange(of: text) { _, _ in report(frame) }
                 }
             )
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
@@ -289,12 +321,23 @@ private struct TVParityBoxModifier: ViewModifier {
             item.background = "#000000"
         }
         item.radius = radius
+        item.layer = layer
         TVParityLayoutRegistry.shared.set(id, item)
     }
 }
 #endif
 
 extension View {
+    /// Marks a full-screen presentation: items inside it are the visible layer, items beneath it are occluded.
+    @ViewBuilder
+    func parityLayerScope() -> some View {
+        #if DEBUG && (os(tvOS) || os(macOS))
+        modifier(TVParityLayerScope())
+        #else
+        self
+        #endif
+    }
+
     /// Marks a card's focus transform for the layout export (debug builds only).
     @ViewBuilder
     func parityTransformScope(scale: CGFloat, anchor: CGPoint = CGPoint(x: 0.5, y: 0.5), lift: CGFloat = 0) -> some View {

@@ -30,10 +30,14 @@ dpad_id=""
 if [[ $device == macos ]]; then
   dpad_id=${DPAD_RUN_ID:-$( [[ -n ${RUN_ID:-} ]] && echo "" || { sleep 30; dispatch -f capture=false -f theme=dark -f "suite_args=--only dpad --skip-player"; } )}
 fi
+scratch=${SCRATCH_DIR:-$root/../.apple-run-scratch}; mkdir -p "$scratch"
 echo "run $id dpad-run ${dpad_id:-none}"
-gh run watch "$id" -R "$repo" --exit-status >/dev/null || true
-[[ -z $dpad_id ]] || gh run watch "$dpad_id" -R "$repo" --exit-status >/dev/null || true
-tmp=$(mktemp -d)
+gh-watcher wait --repo "$repo" --run "$id" --timeout 120m --json >"$scratch/watch-$id.json" || true
+[[ -z $dpad_id ]] || gh-watcher wait --repo "$repo" --run "$dpad_id" --timeout 120m --json >"$scratch/watch-$dpad_id.json" || true
+# project scratch, never /tmp (SCRATCH_DIR defaults next to the legend root)
+scratch=${SCRATCH_DIR:-$root/../.apple-run-scratch}
+mkdir -p "$scratch"
+tmp=$(mktemp -d -p "$scratch")
 trap 'rm -rf "$tmp"' EXIT
 gh run download "$id" -R "$repo" -D "$tmp/screens"
 [[ -z $dpad_id ]] || gh run download "$dpad_id" -R "$repo" -D "$tmp/dpad" || true
@@ -42,6 +46,9 @@ copy_layout() { for k in layout layout-raw; do [[ ! -d $1/$k ]] || { mkdir -p "$
 for d in "$tmp"/screens/apple-wall-"$device"-dark-*; do cp "$d"/dark/*.png "$dest/"; copy_layout "$d"; [[ $device == macos ]] || [[ ! -f $d/dpad.json ]] || cp "$d"/dpad.json "$dest/dpad.json"; done
 for d in "$tmp"/screens/apple-wall-"$device"-light-*; do cp "$d"/light/*.png "$dest/light/"; copy_layout "$d"; done
 for d in "$tmp"/dpad/apple-wall-"$device"-dark-*; do [[ ! -f $d/dpad.json ]] || [[ ! -f $d/dpad.json ]] || cp "$d"/dpad.json "$dest/dpad.json"; done
-printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","server":"static server","run":"%s"}\n' \
-  "$ref" "$(git rev-parse HEAD)" "$(date -u +%FT%TZ)" "$id" > "$dest/build.json"
+# the app built is the workflow's checkout of the ref: record the SHA the run itself used and the PR of the branch
+built=$(gh run view "$id" -R "$repo" --json headSha -q .headSha)
+pr=$(gh pr list -R "$repo" --head "$ref" --state all --json url -q '.[0].url // ""' 2>/dev/null || true)
+printf '{"branch":"%s","sha":"%s","pr":%s,"captured_at":"%s","server":"static server","run":"%s"}\n' \
+  "$ref" "$built" "$([[ -n $pr ]] && printf '"%s"' "$pr" || echo null)" "$(date -u +%FT%TZ)" "$id" > "$dest/build.json"
 echo "captures in $dest"
