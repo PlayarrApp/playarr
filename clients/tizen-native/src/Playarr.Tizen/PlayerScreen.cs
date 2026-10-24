@@ -263,7 +263,7 @@ internal sealed class PlayerScreen : IPage
     private void OnTick()
     {
         if (_player is null || _info is null) return;
-        var pos = PositionMs;
+        var pos = HoldAtMs >= 0 && _paused ? HoldAtMs : PositionMs; // a held capture shows its exact position whatever the decoder reports
         var frac = _info.DurationMs > 0 ? Math.Clamp(pos / (float)_info.DurationMs, 0, 1) : 0;
         _progress.Size = new Size(Math.Max(0, TrackW * frac), 6);
         _now.Text = DetailModel.Clock(pos);
@@ -460,7 +460,7 @@ internal sealed class PlayerScreen : IPage
     {
         get
         {
-            try { return _player is null ? (false, 0) : (_player.State == PlayerState.Playing, PositionMs); }
+            try { return _player is null ? (false, 0) : (_player.State == PlayerState.Playing, HoldAtMs >= 0 && _paused ? HoldAtMs : PositionMs); }
             catch (Exception) { return (false, 0); }
         }
     }
