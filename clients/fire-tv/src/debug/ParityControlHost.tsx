@@ -51,7 +51,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     const engine = getSharedVegaPlaybackEngine();
     return installParityControl({
       location: () => {
-        if (playerRef.current?.isVisible()) return `/player/${lastPlayed}`;
+        if (playerRef.current?.isVisible()) return `/player/${lastPlayed || 'current'}`;
         const route = navRef.isReady() ? navRef.getCurrentRoute() : undefined;
         if (!route) return null;
         if (route.name === ROUTES.profiles) return '/profiles';
@@ -88,6 +88,9 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         playerRef.current?.show(file);
       },
       stop: () => void playerRef.current?.stop(),
+      armPause: (ms) => {
+        armedPause = ms;
+      },
       setTheme: (name) => setPreferenceRef.current(name),
       player: () => {
         const state = engine.getState();
@@ -106,15 +109,29 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
   useEffect(() => {
     if (!PARITY_CONTROL) return undefined;
     const engine = getSharedVegaPlaybackEngine();
+    // Pause on the app's own clock: a host-side poll would overshoot by the length of a slow log round trip.
+    const pauser = setInterval(() => {
+      if (armedPause === null) return;
+      const state = engine.getState();
+      if (state.state === 'playing' && state.currentTimeSeconds * 1000 >= armedPause) {
+        armedPause = null;
+        void engine.pause();
+      }
+    }, 40);
     const timer = setInterval(() => {
       if (!playerRef.current?.isVisible()) return;
       const state = engine.getState();
       console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message}}));
     }, 2000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      clearInterval(pauser);
+    };
   }, [playerRef]);
 
   return <LayoutProbe ref={probeRef} />;
 }
 
 let lastPlayed = '';
+/** A position (ms) at which the player pauses itself, set by cmd=armPause. */
+let armedPause: number | null = null;

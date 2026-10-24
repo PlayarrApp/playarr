@@ -24,7 +24,7 @@ reference is web mobile at the device's own size. The legend dir is the client's
 
 ### Fire TV (Vega OS): how the run works
 
-- One command reproduces the whole run (14 screens in dark and light, then the 12 non-player D-pad checks) against the static
+- One command reproduces the whole run (15 screens in dark and light, then the 12 non-player D-pad checks) against the static
   parity server with the clock pinned to 2026-10-07T12:00:00Z: `scripts/parity/vega/run.sh <out-dir> [screens|dpad]`. It writes
   `<out-dir>/{dark,light}/<screen>.png`, the layout documents `<out-dir>/layout/<theme>/<screen>.json` (the app's `cmd=layout` export, see LAYOUT.md), `readiness.json`, `dpad.json` and `build.json`.
 - The virtual device runs headless on an Xvfb display (no VNC) at 1920x1080 with the emulator window at 0,0 (`xdotool windowmove`),
@@ -34,7 +34,7 @@ reference is web mobile at the device's own size. The legend dir is the client's
   with `vega device install-app`, open it once and approve its link code as the parity account.
 - Screens are reached with `--via route`: the suite's key paths depend on every key arriving, and the virtual device drops one now and
   then. The driver replays only the keys that matter after the route (the Filters tile, the title actions drawer). The D-pad checks reach their start screen by route too and then press the real keys under test.
-- `player-controls` is not captured: the virtual device cannot start playback from the static server's media URLs.
+- `player-controls`: the driver arms a pause at 2 s (`cmd=armPause`), plays the pinned film and raises the controls; the app needs the Shaka build (`clients/fire-tv/scripts/setup-shaka.sh`).
 - Platform limits (not chased): the host's font rasteriser anti-aliases text differently from Chromium, which leaves roughly 0.5 to 1% of
   every text-heavy screen differing; the Download pill and the Download action are not in the Vega app (no download storage, owner ruling 2026-10-08).
 

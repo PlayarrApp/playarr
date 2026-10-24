@@ -11,7 +11,7 @@
 //   ANDROID_ADB_SERVER_PORT  the adb server the vega CLI uses, if it is not the default one
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, basename } from "node:path";
 import { intoHome as pickProfile } from "./firetv-profile-pick.mjs";
@@ -239,7 +239,26 @@ export async function createDriver({ out } = {}) {
       await press(key);
       await sleep(900);
     },
+    // player-controls: open the pinned film, press Play, pause the static clip at about 2 s (as the web ref) and raise the controls.
+    async playerControls() {
+      const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
+      if (!film) throw new Error("suite has no pinned film for player-controls");
+      await command({ cmd: "armPause", ms: "1870" }, 500);
+      await this.route(film);
+      // The film's file: the pinned detail page plays it on Select; the app pauses itself at 2 s of the clip (the web ref's frame).
+      await press("Return");
+      const t0 = Date.now();
+      for (;;) {
+        if (Date.now() - t0 > 120000) throw new Error("the Vega player did not pause at 2 s within 120 s");
+        const player = (await state(20000).catch(() => ({}))).player ?? {};
+        if (player.state === "paused" && player.positionSeconds < 5) break;
+        await sleep(1500);
+      }
+      await press("Right"); // the first input only raises the controls
+      await sleep(2500);
+    },
     async route(path, { screenId } = {}) {
+      if (path.startsWith("/player/")) return this.playerControls();
       if (TAIL_KEYS[screenId]) {
         await command({ cmd: "route", path: "/movies" }, 4000);
         await waitSettled();

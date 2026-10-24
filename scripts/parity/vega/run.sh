@@ -21,8 +21,8 @@ cd "$here"
 eval "$(node parity-config.mjs --shell)"
 export PARITY_CLIENT=${PARITY_CLIENT:-firetv} PARITY_LOCK_DIR=${PARITY_LOCK_DIR:-${TMPDIR:-/tmp}/parity-firetv-lock}
 mkdir -p "$out" "$PARITY_LOCK_DIR"
-# player-controls needs a playing title, which the virtual device cannot start: it is not part of this run.
-screens=home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,actions
+# player-controls plays the pinned film with the app pausing itself at 2 s (cmd=armPause).
+screens=home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,film-detail,series-detail,settings,filters,profiles,player-controls,actions
 suite() { node suite-run.mjs --driver ./drivers/firetv.mjs --skip-player --out "$out" "$@"; }
 if [ "$only" = all ] || [ "$only" = screens ]; then suite --via route --only screens --screens "$screens"; fi
 if [ "$only" = all ] || [ "$only" = dpad ]; then suite --via route --only dpad; fi

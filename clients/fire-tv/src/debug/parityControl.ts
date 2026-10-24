@@ -7,6 +7,7 @@
  *   cmd=route&path=/movies         go to a web route (library pages, calendar views, settings, profiles)
  *   cmd=open&kind=movies&id=<id>   open a title's detail page by work id
  *   cmd=play&file=<media file id>  start playback of a media file
+ *   cmd=armPause&ms=<n>            pause the player at n ms of playback, on the app's own clock
  *   cmd=stop                       stop playback and close the player
  *   cmd=theme&name=dark|light      set the in-app theme preference
  *   cmd=clock&now=<ISO instant>    freeze the app clock (shown in UTC, en-GB, like the web refs); `now` empty releases it
@@ -97,6 +98,8 @@ export interface ParityHooks {
   open(kind: string, id: string): void;
   play(file: string): void;
   stop(): void;
+  /** cmd=armPause&ms=<n>: pause the player itself the first time its position reaches n ms (ms empty disarms). */
+  armPause(ms: number | null): void;
   setTheme(name: 'dark' | 'light'): void;
   player(): {state: string; positionSeconds: number; durationSeconds: number; error?: string};
   theme(): string;
@@ -151,6 +154,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
         case 'open': hooks.open(command.kind ?? 'movies', command.id ?? ''); break;
         case 'play': hooks.play(command.file ?? ''); break;
         case 'stop': hooks.stop(); break;
+        case 'armPause': hooks.armPause(command.ms ? Number(command.ms) : null); break;
         case 'theme': hooks.setTheme(command.name === 'light' ? 'light' : 'dark'); break;
         // `parityNow` is the campaign's name for the same freeze; both take now=<ISO> and the clock stays frozen (it does not tick).
         case 'parityNow':

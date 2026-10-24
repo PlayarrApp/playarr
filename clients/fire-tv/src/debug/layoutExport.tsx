@@ -186,12 +186,11 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       const n = lines && lines.length ? lines.length : 1;
       const x0 = lines && lines.length ? Math.min(...lines.map((l) => l.x)) : 0;
       const x1 = lines && lines.length ? Math.max(...lines.map((l) => l.x + l.width)) : rect.w * scale;
-      // Chrome's glyph run is the font's ascent plus descent, each rounded (Nunito Sans: 1.011 and 0.353 em), centred in the line box.
-      // `measureInWindow` reports the Text view's layout box without `T`'s relative `top` shift (which is what puts Vega's glyphs where
-      // that centring does), so the line box starts at the measured top.
+      // Chrome's glyph run is the font's ascent plus descent, each rounded (Nunito Sans: 1.011 and 0.353 em). Vega paints the first
+      // line's glyphs from the top of the Text view (`T` moves the view to where the web's centred glyph run sits), so the run starts at
+      // the measured top of the view.
       const runH = Math.round(1.011 * size) + Math.round(0.353 * size);
-      const lineTop = rect.y - (style.position === 'relative' && typeof style.top === 'number' ? style.top / scale : 0);
-      const y = info?.exact ? rect.y + (rect.h - lh) / 2 : lineTop + (lh - runH) / 2 + TEXT_BIAS;
+      const y = info?.exact ? rect.y + (rect.h - lh) / 2 : rect.y;
       const box = {x: round2(rect.x + x0 / scale), y: round2(y), w: round2((x1 - x0) / scale), h: round2((n - 1) * lh + (info?.exact ? lh : runH))};
       void content;
       const fontSize = size;
