@@ -74,7 +74,8 @@ namespace Playarr.Xbox.Views
         {
             double Width(int weight, int spacing)
             {
-                var block = new TextBlock { Text = "Downloads Movies", FontSize = 20, FontWeight = new Windows.UI.Text.FontWeight { Weight = (ushort)weight }, CharacterSpacing = spacing };
+                var block = new TextBlock { Text = "Downloads Movies", FontSize = 20, CharacterSpacing = spacing };
+                WebFont.Apply(block, weight);
                 block.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 return Math.Round(block.DesiredSize.Width, 2);
             }
@@ -144,7 +145,7 @@ namespace Playarr.Xbox.Views
                 role ??= "text";
                 color = Hex(block.Foreground);
                 fontSize = Math.Round(block.FontSize, 2);
-                fontWeight = block.FontWeight.Weight;
+                fontWeight = WebFont.WeightOf(block);
                 rect = TextRun(block, root, scale) ?? rect;
             }
             else if (element is Button { Content: TextBlock drawerLabel } && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
@@ -153,7 +154,7 @@ namespace Playarr.Xbox.Views
                 text = (string?)drawerLabel.GetValue(TextProperty) ?? (string.IsNullOrEmpty(name) ? drawerLabel.Text : name);
                 color = Hex(drawerLabel.Foreground);
                 fontSize = Math.Round(drawerLabel.FontSize, 2);
-                fontWeight = drawerLabel.FontWeight.Weight;
+                fontWeight = WebFont.WeightOf(drawerLabel);
                 rect = TextRun(drawerLabel, root, scale) ?? rect;
             }
             else if (role != null)
@@ -170,7 +171,7 @@ namespace Playarr.Xbox.Views
                 text = string.IsNullOrEmpty(name) ? label.Text : name;
                 color = Hex(label.Foreground);
                 fontSize = Math.Round(label.FontSize, 2);
-                fontWeight = label.FontWeight.Weight;
+                fontWeight = WebFont.WeightOf(label);
                 rect = TextRun(label, root, scale) ?? rect;
             }
             else if (element is Button || element is ToggleButton || element is ListViewItem || element is GridViewItem)

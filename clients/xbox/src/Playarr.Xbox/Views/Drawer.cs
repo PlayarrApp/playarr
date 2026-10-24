@@ -57,7 +57,7 @@ namespace Playarr.Xbox.Views
 
             var close = Ui.RoundButton("", Close);
             close.Width = close.Height = 50;
-            close.Content = new TextBlock { Text = "\u00d7", FontSize = 26.88, FontWeight = new FontWeight { Weight = 720 }, LineHeight = 36, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInk"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            close.Content = new TextBlock { Text = "\u00d7", FontSize = 26.88, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 36, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInk"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             LayoutExport.Tag(close, "button", "Close " + title.ToLowerInvariant());
             close.Background = Ui.Res("PlayarrSurfaceStrong");
             close.HorizontalAlignment = HorizontalAlignment.Right;

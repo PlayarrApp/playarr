@@ -302,7 +302,8 @@ namespace Playarr.Xbox.Views
                 Text = episode != null ? (string.IsNullOrEmpty(episode.Title) ? work.Title : episode.Title) : work.Title,
                 // Grid title: the web's 11.9 px (--card-title-size) sits 2 px higher than Home's; rows keep the same pitch.
                 FontSize = caption ? 13 : 11.9,
-                FontWeight = caption ? FontWeights.SemiBold : new FontWeight { Weight = 610 },
+                FontFamily = WebFont.Face(caption ? 600 : 610),
+                FontWeight = WebFont.Weight(caption ? 600 : 610),
                 CharacterSpacing = caption ? 0 : -15,
                 Margin = new Thickness(2, caption ? 12 : 11, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis,
