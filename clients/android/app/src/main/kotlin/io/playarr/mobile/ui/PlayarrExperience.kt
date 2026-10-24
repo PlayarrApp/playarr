@@ -3734,7 +3734,7 @@ internal fun ExperienceLandscapeCard(
             webPhoneRemoteFocus -> Modifier.mediaCardLift(liftActive, webPhoneMotion)
             else -> Modifier
         },
-    ).parityBox("link", if (webTvLibrary || (webPhone && !webHome)) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary || (webPhone && !webHome)) LocalParityLinkRadius.current * LocalStageScale.current else 0f, background = WebSurface, fit = if (webTvLibrary) null else if (webPhone && webHome) { r -> r.copy(bottom = r.bottom - 12.88f * phoneDensity) } else if (!webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
+    ).parityBox("link", if (webTvLibrary || (webPhone && !webHome)) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary || (webPhone && !webHome)) LocalParityLinkRadius.current / LocalStageScale.current else 0f, background = WebSurface, fit = if (webTvLibrary) null else if (webPhone && webHome) { r -> r.copy(bottom = r.bottom - 12.88f * phoneDensity) } else if (!webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
         WebShadowedBox(
             shadows = if (webPhone) webCardShadows(selected || visualFocus, webHome, webSearch) else if (webTvStyle) (if (visualFocus) (if (webTvLibrary) webCardFocusShadows else webRemoteFocusShadows) else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),

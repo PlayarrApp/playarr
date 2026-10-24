@@ -48,7 +48,9 @@ run() { case $1 in
     for w in $(seq 1 60); do [ "$(adb logcat -d -s PlayarrParity:I | grep -c 'player positionMs=2000$')" -ge 2 ] && break; sleep 1; done
     # The harness pauses at 2 s, but the chrome hides 5 s after playback starts: when startup is slow (loaded host) the chrome is gone by the
     # time the player is paused and never returns. A touch on the surface shows it again without toggling playback.
-    for w in 1 2 3 4; do python3 -I $HERE/uiexpect.py 'Pause|Seek|Subtitles|Audio' && break; [ $w = 2 ] && { adb shell input tap 1280 800; sleep 2; }; [ $w = 4 ] && { echo "wrong screen player-controls"; return 1; }; done; shot $1 1 ;;
+    for w in 1 2 3 4; do python3 -I $HERE/uiexpect.py 'Pause|Seek|Subtitles|Audio' && break; [ $w = 2 ] && { adb shell input tap 1280 800; sleep 2; }; [ $w = 4 ] && { echo "wrong screen player-controls"; return 1; }; done; shot $1 1 || return 1
+    # A black video surface (decoder not yet presenting the frame) is a bad capture: the colour bars average well above 60.
+    python3 -I -c "import sys;from PIL import Image,ImageStat;im=Image.open(sys.argv[1]).convert('L').crop((0,200,2560,1400));sys.exit(0 if ImageStat.Stat(im).mean[0]>60 else 1)" "$O/$1.png" || { echo "player video not presented"; rm -f "$O/$1.png"; return 1; } ;;
   home-last) open home 20; adb shell input keyevent 59; kseq right*2 down; kseq right*80; shot $1 ;;
   home-row2) open home 20; adb shell input keyevent 59; kseq right down*2 right; shot $1 ;;
   movies-last) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select down*40; shot $1 ;;
