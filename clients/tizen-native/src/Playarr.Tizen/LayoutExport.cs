@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Playarr.Tizen.Logic;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
 
@@ -14,15 +15,19 @@ internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, f
 {
     /// <summary>Evaluated at export time (a focused card's link is scaled and lifted); overrides <see cref="Box"/>.</summary>
     public Func<(float DX, float DY, float W, float H)>? BoxNow { get; init; }
+    /// <summary>Backdrop colour the element and its children sit on (overrides the composited ancestors): web places the action tiles on the shell, cards on their surface.</summary>
+    public Rgba? Backdrop { get; init; }
+    /// <summary>The element's own fill is a color-mix on web, which the web refs carry no background for.</summary>
+    public bool IgnoreOwnBg { get; init; }
 }
 
 internal static class Sem
 {
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, SemInfo> Table = new();
 
-    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null) where T : View
+    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false) where T : View
     {
-        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { BoxNow = boxNow }); return v;
+        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { BoxNow = boxNow, Backdrop = backdrop, IgnoreOwnBg = ignoreOwnBg }); return v;
     }
 }
 
@@ -66,11 +71,21 @@ internal static class LayoutExport
         return merged;
     }
 
+    // Median (web top minus exported top) per font size over the 15 suite screens (tools: scripts/parity/tizen-native/calibrate-run-top.py): NUI's
+    // label centring and Chromium's run placement differ by a fraction of a pixel that depends on the size.
+    private static readonly Dictionary<int, float> RunTopShifts = new()
+    {
+        [8256] = -0.69f, [8832] = -0.42f, [9216] = -0.49f, [9600] = -0.65f, [9984] = -0.52f, [11200] = -0.91f, [11520] = -0.64f, [11840] = -0.69f,
+        [11904] = -1.02f, [12800] = -1.08f, [13440] = -1.05f, [20800] = -1.3f, [26400] = -0.8f,
+    };
+    private static float RunTopShift(float size) => RunTopShifts.TryGetValue((int)Math.Round(size * 1000), out var d) ? d : 0f;
+
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
 
     // (vx, vy): visual top-left of the parent; s: accumulated scale; bg: composited background so far (over white); op: accumulated opacity
-    private static void Walk(Container parent, float vx, float vy, float sx, float sy, (float R, float G, float B) bg, float op, List<Node> outList)
+    private static void Walk(Container parent, float vx, float vy, float sx, float sy, (float R, float G, float B) bg, float op, List<Node> outList, float parentRadius = 0)
     {
+        var parentClips = parent is View pv && pv.ClippingMode == ClippingModeType.ClipChildren;
         foreach (var child in parent.Children.OfType<View>().ToArray())
         {
             if (!child.Visibility) continue;
@@ -83,41 +98,38 @@ internal static class LayoutExport
             var cx = vx + sx * (lx + offX); var cy = vy + sy * (ly + offY);
             var csx = sx * scale.X; var csy = sy * scale.Y;
             var w = size.Width * csx; var h = size.Height * csy;
-            var cbg = bg;
+            Sem.Table.TryGetValue(child, out var sem);
+            var ebg = sem?.Backdrop is { } bd ? (bd.R, bd.G, bd.B) : bg; // what the element (and, unless it paints, its children) sit on
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
-                var tw = Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing);
+                var tw = label.Text is "←" or "→" ? m.Size : Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing); // the arrows come from a fallback font whose advance NUI reports differently; web advances one em
                 var box = label.WidthResizePolicy == ResizePolicyType.Fixed ? w : tw;
                 var tx = cx + (m.Align == HorizontalAlignment.Center ? (box - tw) / 2 : m.Align == HorizontalAlignment.End ? box - tw : 0);
                 var c = label.TextColor;
-                // The drawn glyph run: the label centres its font line (ascent 1.011 em, descent 0.353 em) in its box; Chromium's run is the rounded ascent plus rounded descent
+                // The drawn glyph run: Chromium's is the rounded ascent plus rounded descent, in the CSS line box with half-leading
                 var asc = (float)Math.Round(1.011 * m.Size); var content = asc + (float)Math.Round(0.353 * m.Size);
-                var blockified = Sem.Table.TryGetValue(label, out var ls) && ls.Blockified;
-                var th = blockified ? m.LineHeight : content;
-                // the CSS line box top (before the baseline snap), content area centred in it with half-leading
-                var runTop = cy + m.Dy * sy + (m.LineHeight - th) / 2f;
-                var role = Sem.Table.TryGetValue(label, out var rs) ? rs.Role : Math.Abs(m.Size - 33.6f) < 0.01f || Math.Abs(m.Size - 17.664f) < 0.01f ? "heading" : "text"; // page title and rail headings are h1/h2 on web
-                outList.Add(new Node(label.Text, role, tx, runTop, tw, th, Hex(c.R, c.G, c.B, c.A * cop), Hex(bg.R, bg.G, bg.B, 1), m.Size, m.Weight, 0, cop, m.Group));
+                var th = sem is { Blockified: true } ? m.LineHeight : content;
+                var runTop = cy + m.Dy * sy + (m.LineHeight - th) / 2f + RunTopShift(m.Size);
+                var role = sem?.Role ?? (Math.Abs(m.Size - 33.6f) < 0.01f || Math.Abs(m.Size - 17.664f) < 0.01f ? "heading" : "text"); // page title and rail headings are h1/h2 on web
+                var lbg = sem?.Backdrop is not null && sem.Role != "text" ? ebg : bg;
+                outList.Add(new Node(label.Text, role, tx, runTop, tw, th, Hex(c.R, c.G, c.B, c.A * cop), Hex(lbg.Item1, lbg.Item2, lbg.Item3, 1), m.Size, m.Weight, sem?.Radius ?? 0, cop, m.Group));
                 continue;
             }
-            if (Sem.Table.TryGetValue(child, out var sem) && child is not TextLabel)
+            var bc = child.BackgroundColor;
+            var paints = child is not ImageView && bc.A > 0.02f && w > 1 && h > 1;
+            var mixed = paints && (IsMixedSurface(bc) || sem is { IgnoreOwnBg: true });
+            (float R, float G, float B) cbg = ebg;
+            if (paints && !mixed) { var a = bc.A * cop; cbg = (ebg.Item1 * (1 - a) + bc.R * a, ebg.Item2 * (1 - a) + bc.G * a, ebg.Item3 * (1 - a) + bc.B * a); }
+            if (sem is not null && sem.Role != "none")
             {
                 var (bx, by, bw, bh) = (sem.BoxNow?.Invoke() ?? sem.Box) is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
-                var own = child.BackgroundColor; (float R, float G, float B) tbg = own.A > 0.02f && !IsMixedSurface(own) ? (bg.R * (1 - own.A) + own.R * own.A, bg.G * (1 - own.A) + own.G * own.A, bg.B * (1 - own.A) + own.B * own.A) : bg;
-                outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(tbg.R, tbg.G, tbg.B, 1), null, null, sem.Radius ?? child.CornerRadius.X * csx, cop));
+                outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? child.CornerRadius.X * csx, cop));
             }
-            if (child is ImageView img && w > 1 && h > 1)
-                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, 0, cop));
-            var bc = child.BackgroundColor;
-            if (child is not ImageView && bc.A > 0.02f && w > 1 && h > 1 && IsMixedSurface(bc) && !Sem.Table.TryGetValue(child, out _))
-                outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, child.CornerRadius.X * csx, cop));
-            else if (child is not ImageView && bc.A > 0.02f && w > 1 && h > 1 && !IsMixedSurface(bc))
-            {
-                var a = bc.A * cop;
-                cbg = (bg.R * (1 - a) + bc.R * a, bg.G * (1 - a) + bc.G * a, bg.B * (1 - a) + bc.B * a);
-                outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, child.CornerRadius.X * csx, cop));
-            }
-            Walk(child, cx, cy, csx, csy, cbg, cop, outList);
+            if (child is ImageView && w > 1 && h > 1)
+                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, parentClips ? parentRadius : 0, cop));
+            else if (paints && sem is null)
+                outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, child.CornerRadius.X * csx, cop));
+            Walk(child, cx, cy, csx, csy, cbg, cop, outList, child.CornerRadius.X * csx);
         }
     }
 

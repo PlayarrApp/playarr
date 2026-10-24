@@ -110,7 +110,7 @@ internal sealed class Shell : View
             nv.Item64.Size = new Size(64, 64); nv.Item64.PositionX = Cx - 32; nv.Item64.PositionY = nv.CentreY - 32;
             nv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
             nv.Icon = Ui.Icon(item.Icon, 22, 15.1f, 20, _theme.InkMuted);
-            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center);
+            nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
             nv.Item64.Add(nv.Tile); nv.Item64.Add(nv.Icon); nv.Item64.Add(nv.Label);
             Sem.Tag(nv.Item64, "link", item.Label, radius: 16);
             _chrome.Add(nv.Item64);
@@ -122,13 +122,13 @@ internal sealed class Shell : View
         pv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
         _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 10 };
         pv.Icon = null!;
-        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center);
+        pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
         Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.", radius: 16);
         _chrome.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
-        _chrome.Add(Ui.Text("v 0.1.0", RailX, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center));
+        _chrome.Add(Ui.Text("v 0.1.0", RailX, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f));
     }
 
     private void AddGroup(float y, float h)

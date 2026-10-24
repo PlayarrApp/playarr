@@ -73,7 +73,7 @@ internal sealed class CalendarScreen : IPage
     {
         var wide = _view == CalendarView.Agenda ? 145f : _view == CalendarView.Week ? 113f : 107f;
         var x = 1613.1f - wide;
-        _period = Ui.Text("", x, 70.2f, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center);
+        _period = Sem.Tag(Ui.Text("", x, 70.2f, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center), "button", radius: 999);
         Pill(x, wide, "", () => { }, "period");
         _root.Add(_period);
         Pill(1628.5f, 50, "←", () => Step(-1), "previous");
@@ -85,7 +85,8 @@ internal sealed class CalendarScreen : IPage
     {
         var box = Ui.Box(x, 56.2f, w, 50, _t.Surface, 25);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.153f);
-        if (text.Length > 0) box.Add(Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center));
+        if (text.Length > 0) box.Add(text == "Today" ? Sem.Tag(Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center), "button", radius: 999) : Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center));
+        if (label == "previous") Sem.Tag(box, "button", "Previous", radius: 50); else if (label == "next") Sem.Tag(box, "button", "Next", radius: 50);
         var ring = Ring.Make(w, 50, 25, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
         _root.Add(box);
         _focus.Items.Add(new Focusable { Rect = () => new Box(x, 56.2f, w, 50), Label = label, Select = select, Style = f => ring.Show(f) });
@@ -105,6 +106,7 @@ internal sealed class CalendarScreen : IPage
     {
         var tile = Ui.Box(1845.5f, y, w, h, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
+        Sem.Tag(tile, "button", text, radius: 14, backdrop: _t.Bg);
         tile.Add(Ui.Icon(icon, 19, 15, 24, _t.InkMuted));
         tile.Add(Ui.Text(text, 0, 44.6f, 8.256f, 700, _t.InkMuted, w, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));
         var ring = Ring.Make(w, h, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
@@ -333,6 +335,7 @@ internal sealed class CalendarScreen : IPage
         var h = 106.9f + (sub.Length * 9.6f > textW ? 28.8f : 0) - (sub.Length == 0 ? 29f : 0); // web: an entry without a subtitle line is 29 px shorter
         // web .calendar-entry: --surface-strong with a 4 px left border (--success when available, else --ink-muted); the border colour is the card, the surface sits 4 px in
         var card = Ui.Box(x, y, w, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 12);
+        card.CornerRadius = 12;
         var surface = Ui.Box(4, 0, w - 4, h, _t.SurfaceStrong, 12); surface.BorderlineWidth = 1; surface.BorderlineColor = Ui.C(_t.LineStrong); // web --line-strong
         card.Add(surface);
         var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
@@ -347,14 +350,17 @@ internal sealed class CalendarScreen : IPage
         var parts = new List<string> { instant is { } at ? at.ToLocalTime().ToString("HH:mm") : "All day", e.ReleaseType is "digital" ? "Digital release" : "Airs", e.MediaKind == "movie" ? "Movies" : "Episodes" };
         // web .calendar-entry-meta: one span per part, 12 px apart (a run of spaces would drift from the span edges)
         var mx = 70.4f;
-        foreach (var part in parts) { var partW = Ui.TextWidth(part, 12.8f, 400, 0); card.Add(Ui.Text(part, mx, my, 12.8f, 400, _t.InkMuted, partW + 4, 26.6f)); mx += partW + 12; }
+        foreach (var part in parts) { var partW = Ui.TextWidth(part, 12.8f, 400, 0); card.Add(Ui.Text(part, mx, my, 12.8f, 400, _t.InkMuted, partW + 4, 19.2f)); mx += partW + 12; }
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
+        pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text", radius: 999));
+        Sem.Tag(pill, "none", ignoreOwnBg: true);
         card.Add(pill);
+        // web: the whole entry is one button named by its text parts; its children sit on the surface
+        Sem.Tag(card, "button", string.Join(" ", new[] { e.Title, sub }.Concat(parts).Append(label).Where(t => t.Length > 0)), radius: 12, backdrop: _t.SurfaceStrong);
         var ring = Ring.Make(w, h, 12, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
         parent.Add(card);
         var ty = y;
@@ -390,13 +396,14 @@ internal sealed class CalendarScreen : IPage
         _panel.Add(pill);
         var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, _t.InkSoft, 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
-        var open = Ui.Box(153.6f, by, 124, 58, _t.Ink, 29);
-        open.Add(Ui.Text("Open series", 0, 18, 14.72f, 700, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center));
+        var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);
+        open.Add(Sem.Tag(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center), "button", radius: 999, backdrop: _t.Accent));
         _panel.Add(open);
         var wl = Ui.Box(287.2f, by, 177.6f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
         wl.BorderlineWidth = 1; wl.BorderlineColor = Ui.LineA(_t, 0.153f);
-        wl.Add(Ui.Text("+", 21, 18, 14.72f, 700, _t.InkSoft, 14, 22.08f));
-        wl.Add(Ui.Text("Add to watchlist", 39.6f, 18, 14.72f, 800, _t.Ink, 130, 22.08f));
+        wl.Add(Ui.Text("+", 21, 18, 14.72f, 720, _t.InkSoft, 14, 22.08f));
+        wl.Add(Ui.Text("Add to watchlist", 39.6f, 18, 14.72f, 900, _t.InkSoft, 130, 22.08f));
+        Sem.Tag(wl, "button", "+ Add to watchlist", radius: 999);
         _panel.Add(wl);
     }
 
