@@ -1,6 +1,7 @@
 package io.playarr.shared.designsystem.page
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -96,7 +97,7 @@ fun PlayarrActionPill(
                     },
                 )
                 .then(if (focused && !(tv && active && suppressFocusRingWhenActive)) Modifier.playarrFocusRing(PlayarrRingShape.Rounded(metrics.pillRadius)) else Modifier)
-                .parityTag("button", label, radiusDp = metrics.pillRadius.value, background = palette.background)
+                .parityTag("button", label, radiusDp = metrics.pillRadius.value, background = palette.surfaceStrong.copy(alpha = 0.78f).compositeOver(palette.background))
                 .semantics { contentDescription = label },
             shape = tile,
             // Focus draws the ring only; the open state (panel shown) keeps the ink fill.
@@ -127,7 +128,7 @@ fun PlayarrActionPill(
                 }
             } else {
                 Box(contentAlignment = Alignment.Center) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityTag("image", background = palette.background))
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityTag("image", background = palette.surfaceStrong.copy(alpha = 0.78f).compositeOver(palette.background)))
                 }
             }
         }

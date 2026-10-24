@@ -175,6 +175,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
@@ -2121,7 +2122,7 @@ private fun ExperienceNavigation(
         modifier = Modifier
             .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
             .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav)
-            .parityBox("container", label = if (isTelevision) "" else "Primary navigation", radiusDp = if (isTelevision) 0f else 20f, background = WebBackground),
+            .parityBox("container", radiusDp = if (isTelevision) 0f else 20f, background = if (isTelevision) WebBackground else WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)),
         color = Color.Transparent,
         shape = phoneNavShape,
         tonalElevation = 0.dp,
@@ -2140,10 +2141,10 @@ private fun ExperienceNavigation(
                     onClick = tvProfile.onClick,
                     color = Color.Transparent,
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.height(46.dp).width(if (isTelevision) 46.dp else 44.dp).semantics { contentDescription = tvProfile.description }.parityBox("link", tvProfile.description, radiusDp = 14f, background = WebBackground),
+                    modifier = Modifier.height(46.dp).width(if (isTelevision) 46.dp else 44.dp).semantics { contentDescription = tvProfile.description }.parityBox("link", tvProfile.description, radiusDp = 14f, background = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)),
                 ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", circle = true, background = WebBackground).parityBox("image", background = WebBackground), glyphSize = 13.sp) // web: 39 device px
+                        PlayarrProfileAvatar(userId = tvProfile.userId, preference = tvProfile.avatar, modifier = Modifier.size(21.2.dp).offset(y = if (isTelevision) 0.dp else (-3.2).dp).parityBox("container", circle = true, background = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)).parityBox("image", background = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)), glyphSize = 13.sp) // web: 39 device px
                     }
                 }
                 }
@@ -2165,14 +2166,14 @@ private fun ExperienceNavigation(
                     color = if (selected) WebInk else Color.Transparent,
                     contentColor = if (selected) WebBackground else PlayarrWebTheme.palette.webInkMuted,
                     shape = RoundedCornerShape(if (isTelevision) 16.dp else 14.dp),
-                    modifier = Modifier.width(43.4.dp).height(46.dp).parityBox("link", label, radiusDp = 14f, background = if (selected) WebInk else WebBackground),
+                    modifier = Modifier.width(43.4.dp).height(46.dp).parityBox("link", label, radiusDp = 14f, background = if (selected) WebInk else WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)),
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = if (selected && isTelevision) 16.dp else if (isTelevision) 12.dp else 11.2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        Icon(destination.icon, contentDescription = label, modifier = Modifier.size(21.dp).parityBox("image", background = if (selected) WebInk else WebBackground))
+                        Icon(destination.icon, contentDescription = label, modifier = Modifier.size(21.dp).parityBox("image", background = if (selected) WebInk else WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebBackground)))
                         AnimatedVisibility(visible = selected && isTelevision) {
                             Text(
                                 label.uppercase(LocalPlayarrLanguage.current.locale),
@@ -3919,7 +3920,7 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
             .background(UnwatchedDotColour, CircleShape)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
             .semantics { contentDescription = label }
-            .parityBox("img", label, circle = true, background = UnwatchedDotColour),
+            .parityBox("img", circle = true, background = UnwatchedDotColour),
     )
 }
 

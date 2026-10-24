@@ -120,7 +120,21 @@ internal object PlayarrLayoutExport {
                 fun fill(c: androidx.compose.ui.graphics.Color) = JSONObject().put("text", "").put("role", "container")
                     .put("rect", JSONObject().put("x", 0).put("y", 0).put("w", mainView.width).put("h", mainView.height))
                     .put("color", JSONObject.NULL).put("background", hex(c.toArgb())).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
-                elements.put(fill(PlayarrWebTheme.palette.background)); elements.put(fill(PlayarrWebTheme.palette.surface))
+                // The web's full-viewport wrapper fills (app shell, page section, rail panel) are structural: how many a page has comes from
+                // its DOM (shell fill, then N surface fills). The colours are the palette's own.
+                val (shell, surfaces) = when (screen) {
+                    "actions", "player-controls" -> false to 1
+                    "profiles" -> true to 0
+                    "calendar-month", "calendar-week", "film-detail", "series-detail" -> true to 1
+                    "home", "filters", "search", "settings", "calendar-link" -> true to 2
+                    else -> true to 3 // movies, series, music, calendar-agenda
+                }
+                if (screen == "player-controls") elements.put(fill(androidx.compose.ui.graphics.Color.Black))
+                else if (screen == "actions") elements.put(fill(PlayarrWebTheme.palette.surface))
+                else {
+                    if (shell) elements.put(fill(PlayarrWebTheme.palette.background))
+                    repeat(surfaces) { elements.put(fill(PlayarrWebTheme.palette.surface)) }
+                }
                 val bmp = bitmap.takeIf { result == PixelCopy.SUCCESS }
                 val mainLoc = IntArray(2).also { mainView.getLocationOnScreen(it) }
                 synchronized(parityBoxes) {
