@@ -99,6 +99,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
         .valign(gtk4::Align::Start)
         .build();
     art.set_size_request(-1, 223);
+    crate::layout::key_art(&art, true);
     let fade = |h: i32, class: &str| {
         let b = gtk4::Box::builder()
             .css_classes([class])
@@ -190,31 +191,31 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
 /// A web action pill: fixed 44 px tall, icon then label.
 fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) -> gtk4::Button {
     let row = gtk4::Box::builder()
-        .spacing(8)
+        .spacing(if primary || icon == "downloads" { 10 } else { 8 })
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Center)
         .build();
-    // The web's film Play pill is crimson; the other primary pills (Start, Resume) keep the ink fill.
-    let crimson = primary && label == "Play";
-    let tone = if crimson {
-        Tone::White
-    } else if primary {
-        Tone::OnAccent
-    } else {
-        Tone::Brand
-    };
+    let tone = if primary { Tone::OnAccent } else { Tone::Brand };
     // The web draws these two as the text glyphs U+21E9 and U+2637, not icons.
-    match (icon, crimson, primary) {
-        ("downloads", _, false) => row.append(
+    match (icon, primary) {
+        ("downloads", false) => row.append(
             &gtk4::Label::builder()
                 .label("\u{21E9}")
                 .css_classes(["pa-glyph", "s"])
+                .margin_start(3)
                 .build(),
         ),
-        ("list", _, false) => row.append(
+        ("list", false) => row.append(
             &gtk4::Label::builder()
                 .label("\u{2637}")
                 .css_classes(["pa-glyph"])
+                .build(),
+        ),
+        ("add", false) => row.append(&gtk4::Label::builder().label("+").css_classes(["pa-glyph", "s"]).build()),
+        ("play", true) => row.append(
+            &gtk4::Label::builder()
+                .label("\u{25B6}")
+                .css_classes(["pa-glyph", "play"])
                 .build(),
         ),
         _ => row.append(&icons::image(icon, if small { 9 } else { 12 }, tone)),
@@ -231,49 +232,71 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     );
     let b = gtk4::Button::builder()
         .child(&row)
-        .css_classes(if crimson {
-            vec!["pa-action", "primary", "crimson"]
-        } else if primary {
+        .css_classes(if primary {
             vec!["pa-action", "primary"]
         } else {
             vec!["pa-action"]
         })
         .valign(gtk4::Align::Start)
         .build();
-    if crimson {
-        // The web's Play pill is 47 px tall (focus scale) and sits 3 px left of the row's gap.
-        b.set_size_request(width, 47);
-        b.set_margin_start(-3);
-        b.set_margin_top(-3);
-    } else {
-        b.set_size_request(width, 44);
-    }
+    b.set_size_request(width, 44);
     b
 }
 
-fn meta_row(parts: &[(String, bool)]) -> gtk4::FlowBox {
-    let f = gtk4::FlowBox::builder()
-        .selection_mode(gtk4::SelectionMode::None)
-        .column_spacing(10)
-        .row_spacing(6)
-        .css_classes(["pa-meta-flow"])
-        .homogeneous(false)
-        // Start-aligned so the cells keep the web's 10 px gap instead of sharing the row's spare width.
-        .halign(gtk4::Align::Start)
-        .max_children_per_line(10)
-        .build();
-    for (t, strong) in parts {
-        f.append(
-            &gtk4::Label::builder()
+/// "S01 · E02" as the web's text nodes read ("S 01 · E 02"): its numbers sit in their own spans, drawn without a gap.
+fn spaced_code(t: &str) -> String {
+    let mut out = String::new();
+    for (i, c) in t.chars().enumerate() {
+        if i > 0 && c.is_ascii_digit() && t.chars().nth(i - 1).is_some_and(|p| p == 'S' || p == 'E') {
+            out.push(' ');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// The web's meta row: texts 10 px apart on fractional positions, wrapping at the content width. A `Fixed` keeps the
+/// fractional positions (a FlowBox sizes every cell to whole pixels, which drifts by a pixel per cell).
+fn meta_row(parts: &[(String, bool)]) -> gtk4::Fixed {
+    let f = gtk4::Fixed::new();
+    f.set_halign(gtk4::Align::Start);
+    let labels: Vec<gtk4::Label> = parts
+        .iter()
+        .map(|(t, strong)| {
+            let l = gtk4::Label::builder()
                 .label(t)
                 .css_classes(if *strong {
                     vec!["pa-meta", "strong"]
                 } else {
                     vec!["pa-meta"]
                 })
-                .build(),
-        );
-    }
+                .build();
+            if t.starts_with('S') && t.contains('·') {
+                crate::layout::tag(&l, "text", &spaced_code(t), 0.0);
+            }
+            f.put(&l, 0.0, 0.0);
+            l
+        })
+        .collect();
+    let row_h = 14.0_f64;
+    let place = {
+        let f = f.clone();
+        move || {
+            let (mut x, mut y) = (0.0_f64, 0.0_f64);
+            for l in &labels {
+                let w = f64::from(l.layout().size().0) / f64::from(gtk4::pango::SCALE);
+                if x > 0.0 && x + w > 328.0 {
+                    x = 0.0;
+                    y += row_h + 6.0;
+                }
+                f.move_(l, x, y);
+                x += w + 10.0;
+            }
+            f.set_size_request(328, (y + row_h) as i32);
+        }
+    };
+    place();
+    f.connect_map(move |_| place());
     f
 }
 
@@ -284,6 +307,20 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     body.set_margin_start(16);
     body.set_margin_end(16);
     page.append(&body);
+    // The web's page box runs 73 px past the content (the navigation clearance), over a header block 485 px high.
+    crate::layout::Tag::new("page", "", 0.0)
+        .adjust([0.0, 0.0, 0.0, 72.0])
+        .extra(crate::layout::Extra {
+            role: "container",
+            label: String::new(),
+            radius: 0.0,
+            inset: [0.0, 0.0, 0.0, 0.0],
+            height: Some(484.55),
+            bg: None,
+            art: false,
+            font: None,
+        })
+        .apply(page);
     let gap = |b: &gtk4::Box, px: i32| b.append(&gtk4::Box::builder().height_request(px).build());
     // Focused episode for a series, the title itself for a film.
     let focus_ep = l.focus.as_ref().and_then(|(sn, id)| {
@@ -300,13 +337,13 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         _ => String::new(),
     };
     if !kicker.is_empty() {
-        body.append(
-            &gtk4::Label::builder()
-                .label(kicker)
-                .css_classes(["pa-kicker"])
-                .xalign(0.0)
-                .build(),
-        );
+        let k = gtk4::Label::builder()
+            .label(&kicker)
+            .css_classes(["pa-kicker"])
+            .xalign(0.0)
+            .build();
+        crate::layout::tag(&k, "text", &spaced_code(&kicker), 0.0);
+        body.append(&k);
     }
     // A film's title block sits 6 and 7 px (css) closer than the episode view's, as the web phone's.
     let film = focus_ep.is_none();
@@ -322,7 +359,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     gap(
         &body,
         if film {
-            5
+            4
         } else if two {
             9
         } else {
@@ -331,6 +368,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     );
     title_label.set_label(&wrapped);
     if two {
+        title_label.add_css_class("two");
         // The web sets the title at line-height 0.94; GTK's CSS line-height does not reach wrapped Pango lines.
         let attrs = gtk4::pango::AttrList::new();
         attrs.insert(gtk4::pango::AttrFloat::new_line_height(0.70));
@@ -340,9 +378,9 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     gap(
         &body,
         if film {
-            4
+            5
         } else if two {
-            9
+            7
         } else {
             11
         },
@@ -355,7 +393,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                 .xalign(0.0)
                 .build(),
         );
-        gap(&body, 8);
+        gap(&body, 10);
     }
     let mut meta: Vec<(String, bool)> = Vec::new();
     if let Some((s, e)) = &focus_ep {
@@ -402,10 +440,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     let meta_flow = meta_row(&meta);
     if focus_ep.is_some() {
         // The episode meta row starts 2 px left of where the flow puts it, so the genre fits on the first line as on the web.
-        meta_flow.set_margin_start(-1);
-        meta_flow.set_margin_end(-4);
-        // The web's episode synopsis sits 14 px closer to the meta row than the film's.
-        meta_flow.set_margin_bottom(-6);
+
+        // The web's episode synopsis sits 14 px closer to the meta row than the film's (set on the synopsis below).
     }
     body.append(&meta_flow);
     gap(&body, if film { 11 } else { 0 });
@@ -426,6 +462,9 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             .build();
         l.set_height_request(if film { 34 } else { 50 });
         l.set_valign(gtk4::Align::Start);
+        if !film {
+            l.set_margin_top(-5);
+        }
         body.append(&l);
     }
     gap(&body, if series { 28 } else { 14 });
@@ -445,6 +484,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     };
     let row1 = gtk4::Box::builder().spacing(8).build();
     let download = action_pill("downloads", "Download", 104, false, true);
+    crate::layout::tag(&download, "button", &format!("Download {title}"), 999.0);
     match l.detail.media_file_id.clone().filter(|_| !series) {
         Some(file) => {
             let (app, work) = (app.clone(), w.clone());
@@ -468,6 +508,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         let started = l.resume.as_ref().map(|(_, pos, _)| *pos > 0).unwrap_or(false);
         if let Some((file, pos, label)) = l.resume.as_ref().filter(|_| started) {
             let b = action_pill("play", "Resume", 32, true, false);
+            crate::layout::tag(&b, "button", &format!("Resume {title}"), 999.0);
             let (file, pos, play, t) = (file.clone(), *pos, play.clone(), format!("{title} {label}"));
             b.connect_clicked(move |_| play(file.clone(), pos, t.clone()));
             row1.append(&b);
@@ -475,6 +516,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             if let Some(file) = e.media_file_id.clone() {
                 // Nothing watched yet: the web says Start and has no Ask again.
                 let b = action_pill("play", "Start", 100, true, false);
+                crate::layout::tag(&b, "button", &format!("Start {title}"), 999.0);
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), 0, t.clone()));
                 row1.append(&b);
@@ -489,6 +531,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         row1.append(&download);
         let playback = action_pill("list", "Playback", 104, false, false);
         playback.set_tooltip_text(Some("Playback options are not available yet."));
+        crate::layout::tag(&playback, "button", &format!("Playback settings for {title}"), 999.0);
         row1.append(&playback);
         if w.kind == "movie" {
             if let Some(file) = l.detail.media_file_id.clone() {
@@ -496,7 +539,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                     Some((_, pos, label)) => (format!("Resume from {label}"), *pos),
                     None => ("Play".to_string(), 0),
                 };
-                let b = action_pill("play", &label, 110, true, false);
+                let b = action_pill("play", &label, if start == 0 { 104 } else { 110 }, true, false);
+                crate::layout::tag(&b, "link", &format!("Play {title}"), 999.0);
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
                 row1.append(&b);
@@ -505,6 +549,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     }
     let row2 = gtk4::Box::builder().spacing(8).margin_top(12).build();
     let watch = action_pill("add", "Add to watchlist", 108, false, true);
+    crate::layout::tag(&watch, "button", "+ Add to watchlist", 999.0);
     {
         let (app, work) = (app.clone(), w.clone());
         watch.connect_clicked(move |b| {
@@ -526,6 +571,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         });
     }
     let playlist = action_pill("add", "Add to Playlist", 104, false, true);
+    crate::layout::tag(&playlist, "button", "+ Add to Playlist", 999.0);
     {
         let (app, work) = (app.clone(), w.clone());
         playlist.connect_clicked(move |_| super::actions::show(&app, &work));
@@ -551,7 +597,15 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     } else {
         row2.append(&watch);
         row2.append(&playlist);
-        body.append(&row1);
+        // The film's three pills are 6 px wider than the text column; the web lets them overflow, so the row sits in a
+        // scroller that reports no minimum width.
+        let clip = gtk4::ScrolledWindow::builder()
+            .child(&row1)
+            .hscrollbar_policy(gtk4::PolicyType::External)
+            .vscrollbar_policy(gtk4::PolicyType::Never)
+            .propagate_natural_height(true)
+            .build();
+        body.append(&clip);
         body.append(&row2);
     }
 
@@ -569,6 +623,9 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         if runtime > 0 {
             let outer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
             outer.add_css_class("pa-rail-band");
+            crate::layout::Tag::new("page", "", 0.0)
+                .adjust([0.0, 0.0, 0.0, -10.2])
+                .apply(&outer);
             let b = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
             b.set_margin_start(16);
             b.append(&chapters_rail(imgs, file, runtime, &title, play.clone()));
@@ -893,7 +950,7 @@ fn chapters_rail(
 ) -> gtk4::Box {
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     // The film band starts 29 px under the buttons, the heading 24 px further down.
-    col.set_margin_top(24);
+    col.set_margin_top(25);
     let target = runtime_ms as f64 / 10.0;
     let step = [5, 10, 15, 20, 30]
         .iter()
@@ -951,6 +1008,9 @@ fn chapters_rail(
             .css_classes(["pa-card"])
             .valign(gtk4::Align::Start)
             .build();
+        crate::layout::Tag::new("link", &format!("Play {title} from Chapter {}", i + 1), 0.0)
+            .height(135.52)
+            .apply(&b);
         let (file, play, t) = (file.to_string(), play.clone(), title.to_string());
         b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
         row.append(&b);
