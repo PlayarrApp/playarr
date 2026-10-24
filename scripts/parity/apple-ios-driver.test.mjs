@@ -10,6 +10,7 @@ const ready = {
   deviceTestIdentityVerified: true,
   authenticatedUsername: "device-test",
   directPlay: true,
+  playerCapture: { position: 2, paused: true, itemReady: true },
   screenContentReady: true,
   animationsDisabled: true,
   frozenNow: "2026-10-14T12:00:00Z",
@@ -24,6 +25,15 @@ test("iOS capture gates require verified identity, loaded content and direct-pla
   assert.throws(() => assertCaptureState({ ...ready, authenticatedUsername: "another-user" }, "device-test"), /DEVICE_TEST_USERNAME/);
   assert.throws(() => assertCaptureState({ ...ready, failure: "identity-mismatch" }, "device-test"), /identity-mismatch/);
   assert.throws(() => assertCaptureState({ ...ready, authenticatedUsername: undefined }, "device-test"), /DEVICE_TEST_USERNAME/);
+});
+
+test("player captures require an observed ready, paused position of exactly two seconds", () => {
+  for (const playerCapture of [undefined, {}, { position: "2", paused: true, itemReady: true },
+    { position: 1.999, paused: true, itemReady: true }, { position: 2.001, paused: true, itemReady: true },
+    { position: 2, paused: false, itemReady: true }, { position: 2, paused: true, itemReady: false }]) {
+    assert.throws(() => assertCaptureState({ ...ready, playerCapture }, "device-test", { player: true }), /exactly 2.000 seconds/);
+  }
+  assert.doesNotThrow(() => assertCaptureState({ ...ready, playerCapture: undefined }, "device-test"));
 });
 
 test("progress reset accepts only the exact authenticated current Device Test profile", () => {
