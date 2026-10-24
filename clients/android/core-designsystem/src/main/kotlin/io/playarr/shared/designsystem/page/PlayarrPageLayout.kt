@@ -141,7 +141,7 @@ internal fun PlayarrPageActions(actions: List<PlayarrPageAction>, modifier: Modi
     ) {
         orderedForHeader(actions).forEach { action ->
             when (action) {
-                is PlayarrPageAction.Navigation -> Row(Modifier.padding(end = if (tv) 0.dp else 25.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                is PlayarrPageAction.Navigation -> Row(Modifier.padding(end = if (tv) 0.dp else 25.dp), horizontalArrangement = if (tv) FractionalSpacedArrangement(15.3.dp) else Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     action.items.forEachIndexed { index, item -> PlayarrNavButton(item, exitRight = index == action.items.lastIndex) }
                 }
                 is PlayarrPageAction.Panel -> PlayarrActionPill(action.icon, action.label, action.onToggle, active = action.open)
@@ -171,22 +171,23 @@ private fun PlayarrNavButton(item: PlayarrNavItem, exitRight: Boolean = false) {
             color = palette.surface,
             contentColor = palette.inkSoft,
             border = BorderStroke(1.dp, palette.pillBorder),
-            // Television label pills (Today, the calendar date range) size to their label from 92 dp (web `.ui-btn`); phone keeps 76 dp.
-            modifier = (if (glyph != null) Modifier.size(height) else if (tv) Modifier.widthIn(min = 92.dp).height(height) else Modifier.size(76.dp, height))
+            // Television label pills (Today, the calendar date range) size to their label plus 20 dp each side (static web refs: Today 83.2, range 134.5); phone keeps 76 dp.
+            modifier = (if (glyph != null) Modifier.size(height) else if (tv) Modifier.height(height) else Modifier.size(76.dp, height))
                 .then(item.modifier)
                 .then(
                     if (rightExit == null) Modifier else Modifier.onPreviewKeyEvent { e ->
                         e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionRight && rightExit()
                     },
                 )
-                .then(if (item.primary) Modifier.graphicsLayer { scaleX = 1.055f; scaleY = 1.055f } else Modifier)
+                .then(if (item.primary && !tv) Modifier.graphicsLayer { scaleX = 1.055f; scaleY = 1.055f } else Modifier)
                 // The ring is the focus state (white in dark, ink in light), never alongside another ring and never a fill.
                 .then(if (focused) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
+                .then(if (glyph != null) Modifier.parityBox("button", item.label, 50f, background = palette.surface) else Modifier)
                 .semantics { contentDescription = item.label },
         ) {
             Box(contentAlignment = Alignment.Center) {
-                if (glyph != null) Text(glyph, fontSize = 13.sp, fontWeight = FontWeight(720))
-                else Text(item.label, fontSize = 14.4.sp, fontWeight = FontWeight(720), maxLines = 1, modifier = if (tv) Modifier.padding(horizontal = 20.dp) else Modifier)
+                if (glyph != null) Text(glyph, fontSize = if (tv) 14.72.sp else 13.sp, fontWeight = FontWeight(720))
+                else Text(item.label, fontSize = if (tv) 14.72.sp else 14.4.sp, fontWeight = FontWeight(720), maxLines = 1, modifier = (if (tv) Modifier.padding(horizontal = 20.dp) else Modifier).parityRole("button", 999f))
             }
         }
     }
