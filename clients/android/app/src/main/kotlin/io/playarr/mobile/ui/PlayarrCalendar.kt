@@ -1570,7 +1570,7 @@ private fun CalendarMonthChips(
         entries.groupBy { it.date }.mapValues { (_, day) -> groupSeriesEpisodes(day.sortedBy { it.releaseAt }, zone) }
     }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        val headerHeight = if (phoneStrip) 34.dp else if (tabletCss) 27.75.dp else 26.dp
+        val headerHeight = if (phoneStrip) 34.dp else if (tabletCss) 27.75.dp else if (isTelevision) 24.dp else 26.dp
         val cellHeight = (maxHeight - headerHeight) / rows.size
         // Web: chips that fit = (cell height - 52) / 26, between 1 and 5; when more exist the last slot is "+N more".
         // Web TV text lines: 25 dp lines above a footer with the day number and "+N more", so the count never takes a line.
@@ -1587,7 +1587,7 @@ private fun CalendarMonthChips(
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(headerHeight)) {
                 calendarWeekdayLabels(firstDay, locale).forEach { label ->
-                    Text(label.uppercase(locale), color = if (isTelevision) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(top = if (phoneStrip) 7.dp else 0.dp))
+                    Text(label.uppercase(locale), color = if (isTelevision) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(top = if (phoneStrip) 7.dp else 0.dp).then(if (isTelevision && !tabletCss) Modifier.offset(y = (-2).dp) else Modifier))
                 }
             }
             rows.forEachIndexed { rowIndex, week ->
@@ -1615,7 +1615,7 @@ private fun CalendarMonthChips(
                                     .then(if (day == today) Modifier.border(2.dp, WebInk) else Modifier)
                                     .padding(start = 4.8.dp, end = 4.8.dp, top = 0.8.dp + (if (tabletCss) 7.5.dp else 0.dp), bottom = 0.8.dp + (if (tabletCss) 9.dp else 0.dp)),
                             ) {
-                                Column(Modifier.weight(1f).padding(top = 1.dp)) {
+                                Column(Modifier.weight(1f).padding(top = if (tabletCss) 1.dp else 7.dp)) {
                                     shown.forEachIndexed { slot, item ->
                                         CalendarLine(
                                             item, calendarItemTone(item, today, zone), onClick = { onSelect(item) },
@@ -1623,7 +1623,7 @@ private fun CalendarMonthChips(
                                         )
                                     }
                                 }
-                                Row(Modifier.height(30.dp).padding(start = if (tabletCss) 3.5.dp else 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Row(Modifier.height(30.dp).then(if (tabletCss) Modifier else Modifier.offset(y = (-8).dp)).padding(start = if (tabletCss) 3.5.dp else 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                     Text(day.dayOfMonth.toString(), color = if (inMonth) WebInk else WebInkSoft, fontSize = 13.44.sp, fontWeight = FontWeight(640))
                                     if (hidden > 0) {
                                         val source = remember { MutableInteractionSource() }

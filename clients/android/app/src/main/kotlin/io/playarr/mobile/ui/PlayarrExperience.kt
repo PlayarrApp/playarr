@@ -3479,6 +3479,7 @@ internal fun ExperienceMediaRail(
                 color = WebInk,
                 fontSize = 17.664.sp,
                 fontWeight = FontWeight(610),
+                letterSpacing = (-0.52992).sp,
                 lineHeight = 26.5.sp,
                 modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() },
             )
@@ -3782,11 +3783,12 @@ internal fun ExperienceLandscapeCard(
             // A tablet takes the viewport's own clamp: title clamp(8.8, 0.62 vw, 12.48) and the fixed 0.72 rem (11.52 px) gap, in stage units.
             val tabletCard = LocalStageScale.current != 1f
             val titleSize = if (tabletCard) webVw(8.8f, 0.62f, 12.48f).value.sp else 11.904.sp
-            Text(displayTitle, color = WebInk, fontSize = titleSize, fontWeight = FontWeight(610), lineHeight = if (tabletCard) titleSize * 1.504f else 17.9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletCard) (11.52f / LocalStageScale.current).dp else 11.5.dp, start = 1.9.dp))
+            Text(displayTitle, color = WebInk, fontSize = titleSize, fontWeight = FontWeight(610), letterSpacing = if (tabletCard) 0.sp else (-0.17856).sp, lineHeight = if (tabletCard) titleSize * 1.504f else 17.9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletCard) (11.52f / LocalStageScale.current).dp else 11.5.dp, start = 1.9.dp))
         } else if (webTvStyle) {
             // Web `.tv-home-card` copy: strong 11.328 px / 630, small 8.64 px, 9.9 px under the art.
-            Text(displayTitle, color = WebInk, fontSize = 11.328.sp, fontWeight = FontWeight(630), lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 9.9.dp))
-            Text(resolvedSubtitle, color = WebInkMuted, fontSize = 8.64.sp, lineHeight = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp))
+            // Static web refs: strong 11.904 px / 610 with -0.18 px tracking, small 8.832 px / 400 (both white under the focused card).
+            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = 11.904.sp, fontWeight = FontWeight(610), letterSpacing = (-0.17856).sp, lineHeight = 17.856.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 9.9.dp))
+            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = 8.832.sp, lineHeight = 13.248.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp))
         } else if (webPhone && webHome) {
             // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
             Text(
