@@ -295,24 +295,30 @@ namespace Playarr.Xbox.Views
                 ApplyHalo(card, art, focused, ringOutset);
             }
 
-            if (!(card.RenderTransform is TranslateTransform move))
+            // The web lifts the whole link: 1.5 % up in size about its centre (the art adds its own 1.025) and --card-lift up.
+            if (!(card.RenderTransform is CompositeTransform move))
             {
-                move = new TranslateTransform();
+                move = new CompositeTransform();
                 card.RenderTransform = move;
+                card.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
             }
 
             // --card-lift-ease: cubic-bezier(0.2, 0.8, 0.2, 1) over --card-lift-duration.
-            var animation = new DoubleAnimationUsingKeyFrames();
-            animation.KeyFrames.Add(new SplineDoubleKeyFrame
-            {
-                Value = focused ? lift : 0,
-                KeyTime = KeyTime.FromTimeSpan(Duration),
-                KeySpline = new KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.2, 0.8), ControlPoint2 = new Windows.Foundation.Point(0.2, 1) },
-            });
-            Storyboard.SetTarget(animation, move);
-            Storyboard.SetTargetProperty(animation, "Y");
             var story = new Storyboard();
-            story.Children.Add(animation);
+            foreach (var (property, value) in new[] { ("TranslateY", focused ? lift : 0), ("ScaleX", focused ? 1.015 : 1), ("ScaleY", focused ? 1.015 : 1) })
+            {
+                var animation = new DoubleAnimationUsingKeyFrames();
+                animation.KeyFrames.Add(new SplineDoubleKeyFrame
+                {
+                    Value = value,
+                    KeyTime = KeyTime.FromTimeSpan(Duration),
+                    KeySpline = new KeySpline { ControlPoint1 = new Windows.Foundation.Point(0.2, 0.8), ControlPoint2 = new Windows.Foundation.Point(0.2, 1) },
+                });
+                Storyboard.SetTarget(animation, move);
+                Storyboard.SetTargetProperty(animation, property);
+                story.Children.Add(animation);
+            }
+
             story.Begin();
         }
     }
