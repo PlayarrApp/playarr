@@ -156,21 +156,23 @@ struct CalendarView: View {
                     }
                 } label: {
                     WMText(phoneRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                        .parityLayout(text: phoneRangeLabel, role: "button", size: 11.52, weight: 720, color: WM.inkSoft, box: WM.page, radius: 999)
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
                         .background(WM.page, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
-                roundButton("\u{2190}", label: "Previous period") { Task { await viewModel.step(-1) } }
+                roundButton("\u{2190}", label: "Previous") { Task { await viewModel.step(-1) } }
                 Button { Task { await viewModel.goToToday() } } label: {
                     WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                        .parityLayout(text: "Today", role: "button", size: 11.52, weight: 720, color: WM.inkSoft, box: WM.page, radius: 999)
                         .frame(width: 74, height: 44)
                         .background(WM.page, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
-                roundButton("\u{2192}", label: "Next period") { Task { await viewModel.step(1) } }
+                roundButton("\u{2192}", label: "Next") { Task { await viewModel.step(1) } }
             }
             .frame(width: proxy.size.width - 55 * scale, alignment: .trailing)
             .offset(y: 53 * scale)
@@ -234,6 +236,7 @@ struct CalendarView: View {
             WMText(glyph, 7.7, 400, color: WM.inkSoft, lh: 17.28) // web arrow glyph: 0.67 times the fallback size
                 .offset(y: 1.8)
                 .frame(width: 44, height: 44)
+                .parityBox("button", name: label, background: WM.page, radius: 50)
                 .background(Circle().fill(WM.page))
                 .overlay(Circle().stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
@@ -302,21 +305,23 @@ struct CalendarView: View {
                     }
                 } label: {
                     WMText(phoneRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                        .parityLayout(text: phoneRangeLabel, role: "button", size: 11.52, weight: 720, color: WM.inkSoft, box: WM.page, radius: 999)
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
                         .background(WM.page, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
-                roundButton("\u{2190}", label: "Previous period") { Task { await viewModel.step(-1) } }
+                roundButton("\u{2190}", label: "Previous") { Task { await viewModel.step(-1) } }
                 Button { Task { await viewModel.goToToday() } } label: {
                     WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
+                        .parityLayout(text: "Today", role: "button", size: 11.52, weight: 720, color: WM.inkSoft, box: WM.page, radius: 999)
                         .frame(width: 74, height: 44)
                         .background(WM.page, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
-                roundButton("\u{2192}", label: "Next period") { Task { await viewModel.step(1) } }
+                roundButton("\u{2192}", label: "Next") { Task { await viewModel.step(1) } }
             }
             .frame(width: screenWidth - 16, alignment: .trailing)
             .offset(x: 0, y: (viewModel.mode == .agenda ? 68 : 86) + WM.topShift)
@@ -633,12 +638,12 @@ struct CalendarView: View {
                 16, 700, lh: 24
             )
             Text("No releases from your connected sources fall in this period.")
-                .wm(16)
+                .wm(16, color: WM.muted)
                 .foregroundStyle(WM.muted)
                 .frame(width: 358, alignment: .topLeading)
                 .padding(.top, 10)
             Text("Select a release to see its details.")
-                .wm(16)
+                .wm(16, color: WM.muted)
                 .foregroundStyle(WM.muted)
                 .frame(width: 358, alignment: .topLeading)
                 .padding(.top, 36)

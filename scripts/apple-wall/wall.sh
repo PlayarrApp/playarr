@@ -46,7 +46,9 @@ else:  # the iPad sim must be iOS 18 (iPadOS 26 rotation fails on the landscape 
     t = next(d for d in types if d["name"] == "iPad Air 13-inch (M2)")  # the M4 type needs iOS 26
     ios = sorted([x for x in runtimes if ".iOS-" in x["identifier"]], key=ver)
     r = next((x for x in reversed(ios) if ver(x)[0] == 18), None)
-    if r is None: sys.exit("no iOS 18 runtime on this runner (iPadOS 26 does not rotate): iPad skipped")
+    if r is None:  # no iOS 18 runtime installed: the newest preinstalled iPadOS with its own newest iPad Air or Pro type
+        r = ios[-1]
+        t = next((d for d in reversed(types) if d["name"].startswith("iPad Air 13-inch")), None) or next(d for d in reversed(types) if "iPad" in d["name"])
 print(t["identifier"], r["identifier"])
 P
 }

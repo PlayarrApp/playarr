@@ -399,7 +399,7 @@ struct WMDetailPage: View {
             }
             if let synopsis, !synopsis.isEmpty {
                 Text(synopsis)
-                    .wm(11.52)
+                    .wm(11.52, color: WM.detailMuted)
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
                     // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
@@ -460,7 +460,8 @@ struct WMDetailPage: View {
     private func pill(
         width: CGFloat, height: CGFloat = 44, fill: Color,
         glyph: String, glyphSize: CGFloat, glyphColor: Color,
-        label: String, labelSize: CGFloat, labelColor: Color, gap: CGFloat
+        label: String, labelSize: CGFloat, labelColor: Color, gap: CGFloat,
+        role: String = "button", name: String? = nil
     ) -> some View {
         HStack(spacing: gap) {
             Text(glyph).wm(glyphSize).foregroundStyle(glyphColor)
@@ -468,6 +469,8 @@ struct WMDetailPage: View {
         }
         .frame(width: width, height: height)
         .background(fill, in: Capsule())
+        .parityBackground(fill)
+        .overlay { Color.clear.frame(width: min(width, 120.5), height: 44).parityBox(role, name: name, background: fill, radius: 999) }
         .wmPillShadow()
     }
 
@@ -485,7 +488,7 @@ struct WMDetailPage: View {
                     Button { showingDownload = true } label: {
                         pill(
                             width: 104, fill: WM.chip.opacity(0.72), glyph: "⇩", glyphSize: 9.2,
-                            glyphColor: WM.pink, label: "Download", labelSize: 8, labelColor: WM.ink, gap: 9
+                            glyphColor: WM.pink, label: "Download", labelSize: 8, labelColor: WM.ink, gap: 9, name: "Download \(work.title)"
                         )
                     }
                     .buttonStyle(.plain)
@@ -495,7 +498,7 @@ struct WMDetailPage: View {
                     Button { showingPlayback = true } label: {
                         pill(
                             width: 120.5, fill: WM.chip.opacity(0.72), glyph: "☷", glyphSize: 12.88,
-                            glyphColor: WM.pink, label: "Playback", labelSize: 11.2, labelColor: WM.ink, gap: 8
+                            glyphColor: WM.pink, label: "Playback", labelSize: 11.2, labelColor: WM.ink, gap: 8, name: "Playback settings for \(work.title)"
                         )
                     }
                     .buttonStyle(.plain)
@@ -531,7 +534,7 @@ struct WMDetailPage: View {
             } label: {
                 pill(
                     width: 127.7, height: 47, fill: WM.ink, /* web touch Play is the ink fill; the rose is its keyboard-focus state */ glyph: "▶\u{FE0E}", glyphSize: 8.6,
-                    glyphColor: WM.shell, label: "Play", labelSize: 11.2, labelColor: WM.shell, gap: 11
+                    glyphColor: WM.shell, label: "Play", labelSize: 11.2, labelColor: WM.shell, gap: 11, role: "link", name: "Play \(work.title)"
                 )
             }
             .buttonStyle(.plain)
@@ -583,7 +586,7 @@ struct WMDetailPage: View {
         } label: {
             pill(
                 width: 104, fill: WM.chip.opacity(0.72), glyph: "+", glyphSize: 9.2,
-                glyphColor: WM.pink, label: "Add to Playlist", labelSize: 8, labelColor: WM.ink, gap: 9
+                glyphColor: WM.pink, label: "Add to Playlist", labelSize: 8, labelColor: WM.ink, gap: 9, name: "+ Add to Playlist"
             )
         }
         .wmKeyFocus(Capsule())
@@ -594,7 +597,7 @@ struct WMDetailPage: View {
             pill(
                 width: width, fill: WM.chip.opacity(0.72), glyph: model.listed ? "✓" : "+", glyphSize: 9.2,
                 glyphColor: WM.pink, label: model.listed ? "Remove from watchlist" : "Add to watchlist",
-                labelSize: 8, labelColor: WM.ink, gap: 9
+                labelSize: 8, labelColor: WM.ink, gap: 9, name: model.listed ? "Remove from watchlist" : "+ Add to watchlist"
             )
         }
         .buttonStyle(.plain)

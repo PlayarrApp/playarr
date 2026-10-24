@@ -74,19 +74,19 @@ struct HomeCustomiseView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     switch model.state {
                     case .loading:
-                        Text("Loading your rails").wm(8.8).foregroundStyle(WM.muted)
+                        Text("Loading your rails").wm(8.8, color: WM.muted).foregroundStyle(WM.muted)
                     case .failed(let message):
-                        Text("Home isn\u{2019}t available").wm(16, 700).foregroundStyle(WM.ink)
-                        Text(message).wm(10.88).foregroundStyle(WM.muted)
+                        Text("Home isn\u{2019}t available").wm(16, 700, color: WM.ink).foregroundStyle(WM.ink)
+                        Text(message).wm(10.88, color: WM.muted).foregroundStyle(WM.muted)
                     case .ready:
                         Text("Choose which rails appear on Home and in what order.")
-                            .wm(8.8).foregroundStyle(WM.muted)
+                            .wm(8.8, color: WM.muted).foregroundStyle(WM.muted)
                         ForEach(Array(model.rails.enumerated()), id: \.element.id) { index, rail in
                             row(rail, index: index)
                         }
                         Button { Task { await model.reset() } } label: {
                             Text("Reset to default")
-                                .wm(11.52, 720).foregroundStyle(WM.inkSoft)
+                                .wm(11.52, 720, color: WM.inkSoft).foregroundStyle(WM.inkSoft)
                                 .padding(.horizontal, 18).frame(height: 40)
                                 .background(WM.chip.opacity(0.66), in: Capsule())
                                 .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
@@ -94,7 +94,7 @@ struct HomeCustomiseView: View {
                         .buttonStyle(.plain)
                     }
                     if let saveError = model.saveError {
-                        Text(saveError).wm(10.88).foregroundStyle(PlayarrStyle.danger)
+                        Text(saveError).wm(10.88, color: PlayarrStyle.danger).foregroundStyle(PlayarrStyle.danger)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -121,7 +121,7 @@ struct HomeCustomiseView: View {
     private func row(_ rail: RailPreferenceEntry, index: Int) -> some View {
         HStack(spacing: 8) {
             Text(rail.title)
-                .wm(12.48, 610)
+                .wm(12.48, 610, color: rail.hidden ? WM.muted : WM.ink)
                 .foregroundStyle(rail.hidden ? WM.muted : WM.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
             small(rail.hidden ? "Show" : "Hide") { model.toggle(rail.id) }
@@ -135,7 +135,7 @@ struct HomeCustomiseView: View {
     private func small(_ label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .wm(9.92, 700).foregroundStyle(WM.inkSoft)
+                .wm(9.92, 700, color: WM.inkSoft).foregroundStyle(WM.inkSoft)
                 .frame(minWidth: 32).padding(.horizontal, 8).frame(height: 30)
                 .background(WM.chip.opacity(0.66), in: Capsule())
                 .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))

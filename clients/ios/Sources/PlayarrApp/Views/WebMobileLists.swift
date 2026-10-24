@@ -32,7 +32,7 @@ private struct WMListPage<Content: View>: View {
                     .offset(x: phone ? PlayarrPageTokens.gutter : max(102, proxy.size.width * 0.08) - 52, y: top + 1)
                 // Web: the heading row is 44 pt tall (the back button) with the title line box centred in it.
                 WMText(title, 21.6, 580, lh: 44, ls: -0.972)
-                    .offset(x: phone ? 68 : max(102, proxy.size.width * 0.08), y: top - 2)
+                    .offset(x: phone ? 70 : max(102, proxy.size.width * 0.08), y: top - 2)
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
@@ -65,7 +65,7 @@ private struct WMListMeta: View {
 
     var body: some View {
         Text(parts.joined(separator: "   "))
-            .wm(12.3, 400)
+            .wm(12.3, 400, color: WM.muted)
             .foregroundStyle(WM.muted)
             .lineLimit(1)
     }
@@ -77,7 +77,7 @@ private struct WMListNote: View {
 
     var body: some View {
         Text(text)
-            .wm(8.8, 400)
+            .wm(8.8, 400, color: tone)
             .foregroundStyle(tone)
     }
 }
@@ -99,10 +99,10 @@ private struct WMListEmpty: View {
     private var errorBody: some View {
         VStack(spacing: 8) {
             Text(title)
-                .wm(17.6, 650)
+                .wm(17.6, 650, color: isError ? WM.pink : WM.ink)
                 .foregroundStyle(isError ? WM.pink : WM.ink)
             Text(description)
-                .wm(12.3, 400)
+                .wm(12.3, 400, color: WM.muted)
                 .foregroundStyle(WM.muted)
         }
         .multilineTextAlignment(.center)
@@ -123,7 +123,7 @@ private struct WMPrimaryPill: View {
 
     var body: some View {
         Text(label)
-            .wm(15, 400)
+            .wm(15, 400, color: WM.ink)
             .foregroundStyle(WM.ink)
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
@@ -138,7 +138,7 @@ private struct WMSmallPill: View {
 
     var body: some View {
         Text(label)
-            .wm(7.68, 400)
+            .wm(7.68, 400, color: WM.ink)
             .foregroundStyle(WM.ink)
             .padding(.horizontal, 14.4)
             .frame(height: 34)

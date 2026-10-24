@@ -123,10 +123,18 @@ jobs:
           requested="$(printf '%s' "$APP_SHA" | tr '[:upper:]' '[:lower:]')"
           [[ "$actual" == "$requested" ]] || { echo "::error::checked out app SHA does not match the requested SHA"; exit 1; }
 
+      - name: List the preinstalled simulator runtimes
+        id: preinstalled
+        if: matrix.device == 'ipad'
+        run: |
+          xcrun simctl list runtimes
+          xcrun simctl list devicetypes | grep -i ipad || true
+          if xcrun simctl list runtimes -j | python3 -c 'import json,sys; sys.exit(0 if any(r["isAvailable"] and r["name"].startswith("iOS 18.") for r in json.load(sys.stdin)["runtimes"]) else 1)'; then echo "have18=true" >> "$GITHUB_OUTPUT"; else echo "have18=false" >> "$GITHUB_OUTPUT"; fi
+
       # The iPad wall build needs an iOS 18 simulator (iPadOS 26 does not rotate); the runner image only has 26.
       - name: Cache the iOS 18 simulator runtime
         id: ios18-cache
-        if: matrix.device == 'ipad'
+        if: matrix.device == 'ipad' && steps.preinstalled.outputs.have18 != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/ios18-cache
@@ -134,7 +142,7 @@ jobs:
 
       - name: Install the iOS 18 simulator runtime
         id: ios18-runtime
-        if: matrix.device == 'ipad'
+        if: matrix.device == 'ipad' && steps.preinstalled.outputs.have18 != 'true'
         timeout-minutes: 40
         env:
           CACHE_HIT: ${{ steps.ios18-cache.outputs.cache-hit == 'true' && 'true' || 'false' }}

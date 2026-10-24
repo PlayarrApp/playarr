@@ -1,0 +1,2 @@
+- Measure single-line iOS text from the layout SwiftUI draws, report the actual window viewport, and remove invented containers and inferred control styles from parity exports.
+- Ignore unchanged registry updates so repeated native layout notifications cannot indefinitely postpone an export.

@@ -67,6 +67,7 @@ private struct WMPanelFrame<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
+        .parityBackground(PlayarrStyle.surfaceStrong.opacity(0.94)) // the web drawer: surface-strong at 94% over the page
     }
 }
 
@@ -128,7 +129,7 @@ private struct WMLanguageSelector: View {
         VStack(spacing: 8) {
             Button { isExpanded.toggle() } label: {
                 HStack {
-                    Text(selectedNames).wm(wmIsPad ? 10.5 : 9.3, wmIsPad ? 600 : 680).foregroundStyle(WM.inkSoft).lineLimit(1)
+                    Text(selectedNames).wm(wmIsPad ? 10.5 : 9.3, wmIsPad ? 600 : 680, color: WM.inkSoft).foregroundStyle(WM.inkSoft).lineLimit(1)
                     Spacer(minLength: 8)
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 7, weight: .bold)).foregroundStyle(WM.muted)
@@ -147,14 +148,14 @@ private struct WMLanguageSelector: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if error != nil && options.isEmpty {
                         Text("Languages could not be loaded")
-                            .wm(11, 500).foregroundStyle(WM.muted).padding(12)
+                            .wm(11, 500, color: WM.muted).foregroundStyle(WM.muted).padding(12)
                             .accessibilityLabel("\(label): languages could not be loaded")
                     } else if isLoading && facets == nil {
                         ProgressView().frame(maxWidth: .infinity).padding(14)
                             .accessibilityLabel("Loading \(label.lowercased())")
                     } else if options.isEmpty && error == nil {
                         Text("No languages available")
-                            .wm(11, 500).foregroundStyle(WM.muted).padding(12)
+                            .wm(11, 500, color: WM.muted).foregroundStyle(WM.muted).padding(12)
                     } else if !options.isEmpty {
                         ForEach(options) { facet in
                             Button { onToggle(facet.code) } label: {
@@ -237,7 +238,7 @@ struct WMLibraryFiltersPanel: View {
                     Button("Clear language filters") {
                         Task { await viewModel.clearLanguageFilters() }
                     }
-                    .wm(11, 600)
+                    .wm(11, 600, color: WM.ink)
                     .foregroundStyle(WM.ink)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(WM.artFill.opacity(0.64), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -265,12 +266,13 @@ struct WMTitleActionsPanel: View {
         Button(action: action) {
             HStack(spacing: 0) {
                 // Web `.media-context-actions button`: a 42 px icon column (1.22rem glyph, left-aligned) then the label.
-                Text(glyph).wm(isPad ? 15 : 19.5, 700).foregroundStyle(WM.pink).frame(width: 42, alignment: isPad ? .center : .leading).offset(x: isPad ? 0 : -3)
-                Text(label).wm(isPad ? 15 : 16, isPad ? 600 : 650).foregroundStyle(WM.ink).padding(.leading, isPad ? 0 : -1.2)
+                Text(glyph).wm(isPad ? 15 : 19.5, 700, color: WM.pink).foregroundStyle(WM.pink).frame(width: 42, alignment: isPad ? .center : .leading).offset(x: isPad ? 0 : -3)
+                Text(label).wm(isPad ? 15 : 16, isPad ? 600 : 650, color: WM.ink).foregroundStyle(WM.ink).padding(.leading, isPad ? 0 : -1.2)
                 Spacer()
             }
             .padding(.horizontal, 18)
             .frame(minHeight: isPad ? 68 : 67, maxHeight: isPad ? nil : 67)
+            .parityBox("button", name: "\(glyph) \(label)", background: WM.artFill, radius: 14)
             .background(
                 WM.artFill,
                 in: RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous)
