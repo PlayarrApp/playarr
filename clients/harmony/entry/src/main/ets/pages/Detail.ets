@@ -101,7 +101,7 @@
  */
 
 import { t, tf } from '../core/Language';
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
@@ -2698,8 +2698,8 @@ struct Detail {
         })
         .hitTestBehavior(HitTestMode.None)
       Row({ space: 10 }) {
-        Text('←').fontFamily(nunitoAt(700, 11))
-          .fontSize(11)
+        Text('←').fontFamily(arrowFont(720))
+          .fontSize(12.8)
           .fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .textAlign(TextAlign.Center)

@@ -91,6 +91,16 @@ def backdrop(image, x, y, w, h, dpr, fallback):
     return tuple(colour) + (1.0,)
 
 
+def all_texts(node):
+    found = []
+    for child in node.get("$children") or []:
+        attrs = child.get("$attrs") or child
+        if child.get("$type") == "Text" and (attrs.get("content") or attrs.get("text")):
+            found.append(str(attrs.get("content") or attrs.get("text")))
+        found.extend(all_texts(child))
+    return found
+
+
 def first_text(node):
     for child in node.get("$children") or []:
         attrs = child.get("$attrs") or child
@@ -119,6 +129,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
 
     root_bg = app_bg(tree) or (255, 255, 255, 1.0)
 
+    page_base = [None]
+
     def walk(node, under):
         attrs = node.get("$attrs") or node
         kind = str(node.get("$type", ""))
@@ -126,11 +138,21 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
         bg = argb(attrs.get("backgroundColor"))
         here = under
         if kind == "NavDestination":
-            here = app_bg(node) or under  # the page's own colour is the base of everything on it
+            here = app_bg(node)  # the page's own colour is the base of everything on it
+            sampled = False
+            if dpr == 3 and image is not None:  # phone: the rendered page colour at the left edge (Home's Stage paints over its fill)
+                px = tuple(image.convert("RGB").getpixel((2, 900))) + (1.0,)
+                if here is None or max(abs(px[i] - here[i]) for i in range(3)) > 3:
+                    sampled = True
+                    here = px
+            here = here or under
+            page_base[0] = here if sampled else None
         if str(attrs.get("id", "")) == "px:navbar":
             here = root_bg  # web composites the nav bar over the body, not over the page
         if kind in ("Navigation", "NavDestination", "root"):
             bg = None  # system containers
+        if page_base[0] is not None and bg is not None and bg[3] > 0.99 and box is not None and box[2] >= vw * dpr - 1 and box[3] >= vh * dpr - 1:
+            bg = None  # the page's full-screen base fill is already the sampled/page base colour
         parent_bg = here  # web's `background` is the composite behind the element; its own fill counts only when opaque
         if bg is not None and bg[3] > 0:
             here = over(bg, here if str(attrs.get("id", "")) == "px:navbar" else under)
@@ -153,7 +175,11 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                             "color": None, "background": hex_of(root_bg), "fontSize": None, "fontWeight": None, "radius": 20})
             if nid.endswith("-nav-tile") or nid == "pcard":  # functional focus ids: the control's name is its first text
                 label = first_text(node)
-                name = ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else (("Open " + label) if nid == "pcard" else label)
+                texts = all_texts(node)
+                if nid == "pcard":
+                    name = " ".join(texts) if len(texts) >= 2 else "Open " + label
+                else:
+                    name = ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else label
                 el = {"text": name, "role": "link", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else 12}
                 out.append(el)
