@@ -15,6 +15,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import io.playarr.shared.designsystem.page.parityBox
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -206,7 +207,6 @@ internal fun BoxScope.PhonePlayerOverlay(
             Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = bottomInset),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            val seekDensity = androidx.compose.ui.platform.LocalDensity.current.density
             val bufferedFraction = if (durationMs > 0L) (timeline.bufferedPositionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
             val playedFraction = if (durationMs > 0L) (displayedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
             val seekDescription = playarrString(
@@ -214,39 +214,41 @@ internal fun BoxScope.PhonePlayerOverlay(
                 "position" to formatPlayarrPlayerTime(displayedMs),
                 "duration" to formatPlayarrPlayerTime(durationMs),
             )
-            // `.player-seek-track`: 6 px, the buffered range and the played range over a 20% white track.
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .parityBox("slider", "Seek", background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.center.y - 22f * seekDensity, r.right, r.center.y + 22f * seekDensity) })
-                    .background(Color.White.copy(alpha = 0.2f))
-                    .semantics { contentDescription = seekDescription }
-                    .pointerInput(durationMs, controls.switching) {
-                        if (durationMs <= 0L || controls.switching) return@pointerInput
-                        awaitEachGesture {
-                            val down = awaitFirstDown()
-                            fun at(x: Float) = (x / size.width).coerceIn(0f, 1f) * durationMs
-                            onScrub(at(down.position.x).toLong())
-                            horizontalDrag(down.id) { change ->
-                                onScrub(at(change.position.x).toLong())
-                                change.consume()
-                            }
-                            onScrubFinished()
-                        }
-                    },
-            ) {
+            // `.player-seek-track`: 6 px, the buffered range and the played range over a 20% white track; the touch target is a 44 dp box
+            // centred on it (as the web slider), which overflows the 6 dp track without changing the layout.
+            Box(Modifier.fillMaxWidth().height(6.dp).background(Color.White.copy(alpha = 0.2f))) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(bufferedFraction).background(Color.White.copy(alpha = 0.34f)))
                 Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBox("container", background = PlayerAccent).background(PlayerAccent))
+                Box(
+                    Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth()
+                        .requiredHeight(44.dp)
+                        .parityBox("slider", "Seek", background = Color.Black)
+                        .semantics { contentDescription = seekDescription }
+                        .pointerInput(durationMs, controls.switching) {
+                            if (durationMs <= 0L || controls.switching) return@pointerInput
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                fun at(x: Float) = (x / size.width).coerceIn(0f, 1f) * durationMs
+                                onScrub(at(down.position.x).toLong())
+                                horizontalDrag(down.id) { change ->
+                                    onScrub(at(change.position.x).toLong())
+                                    change.consume()
+                                }
+                                onScrubFinished()
+                            }
+                        },
+                )
             }
             FlowRow(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = if (parityPauseAtMs != null && LocalStageScale.current == 1f) ParityCentredFlowArrangement else Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = if (LocalStageScale.current == 1f) CentredFractionalFlowArrangement else Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current == 1f) 3.4.dp else 2.dp),
             ) {
                 // `.player-time` leads the first line (order -1, full width) with 2 px of padding below.
                 Row(
-                    Modifier.fillMaxWidth().parityBox("container", formatPlayarrPlayerTime(displayedMs) + " / " + formatPlayarrPlayerTime(durationMs), background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(12f * seekDensity, r.top + 3.76f * seekDensity, 378f * seekDensity, r.top + 20.64f * seekDensity) }).padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
+                    Modifier.fillMaxWidth().parityBox("container", formatPlayarrPlayerTime(displayedMs) + " / " + formatPlayarrPlayerTime(durationMs), background = Color.Black).padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -281,8 +283,8 @@ internal fun BoxScope.PhonePlayerOverlay(
                 // `.player-quality-button`: a 42 px box whose HD glyph and wrapped label overflow it on both sides.
                 Box(
                     Modifier
-                        .size(42.dp)
-                        .parityBox("button", playerQualityButtonName(controls), 999f, background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.center.x - 22f * seekDensity, r.center.y - 22f * seekDensity, r.center.x + 22f * seekDensity, r.center.y + 22f * seekDensity) })
+                        .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
+                        .parityBox("button", playerQualityButtonName(controls), 999f, background = Color.Black)
                         .then(if (controls.qualityOptions.isEmpty() || controls.switching) Modifier.alpha(0.76f) else Modifier)
                         // `.player-quality-button[aria-expanded="true"]`: a 15% white disc and 1.08x while its menu is open.
                         .then(
@@ -576,14 +578,14 @@ private fun PhoneMatrixChoice(
 
 
 /**
- * Parity captures only (719 px = 390 css px): the web centres each line of 44 css px buttons with a 2 css px gap at fractional device
- * pixels; whole-pixel buttons and gaps drift 0.2 px per button. Positions come from the running css pitch, rounded once per button.
+ * The web centres each line of 44 css px buttons with a 2 px gap at fractional device pixels; whole-pixel buttons and gaps drift
+ * 0.2 px per button on a 2.6 density phone. Positions come from the running dp pitch, rounded once per button.
  */
-private object ParityCentredFlowArrangement : Arrangement.Horizontal {
+private object CentredFractionalFlowArrangement : Arrangement.Horizontal {
     override fun androidx.compose.ui.unit.Density.arrange(totalSize: Int, sizes: IntArray, layoutDirection: androidx.compose.ui.unit.LayoutDirection, outPositions: IntArray) {
-        val k = totalSize / 366f // device px per css px (the row is 366 css px wide)
-        val width = (sizes.size * 44f + (sizes.size - 1) * 2f) * k
+        val pitch = 46.dp.toPx()
+        val width = sizes.size * 44.dp.toPx() + (sizes.size - 1) * 2.dp.toPx()
         val start = (totalSize - width) / 2f
-        for (i in sizes.indices) outPositions[i] = Math.round(start + i * 46f * k)
+        for (i in sizes.indices) outPositions[i] = Math.round(start + i * pitch)
     }
 }

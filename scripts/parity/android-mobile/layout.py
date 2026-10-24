@@ -25,14 +25,7 @@ for e in doc["elements"]:
     # A fully rounded shape (tag 50 and above) stays as tagged; any other radius is the drawn one in CSS px.
     px = e.pop("radiusPx", None)
     if e.get("radius") is not None and px is not None and e["radius"] < 50: e["radius"] = r2(px / dpr)
-# Chromium rounds a run's ascent and descent to whole CSS px (Nunito Sans 1.011 / 0.353 em): a single-line content area is
-# round(asc) + round(desc) tall around the same baseline.
-for e in doc["elements"]:
-    fs = e.get("fontSize")
-    if fs and e["role"] in ("text", "heading", "button", "link") and abs(e["rect"]["h"] - 1.364 * fs) < 0.35:
-        asc, desc = round(1.011 * fs), round(0.353 * fs)
-        base = e["rect"]["y"] + 1.011 * fs
-        e["rect"]["y"] = r2(base - asc); e["rect"]["h"] = asc + desc
+# Rects are exported as the app measured them: no browser-specific rounding or other correction is applied here.
 doc["viewport"] = {"w": view[0], "h": view[1], "dpr": r2(dpr)}
 doc["clockPinned"] = True
 os.makedirs(os.path.dirname(out), exist_ok=True)
