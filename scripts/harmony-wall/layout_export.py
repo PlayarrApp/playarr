@@ -86,6 +86,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None):
                     align = str(attrs.get("textAlign", "")).lower()
                     rx = x + (w - tw) / 2 if "center" in align else (x + w - tw if "end" in align else x)
                     rx, ry, rw, rh = rx, y + (h - ch) / 2, tw, ch
+                case = str(attrs.get("textCase", attrs.get("textTransform", ""))).lower()
+                text = str(text).upper() if "upper" in case or case.endswith("1") else (str(text).lower() if "lower" in case or case.endswith("2") else text)
+                tw = text_width(text, size, weight, spacing, measure)
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
                 el = {"text": " ".join(str(text).split()), "role": "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, here)), "background": hex_of(here), "fontSize": size, "fontWeight": weight}
