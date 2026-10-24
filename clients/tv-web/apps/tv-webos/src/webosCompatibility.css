@@ -94,3 +94,13 @@ html[data-platform="tv-webos"] .settings-option-number {
 html[data-platform="tv-webos"] .tv-segmented button strong {
   min-block-size: 1.1em;
 }
+
+/*
+ * The simulator injects `* { font-family: "LG Display-Regular" }`. The shared sheet restores the design font with
+ * `:where(#root, #root *) { font-family: inherit }`, which misses everything portalled to the body (the title actions
+ * and Filters drawers), so those headings and buttons drew in the LG face.
+ */
+html[data-platform="tv-webos"] body > :not(#root),
+html[data-platform="tv-webos"] body > :not(#root) * {
+  font-family: inherit;
+}
