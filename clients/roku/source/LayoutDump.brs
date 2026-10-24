@@ -678,7 +678,8 @@ sub ParityPlayer()
     ParityBox("container", "", 0, 561.6, 1920, 518.4, 0, k)
     ParityBox("slider", "Seek", 70, 914, 1780, 44, 0, k)
     fillW = 1780 * 2 / 60
-    if m.playerProgressFill <> invalid and m.playerProgressFill.width > 0 then fillW = m.playerProgressFill.width
+    ' The fill node repaints on a timer only while the bar is visible, so read the paused position directly.
+    if m.video <> invalid and m.video.duration > 0 then fillW = 1780 * m.video.position / m.video.duration
     ParityBox("container", "", 70, 933, fillW, 6, 0, "#cf3157")
     playName = "Play"
     if m.pcPlay <> invalid and Instr(1, m.pcPlay.uri, "pause") > 0 then playName = "Pause"

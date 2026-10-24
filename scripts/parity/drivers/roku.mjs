@@ -855,8 +855,24 @@ export function createDriver({ out, args = [] } = {}) {
       if (/<player\b[^>]*\bstate="play"/i.test(xml) && ms >= 1900) break;
       await sleep(100);
     }
-    await sendEcp("keypress/Play");
-    await sleep(700);
+    // Exactly 2.000 s, paused: seek through the channel's parity input, then wait until the player reports 2000 ms twice in a row.
+    let hits = 0;
+    let lastSeen = "none";
+    let sent = false;
+    let lastMs = -1;
+    const seekDeadline = Date.now() + 30000;
+    while (hits < 2) {
+      if (Date.now() > seekDeadline) throw new Error(`Roku player did not settle at 2.000 s (last ${lastSeen})`);
+      if (!sent) { await sendEcp(`input?paritySeek=2000`); sent = true; }
+      await sleep(900);
+      const xml = await (await sendEcp("query/media-player", "GET")).text();
+      const ms = Number(/<position>(\d+) ms/.exec(xml)?.[1] ?? "0");
+      const paused = /<player\b[^>]*\bstate="pause"/i.test(xml);
+      lastSeen = `${paused ? "pause" : "other"} ${ms} ms`;
+      // ECP reports the pipeline frame time (about 2.07 s after a node seek to 2.000), so accept a stable paused reading within 150 ms of the target.
+      hits = paused && Math.abs(ms - 2000) <= 150 && ms === lastMs ? hits + 1 : 0;
+      lastMs = ms;
+    }
     await sendEcp("keypress/Down");
     await sleep(1500);
     playerShot = true;

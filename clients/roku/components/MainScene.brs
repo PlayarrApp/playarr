@@ -7787,3 +7787,30 @@ sub onParityLayoutRequest()
     m.global.parityLayoutSeq = m.global.parityLayoutSeq + 1
     ParityLayoutDump(m.top)
 end sub
+
+' Parity capture only: seek the video to an exact position (ms) and hold it paused there.
+sub onParitySeek()
+    if m.global.parityArtEnabled <> true or m.top.paritySeek < 0 then return
+    m.paritySeekTarget = m.top.paritySeek / 1000
+    m.video.ObserveField("position", "onParitySeekStep")
+    m.video.ObserveField("state", "onParitySeekStep")
+    m.video.control = "pause"
+    m.video.seek = m.paritySeekTarget
+end sub
+
+' Re-pause whenever the seek resumes playback; stop watching once paused on the target.
+sub onParitySeekStep()
+    if m.paritySeekTarget = invalid then return
+    if m.video.state = "playing"
+        m.video.control = "pause"
+    else if m.video.state = "paused"
+        if Abs(m.video.position - m.paritySeekTarget) < 0.0005
+            m.video.control = "pause"
+            m.video.UnobserveField("position")
+            m.video.UnobserveField("state")
+            m.paritySeekTarget = invalid
+        else
+            m.video.seek = m.paritySeekTarget
+        end if
+    end if
+end sub
