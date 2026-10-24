@@ -233,7 +233,7 @@ namespace Playarr.Xbox.Views
             {
                 Width = width,
                 Height = height,
-                CornerRadius = new CornerRadius(12),
+                CornerRadius = new CornerRadius(12.48),
                 Background = (Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
             var episode = work.OnDeckEpisode;
@@ -314,6 +314,8 @@ namespace Playarr.Xbox.Views
             {
                 return root;
             }
+
+            LayoutExport.Tag(root, "link", work.Title + " " + (episode != null ? WorkLabels.OnDeckCaption(work) : WorkLabels.KindWithYear(work)));
 
             root.Children.Add(new TextBlock
             {
