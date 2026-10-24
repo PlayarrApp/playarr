@@ -335,6 +335,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     prole = as_text[0][1]
                     text = as_text[0][0]  # web's DOM text (a CSS capitalise shows "Date Added" for "Date added")
                     attrs = dict(attrs); attrs["borderRadius"] = str(as_text[0][2]) if as_text[0][2] else "0"
+                text = re.sub(r"\bS(\d\d) · E(\d\d)", r"S \1 · E \2", str(text))  # web's DOM text spaces the episode code ("S 01 · E 01") though it draws it tight
                 el = {"text": " ".join(str(text).replace("\ufe0e", "").replace("\ufe0f", "").split()), "role": prole or "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, parent_bg)), "background": hex_of(parent_bg), "fontSize": size, "fontWeight": weight}
                 if prole == "container":
