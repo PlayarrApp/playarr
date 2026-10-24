@@ -309,10 +309,10 @@ impl App {
                 .build(),
         );
         let close = gtk4::Button::builder()
-            .css_classes(match (close_primary, filters) {
-                (true, _) => vec!["pa-close"],
-                (false, true) => vec!["pa-close", "soft", "ring"],
-                (false, false) => vec!["pa-close", "soft"],
+            .css_classes(if close_primary {
+                vec!["pa-close"]
+            } else {
+                vec!["pa-close", "soft"]
             })
             .valign(gtk4::Align::Start)
             .build();

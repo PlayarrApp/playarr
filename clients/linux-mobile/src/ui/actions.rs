@@ -40,7 +40,6 @@ pub fn show(app: &Rc<App>, work: &Work) {
     col.set_margin_bottom(24);
 
     let play = row("play", "Play", Tone::Brand);
-    play.add_css_class("focus");
     {
         let (app, id, title, kind, client) = (
             app.clone(),

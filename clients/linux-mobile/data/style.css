@@ -218,7 +218,7 @@ button.pa-close.ring { outline: 2px solid @pa_ring; outline-offset: 2px; }
 .pa-panel-kicker { font-size: 7.04px; font-weight: 720; letter-spacing: 0.8px; color: @pa_muted; }
 .pa-panel-title { font-size: 22.4px; font-weight: 590; }
 button.pa-close { min-width: 46px; min-height: 46px; }
-button.pa-close.soft { background: @pa_soft; min-width: 44px; min-height: 44px; }
+button.pa-close.soft { background: @pa_soft; min-width: 42px; min-height: 42px; border: 1px solid alpha(@pa_ink, 0.15); }
 .pa-section-label { font-size: 7.04px; font-weight: 720; letter-spacing: 0.8px; margin-top: 12px; margin-bottom: 3px; }
 .pa-seg-tile { min-height: 38px; background: alpha(@pa_soft, 0.64); border: none; border-radius: 12px; font-size: 11.52px; font-weight: 680; color: @pa_muted; }
 .pa-seg-tile:checked { background: @pa_ink; color: @pa_bg; }
