@@ -39,6 +39,8 @@ run() { case $1 in
     # The debug build pauses at 2.000 s and seeks exactly there; capture only once the player has reported that position twice (250 ms apart x4 per line), so every run shows the same frame.
     ok=0; for w in $(seq 1 60); do n=$(adb logcat -d -s PlayarrParity:I | grep -c 'player positionMs=2000$'); [ "$n" -ge 2 ] && { ok=1; break; }; sleep 1; done
     [ $ok = 1 ] || { echo "player did not settle at 2.000 s"; return 1; }
+    # The chrome hides 5 s after playback starts; on a slow start it is gone by now. A tap on the surface brings it back without toggling playback.
+    for w in 1 2 3; do python3 -I $HERE/uiexpect.py 'Mute|Seek|Quality' && break; adb shell input tap 360 500; sleep 3; done
     shot $1 3 ;;
   actions) open movies 16; python3 -I $HERE/uiexpect.py 'Amber Thicket 3' || { echo "wrong screen movies"; return 1; }; python3 -I $HERE/uitap.py '7 Distant Harbour 30' long-up || { echo 'actions card not found'; return 1; }; sleep 2; python3 -I $HERE/uiexpect.py 'Title actions|Mark as Watched' || { echo 'wrong screen actions'; return 1; }; shot $1 ;;
   filters) open movies 16; tapdesc '^Filters' 2; python3 -I $HERE/uiexpect.py 'Sort by|Library controls|Filters' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
