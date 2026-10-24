@@ -106,7 +106,7 @@ namespace Playarr.Xbox.Views
                     return; // a drawn icon is one image, not its strokes
                 }
 
-                if (element is Button { Content: TextBlock } && GetRole(element) == null)
+                if (element is Button { Content: TextBlock } && (GetRole(element) == null || GetRole(element) == "button"))
                 {
                     return; // the web's label button is one element carrying the text run and its style
                 }
@@ -147,6 +147,15 @@ namespace Playarr.Xbox.Views
                 fontWeight = block.FontWeight.Weight;
                 rect = TextRun(block, root, scale) ?? rect;
             }
+            else if (element is Button { Content: TextBlock drawerLabel } && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
+            {
+                role = "button";
+                text = (string?)drawerLabel.GetValue(TextProperty) ?? (string.IsNullOrEmpty(name) ? drawerLabel.Text : name);
+                color = Hex(drawerLabel.Foreground);
+                fontSize = Math.Round(drawerLabel.FontSize, 2);
+                fontWeight = drawerLabel.FontWeight.Weight;
+                rect = TextRun(drawerLabel, root, scale) ?? rect;
+            }
             else if (role != null)
             {
                 text = string.IsNullOrEmpty(name) ? null : name;
@@ -169,7 +178,7 @@ namespace Playarr.Xbox.Views
                 role = "button";
                 text = string.IsNullOrEmpty(name) ? null : name;
             }
-            else if (element is Border border && Hex(border.Background) is not null)
+            else if (element is Border border && (Hex(border.Background) is not null || (border.BorderBrush != null && border.BorderThickness.Left > 0)))
             {
                 role = "container";
             }
