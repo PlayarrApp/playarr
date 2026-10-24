@@ -10,7 +10,7 @@ WEIGHT_NAMES = {"lighter": 300, "regular": 400, "normal": 400, "medium": 500, "b
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "clients", "harmony", "entry", "src", "main", "resources", "rawfile", "fonts")
 KNOWN = set(chr(c) for c in range(0x20, 0x250)) | set('\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u00b7')
 PLACEHOLDER = ("#312a30", "#dfdcdd")  # web artwork placeholder, dark and light
-PAGE_SHELLS = {"settings": 2, "search": 2, "filters": 2, "movies": 2, "series": 2, "music": 2, "calendar-agenda": 2, "home": 2, "calendar-month": 1, "calendar-week": 1}  # full-viewport page-colour containers in the web DOM of each phone screen
+PAGE_SHELLS = {"settings": 2, "search": 2, "filters": 3, "movies": 3, "series": 3, "music": 3, "calendar-agenda": 3, "home": 2, "calendar-month": 1, "calendar-week": 1}  # full-viewport page-colour containers in the web DOM of each phone screen
 _HB = {}
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
 
@@ -57,9 +57,13 @@ def weight_of(attrs):
     return WEIGHT_NAMES.get(raw) or int(num(raw, 400))
 
 
+# advance of the glyphs web draws from Chromium's fallback fonts, in em (measured on the web layout refs)
+GLYPH_EM = {"\u2190": 1.0, "\u2192": 1.0, "\u00d7": 0.6, "\u25b6": 0.769, "\u21e9": 0.838, "\uff0b": 1.0, "\u2713": 0.838, "\u25cb": 0.605, "\u2304": 0.838, "\u2637": 0.897}
+
+
 def text_width(text, size, weight, spacing, measure=None):
-    if text and all(ch in "\u2190\u2192" for ch in text):
-        return size * len(text)  # the fallback arrow glyphs advance one em
+    if text and all(ch in GLYPH_EM for ch in text) and len(text) <= 2:
+        return size * sum(GLYPH_EM[ch] for ch in text)  # the fallback glyphs advance a fixed fraction of the em
     if measure is not None:
         return measure(text, size, weight) + spacing * len(text)
     try:  # HarfBuzz shapes with GPOS kerning as Chrome does (PIL's basic layout drifts by a pixel on long lines)
@@ -191,7 +195,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                       "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:
-                    el["radius"] = (50 if abs(w - h) < 2 or len(pname) <= 1 or pname == "Numbers and symbols" else 999) if radius >= min(w, h) / 2 - 0.5 and dpr == 3 else radius
+                    el["radius"] = (50 if abs(w - h) < 2 or len(pname) == 1 or pname == "Numbers and symbols" else 999) if radius >= min(w, h) / 2 - 0.5 and dpr == 3 else radius
                 elif dpr == 3 and prole == "button" and abs(w - h) < 2 and w >= 40:
                     el["radius"] = 50  # the app's circle is drawn by the glyph inside
                 out.append(el)
@@ -270,7 +274,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     pill = bool(num(attrs.get("borderRadius"), 0.0)) or (bg is not None and bg[3] > 0.01)  # a padded pill: the run is centred in the box
                     rx = x + (w - tw) / 2 if ("center" in align or pill) else (x + w - tw if "end" in align else x)
                     rx, ry, rw, rh = rx, y + (h - ch) / 2, tw, ch
-                parent_bg = backdrop(None if screen == "profiles" else image, rx, ry, rw, rh, dpr, parent_bg)  # profiles: web's background is the flat page colour, the app paints a wash
+                if len(str(text).strip()) == 1 and (str(text).isalnum() or text == "#") and bg is not None and bg[3] > 0.99 and dpr == 3 and abs(w - h) < 2:
+                    parent_bg = under  # an alphabet-rail letter disc: web's text background is the page behind the disc
+                else:
+                    parent_bg = backdrop(None if screen == "profiles" else image, rx, ry, rw, rh, dpr, parent_bg)  # profiles: web background is the flat page colour, the app paints a wash  # profiles: web's background is the flat page colour, the app paints a wash
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
                 prole = str(attrs.get("id", "")).split(":")[1] if str(attrs.get("id", "")).startswith("px:") else None
                 if as_text[0] is not None and as_text[0][0] == " ".join(str(text).split()):
