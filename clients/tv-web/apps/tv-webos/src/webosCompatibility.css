@@ -24,7 +24,7 @@ html[data-platform="tv-webos"] .calendar-entry-subtitle {
   min-block-size: 1.5em;
 }
 
-html[data-platform="tv-webos"] .calendar-entry-meta .status-pill {
+html[data-platform="tv-webos"] .status-pill {
   min-block-size: calc(1.4em + 0.36rem + 2px);
 }
 
@@ -103,4 +103,9 @@ html[data-platform="tv-webos"] .tv-segmented button strong {
 html[data-platform="tv-webos"] body > :not(#root),
 html[data-platform="tv-webos"] body > :not(#root) * {
   font-family: inherit;
+}
+
+/* Agenda day heading (18.4px, line-height 1.5). */
+html[data-platform="tv-webos"] .calendar-agenda-content time {
+  min-block-size: 1.5em;
 }

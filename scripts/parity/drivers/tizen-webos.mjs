@@ -211,7 +211,8 @@ export async function createDriver() {
       const id = `d${Date.now()}${evalSeq++}`;
       // Newlines stay: a line comment in the expression (fetchCurrentIdentity has some) would swallow the rest of a collapsed line.
       writeFileSync(`${NETLOG}/cmd.txt`, `eval:${id}:${expr}`);
-      for (let i = 0; i < 40; i += 1) {
+      // A loaded host (many emulators) can stall the TV page for tens of seconds: wait up to PARITY_EVAL_WAIT_MS (default 120 s).
+      for (let i = 0; i < Number(process.env.PARITY_EVAL_WAIT_MS ?? 120000) / 500; i += 1) {
         await sleep(500);
         const hit = readFileSync(`${NETLOG}/log.txt`, "utf8").split("\n").reverse().find((l) => l.includes(`"id":"${id}"`));
         if (hit) { const o = JSON.parse(hit.slice(hit.indexOf("{"))); if (o.error) throw new Error(o.error); return o.value; }
