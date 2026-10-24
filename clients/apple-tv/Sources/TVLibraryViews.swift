@@ -1915,6 +1915,7 @@ struct TVLibraryKindView: View {
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
                     .lineSpacing(3)
+                    .parityLayout(text: overview, size: 13.82, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
                     .padding(.top, 24)
                     .frame(maxWidth: 348, alignment: .leading)
             }
@@ -1931,14 +1932,17 @@ struct TVLibraryKindView: View {
             if !year.isEmpty {
                 Text(year)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
+                    .parityLayout(text: year, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
             }
             if !genreLine.isEmpty {
                 Text(genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: genreLine, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
             }
             if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
                 Text(text)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
+                    .parityLayout(text: text, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
             }
         }
         .font(TVTheme.font(size: 13, weight: .medium))

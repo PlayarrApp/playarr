@@ -156,7 +156,7 @@ struct TVPageHeader: View {
                 .tracking(-1.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .fixedSize()
-                .parityLayout(text: title, role: "heading", size: 33.6, weight: 580, color: DesignTokens.Color.textPrimary, tracking: -1.5)
+                .parityLayout(text: title, role: "heading", size: 33.6, weight: 580, color: DesignTokens.Color.textPrimary, tracking: -1.5, lineHeight: 46)
             let subtitle = detail.map {
                 Text($0.uppercased())
                     .font(TVTheme.font(size: 11.14, css: 680))
@@ -469,11 +469,11 @@ struct TVHeroTitle: View {
                     .tracking(-4.98)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
-                    .parityLayout(text: line, size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98)
                     .fixedSize()
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
             }
         }
+        .parityLayout(text: title, role: "heading", size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98, lines: lines, pitch: 62.2)
     }
 }
 
