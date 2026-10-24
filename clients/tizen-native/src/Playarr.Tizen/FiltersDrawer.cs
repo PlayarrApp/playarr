@@ -76,6 +76,7 @@ internal sealed class FiltersDrawer
         foreach (var c in Root.Children.ToArray()) { Root.Remove(c); c.Dispose(); }
         _focus.Items.Clear(); _listView = null;
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
+        Sem.Tag(Root, "none", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
         var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Sem.Tag(panel, "dialog", "", backdropNow: () => DrawerBackdrop(t));

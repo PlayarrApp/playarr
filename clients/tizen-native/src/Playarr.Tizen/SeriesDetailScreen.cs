@@ -14,7 +14,7 @@ internal sealed class SeriesDetailScreen : IPage
     private sealed class Rail { public View Row = new(); public float Scroll; public List<int> Items = new(); }
 
     /// <summary>Web puts the cast heading 37.7 px lower than one more season rail would be (measured at 1920x1080).</summary>
-    private const float CastGap = 37.7f;
+    private const float CastGap = 36.7f;
     private readonly AppEnv _env;
     private readonly PlayarrTheme _t;
     private readonly Guid _id;
@@ -82,6 +82,7 @@ internal sealed class SeriesDetailScreen : IPage
         _content.Add(_copy);
 
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
+        clip.Add(Sem.Tag(new View { PositionX = ClipX, Size = new Size(1190.4f, 1080) }, "container"));
         clip.Add(_stack);
         _content.Add(clip);
 
@@ -107,7 +108,7 @@ internal sealed class SeriesDetailScreen : IPage
     {
         var rail = new Rail();
         var y = si * RailPitch;
-        _stack.Add(Ui.Text($"Season {season.Season.SeasonNumber}", RailX, y, 17.664f, 700, _t.Ink, 400, 26.496f, spacing: -0.53f));
+        _stack.Add(Ui.Text($"Season {season.Season.SeasonNumber}", RailX, y, 17.664f, 610, _t.Ink, 400, 26.496f, spacing: -0.53f));
         _stack.Add(Ui.Text($"{season.Episodes.Count} episodes", RailX, y + 30.5f, 9.984f, 400, _t.InkMuted, 400, 14.976f));
         rail.Row.PositionY = y + 80.7f; rail.Row.Size = new Size(9000, 220);
         _stack.Add(rail.Row);
@@ -151,7 +152,7 @@ internal sealed class SeriesDetailScreen : IPage
             var codeLabel = Sem.Tag(Ui.Text(code, 0, 165.3f, 8.832f, 700, firstCard ? maxInk : _t.InkMuted, 46, 13.248f), "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}");
             box.Add(codeLabel);
             var codeY = codeLabel.PositionY;
-            var tt = Ui.Text(ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}", 45.8f, 162.3f, 11.52f, 610, firstCard ? maxInk : _t.Ink, 222, 17.28f, spacing: -0.17f);
+            var tt = Ui.Text(ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}", 47.8f, 162.3f, 11.52f, 610, firstCard ? maxInk : _t.Ink, 222, 17.28f, spacing: -0.17f);
             box.Add(tt);
             var titleY = tt.PositionY;
             rail.Row.Add(box);
@@ -237,7 +238,7 @@ internal sealed class SeriesDetailScreen : IPage
         var meta = new List<string> { $"Season {season.Season.SeasonNumber}", code };
         if (ep.RuntimeMs is > 0) meta.Add(DetailModel.Runtime(ep.RuntimeMs.Value));
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
-        if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired  " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+        if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(3));
         { var mx = 153.6f; for (var mi = 0; mi < meta.Count; mi++) { var first = mi == 0; var part = meta[mi]; var lbl = Ui.Text(part, mx, bas + 70.3f, 10.56f, first ? 680 : 400, first ? _t.InkSoft : _t.InkMuted, 0, 15.84f); if (part == code) Sem.Tag(lbl, "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}"); _copy.Add(lbl); mx += Ui.TextWidth(part, 10.56f, first ? 680 : 400, 0) + 13.6f; } } // web: one span per part, 13.6 px apart
         var synopsisLines = Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 108f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);

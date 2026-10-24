@@ -16,6 +16,7 @@ internal sealed class CalendarLinkDrawer
     {
         var t = env.Theme; _close = close;
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
+        Sem.Tag(Root, "none", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
         var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
         Sem.Tag(panel, "dialog", "", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
@@ -36,8 +37,8 @@ internal sealed class CalendarLinkDrawer
         box.Add(Ui.Text(link, 13, 12.5f, 12.8f, 400, t.Ink, 242, 19, family: Ui.Mono));
         Root.Add(box);
         var copy = Ui.Box(1606, 312.9f, 106, 58, t.Accent, 29);
-        Sem.Tag(copy, "button", "Copy link", radius: 999, backdrop: t.Accent);
-        copy.Add(Ui.Text("Copy link", 21, 19, 14.72f, 720, t.OnAccent, 70, 20));
+        Sem.Tag(copy, "none");
+        copy.Add(Sem.Tag(Ui.Text("Copy link", 21, 17.9f, 14.72f, 720, t.OnAccent, 70, 20), "button", radius: 999, backdrop: t.Accent));
         var cr = Ring.Make(106, 58, 29, new Rgba(1, 1, 1)); cr.Show(false); copy.Add(cr);
         Root.Add(copy);
         _focus.Items.Add(new Focusable { Rect = () => new Box(1606, 312.9f, 106, 58), Label = "copy link", Select = () => toast("Copying is not available on this TV."), Style = f => cr.Show(f) });
@@ -56,8 +57,8 @@ internal sealed class CalendarLinkDrawer
             Ui.Paragraph(Root, steps[i], 1623.6f, y, 13.824f, 400, t.Ink, 250, 19.85f);
         }
         var reset = Ui.Box(1606, 812, 110, 54, new Rgba(0, 0, 0, 0), 27);
-        Sem.Tag(reset, "button", "Reset link", radius: 999, backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
-        reset.Add(Ui.Text("Reset link", 21, 17.3f, 14.72f, 720, t.Ink, 80, 20));
+        Sem.Tag(reset, "none");
+        reset.Add(Sem.Tag(Ui.Text("Reset link", 21, 17.3f, 14.72f, 720, t.Ink, 80, 20), "button", radius: 999));
         var rr = Ring.Make(110, 54, 27, new Rgba(1, 1, 1)); rr.Show(false); reset.Add(rr);
         Root.Add(reset);
         _focus.Items.Add(new Focusable { Rect = () => new Box(1606, 812, 110, 54), Label = "reset link", Select = () => toast("Resetting the link is not available on this TV."), Style = f => rr.Show(f) });
