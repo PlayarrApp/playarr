@@ -182,11 +182,25 @@ export async function createDriver() {
       if (v.requestVideoFrameCallback) await new Promise((res) => { v.requestVideoFrameCallback(() => res()); setTimeout(res, 3000); });
       return v.paused && Math.abs(v.currentTime - ${t}) < 0.05;
     })()`);
-    if (!(await until(`(() => { const v = document.querySelector("video"); return !!v && v.readyState >= 2; })()`, 60000))) throw new Error("player video has no frames");
-    await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: 960, y: 540 });
+    if (device === "tizen") {
+      // Tizen plays through AVPlay, a native plane the emulator grab does show: seek it to 2 s and hold it paused there.
+      const av = `(() => { const a = window.webapis && window.webapis.avplay; return a ? a.getState() : "none"; })()`;
+      if (!(await until(`(${av}) === "PLAYING" || (${av}) === "PAUSED"`, 60000))) throw new Error("AVPlay did not start");
+      for (let i = 0; i < 8; i += 1) {
+        // The page's seek bar follows AVPlay's time ticks, which stop once paused: seek while playing, pause from the seek callback.
+        await ev(`(() => { const a = window.webapis.avplay; try { if (a.getState() === "PAUSED") a.play(); a.seekTo(2000, function () { try { a.pause(); } catch (e) {} }, function () {}); } catch (e) {} return true; })()`);
+        await sleep(3500);
+        const t = Number(await ev(`(() => { try { return window.webapis.avplay.getCurrentTime(); } catch (e) { return -1; } })()`));
+        if (Math.abs(t - 2000) < 120 && (await ev(av)) === "PAUSED") break;
+      }
+    } else if (!(await until(`(() => { const v = document.querySelector("video"); return !!v && v.readyState >= 2; })()`, 60000))) throw new Error("player video has no frames");
+    if (device === "tizen") {
+      // No CDP here and the emulator's own video is visible to the grab: reveal the controls with a key (they hide on a timer).
+      for (let i = 0; i < 6 && !(await ev(`(() => { const c = document.querySelector(".player-controls"); return !!c && !c.classList.contains("is-hidden"); })()`)); i += 1) { xkey("up", false); await sleep(1000); }
+    } else await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: 960, y: 540 });
     if (!(await until(`!!document.querySelector(".player-controls") && !document.querySelector(".player-controls").classList.contains("is-hidden")`, 10000))) throw new Error("player controls did not show");
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
-    let held = 0;
+    let held = device === "tizen" ? 2 : 0;
     for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.02)) ? held + 1 : 0; await sleep(700); }
     if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
     await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
@@ -383,7 +397,7 @@ export async function createDriver() {
       await guard();
       // The web ref of Search rests with the text field focused (autofocus); the TV opens its system keyboard for that, so the screenshot is taken without it.
       // The layout document only needs the DOM state: focus the field for the dump, then drop it again.
-      const focusedSearch = screen === "search" && (await ev(`(() => { const i = document.querySelector('input[type="search"]'); if (!i || document.activeElement === i) return false; i.focus(); return true; })()`));
+      const focusedSearch = device === "webos" && screen === "search" && (await ev(`(() => { const i = document.querySelector('input[type="search"]'); if (!i || document.activeElement === i) return false; i.focus(); return true; })()`));
       if (focusedSearch) await sleep(800);
       const doc = await ev(layoutExpression(screen));
       if (focusedSearch) await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
@@ -574,8 +588,14 @@ export async function createDriver() {
       if (device === "webos" && (await keyboardVisible())) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
       if (await ev(BAD)) throw new Error("signed out or error page");
       // Search is reached through the Filters button on the device (the system keyboard is dismissed by selecting it), which leaves Filters focused; the web ref shows it unfocused.
+      // Tizen: the Samsung keyboard opens for the focused field and halves the page: drop focus and let the page grow back before the grab.
+      if (device === "tizen" && (await ev(`location.hash === "#/search" && document.activeElement?.matches('input[type="search"]')`))) {
+        await ev(`(document.activeElement.blur(), true)`);
+        for (let i = 0; i < 20 && Number(await ev("innerHeight")) < 1070; i += 1) await sleep(500);
+        await sleep(1500);
+      }
       if (await ev(`location.hash === "#/search" && document.activeElement?.matches('button[aria-controls="search-filters-drawer"]')`)) await ev(`(document.activeElement.blur(), true)`);
-      if (device === "webos" && (await ev(`/^#\\/player\\//.test(location.hash)`))) await pinPlayerFrame();
+      if (await ev(`/^#\\/player\\//.test(location.hash)`)) await pinPlayerFrame();
       // Detail refs are taken at page top (the web driver does the same): the focus-scroll to the first episode card must not show in the capture.
       if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
       await settleVisibleImages();
