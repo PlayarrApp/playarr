@@ -82,8 +82,9 @@ export function layoutPageFn(volatile) {
     }
     return null;
   };
-  var visibleFill = function (cs) {
-    return parse(cs.backgroundColor)[3] > 0 || cs.backgroundImage !== "none" || parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0 || cs.boxShadow !== "none";
+  var visibleFill = function (cs, el) {
+    var shade = parse(cs.backgroundColor)[3] > 0 && (!el.parentElement || toHex(backdrop(el)) !== toHex(backdrop(el.parentElement)));
+    return shade || cs.backgroundImage !== "none" || parseFloat(cs.borderTopWidth) > 0 && parse(cs.borderTopColor)[3] > 0 || cs.boxShadow !== "none";
   };
   var hiddenHost = function (el) {
     if (el.closest("[inert]")) return true;
@@ -151,7 +152,7 @@ export function layoutPageFn(volatile) {
     if (op <= 0) continue;
     var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var media = tag === "img" || tag === "svg" || tag === "canvas" || tag === "video";
-    var painted = visibleFill(cs);
+    var painted = visibleFill(cs, el);
     if (!vol && !own && !control && !media && !painted) continue;
     if (occluded(el, r)) { dropped++; continue; }
     var label = el.getAttribute("aria-label") || el.getAttribute("alt") || "";

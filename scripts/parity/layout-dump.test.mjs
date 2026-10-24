@@ -81,3 +81,9 @@ test("the nav-rail app version is a volatile element with its box exported", { s
     assert.equal(d.elements[0].fontSize, 11);
   } finally { await browser.close(); }
 });
+
+test("a background identical to what is already behind it is not a visible fill", { skip }, async () => {
+  const d = await dump(`<div class="abs" style="top:0;width:50px;height:20px;background:#fff"></div>
+    <div class="abs" style="top:30px;width:50px;height:20px;background:#fefefe"></div>`);
+  assert.deepEqual(d.elements.map((e) => e.background), ["#fefefe"]);
+});

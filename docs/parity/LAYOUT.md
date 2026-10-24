@@ -26,7 +26,7 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
 - Which elements the web exports: exactly what a user can see. Leaf text elements, focusable controls (a card is a `link` named
   "Open <title>", nav items are `tab`/`link`, kept even without a visible box because natives must export them with their accessible
   name), images/svg/canvas/video, and containers with a visible fill: a background colour or image with alpha above 0, a border
-  with width and a non-transparent colour, or a box shadow. Order is DOM order, so two exports of the same page are identical.
+  with width and a non-transparent colour, or a box shadow; a background colour identical to the one already behind it is not a fill. Order is DOM order, so two exports of the same page are identical.
 - Dropped by the exporter (so a native app never has to invent them): elements without text, visible fill or focusability (page
   wrappers, nav groups, unstyled link boxes); `display: none`, `visibility: hidden`, effective opacity 0; boxes clipped away by an
   `overflow` ancestor or entirely outside the viewport; descendants of `[inert]`; descendants of `[aria-hidden="true"]` when that
