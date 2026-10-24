@@ -50,11 +50,11 @@ internal sealed class FiltersDrawer
     private static void AddViewGlyph(View b, int i, float w, Rgba c)
     {
         // web: List is three 20x2.9 bars, Screen three 5.5x13.1 blocks, Cover three 4x13 slats
-        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Sem.Tag(Ui.Box(w / 2 - 10, 11.4f + k * 4.95f, 20, 2.9f, c, 1f), "container")); return; }
+        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Sem.Tag(Ui.Box(w / 2 - 10, 11.4f + k * 4.95f, 20, 2.9f, c, 1f), "container", ignoreOwnBg: true)); return; }
         for (var k = 0; k < 3; k++)
         {
             var bw = i == 1 ? 5.5f : 4f; var pitch = i == 1 ? 7.5f : 6f; var x0 = i == 1 ? w / 2 - 10.2f : w / 2 - 8f;
-            var r = Sem.Tag(Ui.Box(x0 + k * pitch, 11.3f, bw, 13.05f, i == 1 ? c : null, 1f), "container");
+            var r = Sem.Tag(Ui.Box(x0 + k * pitch, 11.3f, bw, 13.05f, i == 1 ? c : null, 1f), "container", ignoreOwnBg: true);
             if (i != 1) { r.BorderlineWidth = 1.5f; r.BorderlineColor = Ui.C(c); }
             b.Add(r);
         }
