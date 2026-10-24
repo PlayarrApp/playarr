@@ -20,11 +20,16 @@ sub Main(args as Dynamic)
     if parityArtEnabled and args.route <> invalid and args.route <> "" then scene.deepRoute = args.route
     screen.Show()
     scene.SetFocus(true)
+    input = CreateObject("roInput")
+    input.SetMessagePort(port)
 
     while true
         message = wait(0, port)
         if type(message) = "roSGScreenEvent" and message.IsScreenClosed()
             return
+        else if type(message) = "roInputEvent"
+            info = message.GetInfo()
+            if parityArtEnabled and info <> invalid and info.parityLayout = "1" then scene.parityLayoutRequest = true
         end if
     end while
 end sub

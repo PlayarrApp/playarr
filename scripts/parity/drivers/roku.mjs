@@ -9,6 +9,7 @@ import net from "node:net";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildLayoutDocument } from "../roku/layout-export.mjs";
 import { artReadiness, createArtReadinessState, intersectingSlots, parseArtEvent, reduceArtEvent, resetArtReadinessState } from "../roku/art-readiness.mjs";
 
 const SAFE_SCREENS = new Set([
@@ -606,7 +607,9 @@ export function createDriver({ out, args = [] } = {}) {
     return response;
   };
 
+  let layoutLines = null;
   const ingest = (line) => {
+    if (layoutLines && line.includes("PARITY|layout|")) { layoutLines.push(line.slice(line.indexOf("PARITY|layout|") + 14).replace(/\r$/, "")); return; }
     if (!applyParityLine(parityState, line)) return;
     screen = parityState.screen;
     screenSeq = parityState.screenSeq;
@@ -1147,6 +1150,22 @@ export function createDriver({ out, args = [] } = {}) {
         route: routeForState(screen, page, browse, drawerSource, parityState.calendarView, parityState.detailKind),
         focus,
       }, null, 2));
+      // The layout document (docs/parity/LAYOUT.md) of the screen just captured: same state as the screenshot.
+      if (artEnabled && process.env.ROKU_PARITY_LAYOUT !== "0") {
+        layoutLines = [];
+        await sendEcp("input?parityLayout=1");
+        for (let i = 0; i < 40 && !layoutLines.includes("end"); i += 1) await sleep(250);
+        const lines = layoutLines.filter((l) => l !== "end");
+        const done = layoutLines.includes("end");
+        layoutLines = null;
+        if (!done) throw new Error("Roku layout dump did not finish");
+        const themeDir = dirname(resolve(file));
+        const id = resolve(file).split("/").pop().replace(/\.png$/, "");
+        const doc = buildLayoutDocument(lines, { screen: id, theme: themeDir.split("/").pop(), pngFile: file, clockPinned: pinArg !== "" });
+        const layoutDir = resolve(themeDir, "..", "layout", themeDir.split("/").pop());
+        mkdirSync(layoutDir, { recursive: true });
+        writeFileSync(resolve(layoutDir, `${id}.json`), JSON.stringify(doc, null, 1));
+      }
       if (playerShot) { // leave the player so the next screen starts from the channel's own screens
         playerShot = false;
         await sendEcp("keypress/Back");

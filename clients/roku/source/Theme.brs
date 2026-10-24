@@ -228,7 +228,7 @@ end sub
 
 sub ThemeApplyWalk(node as Object, tokens as Object)
     kind = node.subtype()
-    if kind = "Label"
+    if kind = "Label" or kind = "WebLabel"
         ThemeBindRole(node, "color", true)
         ThemeApplyNode(node, tokens)
     else if kind = "Rectangle"

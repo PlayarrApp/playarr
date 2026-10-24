@@ -59,28 +59,26 @@ end sub
 ' ---------------------------------------------------------------------------
 ' Builders
 
-function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Float, text as String, size as Integer, weight as Integer, role as String, opts = invalid as Dynamic) as Object
-    label = CreateObject("roSGNode", "Label")
+function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Float, text as String, size as Float, weight as Integer, role as String, opts = invalid as Dynamic) as Object
+    label = CreateObject("roSGNode", "WebLabel")
     label.translation = [x, y]
+    label.setFields({ size: size, weight: weight, height: h })
     if w > 0 then label.width = w
-    label.height = h
-    label.text = text
-    label.font = PlayarrMakeFont(weight, size)
     label.color = ThemeColor(role)
     ThemeSetRole(label, role)
-    label.vertAlign = "top"
     if opts <> invalid
         if opts.horizAlign <> invalid then label.horizAlign = opts.horizAlign
         if opts.vertAlign <> invalid then label.vertAlign = opts.vertAlign
         if opts.wrap = true
             label.wrap = true
-            ' Roku adds the font's full line gap between wrapped lines; pull it back to the web's ~1.45 line height.
-            label.lineSpacing = -Int(size * 0.6)
+            ' Web lines are about 1.45 em apart.
+            label.lineHeight = size * 1.45
         end if
         if opts.maxLines <> invalid then label.maxLines = opts.maxLines
         if opts.lineSpacing <> invalid then label.lineSpacing = opts.lineSpacing
-        if opts.mono = true then label.font = PlayarrMakeFont(weight, size, true)
+        if opts.mono = true then label.tracking = 0
     end if
+    label.text = text
     parent.AppendChild(label)
     return label
 end function
