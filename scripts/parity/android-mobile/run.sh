@@ -7,6 +7,7 @@
 # $PARITY_OUT/<device>/{dark,light}, are scored against <legend>/android-<device>/web, and replace <legend>/android-<device>/dev
 # (old PNGs removed, JSON kept) with a build.json. PARITY_PUBLISH=0 scores only.
 set -euo pipefail
+export PATH=$HOME/Android/Sdk/platform-tools:$PATH
 here=$(cd "$(dirname "$0")" && pwd)
 dev=${1:?phone or tablet}; shift
 case $dev in
@@ -17,6 +18,7 @@ esac
 legend=${PARITY_LEGEND_ROOT:?legend evidence root required}/android-$dev
 out=${PARITY_OUT:?scratch output dir required}/$dev
 screens=("$@"); [ ${#screens[@]} -gt 0 ] || screens=(home movies series music calendar-month calendar-week calendar-agenda search film-detail series-detail settings filters profiles player-controls actions)
+adb -s "$ANDROID_SERIAL" shell pm list packages io.playarr.mobile 2>/dev/null | grep -q 'package:io.playarr.mobile$' || { echo "io.playarr.mobile is not installed on $ANDROID_SERIAL: install the sideload debug APK and run signin.sh" >&2; exit 2; }
 eval "$(node "$here/../parity-config.mjs" --shell)"
 export PARITY_CLOCK
 for t in Dark Light; do

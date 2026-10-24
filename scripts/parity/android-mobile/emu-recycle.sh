@@ -14,6 +14,8 @@ anon=$(awk '$1=="anon"{print $2}' "$cg/memory.stat")
 limit=$((max_gib * 1024 * 1024 * 1024))
 echo "emu-recycle: $unit anon=$((anon / 1048576)) MiB, limit $((max_gib * 1024)) MiB"
 [ "$anon" -le "$limit" ] && exit 0
+# Flush the guest disk first: a restart right after an install used to lose the installed app.
+adb -s "$serial" shell sync >/dev/null 2>&1 || true; sleep 5
 # A transient unit cannot be restarted (it is removed when stopped): kill the emulator through adb and let Restart=always bring it back.
 if ! systemctl --user restart "$unit" 2>/dev/null; then
   adb -s "$serial" emu kill >/dev/null 2>&1 || true
