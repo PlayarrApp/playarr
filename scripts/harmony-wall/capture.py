@@ -805,13 +805,23 @@ else:
         click(*CLOSE_DRAWER); time.sleep(3)
         snap("calendar-" + view, folder, 60000)
 
+    def phone_rails_loaded(r):
+        """The phone Home ref shows three rails: when the lower rails have not drawn (flat band below On deck), route again, up to 3 times."""
+        for _ in range(3):
+            band = png().crop((0, 1000, 1080, 1500))
+            if max(high - low for low, high in band.getextrema()) > 60:
+                return
+            route(r, 40)
+        raise Skip("home: the rails below On deck never loaded")
+
+    # the phone library refs have no card focus ring either (web touch layout), so no card is focused on the phone
     # the phone Home ref is taken without the On deck focus ring (web-refs.json noFocusRing), so Home is not focused here
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
         if name == "home":  # other workers share the account: re-seed immediately before capture for the pinned fixture item
             subprocess.run([sys.executable, os.path.join(HERE, "seed_progress.py")])
-        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), focus_first_card() if name in ('movies', 'series', 'music') else None, snap(name, folder, floor)))
+        guarded(name, lambda: (route(r, 40 if name == 'home' else 15), phone_rails_loaded(r) if name == 'home' else None, snap(name, folder, floor)))
     route("library:movie", 15); settle()
     open_filters("movies"); guarded("filters", lambda: snap("filters", folder, 40000)); click(*CLOSE_DRAWER); time.sleep(3)
     longclick(*CARDS[0]); time.sleep(5); debug("movies-actions-open"); guarded("actions", lambda: snap("actions", folder, 40000))

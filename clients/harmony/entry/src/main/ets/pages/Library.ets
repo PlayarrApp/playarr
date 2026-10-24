@@ -574,6 +574,21 @@ export struct Library {
     return watchMarkFor(this.watchIndex.get(work.id), this.watchLoaded);
   }
 
+  /** Web: focus reaches Filters by moving right along the hero's row, so the hero is that row's last card when the drawer opens. */
+  private heroToRowEnd(): void {
+    const columns = this.card(false).columns;
+    const hero = this.hero;
+    if (hero === undefined || columns < 1) {
+      return;
+    }
+    const at = this.items.findIndex((w: Work): boolean => w.id === hero.id);
+    if (at < 0) {
+      return;
+    }
+    const end = Math.min(this.items.length - 1, Math.floor(at / columns) * columns + columns - 1);
+    this.setHero(this.items[end]);
+  }
+
   private setHero(work: Work | undefined): void {
     if (work === undefined) {
       this.heroArtworkGeneration += 1;
@@ -1335,6 +1350,7 @@ export struct Library {
       label: t('pages.library.filters', 'Filters'),
       slot: 0,
       onActivate: (): void => {
+        this.heroToRowEnd();
         this.filtersOpen = true;
         this.loadLanguageFacets();
       },

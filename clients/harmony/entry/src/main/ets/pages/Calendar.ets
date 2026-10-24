@@ -1122,7 +1122,7 @@ export struct ReleaseCalendar {
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
       Column({ space: fixedHeight > 0 ? 2 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
-        Text(item.title).fontFamily(nunito(500))
+        Text(item.title).fontFamily(nunito(600)) // web 640: the 610 instance is the nearest
           .fontSize(PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
           .lineHeight(PHONE_LINE_TITLE)
@@ -1148,7 +1148,7 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 13.1 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
+      .margin({ bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 0 : (fixedHeight > 0 ? 15.1 : 5) }) // web's text block sits 2.5 vp higher in the card than the centred one (a grown movie card has no spare height)
     }
     .width('100%')
     .constraintSize({
