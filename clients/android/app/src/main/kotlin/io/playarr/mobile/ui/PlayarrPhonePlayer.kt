@@ -271,18 +271,18 @@ internal fun BoxScope.PhonePlayerOverlay(
                     audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_TOGGLE_MUTE, 0)
                     muted = audio.isStreamMute(AudioManager.STREAM_MUSIC)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerAudio, playarrString(PlayarrString.PlayerAudioTrackMenuLabel), enabled = controls.audioTracks.isNotEmpty() && !controls.switching) {
+                PhonePlayerButton(PlayarrWebIcons.PlayerAudio, playerAudioButtonName(controls), enabled = controls.audioTracks.isNotEmpty() && !controls.switching) {
                     onMenu(if (openMenu == PlayarrPlayerMenu.Audio) null else PlayarrPlayerMenu.Audio)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerSubtitles, "${playarrString(PlayarrString.PlayerSubtitlesHeading)}: ${controls.subtitleTracks.firstOrNull { it.id == controls.selectedSubtitleTrackId }?.label ?: playarrString(PlayarrString.PlayerOff)}", enabled = !controls.switching) {
+                PhonePlayerButton(PlayarrWebIcons.PlayerSubtitles, playerSubtitlesButtonName(controls), enabled = !controls.switching) {
                     onMenu(if (openMenu == PlayarrPlayerMenu.Subtitles) null else PlayarrPlayerMenu.Subtitles)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerPlaylist, if (playlistOpen) playarrString(PlayarrString.PlayerClosePlaylist) else playarrString(if (playlistCount == 1) PlayarrString.PlayerPlaylistLabelSingular else PlayarrString.PlayerPlaylistLabelPlural, "count" to playlistCount), enabled = !controls.switching) { onTogglePlaylist() }
+                PhonePlayerButton(PlayarrWebIcons.PlayerPlaylist, playerPlaylistButtonName(playlistCount, playlistOpen), enabled = !controls.switching) { onTogglePlaylist() }
                 // `.player-quality-button`: a 42 px box whose HD glyph and wrapped label overflow it on both sides.
                 Box(
                     Modifier
                         .size(42.dp)
-                        .parityBox("button", "Quality: " + (activeQuality?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") }.orEmpty()), 999f, background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.center.x - 22f * seekDensity, r.center.y - 22f * seekDensity, r.center.x + 22f * seekDensity, r.center.y + 22f * seekDensity) })
+                        .parityBox("button", playerQualityButtonName(controls), 999f, background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.center.x - 22f * seekDensity, r.center.y - 22f * seekDensity, r.center.x + 22f * seekDensity, r.center.y + 22f * seekDensity) })
                         .then(if (controls.qualityOptions.isEmpty() || controls.switching) Modifier.alpha(0.76f) else Modifier)
                         // `.player-quality-button[aria-expanded="true"]`: a 15% white disc and 1.08x while its menu is open.
                         .then(

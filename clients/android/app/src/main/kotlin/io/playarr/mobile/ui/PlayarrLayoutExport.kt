@@ -236,6 +236,8 @@ internal object PlayarrLayoutExport {
                         .measure(layout.layoutInput.text, layout.layoutInput.style, softWrap = false, maxLines = 1, constraints = androidx.compose.ui.unit.Constraints())
                     r = l + full.size.width
                 }
+                // A node tighter than its layout (a centred run in an unbounded box) is placed by the node, not by the line offset inside the layout.
+                if (r > l && (bounds.right - bounds.left) < layout.size.width - 1f) { r -= l; l = 0f }
                 if (r > l) {
                     // An ancestor's graphicsLayer scale (the selected nav tile's 1.05) shows in the node's bounds but not in the text layout.
                     // Only a real transform counts (the 1.05 nav tile); a text node narrower than its layout (centred or wrapped) is not scaled.

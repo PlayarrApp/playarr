@@ -2308,7 +2308,8 @@ private fun ProfilesChromeTrigger(
             .parityBox("button", exportLabel ?: label, background = WebBackground),
     ) {
         Row(
-            (if (webPhone) Modifier else Modifier.fillMaxWidth()).padding(horizontal = 18.dp),
+            // Web: the 1 px border sits inside the box's width, a Compose border does not, so the phone trigger pads 1 dp more.
+            (if (webPhone) Modifier else Modifier.fillMaxWidth()).padding(horizontal = if (webPhone) 19.dp else 18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
