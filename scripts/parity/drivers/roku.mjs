@@ -729,7 +729,7 @@ export function createDriver({ out, args = [] } = {}) {
       throw new Error(`Roku did not reach fresh Home content focus (screen=${screen || "none"}, newScreenEvents=${screenSeq - beforeHomeScreenSeq})`);
     }
     lastRoute = "/";
-    await sleep(1500);
+    await sleep(4000); // rails still load art for a moment; an early Down key is dropped
   };
 
   const setThemeFromProfiles = async (theme) => {
@@ -859,11 +859,12 @@ export function createDriver({ out, args = [] } = {}) {
     let hits = 0;
     let lastSeen = "none";
     let sent = false;
+    let sentAt = 0; // a seek that leaves the pipeline playing is re-sent every 5 s
     let lastMs = -1;
     const seekDeadline = Date.now() + 30000;
     while (hits < 2) {
       if (Date.now() > seekDeadline) throw new Error(`Roku player did not settle at 2.000 s (last ${lastSeen})`);
-      if (!sent) { await sendEcp(`input?paritySeek=2000`); sent = true; }
+      if (!sent || Date.now() - sentAt > 5000) { sentAt = Date.now(); await sendEcp(`input?paritySeek=2000`); sent = true; }
       await sleep(900);
       const xml = await (await sendEcp("query/media-player", "GET")).text();
       const ms = Number(/<position>(\d+) ms/.exec(xml)?.[1] ?? "0");
