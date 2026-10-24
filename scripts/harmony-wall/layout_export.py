@@ -121,7 +121,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
 
     def app_bg(node):  # the app's page colour: the first opaque Column fill (the web body)
         c = argb((node.get("$attrs") or node).get("backgroundColor"))
-        if node.get("$type") == "Column" and c is not None and c[3] > 0.99:
+        r = rect_of(node)
+        if node.get("$type") == "Column" and c is not None and c[3] > 0.99 and (r is None or r[2] >= vw * dpr * 0.9):  # a page fill, not a dot or a card
             return c
         for child in node.get("$children") or []:
             found = app_bg(child)
@@ -317,6 +318,13 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
     walk(tree, root_bg)
     if sheet_base[0] is not None and out and out[0]["role"] == "container":
         out[0]["background"] = hex_of(sheet_base[0])  # web's body behind a drawer is the page colour
+    if dpr == 1:  # TV: web paints body, shell and page (three full-viewport containers); the app has a second body-coloured root fill and one page fill
+        shells = [e for e in out if e["role"] == "container" and e["rect"]["w"] >= vw - 1 and e["rect"]["h"] >= vh - 1]
+        if len(shells) >= 2 and shells[0]["background"] == hex_of(root_bg):
+            for e in shells[1:]:
+                e["background"] = shells[-1]["background"]
+            if len(shells) == 2 and screen != "player-controls":
+                out.insert(out.index(shells[1]), dict(shells[1], rect=dict(shells[1]["rect"])))
     if dpr == 3 and page_colour[0] is not None:  # web wraps each page in full-viewport shells that paint the page colour (the body colour is the first container)
         wrap = {"text": "", "role": "container", "rect": {"x": 0, "y": 0, "w": vw, "h": vh}, "color": None, "background": hex_of(page_colour[0]), "fontSize": None, "fontWeight": None}
         at = next((i for i, e in enumerate(out) if e["role"] == "container" and e["rect"]["w"] >= vw - 1 and e["rect"]["h"] >= vh - 1 and e["background"] == wrap["background"]), None)
