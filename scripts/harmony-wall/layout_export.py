@@ -5,8 +5,7 @@ component's box, so a lineHeight or a column width in the app does not move the 
 import json, os, re
 
 CONTENT_AREA = 1.364  # Nunito Sans ascent + descent per em
-FAMILY_WEIGHT = {"NunitoSans400": 400, "NunitoSans580": 580, "NunitoSans610": 610, "NunitoSans700": 700, "NunitoSans820": 820}
-FONT_FILES = {w: f"NunitoSans-{w}.ttf" for w in (400, 580, 610, 700, 820)}
+FONT_FILES = {w: f"NunitoSans-W{w}.ttf" for w in (300, 400, 480, 560, 580, 610, 640, 680, 700, 720, 760, 820, 860, 900)}
 WEIGHT_NAMES = {"lighter": 300, "regular": 400, "normal": 400, "medium": 500, "bold": 700, "bolder": 800}
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "clients", "harmony", "entry", "src", "main", "resources", "rawfile", "fonts")
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
@@ -42,10 +41,9 @@ def over(top, below):
 
 
 def weight_of(attrs):
-    fam = str(attrs.get("fontFamily", ""))
-    for k, w in FAMILY_WEIGHT.items():
-        if k in fam:
-            return w
+    m = re.search(r"NunitoSansW(\d+)", str(attrs.get("fontFamily", "")))
+    if m:
+        return int(m.group(1))
     raw = str(attrs.get("fontWeight", "")).split(".")[-1].lower()
     return WEIGHT_NAMES.get(raw) or int(num(raw, 400))
 
@@ -58,7 +56,19 @@ def text_width(text, size, weight, spacing, measure=None):
     return font.getlength(text) * size / 1000 + spacing * len(text)
 
 
-def export(tree, screen, theme, viewport, clock_pinned=False, measure=None):
+def backdrop(image, x, y, w, h, dpr, fallback):
+    """The colour behind an element as rendered: the most common colour of its box in the screenshot (web's `background` is the composited backdrop)."""
+    if image is None or w < 1 or h < 1:
+        return fallback
+    box = tuple(int(round(v * dpr)) for v in (max(x, 0), max(y, 0), min(x + w, image.width / dpr), min(y + h, image.height / dpr)))
+    if box[2] <= box[0] or box[3] <= box[1]:
+        return fallback
+    crop = image.convert("RGB").crop(box)
+    colour = max(crop.getcolors(crop.width * crop.height), key=lambda c: c[0])[1]
+    return tuple(colour) + (1.0,)
+
+
+def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, image=None):
     """tree: the parsed inspector JSON; viewport: (w, h, dpr). Returns the schema document."""
     vw, vh, dpr = viewport
     out = []
@@ -89,8 +99,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None):
                 case = str(attrs.get("textCase", attrs.get("textTransform", ""))).lower()
                 text = str(text).upper() if "upper" in case or case.endswith("1") else (str(text).lower() if "lower" in case or case.endswith("2") else text)
                 tw = text_width(text, size, weight, spacing, measure)
+                here = backdrop(image, rx, ry, rw, rh, dpr, here)
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
-                el = {"text": " ".join(str(text).split()), "role": "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
+                el = {"text": " ".join(str(text).split()), "role": "heading" if size >= 21 else "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, here)), "background": hex_of(here), "fontSize": size, "fontWeight": weight}
                 out.append(el)
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
@@ -120,8 +131,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None):
     return doc
 
 
-def write(raw, screen, theme, viewport, dest_dir, clock_pinned=False):
-    doc = export(json.loads(raw), screen, theme, viewport, clock_pinned)
+def write(raw, screen, theme, viewport, dest_dir, clock_pinned=False, image=None):
+    doc = export(json.loads(raw), screen, theme, viewport, clock_pinned, image=image)
     os.makedirs(os.path.join(dest_dir, theme), exist_ok=True)
     with open(os.path.join(dest_dir, theme, screen + ".json"), "w") as f:
         json.dump(doc, f)
