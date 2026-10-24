@@ -13,8 +13,9 @@ internal static class Ui
     public static float TextWidth(string text, float size, int weight, float spacing, string family = Font)
     {
         if (_measure is null) { _measure = new TextLabel { MultiLine = false, WidthResizePolicy = ResizePolicyType.UseNaturalSize, HeightResizePolicy = ResizePolicyType.UseNaturalSize }; _measure.Opacity = 0; Window.Default.Add(_measure); }
-        _measure.PixelSize = size; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = spacing; _measure.Text = text;
-        return _measure.NaturalSize.Width;
+        (family, weight) = Face(family, weight);
+        _measure.PixelSize = size * TextScale; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = spacing * TextScale; _measure.Text = text;
+        return _measure.NaturalSize.Width / TextScale;
     }
 
     /// <summary>Greedy word wrap like the browser's, using measured widths; see <see cref="TextWrap"/>.</summary>
@@ -51,6 +52,24 @@ internal static class Ui
     public static string ResPath(string relative) =>
         global::Tizen.Applications.Application.Current.DirectoryInfo.Resource + relative;
 
+    /// <summary>
+    /// NUI lays text out with whole-pixel glyph advances (a 12.8 px "01:00" is 36 px, the web's subpixel layout 33.6 px). Labels are laid out at
+    /// this multiple of the CSS size and drawn scaled back down, so advances land on 1/TextScale px like the browser's.
+    /// </summary>
+    private const float TextScale = 4f;
+
+    private static HashSet<int>? _instanced;
+
+    /// <summary>
+    /// NUI only picks the named weights of a family, the web interpolates its variable font (640, 750, ...). res/fonts holds static instances
+    /// "Nunito Sans W&lt;weight&gt;" (scripts/make-weight-fonts.py) for the fractional weights the screens use; those are selected by family name.
+    /// </summary>
+    private static (string Family, int Weight) Face(string family, int weight)
+    {
+        _instanced ??= Directory.EnumerateFiles(ResPath("fonts"), "NunitoSansW*.ttf").Select(f => int.Parse(System.IO.Path.GetFileNameWithoutExtension(f)["NunitoSansW".Length..])).ToHashSet();
+        return family == Font && _instanced.Contains(weight) ? ($"{Font} W{weight}", 400) : (family, weight);
+    }
+
     /// <summary>Registers the bundled Nunito Sans weights so TextLabel can use them by family name.</summary>
     public static void RegisterFonts() => FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
 
@@ -69,6 +88,7 @@ internal static class Ui
     public static TextLabel Text(string text, float x, float y, float size, int weight, Rgba color, float w = 0, float lh = 0,
         HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0)
     {
+        (family, weight) = Face(family, weight);
         var line = lh > 0 ? lh : size * 1.4f;
         var boxH = Math.Max(line, size * 1.45f); // tall enough that descenders are not clipped; the text stays centred on the CSS line box
         y -= (boxH - line) / 2f;
@@ -76,7 +96,7 @@ internal static class Ui
         {
             PositionX = x,
             PositionY = y,
-            PixelSize = size,
+            PixelSize = size * TextScale,
             TextColor = C(color),
             FontFamily = family,
             FontStyle = new PropertyMap().AddWeight(weight),
@@ -85,11 +105,13 @@ internal static class Ui
             MultiLine = multiline,
             Ellipsis = !multiline,
         };
-        if (spacing != 0) t.CharacterSpacing = spacing;
+        if (spacing != 0) t.CharacterSpacing = spacing * TextScale;
         if (multiline && maxLines > 0) t.Ellipsis = false;
-        if (multiline) { t.RelativeLineHeight = line / (size * 1.364f); t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w, size * 1.6f * Math.Max(2, maxLines)); }
-        else if (w > 0) { t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w, boxH); }
-        else { t.WidthResizePolicy = ResizePolicyType.UseNaturalSize; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(0, boxH); }
+        if (multiline) { t.RelativeLineHeight = line / (size * 1.364f); t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w * TextScale, size * 1.6f * Math.Max(2, maxLines) * TextScale); }
+        else if (w > 0) { t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w * TextScale, boxH * TextScale); }
+        else { t.WidthResizePolicy = ResizePolicyType.UseNaturalSize; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(0, boxH * TextScale); }
+        t.PivotPoint = global::Tizen.NUI.PivotPoint.TopLeft; t.PositionUsesPivotPoint = true; t.ParentOrigin = global::Tizen.NUI.ParentOrigin.TopLeft;
+        t.Scale = new Vector3(1 / TextScale, 1 / TextScale, 1);
         return t;
     }
 
