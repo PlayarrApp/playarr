@@ -251,9 +251,9 @@ struct ProfilesView: View {
                     .overlay {
                         if selected {
                             if webRing {
-                                // Web focus ring (--card-glow): 3 pt ring flush outside the avatar plus a 20 px glow at 45%.
-                                Circle().stroke(WM.cardRingColor, lineWidth: 3).padding(-1.5)
-                                    .shadow(color: WM.cardGlowColor.opacity(0.45), radius: 10)
+                                // Static-server web ref, measured: a 4 pt ring flush outside the avatar, maroon in dark and
+                                // pink in light, with no glow.
+                                Circle().stroke(WM.adaptive(light: (217, 153, 168), dark: (95, 30, 47)), lineWidth: 4).padding(-2)
                             } else {
                                 Circle().stroke(WM.pink.opacity(0.42), lineWidth: 4).padding(-2)
                             }
@@ -321,6 +321,8 @@ struct ProfilesView: View {
                             endPoint: UnitPoint(x: 0.8, y: 0.94)
                         )
                     )
+                    // The web avatar glare, measured on the static ref: a soft white spot up and left of centre.
+                    Circle().fill(RadialGradient(colors: [Color.white.opacity(0.17), .clear], center: UnitPoint(x: 0.27, y: 0.33), startRadius: 0, endRadius: size * 0.3))
                     Circle().stroke(WM.line.opacity(0.08), style: StrokeStyle(lineWidth: 1, dash: [3, 3])).padding(5)
                     WMText("+", 38.4, 300, color: WM.inkSoft, lh: 57.6)
                 }
