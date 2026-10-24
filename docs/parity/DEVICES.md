@@ -129,3 +129,8 @@ Notifications (a live system notification per download) and the now-playing entr
 - The score per client: Dark % and Light % are the mean per-screen similarity over the screens captured in that theme;
   D-pad is checks passed of the suite's D-pad checks (playback is no longer scored: it moved to the performance suite); overall is the mean of the parts that have results
   (mobile has no D-pad). Coverage (captured screens out of 15 per theme) is shown beside, never mixed into a percentage.
+
+## Android phone and tablet: one command
+
+Boot the emulator headless (`-no-window`), then `scripts/parity/android-mobile/emu-setup.sh <serial> [719x1558 295]` (en-GB, UTC, animations off, art port forwarded) and `signin.sh <serial>` (account `parity` on the static server). Install the sideload debug APK. Then
+`PARITY_LEGEND_ROOT=<legend evidence root> PARITY_OUT=<scratch dir> scripts/parity/android-mobile/run.sh phone` (or `tablet`) captures every screen in both themes with the pinned clock, scores against `android-<device>/web`, and replaces `android-<device>/dev` (old PNGs removed, JSON kept). `PARITY_EMU_UNIT` names the emulator's systemd user unit so the run can recycle it when the swiftshader leak grows. D-pad does not apply (touch devices).
