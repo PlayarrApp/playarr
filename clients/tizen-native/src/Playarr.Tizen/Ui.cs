@@ -93,7 +93,8 @@ internal static class Ui
         (family, weight) = Face(family, weight, size);
         var line = lh > 0 ? lh : size * 1.4f;
         var boxH = Math.Max(line, size * 1.45f); // tall enough that descenders are not clipped; the text stays centred on the CSS line box
-        y -= (boxH - line) / 2f + (multiline ? 0 : 1f); // NUI centres a single-line label 1 px higher than the browser's line box (measured against web)
+        y -= (boxH - line) / 2f;
+        if (!multiline && family.StartsWith(Font, StringComparison.Ordinal)) y -= BaselineShifts.Up(size); // NUI vs Chromium baseline rounding, measured per size
         var t = new TextLabel(upper ? text.ToUpperInvariant() : text)
         {
             PositionX = x,
