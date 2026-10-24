@@ -230,8 +230,8 @@ internal sealed class SeriesDetailScreen : IPage
         foreach (var c in _copy.Children.ToArray()) { _copy.Remove(c); c.Dispose(); }
         var w = _detail!.Work;
         var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
-        _copy.Add(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true);
+        _copy.Add(Ui.Text($"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}", 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true, role: "heading");
         var bas = 303.5f + 62.208f * lines;
         _copy.Add(Sem.Tag(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 18.7f, 21.12f, 570, _t.InkSoft, 312, 24.288f, spacing: -0.74f), "heading"));
         var meta = new List<string> { $"Season {season.Season.SeasonNumber}", code };
@@ -239,7 +239,7 @@ internal sealed class SeriesDetailScreen : IPage
         if (WorkLabels.YearRange(w) is { } y) meta.Add(y);
         if (ep.Episode.AirDate is { Length: > 0 } air && DateTime.TryParse(air, out var d)) meta.Add("Aired  " + d.ToString("d MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         meta.AddRange(w.Genres.Take(3));
-        { var mx = 153.6f; for (var mi = 0; mi < meta.Count; mi++) { var first = mi == 0; var part = meta[mi]; var lbl = Ui.Text(part, mx, bas + 71.5f, 10.56f, first ? 680 : 400, first ? _t.InkSoft : _t.InkMuted, 0, 15.84f); if (part == code) Sem.Tag(lbl, "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}"); _copy.Add(lbl); mx += Ui.TextWidth(part, 10.56f, first ? 680 : 400, 0) + 13.6f; } } // web: one span per part, 13.6 px apart
+        { var mx = 153.6f; for (var mi = 0; mi < meta.Count; mi++) { var first = mi == 0; var part = meta[mi]; var lbl = Ui.Text(part, mx, bas + 70.3f, 10.56f, first ? 680 : 400, first ? _t.InkSoft : _t.InkMuted, 0, 15.84f); if (part == code) Sem.Tag(lbl, "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}"); _copy.Add(lbl); mx += Ui.TextWidth(part, 10.56f, first ? 680 : 400, 0) + 13.6f; } } // web: one span per part, 13.6 px apart
         var synopsisLines = Ui.Paragraph(_copy, ep.Episode.Overview ?? w.Overview ?? "", 153.6f, bas + 108f, 12.864f, 400, _t.InkMuted, 336, 20.325f, 0, 5);
         var yb = bas + 107.5f + Math.Max(1, synopsisLines) * 20.325f + 12f;
         var hasProgress = ep.MediaFileId is { } f && _progress.TryGetValue(f, out var pr) && pr.State == WatchState.InProgress;
@@ -287,8 +287,8 @@ internal sealed class SeriesDetailScreen : IPage
         var box = Ui.Box(x, y, w, 64, bg, 32);
         if (!primary) { box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f); }
         var gw = GlyphWidth(glyph); var tsize = primary ? 11.904f : 11.136f; var textW = Ui.TextWidth(text, tsize, 700, 0); var startX = (w - (gw + 8.8f + textW)) / 2;
-        var g = Ui.Text(glyph, startX, 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.OnAccent : _t.BrandInk, gw + 4, 19.2f);
-        var tl = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, primary ? _t.OnAccent : _t.Ink, textW + 20, 16.7f);
+        var g = Ui.Text(glyph, startX, glyph == "+" ? 23.5f : 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.Bg : _t.BrandInk, gw + 4, 19.2f);
+        var tl = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, primary ? _t.Bg : _t.Ink, textW + 20, 16.7f);
         box.Add(g); box.Add(tl);
         Sem.Tag(box, "button", name, radius: 999);
         var ring = Ring.Make(w, 64, 32, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
@@ -300,7 +300,7 @@ internal sealed class SeriesDetailScreen : IPage
         {
             ring.Show(f);
             box.Scale = f && primary ? new Vector3(1.06f, 1.06f, 1) : new Vector3(1, 1, 1);
-            if (primary) { box.BackgroundColor = f ? new Color(0.647f, 0.153f, 0.271f, 1) : Ui.C(_t.Ink); g.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.OnAccent); tl.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.OnAccent); }
+            if (primary) { box.BackgroundColor = f ? new Color(0.647f, 0.153f, 0.271f, 1) : Ui.C(_t.Ink); g.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.Bg); tl.TextColor = f ? new Color(1, 1, 1, 1) : Ui.C(_t.Bg); }
         };
     }
 

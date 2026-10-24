@@ -90,7 +90,7 @@ internal static class Ui
     private static (string Family, int Weight) Face(string family, int weight, float size)
     {
         if (family != Font) return (family, weight);
-        if (WebBySize.TryGetValue((int)Math.Round(size * 1000), out var ws)) weight = ws.OrderBy(w => Math.Abs(w - weight)).First();
+        if (WebBySize.TryGetValue((int)Math.Round(size * 1000), out var ws)) { var near = ws.OrderBy(w => Math.Abs(w - weight)).First(); if (Math.Abs(near - weight) <= 45) weight = near; }
         return Array.IndexOf(WebWeights.Instanced, weight) >= 0 ? ($"{Font} W{weight}", 400) : (family, weight);
     }
 

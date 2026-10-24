@@ -19,6 +19,8 @@ internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, f
     public Rgba? Backdrop { get; init; }
     /// <summary>Evaluated at export time (the active nav tile changes its fill).</summary>
     public Func<Rgba>? BackdropNow { get; init; }
+    /// <summary>The opacity web reports when the view draws a colour-alpha tint (an icon at 80 % white is opacity 1 on web).</summary>
+    public float? ExportOpacity { get; init; }
     /// <summary>The element's own fill is a color-mix on web, which the web refs carry no background for.</summary>
     public bool IgnoreOwnBg { get; init; }
     /// <summary>A text element with no drawn label (web exports visually hidden text such as the calendar period status).</summary>
@@ -29,9 +31,9 @@ internal static class Sem
 {
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, SemInfo> Table = new();
 
-    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false, (float Size, int Weight, Rgba Color)? style = null, Func<Rgba>? backdropNow = null) where T : View
+    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false, (float Size, int Weight, Rgba Color)? style = null, Func<Rgba>? backdropNow = null, float? exportOpacity = null) where T : View
     {
-        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { BoxNow = boxNow, Backdrop = backdrop, BackdropNow = backdropNow, IgnoreOwnBg = ignoreOwnBg, Style = style }); return v;
+        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { ExportOpacity = exportOpacity, BoxNow = boxNow, Backdrop = backdrop, BackdropNow = backdropNow, IgnoreOwnBg = ignoreOwnBg, Style = style }); return v;
     }
 }
 
@@ -80,7 +82,7 @@ internal static class LayoutExport
     private static readonly Dictionary<int, float> RunTopShifts = new()
     {
         [8256] = -0.69f, [8832] = -0.42f, [9216] = -0.49f, [9600] = -0.65f, [9984] = -0.52f, [11200] = -0.91f, [11520] = -0.64f, [11840] = -0.69f,
-        [11904] = -1.02f, [12800] = -1.08f, [13440] = -1.05f, [20800] = -1.3f, [26400] = -0.8f,
+        [11904] = -1.02f, [17664] = -0.28f, [18400] = -0.31f, [12290] = -0.23f, [12800] = -1.08f, [13440] = -1.05f, [20800] = -1.3f, [26400] = -0.8f,
     };
     private static float RunTopShift(float size) => RunTopShifts.TryGetValue((int)Math.Round(size * 1000), out var d) ? d : 0f;
 
@@ -139,7 +141,7 @@ internal static class LayoutExport
                 outList.Add(new Node(sem.Role is "container" or "img" ? "" : sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
             }
             if (child is ImageView && w > 1 && h > 1)
-                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, 0, cop));
+                outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, 0, sem?.ExportOpacity ?? cop));
             else if (paints && sem is null)
                 outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, Radius(child.CornerRadius.X * csx, w, h), cop));
             Walk(child, cx, cy, csx, csy, cbg, cop, outList, child.CornerRadius.X * csx);

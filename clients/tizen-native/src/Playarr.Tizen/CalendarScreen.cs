@@ -27,6 +27,7 @@ internal sealed class CalendarScreen : IPage
     private DateTime _anchor;
     private TextLabel? _period;
     private FiltersDrawer? _drawer;
+    private CalendarLinkDrawer? _linkDrawer;
     private int _first;                // first focusable index of the entries
     private bool _loaded;
     private bool _monitoredOnly;
@@ -42,8 +43,8 @@ internal sealed class CalendarScreen : IPage
 
     public bool IsReady => _loaded;
     public View Root => _root;
-    public string Route => (_view == CalendarView.Agenda ? "/calendar" : $"/calendar?view={_view.ToString().ToLowerInvariant()}") + (_drawer is not null ? (_view == CalendarView.Agenda ? "?" : "&") + "panel=filters" : "");
-    public string? FocusedLabel => _drawer?.FocusedLabel ?? _focus.Item?.Label;
+    public string Route => (_view == CalendarView.Agenda ? "/calendar" : $"/calendar?view={_view.ToString().ToLowerInvariant()}") + (_drawer is not null ? (_view == CalendarView.Agenda ? "?" : "&") + "panel=filters" : _linkDrawer is not null ? (_view == CalendarView.Agenda ? "?" : "&") + "panel=link" : "");
+    public string? FocusedLabel => _drawer?.FocusedLabel ?? _linkDrawer?.FocusedLabel ?? _focus.Item?.Label;
     public float FocusCentreY => _focus.CurrentRect is { Height: > 0 } r ? r.CentreY : 540;
 
     public CalendarScreen(AppEnv env, CalendarView view)
@@ -94,7 +95,7 @@ internal sealed class CalendarScreen : IPage
 
     private void BuildTiles()
     {
-        Tile(151.2f, 62, 72, "Calendar link", "bell", () => Toast("Calendar links are not available in this app yet."));
+        Tile(151.2f, 62, 72, "Calendar link", "bell", OpenLinkDrawer);
         Tile(236.1f, 62, 72, "Filters", "filters", OpenDrawer);
         // web: Down from the period navigation lands on Filters, not on Calendar link
         _focus.Overrides[(2, RemoteKey.Down)] = 5;
@@ -128,6 +129,17 @@ internal sealed class CalendarScreen : IPage
         _drawer = new FiltersDrawer(_env, "Calendar", sections, CloseDrawer, Toast);
         _root.Add(_drawer.Root);
     }
+
+    private void OpenLinkDrawer()
+    {
+        var feed = _env.Abs("/api/v1/calendar/feed.ics?token=parity"); // the real token comes from the server's subscription endpoint; the text is volatile
+        _linkDrawer = new CalendarLinkDrawer(_env, feed, CloseLinkDrawer, Toast);
+        _root.Add(_linkDrawer.Root);
+    }
+
+    public void OpenLinkFromRoute() => OpenLinkDrawer();
+
+    private void CloseLinkDrawer() { if (_linkDrawer is null) return; _root.Remove(_linkDrawer.Root); _linkDrawer.Root.Dispose(); _linkDrawer = null; }
 
     private void CloseDrawer() { if (_drawer is null) return; _root.Remove(_drawer.Root); _drawer.Root.Dispose(); _drawer = null; }
 
@@ -458,6 +470,7 @@ internal sealed class CalendarScreen : IPage
     public bool OnKey(RemoteKey key)
     {
         if (_drawer is not null) return _drawer.OnKey(key);
+        if (_linkDrawer is not null) return _linkDrawer.OnKey(key);
         switch (key)
         {
             case RemoteKey.Select: _focus.Item?.Select?.Invoke(); return true;
