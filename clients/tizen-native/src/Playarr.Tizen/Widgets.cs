@@ -100,7 +100,7 @@ internal sealed class MediaCard
         Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 610, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
         // web: the whole card is one link; Home names it "<title> <sub>", grids "Open <title>"
-        Sem.Tag(Box, "link", showSub ? $"{card.Title} {card.Sub}" : "Open " + card.Title, (0, 0, W, H + 29.4f), 12);
+        Sem.Tag(Box, "link", showSub ? $"{card.Title} {card.Sub}" : "Open " + card.Title, (0, 0, W, H + 29.4f), 12, boxNow: () => _focused && LinkFocusScale != 1f ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
         _titleY = Title.PositionY; _titleX = Title.PositionX; _subY = H + 31.9f + drop;
         if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
@@ -131,6 +131,9 @@ internal sealed class MediaCard
     private float _titleY, _subY;
     /// <summary>Web Home: the focused card's caption rises 8 px with the card (the art's own lift is part of that).</summary>
     public float FocusCaptionLift { get; init; }
+    /// <summary>Web Library: the focused card's link scales 1.015 and lifts 5 px (the layout export reports it; the art animates itself).</summary>
+    public float LinkFocusScale { get; init; } = 1f;
+    public float LinkFocusLift { get; init; }
     /// <summary>Web Library: the selected card scales 1.015 about its centre, so the caption grows with it.</summary>
     public float FocusCaptionScale { get; init; } = 1f;
     private float _titleX;
@@ -460,7 +463,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.Library(false, "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f, FocusCaptionScale = 1.0148f };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f, FocusCaptionScale = 1.0148f, LinkFocusScale = 1.015f, LinkFocusLift = -5f };
     }
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>

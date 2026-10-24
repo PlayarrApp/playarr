@@ -123,7 +123,7 @@ internal sealed class Shell : View
         pv.Icon = null!;
         pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
-        Sem.Tag(pv.Item64, "link", null, radius: 16);
+        Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.", radius: 16);
         _chrome.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
@@ -158,7 +158,7 @@ internal sealed class Shell : View
         nv.Label.TextColor = tint;
     }
 
-    public void SetProfileName(string name) { if (_profileLabel is not null) _profileLabel.Text = name; }
+    public void SetProfileName(string name) { if (_profileLabel is not null) { _profileLabel.Text = name; if (_nav.Count > 0) Sem.Tag(_nav[^1].Item64, "link", $"Signed in as {name}. Open profiles.", radius: 16); } }
 
     // ---- routing ----
 

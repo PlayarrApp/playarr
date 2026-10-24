@@ -10,15 +10,19 @@ namespace Playarr.Tizen;
 /// width, CSS line box height), not the label frame; fonts and colours are the CSS values the label was built from.
 /// </summary>
 /// <summary>Accessible role and name of a native view, as web's DOM exposes it (link "Open <title>", heading, button "A"). <see cref="Box"/> overrides the view's own frame (a web link wraps art and caption).</summary>
-internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, float W, float H)? Box = null, float? Radius = null, bool Blockified = false);
+internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, float W, float H)? Box = null, float? Radius = null, bool Blockified = false)
+{
+    /// <summary>Evaluated at export time (a focused card's link is scaled and lifted); overrides <see cref="Box"/>.</summary>
+    public Func<(float DX, float DY, float W, float H)>? BoxNow { get; init; }
+}
 
 internal static class Sem
 {
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, SemInfo> Table = new();
 
-    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false) where T : View
+    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null) where T : View
     {
-        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified)); return v;
+        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { BoxNow = boxNow }); return v;
     }
 }
 
@@ -86,23 +90,24 @@ internal static class LayoutExport
                 var box = label.WidthResizePolicy == ResizePolicyType.Fixed ? w : tw;
                 var tx = cx + (m.Align == HorizontalAlignment.Center ? (box - tw) / 2 : m.Align == HorizontalAlignment.End ? box - tw : 0);
                 var c = label.TextColor;
-                var asc = (float)Math.Round(1.011 * m.Size); var content = asc + (float)Math.Round(0.353 * m.Size); // Chromium's inline box: rounded ascent plus rounded descent
-                var blockified = Sem.Table.TryGetValue(label, out var ls) && ls.Blockified;
-                var th = blockified ? m.LineHeight : content;
+                // The drawn glyph run: the label centres its font line (ascent 1.011 em, descent 0.353 em) in its box; Chromium's run is the rounded ascent plus rounded descent
+                var asc = (float)Math.Round(1.011 * m.Size); var content = asc + (float)Math.Round(0.353 * m.Size);
+                var th = content;
+                var runTop = cy + (h - 1.364f * m.Size) / 2f + 1.011f * m.Size - asc;
                 var role = Sem.Table.TryGetValue(label, out var rs) ? rs.Role : Math.Abs(m.Size - 33.6f) < 0.01f || Math.Abs(m.Size - 17.664f) < 0.01f ? "heading" : "text"; // page title and rail headings are h1/h2 on web
-                outList.Add(new Node(label.Text, role, tx, cy + m.Dy * sy + (m.LineHeight - th) / 2, tw, th, Hex(c.R, c.G, c.B, c.A * cop), Hex(bg.R, bg.G, bg.B, 1), m.Size, m.Weight, 0, cop, m.Group));
+                outList.Add(new Node(label.Text, role, tx, runTop, tw, th, Hex(c.R, c.G, c.B, c.A * cop), Hex(bg.R, bg.G, bg.B, 1), m.Size, m.Weight, 0, cop, m.Group));
                 continue;
             }
             if (Sem.Table.TryGetValue(child, out var sem) && child is not TextLabel)
             {
-                var (bx, by, bw, bh) = sem.Box is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
-                var own = child.BackgroundColor; (float R, float G, float B) tbg = own.A > 0.02f ? (bg.R * (1 - own.A) + own.R * own.A, bg.G * (1 - own.A) + own.G * own.A, bg.B * (1 - own.A) + own.B * own.A) : bg;
+                var (bx, by, bw, bh) = (sem.BoxNow?.Invoke() ?? sem.Box) is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
+                var own = child.BackgroundColor; (float R, float G, float B) tbg = own.A > 0.02f && !IsMixedSurface(own) ? (bg.R * (1 - own.A) + own.R * own.A, bg.G * (1 - own.A) + own.G * own.A, bg.B * (1 - own.A) + own.B * own.A) : bg;
                 outList.Add(new Node(sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(tbg.R, tbg.G, tbg.B, 1), null, null, sem.Radius ?? child.CornerRadius.X * csx, cop));
             }
             if (child is ImageView img && w > 1 && h > 1)
                 outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, 0, cop));
             var bc = child.BackgroundColor;
-            if (child is not ImageView && bc.A > 0.02f && w > 1 && h > 1)
+            if (child is not ImageView && bc.A > 0.02f && w > 1 && h > 1 && !IsMixedSurface(bc))
             {
                 var a = bc.A * cop;
                 cbg = (bg.R * (1 - a) + bc.R * a, bg.G * (1 - a) + bc.G * a, bg.B * (1 - a) + bc.B * a);
@@ -110,6 +115,18 @@ internal static class LayoutExport
             }
             Walk(child, cx, cy, csx, csy, cbg, cop, outList);
         }
+    }
+
+    /// <summary>
+    /// Web draws these fills with color-mix (computed style color(srgb ...)); the web layout refs carry no background for them, so the
+    /// exporter does not composite them either (reported to the coordinator as a ref-side parse gap).
+    /// </summary>
+    private static bool IsMixedSurface(Color c)
+    {
+        if (c.A >= 0.995f) return false;
+        var t = Playarr.Tizen.Logic.PlayarrTheme.Current;
+        bool Near(Playarr.Tizen.Logic.Rgba r) => Math.Abs(r.R - c.R) < 0.004f && Math.Abs(r.G - c.G) < 0.004f && Math.Abs(r.B - c.B) < 0.004f;
+        return Near(t.SurfaceStrong) || Near(t.SurfaceSoft);
     }
 
     private static string Hex(float r, float g, float b, float a)
