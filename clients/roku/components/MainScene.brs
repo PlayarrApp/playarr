@@ -109,6 +109,7 @@ sub init()
         m.navHighlights.Push(m.top.findNode("navHighlight" + i.ToStr()))
         m.navIcons.Push(m.top.findNode("navIcon" + i.ToStr()))
         m.navLabels.Push(m.top.findNode("navLabel" + i.ToStr()))
+        m.navLabels[i].font = PlayarrMakeFont(680, 8.83)
     end for
     m.browseGroup = m.top.findNode("browseGroup")
     m.browseGrid = m.top.findNode("browseGrid")
@@ -2912,20 +2913,20 @@ sub updateBrowsePreview(work as Object)
     ' Web flows the meta line (year in ink-soft, genres in ink-muted) and the synopsis under the title.
     titleLines = m.browsePreviewTitle.lineCount
     if titleLines < 1 then titleLines = 1
-    metaY = 303.5 + 62.208 * titleLines + 27
+    metaY = 303.5 + 62.208 * titleLines + 26
     m.browsePreviewMeta.translation = [153.6, metaY]
-    m.browsePreviewMeta.spec = { text: year, size: 13.2, weight: 400, tracking: 0, role: "inkSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta.spec = { text: year, size: 13.87, weight: 400, tracking: 0, role: "inkSoft", width: 60, lineHeight: 18.144, maxLines: 1 }
     metaX = 153.6
     if year <> "" then metaX = 153.6 + m.browsePreviewMeta.textWidth + 14.4
     m.browsePreviewMeta2.translation = [metaX, metaY]
-    m.browsePreviewMeta2.spec = { text: genreLine, size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 300, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta2.spec = { text: genreLine, size: 13.87, weight: 400, tracking: 0, role: "inkMuted", width: 300, lineHeight: 18.144, maxLines: 1 }
     m.browseMetaY = metaY
     m.browseMetaGenreLine = genreLine
     m.homeHeroFocusedWorkId = work.id
     showBrowsePreviewRuntime(work.id)
     overview = work.overview
     if overview = invalid or overview = "" then overview = "No synopsis available."
-    m.browsePreviewOverview.translation = [153.6, metaY + 39.8]
+    m.browsePreviewOverview.translation = [153.6, metaY + 42.3]
     m.browsePreviewOverview.spec = { text: overview, size: 15.4, weight: 400, tracking: 0, role: "inkMuted", width: 336, lineHeight: 23, maxLines: 5 }
     ' Defer key-art download so acceptBrowseCatalog paints the grid first.
     ' Home hero uses sync GetToFile successfully; here it must not block paint.
@@ -3048,6 +3049,8 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         ' The browse grid sits 8 px higher and each card 8 px lower in its cell: the lift and ring are not clipped at the top row.
         item.AddField("padTop", "float", false)
         if grid.id = "browseGrid" then item.padTop = 8
+        ' Web rows sit 240.33 px apart and the grid takes whole pixels: from the third row the card is 1 px lower (tops 162, 402, 643, 883).
+        if grid.id = "browseGrid" and m.browseArtworkSize <> "small" and m.browseArtworkSize <> "large" and artIndex >= 2 * m.browseGrid.numColumns then item.padTop = 9
         ' Screen view reserves the focus lift, ring and glow overflow inside the grid's clip (8 px sides, 15 px top, grid shifted to match).
         if grid.id = "browseGrid" and (m.browseView = "screen" or m.browseView = "cover")
             item.AddField("focusRingOutsideArt", "boolean", false)
@@ -4501,7 +4504,7 @@ end sub
 
 ' Web LibraryPreview third span: the focused work's runtime, filled in once its detail is known (same cache and request as the Home hero).
 sub showBrowsePreviewRuntime(workId as String)
-    m.browsePreviewMeta3.spec = { text: "", size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta3.spec = { text: "", size: 13.87, weight: 400, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
     if workId = "" or m.homeHeroDetailTimer = invalid then return
     runtimeMs = m.homeHeroRuntimeById.Lookup(workId)
     if runtimeMs <> invalid
@@ -4519,7 +4522,7 @@ sub placeBrowsePreviewRuntime(runtimeMs as Dynamic)
     x = m.browsePreviewMeta2.translation[0] + 13.6
     if m.browseMetaGenreLine <> invalid and m.browseMetaGenreLine <> "" then x = x + m.browsePreviewMeta2.textWidth
     m.browsePreviewMeta3.translation = [x, m.browseMetaY]
-    m.browsePreviewMeta3.spec = { text: label, size: 13.2, weight: 400, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
+    m.browsePreviewMeta3.spec = { text: label, size: 13.87, weight: 400, tracking: 0, role: "inkMuted", width: 120, lineHeight: 18.144, maxLines: 1 }
 end sub
 
 sub onHomeHeroDetailTimer()
@@ -4905,11 +4908,22 @@ sub layoutNavDock()
                 m.navIcons[i].translation = [dockLeft + 5.2 + 23.6, itemY + 16]
                 m.navIcons[i].width = 20
                 m.navIcons[i].height = 20
-                m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 41.6]
+                m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 39.4]
                 itemY = itemY + itemStep
             end if
         end for
         bg = m.top.findNode("navGroupBg" + g.ToStr())
+        shadow = m.top.findNode("navGroupShadow" + g.ToStr())
+        if shadow <> invalid
+            shadow.visible = visibleCount > 0
+            if visibleCount > 0
+                shadow.uri = "pkg:/images/nav-group-shadow-" + visibleCount.ToStr() + ".png"
+                faceH = Int(groupPad + visibleCount * itemStep + 0.5)
+                shadow.width = 78 + 160
+                shadow.height = faceH + 160
+                shadow.translation = [dockLeft - 80, groupStartY - 80]
+            end if
+        end if
         if bg <> invalid
             if visibleCount > 0
                 faceH = Int(groupPad + visibleCount * itemStep + 0.5)

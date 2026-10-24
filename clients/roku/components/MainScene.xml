@@ -612,6 +612,10 @@
            Item cells are 64×64 with 16px-radius active/focus chips.
            layoutNavDock repositions panels when Sites/Music hide. -->
       <Group id="navDock">
+        <Poster id="navGroupShadow0" translation="[-38,107]" width="238" height="313" uri="pkg:/images/nav-group-shadow-2.png" visible="false" />
+        <Poster id="navGroupShadow1" translation="[-38,107]" width="238" height="313" uri="pkg:/images/nav-group-shadow-2.png" visible="false" />
+        <Poster id="navGroupShadow2" translation="[-38,107]" width="238" height="313" uri="pkg:/images/nav-group-shadow-2.png" visible="false" />
+        <Poster id="navGroupShadow3" translation="[-38,107]" width="238" height="313" uri="pkg:/images/nav-group-shadow-2.png" visible="false" />
         <Poster id="navGroupBg0" translation="[42,187]" width="78" height="153" uri="pkg:/images/nav-group-2.png" />
         <Poster id="navGroupBg1" translation="[42,187]" width="78" height="153" uri="pkg:/images/nav-group-2.png" />
         <Poster id="navGroupBg2" translation="[42,187]" width="78" height="153" uri="pkg:/images/nav-group-2.png" />

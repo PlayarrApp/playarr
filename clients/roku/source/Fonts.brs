@@ -32,13 +32,20 @@ function PlayarrFontPath(weight as Integer, mono = false as Boolean) as String
     return "pkg:/fonts/NunitoSans-" + w.ToStr() + ".ttf"
 end function
 
-function PlayarrMakeFont(weight as Integer, size as Integer, mono = false as Boolean) as Object
-    key = "playarrFont_" + weight.ToStr() + "_" + size.ToStr() + "_" + mono.ToStr()
+function PlayarrMakeFont(weight as Integer, size as Float, mono = false as Boolean) as Object
+    key = "playarrFont_" + weight.ToStr() + "_" + Str(size) + "_" + mono.ToStr()
     g = GetGlobalAA()
     if g[key] <> invalid then return g[key]
     font = CreateObject("roSGNode", "Font")
     font.uri = PlayarrFontPath(weight, mono)
-    font.size = size
+    font.size = Int(size + 0.5)
+    ' A Font node takes an integer size. A fractional web size uses the instance cut for it (scripts/make_fractional_fonts.py,
+    ' em rescaled so the integer size draws at the fractional one); any other size rounds.
+    if not mono and size <> Int(size)
+        code = weight.ToStr() + "-" + Int(size * 100 + 0.5).ToStr()
+        ' Keep in step with CUTS in scripts/make_fractional_fonts.py (roFileSystem is not available on the render thread).
+        if code = "400-1320" or code = "400-1387" or code = "400-1540" or code = "680-883" then font.uri = "pkg:/fonts/NunitoSans-" + code + ".ttf"
+    end if
     g[key] = font
     return font
 end function
