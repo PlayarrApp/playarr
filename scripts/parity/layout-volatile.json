@@ -1,0 +1,19 @@
+{
+  "$comment": "Elements whose TEXT is expected to differ between web and a device but whose box and style must still match (docs/parity/LAYOUT.md). Keyed by screen id; \"*\" applies to every screen. selector: CSS selector run on the web DOM (the element and its descendants collapse into one layout element). textRegex: matches the element's own text instead. clock: true = text is scored (not volatile) for a device that declares clockPinned. maskOnly: never scored; its rect is blanked in the pixel scorer.",
+  "*": [
+    { "name": "header-clock", "selector": ".app-clock-time", "clock": true },
+    { "name": "header-date", "selector": ".app-clock-date", "clock": true },
+    { "name": "calendar-link-url", "selector": ".calendar-subscription-url" },
+    { "name": "calendar-link-qr", "selector": ".calendar-link-secret > :last-child" },
+    { "name": "video-frame", "selector": "video, #parity-video-frame", "maskOnly": true }
+  ],
+  "settings-server": [
+    { "name": "server-address", "textRegex": "https?://\\S+" }
+  ],
+  "player-controls": [
+    { "name": "player-time", "selector": ".player-time" }
+  ],
+  "player-quality-menu": [
+    { "name": "player-time", "selector": ".player-time" }
+  ]
+}
