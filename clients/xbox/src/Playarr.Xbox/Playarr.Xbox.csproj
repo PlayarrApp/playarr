@@ -239,6 +239,7 @@
     <Compile Include="Views\FocusClaim.cs" />
     <Compile Include="Views\ParityTrace.cs" />
     <Compile Include="Views\ParityClock.cs" />
+    <Compile Include="Views\LayoutExport.cs" />
     <Compile Include="Views\DirectPlayFixturePolicy.cs" />
     <Compile Include="Views\Drawer.cs" />
     <Compile Include="Views\CardActions.cs" />
