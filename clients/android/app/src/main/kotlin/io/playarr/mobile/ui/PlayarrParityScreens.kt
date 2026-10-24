@@ -4333,7 +4333,7 @@ private fun TvSettingsBody(
         ) {
         androidx.compose.material3.ProvideTextStyle(outerTextStyle) {
         Column(
-            Modifier.offset(x = if (tablet) 817.dp else 774.dp, y = if (tablet) 248.dp else 212.dp).width(if (tablet) 995.dp else 1042.dp),
+            Modifier.offset(x = if (tablet) 817.dp else 774.dp, y = if (tablet) 248.dp else 210.dp).width(if (tablet) 995.dp else 1042.3.dp),
         ) {
             when (val current = state) {
                 ParityLoad.Loading -> CircularProgressIndicator(color = WebAccent)
@@ -4546,9 +4546,10 @@ private fun TvChoiceCell(
 @Composable
 private fun <T> TvSegmented(choices: List<Pair<T, String>>, selected: T, onSelected: (T) -> Unit) {
     // Web `.tv-segmented` (the shared filter choice grid): equal 56 dp segments across the panel, 8 dp apart.
+    // The settings strip takes the web `strong` label (900) and scales the active cell 1.025x.
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         choices.forEach { (value, label) ->
-            PlayarrChoice(label, value == selected, Modifier.weight(1f)) { onSelected(value) }
+            PlayarrChoice(label, value == selected, Modifier.weight(1f), activeScale = 1.025f, weight = 900) { onSelected(value) }
         }
     }
 }
@@ -4565,8 +4566,8 @@ private fun TvAppearancePanel(display: PlayarrDisplayPreferences) {
 
 @Composable
 private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
-    Text(playarrString(PlayarrString.SettingsColourTheme), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 34.sp, letterSpacing = (-0.5).sp)
-    Spacer(Modifier.height(20.dp))
+    Text(playarrString(PlayarrString.SettingsColourTheme), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp)
+    Spacer(Modifier.height(16.2.dp))
     TvSegmented(
         choices = listOf(
             PlayarrThemePreference.System to playarrString(PlayarrString.SettingsThemeSystem),
@@ -4575,13 +4576,13 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
         ),
         selected = display.theme,
     ) { display.setTheme(it) }
-    Spacer(Modifier.height(30.dp))
+    Spacer(Modifier.height(29.5.dp))
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
-    Spacer(Modifier.height(32.dp))
-    Text(playarrString(PlayarrString.SettingsHomeViewTitle), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 34.sp, letterSpacing = (-0.5).sp)
-    Spacer(Modifier.height(9.dp))
-    Text(playarrString(PlayarrString.SettingsHomeViewDescription), color = WebInkMuted, fontSize = 13.sp, lineHeight = 20.sp)
-    Spacer(Modifier.height(17.dp))
+    Spacer(Modifier.height(30.3.dp))
+    Text(playarrString(PlayarrString.SettingsHomeViewTitle), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp)
+    Spacer(Modifier.height(5.6.dp))
+    Text(playarrString(PlayarrString.SettingsHomeViewDescription), color = WebInkMuted, fontSize = 13.12.sp, lineHeight = 20.34.sp)
+    Spacer(Modifier.height(15.5.dp))
     TvSegmented(
         choices = listOf(
             PlayarrHomeViewPreference.Thumbnail to playarrString(PlayarrString.SettingsHomeViewThumbnail),
@@ -4589,13 +4590,13 @@ private fun TvAppearanceBody(display: PlayarrDisplayPreferences) {
         ),
         selected = display.homeView,
     ) { display.setHomeView(it) }
-    Spacer(Modifier.height(30.dp))
+    Spacer(Modifier.height(29.5.dp))
     Box(Modifier.fillMaxWidth().height(1.dp).background(TvSettingsPalette.divider))
-    Spacer(Modifier.height(32.dp))
-    Text(playarrString(PlayarrString.LibraryArtworkSize), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 34.sp, letterSpacing = (-0.5).sp)
-    Spacer(Modifier.height(9.dp))
-    Text(playarrString(PlayarrString.SettingsArtworkSizeDescription), color = WebInkMuted, fontSize = 13.sp, lineHeight = 20.sp)
-    Spacer(Modifier.height(17.dp))
+    Spacer(Modifier.height(30.3.dp))
+    Text(playarrString(PlayarrString.LibraryArtworkSize), color = WebInk, fontSize = 26.4.sp, fontWeight = FontWeight(560), lineHeight = 39.6.sp, letterSpacing = (-0.924).sp)
+    Spacer(Modifier.height(5.6.dp))
+    Text(playarrString(PlayarrString.SettingsArtworkSizeDescription), color = WebInkMuted, fontSize = 13.12.sp, lineHeight = 20.34.sp)
+    Spacer(Modifier.height(15.5.dp))
     TvSegmented(
         choices = listOf(
             LibraryArtworkSize.Small to playarrString(PlayarrString.LibrarySizeSmall).replaceFirstChar { it.titlecase() },

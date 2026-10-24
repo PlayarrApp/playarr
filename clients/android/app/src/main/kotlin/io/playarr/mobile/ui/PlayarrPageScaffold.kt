@@ -482,7 +482,7 @@ internal fun PlayarrFilterSection(title: String, content: @Composable () -> Unit
 }
 
 @Composable
-internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier = Modifier, icon: (@Composable (Color) -> Unit)? = null, onClick: () -> Unit) {
+internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier = Modifier, icon: (@Composable (Color) -> Unit)? = null, activeScale: Float = 1.025f, weight: Int = 680, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     if (playarrTvDrawer()) {
@@ -495,7 +495,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
             // Web `.tv-filter-choice-grid button`: min-height clamp(44, 3.6 vw, 56) and font clamp(7.68, 0.55 vw, 10.88) css px (56 / 10.56 at 1920).
-            modifier = modifier.height(webVw(44f, 3.6f, 56f)).graphicsLayer { scaleX = if (selected) 1.025f else 1f; scaleY = scaleX }.webFocusRing(focused, radius = 12.dp, offset = 2.dp), // web `button.is-active`: scale(1.025)
+            modifier = modifier.height(webVw(44f, 3.6f, 56f)).graphicsLayer { scaleX = if (selected) activeScale else 1f; scaleY = scaleX }.webFocusRing(focused, radius = 12.dp, offset = 2.dp),
         ) {
             Column(
                 Modifier.fillMaxHeight().padding(horizontal = 10.dp),
@@ -503,7 +503,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
                 verticalArrangement = Arrangement.spacedBy(if (icon == null) 0.dp else 4.dp, Alignment.CenterVertically),
             ) {
                 icon?.invoke(if (selected) WebBackground else WebInkSoft)
-                Text(if (LocalTabletDrawerCssPx.current) label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } } else label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(680), maxLines = 1)
+                Text(if (LocalTabletDrawerCssPx.current) label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } } else label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(weight), maxLines = 1)
             }
         }
         return
