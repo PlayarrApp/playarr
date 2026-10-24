@@ -48,6 +48,7 @@ function dump(root, u, weights, log) {
         if (skip) {
         } else if (typeof item.text === "string" && item.contentWidth !== undefined && item.font !== undefined && item.text.length > 0 && item.color !== undefined) {
             var cw = item.contentWidth, ch = item.contentHeight
+            if (item.elide !== undefined && item.elide !== 0 && item.wrapMode === 0 && item.implicitWidth > cw) cw = item.implicitWidth   // the web reports the whole text run of an ellipsised line
             var ha = item.horizontalAlignment, va = item.verticalAlignment
             var x0 = x + (ha === 4 ? (w - cw) / 2 : ha === 2 ? w - cw : 0)
             var y0 = y + (va === 128 ? (h - ch) / 2 : va === 64 ? h - ch : 0)
