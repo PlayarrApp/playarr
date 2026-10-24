@@ -3,11 +3,12 @@
 # static parity server, with the pinned capture clock. Writes into the legend dir. D-pad is not run: touch device.
 # usage: run.sh [extra suite-run args, e.g. --screens home,movies]
 # env:   PLAYARR_SF_SSH_KEY (emulator key), PLAYARR_SF_SCRATCH (scratch dir), PLAYARR_SF_VBOXMANAGE and VBOX_USER_HOME
-#        (VirtualBox install and home), PLAYARR_SF_OUT (legend dir, default below), PLAYARR_SF_SKIP_SIGNIN=1 to keep the session.
+#        (VirtualBox install and home), PLAYARR_SF_OUT (the legend capture dir), PARITY_CLIENT=sailfish and PARITY_LOCK_DIR
+#        (scratch lock dir), PLAYARR_SF_SKIP_SIGNIN=1 to keep the session.
 set -euo pipefail
 H=$(cd -- "$(dirname -- "$0")" && pwd)
-: "${PLAYARR_SF_SSH_KEY:?}" "${PLAYARR_SF_SCRATCH:?}"
-OUT=${PLAYARR_SF_OUT:-/home/Storage/Projects/repositories/.data/ThomasMcFarlane/playarr/scratch/20261011-parity/sailfish/dev}
+: "${PLAYARR_SF_SSH_KEY:?}" "${PLAYARR_SF_SCRATCH:?}" "${PLAYARR_SF_OUT:?}" "${PARITY_CLIENT:?}" "${PARITY_LOCK_DIR:?}"
+OUT=$PLAYARR_SF_OUT
 "$H/vm-coldboot.sh"
 [ "${PLAYARR_SF_SKIP_SIGNIN:-}" = 1 ] || node "$H/sign-in.mjs"
 set -a; eval "$(node "$H/../parity-config.mjs" --shell)"; set +a
