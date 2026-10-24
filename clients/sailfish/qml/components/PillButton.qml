@@ -24,6 +24,7 @@ MouseArea {
     property real labelSpacing: 0
     property real contentGap: 9
     property real padCss: 16
+    property real contentDy: 0
     property string parityRole: "button"
     property string layoutBgS: primary ? String(Tokens.primary) : lift ? (Tokens.dark ? "#1f1c1f" : "#fefefd") : ""
     property int layoutRadiusV: 0
@@ -68,7 +69,7 @@ MouseArea {
     Row {
         id: content
         visible: root.icon !== "" || root.iconImage !== ""
-        anchors.centerIn: parent
+        anchors.centerIn: parent; anchors.verticalCenterOffset: root.contentDy * Tokens.u
         spacing: root.contentGap * Tokens.u
         Image {
             visible: root.iconImage !== ""
