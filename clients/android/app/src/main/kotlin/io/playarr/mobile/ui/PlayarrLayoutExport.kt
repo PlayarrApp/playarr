@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.PixelCopy
@@ -70,7 +69,7 @@ internal object PlayarrLayoutExport {
             }
         }
         val filter = IntentFilter(ACTION)
-        if (Build.VERSION.SDK_INT >= 33) activity.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED) else activity.registerReceiver(receiver, filter)
+        androidx.core.content.ContextCompat.registerReceiver(activity, receiver, filter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
     }
 
     private fun composeViews(root: View, out: MutableList<View>) {
