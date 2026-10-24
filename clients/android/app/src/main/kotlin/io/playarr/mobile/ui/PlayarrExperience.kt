@@ -4481,7 +4481,7 @@ private fun <T> LibraryFilterChoices(
 /** Web phone drawer section label (`h3`): 7.04 px / 720, 0.07em, uppercase, muted. */
 @Composable
 private fun LibraryFilterLabel(title: String) {
-    Text(title.uppercase(LocalPlayarrLanguage.current.locale), color = WebInkMuted, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.4928.sp)
+    Text(title.uppercase(LocalPlayarrLanguage.current.locale), color = WebInkMuted, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.4928.sp, modifier = Modifier.semantics { heading() }.parityText(role = "heading", background = WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)))
 }
 
 /** Web `.tv-view-icon`: outlined TV list bars, 20 x 3 screen blocks, and the existing tall cover blocks. */
@@ -4494,7 +4494,10 @@ private fun LibraryViewIcon(mode: LibraryViewMode, colour: Color) {
         else -> Triple(3, 4f, 13f)
     }
     val list = mode == LibraryViewMode.List
-    val bar = Modifier.size(w.dp, h.dp).let { if (list && !tv) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp)) }
+    // Layout export: the segment's flat fill under the bars (ink when selected, the soft surface at 64% over the drawer otherwise).
+    val chosen = colour == WebSurface || colour == WebBackground
+    val barUnder = if (chosen) WebInk else WebSurfaceSoft.copy(alpha = 0.64f).compositeOver(WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface))
+    val bar = Modifier.size(w.dp, h.dp).parityBox("container", radius = 1f, background = barUnder).let { if (list && !tv) it.background(colour, RoundedCornerShape(1.dp)) else it.border(1.dp, colour, RoundedCornerShape(1.dp)) }
     if (list) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
     else Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) { repeat(count) { Box(bar) } }
 }

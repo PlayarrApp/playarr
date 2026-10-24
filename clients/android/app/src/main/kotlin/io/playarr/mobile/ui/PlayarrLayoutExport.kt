@@ -239,6 +239,12 @@ internal object PlayarrLayoutExport {
                     l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
                     top = minOf(top, layout.getLineBaseline(i) - ascent); bottom = maxOf(bottom, layout.getLineBaseline(i) + descent)
                 }
+                // An ellipsised run: the web's Range rect spans the whole untruncated string, so measure it once without the limit.
+                if (layout.didOverflowWidth && layout.layoutInput.overflow == androidx.compose.ui.text.style.TextOverflow.Ellipsis && r > l) {
+                    val full = androidx.compose.ui.text.TextMeasurer(layout.layoutInput.fontFamilyResolver, layout.layoutInput.density, layout.layoutInput.layoutDirection)
+                        .measure(layout.layoutInput.text, layout.layoutInput.style, softWrap = false, maxLines = 1, constraints = androidx.compose.ui.unit.Constraints())
+                    r = l + full.size.width
+                }
                 if (r > l) {
                     // An ancestor's graphicsLayer scale (the selected nav tile's 1.05) shows in the node's bounds but not in the text layout.
                     val rawSx = if (layout.size.width > 0) (bounds.right - bounds.left) / layout.size.width else 1f

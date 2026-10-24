@@ -524,7 +524,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
     }
     // Web phone `.tv-segment` button: 48 px, 12 px radius, hairline border, 11.52 px / 680 capitalised; the active one is ink and 1.025x.
     val shape = RoundedCornerShape(12.dp)
-    val content = if (selected) WebSurface else WebInkSoft
+    val content = if (selected) WebBackground else WebInkMuted
     // Layout export: icon choices and the settings segments are a button around a lower-case run; plain choices are the run itself.
     val boxed = icon != null || weight == 900
     val under = io.playarr.shared.designsystem.page.LocalParityUnder.current.takeIf { it != Color.Unspecified } ?: WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)
@@ -542,7 +542,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
     ) {
         Column(Modifier.fillMaxHeight().padding(horizontal = 9.6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.8.dp, Alignment.CenterVertically)) {
             icon?.invoke(content)
-            Text(label.split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1, modifier = if (boxed) Modifier.parityText(background = fillFlat) else Modifier.parityText(role = "button", radius = 12f, background = fillFlat))
+            Text(label.replaceFirstChar { it.titlecase() }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1, modifier = if (boxed) Modifier.parityText(text = label.lowercase(), background = fillFlat) else Modifier.parityText(role = "button", radius = 12f, background = fillFlat))
         }
     }
 }

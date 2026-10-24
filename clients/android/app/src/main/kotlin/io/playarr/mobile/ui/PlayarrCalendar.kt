@@ -376,6 +376,7 @@ private fun PhoneCalendarHeader(state: CalendarUiState, locale: Locale, holder: 
 
 @Composable
 private fun PhoneCalendarToolbarPill(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, ring: Boolean = false) {
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
     Surface(
         onClick = onClick, modifier = modifier.height(44.dp).webFocusRing(ring, offset = 2.dp), shape = CircleShape, color = WebSurface, contentColor = WebInkSoft,
         border = BorderStroke(1.dp, WebPillBorder),
@@ -384,10 +385,12 @@ private fun PhoneCalendarToolbarPill(label: String, onClick: () -> Unit, modifie
             Text(label, fontSize = 11.52.sp, lineHeight = 17.28.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(role = "button", radius = 999f, background = WebSurface))
         }
     }
+    }
 }
 
 @Composable
 private fun PhoneCalendarRound(modifier: Modifier, glyph: String, description: String, onClick: () -> Unit) {
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
     Surface(
         onClick = onClick,
         modifier = modifier.size(44.dp).parityBox("button", description, 50f, background = WebSurface).semantics { contentDescription = description },
@@ -397,6 +400,7 @@ private fun PhoneCalendarRound(modifier: Modifier, glyph: String, description: S
         Box(contentAlignment = Alignment.Center) {
             Text(glyph, fontSize = 11.52.sp, lineHeight = 17.28.sp, fontWeight = FontWeight(720), style = WebTextStyle, modifier = Modifier.parityText(background = WebSurface))
         }
+    }
     }
 }
 
@@ -1591,7 +1595,7 @@ private fun CalendarMonthChips(
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(headerHeight)) {
                 calendarWeekdayLabels(firstDay, locale).forEach { label ->
-                    Text(label.uppercase(locale), color = if (isTelevision && tabletCss) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(top = if (phoneStrip) 7.dp else 0.dp).then(if (isTelevision && !tabletCss) Modifier.offset(y = (-3.6).dp) else Modifier))
+                    Text(label.uppercase(locale), color = if (isTelevision && tabletCss) WebInkSoft else WebInkMuted, fontSize = 12.sp, letterSpacing = if (isTelevision) 0.96.sp else 1.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).padding(top = if (phoneStrip) 10.9.dp else 0.dp).then(if (isTelevision && !tabletCss) Modifier.offset(y = (-3.6).dp) else Modifier))
                 }
             }
             rows.forEachIndexed { rowIndex, week ->
@@ -1620,7 +1624,7 @@ private fun CalendarMonthChips(
                                     .then(if (day == today) Modifier.border(2.dp, WebInk) else Modifier)
                                     .padding(start = 4.8.dp, end = 4.8.dp, top = 0.8.dp + (if (tabletCss) 7.5.dp else 0.dp), bottom = 0.8.dp + (if (tabletCss) 9.dp else 0.dp)),
                             ) {
-                                Column(Modifier.weight(1f).padding(top = if (tabletCss) 1.dp else 7.dp)) {
+                                Column(Modifier.weight(1f).padding(top = if (tabletCss) 1.dp else if (phoneStrip) 10.5.dp else 7.dp)) {
                                     shown.forEachIndexed { slot, item ->
                                         CalendarLine(
                                             item, calendarItemTone(item, today, zone), onClick = { onSelect(item) }, day = day, cellBg = cellBg,
@@ -1628,7 +1632,7 @@ private fun CalendarMonthChips(
                                         )
                                     }
                                 }
-                                Row(Modifier.height(30.dp).then(if (tabletCss) Modifier else Modifier.offset(y = (-8).dp)).padding(start = if (tabletCss) 3.5.dp else 2.2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Row(Modifier.height(30.dp).then(if (tabletCss) Modifier else Modifier.offset(y = (-8).dp)).padding(start = if (tabletCss) 3.5.dp else if (phoneStrip) 3.7.dp else 2.2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                     Text(day.dayOfMonth.toString(), color = if (inMonth) WebInk else (if (tabletCss) WebInkSoft else WebInkMuted), fontSize = if (tabletCss) 13.44.sp else 12.8.sp, fontWeight = FontWeight(640), modifier = Modifier.parityText(background = cellBg))
                                     if (hidden > 0) {
                                         val source = remember { MutableInteractionSource() }
