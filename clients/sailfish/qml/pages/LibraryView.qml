@@ -102,7 +102,7 @@ Item {
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
         }
         Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
-        Image { anchors.centerIn: parent; width: 15 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
+        Image { anchors.centerIn: parent; width: 16.8 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
     }
     PageTitle {
         id: heading

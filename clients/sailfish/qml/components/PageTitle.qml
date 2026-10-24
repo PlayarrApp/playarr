@@ -30,7 +30,17 @@ Item {
             border.width: 1; border.color: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.66)
         }
         Rectangle { visible: btn.parent.navigationActive ? btn.activeFocus : btn.parent.restRing; anchors { fill: parent; margins: -4.75 * Tokens.u } radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary }
-        Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "←"; color: Tokens.ink; font.pixelSize: 13 * Tokens.u }
+        Canvas {   // web: the thin system arrow, 14 x 6 px with a small head (Nunito has no arrow glyph)
+            width: 16; height: 10   // device pixels
+            anchors.centerIn: parent; anchors.verticalCenterOffset: 2
+            property color ink: Tokens.inkSoft
+            onInkChanged: requestPaint()
+            onPaint: {
+                var c = getContext("2d"); c.clearRect(0, 0, width, height)
+                c.strokeStyle = ink; c.lineWidth = 1.1; c.lineCap = "round"; c.lineJoin = "round"
+                c.beginPath(); c.moveTo(14.5, 5); c.lineTo(1.5, 5); c.moveTo(5, 2); c.lineTo(1.5, 5); c.lineTo(5, 8); c.stroke()
+            }
+        }
     }
     Label { renderType: Text.NativeRendering;
         id: label
