@@ -69,7 +69,8 @@ export function insideAncestorClips(element, win = globalThis) {
 
 // The static seed's calendar posters are plain <img> URLs on the host's loopback artwork port, which the TV cannot reach: serve them through the page's own origin (the receiver forwards /art/*).
 function installLoopbackArt() {
-  const fix = (v) => String(v).replace(/^https?:\/\/(127\.0\.0\.1|localhost):\d+(\/art\/)/, `${location.origin}$2`);
+  // A TV page on file:// has no origin that forwards /art; the emulator reaches the host's loopback artwork server at 10.0.2.2 (QEMU user networking).
+  const fix = (v) => String(v).replace(/^https?:\/\/(127\.0\.0\.1|localhost):(\d+)(\/art\/)/, (m, h, port, rest) => (location.protocol === "file:" ? `http://10.0.2.2:${port}${rest}` : `${location.origin}${rest}`));
   const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
   Object.defineProperty(HTMLImageElement.prototype, "src", { ...d, set(v) { d.set.call(this, fix(v)); } });
   const sa = Element.prototype.setAttribute;
