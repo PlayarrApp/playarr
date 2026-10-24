@@ -149,13 +149,15 @@ namespace Playarr.Xbox.Views
         /// <summary>A labelled group ("SORT BY") with segmented options, the selected one filled like the web.</summary>
         public static StackPanel Segmented(string label, string[] options, int selected, Action<int> onSelect, string? automationIdPrefix = null, string[]? icons = null)
         {
-            var group = new StackPanel { Margin = new Thickness(0, 0, 0, 30) };
-            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 14));
+            // A labelled group is a drawer's (web filter section); the unlabelled one is the Settings page's own control.
+            var drawer = label.Length > 0;
+            var group = new StackPanel { Margin = new Thickness(0, 0, 0, drawer ? 30 : 24) };
+            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, drawer ? 14 : 10));
             caption.CharacterSpacing = 120;
             group.Children.Add(caption);
             // More than four options wrap onto a second row so every label keeps room (5 options: 3 + 2).
             var perRow = options.Length > 4 ? (options.Length + 1) / 2 : options.Length;
-            var row = new Grid { ColumnSpacing = 8, RowSpacing = 8 };
+            var row = new Grid { ColumnSpacing = drawer ? 8 : 6, RowSpacing = drawer ? 8 : 6 };
             for (var c = 0; c < perRow; c++)
             {
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -171,7 +173,7 @@ namespace Playarr.Xbox.Views
                 var index = i;
                 var isSelected = i == selected;
                 var tint = isSelected ? Ui.Res("PlayarrSurfaceStrong") : Ui.Res("PlayarrInkSoft");
-                var labelText = new TextBlock { Text = options[i], FontSize = 10.6, FontWeight = FontWeights.Bold, Foreground = tint, HorizontalAlignment = HorizontalAlignment.Center };
+                var labelText = new TextBlock { Text = options[i], FontSize = drawer ? 10.6 : 10.5, FontWeight = drawer ? FontWeights.Bold : FontWeights.SemiBold, Foreground = tint, HorizontalAlignment = HorizontalAlignment.Center };
                 UIElement content = labelText;
                 if (icons != null && i < icons.Length)
                 {
@@ -185,7 +187,7 @@ namespace Playarr.Xbox.Views
                 {
                     Height = 56,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
-                    CornerRadius = new CornerRadius(12),
+                    CornerRadius = new CornerRadius(drawer ? 12 : 6),
                     Background = isSelected ? Ui.Res("PlayarrInk") : RestingChip(),
                     BorderBrush = Ui.Res("PlayarrLineStrong"),
                     BorderThickness = new Thickness(1),
@@ -194,7 +196,7 @@ namespace Playarr.Xbox.Views
                     FocusVisualPrimaryThickness = new Thickness(3),
                     FocusVisualSecondaryThickness = new Thickness(0),
                 };
-                if (isSelected)
+                if (isSelected && drawer)
                 {
                     // The web scales the active choice by 1.025.
                     button.RenderTransform = new ScaleTransform { ScaleX = 1.025, ScaleY = 1.025 };
