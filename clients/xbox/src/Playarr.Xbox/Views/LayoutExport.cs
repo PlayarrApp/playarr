@@ -243,7 +243,7 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element)),
+                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element, includeSelf: Own(element) != null)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
@@ -302,11 +302,11 @@ namespace Playarr.Xbox.Views
         };
 
         /// <summary>The colour behind an element: ancestors' fills composited over the page colour.</summary>
-        private static string BackgroundBehind(DependencyObject node)
+        private static string BackgroundBehind(DependencyObject node, bool includeSelf = false)
         {
             var layers = new List<Color>();
             var underPage = false;
-            for (var parent = VisualTreeHelper.GetParent(node); parent != null; parent = VisualTreeHelper.GetParent(parent))
+            for (var parent = includeSelf ? node : VisualTreeHelper.GetParent(node); parent != null; parent = VisualTreeHelper.GetParent(parent))
             {
                 if (parent is Page)
                 {
