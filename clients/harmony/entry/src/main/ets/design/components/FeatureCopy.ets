@@ -110,6 +110,8 @@ export struct FeatureCopy {
   /** Home only: web's Home hero sits its meta 4 vp higher and its synopsis 3 vp further from it than the Library/Detail panel. Added to
    * the gaps above the meta lines and the synopsis (vp, may be negative). */
   @Prop metaGapAdjust: number = 0;
+  /** The layout export's role for the title (web's calendar hero is plain text, the others a heading). */
+  @Prop titleRole: string = 'heading';
   @Prop synopsisGapAdjust: number = 0;
   /** Library hero: web sets its meta lighter and its synopsis at 14.4 / 21.6 in a wider column than Home and Detail. */
   @Prop libraryCopy: boolean = false;
@@ -169,7 +171,7 @@ export struct FeatureCopy {
 
       if (this.title.length > 0) {
         Text(this.balancedTitle()).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
-          .id('px:heading:' + this.title)
+          .id('px:' + this.titleRole + ':' + this.title)
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))

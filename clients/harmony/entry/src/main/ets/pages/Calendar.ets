@@ -913,6 +913,7 @@ export struct ReleaseCalendar {
       this.monthView()
     } else {
     Stage({
+      titleRole: 'text',
       keyArt: '',
       kicker: this.selected !== undefined ?
         `${mediaKindLabel(this.selected.media_kind)} · ${releaseTypeLabel(this.selected.release_type)}` : '',

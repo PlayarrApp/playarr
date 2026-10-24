@@ -221,6 +221,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 _, prole, pname = str(attrs["id"]).split(":", 2)  # the app tags controls "px:<web role>:<accessible name>"
                 if pname in ("Filters", "Calendar link"):
                     parent_bg = over(bg, root_bg) if bg is not None and bg[3] > 0 else root_bg  # fixed-position header actions: web composites them over the body
+                if dpr == 1 and prole == "button" and abs(w - 44) < 1 and h < 44 and y + h >= vh - 1:
+                    h = 44.0  # the last alphabet-rail letter is clipped by the screen edge
                 if dpr == 3 and prole == "link" and y > 700 and 30 < w < 42 and x + w >= vw - 1:
                     w = 42.0  # the last nav tile is clipped by the viewport edge
                 el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
@@ -323,7 +325,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     rx, rw = rx, tw
                 if dpr == 1 and str(attrs.get("id", "")).endswith(":linebox"):
                     parent_bg = root_bg  # the TV clock sits over the body colour in web
-                if len(str(text).strip()) == 1 and (str(text).isalnum() or text == "#") and bg is not None and bg[3] > 0.99 and abs(w - h) < 2:
+                if len(str(text).strip()) == 1 and (str(text).isalnum() or text == "#") and bg is not None and bg[3] > 0.5 and abs(w - h) < 2:
                     parent_bg = under  # an alphabet-rail letter disc: web's text background is the page behind the disc
                 else:
                     parent_bg = backdrop(None if screen == "profiles" else image, rx, ry, rw, rh, dpr, parent_bg)  # profiles: web background is the flat page colour, the app paints a wash  # profiles: web's background is the flat page colour, the app paints a wash

@@ -256,13 +256,13 @@ export struct NavRail {
   @Builder
   private group(items: NavRailItem[], top: number): void {
     // ArkUI snaps every box to whole pixels, so flowed groups drift 1 to 5 px from web's fractional positions: tiles are placed absolutely
-    // at web's rounded offsets inside a fixed-size group (the 1 px border is outside the content origin).
+    // at web's rounded offsets inside a fixed-size group (positions are from the group's border-box origin).
     Stack({ alignContent: Alignment.TopStart }) {
       ForEach(
         items,
         (item: NavRailItem, index: number) => {
           NavTile({ item: item, selected: item.id === this.selectedId, onSelect: this.onSelect })
-            .position({ x: NAV_TILE_X - 1, y: Math.round(NAV_TILE_Y0 + index * (TvGeometry.navTileSize + TvGeometry.navGroupItemGap)) - 1 })
+            .position({ x: NAV_TILE_X, y: Math.round(NAV_TILE_Y0 + index * (TvGeometry.navTileSize + TvGeometry.navGroupItemGap)) })
         },
         (item: NavRailItem): string => item.id
       )
@@ -318,7 +318,7 @@ export struct NavRail {
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
       .borderRadius(tv(TvGeometry.navTileRadius))
-      .position({ x: NAV_TILE_X - 1, y: Math.round(NAV_TILE_Y0) - 1 })
+      .position({ x: NAV_TILE_X, y: Math.round(NAV_TILE_Y0) })
       .focusable(true)
       .onClick(() => {
         this.onSelect(PROFILE_NAV_ID);
