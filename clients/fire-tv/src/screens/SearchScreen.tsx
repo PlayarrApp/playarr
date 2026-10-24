@@ -22,6 +22,7 @@ import {EdgeFade} from '../tv/EdgeFade';
 import {ActionTile} from '../tv/ActionTile';
 import {FilterDrawer, type DrawerSection} from '../tv/FilterDrawer';
 import {BalancedT, Box, T, u} from '../tv/kit';
+import {lx} from '../debug/layoutMarks';
 import {CardCaption, MediaFocus} from '../tv/mediaFocus';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -190,10 +191,11 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
 
   return (
     <Stage artUri={selected && artKind ? workArtworkUrl(baseUrl, selected.id, artKind) : undefined} accessToken={token}>
-      <PageHeader title={t('pages.search.title')} detail={detail} onBack={() => navigation.navigate(ROUTES.home)} />
+      <PageHeader title={t('pages.search.title')} detail={detail} webBack={{role: 'link', label: 'Back to Home'}} onBack={() => navigation.navigate(ROUTES.home)} />
 
       {/* A focused TextInput opens the system keyboard on arrival, which is how this platform's own Search behaves. */}
       <View
+        {...lx('search', '', 999)}
         style={{
           position: 'absolute',
           left: u(153.6),
@@ -222,6 +224,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           onBlur={() => setInputFocused(false)}
           placeholder={t('pages.search.searchPlaceholder')}
           placeholderTextColor={colour.inkMuted}
+          {...lx('textbox', t('pages.search.searchPlaceholder'))}
           returnKeyType="search"
           hasTVPreferredFocus
           accessibilityLabel={t('pages.search.ariaSearchPlayarr')}
@@ -313,7 +316,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
               {t('pages.search.emptyPrompt')}
             </T>
           </Box>
-          <View pointerEvents="none" style={{position: 'absolute', left: u(1125), top: u(312), width: u(132), height: u(132), borderRadius: u(66), borderWidth: 1, borderColor: mix(colour.lineStrong, 0.5), backgroundColor: mix(colour.surfaceStrong, 0.54)}} />
+          <View pointerEvents="none" {...lx('container', '', 50)} style={{position: 'absolute', left: u(1125), top: u(312), width: u(132), height: u(132), borderRadius: u(66), borderWidth: 1, borderColor: mix(colour.lineStrong, 0.5), backgroundColor: mix(colour.surfaceStrong, 0.54)}} />
           <SearchGlyph x={1164} y={360} colour={dark ? '#d3576c' : '#ac2d49'} />
           <Box x={1299} y={365} w={420}>
             <T size={16.9} weight={650} ls={-0.338} lh={26} color={colour.ink}>
@@ -485,7 +488,7 @@ function ResultCard(props: {
 function SearchGlyph({x, y, colour}: {x: number; y: number; colour: string}): React.ReactElement {
   const stroke = 2;
   return (
-    <View pointerEvents="none" style={{position: 'absolute', left: u(x), top: u(y), width: u(54), height: u(36)}}>
+    <View pointerEvents="none" {...lx('image', '')} style={{position: 'absolute', left: u(x), top: u(y), width: u(54), height: u(36)}}>
       <View style={{position: 'absolute', left: u(13.2), top: u(5.6), width: u(20.3), height: u(20.3), borderRadius: u(10.2), borderWidth: u(stroke), borderColor: colour}} />
       <View style={{position: 'absolute', left: u(19.1), top: u(14.8), width: u(9), height: u(stroke), backgroundColor: colour, borderRadius: u(1)}} />
       <View style={{position: 'absolute', left: u(30.6), top: u(22.7), width: u(12.1), height: u(stroke), backgroundColor: colour, borderRadius: u(1), transform: [{rotate: '41.6deg'}]}} />

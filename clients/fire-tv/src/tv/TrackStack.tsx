@@ -15,6 +15,7 @@ import {Box, T, u} from './kit';
 import {CardCaption, MediaFocus} from './mediaFocus';
 import {WatchState} from './WatchState';
 import {reportFocus} from '../debug/parityControl';
+import {lx} from '../debug/layoutMarks';
 
 const TRACK_X = 881.6;
 const TRACK_VIEW_X = 729.6;
@@ -66,6 +67,8 @@ export interface TrackItem {
   title: string;
   /** People tracks put the role under the name instead of before it. */
   stacked?: boolean;
+  /** The web link's accessible name (parity layout export). */
+  web?: string;
   /** A title of the library (Similar Titles): drawn as the library's wide title card. */
   wide?: boolean;
   /** A cast or crew headshot: drawn as web's circular person card. */
@@ -149,7 +152,7 @@ export function TrackStack(props: TrackStackProps): React.ReactElement {
             return (
               <View key={track.id} pointerEvents="box-none">
                 <View style={{position: 'absolute', left: u(TRACK_X - TRACK_VIEW_X), top: u(y)}}>
-                  <T size={17.664} weight={610} ls={-0.53} lh={26.5} color={colour.ink}>
+                  <T heading size={17.664} weight={610} ls={-0.53} lh={26.5} color={colour.ink}>
                     {track.title}
                   </T>
                   <View style={{marginTop: u(4)}}>
@@ -239,6 +242,7 @@ function TrackCard({item, x, token, selected, preferred, onFocus}: {item: TrackI
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={item.title}
+      {...(item.web ? lx('link', item.web) : null)}
       hasTVPreferredFocus={preferred}
       onFocus={onFocus}
       onPress={item.onPress}

@@ -8,6 +8,7 @@ import {ROUTES} from '../navigation/routes';
 import {getSharedVegaPlaybackEngine} from '../platform/media/VegaPlaybackEngine';
 import type {PlayerScreenHandle} from '../screens/PlayerScreen';
 import {useTheme} from '../theme/ThemeProvider';
+import {exportLayout, LayoutProbe} from './layoutExport';
 import {currentQuery, installParityControl, PARITY_CONTROL, setPendingQuery} from './parityControl';
 
 /** The slice of the navigation container ref this host uses (the typed ref's route-name union is narrower than the strings it is given). */
@@ -39,6 +40,7 @@ const ROUTE_TO_WEB: Record<string, string> = Object.fromEntries(Object.entries(W
 
 export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; playerRef: React.RefObject<PlayerScreenHandle>}): React.ReactElement | null {
   const {scheme, setPreference} = useTheme();
+  const probeRef = useRef<LayoutProbe>(null);
   const schemeRef = useRef(scheme);
   schemeRef.current = scheme;
   const setPreferenceRef = useRef(setPreference);
@@ -92,6 +94,10 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message};
       },
       theme: () => schemeRef.current,
+      layout: async (debug) => {
+        const elements = probeRef.current ? await exportLayout(probeRef.current, schemeRef.current === 'dark' ? '#151315' : '#f5f3f2', debug) : [];
+        return JSON.stringify(elements);
+      },
     });
   }, [navRef, playerRef]);
 
@@ -108,7 +114,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     return () => clearInterval(timer);
   }, [playerRef]);
 
-  return null;
+  return <LayoutProbe ref={probeRef} />;
 }
 
 let lastPlayed = '';

@@ -23,6 +23,7 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {yearRangeLabel} from '../lib/workYear';
 import {BalancedT, Box, T, u} from '../tv/kit';
+import {lt, lx} from '../debug/layoutMarks';
 import {FocusRing} from '../tv/FocusRing';
 import {PageHeader} from '../tv/PageHeader';
 import {PlaylistSheet} from '../tv/PlaylistSheet';
@@ -294,6 +295,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
             badge: pad(number),
             small: `S${pad(season.season.season_number)} · E${pad(number)}`,
             title: entry.episode.title ?? t('pages.workDetail.episodeNumber', {number}),
+            web: `${pad(number)} S${pad(season.season.season_number)} · E${pad(number)} ${entry.episode.title ?? t('pages.workDetail.episodeNumber', {number})}`,
             progress: entry.media_file_id ? progressByMedia.get(entry.media_file_id) : undefined,
             unseenDot: progressRows !== null && entry.media_file_id != null && !progressByMedia.has(entry.media_file_id),
             onFocus: () => setSelection({season: season.season.season_number, episode: entry.episode.id}),
@@ -316,6 +318,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
           badge: pad(index + 1),
           small: formatClock(chapter.start_ms),
           title: chapter.title ?? t('pages.workDetail.chapterNumber', {number: index + 1}),
+          web: `Play ${work.title} from ${chapter.title ?? t('pages.workDetail.chapterNumber', {number: index + 1})}`,
           onPress: () => play(movieMediaFileId, {startPositionSeconds: chapter.start_ms / 1000, title: work.title}),
         })),
       });
@@ -355,6 +358,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
         return {
           id: entry.id,
           wide: true,
+          web: `Open ${entry.title}`,
           art: kind ? workArtworkUrl(baseUrl, entry.id, kind) : undefined,
           small: entry.kind === 'series' ? t('pages.home.workKind.series') : entry.kind === 'artist' ? t('pages.home.workKind.artist') : entry.kind === 'site' ? t('pages.home.workKind.site') : t('pages.home.workKind.movie'),
           title: entry.title,
@@ -376,7 +380,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
       stageArt={artUri}
       token={token}
       dark={dark}
-      header={<PageHeader title={backLabel} detail={work.title} onBack={() => navigation.navigate(route.params.backTo ?? ROUTES.home, route.params.backParams)} />}
+      header={<PageHeader title={backLabel} detail={work.title} webBack={{role: 'button', label: `Back to ${backLabel}`}} onBack={() => navigation.navigate(route.params.backTo ?? ROUTES.home, route.params.backParams)} />}
       copy={
         <CopyColumn
           kicker={kicker}
@@ -388,9 +392,9 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
           movieActions={
             work.kind === 'movie' ? (
               <PillRow top={37.8}>
-                {playMediaFileId ? <Pill glyph={'\u2637'} label={t('pages.workDetail.playbackButtonLabel')} onPress={() => setSettingsOpen(true)} focusable={!settingsFocused} /> : null}
+                {playMediaFileId ? <Pill glyph={'\u2637'} label={t('pages.workDetail.playbackButtonLabel')} web={{role: 'button', label: `Playback settings for ${work.title}`}} onPress={() => setSettingsOpen(true)} focusable={!settingsFocused} /> : null}
                 {playMediaFileId ? (
-                  <Pill primary glyph="play" label={moviePlayLabel} onPress={() => play(playMediaFileId, {title: work.title, ...launchQuality(effectiveOptions)})} hasTVPreferredFocus focusable={!settingsFocused} />
+                  <Pill primary glyph="play" label={moviePlayLabel} web={{role: 'link', label: `Play ${work.title}`}} onPress={() => play(playMediaFileId, {title: work.title, ...launchQuality(effectiveOptions)})} hasTVPreferredFocus focusable={!settingsFocused} />
                 ) : (
                   <Pill primary disabled label={t('pages.workDetail.unavailable')} />
                 )}
@@ -400,15 +404,16 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
           actions={
             <PillRow top={12}>
               {resumePlan && resumeLabel ? (
-                <Pill primary glyph="play" label={resumeLabel} onPress={() => play(resumePlan.target?.media_file_id, {title: work.title})} hasTVPreferredFocus={initialTrack < 0} />
+                <Pill primary glyph="play" label={resumeLabel} web={{role: 'button', label: `${resumeLabel} ${work.title}`}} onPress={() => play(resumePlan.target?.media_file_id, {title: work.title})} hasTVPreferredFocus={initialTrack < 0} />
               ) : null}
               <Pill
                 glyph={watchlist.listed ? '✓' : '+'}
                 label={watchlist.listed ? t('discovery.watchlist.remove') : t('discovery.watchlist.add')}
+                web={{role: 'button', label: `${watchlist.listed ? '✓' : '+'} ${watchlist.listed ? t('discovery.watchlist.remove') : t('discovery.watchlist.add')}`}}
                 disabled={watchlist.listed === null}
                 onPress={watchlist.toggle}
               />
-              <Pill glyph="+" label={t('components.mediaContextMenu.addToPlaylist')} onPress={() => setPlaylistSheet(true)} />
+              <Pill glyph="+" label={t('components.mediaContextMenu.addToPlaylist')} web={{role: 'button', label: `+ ${t('components.mediaContextMenu.addToPlaylist')}`}} onPress={() => setPlaylistSheet(true)} />
             </PillRow>
           }
         />
@@ -517,18 +522,19 @@ function PillRow({top, children}: {top: number; children: React.ReactNode}): Rea
 }
 
 /** The web's `.tv-detail-play` (primary) and `.tv-detail-download` (secondary) pills. */
-function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, focusable = true}: {label: string; glyph?: string; primary?: boolean; disabled?: boolean; onPress?: () => void; hasTVPreferredFocus?: boolean; focusable?: boolean}): React.ReactElement {
+function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, focusable = true, web}: {label: string; glyph?: string; primary?: boolean; disabled?: boolean; onPress?: () => void; hasTVPreferredFocus?: boolean; focusable?: boolean; web?: {role: 'button' | 'link'; label: string}}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   // The web's .tv-detail-play turns --brand-strong with white text and scales to 1.06 when focused.
   const lit = primary && focused;
   const bg = lit ? '#a52745' : primary ? colour.ink : mix(colour.surfaceStrong, 0.72);
   const fg = lit ? '#ffffff' : primary ? colour.bg : colour.ink;
-  const glyphColour = primary ? fg : '#cf3157';
+  const glyphColour = primary ? fg : colour.stageKicker;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...(web ? lx(web.role, web.label, 999) : null)}
       disabled={disabled}
       focusable={focusable}
       hasTVPreferredFocus={hasTVPreferredFocus}
@@ -553,7 +559,9 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
       {glyph ? (
         <View style={{marginRight: u(primary ? 10.4 : 8.8)}}>
           {glyph === 'play' ? (
-            <Icon name="play" size={u(10.1184)} color={glyphColour} />
+            <View {...lt('▶', 10.12, 400, glyphColour)}>
+              <Icon name="play" size={u(10.1184)} color={glyphColour} />
+            </View>
           ) : (
             <T size={12.8064} weight={400} color={glyphColour}>
               {glyph}

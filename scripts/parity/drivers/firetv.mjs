@@ -11,9 +11,9 @@
 //   ANDROID_ADB_SERVER_PORT  the adb server the vega CLI uses, if it is not the default one
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, basename } from "node:path";
 import { intoHome as pickProfile } from "./firetv-profile-pick.mjs";
 import { expandKeys } from "../suite-lib.mjs";
 
@@ -70,6 +70,7 @@ export async function createDriver({ out } = {}) {
   let seq = 0;
   let pinnedClock = null;
   const answers = new Map();
+  const chunks = new Map();
 
   // The vega CLI prints a command's output only when it ends, so a log cannot be streamed: read what the app has logged since
   // the run began (`loggingctl log -S`, its own lines only) until the answer with our sequence number shows up.
@@ -86,6 +87,15 @@ export async function createDriver({ out } = {}) {
     const from = fmt(Date.now() + offsetMs - 25000);
     const text = await onDevice(`loggingctl log -S '${from}' -v ${APP.replace(/\.main$/, "")}`);
     for (const line of text.split("\n")) {
+      const chunk = line.indexOf("PARITYL {");
+      if (chunk >= 0) {
+        try {
+          const c = JSON.parse(line.slice(chunk + 8).replace(/'?\s*$/, ""));
+          if (!chunks.has(String(c.seq))) chunks.set(String(c.seq), new Map());
+          chunks.get(String(c.seq)).set(c.i, { n: c.n, d: c.d });
+        } catch { /* a line cut off */ }
+        continue;
+      }
       const hit = line.indexOf("PARITY {");
       if (hit < 0) continue;
       try {
@@ -101,6 +111,23 @@ export async function createDriver({ out } = {}) {
     const query = Object.entries({ ...params, seq: n }).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
     await onDevice(`vmsgr send 'pkg://${APP}?${query}'`);
     return n;
+  }
+  // The layout document (cmd=layout): the app logs it in numbered chunks; wait until every chunk of this request has been read.
+  async function layoutDocument() {
+    const n = await send({ cmd: "layout", debug: process.env.PARITY_LAYOUT_DEBUG ? "1" : "0" });
+    const t0 = Date.now();
+    let lastAsk = 0;
+    while (Date.now() - t0 < 90000) {
+      await sleep(2500);
+      await readAnswers();
+      const got = chunks.get(n);
+      if (!got || !got.size) continue;
+      const total = [...got.values()][0].n;
+      const missing = [...Array(total).keys()].filter((i) => !got.has(i));
+      if (!missing.length) return JSON.parse([...got.keys()].sort((x, y) => x - y).map((i) => got.get(i).d).join(""));
+      if (Date.now() - lastAsk > 5000) { lastAsk = Date.now(); await onDevice(`vmsgr send 'pkg://${APP}?cmd=layoutchunk&seq=${n}-r&i=${missing.slice(0, 12).join(",")}'`); }
+    }
+    throw new Error("the app did not deliver its layout document");
   }
   async function state(timeoutMs = 25000) {
     const n = await send({ cmd: "state" });
@@ -157,7 +184,7 @@ export async function createDriver({ out } = {}) {
     async waitReady() { throw new Error("Fire TV stable deterministic capture unsupported: readiness is not exposed by the app"); },
     supports: { nowPlaying: false },
     /** For one-off scripts (player captures): the raw control-channel calls. */
-    raw: { command, state, press },
+    raw: { command, state, press, layoutDocument },
     async start() {
       await launch();
       await intoHome();
@@ -247,6 +274,14 @@ export async function createDriver({ out } = {}) {
       const s = await state();
       if (!s.route || s.route === "/profiles" && !file.includes("profiles")) throw new Error(`not a content screen: ${s.route}`);
       await sleep(1500);
+      // The layout document of the same screen state goes next to the capture: <out>/layout/<theme>/<screen>.json.
+      const theme = basename(dirname(file));
+      if (theme === "dark" || theme === "light") {
+        const layout = await layoutDocument();
+        const dir = join(dirname(dirname(file)), "layout", theme);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, `${basename(file, ".png")}.json`), JSON.stringify({ screen: basename(file, ".png"), theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: pinnedClock !== null, elements: process.env.PARITY_LAYOUT_DEBUG ? layout : layout.map(({ src, ...element }) => element) }));
+      }
       await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", file], { env });
     },
     async play(c, expect) {

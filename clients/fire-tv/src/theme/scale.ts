@@ -25,7 +25,7 @@
  * resolving either way is a two-number edit here, not a rewrite of every
  * screen that calls `sw`/`sh`.
  */
-import {Dimensions, PixelRatio} from 'react-native';
+import {Dimensions} from 'react-native';
 
 const BASE_WIDTH = 1920;
 const BASE_HEIGHT = 1080;
@@ -33,13 +33,13 @@ const BASE_HEIGHT = 1080;
 /** Scales a horizontal measurement (in CSS-pixel-equivalent units, at the 1920-wide baseline) to this device's real width. */
 export function sw(value: number): number {
   const {width} = Dimensions.get('window');
-  return PixelRatio.roundToNearestPixel((width / BASE_WIDTH) * value);
+  return (width / BASE_WIDTH) * value;
 }
 
 /** Scales a vertical measurement (in CSS-pixel-equivalent units, at the 1080-tall baseline) to this device's real height. */
 export function sh(value: number): number {
   const {height} = Dimensions.get('window');
-  return PixelRatio.roundToNearestPixel((height / BASE_HEIGHT) * value);
+  return (height / BASE_HEIGHT) * value;
 }
 
 /**

@@ -16,6 +16,7 @@ import {useTheme} from '../theme/ThemeProvider';
 import {FocusRing} from './FocusRing';
 import {EdgeFade} from './EdgeFade';
 import {T, u} from './kit';
+import {lx} from '../debug/layoutMarks';
 import {useScrollReveal} from './useScrollReveal';
 
 export const DRAWER_X = 1560;
@@ -125,6 +126,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
         style={{position: 'absolute', left: u((wide ? WIDE_X : DRAWER_X) - 90), top: 0, width: u(90), height: u(1080), backgroundColor: 'rgba(40, 26, 24, 0.04)'}}
       />
       <Animated.View
+        {...lx('dialog', '')}
         style={{
           position: 'absolute',
           left: u(wide ? WIDE_X : DRAWER_X),
@@ -145,7 +147,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
               </T>
             </View>
             <View style={{position: 'absolute', left: u(CONTENT_X), top: u(71.6), width: u(wide ? 330 : 204)}}>
-              <T size={38.4} weight={590} ls={-2.112} lh={57.6} color={colour.ink}>
+              <T heading size={38.4} weight={590} ls={-2.112} lh={57.6} color={colour.ink}>
                 {title}
               </T>
             </View>
@@ -158,7 +160,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
               return (
                 <View key={section.key} pointerEvents="box-none">
                   <View style={{position: 'absolute', left: u(CONTENT_X), top: u(top)}}>
-                    <T size={9.6} weight={720} ls={0.672} lh={LABEL_H} color={colour.inkMuted} upper>
+                    <T heading size={9.6} weight={720} ls={0.672} lh={LABEL_H} color={colour.inkMuted} upper>
                       {section.label}
                     </T>
                   </View>
@@ -203,6 +205,7 @@ export function CloseButton({label, onPress, onFocused, x = 1826 - DRAWER_X, tak
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('button', label, 50)}
       hasTVPreferredFocus={takesFocus}
       onFocus={() => {
         setFocused(true);
@@ -262,6 +265,7 @@ function Chip({chip, x, y, w, onReveal, focusOwner}: {chip: DrawerChip; x: numbe
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={chip.label}
+      {...(chip.icon ? lx('button', capitalise(chip.label), 12) : null)}
       accessibilityState={{selected: chip.selected}}
       onFocus={() => {
         setFocused(true);
@@ -293,7 +297,7 @@ function Chip({chip, x, y, w, onReveal, focusOwner}: {chip: DrawerChip; x: numbe
         </View>
       ) : null}
       <View style={chip.icon ? undefined : {flexShrink: 1}}>
-        <T size={10.56} weight={chip.icon ? 900 : 680} lh={chip.icon ? 11.6 : 15.84} color={ink} style={chip.icon ? undefined : {textAlign: 'center'}}>
+        <T wrole={chip.icon ? undefined : 'button'} size={10.56} weight={chip.icon ? 900 : 680} lh={chip.icon ? 11.6 : 15.84} color={ink} style={chip.icon ? undefined : {textAlign: 'center'}}>
           {capitalise(chip.label)}
         </T>
       </View>
@@ -368,16 +372,21 @@ function SelectField({label, value, onPress, x, y, w, onReveal}: {label: string;
       }}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(SELECT_H), borderRadius: u(12), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: mix(colour.surfaceSoft, 0.64), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(18.4)}}
+      {...lx('group', '', 12)}
+      style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(SELECT_H), borderRadius: u(12), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: mix(colour.surfaceSoft, 0.64), padding: u(6.39)}}
     >
-      <View style={{flex: 1}}>
-        <T size={11.84} weight={680} lh={17.76} color={colour.ink} lines={1}>
-          {value}
-        </T>
+      <View {...lx('button', `${value} \u2304`, 10)} style={{flex: 1, borderRadius: u(10), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(12)}}>
+        <View style={{flex: 1}}>
+          <T size={11.84} weight={680} lh={17.76} color={colour.ink} lines={1}>
+            {value}
+          </T>
+        </View>
+        <View {...lx('skip')}>
+          <T size={11.84} weight={680} lh={17.76} color={colour.inkMuted}>
+            {'\u2304'}
+          </T>
+        </View>
       </View>
-      <T size={11.84} weight={680} lh={17.76} color={colour.inkMuted}>
-        {'\u2304'}
-      </T>
       {focused ? <FocusRing radius={12} /> : null}
     </Pressable>
   );

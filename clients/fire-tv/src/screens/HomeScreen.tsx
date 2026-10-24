@@ -24,6 +24,7 @@ import {runtimeLabel} from '../lib/runtimeLabel';
 import {blend} from '../theme/color';
 import {EdgeFade} from '../tv/EdgeFade';
 import {CardCaption, MediaFocus} from '../tv/mediaFocus';
+import {lx} from '../debug/layoutMarks';
 import {BalancedT, Box, T, u} from '../tv/kit';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -366,7 +367,7 @@ function RailHeading({title, x, y, active, colour}: {title: string; x: number; y
         transform: active ? [{translateX: width * 0.08}, {translateY: -1}, {scale: 1.16}] : [],
       }}
     >
-      <T size={17.664} weight={610} ls={-0.53} lh={26.5} color={colour}>
+      <T heading size={17.664} weight={610} ls={-0.53} lh={26.5} dy={3.1} color={colour}>
         {title}
       </T>
     </View>
@@ -535,11 +536,13 @@ const HomeCard = memo(function HomeCard(props: {
       {...(last && selfTag !== undefined ? ({nextFocusRight: selfTag} as object) : {})}
       accessibilityRole="button"
       accessibilityLabel={work.title}
+      {...lx('link', `${work.title} ${subtitle}`, 12)}
       hasTVPreferredFocus={first}
       onFocus={onFocus}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW)}}
+      // The web link ends under the title line; the meta line below it hangs out of the box.
+      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW), height: u(layout.artH + 11.25 + 17.9)}}
     >
       <MediaFocus variant="home" focused={selected} width={layout.cardW} height={layout.artH} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft}}>

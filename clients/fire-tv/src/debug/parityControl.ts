@@ -100,6 +100,18 @@ export interface ParityHooks {
   setTheme(name: 'dark' | 'light'): void;
   player(): {state: string; positionSeconds: number; durationSeconds: number; error?: string};
   theme(): string;
+  /** The layout document of the screen as drawn now, as JSON text (cmd=layout). */
+  layout?(debug: boolean): Promise<string>;
+}
+
+let layoutChunks: string[] = [];
+let layoutSeq: string | null = null;
+function emitLayoutChunks(indexes: number[]): void {
+  indexes.forEach((i, k) => {
+    setTimeout(() => {
+      if (layoutChunks[i] !== undefined) console.log('PARITYL ' + JSON.stringify({seq: layoutSeq, i, n: layoutChunks.length, d: layoutChunks[i]}));
+    }, k * 40);
+  });
 }
 
 export function parseCommand(url: string): Record<string, string> | null {
@@ -118,6 +130,21 @@ export function installParityControl(hooks: ParityHooks): () => void {
   const handle = (url: string | null): void => {
     const command = url ? parseCommand(url) : null;
     if (!command) return;
+    if (command.cmd === 'layout' && hooks.layout) {
+      // The document is long and the device log drops lines in bursts: keep the numbered chunks, log them paced, and let the driver
+      // ask again for the ones it did not read (cmd=layoutchunk&i=3,7).
+      void hooks.layout(command.debug === '1').then((json) => {
+        layoutChunks = [];
+        for (let at = 0; at < json.length; at += 700) layoutChunks.push(json.slice(at, at + 700));
+        layoutSeq = command.seq ?? null;
+        emitLayoutChunks(layoutChunks.map((_, i) => i));
+      }, (error: unknown) => console.log('PARITY ' + JSON.stringify({error: String(error), cmd: 'layout'})));
+      return;
+    }
+    if (command.cmd === 'layoutchunk') {
+      emitLayoutChunks((command.i ?? '').split(',').filter(Boolean).map(Number));
+      return;
+    }
     try {
       switch (command.cmd) {
         case 'route': hooks.route(command.path ?? '/'); break;

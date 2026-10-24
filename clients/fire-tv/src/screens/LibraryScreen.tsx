@@ -52,6 +52,7 @@ import {ActionTile} from '../tv/ActionTile';
 import {Button} from '../tv/forms';
 import {EdgeFade} from '../tv/EdgeFade';
 import {CardCaption, MediaFocus} from '../tv/mediaFocus';
+import {lx} from '../debug/layoutMarks';
 import {Box, T, u} from '../tv/kit';
 import {PageHeader} from '../tv/PageHeader';
 import {Preview} from '../tv/Preview';
@@ -687,6 +688,7 @@ function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.Re
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={work.title}
+      {...lx('link', `Open ${work.title}`, 12)}
       hasTVPreferredFocus={first}
       onFocus={(event) => {
         reportFocus(`open ${work.title}`, undefined, undefined, event.nativeEvent.target);
@@ -781,6 +783,7 @@ function Alphabet({active, onJump}: {active: string | null; onJump: (letter: str
               key={letter}
               accessibilityRole="button"
               accessibilityLabel={letter}
+              {...lx('button', letter === '#' ? 'Numbers and symbols' : letter, 50)}
               onPress={() => onJump(letter)}
               style={{position: 'absolute', left: u(6), top: u(8 + index * RAIL_ROW), width: u(RAIL_ROW), height: u(RAIL_ROW), alignItems: 'center', justifyContent: 'center'}}
             >

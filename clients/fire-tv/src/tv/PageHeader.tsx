@@ -4,6 +4,7 @@ import {LayoutChangeEvent, Pressable, View} from 'react-native';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {T, u, uf} from './kit';
+import {lx} from '../debug/layoutMarks';
 
 export interface BackButtonProps {
   onPress: () => void;
@@ -12,15 +13,18 @@ export interface BackButtonProps {
   size?: number;
   accessibilityLabel?: string;
   hasTVPreferredFocus?: boolean;
+  /** The web element's role and accessible name (parity layout export). */
+  webBack?: {role: 'link' | 'button'; label: string};
 }
 
-export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibilityLabel = 'Back', hasTVPreferredFocus}: BackButtonProps): React.ReactElement {
+export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibilityLabel = 'Back', hasTVPreferredFocus, webBack = {role: 'link', label: 'Back to Home'}}: BackButtonProps): React.ReactElement {
   const {colour, scheme} = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      {...lx(webBack.role, webBack.label, 50)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
@@ -59,6 +63,7 @@ export interface PageHeaderProps {
   onBack: () => void;
   backLabel?: string;
   backFocus?: boolean;
+  webBack?: BackButtonProps['webBack'];
 }
 
 const HEADER_X = 226.6;
@@ -66,7 +71,7 @@ const HEADER_X = 226.6;
 const HEADER_GAP = 24;
 const HEADER_BESIDE_LIMIT = 451.75;
 
-export function PageHeader({title, detail, onBack, backLabel, backFocus}: PageHeaderProps): React.ReactElement {
+export function PageHeader({title, detail, onBack, backLabel, backFocus, webBack}: PageHeaderProps): React.ReactElement {
   const {colour} = useTheme();
   const [widths, setWidths] = useState<{title: number; detail: number} | null>(null);
   const measured = useRef<{title?: number; detail?: number}>({});
@@ -83,10 +88,10 @@ export function PageHeader({title, detail, onBack, backLabel, backFocus}: PageHe
   );
   return (
     <>
-      <BackButton onPress={onBack} accessibilityLabel={backLabel} hasTVPreferredFocus={backFocus} />
+      <BackButton onPress={onBack} accessibilityLabel={backLabel} hasTVPreferredFocus={backFocus} webBack={webBack} />
       <View style={{position: 'absolute', left: u(HEADER_X), top: u(56.2), height: u(50), flexDirection: 'row', alignItems: 'center'}} pointerEvents="none">
         <View onLayout={measure('title')}>
-          <T size={33.6} weight={580} ls={-1.512} lh={50} dy={1} color={colour.ink} lines={1}>
+          <T heading size={33.6} weight={580} ls={-1.512} lh={50} dy={1} color={colour.ink} lines={1}>
             {title}
           </T>
         </View>

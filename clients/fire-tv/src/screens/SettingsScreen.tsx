@@ -12,6 +12,7 @@ import {useTvBackNavigation} from '../navigation/backPolicy';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, T, u} from '../tv/kit';
+import {lx} from '../debug/layoutMarks';
 import {EdgeFade} from '../tv/EdgeFade';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -137,7 +138,7 @@ export function SettingsScreen({initial = 'appearance'}: {initial?: SettingsSect
   return (
     <Stage>
       <RailFrost dark={scheme === 'dark'} soft={colour.surfaceSoft} strong={colour.surfaceStrong} x={672} />
-      <PageHeader title={t('settings.index.title')} detail={t(activeSection.titleKey)} onBack={() => navigation.navigate(ROUTES.home)} backFocus backLabel={t('settings.sectionLayout.backLink')} />
+      <PageHeader title={t('settings.index.title')} detail={t(activeSection.titleKey)} webBack={{role: 'button', label: 'Settings'}} onBack={() => navigation.navigate(ROUTES.home)} backFocus backLabel={t('settings.sectionLayout.backLink')} />
 
       <Box x={0} y={LIST_CLIP_TOP} w={672} h={1080 - LIST_CLIP_TOP} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{position: 'absolute', top: u(-LIST_CLIP_TOP), left: 0, width: u(672), transform: [{translateY: scroll}]}} pointerEvents="box-none">
@@ -175,6 +176,7 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={t(section.titleKey)}
+      {...lx('link', `${section.number} ${t(section.titleKey)} →`)}
       onFocus={() => {
         setFocused(true);
         onFocus();
@@ -185,14 +187,14 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
         position: 'absolute',
         left: u(153.6),
         top: u(y),
-        width: u(480.4),
-        height: u(91.9),
+        width: u(470.41),
+        height: u(91.89),
         backgroundColor: lit ? colour.surfaceSoft : 'transparent',
       }}
     >
       {focused ? <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: u(4), backgroundColor: colour.accent}} /> : null}
       <View style={{position: 'absolute', left: u(32), top: u(23.8)}}>
-        <T size={9.92} weight={760} lh={18.4} color={colour.inkMuted}>
+        <T size={9.92} weight={760} lh={18.4} color={colour.ink}>
           {section.number}
         </T>
       </View>
@@ -201,7 +203,7 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
           {t(section.titleKey)}
         </T>
       </View>
-      <View style={{position: 'absolute', left: u(lit ? 432.6 : 427.6), top: u(30.5)}}>
+      <View style={{position: 'absolute', left: u(lit ? 422.6 : 417.6), top: u(30.5)}}>
         <T size={20.8} weight={400} lh={31.2} dy={3} color={lit ? colour.ink : colour.inkMuted}>
           {'→'}
         </T>

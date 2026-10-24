@@ -128,7 +128,7 @@ export function CalendarScreen(): React.ReactElement {
     <Stage>
       {/* The agenda sits on the same frosted rail panel as the library pages; the month and week grids span the page without it. */}
       {view === 'agenda' ? <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} /> : null}
-      <PageHeader title={t('pages.calendar.title')} onBack={() => navigation.navigate(ROUTES.home)} />
+      <PageHeader title={t('pages.calendar.title')} onBack={() => navigation.navigate(ROUTES.home)} webBack={{role: 'link', label: 'Back to home'}} />
 
       <RoundNav x={1629.3} glyph={'←'} label={t('pages.calendar.previous')} onPress={() => setAnchor(shiftAnchor(view, anchor, -1))} />
       <TodayPill label={t('pages.calendar.today')} settled={state.status === 'ready'} onPress={() => setAnchor(anchorForView(view, today))} />
