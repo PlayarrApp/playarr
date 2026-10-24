@@ -35,7 +35,7 @@ const DETAIL_LETTER_SPACING: number = 0.501;
 const DETAIL_WEIGHT: number = 680; // web .page-header-title-block > span
 const CLOCK_STOP: number = 478;
 const WRAP_GAP: number = 5.6;
-const WRAP_PAD_TOP: number = 6.4;
+const WRAP_PAD_TOP: number = 7.84;
 const KICKER_SIZE: number = 12.288;
 const KICKER_LETTER_SPACING: number = 0.983;
 

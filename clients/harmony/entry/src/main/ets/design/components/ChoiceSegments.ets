@@ -26,7 +26,7 @@ const CHOICE_GAP: number = 8;
 const TOUCH_DRAWER_SECTION_WIDTH: number = 320;
 const CHOICE_RADIUS: number = 12;
 const CHOICE_LABEL_SIZE: number = 10.56;
-const DESCRIPTION_SIZE: number = 13.824;
+const DESCRIPTION_SIZE: number = 13.12;
 const SECTION_GAP: number = 30;
 // Web phone drawer choices: 46.7 high, 11.5 type, sections 8 vp closer than the TV's.
 const TOUCH_CHOICE_HEIGHT: number = 48; // web: 144 px inactive; the selected choice is 1.025 scaled
@@ -56,6 +56,8 @@ export struct ChoiceSegments {
   @Prop large: boolean = false;
   /** Settings panels: one line of copy under the large heading (web `.appearance-setting-heading p`). */
   @Prop description: string = '';
+  /** Settings > Colour theme: web's buttons carry the lower-case value, the other settings their label. */
+  @Prop lowerLabels: boolean = false;
   @Prop sectionWidth: number = SECTION_WIDTH;
   onChoose: (value: string) => void = () => {};
 
@@ -124,7 +126,7 @@ export struct ChoiceSegments {
         Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
           .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
           .fontWeight(FontWeight.Bold)
-          .letterSpacing(tv(HEADING_LETTER_SPACING))
+          .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.27))
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
           .id('px:heading:' + this.heading.toUpperCase())
@@ -154,7 +156,7 @@ export struct ChoiceSegments {
             this.onChoose(choice.value);
           })
          } else {
-          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? (this.large ? choice.label.toLowerCase() : choice.label) : capitalWords(choice.label))).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CHOICE_LABEL_SIZE)) : nunito(680))
+          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? (this.lowerLabels ? choice.label.toLowerCase() : choice.label) : capitalWords(choice.label))).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
             .id('px:button:' + choice.label)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)

@@ -150,7 +150,7 @@ const PERIOD_PANEL_LEFT: number = 1297;
 const PERIOD_PANEL_TOP: number = 114;
 // Details panel extras under the meta line.
 const PANEL_GAP: number = 17;
-const OVERVIEW_SIZE: number = 13.824;
+const OVERVIEW_SIZE: number = 13.82;
 const OVERVIEW_LINE_HEIGHT: number = 22;
 const OVERVIEW_MAX_LINES: number = 5;
 const OVERVIEW_WIDTH: number = 348;
@@ -869,8 +869,8 @@ export struct ReleaseCalendar {
       Column({ space: tv(PANEL_GAP) }) {
         this.statusPill(entryPillTone(this.selected, this.today))
         if (this.selected.overview !== undefined && this.selected.overview !== null) {
-          Text(this.selected.overview).fontFamily(nunitoAt(500, tv(OVERVIEW_SIZE)))
-            .fontSize(tv(OVERVIEW_SIZE))
+          Text(this.selected.overview).fontFamily(nunito(600))
+            .fontSize(13.82)
             .fontWeight(FontWeight.Medium)
             .lineHeight(tv(OVERVIEW_LINE_HEIGHT))
             .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.87))
@@ -919,8 +919,8 @@ export struct ReleaseCalendar {
       kicker: this.selected !== undefined ?
         `${mediaKindLabel(this.selected.media_kind)} · ${releaseTypeLabel(this.selected.release_type)}` : '',
       title: this.selected !== undefined ? this.selected.title : '',
-      metaLines: this.selected !== undefined ?
-        [`${entrySubtitle(this.selected)}    ${entryWhenLabel(this.selected)}`] : [],
+      metaRuns: this.selected !== undefined ?
+        [entrySubtitle(this.selected), entryWhenLabel(this.selected)].filter((run: string): boolean => run.length > 0) : [],
       synopsis: '',
       scrollRails: false,
       railFrost: true,

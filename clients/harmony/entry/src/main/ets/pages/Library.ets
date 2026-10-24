@@ -1341,7 +1341,7 @@ export struct Library {
       kicker: this.hero !== undefined && this.hero.genres.length > 0 ? this.hero.genres[0] : '',
       title: this.hero !== undefined ? this.hero.title : '',
       metaRuns: this.hero !== undefined ? heroMetaRuns(this.hero, this.heroRuntime) : [],
-      synopsis: this.hero !== undefined && this.hero.overview !== null ? this.hero.overview : '',
+      synopsis: this.hero !== undefined ? (this.hero.overview !== null && this.hero.overview.length > 0 ? this.hero.overview : t('pages.library.noSynopsis', 'No synopsis is available.')) : '',
       scrollRails: false,
       railFrost: true,
       railFrostWidthPct: 65,

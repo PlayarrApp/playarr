@@ -214,7 +214,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             if kind != "Image" and sc is not None and str(attrs.get("id", "")).startswith("px:button:") and abs(num(sc.get("x"), 1.0) - 1.0) > 1e-6:
                 k = num(sc.get("x"), 1.0)  # a focused or selected control drawn scaled: web reports its transformed box
                 x, y, w, h = x - (k - 1) * w / 2, y - (k - 1) * h / 2, w * k, h * k
-            if dpr == 3 and str(attrs.get("id", "")) == "pcard" and w > 0:  # a card scrolled past the viewport edge is clipped by its list: restore its width
+            if str(attrs.get("id", "")) == "pcard" and w > 0:  # a card scrolled past the viewport edge is clipped by its list: restore its width
                 if w >= card_w[0] - 1:
                     card_w[0], clip[0] = w, None
                 elif card_w[0] > 0:

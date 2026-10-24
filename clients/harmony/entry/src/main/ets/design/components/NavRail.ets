@@ -107,7 +107,7 @@ const NAV_TILE_LABEL_LETTER_SPACING: number = 0.31;
  * all (5.10 gives the tile's own outer size/radius/icon/label sizes, but
  * no internal icon-to-label gap) -- a small named UI constant in the same
  * spirit as `PosterCard.ets`'s own `PROGRESS_BAR_HEIGHT`. */
-const NAV_TILE_ICON_LABEL_GAP: number = 2.75;
+const NAV_TILE_ICON_LABEL_GAP: number = 3.95;
 
 /** One `NavRail` entry. `icon` accepts any `$r('app.media.*')` resource --
  * `NavTile` applies `.fillColor()` to it (assumes a monochrome/SVG-style
@@ -312,7 +312,7 @@ export struct NavRail {
           .width(tv(TvGeometry.navTileSize - 8))
           .textAlign(TextAlign.Center)
       }
-      .id(`${PROFILE_NAV_ID}-nav-tile`)
+      .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
       .width(tv(TvGeometry.navTileSize))
       .height(tv(TvGeometry.navTileSize))
       .justifyContent(FlexAlign.Center)
@@ -342,7 +342,7 @@ export struct NavRail {
       .letterSpacing(1.36) // web's run is 30.73 wide
       .fontColor(toResourceColor(activeColors().ink))
       .width(NAV_GROUP_WIDTH)
-      .position({ x: 0, y: 1037 })
+      .position({ x: 0, y: 1038.45 })
       .textAlign(TextAlign.Center)
   }
 
