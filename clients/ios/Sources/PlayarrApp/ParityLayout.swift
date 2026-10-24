@@ -250,9 +250,9 @@ extension View {
 
 extension View {
     /// The design font at a CSS size and weight, reported to the parity layout export with the text it draws.
-    func wm(_ size: CGFloat, _ weight: Int = 400) -> some View {
+    func wm(_ size: CGFloat, _ weight: Int = 400, color: Color = PlayarrStyle.ink) -> some View {
         font(DesignFont.font(size, weight))
-            .parityLayout(role: "text", size: size, weight: weight, color: PlayarrStyle.ink)
+            .parityLayout(role: "text", size: size, weight: weight, color: color)
     }
 
     /// A control or container that the web exports as one element (a card link, a panel with a background).

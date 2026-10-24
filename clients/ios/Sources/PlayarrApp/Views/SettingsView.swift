@@ -152,18 +152,19 @@ struct SettingsView: View {
                                     .frame(width: 257, alignment: .leading)
                                     .offset(x: 56, y: 24.4)
                                 Text(section.description)
-                                    .wm(10.88)
+                                    .wm(10.88, color: WM.inkSoft)
                                     .foregroundStyle(WM.inkSoft)
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                     .frame(width: 275, height: 15.776, alignment: .leading)
                                     .offset(x: 56, y: 46.4)
                                 Text("→")
-                                    .wm(18)
+                                    .wm(18, color: WM.ink)
                                     .foregroundStyle(WM.ink)
                                     .offset(x: rowFocused ? 332 : 329, y: 32)
                             }
-                            .frame(width: 358, height: 88, alignment: .topLeading)
+                            .frame(width: 361, height: 88, alignment: .topLeading)
+                            .parityBox("link", name: "\(section.number) \(section.title) \(section.description)", background: rowFocused ? WM.artFill : WM.page)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -826,7 +827,7 @@ extension SettingsView {
                 WMQualityCell(width: 318, selected: qualityID == "original") {
                     WMText("Original", 9.28, 700, lh: 14).offset(x: 11, y: 11)
                     WMText("Best available source", 7.04, 400, color: WM.muted, lh: 11).offset(x: 11, y: 27)
-                    Text("\u{2713}").wm(11.84, 400).foregroundStyle(WM.pink).offset(x: 291, y: 15)
+                    Text("\u{2713}").wm(11.84, 400, color: WM.pink).foregroundStyle(WM.pink).offset(x: 291, y: 15)
                 }
             }
             .buttonStyle(.plain)
@@ -982,7 +983,7 @@ extension SettingsView {
                     prompt: Text.wmPlaceholder("For example: For Sam \u{2014} films and television series, please."),
                     axis: .vertical
                 )
-                .wm(9.3, 400)
+                .wm(9.3, 400, color: WM.ink)
                 .foregroundStyle(WM.ink)
                 .padding(.horizontal, 8).padding(.vertical, 6)
                 .frame(width: 318, height: 48, alignment: .topLeading)

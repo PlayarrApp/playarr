@@ -155,7 +155,7 @@ struct LibraryView: View {
                     HStack(spacing: 12) {
                         WMIconView(icon: .search, color: WM.muted, size: 16)
                         TextField("", text: $viewModel.searchText, prompt: Text("Search").foregroundColor(WM.muted))
-                            .wm(16)
+                            .wm(16, color: WM.ink)
                             .foregroundStyle(WM.ink)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()

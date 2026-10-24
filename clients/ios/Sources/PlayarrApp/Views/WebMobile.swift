@@ -402,6 +402,7 @@ struct WMIconView: View {
             }
         }
         .frame(width: size, height: size)
+        .parityBox("image")
     }
 }
 
@@ -732,7 +733,7 @@ struct WMHeaderCircleButton: View {
         Button(action: action) {
             // The web draws the arrow glyph about 0.65 times the size of the app's fallback glyph, 1.3 pt lower.
             Text(glyph)
-                .wm(glyph == "\u{2190}" ? 8.3 : 12.8, weight)
+                .wm(glyph == "\u{2190}" ? 8.3 : 12.8, weight, color: WM.inkSoft)
                 .foregroundStyle(WM.inkSoft)
                 .offset(y: glyph == "\u{2190}" ? 1.3 : 0)
                 .frame(width: width, height: height)

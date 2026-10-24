@@ -663,6 +663,8 @@ private struct AuthenticatedPlayarrShell: View {
                 }
                 .scrollIndicators(.hidden)
                 .frame(height: 58)
+                .padding(.horizontal, 0)
+                .parityBox("container", background: PlayarrStyle.surfaceStrong, radius: 20)
                 .background(
                     PlayarrStyle.surfaceStrong.opacity(0.88),
                     in: RoundedRectangle(cornerRadius: 20, style: .continuous)
