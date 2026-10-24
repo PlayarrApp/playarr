@@ -1,0 +1,1 @@
+- Parity: layout refs parse color(srgb) (color-mix) backgrounds; buffered bar is masked; skeleton and aria-label text fixes.

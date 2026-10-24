@@ -23,8 +23,31 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
 - `text`: the text as displayed (after text-transform), whitespace collapsed. Controls without own text use their accessible label.
 - `role`: `text`, `heading`, `button`, `link`, `textbox`, `switch`, `select`, `image`, `video`, `container`, `tab`, `list`, or the ARIA
   role the web element carries. `system` marks OS chrome (status bar, home indicator): never matched, never reported.
-- Which elements the web exports: leaf text elements, focusable controls, images/svg/canvas/video, and containers with a visible
-  background or border. Order is DOM order, so two exports of the same page are identical.
+- Which elements the web exports: exactly what a user can see. Leaf text elements, focusable controls (a card is a `link` named
+  "Open <title>", nav items are `tab`/`link`, kept even without a visible box because natives must export them with their accessible
+  name), images/svg/canvas/video, and containers with a visible fill: a background colour or image with alpha above 0, a border
+  with width and a non-transparent colour, or a box shadow; a background colour identical to the one already behind it is not a fill. Order is DOM order, so two exports of the same page are identical.
+- Dropped by the exporter (so a native app never has to invent them): elements without text, visible fill or focusability (page
+  wrappers, nav groups, unstyled link boxes); `display: none`, `visibility: hidden`, effective opacity 0; boxes clipped away by an
+  `overflow` ancestor or entirely outside the viewport; descendants of `[inert]`; descendants of `[aria-hidden="true"]` when that
+  host contains something focusable (a hidden page region; decorative aria-hidden glyphs such as a "+" icon stay, they are visible);
+  and elements fully covered by an overlay. Occlusion is sampled deterministically: `elementFromPoint` at a 3x3 grid (20%, 50%, 80%)
+  of the element's rect clipped to the viewport; the element is occluded when every sample lands on an element outside its own
+  subtree that paints (an image/video/canvas/svg, or a background of alpha 0.5 or more, a background image, or a backdrop filter,
+  looking up to the common ancestor). Transparent click layers and `pointer-events: none` elements never occlude. A partly covered
+  element stays. The document counts what it dropped as `occluded`; `layout-score.mjs` prints it, so a drawer screen shows a
+  non-zero count and a screen without an overlay shows 0.
+- Text colour: the exporter reads `-webkit-text-fill-color` (which defaults to `color`). Fully transparent text (loading skeleton
+  lines use `color: transparent` over a painted bar) is not text: the element exports as a container with its background and no
+  text, font or colour. Text clipped to a gradient (`background-clip: text`) reports the gradient's first stop colour and
+  `colorGradient: true`; the scorer compares it with the normal deltaE.
+- Font size and scale: `fontSize` is the computed `font-size` in CSS px of the layout viewport (`viewport.w` x `viewport.h`),
+  multiplied by every `zoom` on the element and its ancestors. The refs are rendered at the stage size (TV 1920x1080 at dpr 1,
+  where the TV stage scale `tvStageScale.ts` is neutral, zoom 1; phone groups at their own CSS viewport), so no root zoom or
+  transform applies and computed equals effective. A TV shell that fits the stage with CSS `zoom` (webOS, Tizen web) is covered by
+  the zoom product. A shell that scales with a `transform` (VIDAA) reports rects in stage px already, so font sizes stay unscaled
+  there too. Native exporters report the CSS-px size the rendered glyphs have (for example Qt `pixelSize` divided by the window
+  scale), never the raw device px. A heading of 15.23 px on web is 15.23, not 16: the web value is the truth.
 - `clockPinned` (device documents): the app's own clock was pinned to the fixture instant (see Freezing).
 
 Layout refs: `<legend dir>/web/layout/<theme>/<screen>.json` for every ref group (`capture-refs.mjs` writes them with every capture;
@@ -43,7 +66,7 @@ the web and device values, and the delta. Extra device elements are counted, not
 ## Volatile content
 
 `scripts/parity/layout-volatile.json` (keyed by screen, `*` = all): elements whose text is expected to differ while box and style
-must still match: header clock and date, calendar-link URL and QR, the settings-server address, the player time code. The video
+must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player buffered bar (`omit`: left out of the refs, its length follows download timing). The video
 frame is `maskOnly`: not scored, and the pixel scorer blanks its rect. OS bars are exported as role `system`. The web document marks
 such elements with `volatile`; the scorer matches them by role and overlap and skips their text.
 
