@@ -1041,8 +1041,8 @@ export struct ReleaseCalendar {
     .width('100%')
     .backgroundColor(toResourceColor(activeColors().bg)) // the page colour behind the controls (the root fill is darker)
     .justifyContent(FlexAlign.End)
-    .padding({ top: this.view === 'month' ? 14 : 0, bottom: this.view === 'month' ? 12 : 19, right: PHONE_CONTROL_RIGHT })
-    .margin({ top: this.view === 'month' ? 0 : -4 })
+    .padding({ top: this.view === 'agenda' ? 0 : 14, bottom: this.view === 'month' ? 12 : (this.view === 'week' ? 10.7 : 19), right: PHONE_CONTROL_RIGHT })
+    .margin({ top: this.view === 'agenda' ? -4 : 0 })
   }
 
   @Builder
@@ -1189,10 +1189,10 @@ export struct ReleaseCalendar {
       Row({ space: PHONE_WEEK_GAP }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) }) {
-            Text(dayHeading(cell.day)).fontFamily(nunitoAt(500, tv(DAY_HEADING_SIZE)))
-              .fontSize(tv(DAY_HEADING_SIZE))
+            Text(dayHeading(cell.day)).fontFamily(nunitoAt(640, PHONE_DAY_HEADING_SIZE))
+              .fontSize(PHONE_DAY_HEADING_SIZE) // web phone: 14.4
               .fontWeight(FontWeight.Medium)
-              .fontColor(toResourceColor(activeColors().ink))
+              .fontColor(toResourceColor(cell.isToday ? activeColors().ink : activeColors().inkSoft))
               .height(tv(WEEK_HEADING_HEIGHT))
             Scroll() {
               Column({ space: tv(ENTRY_GAP + 1) }) {

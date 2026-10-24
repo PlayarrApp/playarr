@@ -249,7 +249,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 lh = num(attrs.get("lineHeight"), 0.0) or ch
                 raw = str(attrs.get("content", attrs.get("text"))).split("\n")
                 lines = [ln for ln in raw if ln.strip()]
-                if len(lines) == 1:  # wrap greedily at the box width
+                if len(lines) == 1 and h >= min(ch, lh) * 1.6:  # wrap greedily at the box width (a box one line tall holds one line)
                     lines, cur = [], ""
                     for word in str(text).split():
                         trial = (cur + " " + word).strip()
