@@ -138,6 +138,7 @@ export function layoutPageFn(volatile) {
     }
     var vol = matchVolatile(el, own);
     if (vol && vol.host !== el) continue;
+    if (vol && vol.entry.omit) continue;
     var r = el.getBoundingClientRect();
     if (vol && own) {
       var range = document.createRange();

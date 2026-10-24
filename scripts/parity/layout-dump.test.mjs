@@ -100,3 +100,13 @@ test("color-mix() (computed as color(srgb ...)) keeps its colour and alpha", { s
   assert.equal(d.elements[0].background, "#ff8080");
   assert.equal(d.elements[1].color, "#0000ff");
 });
+
+test("an omit entry is left out of the export", { skip }, async () => {
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
+    await page.setContent(`<div class="player-seek-buffered" style="position:absolute;width:80px;height:6px;background:#575757"></div><span>keep</span>`);
+    const d = await page.evaluate(layoutPageFn, volatileFor("player-controls"));
+    assert.deepEqual(d.elements.map((e) => e.text), ["keep"]);
+  } finally { await browser.close(); }
+});
