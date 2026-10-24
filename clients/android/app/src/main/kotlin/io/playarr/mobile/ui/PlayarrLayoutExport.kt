@@ -39,7 +39,7 @@ import java.io.File
 /** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
 internal var parityLayoutEnabled = false
 
-private class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
+private class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
 
 private val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
@@ -47,11 +47,11 @@ private val parityBoxes = java.util.Collections.synchronizedSet(java.util.Linked
  * Records this node's window bounds for the layout export (docs/parity/LAYOUT.md): a painted container, an image, a control
  * (cards are `link` with their accessible name, as the web's `Open <title>` links). A no-op unless the debug build enabled it.
  */
-internal fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified): Modifier =
+internal fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)? = null): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
-        val box = remember { ParityBox(view, role, label, radius, opacity, background) }
-        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background
+        val box = remember { ParityBox(view, role, label, radius, opacity, background, fit) }
+        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit
         DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
         onGloballyPositioned { box.bounds = it.boundsInWindow() }
     }
@@ -120,8 +120,9 @@ internal object PlayarrLayoutExport {
                     for (box in parityBoxes.toList()) {
                         if (!box.view.isShown || box.bounds.width < 1f || box.bounds.height < 1f) continue
                         val loc = IntArray(2).also { box.view.getLocationOnScreen(it) }
-                        val x = box.bounds.left + loc[0] - mainLoc[0]; val y = box.bounds.top + loc[1] - mainLoc[1]
-                        val w = box.bounds.width; val h = box.bounds.height
+                        val fitted = box.fit?.invoke(box.bounds) ?: box.bounds
+                        val x = fitted.left + loc[0] - mainLoc[0]; val y = fitted.top + loc[1] - mainLoc[1]
+                        val w = fitted.width; val h = fitted.height
                         val e = JSONObject().put("text", box.label).put("role", box.role)
                             .put("rect", JSONObject().put("x", r2(x)).put("y", r2(y)).put("w", r2(w)).put("h", r2(h)))
                             .put("color", JSONObject.NULL)
@@ -189,17 +190,19 @@ internal object PlayarrLayoutExport {
                 val size = style.fontSize.value * density.fontScale * density.density
                 val colour = style.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified }
                 val heading = config.contains(SemanticsProperties.Heading)
-                // One element per laid-out line, with the glyph-run bounds the browser reports: the font's content area (Nunito Sans:
-                // ascent 1.011 em above the baseline, descent 0.353 em below), from the first to the last glyph of the line.
+                // The web exports one run per text node (`Range.getBoundingClientRect`): the union of the font's content areas
+                // (Nunito Sans: ascent 1.011 em, descent 0.353 em, each rounded to whole px) from the first to the last line.
+                val ascent = Math.round(1.011f * size); val descent = Math.round(0.353f * size)
+                var l = Float.MAX_VALUE; var r = 0f; var top = Float.MAX_VALUE; var bottom = 0f
                 for (i in 0 until layout.lineCount) {
-                    val start = layout.getLineStart(i); val end = layout.getLineEnd(i, true)
-                    val line = layout.layoutInput.text.text.substring(start, end).trim()
-                    if (line.isEmpty()) continue
-                    val l = layout.getLineLeft(i); val r = layout.getLineRight(i)
-                    val top = layout.getLineBaseline(i) - 1.011f * size; val bottom = layout.getLineBaseline(i) + 0.353f * size
+                    if (layout.getLineEnd(i, true) == layout.getLineStart(i)) continue
+                    l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
+                    top = minOf(top, layout.getLineBaseline(i) - ascent); bottom = maxOf(bottom, layout.getLineBaseline(i) + descent)
+                }
+                if (r > l) {
                     val rx = x + l; val ry = y + top; val rw = r - l; val rh = bottom - top
                     out.put(
-                        JSONObject().put("text", line).put("role", if (heading) "heading" else "text")
+                        JSONObject().put("text", text).put("role", if (heading) "heading" else "text")
                             .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
                             .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)
                             .put("background", textBackground(rx, ry, rw, rh) ?: JSONObject.NULL)

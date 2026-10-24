@@ -177,6 +177,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -2413,7 +2414,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             now = playarrNow()
         }
     }
-    Row(modifier.offset(1.dp, 1.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.2.dp)) {
+    Row(modifier.offset(1.dp, 1.dp).parityBox("container", background = WebBackground), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.2.dp)) {
         Text(
             now.format(DateTimeFormatter.ofPattern("HH:mm")),
             color = WebInk,
@@ -3466,7 +3467,6 @@ internal fun ExperienceMediaRail(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (isTelevision && railIndex > 0) Modifier.padding(bottom = 2.dp) else Modifier)
             .onFocusChanged { if (it.hasFocus) onRailFocused() }
     ) {
         if (isTelevision) {
@@ -3482,7 +3482,7 @@ internal fun ExperienceMediaRail(
                 fontWeight = FontWeight(610),
                 letterSpacing = (-0.52992).sp,
                 lineHeight = 26.5.sp,
-                modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() },
+                modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() - (if (railIndex > 0) 2.2.dp.toPx() else 0f) }.semantics { heading() },
             )
         } else {
             // Web phone rail heading: 24 px tall, 16 px / 610; the active rail's title is drawn 1.16x, lifted 1 px.
@@ -3666,7 +3666,6 @@ internal fun ExperienceLandscapeCard(
     Box(
         modifier = modifier
             .width(width)
-            .parityBox("link", background = WebBackground, label = listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "))
             .then(
                 if (webPhone) {
                     Modifier.graphicsLayer { scaleX = scale; scaleY = scale; translationY = 0f }
@@ -3704,7 +3703,7 @@ internal fun ExperienceLandscapeCard(
             webPhoneRemoteFocus -> Modifier.mediaCardLift(liftActive, webPhoneMotion)
             else -> Modifier
         },
-    )) {
+    ).parityBox("link", if (webTvLibrary) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary) 12f else 0f, background = WebSurface, fit = if (webTvLibrary || !webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
         WebShadowedBox(
             shadows = if (webPhone) webCardShadows(selected || visualFocus, webHome, webSearch) else if (webTvStyle) (if (visualFocus) (if (webTvLibrary) webCardFocusShadows else webRemoteFocusShadows) else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
@@ -3712,7 +3711,6 @@ internal fun ExperienceLandscapeCard(
             // Web `--card-glow-color`: brand-strong in light, brand-ink in dark (the palette's card glow), on TV as on the phone.
             focusGlowColor = if (webPhone || webTvStyle) PlayarrWebTheme.palette.phoneCardGlow else null,
             modifier = Modifier.fillMaxWidth()
-                .parityBox("container", radius = if (webTvStyle) 12.48f else 10f, background = WebSurfaceSoft)
                 .aspectRatio(if (homeView == PlayarrHomeViewPreference.Cover) 2f / 3f else 16f / 9f)
                 .then(
                     if (stackCount > 1) {
@@ -3733,7 +3731,8 @@ internal fun ExperienceLandscapeCard(
                         Modifier
                     },
                 )
-                .scale(artScale),
+                .scale(artScale)
+                .parityBox("container", radius = if (webTvStyle) 12.48f else 10f, background = WebSurfaceSoft),
             innerModifier = Modifier.background(if (webSearch) WebSurfaceStrong else WebSurfaceSoft)
                 .then(if (!webPhone && !webTvStyle && (focused || selected)) Modifier.border(1.dp, WebInk.copy(alpha = 0.62f), RoundedCornerShape(10.dp)) else Modifier),
         ) {
@@ -3760,8 +3759,8 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.28f))) {
-                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().background(WebAccent))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) 3.08.dp else 3.dp).parityBox("img", "${(it.fraction * 100).toInt()}% watched", background = if (webIsDark) Color(0xFF5A5559) else Color(0xFFB6AEB1)).background(Color.White.copy(alpha = 0.28f))) {
+                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBox("container", background = WebAccent).background(WebAccent))
                 }
             }
             if (showUnwatched && stackCount <= 1 && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
@@ -3786,12 +3785,12 @@ internal fun ExperienceLandscapeCard(
             // A tablet takes the viewport's own clamp: title clamp(8.8, 0.62 vw, 12.48) and the fixed 0.72 rem (11.52 px) gap, in stage units.
             val tabletCard = LocalStageScale.current != 1f
             val titleSize = if (tabletCard) webVw(8.8f, 0.62f, 12.48f).value.sp else 11.904.sp
-            Text(displayTitle, color = WebInk, fontSize = titleSize, fontWeight = FontWeight(610), letterSpacing = if (tabletCard) 0.sp else (-0.17856).sp, lineHeight = if (tabletCard) titleSize * 1.504f else 17.9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletCard) (11.52f / LocalStageScale.current).dp else 11.5.dp, start = 1.9.dp))
+            Text(displayTitle, color = WebInk, fontSize = titleSize, fontWeight = FontWeight(610), letterSpacing = if (tabletCard) 0.sp else (-0.17856).sp, lineHeight = if (tabletCard) titleSize * 1.504f else 17.9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletCard) (11.52f / LocalStageScale.current).dp else 9.9.dp, start = 1.9.dp))
         } else if (webTvStyle) {
             // Web `.tv-home-card` copy: strong 11.328 px / 630, small 8.64 px, 9.9 px under the art.
             // Static web refs: strong 11.904 px / 610 with -0.18 px tracking, small 8.832 px / 400 (both white under the focused card).
-            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = 11.904.sp, fontWeight = FontWeight(610), letterSpacing = (-0.17856).sp, lineHeight = 17.856.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 9.9.dp))
-            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = 8.832.sp, lineHeight = 13.248.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp))
+            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = 11.904.sp, fontWeight = FontWeight(610), letterSpacing = (-0.17856).sp, lineHeight = 17.856.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 9.9.dp, start = 1.9.dp))
+            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = 8.832.sp, lineHeight = 13.248.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp, start = 1.9.dp))
         } else if (webPhone && webHome) {
             // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
             Text(
@@ -3890,6 +3889,7 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
     Box(
         modifier
             .size(size)
+            .parityBox("img", label, 50f, background = UnwatchedDotColour)
             // Web `.tv-watch-unseen` box-shadow: `0 2px 9px rgba(31,14,20,.45), 0 0 0 1px brand 35%` (phone only for now).
             .then(if (halo) Modifier
                 .shadow(4.dp, CircleShape, clip = false, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
@@ -4719,7 +4719,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             val shownLetter = if (activeLetter == "#") (filteredWorks.getOrNull(gridState.firstVisibleItemIndex) ?: selected).sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
-                            Box(Modifier.size(44.dp * alphaCss), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp * alphaCss).parityBox("button", if (letter == "#") "Numbers and symbols" else letter, 50f, background = WebSurface), contentAlignment = Alignment.Center) {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp * alphaCss)
@@ -7712,8 +7712,8 @@ private fun WebEpisodeDetailCard(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
             )
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.28f))) {
-                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().background(WebAccent))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBox("img", "${(it.fraction * 100).toInt()}% watched", background = if (webIsDark) Color(0xFF5A5559) else Color(0xFFB6AEB1)).background(Color.White.copy(alpha = 0.28f))) {
+                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBox("container", background = WebAccent).background(WebAccent))
                 }
             }
             if (available && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
