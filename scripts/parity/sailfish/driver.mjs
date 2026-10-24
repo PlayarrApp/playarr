@@ -5,7 +5,7 @@
 // `controlvm keyboardputscancode`. D-pad checks read the app's QML focus and route telemetry.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, chmodSync, mkdirSync, mkdtempSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { appIdentityReceipt, cleanupAppProcessScript, newProcessMarker, parseAppProcesses, requireSingleAppProcess, scanAppProcessesScript } from "./process.mjs";
 import { formatOwnedDiagnostics, ownedDiagnosticCommand, preserveBeforeCleanup, requireRouteReady, routeReadinessProbe, readOwnedRouteLog, serializeSteps } from "./route-readiness.mjs";
@@ -59,11 +59,15 @@ export async function createDriver() {
     } finally { ownedProcess = null; }
   }
   // Restart the app with a smoke script; every run starts with the theme so it holds without a stored preference.
+  let pendingSettle = 12;
   const launch = async (steps, detail = null) => {
     const marker = newProcessMarker();
     const resolvedSteps = typeof steps === "function" ? steps(marker) : steps;
     // Detail refs are at the page top, but the series page scrolls itself to the next-up episode.
-    const checkedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id)), "js:pageStack.currentPage.scrollTop()"] : resolvedSteps;
+    const probedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id)), "js:pageStack.currentPage.scrollTop()"] : resolvedSteps;
+    // Layout export (docs/parity/LAYOUT.md) runs as the last step, at the end of the settle time, in the state that is captured.
+    const dumpAt = Math.max(probedSteps.length + 1, Math.ceil((pendingSettle - 4) / 1.5));
+    const checkedSteps = [...probedSteps, ...Array(Math.max(0, dumpAt - probedSteps.length - 1)).fill("wait"), "js:layoutDump()"];
     const script = serializeSteps(theme, checkedSteps);
     writeFileSync(join(tmp, "steps"), script);
     execFileSync("scp", ["-i", env.PLAYARR_SF_SSH_KEY, "-P", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", join(tmp, "steps"), `defaultuser@${host}:/run/user/100000/pa-steps.txt`]);
@@ -141,6 +145,7 @@ export async function createDriver() {
     await launch((marker) => {
       const planned = plan(route, screenId, marker);
       settle = planned[1];
+      pendingSettle = settle;
       return planned[0];
     }, detail);
     // The scroll-to-top step is the last of 12 steps 1.5 s apart (about 21 s after launch).
@@ -196,6 +201,18 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     return ownedProcess ? parseParityEvents(readParityLog(ssh, ownedProcess)).player : null;
   }
 
+  function writeLayout(file) {
+    const log = readOwnedRouteLog(ssh, ownedProcess);
+    const lines = log.split(/\r?\n/).filter((l) => l.includes("LAYOUTEL|"));
+    const elements = lines.flatMap((l) => JSON.parse(l.slice(l.indexOf("LAYOUTEL|") + 9)));
+    const end = log.match(/LAYOUTEND\|([\d.]+)\|([\d.]+)/);
+    if (!elements.length || !end) throw new Error("layout export produced no elements");
+    const dir = join(dirname(dirname(file)), "layout", theme);
+    mkdirSync(dir, { recursive: true });
+    const doc = { screen: basename(file, ".png"), theme, viewport: { w: Math.round(Number(end[1])), h: Math.round(Number(end[2])), dpr: 768 / 390 }, clockPinned: true, elements };
+    writeFileSync(join(dir, `${doc.screen}.json`), `${JSON.stringify(doc)}\n`);
+  }
+
   return {
     async start() {
       verifiedDeviceTestUser = false;
@@ -218,7 +235,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     },
     async stop() { await cleanupOwnedProcess(); },
     async setTheme(t) { theme = t; },
-    async home() { if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified"); await launch(["wait"]); await sleep(12000); },
+    async home() { if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified"); pendingSettle = 12; await launch(["wait"]); await sleep(12000); },
     async key(name, { long } = {}) {
       if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified");
       const keysym = keyCommand(name);
@@ -273,6 +290,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
       }
       vbox("screenshotpng", file);
       if (!existsSync(file)) throw new Error("capture failed");
+      writeLayout(file);
     },
     // Plays case.file straight in the player and reads the engine position from the app's own log.
     supports: { nowPlaying: true },
