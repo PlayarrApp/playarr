@@ -221,7 +221,7 @@ internal static class Ui
     /// An image drawn at exactly (w, h) design px with object-fit: cover (centre crop) and a high-quality downscale filter, so the TV
     /// resamples as little and as well as the browser does (owner ruling: art scales exactly as web).
     /// </summary>
-    public static ImageView Remote(string file, float w, float h, SamplingModeType sampling = SamplingModeType.Lanczos)
+    public static ImageView Remote(string file, float w, float h, SamplingModeType sampling = SamplingModeType.BoxThenLinear)
     {
         var map = new PropertyMap();
         map.Add(Visual.Property.Type, new PropertyValue((int)Visual.Type.Image));
