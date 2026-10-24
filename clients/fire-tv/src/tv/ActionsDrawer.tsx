@@ -29,10 +29,10 @@ export function playableLeaves(detail: Pick<WorkDetail, 'media_file_id' | 'runti
   return detail.media_file_id ? [{mediaFileId: detail.media_file_id, runtimeMs: detail.runtime_ms ?? 0}] : [];
 }
 
-/** Web `.media-context-actions`: 68 px rows, 14 px gap, the first row 35 px below the drawer's content top. */
+/** Web `.media-context-actions`: 68 px rows, 14 px gap, the first row 31.2 px below the first section's label slot (221 px from the top under a two-line title). */
 const ROW_H = 68;
 const ROW_PITCH = 82;
-const ROWS_TOP = 35;
+const ROWS_TOP = 31.2;
 
 export function ActionsDrawer({work, onClose, onOpen, onAddToPlaylist}: {work: Work; onClose: () => void; onOpen: () => void; onAddToPlaylist: () => void}): React.ReactElement {
   const client = useApiClient();

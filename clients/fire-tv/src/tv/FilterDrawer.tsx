@@ -1,8 +1,8 @@
 /**
  * The right-hand filter drawer (web `.tv-filter-drawer`, 360 px wide): the kicker and title with a round close button, then
  * sections of choice chips. Chips are 84 x 56 in three columns (130 x 56 in two for the view options), 8 px apart; focus and
- * the selected state both fill the chip with the ink colour and grow it 2.5%. The section labels follow the chips with no
- * gap, as measured on the web. Content longer than the screen scrolls with the shared edge fades.
+ * the selected state both fill the chip with the ink colour and grow it 2.5%. A section is 12 px label-to-control and 30.2 px
+ * from the next label (web's flex gap, measured 2026-10-24). Content longer than the screen scrolls with the shared edge fades.
  *
  * Back closes the drawer (a layered Back).
  */
@@ -28,7 +28,9 @@ const LABEL_H = 14.4;
 const LABEL_GAP = 12;
 const CHIP_H = 56;
 const CHIP_GAP = 8;
-const FIRST_SECTION_Y = 159.4;
+const FIRST_SECTION_Y = 163.4;
+const SECTION_GAP = 30.2;
+const SELECT_H = 58.8;
 
 export type ViewIcon = 'list' | 'screen' | 'cover';
 
@@ -83,12 +85,12 @@ function layoutSections(sections: DrawerSection[]): {tops: number[]; end: number
   for (const section of sections) {
     tops.push(y);
     if ('rows' in section) {
-      y += LABEL_H + LABEL_GAP + section.rows.length * (CHIP_H + CHIP_GAP) - CHIP_GAP;
+      y += LABEL_H + LABEL_GAP + section.rows.length * (CHIP_H + CHIP_GAP) - CHIP_GAP + SECTION_GAP;
     } else if ('chips' in section) {
       const rows = Math.ceil(section.chips.length / section.columns);
-      y += LABEL_H + LABEL_GAP + rows * (CHIP_H + CHIP_GAP) - CHIP_GAP;
+      y += LABEL_H + LABEL_GAP + rows * (CHIP_H + CHIP_GAP) - CHIP_GAP + SECTION_GAP;
     } else if ('select' in section) {
-      y += LABEL_H + LABEL_GAP + CHIP_H;
+      y += LABEL_H + LABEL_GAP + SELECT_H + SECTION_GAP;
     } else {
       y += section.height;
     }
@@ -187,7 +189,7 @@ export function FilterDrawer({kicker, title, closeLabel, onClose, sections, foot
 }
 
 /** The drawer's close button. It takes focus itself when the drawer opens, even when a tile of the action column held it. */
-export function CloseButton({label, onPress, onFocused, x = 1824.7 - DRAWER_X, takesFocus = true}: {label: string; onPress: () => void; onFocused?: () => void; x?: number; takesFocus?: boolean}): React.ReactElement {
+export function CloseButton({label, onPress, onFocused, x = 1826 - DRAWER_X, takesFocus = true}: {label: string; onPress: () => void; onFocused?: () => void; x?: number; takesFocus?: boolean}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   const ref = useRef<View>(null);
@@ -211,18 +213,21 @@ export function CloseButton({label, onPress, onFocused, x = 1824.7 - DRAWER_X, t
       style={{
         position: 'absolute',
         left: u(x),
-        top: u(65.2),
-        width: u(50.6),
-        height: u(52.8),
+        top: u(54),
+        width: u(48),
+        height: u(50),
         borderRadius: 999,
+        borderWidth: 1,
+        borderColor: mix(colour.line, 0.76),
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: focused ? colour.ink : colour.surfaceSoft,
+        backgroundColor: colour.surfaceSoft,
       }}
     >
-      <T size={26.88} weight={720} lh={40} color={focused ? colour.bg : colour.ink} dy={-1}>
+      <T size={26.88} weight={720} lh={40.32} color={colour.ink} dy={-1}>
         {'×'}
       </T>
+      {focused ? <FocusRing /> : null}
     </Pressable>
   );
 }
@@ -238,7 +243,7 @@ function ViewGlyph({icon, color}: {icon: ViewIcon; color: string}): React.ReactE
       </View>
     );
   }
-  const width = icon === 'cover' ? 16 : 20;
+  const width = icon === 'cover' ? 16 : 20.5;
   return (
     <View style={{width: u(width), height: u(13), flexDirection: 'row', justifyContent: 'space-between'}}>
       {[0, 1, 2].map((i) => (
@@ -277,18 +282,18 @@ function Chip({chip, x, y, w, onReveal, focusOwner}: {chip: DrawerChip; x: numbe
         backgroundColor: lit ? colour.ink : mix(colour.surfaceSoft, 0.64),
         alignItems: 'center',
         justifyContent: 'center',
-        flexDirection: 'row',
+        flexDirection: chip.icon ? 'column' : 'row',
         paddingHorizontal: u(6),
         transform: [{scale: lit ? 1.025 : 1}],
       }}
     >
       {chip.icon ? (
-        <View style={{marginRight: u(8.8)}}>
+        <View style={{marginBottom: u(8.6)}}>
           <ViewGlyph icon={chip.icon} color={ink} />
         </View>
       ) : null}
       <View style={chip.icon ? undefined : {flexShrink: 1}}>
-        <T size={chip.icon ? 10.56 : 10.56} weight={chip.icon ? 900 : 680} lh={chip.icon ? 16.2 : 15} color={ink} style={chip.icon ? undefined : {textAlign: 'center'}}>
+        <T size={10.56} weight={chip.icon ? 900 : 680} lh={chip.icon ? 11.6 : 15.84} color={ink} style={chip.icon ? undefined : {textAlign: 'center'}}>
           {capitalise(chip.label)}
         </T>
       </View>
@@ -359,18 +364,18 @@ function SelectField({label, value, onPress, x, y, w, onReveal}: {label: string;
       accessibilityLabel={`${label}: ${value}`}
       onFocus={() => {
         setFocused(true);
-        onReveal(y, CHIP_H);
+        onReveal(y, SELECT_H);
       }}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(CHIP_H), borderRadius: u(12), borderWidth: 1, borderColor: colour.line, backgroundColor: colour.surface, flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(16)}}
+      style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(SELECT_H), borderRadius: u(12), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: mix(colour.surfaceSoft, 0.64), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(18.4)}}
     >
       <View style={{flex: 1}}>
-        <T size={10.56} weight={700} color={colour.ink} lines={1}>
+        <T size={11.84} weight={680} lh={17.76} color={colour.ink} lines={1}>
           {value}
         </T>
       </View>
-      <T size={12} weight={700} color={colour.inkMuted}>
+      <T size={11.84} weight={680} lh={17.76} color={colour.inkMuted}>
         {'\u2304'}
       </T>
       {focused ? <FocusRing radius={12} /> : null}

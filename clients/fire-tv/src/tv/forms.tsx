@@ -143,7 +143,7 @@ function SegmentButton({label, active, gap, onPress}: {label: string; active: bo
         transform: [{scale: active || focused ? 1.025 : 1}],
       }}
     >
-      <T size={10.56} weight={900} color={active ? colour.bg : colour.inkMuted}>
+      <T size={10.56} weight={900} color={active ? colour.bg : colour.inkMuted} style={{textTransform: 'capitalize'}}>
         {label}
       </T>
       {focused ? <FocusRing radius={12} /> : null}
