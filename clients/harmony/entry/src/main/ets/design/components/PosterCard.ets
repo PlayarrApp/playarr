@@ -204,6 +204,8 @@ export struct PosterCard {
   @Prop unseen: boolean = false;
   /** Phone Library caption: medium weight, the muted ink (web phone grid). */
   @Prop softCaption: boolean = false;
+  /** Phone: web focuses the first card on open, which paints its caption pure white (black in light). */
+  @Prop focusedCaption: boolean = false;
   /** Phone: draw the focus ring and glow without real focus (the Previewer never reports it); web rings the next-up episode on open. */
   @Prop ringOn: boolean = false;
 
@@ -497,7 +499,7 @@ export struct PosterCard {
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
           .letterSpacing(this.titleFontSize * -0.0154) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
-          .fontColor(toResourceColor(activeColors().ink))
+          .fontColor(this.focusedCaption ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
@@ -509,7 +511,7 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.subtitleFontSize)
           .fontWeight(FontWeight.Normal)
-          .fontColor(toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
+          .fontColor(this.focusedCaption ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .letterSpacing(0)

@@ -877,6 +877,12 @@ export struct Home {
    * `pages/DesignGallery.ets`'s own `touchRailItem` demo exactly. No
    * `.nextFocus()` wiring -- touch has no D-pad "Up escapes to the nav rail"
    * concept, `NavPill` is always visible instead (brief 9). */
+  /** Phone: web focuses the first card of the first rail on open. */
+  private isFirstTouchCard(id: string): boolean {
+    const first: HomeCardItem | undefined = this.continueWatchingItems[0] ?? (this.serverRails.length > 0 ? this.serverRails[0].items[0] : undefined);
+    return first !== undefined && first.id === id;
+  }
+
   @Builder
   private touchCardItemBuilder(item: MediaRailItem, index: number, activeRailFactor: number): void {
 
@@ -892,6 +898,7 @@ export struct Home {
       artworkRadius: 8, // web dump: 8
       titleFontSize: TOUCH_CARD_TITLE_FONT_SIZE,
       softCaption: true,
+      focusedCaption: this.isFirstTouchCard((item as HomeCardItem).id),
       subtitleFontSize: TOUCH_CARD_SUBTITLE_FONT_SIZE,
       activeRailFactor: activeRailFactor,
       onSelect: ((): void => {

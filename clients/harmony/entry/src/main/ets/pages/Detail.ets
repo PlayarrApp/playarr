@@ -199,7 +199,7 @@ import { getNavStack, popRoute, pushRoute } from '../navigation/NavStack';
 // exception pattern) --------------------------------------------------------
 
 const PLAY_BUTTON_HEIGHT_TV: number = 56;
-const PLAY_BUTTON_HEIGHT_TOUCH: number = 48;
+const PLAY_BUTTON_HEIGHT_TOUCH: number = 44;
 const PLAY_BUTTON_ICON_SIZE: number = 18;
 const PLAY_BUTTON_LABEL_SIZE: number = 16;
 const HERO_TOUCH_HEIGHT: number = 452; // web: 58 vh of the 780 vp phone
@@ -1723,11 +1723,9 @@ struct Detail {
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
   @Builder
   private playTriangle(): void {
-    Polygon({ width: 8, height: 9 })
-      .points([[0, 0], [0, 9], [8, 4.5]])
-      .fill(this.playInk())
-      .width(8)
-      .height(9)
+    Text('\u25B6').fontFamily(nunito(400)) // web draws the glyph (7.3 x 13 at 9.5 vp)
+      .fontSize(9.5)
+      .fontColor(this.playInk())
   }
 
   /** The primary play action: a simple pill (brief 5.8's "primary play

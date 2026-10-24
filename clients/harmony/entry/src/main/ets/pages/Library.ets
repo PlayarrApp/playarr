@@ -418,6 +418,8 @@ struct LibraryGridCell {
   /** Web `WatchStateOverlay` (`core/WatchState.ts`); the watch list loads after the cards. */
   @Prop unseen: boolean = false;
   @Prop progress: number = -1;
+  /** Phone: the first card of the page, which web focuses on open. */
+  firstCard: boolean = false;
 
   /** Plain (non-reactive) callback field, called with the activated card's
    * `Work.id`. */
@@ -456,6 +458,7 @@ struct LibraryGridCell {
       subtitle: this.landscape || !isTvMetrics() ? '' : releaseYearOf(this.work),
       titleFontSize: isTvMetrics() ? TV_LIBRARY_TITLE_SIZE : TOUCH_LIBRARY_TITLE_SIZE,
       softCaption: !isTvMetrics(),
+      focusedCaption: this.firstCard && !isTvMetrics(),
       unseen: this.unseen,
       progress: this.progress,
       onSelect: () => {
@@ -1037,6 +1040,7 @@ export struct Library {
                     cardHeight: this.touchCardHeightVp(),
                     cardRadius: this.gridCardRadiusVp(),
                     landscape: this.view !== 'cover',
+                    firstCard: this.items.length > 0 && this.items[0].id === work.id,
                     unseen: this.markFor(work).unseen,
                     progress: this.markFor(work).progress,
                     onSelect: (workId: string) => {
