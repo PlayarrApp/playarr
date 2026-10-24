@@ -119,7 +119,7 @@ internal static class LayoutExport
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
                 var lines = m.Multiline ? Ui.WrapLines(label.Text, m.Size, m.Weight, m.Spacing, w, 9) : null;
-                var tw = lines is not null ? lines.Max(l => Ui.TextWidth(l, m.Size, m.Weight, m.Spacing, m.Family)) : label.Text is "←" or "→" ? m.Size : label.Text is "⌄" or "⇩" or "✓" ? 0.838f * m.Size : label.Text is "▶" ? 0.769f * m.Size : Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing, m.Family); // the arrows come from a fallback font whose advance NUI reports differently; web advances one em, and 0.838 em for the check, download and chevron glyphs, 0.769 em for the play triangle
+                var tw = lines is not null ? lines.Max(l => Ui.TextWidth(l, m.Size, m.Weight, m.Spacing, m.Family)) : label.Text is "←" or "→" ? m.Size : Ui.GlyphAdvance(label.Text) is { } ga ? label.Size.Width / Ui.TextScale : Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing, m.Family); // the arrows come from a fallback font whose advance NUI reports differently; web advances one em; the check, download, chevron and play glyphs sit in a box of the web's advance (Ui.GlyphAdvance), whose measured width is exported
                 var k = child.Scale.X * Ui.TextScale; // a caption that scales with a focused card (1.045) draws its run bigger
                 tw *= k * sx; // a scaled ancestor (the focused Play button, 1.06) draws the run bigger too
                 var box = label.WidthResizePolicy == ResizePolicyType.Fixed ? w : tw;
