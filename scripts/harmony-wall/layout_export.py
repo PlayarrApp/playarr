@@ -259,7 +259,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 lh = num(attrs.get("lineHeight"), 0.0) or ch
                 raw = str(attrs.get("content", attrs.get("text"))).split("\n")
                 lines = [ln for ln in raw if ln.strip()]
-                if len(lines) == 1 and h >= min(ch, lh) * 1.6:  # wrap greedily at the box width (a box one line tall holds one line)
+                laid_out = max(1, round(h / (lh if num(attrs.get("lineHeight"), 0.0) else size * 1.364)))  # the lines ArkUI laid out, from the box height
+                if len(lines) == 1 and laid_out >= 2:  # wrap greedily at the box width
                     lines, cur = [], ""
                     for word in str(text).split():
                         trial = (cur + " " + word).strip()
@@ -269,7 +270,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                         else:
                             cur = trial
                     lines.append(cur)
-                single = str(attrs.get("maxLines", "")).strip() == "1" or len(lines) < 2
+                single = str(attrs.get("maxLines", "")).strip() == "1" or len(lines) < 2 or laid_out < 2
                 if not single:  # wrapped: web's run is the union of the line boxes, as wide as the longest line
                     widest = max(text_width(ln, size, weight, spacing, measure) for ln in lines)
                     rx, ry, rw, rh = x, y + (lh - ch) / 2, min(max(widest, 1.0), w if widest > w else widest), ch + (len(lines) - 1) * lh
@@ -277,7 +278,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     align = str(attrs.get("textAlign", "")).lower()
                     pill = bool(num(attrs.get("borderRadius"), 0.0)) or (bg is not None and bg[3] > 0.01)  # a padded pill: the run is centred in the box
                     rx = x + (w - tw) / 2 if ("center" in align or pill) else (x + w - tw if "end" in align else x)
-                    rx, ry, rw, rh = rx, y + (h - ch) / 2, tw, ch
+                    rx, ry, rw, rh = rx, (y + (lh - ch) / 2 if laid_out >= 2 and 1 < num(attrs.get("maxLines"), 0) < 1000 else y + (h - ch) / 2), tw, ch  # a box taller than its one line is top-aligned (reserved lines)
                 if len(str(text).strip()) == 1 and (str(text).isalnum() or text == "#") and bg is not None and bg[3] > 0.99 and dpr == 3 and abs(w - h) < 2:
                     parent_bg = under  # an alphabet-rail letter disc: web's text background is the page behind the disc
                 else:
