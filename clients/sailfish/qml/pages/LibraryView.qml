@@ -71,25 +71,25 @@ Item {
             GradientStop { position: 1; color: "#272227" }
         }
     }
-    // Movies dark only: the ghost of the first card's art along the left edge (web +37 at x=0, easing out over ~300 px,
-    // full down to y=420 and gone by ~640).
+    // Dark library pages: the ghost of the first card's art along the left edge, +5 at x=0 and gone by ~180 px (static web
+    // refs, movies/series/music), full down to y=420 and gone by ~540.
     LinearGradient {
         id: ghost
-        visible: Tokens.dark && root.kind === "movie"
+        visible: Tokens.dark
         width: 150 * Tokens.u; height: 320 * Tokens.u
         start: Qt.point(0, 0); end: Qt.point(width, 0)
         gradient: Gradient {
-            GradientStop { position: 0; color: "#29ffffff" }
-            GradientStop { position: 0.1; color: "#1fffffff" }
-            GradientStop { position: 0.233; color: "#14ffffff" }
-            GradientStop { position: 0.4; color: "#0effffff"} GradientStop { position: 0.667; color: "#05ffffff" }
+            GradientStop { position: 0; color: "#06ffffff" }
+            GradientStop { position: 0.15; color: "#05ffffff" }
+            GradientStop { position: 0.3; color: "#02ffffff" }
+            GradientStop { position: 0.6; color: "#00ffffff" }
             GradientStop { position: 1; color: "#00ffffff" }
         }
         layer.enabled: visible
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: ghost.width; height: ghost.height
-                gradient: Gradient { GradientStop { position: 0; color: "white" } GradientStop { position: 0.66; color: "white" } GradientStop { position: 1; color: "transparent" } }
+                gradient: Gradient { GradientStop { position: 0; color: "white" } GradientStop { position: 0.66; color: "white" } GradientStop { position: 0.86; color: "transparent" } GradientStop { position: 1; color: "transparent" } }
             }
         }
     }
@@ -97,12 +97,14 @@ Item {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
         width: 43.7 * Tokens.u; height: width
+        property bool layoutSkip: true
+        property var layoutEls: [ { role: "button", text: qsTr("Filters"), dx: 0, dy: -1.4, w: 44, h: 44, radius: 14 }, { role: "image", dx: 13, dy: 11.6, w: 18, h: 18 } ]
         onClicked: {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
         }
         Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
-        Image { anchors.centerIn: parent; width: 15 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
+        Image { anchors.centerIn: parent; property bool layoutSkip: true; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
     }
     PageTitle {
         id: heading
@@ -118,14 +120,13 @@ Item {
         color: Tokens.brandInk
         font.family: Tokens.family820
         font.letterSpacing: 1 * Tokens.u
-        font.pixelSize: 10.2 * Tokens.u
+        font.pixelSize: Tokens.fs(10.2)
     }
     WorkGrid {
         id: grid
         anchors { top: count.bottom; topMargin: -24 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
         works: root.works
         mode: root.viewMode
-        restRing: true
         busy: root.busy
         done: root.total >= 0 && root.works.length >= root.total
         topMargin: 27 * Tokens.u   // 24 px of ring and glow room above the first row (the grid starts 24 px higher), then the 3 px gap
@@ -168,17 +169,19 @@ Item {
             model: root.alphabet
             MouseArea {
                 width: 26 * Tokens.u; height: 19 * Tokens.u
+                property bool layoutSkip: true
+                property var layoutEls: [ { role: "button", text: modelData === "#" ? qsTr("Numbers and symbols") : modelData, dx: -9, w: 44, h: 19, radius: 50 } ]
                 onClicked: root.jumpTo(modelData)
                 Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
                     visible: root.activeLetter === modelData
-                    x: -4 * Tokens.u; y: (index === 0 ? -1 : -8) * Tokens.u; width: parent.width + 8 * Tokens.u; height: parent.height + 14 * Tokens.u; clip: true
-                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? 1 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
-                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? 1 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
+                    x: -4 * Tokens.u; y: (index === 0 ? 2.4 : -8) * Tokens.u; width: parent.width + 8 * Tokens.u; height: parent.height + (index === 0 ? 10.6 : 14) * Tokens.u; clip: true
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
                 }
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
-                            color: Tokens.dark ? "#d4d1d4" : Qt.rgba(0.22, 0.15, 0.13, 0.78) }   // web: ink at 78%
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.family610; font.pixelSize: 8.96 * Tokens.u
-                        color: root.activeLetter === modelData ? (Tokens.dark ? "#1b181b" : "#ffffff") : Tokens.inkSoft }
+                            color: Tokens.primary }   // web: the ink plate of the active letter
+                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.96); property color layoutBg: Tokens.bg
+                        color: root.activeLetter === modelData ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft }
             }
         }
     }

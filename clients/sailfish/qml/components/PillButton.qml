@@ -18,6 +18,22 @@ MouseArea {
     property color fillInk: Tokens.ink
     property color textInk: Tokens.ink   // label colour of the standard look (calendar toolbar pills are softer on web)
     property bool outlineOnly: false
+    // Layout export: "" = the box is a button (default); "text" = the web exports only the label as the button; "icon" = a 44 px link box
+    // (radius 50 %) around a glyph label.
+    property string layoutMode: ""
+    property real labelSpacing: 0
+    property real contentGap: 9
+    property real padCss: 16
+    property real contentDy: 0
+    property real iconDy: 0
+    property int layoutWeightV: 0
+    property string parityRole: "button"
+    property string layoutBgS: primary ? String(Tokens.primary) : lift ? (Tokens.dark ? "#1f1c1f" : "#fefefd") : ""
+    property int layoutRadiusV: 0
+    property string layoutLabel: ""
+    property bool layoutSkip: layoutMode !== ""
+    property int layoutRadius: layoutRadiusV
+    property var layoutEls: layoutMode === "icon" ? [ { role: "button", text: layoutLabel, dx: (width / Tokens.u - 44) / 2, dy: (height / Tokens.u - 44) / 2, w: 44, h: 44, radius: 50 } ] : []
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -28,7 +44,7 @@ MouseArea {
     property bool restRing: false   // web draws the focus ring on the first focusable control at rest (calendar Today)
     property bool lift: false   // web detail actions: box-shadow 0 14px 38px rgba(56,38,33,.12)
     property bool natural: icon !== "" || iconImage !== ""
-    readonly property real naturalWidth: Math.ceil(iconW + 9 * Tokens.u + tm.implicitWidth) + 32 * Tokens.u
+    readonly property real naturalWidth: Math.ceil(iconW + contentGap * Tokens.u + tm.implicitWidth) + 2 * padCss * Tokens.u
     implicitHeight: 40 * Tokens.u
     implicitWidth: natural ? naturalWidth : label.implicitWidth + 40 * Tokens.u
     RectangularGlow {
@@ -38,6 +54,7 @@ MouseArea {
         color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12)
     }
     Rectangle {
+        property bool layoutSkip: root.layoutMode !== ""
         anchors.fill: parent
         radius: height / 2
         color: root.outlineOnly ? Tokens.surface : root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
@@ -50,12 +67,12 @@ MouseArea {
         anchors { fill: parent; margins: -4 * Tokens.u }
         radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary
     }
-    Label { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.pixelSize: root.fontSize; }
+    Label { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.letterSpacing: root.labelSpacing; font.pixelSize: root.fontSize; }
     Row {
         id: content
         visible: root.icon !== "" || root.iconImage !== ""
-        anchors.centerIn: parent
-        spacing: 9 * Tokens.u
+        anchors.centerIn: parent; anchors.verticalCenterOffset: root.contentDy * Tokens.u
+        spacing: root.contentGap * Tokens.u
         Image {
             visible: root.iconImage !== ""
             anchors.verticalCenter: parent.verticalCenter
@@ -65,20 +82,24 @@ MouseArea {
         Label { renderType: Text.NativeRendering;
             id: iconLbl
             visible: root.iconImage === ""
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: root.iconDy * Tokens.u
             text: root.icon
+            property real cssSize: (root.iconSize + 0.5) / Tokens.u
+            property real layoutTextH: Math.round(1.011 * cssSize) + Math.round(0.353 * cssSize)
+            font.family: Tokens.family400
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
         }
         Label { renderType: Text.NativeRendering;
             id: label2
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 32 * Tokens.u - root.iconW - 9 * Tokens.u)
+            width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 2 * root.padCss * Tokens.u - root.iconW - root.contentGap * Tokens.u)
             text: label.text
             wrapMode: Text.Wrap
             maximumLineCount: 2
             font.family: root.labelFamily
             font.pixelSize: root.fontSize
+            font.letterSpacing: root.labelSpacing
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
         }
     }
@@ -88,11 +109,14 @@ MouseArea {
         anchors.centerIn: parent
         font.family: root.labelFamily
         font.pixelSize: root.fontSize
+        property int layoutWeight: root.layoutWeightV
         width: parent.width - 16 * Tokens.u
         wrapMode: Text.Wrap
         maximumLineCount: 2
         horizontalAlignment: Text.AlignHCenter
         font.weight: Font.DemiBold
+        property string parityRole: root.layoutMode === "text" ? "button" : "text"
+        property int layoutRadius: root.layoutMode === "text" ? 999 : 0
         color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
     }
 }

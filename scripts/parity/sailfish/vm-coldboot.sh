@@ -14,7 +14,8 @@ sf() { ssh -i "$PLAYARR_SF_SSH_KEY" -p "${PLAYARR_SF_SSH_PORT:-2223}" -o StrictH
 # A cold boot takes 2 to 4 minutes before ssh answers and the lock screen is up.
 for _ in $(seq 1 120); do sf true 2>/dev/null && break; sleep 3; done
 sf 'for u in lipstick pulseaudio; do mkdir -p /etc/systemd/user/$u.service.d; printf "[Service]\nTimeoutStartSec=10min\n" > /etc/systemd/user/$u.service.d/timeout.conf; done'
-for _ in $(seq 1 120); do sf 'journalctl -b --no-pager | grep -q "Started The lipstick security prompt UI"' && break; sleep 3; done
+# The journal is small and rotates, so the start message is not a reliable marker on a VM that has been up for hours: wait for lipstick itself.
+for _ in $(seq 1 120); do sf 'ps -eo comm | grep -qx lipstick' && break; sleep 3; done
 sf 'export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 D="dbus-send --system --print-reply --type=method_call --dest=com.nokia.mce /com/nokia/mce/request"
 $D com.nokia.mce.request.req_display_state_on

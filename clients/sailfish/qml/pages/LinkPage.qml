@@ -24,7 +24,7 @@ PlayarrPage {
             text: page.adding ? qsTr("Add a profile") : qsTr("Sign in")
             color: Tokens.ink
             font.family: Tokens.family
-            font.pixelSize: 34 * Tokens.u
+            font.pixelSize: Tokens.fs(34)
         }
         Label { renderType: Text.NativeRendering;
             width: parent.width - 2 * Tokens.pad
@@ -34,7 +34,7 @@ PlayarrPage {
             text: qsTr("Scan the code with your phone, or open the link on any device and enter the code.")
             color: Tokens.inkSoft
             font.family: Tokens.family
-            font.pixelSize: 15 * Tokens.u
+            font.pixelSize: Tokens.fs(15)
         }
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -62,14 +62,14 @@ PlayarrPage {
             color: Tokens.ink
             font.family: "monospace"
             font.letterSpacing: 6 * Tokens.u
-            font.pixelSize: 36 * Tokens.u
+            font.pixelSize: Tokens.fs(36)
         }
         Label { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             text: "playarr.app/link"
             color: Tokens.inkMuted
             font.family: Tokens.family
-            font.pixelSize: 15 * Tokens.u
+            font.pixelSize: Tokens.fs(15)
         }
         Label { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter

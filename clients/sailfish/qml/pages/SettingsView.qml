@@ -10,15 +10,15 @@ Item {
     signal goHome()
     signal opened(var work)
     readonly property var rows: [
-        { id: "appearance", title: qsTr("Appearance"), hint: qsTr("Choose this device's theme and home screen artwork") },
+        { id: "appearance", title: qsTr("Appearance"), hint: qsTr("Choose this device's theme and home screen artwork.") },
         { id: "avatar", title: qsTr("Profile avatar"), hint: qsTr("Choose how your profile appears on this device.") },
         { id: "language", title: qsTr("Language"), hint: qsTr("Follow this device or keep a language fixed.") },
-        { id: "player", title: qsTr("Player"), hint: qsTr("Choose how Playarr should start quality, subtitles and audio") },
-        { id: "server", title: qsTr("Server connection"), hint: qsTr("Combine libraries from multiple servers in one Playarr") },
+        { id: "player", title: qsTr("Player"), hint: qsTr("Choose how Playarr should start quality, subtitles and audio.") },
+        { id: "server", title: qsTr("Server connection"), hint: qsTr("Combine libraries from multiple servers in one Playarr interface.") },
         { id: "lock", title: qsTr("Profile lock"), hint: qsTr("Require a four-digit PIN before switching profiles.") },
-        { id: "calendar", title: qsTr("Calendar"), hint: qsTr("Upcoming releases from your libraries") },
-        { id: "watchlist", title: qsTr("Watchlist"), hint: qsTr("Titles you want to watch, on every device") },
-        { id: "requests", title: qsTr("Requests"), hint: qsTr("Titles you asked for and their progress") }
+        { id: "calendar", title: qsTr("Calendar"), hint: qsTr("Upcoming releases from your libraries.") },
+        { id: "watchlist", title: qsTr("Watchlist"), hint: qsTr("Titles you want to watch, on every device.") },
+        { id: "requests", title: qsTr("Requests"), hint: qsTr("Titles you asked for and their progress.") }
     ]
     function open(id) {
         if (id === "calendar" || id === "watchlist") goTo(id)
@@ -26,7 +26,7 @@ Item {
         else pageStack.push(Qt.resolvedUrl("SettingsSubPage.qml"), { section: id })
     }
 
-    PageTitle { id: head; y: 4 * Tokens.u; restRing: true; title: qsTr("Preferences"); onBackClicked: page.goHome() }
+    PageTitle { id: head; y: 4 * Tokens.u; backLabel: qsTr("Settings"); backRole: "button"; title: qsTr("Preferences"); onBackClicked: page.goHome() }
     SilicaListView {
         id: list
         anchors { top: head.bottom; topMargin: 14 * Tokens.u; left: parent.left; right: parent.right; bottom: parent.bottom }
@@ -39,24 +39,28 @@ Item {
             property bool navigationInitialFocus: index === 0
             property int parityRail: 0
             property int parityIndex: index
+            property bool layoutSkipSelf: true
+            property var layoutEls: [ { role: "link", text: ("0" + (index + 1)).slice(-2) + " " + modelData.title + " " + modelData.hint + " \u2192", dx: 16, w: 358, h: 88, bg: index === 0 ? String(Tokens.dark ? "#312a30" : Tokens.surfaceSoft) : String(Tokens.bg) },
+                { role: "text", text: "\u2192", dx: index === 0 ? 346.2 : 341.2, dy: 29.41, w: 20.8, h: 28, fontSize: 20.8, fontWeight: 400, color: String(index === 0 ? Tokens.ink : Tokens.inkSoft), bg: index === 0 ? String(Tokens.dark ? "#312a30" : Tokens.surfaceSoft) : String(Tokens.bg) } ]
+            property bool layoutSkip: true
             width: list.width
-            height: 87 * Tokens.u
+            height: 88 * Tokens.u
             onClicked: page.open(modelData.id)
             function navigationActivate() { page.open(modelData.id) }
             Rectangle { anchors { fill: parent; leftMargin: Tokens.pad; rightMargin: Tokens.pad } color: Tokens.dark ? (index === 0 ? "#312a30" : Tokens.surfaceStrong) : Tokens.surfaceSoft; opacity: index === 0 ? 1 : (parent.pressed ? 0.5 : 0) }
-            Label { x: 27.5 * Tokens.u; y: 18 * Tokens.u; text: (index + 1 < 10 ? "0" : "") + (index + 1); color: Tokens.inkMuted; font.family: Tokens.family820; font.pixelSize: 8 * Tokens.u; renderType: Text.NativeRendering }
+            Label { x: 28 * Tokens.u; y: 16 * Tokens.u; text: (index + 1 < 10 ? "0" : "") + (index + 1); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(8.96); renderType: Text.NativeRendering }
             Column {
-                anchors { left: parent.left; leftMargin: 71 * Tokens.u; right: arrow.left; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
-                spacing: 4 * Tokens.u
-                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: 16.5 * Tokens.u; renderType: Text.NativeRendering }
-                Label { width: parent.width; text: modelData.hint; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 9.5 * Tokens.u; renderType: Text.NativeRendering }
+                x: 72 * Tokens.u; y: 22.92 * Tokens.u; width: arrow.x - x - 12 * Tokens.u
+                spacing: 2.39 * Tokens.u
+                Label { width: parent.width; height: 22 * Tokens.u; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.fam(480); font.letterSpacing: -1.35; font.pixelSize: Tokens.fs(16); renderType: Text.NativeRendering }
+                Label { width: parent.width; height: 15 * Tokens.u; text: modelData.hint; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(10.88); renderType: Text.NativeRendering }
             }
             // The web's "→" is a thin system-font glyph (Nunito has none): 25 px shaft, small head; the active row's arrow is ink and 10 px further right.
             Canvas {
                 id: arrow
                 width: 13 * Tokens.u; height: 7 * Tokens.u
                 anchors { right: parent.right; rightMargin: (31.5 - (index === 0 ? 5 : 0)) * Tokens.u; verticalCenter: parent.verticalCenter; verticalCenterOffset: 2.8 * Tokens.u }
-                property color ink: index === 0 ? Tokens.ink : Tokens.inkMuted
+                property color ink: index === 0 ? Tokens.ink : Tokens.inkSoft
                 onInkChanged: requestPaint()
                 onPaint: {
                     var c = getContext("2d"), k = Tokens.u / 2; c.clearRect(0, 0, width, height); c.scale(k, k)

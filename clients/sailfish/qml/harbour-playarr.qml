@@ -3,6 +3,7 @@ import Sailfish.Silica 1.0
 import "components"
 import "pages"
 import "startRoute.js" as StartRoute
+import "components/LayoutDump.js" as LayoutDump
 
 ApplicationWindow {
     id: app
@@ -19,6 +20,12 @@ ApplicationWindow {
     }
 
     Component.onCompleted: Tokens.u = Screen.width / 390
+
+    // Parity layout export (docs/parity/LAYOUT.md); only a PLAYARR_STEPS `js:layoutDump()` step calls it.
+    function layoutDump() {
+        var w = Tokens.weightOfFamily()
+        LayoutDump.dump(app.contentItem, Tokens.u, w, function (line) { console.log(line) })
+    }
 
     function showStart() {
         pageStack.replaceAbove(null, startPage(Api.signedIn, Api.profiles.length))

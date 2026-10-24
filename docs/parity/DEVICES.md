@@ -153,7 +153,7 @@ D-pad column as n/a.
 | iPad | iOS simulator (iPad) | As iPhone | As iPhone | Own size; compared with web mobile at that size | `ios-tablet` |
 | Android phone | Android Emulator, phone image | `adb shell input` | `adb exec-out screencap` | Software codecs | `android-phone` |
 | HarmonyOS phone | DevEco Previewer | Previewer input | Previewer screenshot | UI only, no real playback | `harmony-phone` |
-| Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad | Display capture over VNC | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
+| Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad (touch phone) | `VBoxManage controlvm screenshotpng` (VM runs `VBoxHeadless --vrde off`, no VNC or RDP listener) | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
 | Nura (postmarketOS) | `pmbootstrap` qemu-amd64, headless (no VNC) | QEMU QMP tablet taps and the app's route control file; touch phone, so no D-pad checks (`dpadNA`) | QEMU `screendump` over QMP | Slow; software rendering. Reproduce: `scripts/parity/nura/run.sh <outdir>` (see `scripts/parity/nura/README.md`) | `postmarketos` |
 
 ## Sailfish emulator: cold boot
@@ -164,6 +164,21 @@ and loop. Once, with the VM powered off: `VBoxManage storagectl <vm> --name SATA
 `PLAYARR_SF_SSH_KEY=<key> scripts/parity/sailfish/vm-coldboot.sh` (raises the guest start timeouts, waits for the lock
 screen, unlocks). Boot takes 2 to 4 minutes. If `VBoxHeadless` ignores SIGTERM at the BIOS stage, kill that PID and let
 the service restart.
+
+### Sailfish: one-command parity run
+
+The VM starts headless (`VBoxHeadless --startvm <vm> --vrde off`), so nothing listens for VNC or RDP. Sign in once per
+session (or whenever the static server has restarted) with `node scripts/parity/sailfish/sign-in.mjs`, which logs in as the
+static-server account (password from the secrets file, never printed) and writes a fresh app config over ssh. Then:
+
+`PLAYARR_SF_SSH_KEY=<key> PLAYARR_SF_SCRATCH=<scratch dir> PLAYARR_SF_VBOXMANAGE=<VBoxManage> PLAYARR_SF_OUT=<legend dir>/sailfish/dev PARITY_CLIENT=sailfish PARITY_LOCK_DIR=<scratch>/lock PLAYARR_SF_SKIP_SIGNIN=1 scripts/parity/sailfish/run.sh`
+
+(`VBOX_USER_HOME` must point at the VirtualBox home of the VM; leave `PLAYARR_SF_SKIP_SIGNIN` unset to sign in first.) The
+script runs `vm-coldboot.sh`, then `suite-run.mjs --via route --only screens` for both themes with the pinned capture
+clock, and writes `<out>/<theme>/<screen>.png`. Extra arguments go to `suite-run.mjs` (for example `--screens home,movies`).
+Every capture also writes `<out>/layout/<theme>/<screen>.json` through `LayoutDump.js`, called by a `layoutDump()` step and scored with `scripts/parity/layout-score.mjs`. These exports currently fail the measurement audit: declared wrapper geometry and estimated text bounds can produce 100% without matching the native drawing. See [the Sailfish measurement audit](SAILFISH-AUDIT.md) before accepting a layout result. `scripts/parity/sailfish/build-fonts.sh` builds the static Nunito Sans weights the client embeds. There are no D-pad checks: the phone has no D-pad. Detail pages are scrolled to the top before the shot, like the web refs.
+
+The standard run covers 15 screens. Capture the additional calendar-link screen in both themes with `node scripts/parity/sailfish/capture-extra.mjs <out>` using the same environment. A complete 16-screen acceptance run must include this extra capture and repeat it as well.
 
 ## Downloads: which platforms support them
 

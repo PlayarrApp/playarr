@@ -33,18 +33,20 @@ Rectangle {
     Rectangle { id: pill; anchors.fill: parent; radius: root.radius; visible: false }
     OpacityMask { z: -1; anchors.fill: parent; source: blurred; maskSource: pill; visible: root.blurSource !== null }
     Row {
-        x: 4.4 * Tokens.u   // web: 46.1 css px cells, the row starts a little in and runs past the bar's right edge
-        y: 6 * Tokens.u; height: parent.height - 12 * Tokens.u; width: 8 * 46.1 * Tokens.u
+        x: 4 * Tokens.u   // web: 46 css px cells, the row starts a little in and runs past the bar's right edge
+        y: 6 * Tokens.u; height: parent.height - 12 * Tokens.u; width: 8 * 46 * Tokens.u
         MouseArea {
             objectName: "parity-nav-profile"
             property bool navigationFocusable: true
             property int parityRail: 0
             property int parityIndex: 0
             function navigationActivate() { root.profileClicked() }
-            width: 46.1 * Tokens.u
+            width: 46 * Tokens.u
             height: parent.height
+            property bool layoutSkip: true
+            property var layoutEls: [ { role: "link", text: qsTr("Signed in as %1. Open profiles.").arg(Api.profileName), dx: 1, w: 44, h: 46, radius: 14 } ]
             onClicked: root.profileClicked()
-            Avatar { anchors.centerIn: parent; anchors.verticalCenterOffset: -4 * Tokens.u; width: 21 * Tokens.u;   // web seats the avatar higher than the icons
+            Avatar { layoutExport: true; anchors.centerIn: parent; anchors.verticalCenterOffset: -4 * Tokens.u; width: 21 * Tokens.u;   // web seats the avatar higher than the icons
                      source: Api.profileAvatar }
         }
         Repeater {
@@ -55,8 +57,11 @@ Rectangle {
                 property int parityRail: 0
                 property int parityIndex: index + 1
                 function navigationActivate() { root.selected(modelData) }
-                width: 46.1 * Tokens.u
+                width: 46 * Tokens.u
                 height: parent.height
+                property bool layoutSkip: true
+                property var layoutEls: [ { role: "link", text: modelData === "downloads" ? qsTr("Downloads") : modelData === "search" ? qsTr("Search") : modelData === "home" ? qsTr("Home") : modelData === "series" ? qsTr("Series") : modelData === "movies" ? qsTr("Movies") : modelData === "music" ? qsTr("Music") : qsTr("Playlists"),
+                    dx: 1, w: 44, h: 46, radius: 14, bg: root.section === modelData ? String(Tokens.primary) : undefined } ]
                 onClicked: root.selected(modelData)
                 Rectangle {
                     anchors.centerIn: parent
@@ -71,6 +76,7 @@ Rectangle {
                     sourceSize: Qt.size(48, 48)
                     smooth: true
                     opacity: root.section === modelData || !Tokens.dark ? 1 : 0.72
+                    property real layoutOpacity: 1
                     source: NavIcons.url(modelData, root.section === modelData ? Tokens.primaryInk : (Tokens.dark ? Tokens.ink : Tokens.inkSoft))
                 }
             }

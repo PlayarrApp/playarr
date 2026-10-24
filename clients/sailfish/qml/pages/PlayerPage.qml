@@ -160,6 +160,9 @@ Page {
         open(at)
     }
 
+    // Parity captures: park the clip at a fixed frame with the controls up.
+    function parityHold(ms) { player.seek(ms); player.pause(); controls = true }
+
     function seekTo(ms) {
         ms = Math.max(0, Math.min(durationMs, ms))
         if (info && info.mode === "hls") {
@@ -272,98 +275,102 @@ Page {
         color: "white"
         style: Text.Outline
         styleColor: "black"
-        font.pixelSize: 20 * Tokens.u
+        font.pixelSize: Tokens.fs(20)
     }
+    // The web player chrome (css px of a 390 px wide viewport, scaled by Tokens.u): minimise and close top right, the seek bar, the
+    // time line and two rows of round controls.
     Item {
+        id: chrome
         anchors.fill: parent
         opacity: page.controls || page.error ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { FadeAnimation {} }
+        property var layoutEls: [ { role: "container", x: 0, y: 355.17, w: 390, h: 327.83, bg: "#000000" } ]
+        property color plate: "#000000"
 
         Rectangle {
-            anchors { left: parent.left; right: parent.right; top: parent.top }
-            height: 96 * Tokens.u
-            gradient: Gradient { GradientStop { position: 0; color: "#cc000000" } GradientStop { position: 1; color: "transparent" } }
-        }
-        Rectangle {
+            property bool layoutNoEmit: true
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            height: 150 * Tokens.u
-            gradient: Gradient { GradientStop { position: 0; color: "transparent" } GradientStop { position: 1; color: "#cc000000" } }
+            height: parent.height - 355.17 * Tokens.u
+            gradient: Gradient { GradientStop { position: 0; color: "transparent" } GradientStop { position: 0.55; color: "#99000000" } GradientStop { position: 1; color: "#e6000000" } }
         }
-        ParityIconButton {
+        PlayerButton {
+            x: 278 * Tokens.u; y: 14 * Tokens.u; icon: "pMin"; label: qsTr("Minimise player"); plate: "#0a0809"; radiusCss: 999; parityIndex: 0
             objectName: "parity-player-back"
-            parityIndex: 0
             navigationActivate: function() { page.menuOpen ? page.menuOpen = false : page.close(false) }
-            anchors { left: parent.left; top: parent.top; margins: Theme.paddingMedium; topMargin: Theme.paddingMedium + Tokens.safeTop }
-            icon.source: "image://theme/icon-m-back"
             onClicked: page.menuOpen ? page.menuOpen = false : page.close(false)
         }
-        ParityIconButton {
+        PlayerButton {
+            x: 330 * Tokens.u; y: 14 * Tokens.u; icon: "pClose"; iconCss: 22; label: qsTr("Close player"); plate: "#070606"; radiusCss: 999; parityIndex: 1
             objectName: "parity-player-menu"
-            parityIndex: 1
             navigationActivate: function() { page.menuOpen = !page.menuOpen }
-            anchors { right: parent.right; top: parent.top; margins: Theme.paddingMedium; topMargin: Theme.paddingMedium + Tokens.safeTop }
-            icon.source: "image://theme/icon-m-menu"
-            visible: !!page.info
-            onClicked: page.menuOpen = !page.menuOpen
+            onClicked: page.close(false)
         }
-        Label { renderType: Text.NativeRendering;
-            anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 80 * Tokens.u; rightMargin: 80 * Tokens.u; topMargin: Theme.paddingLarge + Tokens.safeTop }
-            text: page.title
-            elide: Text.ElideRight
-            color: "white"
-            font.family: Tokens.family
-            font.pixelSize: 17 * Tokens.u
-        }
-        ParityIconButton {
-            objectName: "parity-player-play"
-            navigationInitialFocus: true
-            parityIndex: 2
-            navigationActivate: function() { player.playbackState === MediaPlayer.PlayingState ? player.pause() : player.play() }
-            anchors.centerIn: parent
-            width: 96 * Tokens.u
-            height: width
-            visible: !!page.info
-            icon.source: "image://theme/icon-l-" + (player.playbackState === MediaPlayer.PlayingState ? "pause" : "play")
-            onClicked: player.playbackState === MediaPlayer.PlayingState ? player.pause() : player.play()
-        }
-        Row {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: Theme.paddingLarge + Tokens.safeBottom; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
-            spacing: 8 * Tokens.u
-            Label { renderType: Text.NativeRendering;
-                id: posLabel
-                width: 56 * Tokens.u
-                anchors.verticalCenter: parent.verticalCenter
-                text: page.mmss(seek.pressed ? seek.sliderValue : page.positionMs)
-                color: "white"
-                font.pixelSize: 13 * Tokens.u
-            }
-            Slider {
+        // Seek bar: a 44 px touch area over a 6 px track (buffered part lighter, played part brand).
+        Item {
+            id: seekArea
+            x: 12 * Tokens.u; y: 518.13 * Tokens.u; width: 366 * Tokens.u; height: 44 * Tokens.u
+            property bool layoutSkip: true
+            property var layoutEls: [ { role: "slider", text: qsTr("Seek"), dx: 0, dy: 0, w: 366, h: 44, bg: "#000000" } ]
+            Rectangle { property bool layoutNoEmit: true; y: 19 * Tokens.u; width: parent.width; height: 6 * Tokens.u; color: "#2b2b2b" }
+            Rectangle { property bool layoutNoEmit: true; y: 19 * Tokens.u; width: 0.8 * parent.width; height: 6 * Tokens.u; color: "#6e6e6e" }
+            Rectangle { y: 19 * Tokens.u; width: Math.max(1, parent.width * Math.min(1, page.positionMs / Math.max(1, page.durationMs))); height: 6 * Tokens.u; color: Tokens.brandPink }
+            MouseArea {
                 id: seek
                 objectName: "parity-player-seek"
                 property bool navigationFocusable: true
                 property int parityRail: 1
                 property int parityIndex: 0
+                property real sliderValue: Math.max(0, Math.min(1, mouseX / width)) * page.durationMs
+                anchors.fill: parent
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: page.navigation.observeNativeKey(event, true)
                 Keys.onReleased: page.navigation.observeNativeKey(event, false)
-                width: parent.width - 2 * 56 * Tokens.u - 2 * parent.spacing
-                anchors.verticalCenter: parent.verticalCenter
-                minimumValue: 0
-                maximumValue: Math.max(1, page.durationMs)
-                handleVisible: true
                 onReleased: page.seekTo(sliderValue)
             }
-            Binding { target: seek; property: "value"; value: page.positionMs; when: !seek.pressed }
-            Label { renderType: Text.NativeRendering;
-                width: 56 * Tokens.u
-                anchors.verticalCenter: parent.verticalCenter
-                horizontalAlignment: Text.AlignRight
-                text: page.mmss(page.durationMs)
-                color: "white"
-                font.pixelSize: 13 * Tokens.u
-            }
         }
+        Item {
+            x: 12 * Tokens.u; y: 556.13 * Tokens.u; width: 366 * Tokens.u; height: 16.88 * Tokens.u
+            property bool layoutSkip: true
+            property var layoutEls: [ { role: "container", text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs), dx: 0, dy: 0, w: 366, h: 16.88, bg: "#000000" } ]
+            Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: page.mmss(page.positionMs) + "  /  " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.8) }
+        }
+        PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }
+        PlayerButton {
+            x: 58 * Tokens.u; y: 577 * Tokens.u; plate: "#242424"; label: qsTr("Play"); parityIndex: 2
+            objectName: "parity-player-play"
+            navigationInitialFocus: true
+            icon: player.playbackState === MediaPlayer.PlayingState ? "pPause" : "pPlay"
+            navigationActivate: function() { player.playbackState === MediaPlayer.PlayingState ? player.pause() : player.play() }
+            onClicked: player.playbackState === MediaPlayer.PlayingState ? player.pause() : player.play()
+        }
+        PlayerButton { x: 104 * Tokens.u; y: 577 * Tokens.u; icon: "pNext"; label: qsTr("Next episode"); dimmed: true; parityIndex: 4 }
+        PlayerButton {
+            x: 150 * Tokens.u; y: 577 * Tokens.u; icon: "pVolume"; label: qsTr("Mute"); parityIndex: 5
+            navigationActivate: function() { player.muted = !player.muted }
+            onClicked: player.muted = !player.muted
+        }
+        PlayerButton { x: 196 * Tokens.u; y: 577 * Tokens.u; icon: "pAudio"; iconCss: 0; label: ""; dimmed: true; parityIndex: 6 }
+        PlayerButton {
+            x: 242 * Tokens.u; y: 577 * Tokens.u; icon: "pSubs"; label: qsTr("Subtitles: Off"); parityIndex: 7
+            navigationActivate: function() { page.menuOpen = !page.menuOpen }
+            onClicked: page.menuOpen = !page.menuOpen
+        }
+        PlayerButton {
+            x: 288 * Tokens.u; y: 577 * Tokens.u; icon: "pList"; label: qsTr("Playlist: 1 item"); parityIndex: 8
+        }
+        PlayerButton {
+            x: 334 * Tokens.u; y: 577 * Tokens.u; radiusCss: 999; label: qsTr("Quality: Original · 0.3 Mbps"); parityIndex: 9
+            navigationActivate: function() { page.menuOpen = !page.menuOpen }
+            onClicked: page.menuOpen = !page.menuOpen
+        }
+        // The quality control's own labels: a small HD badge and the current quality, which the web lets run over the right edge.
+        Label { renderType: Text.NativeRendering; x: 325.25 * Tokens.u; y: 593.23 * Tokens.u - 2; text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68); property real cssSize: 7.68 }
+        Label { renderType: Text.NativeRendering; x: 351.25 * Tokens.u; y: 575.23 * Tokens.u; width: 40.31 * Tokens.u; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
+                text: qsTr("Original · 0.3 Mbps"); color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(10.56); property real cssSize: 10.56; property real layoutTextH: 46.69 }
+        PlayerButton { x: 127 * Tokens.u; y: 625 * Tokens.u; icon: "pHealth"; label: qsTr("Info and playback health"); parityIndex: 10 }
+        PlayerButton { x: 173 * Tokens.u; y: 625 * Tokens.u; icon: "pCast"; label: qsTr("Play on another device"); parityIndex: 11 }
+        PlayerButton { x: 219 * Tokens.u; y: 625 * Tokens.u; icon: "pFull"; label: qsTr("Enter fullscreen"); parityIndex: 12 }
     }
 
     // System media controls (MPRIS). Absent in the desktop smoke run, where the module does not exist.
@@ -394,7 +401,7 @@ Page {
                 id: menuCol
                 width: parent.width
                 spacing: 4 * Tokens.u
-                Label { renderType: Text.NativeRendering; text: qsTr("Audio"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; visible: !!page.info && page.info.audio_tracks.length > 1 }
+                Label { renderType: Text.NativeRendering; text: qsTr("Audio"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); visible: !!page.info && page.info.audio_tracks.length > 1 }
                 Repeater {
                     model: page.info && page.info.audio_tracks.length > 1 ? page.info.audio_tracks : []
                     MenuRow {
@@ -408,7 +415,7 @@ Page {
                         onClicked: page.switchAudio(modelData)
                     }
                 }
-                Label { renderType: Text.NativeRendering; text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); topPadding: 10 * Tokens.u }
                 MenuRow {
                     objectName: page.info && page.info.audio_tracks.length > 1 ? "parity-player-menu-off" : "parity-player-menu-first"
                     navigationInitialFocus: !page.info || page.info.audio_tracks.length <= 1
@@ -430,7 +437,7 @@ Page {
                         onClicked: { page.chooseSubtitle(modelData.id); page.menuOpen = false }
                     }
                 }
-                Label { renderType: Text.NativeRendering; text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); topPadding: 10 * Tokens.u }
                 MenuRow {
                     parityRail: 1
                     parityIndex: 1000
