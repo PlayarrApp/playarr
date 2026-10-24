@@ -16,9 +16,9 @@ case $device in
   *) echo "device must be tvos or macos" >&2; exit 2 ;;
 esac
 repo=PlayarrApp/playarr
-gh workflow run parity-apple.yml -R "$repo" --ref "$wfref" -f devices="$device" -f ref="$ref" -f stream=false -f chain=false "${extra[@]}"
-sleep 20
-id=$(gh run list -R "$repo" -w parity-apple.yml -L 1 --json databaseId -q '.[0].databaseId')
+if [[ -z ${RUN_ID:-} ]]; then gh workflow run parity-apple.yml -R "$repo" --ref "$wfref" -f devices="$device" -f ref="$ref" -f stream=false -f chain=false "${extra[@]}"; sleep 20; fi # RUN_ID=<id> resumes a run already dispatched
+id=$(gh run list -R "$repo" -w parity-apple.yml -L 10 --json databaseId,displayTitle -q "[.[]|select(.displayTitle|contains(\"[$device]\"))][0].databaseId")
+id=${RUN_ID:-$id}
 echo "run $id"
 gh run watch "$id" -R "$repo" --exit-status || true
 tmp=$(mktemp -d)
