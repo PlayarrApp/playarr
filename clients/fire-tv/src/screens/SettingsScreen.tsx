@@ -204,7 +204,7 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
         </T>
       </View>
       <View style={{position: 'absolute', left: u(lit ? 422.6 : 417.6), top: u(30.5)}}>
-        <T size={20.8} weight={400} lh={31.2} dy={3} color={lit ? colour.ink : colour.inkMuted}>
+        <T size={20.8} weight={400} lh={31.2} dy={1.5} color={lit ? colour.ink : colour.inkMuted}>
           {'→'}
         </T>
       </View>

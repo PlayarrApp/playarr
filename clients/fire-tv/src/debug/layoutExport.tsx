@@ -146,7 +146,6 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
   const out: LayoutElement[] = [];
   const groupAt = new Map<string, LayoutElement>();
   const rects = await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber))));
-  const fullScreen = new Set<string>();
   hosts.forEach((h, i) => {
     const r = rects[i];
     if (!r || r[2] < 0.5 || r[3] < 0.5) return;
@@ -223,10 +222,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       out.push({...(base as LayoutElement), text: '', role: 'image', rect, color: null, fontSize: null, fontWeight: null, src});
       return;
     }
-    if (rect.w >= 1919 && rect.h >= 1079 && !props.accessibilityRole && !props.focusable) {
-      if (fullScreen.has(h.bg)) return;
-      fullScreen.add(h.bg);
-    }
+    // Full-screen layers are exported only where a screen marks them (the app root, the stage and its wash).
+    if (rect.w >= 1919 && rect.h >= 1079 && !props.accessibilityRole && !props.focusable) return;
     const role = props.accessibilityRole;
     const pressable = typeof props.onClick === 'function' || props.focusable === true || role === 'button' || role === 'link' || role === 'tab';
     const painted = hex(style.backgroundColor) !== null || (style.borderWidth ?? 0) > 0;

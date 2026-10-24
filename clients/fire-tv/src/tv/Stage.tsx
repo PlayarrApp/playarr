@@ -69,7 +69,7 @@ export function Stage({artUri, accessToken, children}: StageProps): React.ReactE
     setTierState(next);
   };
   return (
-    <View style={[StyleSheet.absoluteFill, {backgroundColor: surface, overflow: 'hidden'}]}>
+    <View {...lx('container', '')} style={[StyleSheet.absoluteFill, {backgroundColor: surface, overflow: 'hidden'}]}>
       {artUri ? (
         <Box x={133.03} y={-22.9} w={899.97} h={1190.59} style={{overflow: 'hidden'}}>
           {/* The server bakes the web's greyscale, contrast and brightness (`stage-grey`); the opacity and the edge mask are applied
@@ -94,8 +94,8 @@ export function Stage({artUri, accessToken, children}: StageProps): React.ReactE
           />
         </Box>
       ) : null}
+      <View {...lx('container', '')} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <LinearGradient
-        {...lx('container', '')}
         style={StyleSheet.absoluteFill}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 0}}
@@ -139,8 +139,9 @@ export function RailFrost({dark, soft, strong, x = 729.6}: {dark: boolean; soft:
   const [a, b, c] = dark ? [0.72, 0.9, 0.97] : [0.68, 0.88, 0.96];
   const frost = blendHex(soft, strong, k);
   return (
+    <>
+    <View {...lx('container', '')} style={{position: 'absolute', left: u(x), top: 0, width: u(1920 - x), height: u(1080)}} pointerEvents="none" />
     <LinearGradient
-      {...lx('container', '')}
       style={{position: 'absolute', left: u(x), top: 0, width: u(1920 - x), height: u(1080)}}
       start={{x: 0, y: 0}}
       end={{x: 1, y: 0}}
@@ -148,6 +149,7 @@ export function RailFrost({dark, soft, strong, x = 729.6}: {dark: boolean; soft:
       locations={[0, 0.12, 0.34, 0.62, 1]}
       pointerEvents="none"
     />
+    </>
   );
 }
 

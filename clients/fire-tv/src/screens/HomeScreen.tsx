@@ -536,7 +536,7 @@ const HomeCard = memo(function HomeCard(props: {
       {...(last && selfTag !== undefined ? ({nextFocusRight: selfTag} as object) : {})}
       accessibilityRole="button"
       accessibilityLabel={work.title}
-      {...lx('link', `${work.title} ${subtitle}`, 12)}
+      {...lx('link', `${work.title} ${subtitle}`)}
       hasTVPreferredFocus={first}
       onFocus={onFocus}
       onPress={onPress}

@@ -260,7 +260,7 @@ export function AgendaDetails({item, locale, today, onOpen}: {item: CalendarItem
   const overview = item.kind === 'single' ? first.overview?.trim() : undefined;
   const soft = blend(colour.ink, colour.surface, 0.88);
   return (
-    <Box x={153.6} y={259.2} w={455} pointerEvents="box-none">
+    <Box x={153.6} y={263.2} w={455} pointerEvents="box-none">
       <T size={12.288} weight={860} ls={0.983} color={colour.stageKicker} upper lh={18.4} lines={1}>
         {`${t(KIND_KEYS[first.media_kind])} · ${t(RELEASE_KEYS[first.release_type])}`}
       </T>

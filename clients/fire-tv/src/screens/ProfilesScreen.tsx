@@ -454,7 +454,7 @@ export function ProfilesScreen(): React.ReactElement {
   const background = colour.bg;
 
   return (
-    <View style={{flex: 1, backgroundColor: background}}>
+    <View {...lx('container', '')} style={{flex: 1, backgroundColor: background}}>
       <LinearGradient
         style={{position: 'absolute', left: 0, top: 0, right: 0, bottom: 0}}
         start={{x: 0.2033, y: -0.2532}}
