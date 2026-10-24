@@ -55,10 +55,11 @@ function dump(root, u, weights, log) {
             var y0 = y + (va === 128 ? (h - ch) / 2 : va === 64 ? h - ch : 0)
             var fam = item.font.family, wt = weights[fam]
             if (wt === undefined) wt = item.font.weight >= 75 ? 700 : item.font.weight >= 63 ? 600 : 400
+            if (item.layoutWeight) wt = item.layoutWeight   // a system-font glyph has no static instance: the web weight it is drawn at
             var t = String(item.text)
             if (item.font.capitalization === 1) t = t.toUpperCase()
             // glyph-run bounds: ascent plus descent of the font per line (Nunito Sans 1.364 em), not Qt's taller line box
-            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = (lines - 1) * (ch / lines) + (Math.round(1.011 * (fs / u)) + Math.round(0.353 * (fs / u))) * u   // ascent and descent rounded as Chromium does; the device pixel size is the css size rounded down to whole device pixels, so add half of one
+            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = item.layoutTextH !== undefined ? item.layoutTextH * u : (lines - 1) * (ch / lines) + (Math.round(1.011 * (fs / u)) + Math.round(0.353 * (fs / u))) * u   // ascent and descent rounded as Chromium does; the device pixel size is the css size rounded down to whole device pixels, so add half of one
             var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y + item.baselineOffset - Math.round(1.011 * (fs / u)) * u, cw, gh),
                 color: hex(item.color), background: item.layoutBg ? String(item.layoutBg) : bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2(fs / u), fontWeight: wt }
             if (item.layoutRadius) el.radius = item.layoutRadius
@@ -78,7 +79,7 @@ function dump(root, u, weights, log) {
             if (op < 0.999) im.opacity = r2(op)
             emit(im)
         } else if (item.navigationFocusable === true && w > 0 && h > 0) {
-            var fr = { text: String(item.layoutLabel || item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, w, item.layoutH !== undefined ? item.layoutH : h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null }
+            var fr = { text: String(item.layoutLabel || item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, w, item.layoutH !== undefined ? item.layoutH : h), color: null, background: item.layoutBgS ? String(item.layoutBgS) : bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null }
             if (item.layoutRadius) fr.radius = item.layoutRadius
             emit(fr)
         }

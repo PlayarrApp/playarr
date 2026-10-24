@@ -21,8 +21,13 @@ MouseArea {
     // Layout export: "" = the box is a button (default); "text" = the web exports only the label as the button; "icon" = a 44 px link box
     // (radius 50 %) around a glyph label.
     property string layoutMode: ""
+    property real labelSpacing: 0
+    property real contentGap: 9
+    property string layoutBgS: ""
+    property int layoutRadiusV: 0
     property string layoutLabel: ""
     property bool layoutSkip: layoutMode !== ""
+    property int layoutRadius: layoutRadiusV
     property var layoutEls: layoutMode === "icon" ? [ { role: "button", text: layoutLabel, dx: (width / Tokens.u - 44) / 2, dy: (height / Tokens.u - 44) / 2, w: 44, h: 44, radius: 50 } ] : []
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
@@ -62,7 +67,7 @@ MouseArea {
         id: content
         visible: root.icon !== "" || root.iconImage !== ""
         anchors.centerIn: parent
-        spacing: 9 * Tokens.u
+        spacing: root.contentGap * Tokens.u
         Image {
             visible: root.iconImage !== ""
             anchors.verticalCenter: parent.verticalCenter
@@ -86,6 +91,7 @@ MouseArea {
             maximumLineCount: 2
             font.family: root.labelFamily
             font.pixelSize: root.fontSize
+            font.letterSpacing: root.labelSpacing
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
         }
     }
