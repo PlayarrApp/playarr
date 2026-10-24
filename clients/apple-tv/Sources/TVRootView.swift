@@ -316,6 +316,7 @@ private struct TVProductionShell<Stage: View>: View {
 #endif
     /// Who's watching, opened from the nav's profile tile (web `/profiles`).
     @State private var showProfiles = false
+    @State private var openedByLaunchArgument = false
     /// A full-screen page (the player) is showing: no nav, no clock.
     @State private var chromeHidden = false
     /// The stage's pushed pages (titles, playlists); a tab change starts from the root.
@@ -406,7 +407,8 @@ private struct TVProductionShell<Stage: View>: View {
 #if os(macOS)
                     // Web restores the card that opened a detail: remember it on the push, hand it back on the pop.
                     if newPath.count > oldPath.count, case .work(let opened) = newPath.last {
-                        MacFocusEngine.shared.returnWorkID = opened.id
+                        MacFocusEngine.shared.returnWorkID = openedByLaunchArgument ? nil : opened.id
+                        openedByLaunchArgument = false
                         MacFocusEngine.shared.returnReady = false
                     } else if newPath.count < oldPath.count, newPath.isEmpty {
                         MacFocusEngine.shared.returnReady = true
@@ -437,6 +439,7 @@ private struct TVProductionShell<Stage: View>: View {
                     // From the library, so Back returns to its grid like the web's history does.
                     nav = detail.work.kind == .series ? .series : .movies
                     try? await Task.sleep(for: .milliseconds(1500))
+                    openedByLaunchArgument = true // no card opened it: Back lands on the grid's first card, as the web history does
                     path = [.work(detail.work)]
                 }
                 .onChange(of: showProfiles) { _, open in if open { TVParityState.setProfiles(true) } else { TVParityState.setRoute(tab: tab, path: path) } }
