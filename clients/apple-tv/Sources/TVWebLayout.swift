@@ -1073,6 +1073,6 @@ private struct MacEdgeFade: ViewModifier {
 private struct TVLibraryLinkBox: ViewModifier {
     let title: String?
     func body(content: Content) -> some View {
-        if let title { content.parityBox("link", text: title, fill: DesignTokens.Stage.surface) } else { content }
+        if let title { content.parityBox("link", text: title, radius: 12, fill: DesignTokens.Stage.surface) } else { content }
     }
 }

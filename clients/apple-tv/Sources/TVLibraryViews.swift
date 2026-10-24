@@ -1061,7 +1061,7 @@ struct TVWebHomeCard: View {
                 .frame(width: artWidth, alignment: .leading)
                 .padding(.top, 3.6)
         }
-        .parityBox("link", text: "Open \(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", fill: DesignTokens.Stage.surface)
+        .parityBox("link", text: "Open \(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", radius: 12, fill: DesignTokens.Stage.surface)
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
@@ -2128,6 +2128,7 @@ struct TVLibraryKindView: View {
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous))
+                    .parityBox("image", radius: 12, fill: DesignTokens.Stage.surfaceSoft)
                     .modifier(TVCardFocusGlow(focused: isSelected && drawsFocusGlow, cornerRadius: DesignTokens.Radius.card))
                     // Pinned web values: rest 0 10 20 .14 + 0 3 8 .10; focused 0 24 48 .30 + 0 10 20 .20.
                     .shadow(
