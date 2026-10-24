@@ -25,6 +25,7 @@ MouseArea {
     property real contentGap: 9
     property real padCss: 16
     property real contentDy: 0
+    property int layoutWeightV: 0
     property string parityRole: "button"
     property string layoutBgS: primary ? String(Tokens.primary) : lift ? (Tokens.dark ? "#1f1c1f" : "#fefefd") : ""
     property int layoutRadiusV: 0
@@ -105,6 +106,7 @@ MouseArea {
         anchors.centerIn: parent
         font.family: root.labelFamily
         font.pixelSize: root.fontSize
+        property int layoutWeight: root.layoutWeightV
         width: parent.width - 16 * Tokens.u
         wrapMode: Text.Wrap
         maximumLineCount: 2

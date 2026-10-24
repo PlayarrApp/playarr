@@ -222,9 +222,9 @@ Item {
         anchors { top: head.bottom; topMargin: (root.mode === "agenda" ? -2 : 16.4) * Tokens.u; right: parent.right; rightMargin: Tokens.pad }
         spacing: 10 * Tokens.u
         PillButton { id: rangePill; objectName: "calendar-range"; layoutMode: "text"; text: root.range.label; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 0; navigationActivate: function() { root.openPeriodPicker() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: (root.mode === "week" ? 103.6 : root.mode === "month" ? 91.4 : 110.4) * Tokens.u; onClicked: root.openPeriodPicker() }
-        PillButton { text: "←"; layoutMode: "icon"; layoutLabel: qsTr("Previous"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 1; navigationActivate: function() { root.page-- }; labelFamily: Tokens.fam(720); fontSize: 11.6 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page-- }
+        PillButton { text: "←"; layoutMode: "icon"; layoutLabel: qsTr("Previous"); layoutWeightV: 720; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 1; navigationActivate: function() { root.page-- }; labelFamily: "Liberation Sans"; fontSize: 11.6 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page-- }
         PillButton { text: qsTr("Today"); layoutMode: "text"; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 2; navigationInitialFocus: true; navigationActivate: function() { root.resetToday() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 70.2 * Tokens.u; onClicked: root.resetToday() }
-        PillButton { text: "→"; layoutMode: "icon"; layoutLabel: qsTr("Next"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 3; navigationActivate: function() { root.page++ }; labelFamily: Tokens.fam(720); fontSize: 11.6 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page++ }
+        PillButton { text: "→"; layoutMode: "icon"; layoutLabel: qsTr("Next"); layoutWeightV: 720; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 3; navigationActivate: function() { root.page++ }; labelFamily: "Liberation Sans"; fontSize: 11.6 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page++ }
     }
     // Month: wide cells (a chip for the first title, the day number and "+N more"), scrolled sideways, as on the web phone.
     SilicaFlickable {
@@ -305,10 +305,10 @@ Item {
                         spacing: 9.8 * Tokens.u
                     Label { renderType: Text.NativeRendering;
                         text: Calendar.dayHeading(day.date)
-                        color: day.date === Calendar.todayIso() ? Tokens.inkSoft : Tokens.ink
+                        color: day.date === Calendar.todayIso() ? (Tokens.dark ? "#dfdcdd" : Tokens.inkSoft) : Tokens.ink
                         anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -1 * Tokens.u
                         font.family: Tokens.fam(640); font.letterSpacing: 0.1
-                        font.pixelSize: Tokens.fs(14.4)
+                        font.pixelSize: Tokens.fs(14.4); property real cssSize: 14.4
                     }
                     Rectangle {
                         property bool layoutNoEmit: true
@@ -316,7 +316,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
-                        Label { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.inkSoft; property int layoutRadius: 999; font.family: Tokens.fam(640); font.letterSpacing: 1.4 * Tokens.u; font.pixelSize: Tokens.fs(11.2) }
+                        Label { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; property int layoutRadius: 999; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fs(11.2) }
                     }
                     }
                     Repeater {
@@ -330,10 +330,11 @@ Item {
                             property string layoutLabel: [modelData.title, modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · "),
                                 root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"), releaseText(modelData), kindText(modelData), root.pill(modelData)].filter(function (x) { return !!x }).join(" ")
                             property int layoutRadius: 12
+                            property string layoutBgS: Tokens.dark ? "#211d21" : "#ffffff"
                             function navigationActivate() { root.openEntry(modelData) }
                             x: dayCol.wk ? 0 : Tokens.pad
                             width: dayCol.cw - (dayCol.wk ? 0 : 2 * Tokens.pad)   // static-seed refs: the agenda card ends at the page padding
-                            height: Math.max(75.7 * Tokens.u, info.height + 17.25 * Tokens.u) + (dayCol.wk ? 1 : 2.17)   // refs: week cards run one pixel taller, agenda cards two   // web: the 60 px poster plus the padding is the floor
+                            height: Math.max(75.7 * Tokens.u, info.height + 17.25 * Tokens.u) + (dayCol.wk ? 1 : 2.84)   // refs: week cards run one pixel taller, agenda cards two   // web: the 60 px poster plus the padding is the floor
                             onClicked: navigationActivate()
                             // Left border: we have it (playable, green) or not, never which library; the card sits over it so it curves with the corners.
                             Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: (card.pressed ? 0.6 : 1) * (dayCol.wk && modelData.has_file ? 0.32 : 1) }   // week refs: an available card's accent is a third strong, a missing one is full
@@ -354,10 +355,10 @@ Item {
                                 id: info
                                 anchors { left: poster.right; leftMargin: 14.7 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                                 spacing: 4.4 * Tokens.u
-                                Label { renderType: Text.NativeRendering; width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.fam(640); font.letterSpacing: -0.2; font.pixelSize: Tokens.fs(16) }
+                                Label { renderType: Text.NativeRendering; bottomPadding: subLbl.visible ? 0 : 2.2; width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.fam(640); font.letterSpacing: -0.2; font.pixelSize: Tokens.fs(16) }
                                 Label { renderType: Text.NativeRendering;
                                     width: parent.width
-                                    visible: text !== ""
+                                    id: subLbl; visible: text !== ""; topPadding: -3; bottomPadding: 3
                                     text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
                                     elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.family400; font.letterSpacing: -0.22; font.pixelSize: Tokens.fs(16)
                                 }
@@ -367,14 +368,14 @@ Item {
                                     id: metaRow
                                     y: -2.5 * Tokens.u
                                     spacing: 12 * Tokens.u
-                                    Label { renderType: Text.NativeRendering; text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
-                                    Label { renderType: Text.NativeRendering; text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
-                                    Label { renderType: Text.NativeRendering; text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
+                                    Label { renderType: Text.NativeRendering; text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8); property real cssSize: 12.8 }
+                                    Label { renderType: Text.NativeRendering; text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8); property real cssSize: 12.8 }
+                                    Label { renderType: Text.NativeRendering; text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: modelData.media_kind === "episode" ? 0 : -0.25; font.pixelSize: Tokens.fs(12.8); property real cssSize: 12.8 }
                                     Rectangle {
                                         property bool layoutNoEmit: true
                                         width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
                                         color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#392c2f" : "#e8dedd") : (Tokens.dark ? "#341c23" : "#f5dee2"); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#996a6e" : "#aa8285") : Tokens.brandPink
-                                        Label { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; text: root.pill(modelData); color: Tokens.ink; property int layoutRadius: 999; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
+                                        Label { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; property int layoutRadius: 999; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
                                     }
                                 }
                                 }
