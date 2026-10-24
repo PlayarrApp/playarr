@@ -281,7 +281,7 @@ struct TVHomeView: View {
                 .font(TVTheme.font(size: 17.664, css: 610))
                 .tracking(-0.53)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: title, size: 17.664, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.53)
+                .parityLayout(text: title, role: "heading", size: 17.664, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.53)
                 .frame(height: 26.5)
                 .padding(.leading, Self.cardBleed)
             ScrollView(.horizontal, showsIndicators: false) {
@@ -546,7 +546,7 @@ struct TVHomeView: View {
                 .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
                 .tracking(-0.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: title, size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
+                .parityLayout(text: title, role: "heading", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
             // Native tvOS card buttons + explicit FocusState. No focusScope:
             // that traps focus inside the rail and blocks Left → dock.
             ScrollView(.horizontal, showsIndicators: false) {
@@ -863,7 +863,7 @@ struct TVHomeView: View {
                 .font(TVTheme.font(size: DesignTokens.Shell.railHeadingSize, weight: .semibold))
                 .tracking(-0.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: title, size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
+                .parityLayout(text: title, role: "heading", size: DesignTokens.Shell.railHeadingSize, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.5)
                 .padding(.leading, DesignTokens.Shell.railTrackLeftFade)
                 .padding(.bottom, 17)
             HStack(spacing: DesignTokens.Shell.homeCardGap) {
@@ -1030,7 +1030,7 @@ struct TVWebHomeCard: View {
                         .fill(DesignTokens.Color.brandPrimary)
                         .frame(width: 11.6, height: 11.6)
                         .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
-                        .parityBox("img", radius: 7, fill: DesignTokens.Stage.surfaceSoft)
+                        .parityBox("img", radius: 50, fill: DesignTokens.Color.brandPrimary)
                         .padding(11.5)
                 }
             }
@@ -1062,7 +1062,7 @@ struct TVWebHomeCard: View {
                 .frame(width: artWidth, alignment: .leading)
                 .padding(.top, 3.6)
         }
-        .parityBox("link", text: "Open \(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", radius: 12, fill: DesignTokens.Stage.surface)
+        .background(alignment: .top) { Color.clear.frame(width: artWidth, height: artHeight + 29.36).parityBox("link", text: "\(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", radius: 0, fill: DesignTokens.Stage.surface) }
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
@@ -2165,6 +2165,7 @@ struct TVLibraryKindView: View {
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .lineLimit(1)
                         .parityLayout(text: work.title, size: 11.9, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.18)
+                        .padding(.leading, 1.91) // web: the title sits 1.91 pt inside the card
                         .frame(width: width, alignment: .leading)
                 }
             }

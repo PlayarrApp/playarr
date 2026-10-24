@@ -22,7 +22,7 @@ export function mapRaw(doc, screen, theme) {
   const styled = doc.raw.filter((e) => e.source !== "ax");
   // a plain accessibility entry is dropped when a styled one has the same text and nearly the same frame
   const plain = doc.raw.filter((e) => e.source === "ax" && !styled.some((s) => s.text === e.text && Math.abs(s.rect.x - e.rect.x) < 3 && Math.abs(s.rect.y - e.rect.y) < 12));
-  const elements = [...styled, ...plain].map((e) => {
+  const elements = [...styled, ...plain].flatMap((e) => {
     const out = {
       text: e.text ?? "",
       role: e.role,
@@ -32,8 +32,15 @@ export function mapRaw(doc, screen, theme) {
       fontSize: e.fontSize ?? null,
       fontWeight: e.fontWeight ?? null,
     };
+    // a full-bleed container is the viewport (the app's frame sits inside the TV safe area)
+    if (e.role === "container" && out.rect.w >= 1700 && out.rect.h >= 900) out.rect = { x: 0, y: 0, w: doc.viewport.w, h: doc.viewport.h };
     if (e.radius > 0) out.radius = e.radius;
-    return out;
+    // the web models a rounded media tile as a container with the radius around a square-cornered image
+    if (e.role === "image" && e.radius > 0) {
+      const { radius, ...image } = out;
+      return [{ ...out, role: "container", text: "" }, image];
+    }
+    return [out];
   });
   return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements };
 }
