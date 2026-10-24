@@ -35,7 +35,11 @@ run() { case $1 in
   calendar-agenda) open "calendar?query=view%3Dagenda" 18; python3 -I $HERE/uiexpect.py 'Calendar' || return 1; shot $1 ;;
   film-detail) open experience-detail/ca309574-c0f4-4564-bb54-4512eab7e531 18; python3 -I $HERE/uiexpect.py 'Chapters|Play' || { echo "detail still loading"; return 1; }; shot $1 4 ;;
   series-detail) open experience-detail/7ab4ce97-d59e-43d6-8e03-31d4d29a5c90 18; python3 -I $HERE/uiexpect.py 'Season|Episodes|Start|Resume' || { echo "detail still loading"; return 1; }; shot $1 4 ;;
-  player-controls) open experience-detail/ca309574-c0f4-4564-bb54-4512eab7e531 18; python3 -I $HERE/uiexpect.py 'Chapters|Play' || { echo "detail still loading"; return 1; }; tapd 'Play' tap 20; shot $1 3 ;;
+  player-controls) open experience-detail/ca309574-c0f4-4564-bb54-4512eab7e531 18; python3 -I $HERE/uiexpect.py 'Chapters|Play' || { echo "detail still loading"; return 1; }; adb logcat -c; tapd 'Play' tap 3
+    # The debug build pauses at 2.000 s and seeks exactly there; capture only once the player has reported that position twice (250 ms apart x4 per line), so every run shows the same frame.
+    ok=0; for w in $(seq 1 60); do n=$(adb logcat -d -s PlayarrParity:I | grep -c 'player positionMs=2000$'); [ "$n" -ge 2 ] && { ok=1; break; }; sleep 1; done
+    [ $ok = 1 ] || { echo "player did not settle at 2.000 s"; return 1; }
+    shot $1 3 ;;
   actions) open movies 16; python3 -I $HERE/uiexpect.py 'Amber Thicket 3' || { echo "wrong screen movies"; return 1; }; python3 -I $HERE/uitap.py '7 Distant Harbour 30' long-up || { echo 'actions card not found'; return 1; }; sleep 2; python3 -I $HERE/uiexpect.py 'Title actions|Mark as Watched' || { echo 'wrong screen actions'; return 1; }; shot $1 ;;
   filters) open movies 16; tapdesc '^Filters' 2; python3 -I $HERE/uiexpect.py 'Sort by|Library controls|Filters' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
   *) echo "unknown $1" ;;

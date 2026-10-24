@@ -23,6 +23,14 @@ for e in doc["elements"]:
     e["rect"] = {k: r2(v / dpr) for k, v in e["rect"].items()}
     if e.get("fontSize") is not None: e["fontSize"] = r2(e["fontSize"] / dpr)
     # radius is exported in dp, which is the web's CSS px (not device px)
+# Chromium rounds a run's ascent and descent to whole CSS px (Nunito Sans 1.011 / 0.353 em): a single-line content area is
+# round(asc) + round(desc) tall around the same baseline.
+for e in doc["elements"]:
+    fs = e.get("fontSize")
+    if fs and e["role"] in ("text", "heading", "button", "link") and abs(e["rect"]["h"] - 1.364 * fs) < 0.35:
+        asc, desc = round(1.011 * fs), round(0.353 * fs)
+        base = e["rect"]["y"] + 1.011 * fs
+        e["rect"]["y"] = r2(base - asc); e["rect"]["h"] = asc + desc
 doc["viewport"] = {"w": view[0], "h": view[1], "dpr": r2(dpr)}
 doc["clockPinned"] = True
 os.makedirs(os.path.dirname(out), exist_ok=True)

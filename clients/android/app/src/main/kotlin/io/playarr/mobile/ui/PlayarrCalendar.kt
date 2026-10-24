@@ -222,7 +222,7 @@ private fun ExperienceCalendarScreen(
     )
     PlayarrPageLayout(
         pageId = PlayarrPageId.Calendar,
-        header = playarrPageHeader(title = playarrString(PlayarrString.CalendarTitle), largeTitle = true, onBack = onBack, filters = PlayarrFilterAction(
+        header = playarrPageHeader(title = playarrString(PlayarrString.CalendarTitle), backLabel = playarrString(PlayarrString.CommonBackToHomeLower), largeTitle = true, onBack = onBack, filters = PlayarrFilterAction(
             label = filtersLabel,
             active = state.panel == CalendarPanel.Filters,
             badge = state.filters.activeCount,

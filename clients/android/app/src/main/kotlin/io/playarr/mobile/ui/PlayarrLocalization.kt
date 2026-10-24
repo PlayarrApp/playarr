@@ -194,6 +194,9 @@ internal enum class PlayarrString(
     NavRequests("Requests", "คำขอ", "リクエスト"),
 
     CommonBack("Back", "ย้อนกลับ", "戻る"),
+    CommonBackToHome("Back to Home", "กลับไปหน้าแรก", "ホームに戻る"),
+    CommonBackToHomeLower("Back to home", "กลับไปหน้าหลัก", "ホームに戻る"),
+    CommonBackToDestination("Back to {{destination}}", "กลับไปที่ {{destination}}", "{{destination}}に戻る"),
     CommonCancel("Cancel", "ยกเลิก", "キャンセル"),
     CommonClose("Close", "ปิด", "閉じる"),
     CommonDone("Done", "เสร็จสิ้น", "完了"),
@@ -880,8 +883,8 @@ internal enum class PlayarrString(
     PlayerQualityHeading("Quality", "คุณภาพ", "画質"),
     PlayerMute("Mute", "ปิดเสียง", "ミュート"),
     PlayerUnmute("Unmute", "เปิดเสียง", "ミュート解除"),
-    PlayerEnterFullscreen("Enter full screen", "เต็มหน้าจอ", "全画面表示"),
-    PlayerExitFullscreen("Exit full screen", "ออกจากเต็มหน้าจอ", "全画面表示を終了"),
+    PlayerEnterFullscreen("Enter fullscreen", "เต็มหน้าจอ", "全画面表示"),
+    PlayerExitFullscreen("Exit fullscreen", "ออกจากเต็มหน้าจอ", "全画面表示を終了"),
     PlayerQualitySource("Source quality", "คุณภาพต้นฉบับ", "元の画質"),
     PlayerPlaylistLabelSingular(
         "Playlist: {{count}} item",
@@ -1907,7 +1910,7 @@ internal enum class PlayarrString(
     ),
     CastStopCasting("Stop casting", "หยุดแคสต์", "キャストを停止"),
     HealthOpen(
-        "Playback health",
+        "Info and playback health",
         "สถานะการเล่น",
         "再生の状態",
     ),

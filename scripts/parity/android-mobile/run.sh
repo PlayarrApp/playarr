@@ -3,7 +3,7 @@
 #   PARITY_LEGEND_ROOT=<legend evidence root> PARITY_OUT=<scratch dir> scripts/parity/android-mobile/run.sh <phone|tablet> [screen...]
 # Needs the emulator booted headless and signed in (emu-setup.sh, signin.sh) and the sideload debug APK installed.
 # Defaults: all 15 screens (the player-controls screen plays the 60 s clip and pauses it at 2 s). Captures land in
-# PARITY_EMU_UNIT: the emulator's systemd user unit (phone: playarr-android-phone-vnc.service); the unit is restarted when its memory is high.
+# PARITY_EMU_UNIT: the emulator's systemd user unit (phone: playarr-android-phone.service); the unit is restarted when its memory is high.
 # $PARITY_OUT/<device>/{dark,light}, are scored against <legend>/android-<device>/web, and replace <legend>/android-<device>/dev
 # (old PNGs removed, JSON kept) with a build.json. PARITY_PUBLISH=0 scores only.
 set -euo pipefail

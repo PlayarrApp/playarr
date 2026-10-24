@@ -1,6 +1,7 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityText
 import io.playarr.shared.designsystem.page.parityNavGlass
 import io.playarr.shared.designsystem.page.parityNavSelected
 import io.playarr.shared.designsystem.page.parityLineBox
@@ -4568,21 +4569,21 @@ private fun ExperienceLibraryScreen(
     when (val state = states[kind] ?: ExperienceLoad.Loading) {
         ExperienceLoad.Loading -> PlayarrPageLayout(
             pageId = PlayarrPageId.Library,
-            header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }),
+            header = playarrPageHeader(title = plural, backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }),
             // Television: skeletons with the final geometry (owner rule), never a centred "Loading" screen.
             state = if (isTelevision) null else PlayarrPageState.Loading(playarrString(PlayarrString.LibraryLoading, "label" to plural)),
             body = if (isTelevision) PlayarrPageBody.Bleed else PlayarrPageBody.Panel,
         ) { if (isTelevision) TvLibrarySkeleton(playarrString(PlayarrString.LibraryLoading, "label" to plural)) }
         is ExperienceLoad.Failed -> PlayarrPageLayout(
             pageId = PlayarrPageId.Library,
-            header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }),
+            header = playarrPageHeader(title = plural, backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }),
             state = playarrErrorState(state.message) { viewModel.loadLibrary(kind) },
         ) {}
         is ExperienceLoad.Ready -> {
             if (state.value.isEmpty()) {
                 PlayarrPageLayout(
                     pageId = PlayarrPageId.Library,
-                    header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }),
+                    header = playarrPageHeader(title = plural, backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }),
                     state = PlayarrPageState.Empty(
                         PlayarrEmptySpec(
                             playarrString(PlayarrString.LibraryEmptyTitle, "plural" to plural.lowercase(language.locale)),
@@ -4625,7 +4626,7 @@ private fun ExperienceLibraryScreen(
             val selected = filteredWorks.firstOrNull { it.id == selectedId } ?: filteredWorks.firstOrNull() ?: state.value.first()
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Library,
-                header = playarrPageHeader(title = plural, onBack = { navController.openExperienceTopLevel("home") }, largeTitle = true, countLine = true,
+                header = playarrPageHeader(title = plural, backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }, largeTitle = true, countLine = true,
                 // Web hides the header subtitle on phones (#1299).
                 subtitle = if (!isTelevision) null else playarrString(
                     PlayarrString.LibraryCollectionCount,
@@ -4892,7 +4893,7 @@ private fun ExperienceSearchScreen(
     }
     PlayarrPageLayout(
         pageId = PlayarrPageId.Search,
-        header = playarrPageHeader(title = playarrString(PlayarrString.SearchTitle), onBack = { navController.openExperienceTopLevel("home") }, subtitle = if (isTelevision) resultStatus else null, filters = PlayarrFilterAction(
+        header = playarrPageHeader(title = playarrString(PlayarrString.SearchTitle), backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }, subtitle = if (isTelevision) resultStatus else null, filters = PlayarrFilterAction(
             label = playarrString(PlayarrString.SearchFilters),
             onClick = { filtersOpen = !filtersOpen },
             active = filtersOpen,
@@ -5661,7 +5662,7 @@ private fun MediaContextDialog(
             navigationAbovePane = false,
             initialFocus = firstAction, // web: the drawer opens on its first action
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = if (playarrTvDrawer()) Arrangement.spacedBy(14.dp) else FractionalColumnArrangement(68.dp, 14.dp)) {
                 // Web `play`: resolve the title's playable leaves, prefer the one with progress, else the first.
                 if (onPlay != null) {
                     var resolvingPlay by remember(work.id) { mutableStateOf(false) }
@@ -5740,12 +5741,12 @@ private fun TvDrawerActionRow(glyph: String, label: String, onClick: () -> Unit,
         shape = RoundedCornerShape(14.dp),
         color = WebSurfaceSoft,
         contentColor = WebInk,
-        modifier = modifier.fillMaxWidth().height(68.dp).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused },
+        modifier = modifier.fillMaxWidth().height(68.dp).webFocusRing(focused, radius = 14.dp, offset = 0.dp).onFocusChanged { focused = it.isFocused }.parityBox("button", "$glyph $label", 14f, background = WebSurfaceSoft),
     ) {
         Row(Modifier.padding(start = 18.dp, end = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(glyph, color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp)) // web: 1.22 rem in a 42 px column
+            Text(glyph, color = WebKicker, fontSize = 19.52.sp, lineHeight = 29.28.sp, modifier = Modifier.width(42.dp).parityText(background = WebSurfaceSoft)) // web: 1.22 rem in a 42 px column
             val cssTablet = LocalTabletDrawerCssPx.current
-            Text(label, fontSize = if (cssTablet) 16.sp else if (tv) 19.2.sp else 16.sp, lineHeight = if (cssTablet) 24.sp else if (tv) 28.8.sp else 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, fontSize = if (cssTablet) 16.sp else if (tv) 19.2.sp else 16.sp, lineHeight = if (cssTablet) 24.sp else if (tv) 28.8.sp else 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.parityText(background = WebSurfaceSoft))
         }
     }
 }
@@ -6131,7 +6132,7 @@ private fun ExperienceDetailScreen(
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Detail,
                 // Web phone detail header: the back pill and the kind title only (live dom dump); the work title is a TV subtitle.
-                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), onBack = onBack, subtitle = detail.work.title.takeIf { isTelevision }, largeTitle = true, countLine = true),
+                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), backLabel = playarrString(PlayarrString.CommonBackToDestination, "destination" to detail.work.kind.playarrPluralLabel()), onBack = onBack, subtitle = detail.work.title.takeIf { isTelevision }, largeTitle = true, countLine = true),
                 body = PlayarrPageBody.Bleed,
             ) {
             Box(Modifier.fillMaxSize()) {
@@ -10879,3 +10880,17 @@ private fun homeStageVerticalScale(): Float =
 /** Web's rail `scroll-padding-inline` / end padding clamp(22, 2.4 vw, 46) css px: a tablet keeps it clear of the screen edge so the last card's ring and glow are not cut (television keeps its tuned value). */
 @Composable
 private fun tabletTrackEnd(tv: Dp): Dp = if (LocalStageScale.current == 1f) tv else webVw(22f, 2.4f, 46f)
+
+
+/**
+ * Rows of a fixed dp height with a dp gap, positioned from the running float pitch (a browser lays the rows out in fractional
+ * px; `Arrangement.spacedBy` rounds every row height and gap and drifts a pixel after a few rows).
+ */
+@androidx.compose.runtime.Immutable
+internal class FractionalColumnArrangement(private val item: androidx.compose.ui.unit.Dp, private val gap: androidx.compose.ui.unit.Dp) : Arrangement.Vertical {
+    override val spacing: androidx.compose.ui.unit.Dp get() = gap
+    override fun androidx.compose.ui.unit.Density.arrange(totalSize: Int, sizes: IntArray, outPositions: IntArray) {
+        val pitch = item.toPx() + gap.toPx()
+        for (i in sizes.indices) outPositions[i] = Math.round(i * pitch)
+    }
+}

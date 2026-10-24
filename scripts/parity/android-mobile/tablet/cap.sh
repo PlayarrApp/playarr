@@ -43,7 +43,9 @@ run() { case $1 in
     python3 -I $HERE/uiexpect.py 'Mark as Watched' || { echo "wrong screen actions (drawer not open)"; return 1; }; kseq down*8; shot $1 ;;
   film-detail) open experience-detail/ca309574-c0f4-4564-bb54-4512eab7e531 20; adb shell input keyevent 59; sleep 4; shot $1 ;;
   series-detail) open experience-detail/7ab4ce97-d59e-43d6-8e03-31d4d29a5c90 20; adb shell input keyevent 59; sleep 4; shot $1 ;;
-  player-controls) open movies; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen movies grid"; return 1; }; tap ${CARD_X:-1254} ${CARD_Y:-371} 6; tap_text "Resume.*|Play" 25
+  player-controls) open movies; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen movies grid"; return 1; }; tap ${CARD_X:-1254} ${CARD_Y:-371} 6; adb logcat -c; tap_text "Resume.*|Play" 3
+    # Capture only once the debug player reports 2.000 s twice, so every run shows the same frame.
+    for w in $(seq 1 60); do [ "$(adb logcat -d -s PlayarrParity:I | grep -c 'player positionMs=2000$')" -ge 2 ] && break; sleep 1; done
     # The harness pauses at 2 s, but the chrome hides 5 s after playback starts: when startup is slow (loaded host) the chrome is gone by the
     # time the player is paused and never returns. A touch on the surface shows it again without toggling playback.
     for w in 1 2 3 4; do python3 -I $HERE/uiexpect.py 'Pause|Seek|Subtitles|Audio' && break; [ $w = 2 ] && { adb shell input tap 1280 800; sleep 2; }; [ $w = 4 ] && { echo "wrong screen player-controls"; return 1; }; done; shot $1 1 ;;

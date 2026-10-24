@@ -80,6 +80,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -120,10 +121,12 @@ internal fun playarrPageHeader(
     backActive: Boolean = false,
     /** Web phone: the subtitle is a count line under the title (library headers). */
     countLine: Boolean = false,
+    /** The Back button's accessible name (web: `Back to Home`, `Back to Movies`); defaults to plain Back. */
+    backLabel: String? = null,
 ): PlayarrPageHeaderSpec = PlayarrPageHeaderSpec(
     title = title,
     detail = subtitle,
-    back = PlayarrBack(playarrString(PlayarrString.CommonBack), onBack),
+    back = PlayarrBack(backLabel ?: playarrString(PlayarrString.CommonBack), onBack),
     actions = buildList {
         addAll(actions)
         if (filters != null) {
@@ -325,7 +328,8 @@ private fun PhoneDrawerPanel(
     Box(
         Modifier.fillMaxSize()
             .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
-            .background(WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f)),
+            .background(WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f))
+            .parityBox("dialog", background = WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f).compositeOver(WebSurface)),
     ) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
@@ -333,7 +337,7 @@ private fun PhoneDrawerPanel(
             Row(verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
                     if (kicker != null) {
-                        Text(kicker.uppercase(), color = WebInkSoft, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
+                        Text(kicker.uppercase(), color = WebInkMuted, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)), fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
                     }
                     Box(Modifier.padding(top = if (kicker != null) 3.2.dp else 0.dp)) { titleContent?.invoke() }
                 }
@@ -344,11 +348,12 @@ private fun PhoneDrawerPanel(
                         contentDescription = closeLabel,
                         modifier = Modifier
                             .focusRequester(focus)
-                            .border(1.dp, LocalPlayarrWebPalette.current.pillBorder, CircleShape),
+                            .border(1.dp, LocalPlayarrWebPalette.current.pillBorder, CircleShape)
+                            .parityBox("button", closeLabel, 50f, background = WebSurfaceSoft),
                         variant = PlayarrButtonVariant.Secondary,
                         containerColor = WebSurfaceSoft,
                     ) {
-                        Text("\u00D7", fontSize = 16.sp, fontWeight = FontWeight(720))
+                        Text("\u00D7", fontSize = 16.sp, fontWeight = FontWeight(720), modifier = Modifier.parityText(background = WebSurfaceSoft))
                     }
                 }
             }

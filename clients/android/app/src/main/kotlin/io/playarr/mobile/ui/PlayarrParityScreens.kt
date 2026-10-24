@@ -1,6 +1,7 @@
 package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityText
 import io.playarr.shared.designsystem.page.parityRole
 import io.playarr.shared.designsystem.page.mediaCardLift
 import io.playarr.shared.designsystem.page.PlayarrPageBody
@@ -445,7 +446,7 @@ internal fun ExperiencePlaylistsScreen(
     Box(Modifier.fillMaxSize()) {
         PlayarrPageLayout(
             pageId = PlayarrPageId.Playlists,
-            header = playarrPageHeader(title = playarrString(PlayarrString.PlaylistsTitle), onBack = { navController.openExperienceTopLevel("home") }, filters = PlayarrFilterAction(
+            header = playarrPageHeader(title = playarrString(PlayarrString.PlaylistsTitle), backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }, filters = PlayarrFilterAction(
                 label = playarrString(PlayarrString.LibraryFilters),
                 onClick = { filtering = true },
                 active = filtering,
@@ -3277,7 +3278,7 @@ internal fun ExperienceParitySettingsScreen(
         body = if (!showIndex) PlayarrPageBody.Panel else PlayarrPageBody.Bleed,
     ) {
     if (showIndex) {
-        PhoneSettingsIndex(onOpen = { picked = it })
+        PhoneSettingsIndex(isAdmin = viewModel.isAdmin.collectAsState().value, onOpen = { picked = it })
         return@PlayarrPageLayout
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -4736,23 +4737,27 @@ internal fun phoneSettingsRowHeightPx(index: Int, density: Float): Float =
 
 /** Web mobile `.settings-options-list`: numbered rows 88 px tall, the first one drawn selected. */
 @Composable
-private fun PhoneSettingsIndex(onOpen: (SettingsSection) -> Unit) {
+private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Unit) {
     Box(Modifier.fillMaxSize().background(WebSurface)) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 83.4.dp, bottom = 116.dp),
         ) {
-            itemsIndexed(phoneSettingsIndex, key = { _, row -> row.first.name }) { index, (candidate, description) ->
+            itemsIndexed(phoneSettingsIndex.filter { isAdmin || it.first != SettingsSection.RequestLatency }, key = { _, row -> row.first.name }) { index, (candidate, description) ->
                 val active = index == 0
+                // Web numbers the sections by their place in the full list (an admin-only row leaves a gap: 07, 09).
+                val number = settingsSectionNumber(phoneSettingsIndex.indexOfFirst { it.first == candidate })
+                val rowLabel = number + " " + playarrString(candidate.label) + " " + playarrString(description)
                 Row(
                     Modifier.fillMaxWidth().height(with(androidx.compose.ui.platform.LocalDensity.current) { phoneSettingsRowHeightPx(index, density).toDp() })
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
+                        .parityBox("link", rowLabel, 12f, background = if (active) WebSurfaceSoft else WebSurface)
                         .clickable { onOpen(candidate) }
                         .padding(horizontal = 12.dp, vertical = 16.dp),
                 ) {
                     Text(
-                        (index + 1).toString().padStart(2, '0'), color = WebInkMuted, fontSize = 8.96.sp, lineHeight = 13.44.sp,
-                        fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp),
+                        number, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp,
+                        fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp).parityText(background = if (active) WebSurfaceSoft else WebSurface),
                     )
                     Column(Modifier.weight(1f).fillMaxHeight().padding(bottom = 1.4.dp), verticalArrangement = Arrangement.Center) {
                         Text(
@@ -4762,16 +4767,16 @@ private fun PhoneSettingsIndex(onOpen: (SettingsSection) -> Unit) {
                         )
                         Spacer(Modifier.height(2.1.dp))
                         Text(
-                            playarrString(description), color = WebInkMuted, fontSize = 10.88.sp, lineHeight = 15.776.sp,
+                            playarrString(description), color = WebInk, fontSize = 10.88.sp, lineHeight = 15.776.sp,
                             style = WebTextStyle, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            modifier = Modifier.offset(y = (-1).dp),
+                            modifier = Modifier.offset(y = (-1).dp).parityText(background = if (active) WebSurfaceSoft else WebSurface),
                         )
                     }
                     Spacer(Modifier.width(12.dp))
                     Box(Modifier.width(20.8.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
                         Text(
                             "→", color = if (active) WebInk else WebInkMuted, fontSize = 20.8.sp, lineHeight = 31.2.sp, style = WebTextStyle,
-                            modifier = Modifier.offset(x = if (active) 5.dp else 0.dp),
+                            modifier = Modifier.offset(x = if (active) 5.dp else 0.dp).parityText(background = if (active) WebSurfaceSoft else WebSurface),
                         )
                     }
                 }

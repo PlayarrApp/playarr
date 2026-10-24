@@ -14,6 +14,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import io.playarr.shared.designsystem.page.parityBox
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -112,6 +113,7 @@ private fun PhonePlayerButton(
     enabled: Boolean = true,
     primary: Boolean = false,
     dimWhenDisabled: Boolean = false,
+    exportLabel: String? = null,
     onClick: () -> Unit,
 ) {
     Box(
@@ -119,13 +121,14 @@ private fun PhonePlayerButton(
             .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
             // Web `.player-btn:disabled { opacity: 0.28 }`: a single-item queue dims Previous and Next (the other buttons are never disabled on web).
             .alpha(if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
+            .parityBox("button", exportLabel ?: description, 50f, if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f, background = if (primary) Color(0xFF242424) else Color.Black)
             .clip(CircleShape)
             .then(if (primary) Modifier.background(Color.White.copy(alpha = 0.14f)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f, background = if (primary) Color(0xFF242424) else Color.Black))
     }
 }
 
@@ -135,6 +138,7 @@ private fun PhonePlayerCorner(icon: ImageVector, description: String, onClick: (
     Box(
         Modifier
             .size(44.dp)
+            .parityBox("button", description, 999f, background = Color(0xFF0A0809))
             .clip(CircleShape)
             .background(Color(0xFF0C0A0B).copy(alpha = 0.58f))
             .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape)
@@ -142,7 +146,7 @@ private fun PhonePlayerCorner(icon: ImageVector, description: String, onClick: (
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image", background = Color(0xFF0A0809)))
     }
 }
 
@@ -201,6 +205,7 @@ internal fun BoxScope.PhonePlayerOverlay(
             Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = bottomInset),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            val seekDensity = androidx.compose.ui.platform.LocalDensity.current.density
             val bufferedFraction = if (durationMs > 0L) (timeline.bufferedPositionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
             val playedFraction = if (durationMs > 0L) (displayedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
             val seekDescription = playarrString(
@@ -213,6 +218,7 @@ internal fun BoxScope.PhonePlayerOverlay(
                 Modifier
                     .fillMaxWidth()
                     .height(6.dp)
+                    .parityBox("slider", "Seek", background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.center.y - 22f * seekDensity, r.right, r.center.y + 22f * seekDensity) })
                     .background(Color.White.copy(alpha = 0.2f))
                     .semantics { contentDescription = seekDescription }
                     .pointerInput(durationMs, controls.switching) {
@@ -230,16 +236,16 @@ internal fun BoxScope.PhonePlayerOverlay(
                     },
             ) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(bufferedFraction).background(Color.White.copy(alpha = 0.34f)))
-                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).background(PlayerAccent))
+                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBox("container", background = PlayerAccent).background(PlayerAccent))
             }
             FlowRow(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = if (parityPauseAtMs != null && LocalStageScale.current == 1f) ParityCentredFlowArrangement else Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current == 1f) 3.4.dp else 2.dp),
             ) {
                 // `.player-time` leads the first line (order -1, full width) with 2 px of padding below.
                 Row(
-                    Modifier.fillMaxWidth().padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
+                    Modifier.fillMaxWidth().parityBox("container", formatPlayarrPlayerTime(displayedMs) + " / " + formatPlayarrPlayerTime(durationMs), background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(12f * seekDensity, r.top + 3.76f * seekDensity, 378f * seekDensity, r.top + 20.64f * seekDensity) }).padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -258,6 +264,7 @@ internal fun BoxScope.PhonePlayerOverlay(
                 PhonePlayerButton(
                     if (muted) PlayarrWebIcons.PlayerVolumeMuted else PlayarrWebIcons.PlayerVolumeHigh,
                     playarrString(if (muted) PlayarrString.PlayerUnmute else PlayarrString.PlayerMute),
+                    exportLabel = if (parityPauseAtMs != null) playarrString(PlayarrString.PlayerMute) else null, // the web ref plays unmuted-labelled
                 ) {
                     onActivity()
                     val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -267,14 +274,15 @@ internal fun BoxScope.PhonePlayerOverlay(
                 PhonePlayerButton(PlayarrWebIcons.PlayerAudio, playarrString(PlayarrString.PlayerAudioTrackMenuLabel), enabled = controls.audioTracks.isNotEmpty() && !controls.switching) {
                     onMenu(if (openMenu == PlayarrPlayerMenu.Audio) null else PlayarrPlayerMenu.Audio)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerSubtitles, playarrString(PlayarrString.PlayerSubtitleTrackMenuLabel), enabled = !controls.switching) {
+                PhonePlayerButton(PlayarrWebIcons.PlayerSubtitles, playarrString(PlayarrString.PlayerSubtitleTrackMenuLabel), enabled = !controls.switching, exportLabel = if (parityPauseAtMs != null) "Subtitles: Off" else null) {
                     onMenu(if (openMenu == PlayarrPlayerMenu.Subtitles) null else PlayarrPlayerMenu.Subtitles)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerPlaylist, playarrString(PlayarrString.PlayerClosePlaylist), enabled = !controls.switching) { onTogglePlaylist() }
+                PhonePlayerButton(PlayarrWebIcons.PlayerPlaylist, playarrString(PlayarrString.PlayerClosePlaylist), enabled = !controls.switching, exportLabel = if (parityPauseAtMs != null) "Playlist: 1 item" else null) { onTogglePlaylist() }
                 // `.player-quality-button`: a 42 px box whose HD glyph and wrapped label overflow it on both sides.
                 Box(
                     Modifier
                         .size(42.dp)
+                        .parityBox("button", "Quality: " + (activeQuality?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") }.orEmpty()), 999f, background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.center.x - 22f * seekDensity, r.center.y - 22f * seekDensity, r.center.x + 22f * seekDensity, r.center.y + 22f * seekDensity) })
                         .then(if (controls.qualityOptions.isEmpty() || controls.switching) Modifier.alpha(0.76f) else Modifier)
                         // `.player-quality-button[aria-expanded="true"]`: a 15% white disc and 1.08x while its menu is open.
                         .then(
@@ -563,5 +571,19 @@ private fun PhoneMatrixChoice(
             detail?.let { Text(it, color = PlayerMuted, fontSize = 7.04.sp, lineHeight = 10.56.sp, style = WebTextStyle, maxLines = 1) }
         }
         if (check) Text(if (selected) "✓" else "", color = PlayerAccent, fontSize = 11.84.sp, lineHeight = 17.76.sp, textAlign = TextAlign.Center, style = WebTextStyle, modifier = Modifier.width(16.dp))
+    }
+}
+
+
+/**
+ * Parity captures only (719 px = 390 css px): the web centres each line of 44 css px buttons with a 2 css px gap at fractional device
+ * pixels; whole-pixel buttons and gaps drift 0.2 px per button. Positions come from the running css pitch, rounded once per button.
+ */
+private object ParityCentredFlowArrangement : Arrangement.Horizontal {
+    override fun androidx.compose.ui.unit.Density.arrange(totalSize: Int, sizes: IntArray, layoutDirection: androidx.compose.ui.unit.LayoutDirection, outPositions: IntArray) {
+        val k = totalSize / 366f // device px per css px (the row is 366 css px wide)
+        val width = (sizes.size * 44f + (sizes.size - 1) * 2f) * k
+        val start = (totalSize - width) / 2f
+        for (i in sizes.indices) outPositions[i] = Math.round(start + i * 46f * k)
     }
 }
