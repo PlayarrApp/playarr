@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deltaE, scoreLayout } from "./layout-score.mjs";
+import { deltaE, formatReport, scoreLayout } from "./layout-score.mjs";
 import { layoutPageFn, volatileFor } from "./layout-dump.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -67,4 +67,12 @@ test("the in-page function is safe for the TV eval channels (no line comments, n
   assert.ok(!/(^|[^:"'\\\w])\/\/[^\n]*/.test(src.replace(/\/[^/\n]*\\\/[^/\n]*\//g, "")), "line comment found");
   assert.ok(!/\?\.|\?\?/.test(src));
   assert.ok(volatileFor("settings-server").some((v) => v.name === "server-address"));
+});
+
+test("the report carries the web occluded count", () => {
+  const ref = { ...load("web.json"), occluded: 3 };
+  const r = scoreLayout(ref, load("device-ok.json"));
+  assert.equal(r.occluded, 3);
+  assert.equal(scoreLayout(load("web.json"), load("device-ok.json")).occluded, 0);
+  assert.match(formatReport(r), /3 occluded web elements dropped/);
 });
