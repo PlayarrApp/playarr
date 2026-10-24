@@ -196,7 +196,7 @@ internal object PlayarrLayoutExport {
         val cx = x + w / 2; val cy = y + h / 2
         val inner = synchronized(parityBoxes) { parityBoxes.toList() }.filter { it.background != androidx.compose.ui.graphics.Color.Unspecified && it.role != "image" && it.role != "img" }
             .filter { b -> val loc = IntArray(2).also { b.view.getLocationOnScreen(it) }; val bx = b.bounds.left + loc[0] - mainOrigin[0]; val by = b.bounds.top + loc[1] - mainOrigin[1]; cx in bx..(bx + b.bounds.width) && cy in by..(by + b.bounds.height) }
-            .let { c -> val top = c.filter { it.view.rootView !== mainRoot }; (if (top.isNotEmpty()) top else c).minByOrNull { it.bounds.width * it.bounds.height } }
+            .let { c -> val top = c.filter { it.view.rootView !== mainRoot }; (if (top.isNotEmpty()) top else c).asReversed().minByOrNull { it.bounds.width * it.bounds.height } }
         return hex((inner?.background ?: pageBackground).toArgb())
     }
 
