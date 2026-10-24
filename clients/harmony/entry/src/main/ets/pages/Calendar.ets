@@ -1047,8 +1047,8 @@ export struct ReleaseCalendar {
     .width('100%')
     .backgroundColor(toResourceColor(activeColors().bg)) // the page colour behind the controls (the root fill is darker)
     .justifyContent(FlexAlign.End)
-    .padding({ top: this.view === 'agenda' ? 0 : 14, bottom: this.view === 'month' ? 12 : (this.view === 'week' ? 10.7 : 19), right: PHONE_CONTROL_RIGHT })
-    .margin({ top: this.view === 'agenda' ? -4 : 0 })
+    .padding({ top: this.view === 'agenda' ? 0 : 14, bottom: this.view === 'month' ? 12 : (this.view === 'week' ? 0 : 19), right: PHONE_CONTROL_RIGHT })
+    .margin({ top: this.view === 'agenda' ? -4 : 0, bottom: this.view === 'week' ? -1.5 : 0 })
   }
 
   @Builder
@@ -1199,7 +1199,7 @@ export struct ReleaseCalendar {
             Text(dayHeading(cell.day)).fontFamily(nunitoAt(640, PHONE_DAY_HEADING_SIZE))
               .fontSize(PHONE_DAY_HEADING_SIZE) // web phone: 14.4
               .fontWeight(FontWeight.Medium)
-              .fontColor(toResourceColor(cell.isToday ? activeColors().ink : activeColors().inkSoft))
+              .fontColor(cell.isToday ? toResourceColorWithAlpha(activeColors().ink, 0.9) : toResourceColor(activeColors().ink)) // web: today's heading is the dimmer one
               .height(tv(WEEK_HEADING_HEIGHT))
             Scroll() {
               Column({ space: tv(ENTRY_GAP + 1) }) {
