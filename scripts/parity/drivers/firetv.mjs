@@ -15,6 +15,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { intoHome as pickProfile } from "./firetv-profile-pick.mjs";
+import { expandKeys } from "../suite-lib.mjs";
 
 const execFileP = promisify(execFile);
 const VEGA = (process.env.PLAYARR_FIRETV_VEGA ?? "vega").split(" ");
@@ -36,6 +37,13 @@ async function press(key) {
   if (win) await xdo("windowfocus", win).catch(() => {});
   await xdo("key", key);
 }
+// Screens whose web reference needs a focused card or an open drawer: a deep link alone gives another state, so after the route
+// these keys run (the suite's own keys after the nav selection, except where the Vega layout reaches the same control directly:
+// the grid's right edge is the Filters tile, with no alphabet rail in between to climb out of).
+const TAIL_KEYS = {
+  filters: ["right*12", "select"],
+  actions: ["right", "select:long"],
+};
 const KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
 
 const scratch = mkdtempSync(join(tmpdir(), "firetv-"));
@@ -158,8 +166,8 @@ export async function createDriver({ out } = {}) {
     async stop() {
     },
     async setTheme(theme) {
-      const s = await state();
-      if (s.theme === theme) return;
+      // Always sent: the state's theme is the resolved one, so a system preference that happens to resolve to the wanted theme would
+      // otherwise stay "System" and the Appearance panel would not show the chosen theme as web's does.
       await command({ cmd: "theme", name: theme }, 6000);
     },
     async home() {
@@ -204,11 +212,23 @@ export async function createDriver({ out } = {}) {
       await press(key);
       await sleep(900);
     },
-    async route(path) {
+    async route(path, { screenId } = {}) {
+      if (TAIL_KEYS[screenId]) {
+        await command({ cmd: "route", path: "/movies" }, 4000);
+        await waitSettled();
+        for (const { key, long } of expandKeys(TAIL_KEYS[screenId])) await this.key(key, { long });
+        return;
+      }
       const title = path.match(/^\/(movies|series)\/([0-9a-f-]{36})/);
       if (title) await command({ cmd: "open", kind: title[1], id: title[2] }, 9000);
       else await command({ cmd: "route", path }, 4000);
       await waitSettled();
+      // A library page draws its grid after the data arrives: a key before a card holds focus is spent on claiming it.
+      for (let i = 0; i < (/^\/(movies|series|music)(\?|$)/.test(path) ? 10 : 0); i++) {
+        const f = (await state(8000).catch(() => null))?.focus;
+        if (f && f.position?.rail !== "nav") break;
+        await sleep(2000);
+      }
       if (path === "/search") {
         // The search field opens the system keyboard on arrival; the suite captures the page with it dismissed (as on web).
         await press("Escape");

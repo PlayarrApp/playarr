@@ -125,6 +125,8 @@ export function installParityControl(hooks: ParityHooks): () => void {
         case 'play': hooks.play(command.file ?? ''); break;
         case 'stop': hooks.stop(); break;
         case 'theme': hooks.setTheme(command.name === 'light' ? 'light' : 'dark'); break;
+        // `parityNow` is the campaign's name for the same freeze; both take now=<ISO> and the clock stays frozen (it does not tick).
+        case 'parityNow':
         case 'clock': setParityClock(command.now ? command.now : null); break;
         default: break;
       }

@@ -11,7 +11,7 @@ reference is web mobile at the device's own size. The legend dir is the client's
 | --- | --- | --- | --- | --- | --- |
 | Web TV (reference) | Chromium in Playwright, TV user agent | Keyboard arrows, Enter, Escape (`drivers/web.mjs`) | Playwright page screenshot | None: it is the source of truth | `web` |
 | Android TV | Android Emulator, TV image | `adb shell input keyevent` D-pad keys | `adb exec-out screencap` | No hardware video plane; software codecs | `android` |
-| Fire TV (Vega OS) | Vega virtual device | `drivers/firetv.mjs`: X key events to the emulator window; commands and state through the app's control channel (a build with `PLAYARR_PARITY_CONTROL=1`: `vmsgr send` in, the app's log out) | `import -window root` of the emulator display | Build must match the host architecture; `loggingctl` returns only what was logged so far, so state is polled; older Fire OS runs the Android TV app | `firetv` |
+| Fire TV (Vega OS) | Vega virtual device | `drivers/firetv.mjs`: X key events to the emulator window; commands and state through the app's control channel (a build with `PLAYARR_PARITY_CONTROL=1`: `vmsgr send` in, the app's log out) | `import -window root` of the emulator display | Build must match the host architecture; `loggingctl` returns only what was logged so far, so state is polled; older Fire OS runs the Android TV app; see "Fire TV (Vega OS): how the run works" below | `firetv` |
 | Apple TV | tvOS simulator | `xcrun simctl` and XCUITest remote presses | `xcrun simctl io screenshot` | Simulator video is not the device decoder | `apple` |
 | Samsung Tizen | Tizen TV emulator 10.0 under KVM with host GPU GL, signed with an owner-provided Samsung certificate profile | X key events to the emulator window; the debug build's `netlog.js` channel evaluates page code (`drivers/tizen-webos.mjs`, `DEVICE=tizen`) | Emulator screen grab (`xwd`) | No 4K, DRM or some Samsung APIs; the video plane is a native AVPlay overlay the screen grab cannot see | `tizen-webos` (cand `tizen`) |
 | Samsung Tizen (native) | The native Tizen .NET app (`clients/tizen-native`, debug build) on the Tizen TV emulator | `drivers/tizen-native.mjs`: debug mirror keys over `sdb forward` | `import -window root` of the emulator display | No 4K, DRM or some Samsung APIs; same emulator as the web package | `tizen-native` (cand `dev`) |
@@ -21,6 +21,22 @@ reference is web mobile at the device's own size. The legend dir is the client's
 | macOS (Apple TV app) | The Apple TV app on a Mac, inside its own simulator folder only | Keyboard arrows | Window capture, never the desktop | Muted; never stream or capture the desktop | `macos` |
 | Hisense VIDAA | Real TV: MQTT remote plus the debug mirror build | MQTT remote key messages | Debug mirror build screenshots | Hardware only, no emulator | `vidaa` (pending) |
 | Roku Streaming Stick 4K | Real device, developer mode | ECP key presses | `plugin_inspect` screenshots | No emulator; screenshot has no video plane | `roku` (pending) |
+
+### Fire TV (Vega OS): how the run works
+
+- One command reproduces the whole run (14 screens in dark and light, then the 12 non-player D-pad checks) against the static
+  parity server with the clock pinned to 2026-10-07T12:00:00Z: `scripts/parity/vega/run.sh <out-dir> [screens|dpad]`. It writes
+  `<out-dir>/{dark,light}/<screen>.png`, `readiness.json`, `dpad.json` and `build.json`, which is the legend dir's layout.
+- The virtual device runs headless on an Xvfb display (no VNC) at 1920x1080 with the emulator window at 0,0 (`xdotool windowmove`),
+  so `import -window root -crop 1920x1080+0+0` is a 1:1 grab. Start it with the SDK's own command line plus `-fixed-scale`: the CLI's
+  default 0.5 window scale cannot be resized afterwards without losing the GL output.
+- The app must be a release build with `PLAYARR_PARITY_CONTROL=1` (the driver talks to it through `vmsgr` and the app's log). Install it
+  with `vega device install-app`, open it once and approve its link code as the parity account.
+- Screens are reached with `--via route`: the suite's key paths depend on every key arriving, and the virtual device drops one now and
+  then. The driver replays only the keys that matter after the route (the Filters tile, the title actions drawer). The D-pad checks reach their start screen by route too and then press the real keys under test.
+- `player-controls` is not captured: the virtual device cannot start playback from the static server's media URLs.
+- Platform limits (not chased): the host's font rasteriser anti-aliases text differently from Chromium, which leaves roughly 0.5 to 1% of
+  every text-heavy screen differing; the Download pill and the Download action are not in the Vega app (no download storage, owner ruling 2026-10-08).
 
 ### Tizen and webOS: how the shared runs work
 

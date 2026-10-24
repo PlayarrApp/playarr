@@ -549,11 +549,11 @@ const HomeCard = memo(function HomeCard(props: {
       </MediaFocus>
       <View style={{marginTop: u(11.25)}}>
         <CardCaption focused={selected} variant="home" artH={layout.artH} gap={11.25}>
-          <T size={11.904} weight={610} ls={-0.17856} color={colour.ink} lh={17.9} lines={1} dy={-2}>
+          <T size={11.904} weight={610} ls={-0.17856} color={colour.ink} lh={17.9} lines={1} dy={-1}>
             {title}
           </T>
           <View style={{marginTop: u(2.5)}}>
-            <T size={8.832} weight={400} color={colour.inkMuted} lh={11.5} lines={1} dy={-2}>
+            <T size={8.832} weight={400} color={colour.inkMuted} lh={11.5} lines={1} dy={-1}>
               {subtitle}
             </T>
           </View>

@@ -308,8 +308,8 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
       {debounced.length === 0 ? (
         <>
           {/* The web's `.tv-search-prompt` under the field and its `.tv-empty-state.is-rail` (graphic "search"): a 132 px disc, a gap of 42 px, the title. */}
-          <Box x={153.6} y={303} w={252}>
-            <T size={12.288} weight={400} lh={18.4} color={colour.inkMuted}>
+          <Box x={153.6} y={302.8} w={281.8}>
+            <T size={13.824} weight={400} lh={21.4272} color={colour.inkMuted}>
               {t('pages.search.emptyPrompt')}
             </T>
           </Box>
