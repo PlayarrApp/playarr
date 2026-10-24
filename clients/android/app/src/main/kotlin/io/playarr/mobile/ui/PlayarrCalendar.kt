@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import androidx.compose.ui.graphics.compositeOver
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityText
 import io.playarr.shared.designsystem.page.PlayarrPageBody
@@ -1611,8 +1612,9 @@ private fun CalendarMonthChips(
                         if (isTelevision) {
                             // Web `.calendar-month-cell`: hairline border, outside days tinted, today ringed in ink;
                             // `.calendar-line` text rows with an availability dot, then the day number and "+N more".
+                            val cellBg = (if (inMonth) WebSurface else WebSurfaceSoft.copy(alpha = 0.4f).compositeOver(WebSurface))
                             Column(
-                                Modifier.weight(1f).fillMaxHeight()
+                                Modifier.weight(1f).fillMaxHeight().parityBox("container", background = cellBg)
                                     .background(if (inMonth) Color.Transparent else WebSurfaceSoft.copy(alpha = 0.4f))
                                     .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.11f, 0.13f))
                                     .then(if (day == today) Modifier.border(2.dp, WebInk) else Modifier)
@@ -1621,13 +1623,13 @@ private fun CalendarMonthChips(
                                 Column(Modifier.weight(1f).padding(top = if (tabletCss) 1.dp else 7.dp)) {
                                     shown.forEachIndexed { slot, item ->
                                         CalendarLine(
-                                            item, calendarItemTone(item, today, zone), onClick = { onSelect(item) },
+                                            item, calendarItemTone(item, today, zone), onClick = { onSelect(item) }, day = day, cellBg = cellBg,
                                             modifier = Modifier.focusRequester(requesters[cell][slot]).calendarDpad(handleKey(slot)).calendarFocusReveal(),
                                         )
                                     }
                                 }
                                 Row(Modifier.height(30.dp).then(if (tabletCss) Modifier else Modifier.offset(y = (-8).dp)).padding(start = if (tabletCss) 3.5.dp else 2.2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    Text(day.dayOfMonth.toString(), color = if (inMonth) WebInk else (if (tabletCss) WebInkSoft else WebInkMuted), fontSize = if (tabletCss) 13.44.sp else 12.8.sp, fontWeight = FontWeight(640))
+                                    Text(day.dayOfMonth.toString(), color = if (inMonth) WebInk else (if (tabletCss) WebInkSoft else WebInkMuted), fontSize = if (tabletCss) 13.44.sp else 12.8.sp, fontWeight = FontWeight(640), modifier = Modifier.parityText(background = cellBg))
                                     if (hidden > 0) {
                                         val source = remember { MutableInteractionSource() }
                                         Box(
@@ -2179,7 +2181,10 @@ internal fun calendarRangeLabelShort(mode: CalendarViewMode, anchor: LocalDate, 
 
 /** Web `.calendar-line`: a 25 dp row, a 9 dp dot in the tone colour, the 12.48 px title (a group is bold, "Title · 2×"). */
 @Composable
-private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: () -> Unit, modifier: Modifier = Modifier, day: LocalDate? = null, cellBg: Color = WebSurface) {
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val toneLabel = playarrString(when (tone) { CalendarPillTone.Available -> PlayarrString.CalendarPillAvailable; CalendarPillTone.Upcoming -> PlayarrString.CalendarStatusUpcoming; CalendarPillTone.Missing -> PlayarrString.CalendarStatusMissing; CalendarPillTone.Neutral -> PlayarrString.CalendarPillNotTracked })
+    val dayLabel = day?.let { java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", LocalPlayarrLanguage.current.locale).format(it) }.orEmpty()
     val source = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(4.dp)
     val label = when (item) {
@@ -2193,14 +2198,14 @@ private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: ()
         CalendarPillTone.Neutral -> if (webIsDark) Color(0xFFCDC1C6) else Color(0xFF675961)
     }
     Row(
-        modifier.fillMaxWidth().height(25.dp).calendarFocusRing(source, shape).calendarClick(source, onClick)
+        modifier.fillMaxWidth().height(25.dp).parityBox("button", "$label, $toneLabel, $dayLabel", 4f, background = cellBg, fit = { r -> androidx.compose.ui.geometry.Rect(r.left + 1f * density, r.center.y - 21f * density, r.left + 92.25f * density, r.center.y + 23f * density) }).calendarFocusRing(source, shape).calendarClick(source, onClick)
             .semantics(mergeDescendants = true) { contentDescription = label }.padding(horizontal = 5.6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(9.dp).background(dot, CircleShape))
+        Box(Modifier.size(9.dp).parityBox("container", radius = 50f, background = dot).background(dot, CircleShape))
         Text(
             label, color = WebInk, fontSize = 12.48.sp, lineHeight = 14.976.sp, fontWeight = if (item is CalendarItem.Series) FontWeight(680) else FontWeight.Normal,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp),
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp).parityText(background = cellBg),
         )
     }
 }
