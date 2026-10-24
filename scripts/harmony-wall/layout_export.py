@@ -225,7 +225,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 _, prole, pname = pxid.split(":", 2)
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if dpr == 3 and prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))) == pname and abs(w - h) > 2:
-                    as_text[0] = (pname, prole, 999 if radius else 0)  # web's labelled pill is one text-run element with the button role
+                    as_text[0] = (pname, prole, (999 if radius >= min(w, h) / 2 - 0.5 else radius) if radius else 0)  # web's labelled pill is one text-run element with the button role
                 else:
                     el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                           "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
