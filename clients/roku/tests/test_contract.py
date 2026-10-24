@@ -90,7 +90,7 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn("sub searchChromeInit()", MAIN)
         self.assertIn('setSearchHeader(formatCountWithCommas(m.searchDisplayItems.Count()) + " " + resultWord)', MAIN)
         self.assertEqual(MAIN.count('m.top.screenState = "search"\n    renderNavDockFocus()'), 2)
-        self.assertIn('id="searchFieldBg" translation="[153.6,170]" width="596" height="84"', SCENE)
+        self.assertIn('id="searchFieldBg" translation="[153.6,172.8]" width="590" height="76"', SCENE)
 
     def test_detail_lights_the_dock_slot_of_its_library(self) -> None:
         self.assertIn('if state = "detail" and m.selectedWork <> invalid and m.selectedWork.kind <> invalid', MAIN)

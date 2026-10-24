@@ -54,7 +54,17 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
   const FILLSET = ["container", "link", "button", "search", "textbox", "status", "dialog", "group", "heading"];
   const dbg = [];
   const boxes = [];
-  const under = (x, y, w, h) => { const cx = x + w / 2, cy = y + h / 2; let best = null; for (const b of boxes) { if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h && (!best || b.w * b.h <= best.w * best.h)) best = b; } return best ? best.bg : null; };
+  const under = (x, y, w, h) => {
+    const cx = x + w / 2, cy = y + h / 2;
+    // A dialog covers the page: what sits inside it rests on boxes of the dialog only.
+    const dlg = boxes.find((b) => b.role === "dialog" && cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
+    let best = null;
+    for (const b of boxes) {
+      if (dlg && !(b.x >= dlg.x - 0.5 && b.y >= dlg.y - 0.5 && b.x + b.w <= dlg.x + dlg.w + 0.5 && b.y + b.h <= dlg.y + dlg.h + 0.5)) continue;
+      if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h && (!best || b.w * b.h <= best.w * best.h)) best = b;
+    }
+    return best ? best.bg : null;
+  };
   const items = [];
   for (const raw of lines) {
     let it;
@@ -63,7 +73,7 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
     items.push(it);
     // Text sits on the nearest box drawn beneath it, whatever order the channel printed them in.
     if (it.k === "box" && !it.fixed) it.bg = ""; // sampled below
-    if (it.k === "box" && FILLSET.includes(it.role) && it.w < 1900 && it.bg) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg });
+    if (it.k === "box" && FILLSET.includes(it.role) && it.w < 1900 && it.bg) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg, role: it.role });
   }
   // A box's background is what the device draws inside it: the colour of its own fill over what is beneath (read from the frame).
   const FILLS = ["container", "link", "button", "search", "textbox", "status", "dialog", "group", "heading"];
@@ -72,7 +82,7 @@ export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned
   for (const it of items) if (it.k === "box" && !it.fixed && (it.inherit || !FILLS.includes(it.role))) it.bg = encl(it) || bg.inside(it.x, it.y, it.w, it.h);
   const sampled = items.filter((it) => it.k === "box" && FILLSET.includes(it.role) && it.w < 1900);
   boxes.length = 0;
-  for (const it of sampled) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg });
+  for (const it of sampled) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg, role: it.role });
   for (const it of items) {
     if (it.k === "label" || it.k === "tracked") {
       if (it.size == null) continue;

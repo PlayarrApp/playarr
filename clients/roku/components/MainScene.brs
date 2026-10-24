@@ -3175,7 +3175,7 @@ sub searchChromeInit()
     m.searchHeaderRule = pgRect(holder, 226.6, 112, 1, 1, "line")
     m.searchHeaderCount = CreateObject("roSGNode", "TrackedText")
     holder.AppendChild(m.searchHeaderCount)
-    pgIcon(holder, 181.6, 199, 22, "nav-search.png", "inkSoft")
+    pgIcon(holder, 178.6, 198.8, 24, "nav-search.png", "inkSoft")
     m.searchClearLabel = CreateObject("roSGNode", "Label")
     m.searchClearLabel.translation = [655, 201]
     m.searchClearLabel.width = 70

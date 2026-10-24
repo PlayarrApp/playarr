@@ -44,6 +44,7 @@ sub ParityLayoutWalk(node as Object, opacity as Float, ctx as Object)
         ParityAnnotated(node, op)
         return
     end if
+    if node.id = "searchFieldLabel" or node.id = "searchClearLabel" then return
     if kind = "Label"
         ParityLayoutLabel(node, op, ctx)
         return
@@ -169,7 +170,9 @@ sub ParityBox(role as String, name as String, x as Float, y as Float, w as Float
     if r >= 999 then r = 998.5
     short = w
     if h < short then short = h
-    if radius >= 999
+    if radius = 50
+        r = 50
+    else if radius >= 999
         r = 999
     else if r > 0 and r * 2 >= short - 0.5
         r = 999
@@ -186,6 +189,7 @@ sub ParityBox(role as String, name as String, x as Float, y as Float, w as Float
 end sub
 
 sub ParityStructure()
+    if m.top.screenState = "search" then ParitySearch()
     if m.top.screenState = "profiles"
         ParityProfilesPage()
         return
@@ -559,5 +563,18 @@ sub ParityProfilesPage()
         ParityBox("button", "Sign out " + who, a[0] + 52.8, a[1], 101.2, 44, 999, tok)
         ParityBox("image", "", a[0] + 69.8, a[1] + 13, 18, 18, 0, tok)
         ParityLayoutEmit({ k: "tracked", bg: ParityToken(tok), id: "signout", text: "Sign out", x: a[0] + 95, y: a[1] + 14, w: 42, h: 15, op: 1, role: "", color: ParityHex(ThemeColor("inkSoft")), lines: 1, tracking: 0, size: 10.75, font: PlayarrFontPath(720) })
+    end if
+end sub
+
+' The search page: the pill field with its magnifier and text box, and the empty-state badge.
+sub ParitySearch()
+    tok = "c:201c20:fffefe"
+    ParityBox("search", "", 153.6, 172.8, 590, 76, 999, tok)
+    ParityBox("image", "", 178.6, 198.8, 24, 24, 0, tok)
+    ParityBox("textbox", "Search your libraries and playlists", 215.6, 180.8, 506, 60, 0, tok)
+    if m.searchEmptyState <> invalid and m.searchEmptyState.visible
+        etok = "c:1e1b1e:fdfdfc"
+        ParityBox("container", "", 1124.6, 311.8, 132, 132, 50, etok)
+        ParityBox("image", "", 1163.6, 359.8, 54, 36, 0, etok)
     end if
 end sub
