@@ -1,5 +1,7 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityText
 import io.playarr.shared.designsystem.page.PlayarrPageBody
 import io.playarr.shared.designsystem.page.PlayarrPageLayout
 import io.playarr.shared.designsystem.page.playarrPageMetrics
@@ -378,7 +380,7 @@ private fun PhoneCalendarToolbarPill(label: String, onClick: () -> Unit, modifie
         border = BorderStroke(1.dp, WebPillBorder),
     ) {
         Box(Modifier.padding(horizontal = 21.dp), contentAlignment = Alignment.Center) {
-            Text(label, fontSize = 11.52.sp, lineHeight = 17.28.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1)
+            Text(label, fontSize = 11.52.sp, lineHeight = 17.28.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(role = "button", radius = 999f, background = WebSurface))
         }
     }
 }
@@ -387,12 +389,12 @@ private fun PhoneCalendarToolbarPill(label: String, onClick: () -> Unit, modifie
 private fun PhoneCalendarRound(modifier: Modifier, glyph: String, description: String, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = modifier.size(44.dp).semantics { contentDescription = description },
+        modifier = modifier.size(44.dp).parityBox("button", description, 50f, background = WebSurface).semantics { contentDescription = description },
         shape = CircleShape, color = WebSurface, contentColor = WebInkSoft,
         border = BorderStroke(1.dp, WebPillBorder),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(glyph, fontSize = 11.52.sp, lineHeight = 17.28.sp, fontWeight = FontWeight(720), style = WebTextStyle)
+            Text(glyph, fontSize = 11.52.sp, lineHeight = 17.28.sp, fontWeight = FontWeight(720), style = WebTextStyle, modifier = Modifier.parityText(background = WebSurface))
         }
     }
 }
@@ -437,7 +439,7 @@ private fun PhoneCalendarAgenda(
                     Row(Modifier.padding(top = if (index == 0) 0.dp else 18.5.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
                             phoneCalendarDayHeading(group.date, locale), color = if (group.date == today) WebInkSoft else WebInk, fontSize = 14.4.sp, lineHeight = 21.6.sp, fontWeight = FontWeight(640),
-                            style = WebTextStyle, modifier = Modifier.semantics { heading() },
+                            style = WebTextStyle, modifier = Modifier.semantics { heading() }.parityText(role = "text", background = WebSurface),
                         )
                         if (group.date == today) CalendarTodayBadge()
                     }
@@ -584,7 +586,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val fill = WebSurfaceStrong
     Surface(
         // Material's clickable Surface paints a focus state layer (a fill); web's focus state is the ring alone.
-        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === TvCalendarMetrics && agenda && rowSubtitle.isEmpty()) 78f else if ((m === TvCalendarMetrics || (m === PhoneCalendarMetrics && LocalStageScale.current == 1f)) && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
+        modifier = modifier.parityBox("button", listOfNotNull(item.title, rowSubtitle.takeIf { it.isNotEmpty() }, time, calendarReleaseTypeLabel(entry.releaseType), if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind, playarrString(when (calendarItemTone(item, LocalCalendarToday.current, zone)) { CalendarPillTone.Available -> PlayarrString.CalendarPillAvailable; CalendarPillTone.Upcoming -> PlayarrString.CalendarStatusUpcoming; CalendarPillTone.Missing -> PlayarrString.CalendarStatusMissing; CalendarPillTone.Neutral -> PlayarrString.CalendarPillNotTracked })).joinToString(" "), m.entryRadius, background = fill).padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === TvCalendarMetrics && agenda && rowSubtitle.isEmpty()) 78f else if ((m === TvCalendarMetrics || (m === PhoneCalendarMetrics && LocalStageScale.current == 1f)) && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
@@ -621,23 +623,23 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (measureOnly) Spacer(Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp))
-            else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp).clip(RoundedCornerShape(6.dp)))
+            else CalendarPoster(entry.posterUrl, Modifier.size(width = m.poster.first.dp, height = m.poster.second.dp).parityBox("image", radius = 6f, background = WebSurfaceSoft).clip(RoundedCornerShape(6.dp)))
             // Phone agenda only (static refs; the week keeps its pitch): the lines sit 1.9 dp apart, not 2.4, and the block 1 dp higher than the row centre gives.
             val phoneEntry = agenda && m === PhoneCalendarMetrics
             val lineGap = if (phoneEntry) 1.9.dp else 2.4.dp
             Column(Modifier.weight(1f).padding(start = 14.4.dp).then(if (phoneEntry) Modifier.offset(y = (-1).dp) else Modifier)) {
-                Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
+                Text(item.title, color = WebInk, fontSize = titleSp.sp, lineHeight = titleLine.sp, fontWeight = FontWeight(640), style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.parityText(background = fill))
                 Spacer(Modifier.height(lineGap))
                 if (rowSubtitle.isNotEmpty()) {
-                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
+                    Text(rowSubtitle, color = WebInkSoft, fontSize = titleSp.sp, lineHeight = titleLine.sp, style = WebTextStyle, maxLines = if (wrapTitles) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.parityText(background = fill))
                     Spacer(Modifier.height(lineGap))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(time, color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
-                    Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle)
+                    Text(time, color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle, modifier = Modifier.parityText(background = fill))
+                    Text(calendarReleaseTypeLabel(entry.releaseType), color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle, modifier = Modifier.parityText(background = fill))
                     Text(
                         if (kind == CalendarMediaKind.Episode) playarrString(PlayarrString.CalendarDetailKindEpisode) else kind?.let { calendarKindLabel(it) } ?: entry.mediaKind,
-                        color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle,
+                        color = WebInkMuted, fontSize = (if (tvWeek) m.entryMeta * 0.98f else m.entryMeta).sp, lineHeight = m.entryMetaLine.sp, style = WebTextStyle, modifier = Modifier.parityText(background = fill),
                     )
                     if (m === TvCalendarMetrics) CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone))
                     else CalendarTonePill(calendarItemTone(item, LocalCalendarToday.current, zone), phone = true)
@@ -1167,7 +1169,7 @@ private fun CalendarWeekBody(
                             Row(Modifier.then(if (isTelevision) Modifier.offset(y = 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
                                     phoneCalendarDayHeading(group.date, locale), color = WebInk, fontSize = if (isTelevision) 18.7.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision) 560 else 640),
-                                    style = WebTextStyle, modifier = Modifier.semantics { heading() },
+                                    style = WebTextStyle, modifier = Modifier.semantics { heading() }.parityText(role = "text", background = WebSurface),
                                 )
                                 if (group.date == today) CalendarTodayBadge()
                             }
@@ -2060,7 +2062,7 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
             .border(1.dp, toneColour.copy(alpha = 0.6f), CircleShape)
             .padding(horizontal = 10.4.dp, vertical = 2.88.dp),
     ) {
-        Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1)
+        Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(radius = 999f, background = androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f)))
     }
 }
 
@@ -2068,7 +2070,7 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
 @Composable
 private fun CalendarTodayBadge() {
     Box(Modifier.border(1.dp, WebInkSoft.copy(alpha = 0.6f), CircleShape).padding(horizontal = 8.dp, vertical = 1.6.dp)) {
-        Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = WebInkSoft, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight(640), letterSpacing = 0.896.sp, style = WebTextStyle)
+        Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = WebInkSoft, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight(640), letterSpacing = 0.896.sp, style = WebTextStyle, modifier = Modifier.parityText(radius = 999f, background = WebSurface))
     }
 }
 
