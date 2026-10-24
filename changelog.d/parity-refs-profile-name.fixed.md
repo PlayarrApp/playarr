@@ -1,0 +1,1 @@
+- Parity: web refs wait for the signed-in profile display name before capture and fail when dark and light layouts disagree on any text.
