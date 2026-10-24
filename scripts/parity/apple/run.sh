@@ -39,9 +39,9 @@ gh run download "$id" -R "$repo" -D "$tmp/screens"
 [[ -z $dpad_id ]] || gh run download "$dpad_id" -R "$repo" -D "$tmp/dpad" || true
 mkdir -p "$dest/light"
 copy_layout() { [[ ! -d $1/layout ]] || { mkdir -p "$dest/layout"; cp -r "$1"/layout/. "$dest/layout/"; }; }
-for d in "$tmp"/screens/apple-wall-"$device"-dark-*; do cp "$d"/dark/*.png "$dest/"; copy_layout "$d"; [[ $device == macos ]] || cp "$d"/dpad.json "$dest/dpad.json"; done
+for d in "$tmp"/screens/apple-wall-"$device"-dark-*; do cp "$d"/dark/*.png "$dest/"; copy_layout "$d"; [[ $device == macos ]] || [[ ! -f $d/dpad.json ]] || cp "$d"/dpad.json "$dest/dpad.json"; done
 for d in "$tmp"/screens/apple-wall-"$device"-light-*; do cp "$d"/light/*.png "$dest/light/"; copy_layout "$d"; done
-for d in "$tmp"/dpad/apple-wall-"$device"-dark-*; do [[ ! -f $d/dpad.json ]] || cp "$d"/dpad.json "$dest/dpad.json"; done
+for d in "$tmp"/dpad/apple-wall-"$device"-dark-*; do [[ ! -f $d/dpad.json ]] || [[ ! -f $d/dpad.json ]] || cp "$d"/dpad.json "$dest/dpad.json"; done
 printf '{"branch":"%s","sha":"%s","pr":null,"captured_at":"%s","server":"static server","run":"%s"}\n' \
   "$ref" "$(git rev-parse HEAD)" "$(date -u +%FT%TZ)" "$id" > "$dest/build.json"
 echo "captures in $dest"
