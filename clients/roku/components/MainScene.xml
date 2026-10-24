@@ -103,7 +103,7 @@
     -->
     <Group id="profilesGroup" visible="false">
       <Poster id="profilesAuthBg" translation="[0,0]" width="1920" height="1080" uri="pkg:/images/profiles-bg.png" loadDisplayMode="scaleToFill" />
-      <Poster id="profilesLogo" translation="[61,59]" width="42" height="42" uri="pkg:/images/pairing-logo.png" loadDisplayMode="scaleToFit" />
+      <Poster id="profilesLogo" translation="[60.63,60.16]" width="42" height="42" uri="pkg:/images/pairing-logo.png" loadDisplayMode="scaleToFit" />
       <!-- TvStageChrome theme + language (same square triggers as pairing / web). -->
       <Group id="profilesChromeControls" translation="[1552,50]">
         <Poster id="profilesThemePill" translation="[0,0]" width="144" height="48" uri="pkg:/images/pairing-chrome-dd-theme.png" />
@@ -133,8 +133,8 @@
       <Group id="profileActionsGroup" translation="[852,655]" visible="true">
         <Poster id="profilesSettingsBtn" translation="[0,0]" width="44" height="44" uri="pkg:/images/profiles-gear.png" loadDisplayMode="scaleToFit" />
         <Rectangle id="profilesSettingsHit" translation="[0,0]" width="44" height="44" color="0x00000000" focusable="true" />
-        <Poster id="profilesSignOutBtn" translation="[54,0]" width="104" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFit" />
-        <Rectangle id="profilesSignOutHit" translation="[54,0]" width="104" height="44" color="0x00000000" focusable="true" />
+        <Poster id="profilesSignOutBtn" translation="[52.8,0]" width="101.2" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFill" />
+        <Rectangle id="profilesSignOutHit" translation="[52.8,0]" width="101.2" height="44" color="0x00000000" focusable="true" />
       </Group>
       <!-- Web .profile-clients-link: independent footer action, not part of avatar actions. -->
       <Group id="profilesClientsAction" translation="[1784,1005]">

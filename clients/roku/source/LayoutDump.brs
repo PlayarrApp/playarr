@@ -53,7 +53,7 @@ sub ParityLayoutWalk(node as Object, opacity as Float, ctx as Object)
     else if kind = "PosterCard"
         ParityCard(node)
     else if kind = "WebLabel"
-        if node.text <> ""
+        if node.text <> "" and not node.hasField("parityHidden")
             ParityLayoutTracked(node.findNode("run"), { id: node.id, rectH: node.rectH, text: node.text, size: node.size, weight: node.weight, tracking: node.tracking, lineHeight: ParityWebLineHeight(node), aria: node.aria }, node.color, op, ctx)
         end if
         return
@@ -184,6 +184,10 @@ sub ParityBox(role as String, name as String, x as Float, y as Float, w as Float
 end sub
 
 sub ParityStructure()
+    if m.top.screenState = "profiles"
+        ParityProfilesPage()
+        return
+    end if
     ParityPageShell()
     logo = m.top.findNode("navLogo")
     if logo <> invalid and logo.visible and m.persistentHeader.visible
@@ -405,6 +409,7 @@ sub ParityPrepareCards()
         end for
     end if
     lists.Push(m.browseGrid)
+    if m.profilesRow <> invalid then lists.Push(m.profilesRow)
     if m.searchGrid <> invalid then lists.Push(m.searchGrid)
     for each list in lists
         if list = invalid or list.content = invalid or not ParityShown(list) then continue for
@@ -414,8 +419,10 @@ sub ParityPrepareCards()
             o = ParityOrigin(list)
             row = list.content.getChild(0)
             if row = invalid then continue for
+            lead = 96
+            if list.id = "profilesRow" then lead = 0
             for j = 0 to row.getChildCount() - 1
-                ParityPlace(row.getChild(j), o[0] + 96 + j * (list.rowItemSize[0][0] + list.rowItemSpacing[0][0]), o[1])
+                ParityPlace(row.getChild(j), o[0] + lead + j * (list.rowItemSize[0][0] + list.rowItemSpacing[0][0]), o[1])
             end for
         else
             ' A grid item reports its box in the scene already; the cell offset is what it lacks.
@@ -467,3 +474,86 @@ function ParityRectOf(node as Object) as Object
     p = ParityPos(node)
     return { x: p[0], y: p[1], width: node.width, height: node.height }
 end function
+
+' ---- Profiles ------------------------------------------------------------------------------------------------------------------
+
+' A point (q, in the item group's own coordinates) of a profile item, drawn: through the item group's scale and lift.
+function ParityItemPoint(item as Object, q as Object) as Object
+    g = item.findNode("itemGroup")
+    s = g.scale[0]
+    c = g.scaleRotateCenter
+    t = g.translation
+    return [t[0] + c[0] + s * (q[0] - c[0]) + ParityDx(), t[1] + c[1] + s * (q[1] - c[1]) + ParityDy()]
+end function
+
+' A point of the circle (local q), drawn: the circle scales about its centre inside the item group.
+function ParityCirclePoint(item as Object, q as Object) as Object
+    cg = item.findNode("circleGroup")
+    s = cg.scale[0]
+    o = cg.translation
+    c = cg.scaleRotateCenter
+    return ParityItemPoint(item, [o[0] + c[0] + s * (q[0] - c[0]), o[1] + c[1] + s * (q[1] - c[1])])
+end function
+
+sub ParityProfile(item as Object, content as Object)
+    g = item.findNode("itemGroup")
+    k = g.scale[0]
+    cg = item.findNode("circleGroup")
+    cs = cg.scale[0] * k
+    p0 = ParityItemPoint(item, [62, 53])
+    isAdd = content.presetId = "add"
+    name = content.title
+    if isAdd
+        name = "+ Sign in ADD ANOTHER PROFILE"
+    else if content.statusText = "WATCHING NOW"
+        name = content.title + ", current profile"
+    else if content.statusText = "PIN REQUIRED"
+        name = content.title + ", PIN required"
+    else
+        name = content.title + ", ready"
+    end if
+    height = 301.6
+    ParityBox("button", name, p0[0], p0[1], 244 * k, height * k, 0, "bg")
+    c0 = ParityCirclePoint(item, [0, 0])
+    ParityBox("container", "", c0[0], c0[1], 244 * cs, 244 * cs, 50, "bg")
+    if isAdd
+        t = ParityCirclePoint(item, [99.0, 69.4])
+        ParityLayoutEmit({ k: "tracked", bg: ParityToken("bg"), id: "plus", text: "+", x: t[0], y: t[1], w: 46.1 * cs, h: 105 * cs, op: 1, role: "", color: ParityHex(ThemeColor("inkSoft")), lines: 1, tracking: 0, size: 76.8, font: PlayarrFontPath(300) })
+    else
+        i0 = ParityCirclePoint(item, [17.95, 17.95])
+        ParityBox("image", "", i0[0], i0[1], 208.1 * cs, 208.1 * cs, 0, "bg")
+    end if
+    ctx = { measure: CreateObject("roSGNode", "Label"), count: 0 }
+    ParityLayoutWalk(g, 1.0, ctx)
+end sub
+
+' The profiles page: logo, theme and language buttons, the action buttons under the current profile and the footer action.
+sub ParityProfilesPage()
+    logo = m.top.findNode("profilesLogo")
+    ParityBox("container", "", 0, 0, 1920, 1080, 0, "bg")
+    ParityBox("image", "", 60.63, 60.16, 42, 42, 0, "bg")
+    cc = m.top.findNode("profilesChromeControls")
+    o = cc.translation
+    ParityBox("button", "Theme: " + m.profilesThemeLabel.text, o[0] - 0.2, o[1] - 0.3, 144, 48, 0, "bg")
+    ParityBox("image", "", o[0] + 19.2, o[1] + 15.7, 16, 16, 0, "bg")
+    ParityBox("image", "", o[0] + 112.4, o[1] + 17.7, 12, 12, 0, "bg")
+    ParityBox("button", m.top.findNode("profilesLangLabel").text, o[0] + 157.8, o[1] - 0.3, 168, 48, 0, "bg")
+    ParityBox("image", "", o[0] + 177.2, o[1] + 15.7, 16, 16, 0, "bg")
+    ParityBox("image", "", o[0] + 294.4, o[1] + 17.7, 12, 12, 0, "bg")
+    ag = m.profileActionsGroup
+    if ag <> invalid and ag.opacity > 0.5
+        a = ag.translation
+        who = ""
+        if m.profiles <> invalid and m.profiles.Count() > 0
+            idx = m.profilesFocusIndex
+            if idx = invalid or idx < 0 or idx >= m.profiles.Count() then idx = profilesCurrentIndex()
+            if m.profiles[idx] <> invalid and m.profiles[idx].display_name <> invalid then who = m.profiles[idx].display_name
+        end if
+        tok = "c:1d191d:fbfbfa"
+        ParityBox("button", who + " settings", a[0], a[1], 44, 44, 999, tok)
+        ParityBox("image", "", a[0] + 13, a[1] + 13, 18, 18, 0, tok)
+        ParityBox("button", "Sign out " + who, a[0] + 52.8, a[1], 101.2, 44, 999, tok)
+        ParityBox("image", "", a[0] + 69.8, a[1] + 13, 18, 18, 0, tok)
+        ParityLayoutEmit({ k: "tracked", bg: ParityToken(tok), id: "signout", text: "Sign out", x: a[0] + 95, y: a[1] + 14, w: 42, h: 15, op: 1, role: "", color: ParityHex(ThemeColor("inkSoft")), lines: 1, tracking: 0, size: 10.75, font: PlayarrFontPath(720) })
+    end if
+end sub

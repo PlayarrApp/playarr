@@ -17,21 +17,25 @@
       61px transparent inset keeps their centred transforms inside the
       RowList item bounds without changing the avatar centres.
     -->
-    <Group id="circleGroup" translation="[61,53]" scaleRotateCenter="[123,123]">
-      <Poster id="focusShadow" translation="[-45,-15]" width="336" height="336" uri="pkg:/images/avatar-shadow.png" opacity="0" loadDisplayMode="scaleToFit" />
-      <!-- Thin outline and the 20 px, 45% card glow, centred on the avatar. -->
-      <Poster id="focusRing" translation="[-29,-29]" width="304" height="304" uri="pkg:/images/avatar-ring.png" opacity="0" loadDisplayMode="scaleToFit" />
-      <Poster id="avatarImage" translation="[0,0]" width="246" height="246" loadDisplayMode="scaleToFit" />
-      <!-- A custom photo: the account's JPEG, clipped to the circle by the mask (only the mask's alpha counts). -->
-      <MaskGroup id="customMask" maskUri="pkg:/images/avatar-mask.png" maskSize="[246,246]" visible="false">
-        <Poster id="customImage" translation="[0,0]" width="246" height="246" loadDisplayMode="scaleToZoom" />
-      </MaskGroup>
-      <Label id="initial" translation="[0,0]" width="246" height="246" horizAlign="center" vertAlign="center" scale="[2.2,2.2]" scaleRotateCenter="[123,123]" color="0xFFFFFFFF" visible="false" />
+    <!-- The web scales the whole profile button 1.045 and lifts it 8 px when focused, the circle a further 1.035. Item box is 368 x 392. -->
+    <Group id="itemGroup" scaleRotateCenter="[184,203.8]">
+      <Group id="circleGroup" translation="[62,53]" scaleRotateCenter="[122,122]">
+        <Poster id="focusShadow" translation="[-45,-15]" width="336" height="336" uri="pkg:/images/avatar-shadow.png" opacity="0" loadDisplayMode="scaleToFit" />
+        <!-- Thin outline and the 20 px, 45% card glow, centred on the avatar. -->
+        <Poster id="focusRing" translation="[-29,-29]" width="304" height="304" uri="pkg:/images/avatar-ring.png" opacity="0" loadDisplayMode="scaleToFit" />
+        <Poster id="avatarImage" translation="[0,0]" width="244" height="244" loadDisplayMode="scaleToFit" />
+        <!-- A custom photo: the account's JPEG, clipped to the circle by the mask (only the mask's alpha counts). -->
+        <MaskGroup id="customMask" maskUri="pkg:/images/avatar-mask.png" maskSize="[244,244]" visible="false">
+          <Poster id="customImage" translation="[0,0]" width="244" height="244" loadDisplayMode="scaleToZoom" />
+        </MaskGroup>
+        <Label id="initial" translation="[0,0]" width="244" height="244" horizAlign="center" vertAlign="center" scale="[2.2,2.2]" scaleRotateCenter="[122,122]" color="0xFFFFFFFF" visible="false" />
+      </Group>
+      <Label id="name" translation="[62,303.4]" width="244" height="34" horizAlign="center" numLines="1" scale="[0.54,0.54]" scaleRotateCenter="[122,17]" color="0xF4F0F1FF" />
+      <Label id="status" translation="[62,338.7]" width="244" height="28" horizAlign="center" numLines="1" scale="[0.2941,0.2941]" scaleRotateCenter="[122,14]" color="0x887A82FF" />
     </Group>
-    <Label id="name" translation="[61,297]" width="246" height="34" horizAlign="center" numLines="1" scale="[0.55,0.55]" scaleRotateCenter="[123,17]" color="0xF4F0F1FF" />
-    <Label id="status" translation="[61,329]" width="246" height="28" horizAlign="center" numLines="1" scale="[0.40,0.40]" scaleRotateCenter="[123,14]" color="0x887A82FF" />
   </children>
   <script type="text/brightscript" uri="pkg:/source/Fonts.brs" />
   <script type="text/brightscript" uri="pkg:/source/Theme.brs" />
+  <script type="text/brightscript" uri="pkg:/source/LayoutDump.brs" />
   <script type="text/brightscript" uri="pkg:/components/ProfileAvatar.brs" />
 </component>

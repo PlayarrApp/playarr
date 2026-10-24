@@ -111,6 +111,10 @@ function PlayarrTypeFor(scope as String, id as String) as Dynamic
             profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
             userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink", boxH: 8 }
             "TvStage.stageMetaLabel": { size: 12.86, weight: 600, tracking: 0, role: "heroSoft" }
+            "ProfileAvatar.name": { size: 17.28, weight: 680, tracking: 0.37 }
+            "ProfileAvatar.status": { size: 9.41, weight: 690, tracking: 0.725, role: "inkMuted" }
+            profilesThemeLabel: { size: 11.52, weight: 720, tracking: 0 }
+            profilesLangLabel: { size: 11.52, weight: 720, tracking: 0 }
             "PosterCard.title": { size: 11.9, weight: 610, tracking: -0.183 }
             "PosterCard.kind": { size: 8.83, weight: 400, tracking: 0 }
         }

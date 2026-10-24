@@ -58,11 +58,11 @@ sub init()
     m.profilesTitle = m.top.findNode("profilesTitle")
     if m.profilesKicker <> invalid
         m.profilesKicker.ObserveField("textWidth", "centerProfilesKicker")
-        m.profilesKicker.spec = { text: "PROFILES", size: 10, weight: 800, tracking: 1.35, role: "brandInk", upper: true }
+        m.profilesKicker.spec = { text: "PROFILES", size: 10.37, weight: 820, tracking: 1.342, role: "brandInk", upper: true }
     end if
     if m.profilesTitle <> invalid
         m.profilesTitle.ObserveField("textWidth", "centerProfilesTitle")
-        m.profilesTitle.spec = { text: "Who’s watching?", size: 81, weight: 500, tracking: -5.806, role: "ink" }
+        m.profilesTitle.spec = { text: "Who’s watching?", size: 80.64, weight: 500, tracking: -5.812, role: "ink", aria: "heading" }
     end if
     m.profileActionsGroup = m.top.findNode("profileActionsGroup")
     m.profilesSettingsBtn = m.top.findNode("profilesSettingsBtn")
@@ -1696,14 +1696,14 @@ sub centerProfilesKicker()
     if m.profilesKicker = invalid then return
     width = m.profilesKicker.textWidth
     if width <= 0 then return
-    m.profilesKicker.translation = [Int((1920 - width) / 2), 162]
+    m.profilesKicker.translation = [(1920 - width) / 2, 162]
 end sub
 
 sub centerProfilesTitle()
     if m.profilesTitle = invalid then return
     width = m.profilesTitle.textWidth
     if width <= 0 then return
-    m.profilesTitle.translation = [Int((1920 - width) / 2), 169]
+    m.profilesTitle.translation = [(1920 - width) / 2, 167.8]
 end sub
 
 sub applyProfilesChromeFocus()
@@ -1790,12 +1790,12 @@ sub updateProfileActionsLayout()
         rowY = m.profilesRow.translation[1]
     end if
     centerX = rowX + targetIndex * (itemWidth + spacing) + Int(itemWidth / 2)
-    actionsW = 158 ' 44 gear + 10 gap + 104 Sign out pill
+    actionsW = 154 ' 44 gear + 8.8 gap + 101.2 Sign out pill
     x = centerX - Int(actionsW / 2)
     if x < 40 then x = 40
     if x > 1920 - actionsW - 40 then x = 1920 - actionsW - 40
     ' Sit just under the name/status block (web profile-actions margin below it).
-    y = rowY + 376
+    y = rowY + 374.6
     if y > 980 then y = 980
     m.profileActionsGroup.translation = [x, y]
     m.profileActionsGroup.opacity = 1
@@ -1916,7 +1916,7 @@ sub buildProfileAvatarContent(profiles as Object)
     rowWidth = count * itemWidth + (count - 1) * spacing
     x = 960 - Int(rowWidth / 2)
     if x < 40 then x = 40
-    m.profilesRow.translation = [x, 328]
+    m.profilesRow.translation = [x, 329.4]
     itemHeight = 392
     m.profilesRow.rowItemSize = [[itemWidth, itemHeight]]
     m.profilesRow.rowItemSpacing = [[spacing, 0]]

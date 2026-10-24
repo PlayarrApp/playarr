@@ -1849,13 +1849,50 @@ function calendarDayList(list as Object) as Object
 end function
 
 ' Meta row of a calendar entry (web .calendar-entry-meta): time, release type, kind, then the status chip. Returns the end x.
-function calendarMetaRow(parent as Object, x as Float, y as Float, entry as Object, size as Integer) as Float
+function calendarMetaRow(parent as Object, x as Float, y as Float, entry as Object) as Float
     cx = x
+    last = x
     for each part in [calendarTimeText(entry), calendarReleaseLabel(entry), calendarKindLabel(entry)]
-        probe = pgLabel(parent, cx, y, 0, size + 6, part, size, 400, "inkMuted")
-        cx = cx + probe.textWidth + 12
+        l = pgLabel(parent, cx, y, 0, 18, part, 12.8, 400, "inkMuted")
+        last = cx + l.textWidth
+        cx = last + 12
     end for
-    return cx + calendarBadge(parent, cx, y, size * 2, calendarStatusText(entry), size)
+    return last
+end function
+
+' The web release card (week and agenda): availability edge, face, art, title, subtitle, meta row and status pill, at the web's numbers.
+' Returns the card height. Marks carry the web element names for the layout export.
+function calendarCard(parent as Object, x as Float, y as Float, w as Float, entry as Object, selected as Boolean) as Float
+    hasSub = calendarEntrySubtitle(entry) <> ""
+    ch = 106.9
+    titleY = 10.0
+    metaY = 71.4
+    if not hasSub
+        ch = 78.0
+        titleY = 11.1
+        metaY = 41.3
+    end if
+    role = "inkMuted"
+    if calendarItemAvailable(entry) then role = "success"
+    pgRound(parent, x, y, w, ch, 12, role)
+    pgRound(parent, x + 4, y, w - 4, ch, 12, "surfaceStrong")
+    pgRound(parent, x, y, w, ch, 12, "line", -1, true)
+    if selected then pgRound(parent, x, y, w, ch, 12, "ink", 56, true)
+    artY = y + (ch - 60) / 2
+    pgRound(parent, x + 16, artY, 40, 60, 6, "surfaceSoft")
+    pgArtwork(parent, x + 16, artY, 40, 60, calendarArtworkUrl(entry))
+    status = calendarStatusText(entry)
+    full = entry.title
+    if hasSub then full = full + " " + calendarEntrySubtitle(entry)
+    full = full + " " + calendarTimeText(entry) + " " + calendarReleaseLabel(entry) + " " + calendarKindLabel(entry) + " " + status
+    pgMark(parent, "button", full, x, y, w, ch, 12, "surfaceStrong")
+    pgMark(parent, "image", "", x + 16, artY, 40, 60, 6, "surfaceSoft")
+    pgLabel(parent, x + 70.4, y + titleY, w - 90, 26, entry.title, 19.2, 640, "ink", { maxLines: 1 })
+    if hasSub then pgLabel(parent, x + 70.4, y + 41.2, w - 90, 26, calendarEntrySubtitle(entry), 19.2, 400, "inkSoft", { maxLines: 1 })
+    endX = calendarMetaRow(parent, x + 70.4, y + metaY, entry)
+    calendarBadge(parent, endX + 12 + 11.4, y + metaY + 2.9, status, 11.4)
+    pgFocusable(x, y, w, ch, 12, "entry", entry.id, true)
+    return ch
 end function
 
 function calendarTime(dt as Object) as String
@@ -2005,26 +2042,27 @@ sub renderCalendarAgenda(entries as Object)
         m.calendarSelected = selected.id
     end if
 
-    ' Left: the selected entry's sheet.
+    r = calendarViewRange()
+    agendaStatus = calendarWeekStatus(r)
+    am = pgMark(m.pageHead, "status", agendaStatus, 0, 1, 168.3, 26, 0, "surface")
+    am.addFields({ parityText: agendaStatus, paritySize: 19.2, parityWeight: 400, parityColor: "ink" })
+    ' Left: the selected entry's sheet (web agenda stage: kicker, 69 px title, meta line, status pill, overview, buttons).
     dt = calendarEntryDate(selected)
-    ' Web agenda stage: kicker, the 69 px title (up to 3 lines, balanced), one meta line, the status pill, the overview, then the buttons.
-    pgTrackedText(m.pageHead, 153.6, 263.2, 0, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12, 800, 0.983, "brandInk", true)
+    pgTrackedText(m.pageHead, 153.6, 264.2, 0, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12.29, 860, 0.97, "brandInk", true)
     stageTitle = CreateObject("roSGNode", "TrackedText")
     stageTitle.translation = [153.6, 292.5]
-    stageTitle.spec = { text: selected.title, size: 69, weight: 560, tracking: -4.53, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    stageTitle.spec = { text: selected.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
     m.pageHead.AppendChild(stageTitle)
     titleLines = stageTitle.lineCount
     if titleLines < 1 then titleLines = 1
     metaY = 307.5 + 62.208 * titleLines + 27
-    sub1 = pgLabel(m.pageHead, 153.6, metaY, 0, 18, calendarEntrySubtitle(selected), 14, 400, "inkMuted")
-    pgLabel(m.pageHead, 153.6 + sub1.textWidth + 14, metaY, 0, 18, calendarDayHeading(dt, true) + " at " + calendarTime(dt), 14, 400, "inkMuted")
-    statusText = calendarStatusText(selected)
-    calendarBadge(m.pageHead, 153.6, metaY + 39, 28, statusText, 13)
+    sub1 = pgLabel(m.pageHead, 153.6, metaY, 0, 18, calendarEntrySubtitle(selected), 13.06, 600, "heroSoft")
+    pgLabel(m.pageHead, 153.6 + sub1.textWidth + 12.8, metaY, 0, 18, calendarDayHeading(dt, true) + " at " + calendarTime(dt), 13.06, 600, "heroSoft")
+    calendarBadge(m.pageHead, 153.6 + 11.4, metaY + 39.8, calendarStatusText(selected), 11.4)
     overview = JsonString(selected.overview)
     if overview = "" then overview = "No synopsis available."
-    pgLabel(m.pageHead, 153.6, metaY + 88, 336, 22, overview, 15, 400, "inkMuted", { wrap: true, maxLines: 4 })
-    y = metaY + 131
-    btnY = y
+    pgLabel(m.pageHead, 153.6, metaY + 86, 336, 20, overview, 13.82, 600, "heroSoft", { wrap: true, maxLines: 4 })
+    btnY = metaY + 130.6
     x = 153.6
     playFile = ""
     openWork = ""
@@ -2035,7 +2073,7 @@ sub renderCalendarAgenda(entries as Object)
         end for
     end if
     if playFile <> ""
-        x = x + pgButton(m.pageHead, x, btnY, 58, "Play", "primary", "calPlay", playFile, 24) + 10
+        x = x + calendarButton(x, btnY, "Play", "primary", "calPlay", playFile) + 9.6
     end if
     if openWork <> ""
         label = "Open title"
@@ -2043,9 +2081,9 @@ sub renderCalendarAgenda(entries as Object)
         if selected.media_kind = "movie" then label = "Open movie"
         openStyle = "secondary"
         if playFile = "" then openStyle = "primary"
-        x = x + pgButton(m.pageHead, x, btnY, 58, label, openStyle, "calOpen", openWork, 24) + 10
+        x = x + calendarButton(x, btnY, label, openStyle, "calOpen", openWork) + 9.6
     end if
-    pgButton(m.pageHead, x, btnY, 58, "+  Add to watchlist", "secondary", "calWatch", selected, 24)
+    calendarButton(x, btnY, "+ Add to watchlist", "secondary", "calWatch", selected)
 
     ' Right: the agenda, grouped by day; within a day the releases without a time come first, then by time (web order).
     for each e in entries
@@ -2054,7 +2092,7 @@ sub renderCalendarAgenda(entries as Object)
         e.sortKey = JsonString(e.date) + key
     end for
     entries.SortBy("sortKey")
-    ' Web's list panel: a pinned 44 px day heading at y 162 (with the TODAY tag), then 32 px, then 106 px cards on a 120.6 px pitch.
+    ' Web's list panel: a pinned 44 px day heading at y 162 (with the TODAY tag), 32 px, then the cards; days sit 32 px apart.
     ay = 162.0
     lastDay = ""
     today = calendarTodayString()
@@ -2071,7 +2109,6 @@ sub renderCalendarAgenda(entries as Object)
         edt = calendarEntryDate(entry)
         day = entry.date
         if day <> lastDay
-            ' Days sit 2rem apart (web .calendar-days gap), the cards 14.6 px.
             if lastDay <> ""
                 m.agendaDays.Peek().endY = ay - 14.6
                 ay = ay + 17.4
@@ -2080,42 +2117,67 @@ sub renderCalendarAgenda(entries as Object)
             hg = CreateObject("roSGNode", "Group")
             m.pageHead.AppendChild(hg)
             pgRect(hg, 775, ay, 1060, 58, "surface")
-            headLabel = pgLabel(hg, 783.4, ay, 0, 44, calendarDayHeading(edt, false), 18, 600, "ink", { vertAlign: "center" })
+            pgMark(hg, "heading", "", 783.4, ay, 1033.4, 44, 0, "bg")
+            headRole = "ink"
+            if day = today then headRole = "accent"
+            headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole)
             if day = today
-                hx = 783.4 + headLabel.textWidth + 10
-                pgRound(hg, hx, ay + 11, 61, 22, 11, "lineStrong", -1, true)
-                pgLabel(hg, hx, ay + 11, 61, 22, "TODAY", 11, 700, "ink", { horizAlign: "center", vertAlign: "center" })
+                hx = 783.4 + headLabel.textWidth + 18.5
+                pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
+                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+                tl.addFields({ parityHidden: true })
+                pgMarkText(hg, "TODAY", hx, ay + 13.6, 42.3, 15, 11.2, 640, "accent", "bg", "text", 999)
             end if
             m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
             lastDay = day
         end if
-        ' Web: a release without a subtitle line (a movie) has a shorter card.
-        hasSub = calendarEntrySubtitle(entry) <> ""
-        ch = 106
-        metaOff = 70
-        if not hasSub
-            ch = 77
-            metaOff = 41
-        end if
-        role = "inkMuted"
-        if calendarItemAvailable(entry) then role = "success"
-        pgRound(m.pageBody, 783.4, ay, 1034, ch, 14, role)
-        pgRound(m.pageBody, 787.4, ay, 1030, ch, 14, "surfaceStrong")
-        pgRound(m.pageBody, 783.4, ay, 1034, ch, 14, "line", -1, true)
-        if entry.id = m.calendarSelected then pgRound(m.pageBody, 783.4, ay, 1034, ch, 14, "ink", 56, true)
-        art = calendarArtworkUrl(entry)
-        artY = ay + (ch - 60) / 2
-        pgRound(m.pageBody, 799.4, artY, 40, 60, 6, "surfaceSoft")
-        pgArtwork(m.pageBody, 799.4, artY, 40, 60, art)
-        pgLabel(m.pageBody, 853.4, ay + 9, 900, 26, entry.title, 20, 600, "ink", { maxLines: 1 })
-        if hasSub then pgLabel(m.pageBody, 853.4, ay + 40, 900, 26, calendarEntrySubtitle(entry), 20, 400, "inkSoft", { maxLines: 1 })
-        calendarMetaRow(m.pageBody, 853.4, ay + metaOff, entry, 13)
-        pgFocusable(783.4, ay, 1034, ch, 14, "entry", entry.id, true)
+        ch = calendarCard(m.pageBody, 783.4, ay, 1033.4, entry, entry.id = m.calendarSelected)
         ay = ay + ch + 14.6
     end for
     if m.agendaDays.Count() > 0 then m.agendaDays.Peek().endY = ay - 14.6
 end sub
+
+' A web action button at (x, y), 58 px high: the label is a text run 21 px in. Returns the button width.
+function calendarButton(x as Float, y as Float, text as String, style as String, action as String, data as Dynamic) as Float
+    size = 14.72
+    textRole = "inkSoft"
+    parts = [text]
+    if style = "secondary" and Left(text, 2) = "+ " then parts = ["+", Mid(text, 3)]
+    w = 42.0
+    gap = 9.6
+    for i = 0 to parts.Count() - 1
+        wt = 720
+        if i = 1 then wt = 900
+        w = w + PlayarrTextWidth(parts[i], size, wt, 0)
+        if i > 0 then w = w + gap
+    end for
+    if style = "primary"
+        pgRound(m.pageHead, x, y, w, 58, 29, "accent")
+        textRole = "onAccent"
+    else
+        pgRound(m.pageHead, x, y, w, 58, 29, "surface")
+        pgRound(m.pageHead, x, y, w, 58, 29, "line", -1, true)
+    end if
+    tx = x + 21
+    for i = 0 to parts.Count() - 1
+        wt = 720
+        if i = 1 then wt = 900
+        pw = PlayarrTextWidth(parts[i], size, wt, 0)
+        pgLabel(m.pageHead, tx, y + 19, pw + 4, 20, parts[i], size, wt, textRole).addFields({ parityHidden: true })
+        if parts.Count() > 1
+            pgMarkText(m.pageHead, parts[i], tx, y + 19, pw, 20, size, wt, textRole, "surface", "text", 0)
+        else
+            bgTok = "surface"
+            if style = "primary" then bgTok = "accent"
+            pgMarkText(m.pageHead, parts[i], tx, y + 19, pw, 20, size, wt, textRole, bgTok, "button", 999)
+        end if
+        tx = tx + pw + gap
+    end for
+    if parts.Count() > 1 then pgMark(m.pageHead, "button", text, x, y, w, 58, 999, "surface")
+    pgFocusable(x, y, w, 58, 29, action, data)
+    return w
+end function
 
 ' Web's sticky day heading: stays at y 162 while its day scrolls, is pushed up by the next day's heading, and hides once it is clear of the header.
 sub calendarAgendaPin()
@@ -2221,6 +2283,12 @@ sub renderCalendarMonth(entries as Object)
     if todayIdx > 0 then m.pageFocusIdx = todayIdx
 end sub
 
+function calendarWeekStatus(r as Object) as String
+    a = Val(Mid(r.start, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(r.start, 6, 2)), true)
+    b = Val(Mid(r.finish, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(r.finish, 6, 2)), true)
+    return a + " – " + b + " " + r.finish.Left(4)
+end function
+
 function calendarRangeLabelLong(r as Object) as String
     return calendarMonthName(Val(Mid(r.first, 6, 2)), false) + " " + r.first.Left(4)
 end function
@@ -2258,57 +2326,64 @@ sub renderCalendarWeek(entries as Object)
     end for
     today = calendarTodayString()
     todayIdx = -1
+    statusLabel = calendarRangeLabelLong(r)
+    statusMark = pgMark(m.pageBody, "status", calendarWeekStatus(r), 153.6, 163, 175.5, 26, 0, "surface")
+    statusMark.addFields({ parityText: calendarWeekStatus(r), paritySize: 19.2, parityWeight: 400, parityColor: "ink" })
     for c = 0 to 6
         day = calAddDays(r.start, c)
-        x = 154.0 + c * 460
+        x = 153.6 + c * 460
         dt = calDate(day)
         heading = dt.GetWeekday() + " " + Val(Mid(day, 9, 2)).ToStr() + " " + calendarMonthName(Val(Mid(day, 6, 2)), false)
-        headLabel = pgLabel(m.pageBody, x, 176, 0, 28, heading, 18, 600, "ink")
+        headRole = "ink"
+        if day = today then headRole = "accent"
+        headLabel = pgLabel(m.pageBody, x, 175, 0, 25, heading, 18.4, 640, headRole)
         if day = today
             ' Web's TODAY chip beside the day heading.
-            hx = x + headLabel.textWidth + 10
-            pgRound(m.pageBody, hx, 177, 61, 22, 11, "lineStrong", -1, true)
-            pgLabel(m.pageBody, hx, 177, 61, 22, "TODAY", 11, 700, "ink", { horizAlign: "center", vertAlign: "center" })
+            hx = x + headLabel.textWidth + 18.5
+            pgRound(m.pageBody, hx - 9.35, 175.5, 61, 22, 11, "lineStrong", -1, true)
+            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
+            tl.addFields({ parityHidden: true })
+            pgMarkText(m.pageBody, "TODAY", hx, 179.4, 42.3, 15, 11.2, 640, "accent", "surface", "text", 999)
         end if
         list = byDay[day]
         y = 208.0
         if list <> invalid
             for each entry in calendarDayList(calendarGroupEntries(list))
-                ' Web's 4 px availability border follows the card's rounded corners: the accent shape under a card face shifted 4 px.
-                role = "inkMuted"
-                if calendarItemAvailable(entry) then role = "success"
-                pgRound(m.pageBody, x, y, 440, 106, 14, role)
-                pgRound(m.pageBody, x + 4, y, 436, 106, 14, "surfaceStrong")
-                pgRound(m.pageBody, x, y, 440, 106, 14, "line", -1, true)
-                art = calendarArtworkUrl(entry)
-                pgRound(m.pageBody, x + 16, y + 23, 40, 60, 6, "surfaceSoft")
-                pgArtwork(m.pageBody, x + 16, y + 23, 40, 60, art)
-                pgLabel(m.pageBody, x + 70, y + 9, 360, 26, entry.title, 20, 600, "ink", { maxLines: 1 })
-                pgLabel(m.pageBody, x + 70, y + 40, 360, 26, calendarEntrySubtitle(entry), 20, 400, "inkSoft", { maxLines: 1 })
-                calendarMetaRow(m.pageBody, x + 70, y + 70, entry, 13)
-                pgFocusable(x, y, 440, 106, 14, "entry", entry.id, true)
+                ch = calendarCard(m.pageBody, x, y, 440, entry, false)
                 m.pageItems[m.pageItems.Count() - 1].sx = true
-                y = y + 120
+                y = y + ch + 13.1
             end for
+        else
+            pgLabel(m.pageBody, x, 209, 0, 26, "Nothing scheduled", 19.2, 400, "inkMuted")
         end if
     end for
     if m.pageItems.Count() > 0 then m.pageFocusIdx = 0
 end sub
 
 ' Status chip (web .calendar-badge): tinted pill with the status text. Returns its width.
-function calendarBadge(parent as Object, x as Float, y as Float, h as Float, text as String, size as Integer) as Float
-    ' Web .status-pill: the tone tints the fill (14%) and the border (60%); the text is the theme ink.
+function calendarBadge(parent as Object, x as Float, y as Float, text as String, padX as Float) as Float
+    ' Web .status-pill: the tone tints the fill and the border; the text is the theme ink. (x, y) is the text run's corner.
     tone = "inkSoft"
-    if text = "Available" then tone = "success"
-    if text = "Upcoming" then tone = "brand"
-    if text = "Missing" then tone = "danger"
-    probe = pgLabel(parent, x, y, 0, h, text, size, 700, "ink")
-    w = probe.textWidth + 27
-    parent.removeChild(probe)
-    pgRound(parent, x, y, w, h, 13, tone, 36)
-    pgRound(parent, x, y, w, h, 13, tone, 153, true)
-    pgLabel(parent, x, y, w, h, text, size, 700, "ink", { horizAlign: "center", vertAlign: "center" })
-    return w
+    pillBg = "c:2c2a2c:efeded"
+    if text = "Available"
+        tone = "success"
+        pillBg = "c:2a342e:e2efe8"
+    end if
+    if text = "Upcoming"
+        tone = "brand"
+        pillBg = "c:341b23:f5dee2"
+    end if
+    if text = "Missing"
+        tone = "danger"
+        pillBg = "c:392c2f:e8dedd"
+    end if
+    w = PlayarrTextWidth(text, 13.44, 750, 0)
+    pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 36)
+    pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 153, true)
+    l = pgLabel(parent, x, y, w + 4, 19, text, 13.44, 750, "ink")
+    l.addFields({ parityHidden: true })
+    pgMarkText(parent, text, x, y, w, 19, 13.44, 750, "ink", pillBg, "text", 999)
+    return w + 2 * padX
 end function
 
 sub calendarAction(item as Object)
