@@ -26,7 +26,7 @@ async function call(method, path, body) {
   return res.json();
 }
 
-export async function createDriver({ request = call, delay = sleep, env = process.env, secrets, setupForward, captureScreenshot, pixelSignature } = {}) {
+export async function createDriver({ request = call, delay = sleep, env = process.env, secrets, setupForward, captureScreenshot, pixelSignature, writeLayout } = {}) {
   let state = {};
   let forwarded = false;
   const allowedUsernames = loadAllowedDeviceTestUsernames({ env, client: env.PARITY_CLIENT, ...(secrets ? { secrets } : {}) });
@@ -144,8 +144,11 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       if (!env.PARITY_NO_LAYOUT) {
         const theme = basename(dirname(file)), screen = basename(file, ".png");
         const doc = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
-        mkdirSync(join(dirname(dirname(file)), "layout", theme), { recursive: true });
-        writeFileSync(join(dirname(dirname(file)), "layout", theme, `${screen}.json`), doc.json);
+        if (typeof doc?.json === "string") {
+          const target = join(dirname(dirname(file)), "layout", theme, `${screen}.json`);
+          if (writeLayout) writeLayout(target, doc.json);
+          else { mkdirSync(dirname(target), { recursive: true }); writeFileSync(target, doc.json); }
+        }
       }
       if (signature(first) !== signature(file)) throw new Error("Tizen rendered pixels changed between deterministic readiness samples");
     },
