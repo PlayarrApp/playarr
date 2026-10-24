@@ -101,21 +101,19 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       await verifyAccount();
       await waitStable();
     },
-    // Web player-controls ref: the clip paused at 2 s with the controls shown. The player reports its position only while playing and
-    // holds the start position for the first frames, so start at 2 s and pause on the first playing sample.
+    // Web player-controls ref: the clip paused at 2 s with the controls shown. The app seeks to 2.000 s and holds it (route ?hold=2000).
     async pausePlayerAtTwoSeconds() {
       const base = state.route.split("?")[0];
-      await request("POST", `/route?path=${encodeURIComponent(`${base}?t=2000`)}`);
-      for (let waited = 0; waited < 45000; waited += 50) {
+      // The app seeks to exactly 2000 ms and holds it paused (no play-then-pause): wait until it reports that position, paused.
+      await request("POST", `/route?path=${encodeURIComponent(`${base}?t=2000&hold=2000`)}`);
+      let held = false;
+      for (let waited = 0; waited < 45000 && !held; waited += 100) {
         await readState();
-        if (state.playing && state.positionMs >= 2000 && state.positionMs < 2600) break;
-        await delay(50);
+        held = !state.playing && state.positionMs === 2000;
+        if (!held) await delay(100);
       }
-      await request("POST", "/key?name=pause");
-      await delay(KEY_MS);
+      if (!held) throw new Error("player did not hold 2.000 s paused");
       await waitStable();
-      await readState();
-      if (state.playing) throw new Error("player did not pause");
       await request("POST", "/blur");
       // The emulator screenshot may not carry the video plane; stand in the paused static clip frame (2 s, as the webOS real-TV capture does) behind the controls.
       await request("POST", "/video-frame", readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../fixtures/static-clip-2s.png")));

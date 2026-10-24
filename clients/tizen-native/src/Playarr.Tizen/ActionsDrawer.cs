@@ -40,11 +40,11 @@ internal sealed class ActionsDrawer
         };
         for (var i = 0; i < actions.Length; i++)
         {
-            var y = 222 + i * 81.5f; var a = actions[i];
+            var y = 221 + i * 82f; var a = actions[i];
             var b = Ui.Box(1606, y, 268, 68, t.SurfaceSoft, 14);
             Sem.Tag(b, "button", a.Glyph + " " + a.Text, radius: 14);
-            b.Add(Ui.Text(a.Glyph, 18, 20, 19.52f, 400, t.Brand, 24, 26));
-            b.Add(Ui.Text(a.Text, 60, 18, 19.2f, 700, t.Ink, 200, 30));
+            b.Add(Ui.Text(a.Glyph, 18, 21, 19.52f, 400, t.Brand, 24, 26));
+            b.Add(Ui.Text(a.Text, 60, 19, 19.2f, 700, t.Ink, 200, 30));
             var ring = Ring.Make(268, 68, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
             Root.Add(b);
             _focus.Items.Add(new Focusable { Rect = () => new Box(1606, y, 268, 68), Label = (a.Glyph + a.Text).ToLowerInvariant(), Select = a.Do, Style = f => ring.Show(f) });
