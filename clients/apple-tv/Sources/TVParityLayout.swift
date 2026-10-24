@@ -215,8 +215,9 @@ private struct TVParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: frame, tracking: tracking, lineHeight: lineHeight, lines: lines, pitch: pitch,
-                                                 background: hex(frame.minY < 130 ? DesignTokens.Stage.bg : DesignTokens.Stage.surface))) // web: header on the page, content on the surface
+        TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: frame, tracking: tracking,
+                                                 background: hex(frame.minY < 130 ? DesignTokens.Stage.bg : DesignTokens.Stage.surface),
+                                                 lineHeight: lineHeight, lines: lines, pitch: pitch)) // web: header on the page, content on the surface
     }
 }
 
