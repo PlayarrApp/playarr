@@ -308,6 +308,11 @@ namespace Playarr.Xbox.Views
             var underPage = false;
             for (var parent = includeSelf ? node : VisualTreeHelper.GetParent(node); parent != null; parent = VisualTreeHelper.GetParent(parent))
             {
+                if (parent.GetValue(ShellProperty) is true)
+                {
+                    break; // shell chrome and the profile picker sit on the page background
+                }
+
                 if (parent is Page)
                 {
                     underPage = true; // the page stage (a gradient) is reported as the surface colour; nothing above it counts
