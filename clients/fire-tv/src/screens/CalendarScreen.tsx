@@ -40,6 +40,7 @@ import {Stage} from '../tv/Stage';
 import {DetailSheet, FiltersPanel, LinkPanel, PeriodPicker} from './calendar/CalendarPanels';
 import {AgendaView, MonthView, WeekView, type ViewShared} from './calendar/CalendarViews';
 import {reportQuery, takePendingQuery} from '../debug/parityControl';
+import {appNow, isClockFrozen} from '../shell/clock';
 
 export function CalendarScreen(): React.ReactElement {
   const client = useApiClient();
@@ -48,7 +49,8 @@ export function CalendarScreen(): React.ReactElement {
   const {colour, scheme} = useTheme();
   const locale = language === 'en' ? 'en-GB' : language;
   const firstDay = weekStartsOn(locale);
-  const today = useMemo(() => localDayOf(new Date()), []);
+  // The app clock, so a pinned parity clock moves "today" too (a frozen clock is a UTC instant: its UTC day).
+  const today = useMemo(() => (isClockFrozen() ? appNow().toISOString().slice(0, 10) : localDayOf(appNow())), []);
   const [view, setView] = useState<CalendarView>(() => (takePendingQuery('view') as CalendarView | undefined) ?? 'agenda');
   useEffect(() => {
     reportQuery('view', view);

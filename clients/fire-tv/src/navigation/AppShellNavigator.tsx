@@ -438,7 +438,6 @@ export function AppShellNavigator(): React.ReactElement {
         profileName={profile?.displayName ?? ''}
         version={APP_CONFIG.clientVersion}
         availableWorkKinds={availableWorkKinds}
-        clockRight={activeRoute === ROUTES.home ? 633.6 : 710.4}
         onSelect={(target) => navRailNavigate(railRoutes[target])}
         onOpenProfiles={() => navigation.navigate(ROUTES.profiles)}
       />
