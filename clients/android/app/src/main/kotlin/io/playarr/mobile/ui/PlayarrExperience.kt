@@ -6687,6 +6687,7 @@ private fun PhoneVideoDetailBody(
                 Text(
                     (episodeCode ?: work.genres.firstOrNull() ?: work.kind.playarrSingularLabel()).uppercase(language.locale),
                     color = PlayarrWebTheme.palette.brandInk, fontSize = 10.56.sp, lineHeight = 15.84.sp, fontWeight = FontWeight(820), letterSpacing = 0.8448.sp, style = WebTextStyle,
+                    modifier = Modifier.parityText(background = WebSurface),
                 )
                 Spacer(Modifier.height(10.dp))
                 // The 36.66 px line box is shorter than the 39 px glyphs: CSS lets them overflow upwards, while Compose grows
@@ -6709,7 +6710,7 @@ private fun PhoneVideoDetailBody(
                         shownTitle, color = WebInk, fontSize = 39.sp, lineHeight = 36.66.sp, fontWeight = FontWeight(560), letterSpacing = (-2.808).sp,
                         style = WebTextStyle, maxLines = if (phoneTitle) 2 else 1, overflow = TextOverflow.Ellipsis,
                         onTextLayout = { titleLines = it.lineCount },
-                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() },
+                        modifier = (if (phoneTitle) Modifier.widthIn(max = titleMax) else Modifier).graphicsLayer { translationY = -10.4.dp.toPx() }.semantics { heading() }.parityText(background = WebSurface),
                     )
                 }
                 if (episode != null) {
@@ -6718,7 +6719,7 @@ private fun PhoneVideoDetailBody(
                         episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episodeNumber),
                         color = WebInkSoft, fontSize = 14.4.sp, lineHeight = 16.56.sp, fontWeight = FontWeight(570), letterSpacing = (-0.504).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() },
+                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() }.parityText(background = WebSurface),
                     )
                 }
                 Spacer(Modifier.height(if (episode != null) 6.9.dp else 12.dp))
@@ -6726,7 +6727,7 @@ private fun PhoneVideoDetailBody(
                     metaItems.forEachIndexed { index, item ->
                         Text(
                             item, color = if (index == 0) WebInkSoft else PlayarrWebTheme.palette.phoneInkMuted, fontSize = 10.24.sp, lineHeight = 15.36.sp,
-                            fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal, style = WebTextStyle, maxLines = 1,
+                            fontWeight = if (index == 0) FontWeight(680) else FontWeight.Normal, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurface),
                         )
                     }
                 }
@@ -6741,7 +6742,7 @@ private fun PhoneVideoDetailBody(
                 } else {
                     Spacer(Modifier.height(10.dp))
                 }
-                WebClampedText(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, fontWeight = FontWeight.Normal, style = WebTextStyle, maxLines = 3, minLines = if (episode != null) 3 else 1)
+                WebClampedText(synopsis, color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 11.52.sp, lineHeight = 16.704.sp, fontWeight = FontWeight.Normal, style = WebTextStyle, maxLines = 3, modifier = Modifier.parityText(background = WebSurface), minLines = if (episode != null) 3 else 1)
                 Spacer(Modifier.height(if (episode != null) 11.67.dp else 14.dp))
                 PhoneDetailActions(
                     work = work, episode = selectedEpisode, mediaFileId = mediaFileId, progress = progress, canDownload = canDownload,
@@ -6830,7 +6831,7 @@ private fun PhoneDetailRail(
         Box(Modifier.fillMaxWidth().height(24.dp)) {
             Text(
                 title, color = WebInk, fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight(610), letterSpacing = (-0.48).sp,
-                style = WebTextStyle, maxLines = 1, modifier = Modifier.padding(start = 16.dp),
+                style = WebTextStyle, maxLines = 1, modifier = Modifier.padding(start = 16.dp).semantics { heading() }.parityText(background = WebSurface),
             )
             // Web `.tv-season-download`: an icon-only button on the heading line (it overflows the 24 px line, as in CSS).
             if (action != null) {
@@ -6839,7 +6840,7 @@ private fun PhoneDetailRail(
         }
         Text(
             subtitle, color = WebInkMuted, fontSize = 10.56.sp, lineHeight = 15.84.sp, style = WebTextStyle, maxLines = 1,
-            modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp).parityText(background = WebSurface),
         )
         Spacer(Modifier.height(8.dp))
         // Web `--tv-track-shadow-end` (48 px) after the last tile, kept clear when a focused tile scrolls into view.
@@ -6858,7 +6859,7 @@ private fun PhoneDetailRail(
 
 @Composable
 private fun PhoneChapterCard(chapter: MediaChapter, mediaFileId: String, serverUrl: String, accessToken: String?, onClick: () -> Unit) {
-    Column(Modifier.width(179.4.dp).clickable(onClick = onClick)) {
+    Column(Modifier.width(179.4.dp).parityBox("link", "Play from Chapter ${chapter.index + 1}", background = WebSurface, fit = { r -> r }).clickable(onClick = onClick)) {
         PhoneEpisodeArt(
             badge = {
                 Text(
@@ -6875,11 +6876,12 @@ private fun PhoneChapterCard(chapter: MediaChapter, mediaFileId: String, serverU
             )
         }
         Row(Modifier.padding(top = 11.5.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.8.dp)) {
-            Text(formatPlayarrPlayerTime(chapter.startMs), color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+            Text(formatPlayarrPlayerTime(chapter.startMs), color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurface))
             Text(
                 chapter.title ?: playarrString(PlayarrString.DetailChapterNumber, "number" to chapter.index + 1),
                 color = WebInk, fontSize = 12.48.sp, lineHeight = 18.72.sp, fontWeight = FontWeight(610), letterSpacing = (-0.1872).sp,
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.parityText(background = WebSurface),
             )
         }
     }
@@ -6944,19 +6946,19 @@ private fun PhoneDetailActions(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             // Series: the primary Start pill grows to fill the row, the watchlist pill follows.
             PhonePill(
-                onClick = onPlayClick, container = WebInk, fill = true,
+                onClick = onPlayClick, container = WebInk, fill = true, exportRole = "link", exportLabel = "Play $title",
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
                 modifier = Modifier.weight(1f).focusRequester(firstPill),
             ) {
-                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle)
+                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebInk))
                 Spacer(Modifier.width(10.dp))
-                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebInk))
             }
             WatchlistToggleButton(work, webPhone = true)
-            PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor) {
-                Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
+            PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor, exportLabel = "+ Add to Playlist") {
+                Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 Spacer(Modifier.width(7.6.dp))
-                Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
             }
         }
         return
@@ -6964,35 +6966,35 @@ private fun PhoneDetailActions(
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         run {
             if (canDownload) {
-                PhonePill(onClick = { onDownload(listOf(downloadCandidate)) }, container = pillColor, width = 104.dp, modifier = Modifier.focusRequester(firstPill)) {
-                    Text("⇩", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
+                PhonePill(onClick = { onDownload(listOf(downloadCandidate)) }, container = pillColor, width = 104.dp, exportLabel = "Download $title", modifier = Modifier.focusRequester(firstPill)) {
+                    Text("⇩", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                     Spacer(Modifier.width(10.dp))
-                    Text(playarrString(PlayarrString.DetailDownloadButton), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                    Text(playarrString(PlayarrString.DetailDownloadButton), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 }
             }
             onPlaybackSettings?.let { open ->
-                PhonePill(onClick = open, container = pillColor, width = 119.dp, modifier = if (canDownload) Modifier else Modifier.focusRequester(firstPill)) {
-                    Text("☷", color = WebKicker, fontSize = 12.88.sp, lineHeight = 19.32.sp, style = WebTextStyle)
+                PhonePill(onClick = open, container = pillColor, width = 119.dp, exportLabel = "Playback settings for $title", modifier = if (canDownload) Modifier else Modifier.focusRequester(firstPill)) {
+                    Text("☷", color = WebKicker, fontSize = 12.88.sp, lineHeight = 19.32.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                     Spacer(Modifier.width(10.dp))
-                    Text(playarrString(PlayarrString.DetailPlayback), color = WebInk, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                    Text(playarrString(PlayarrString.DetailPlayback), color = WebInk, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 }
             }
             // Web phone `.tv-detail-play`: the ink pill (no hover scale on touch) that fills what is left of the first row;
             // a long label such as "Resume from 0:02" wraps to two lines inside it.
             PhonePill(
-                onClick = onPlayClick, container = WebInk, width = 118.5.dp,
+                onClick = onPlayClick, container = WebInk, width = 118.5.dp, exportRole = "link", exportLabel = "Play $title",
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
                 modifier = if (canDownload || onPlaybackSettings != null) Modifier else Modifier.focusRequester(firstPill),
             ) {
-                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle)
+                Text("▶", color = WebBackground, fontSize = 9.52.sp, lineHeight = 14.28.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebInk))
                 Spacer(Modifier.width(10.dp))
-                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 2)
+                Text(playLabel, color = WebBackground, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 2, modifier = Modifier.parityText(background = WebInk))
             }
             WatchlistToggleButton(work, webPhone = true)
-            PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor) {
-                Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle)
+            PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor, exportLabel = "+ Add to Playlist") {
+                Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 Spacer(Modifier.width(7.6.dp))
-                Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+                Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
             }
         }
     }
@@ -7806,13 +7808,13 @@ private fun PhoneEpisodeCard(
     val available = episode.mediaFileId != null
     val code = "S${seasonNumber.toString().padStart(2, '0')} · E${episode.episode.episodeNumber.toString().padStart(2, '0')}"
     val title = episode.episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episode.episodeNumber)
-    Column(Modifier.width(179.4.dp).combinedClickable(enabled = available, onLongClick = onLongPress, onClick = { onSelect(); onPlay() })) {
+    Column(Modifier.width(179.4.dp).parityBox("link", episode.episode.episodeNumber.toString().padStart(2, '0') + " " + code + " " + title, background = WebSurface).combinedClickable(enabled = available, onLongClick = onLongPress, onClick = { onSelect(); onPlay() })) {
         PhoneEpisodeArt(
             badge = {
                 Text(
                     episode.episode.episodeNumber.toString().padStart(2, '0'),
                     color = Color.White, fontSize = 12.8.sp, lineHeight = 19.2.sp, fontWeight = FontWeight(560), style = WebTextStyle,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.7.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.7.dp).parityText(background = WebSurfaceSoft),
                 )
                 progress?.takeIf { it.state != WatchState.Unseen }?.let {
                     Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).background(Color.White.copy(alpha = 0.28f))) {
@@ -7845,10 +7847,11 @@ private fun PhoneEpisodeCard(
             }
         }
         Row(Modifier.padding(top = 11.5.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.8.dp)) {
-            Text(code, color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1)
+            Text(code, color = WebInkMuted, fontSize = 9.92.sp, lineHeight = 14.88.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurface))
             Text(
                 title, color = if (available) WebInk else WebInkMuted, fontSize = 12.48.sp, lineHeight = 18.72.sp,
                 fontWeight = FontWeight(610), letterSpacing = (-0.1872).sp, style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.parityText(background = WebSurface),
             )
         }
         if (!available) Text(playarrString(PlayarrString.DetailUnavailable), color = WebInkMuted, fontSize = 10.sp)

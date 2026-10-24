@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -248,6 +249,9 @@ internal fun PhonePill(
     enabled: Boolean = true,
     /** Fill the width the parent gives (a weighted pill in a row). */
     fill: Boolean = false,
+    /** Layout export: the accessible name and role the web gives this pill (`link` for Play, `button` otherwise). */
+    exportLabel: String? = null,
+    exportRole: String = "button",
     content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
 ) {
     // Web phone: `--page-focus-ring` 2 px, offset 3 px, on a keyboard-focused pill.
@@ -256,7 +260,8 @@ internal fun PhonePill(
     WebShadowedBox(
         shadows = listOf(shadow),
         shape = androidx.compose.foundation.shape.CircleShape,
-        modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp),
+        modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp)
+            .parityBox(exportRole, exportLabel.orEmpty(), 999f, background = container.compositeOver(WebSurface)),
         innerModifier = Modifier.background(container),
         innerFill = false,
         innerWidthFill = fill,
@@ -288,11 +293,11 @@ internal fun PhoneEpisodeArt(
     WebShadowedBox(
         shadows = webCardRestShadows,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        modifier = modifier.fillMaxWidth().androidx_aspect16x9(),
+        modifier = modifier.fillMaxWidth().androidx_aspect16x9().parityBox("container", radius = 8f, background = WebSurfaceSoft),
         innerModifier = Modifier.background(WebSurfaceSoft),
     ) {
         Box(
-            Modifier.fillMaxSize().graphicsLayer {
+            Modifier.fillMaxSize().parityBox("image", background = WebSurfaceSoft).graphicsLayer {
                 compositingStrategy = CompositingStrategy.Offscreen
                 colorFilter = EpisodeArtGrayscale
             },

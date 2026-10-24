@@ -484,7 +484,7 @@ internal fun PlayarrFilterSection(title: String, content: @Composable () -> Unit
     val tv = playarrTvDrawer()
     Column(verticalArrangement = Arrangement.spacedBy(if (tv) 13.dp else 10.dp)) {
         if (tv) PlayarrTvDrawerHeading(title)
-        else Text(title.uppercase(), color = WebInkMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.semantics { heading() })
+        else Text(title.uppercase(), color = WebInkMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.semantics { heading() }.parityText(background = WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)))
         content()
     }
 }
@@ -525,6 +525,10 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
     // Web phone `.tv-segment` button: 48 px, 12 px radius, hairline border, 11.52 px / 680 capitalised; the active one is ink and 1.025x.
     val shape = RoundedCornerShape(12.dp)
     val content = if (selected) WebSurface else WebInkSoft
+    // Layout export: icon choices and the settings segments are a button around a lower-case run; plain choices are the run itself.
+    val boxed = icon != null || weight == 900
+    val under = io.playarr.shared.designsystem.page.LocalParityUnder.current.takeIf { it != Color.Unspecified } ?: WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)
+    val fillFlat = if (selected) WebInk else io.playarr.shared.designsystem.page.parityOver(WebSurfaceSoft, 0.64f, under)
     Surface(
         onClick = onClick,
         interactionSource = source,
@@ -533,11 +537,12 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
         shape = shape,
         border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
         modifier = modifier.height(48.dp).graphicsLayer { scaleX = if (selected) 1.025f else 1f; scaleY = scaleX }
+            .then(if (boxed) Modifier.parityBox("button", label.replaceFirstChar { it.titlecase() }, 12f, background = fillFlat) else Modifier)
             .webFocusRing(focused, radius = 12.dp, offset = 0.dp),
     ) {
         Column(Modifier.fillMaxHeight().padding(horizontal = 9.6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.8.dp, Alignment.CenterVertically)) {
             icon?.invoke(content)
-            Text(label.split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1)
+            Text(label.split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1, modifier = if (boxed) Modifier.parityText(background = fillFlat) else Modifier.parityText(role = "button", radius = 12f, background = fillFlat))
         }
     }
 }
