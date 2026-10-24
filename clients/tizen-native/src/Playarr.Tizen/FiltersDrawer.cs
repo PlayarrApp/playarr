@@ -67,6 +67,9 @@ internal sealed class FiltersDrawer
         _focus.Set(0); // web opens with the close button focused
     }
 
+    /// <summary>The drawer panel over the page: --surface-strong at 94 %.</summary>
+    internal static Rgba DrawerBackdrop(PlayarrTheme t) => new(t.SurfaceStrong.R * 0.94f + t.Surface.R * 0.06f, t.SurfaceStrong.G * 0.94f + t.Surface.G * 0.06f, t.SurfaceStrong.B * 0.94f + t.Surface.B * 0.06f);
+
     private void Build()
     {
         var t = _t; var toast = _toast; var kicker = _kicker; var sections = _sections;
@@ -75,7 +78,7 @@ internal sealed class FiltersDrawer
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
-        Sem.Tag(panel, "dialog", _dialogName, backdrop: t.Surface, ignoreOwnBg: true);
+        Sem.Tag(panel, "dialog", "", backdropNow: () => DrawerBackdrop(t));
         Root.Add(panel);
         var clip = new View { PositionY = 130, Size = new Size(1920, 950), ClippingMode = ClippingModeType.ClipChildren };
         _c = new View { PositionY = -130 - _scroll };
@@ -100,7 +103,7 @@ internal sealed class FiltersDrawer
                 var si = Array.IndexOf(sections, s);
                 var label = s.Facets is null ? (s.FacetsFailed ? "Languages unavailable" : "Loading languages\u2026")
                     : s.Picked.Count == 0 ? "Any language" : string.Join(", ", s.Picked.Select(c => LanguageNames.Display(c, s.Facets.FirstOrDefault(f => f.Code == c)?.Name)));
-                var box = Ui.Box(1606, top, 268, 58.8f, t.SurfaceSoft, 12);
+                var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
                 Sem.Tag(box, "group", s.Heading, radius: 12);
                 box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", label + " ⌄", radius: 10));
@@ -120,7 +123,7 @@ internal sealed class FiltersDrawer
             }
             else if (s.IsSelect)
             {
-                var box = Ui.Box(1606, top, 268, 58.8f, t.SurfaceSoft, 12);
+                var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
                 Sem.Tag(box, "group", s.Heading, radius: 12);
                 box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", s.Options[s.Selected] + " ⌄", radius: 10));
@@ -152,9 +155,9 @@ internal sealed class FiltersDrawer
                 for (var i = 0; i < n; i++)
                 {
                     var idx = i; var bx = 1606 + i % columns * (w + gap); var by = top + i / columns * 64; var active = i == s.Selected;
-                    var b = Ui.Box(bx, by, w, 56, active ? t.Ink : t.SurfaceSoft, 12);
+                    var b = Ui.Box(bx, by, w, 56, active ? t.Ink : new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                     b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(t, 0.15f);
-                    var label = Ui.Text(s.Options[i], 0, n == 3 ? 33 : 22.2f, 10.56f, n == 3 ? 900 : 680, active ? t.OnAccent : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
+                    var label = Ui.Text(s.Options[i], 0, n == 3 ? 33 : 22.2f, 10.56f, n == 3 ? 900 : 680, active ? t.Bg : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
                     if (n == 3) { Sem.Tag(label, "text", s.Options[i].ToLowerInvariant()); Sem.Tag(b, "button", s.Options[i], radius: 12); } else Sem.Tag(label, "button", radius: 12);
                     b.Add(label);
                     if (n == 3) AddViewGlyph(b, i, w, active ? t.OnAccent : t.InkMuted); // web: a small List / Screen / Cover glyph above the label
@@ -169,8 +172,8 @@ internal sealed class FiltersDrawer
                         {
                             var (choice, text) = choices[choiceIndex];
                             var selected = choiceIndex == sec.Selected;
-                            choice.BackgroundColor = Ui.C(selected ? t.Ink : t.SurfaceSoft);
-                            text.TextColor = Ui.C(selected ? t.OnAccent : t.InkMuted);
+                            choice.BackgroundColor = selected ? Ui.C(t.Ink) : new Color(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f);
+                            text.TextColor = Ui.C(selected ? t.Bg : t.InkMuted);
                         }
                         _focus.Set(sec.KeepFocusAfterChange ? focusIndex : 0);
                     } });

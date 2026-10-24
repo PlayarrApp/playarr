@@ -188,6 +188,7 @@ internal sealed class CalendarScreen : IPage
                 var outside = day.Month != _anchor.Month;
                 var cell = Ui.Box(x, y, CellW, CellH, new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, outside ? 0.35f : 0.7f), 0);
                 cell.BorderlineWidth = 1; cell.BorderlineColor = Ui.C(_t.Line);
+                Sem.Tag(cell, "container", ignoreOwnBg: true);
                 _body.Add(cell);
                 var list = byDay.TryGetValue(day, out var l) ? l : new List<CalendarEntry>();
                 var shown = Math.Min(4, list.Count);
@@ -202,7 +203,7 @@ internal sealed class CalendarScreen : IPage
                     var multi = e.Members is { Count: > 1 } m ? $" · {m.Count}×" : "";
                     cell.Add(Ui.Text(e.Title + multi, 27.4f, ly, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
                 }
-                cell.Add(Ui.Text(day.Day.ToString(), 11.8f, CellH - 33, 12.8f, 700, day == _today ? _t.Brand : outside ? _t.InkMuted : _t.Ink, 30, 19.2f));
+                cell.Add(Ui.Text(day.Day.ToString(), 8.8f, CellH - 33, 12.8f, 640, day == _today ? _t.Brand : outside ? _t.InkMuted : _t.Ink, 30, 19.2f));
                 if (list.Count > shown) cell.Add(Ui.Text($"+{list.Count - shown} more", 43, CellH - 33, 12.48f, 400, _t.InkSoft, 90, 18.72f));
                 var cx = x; var cy = y; var d = day;
                 _focus.Items.Add(new Focusable { Rect = () => new Box(cx, cy, CellW, CellH), Label = "day " + d.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")).ToLowerInvariant(), Style = f => { cell.BorderlineWidth = f ? 3 : 1; cell.BorderlineColor = f ? (_t.Name == "light" ? Ui.C(_t.Ink) : new Color(1, 1, 1, 0.9f)) : Ui.C(_t.Line); } });

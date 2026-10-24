@@ -46,7 +46,8 @@ internal sealed class SeriesDetailScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Surface);
         _keyArt = new KeyArt(env, armed: true); // web paints the key art as soon as focus lands on the first episode
         _root.Add(_keyArt.Root);
-        _root.Add(Ui.PanelWash(_t)); // web: the right rail panel frosts the key art (the page top is not a surface fade)
+        Sem.Tag(_root, "container");
+        _root.Add(Sem.Tag(Ui.PanelWash(_t), "container")); // web: the right rail panel frosts the key art (the page top is not a surface fade)
         _root.Add(_content);
         _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, _t.Surface, atLeft: false));
         _root.Add(Ui.EdgeFade(ClipX, TizenClient.DesignHeight, TizenClient.DesignWidth - ClipX, _t.Surface, atTop: false));
@@ -144,7 +145,7 @@ internal sealed class SeriesDetailScreen : IPage
                 art.Add(dot);
             }
             var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
-            Sem.Tag(box, "link", $"{ep.Episode.EpisodeNumber:00} S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00} {ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}"}", boxNow: () => epFocused ? (0, -7, 268, 179.5f) : (0, 0, 268, 179.5f));
+            Sem.Tag(box, "link", $"{ep.Episode.EpisodeNumber:00} {code} {ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}"}", boxNow: () => epFocused ? (0, -7, 268, 179.5f) : (0, 0, 268, 179.5f));
             var maxInk = _t.Name == "dark" ? new Rgba(1, 1, 1) : new Rgba(0, 0, 0);
             var firstCard = si == 0 && ci == 0; // web: the first rail item reads as the selected one
             var codeLabel = Sem.Tag(Ui.Text(code, 0, 165.3f, 8.832f, 700, firstCard ? maxInk : _t.InkMuted, 46, 13.248f), "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}");

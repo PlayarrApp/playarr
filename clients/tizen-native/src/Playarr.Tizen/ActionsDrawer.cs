@@ -18,7 +18,7 @@ internal sealed class ActionsDrawer
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
-        Sem.Tag(panel, "dialog", card.Title + " actions", backdrop: t.Bg, ignoreOwnBg: true);
+        Sem.Tag(panel, "dialog", "", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
         Root.Add(panel);
         Root.Add(Ui.Text("Title actions", 1606, 55, 9.6f, 720, t.InkMuted, 200, 14.4f, upper: true, spacing: 0.8f));
         { var lines = Ui.Paragraph(Root, card.Title, 1606, 74, 38.4f, 590, t.Ink, 215, 56.8f, -1.5f, 2, role: "heading"); }
