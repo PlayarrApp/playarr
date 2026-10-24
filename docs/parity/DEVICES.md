@@ -15,7 +15,7 @@ reference is web mobile at the device's own size. The legend dir is the client's
 | Apple TV | tvOS simulator | `xcrun simctl` and XCUITest remote presses | `xcrun simctl io screenshot` | Simulator video is not the device decoder | `apple` |
 | Samsung Tizen | Tizen TV emulator 10.0 under KVM with host GPU GL, signed with an owner-provided Samsung certificate profile | X key events to the emulator window; the debug build's `netlog.js` channel evaluates page code (`drivers/tizen-webos.mjs`, `DEVICE=tizen`) | Emulator screen grab (`xwd`) | No 4K, DRM or some Samsung APIs; the video plane is a native AVPlay overlay the screen grab cannot see | `tizen-webos` (cand `tizen`) |
 | Samsung Tizen (native) | The native Tizen .NET app (`clients/tizen-native`, debug build) on the Tizen TV emulator | `drivers/tizen-native.mjs`: debug mirror keys over `sdb forward` | `import -window root` of the emulator display | No 4K, DRM or some Samsung APIs; same emulator as the web package | `tizen-native` (cand `dev`) |
-| LG webOS | webOS TV 23 Simulator (Chromium 94) under a virtual X display | Chrome DevTools Protocol key events and page evaluation (`drivers/tizen-webos.mjs`, `DEVICE=webos`) | Screen grab (`xwd`) | Simulator only; no real panel or decoder; see the documented exceptions below | `tizen-webos` (cand `webos`) |
+| LG webOS | webOS TV 23 Simulator (Chromium 94) on a headless Xvfb display (no VNC) | Chrome DevTools Protocol key events and page evaluation (`drivers/tizen-webos.mjs`, `DEVICE=webos`) | Screen grab (`xwd`) | Simulator only; no real panel or decoder; see the documented exceptions below | `tizen-webos` (cand `webos`) |
 | HarmonyOS TV | DevEco Previewer (`scripts/harmony-wall/preview.sh`, run locally; images are region-locked) | Previewer key input | Previewer screenshot | Previewer renders UI only: no real playback | `harmony` |
 | Xbox | UWP app in a Windows VM cloned from the runner (runner disabled) | Gamepad D-pad through the VM | VM screen capture | VM has no real console video path; on-screen keyboard for text | `xbox` |
 | macOS (Apple TV app) | The Apple TV app on a Mac, inside its own simulator folder only | Keyboard arrows | Window capture, never the desktop | Muted; never stream or capture the desktop | `macos` |
@@ -39,6 +39,27 @@ reference is web mobile at the device's own size. The legend dir is the client's
 - Home rails depend on the shared account's recent activity (other clients play and mark items), so run the web
   reference and the device checks straight after each other; a Home check that differs only in the first card is drift,
   not a D-pad bug.
+
+### Reproduce the webOS run
+
+One command captures the 15 screens in dark and light, then the D-pad checks, against the static parity server with the
+pinned clock `2026-10-07T12:00:00Z` (`parity.env`, through `suite-run.mjs`), into the legend folder:
+
+```sh
+# once per simulator start: sign in as the parity account (password from ~/.secrets, never printed)
+node scripts/parity/tizen-webos/signin-webos.mjs
+# after a client change: build, copy into the simulator app folder, restart the simulator unit
+WEBOS_STAGE=<simulator app folder> scripts/parity/tizen-webos/deploy-webos.sh
+WEBOS_OUT=<legend dir>/webos scripts/parity/tizen-webos/run-webos.sh
+```
+
+`WEBOS_DISPLAY` (default `:26`) and `WEBOS_CDP` (default `9226`) name the simulator's display and inspector port.
+Extra arguments go to `suite-run.mjs` (`--screens home,movies`, `--themes dark`).
+
+### Tizen web package: debug build on the emulator
+
+`scripts/parity/tizen-webos/tizen-deploy-debug.sh` signs the built `apps/tv-tizen/dist` plus `netlog.js` with a Samsung
+certificate profile, installs it on the Tizen TV emulator and starts it. Hold the shared emulator lock while it runs.
 
 ### webOS documented exceptions (not chased)
 

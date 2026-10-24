@@ -1,9 +1,11 @@
-// Signs the webOS simulator in to the static parity server as `parity` (password from ~/.secrets, never printed).
+// WEBOS_CDP (default 9226) is the simulator inspector port. Signs the webOS simulator in to the static parity server as `parity` (password from ~/.secrets, never printed).
 import { readFileSync } from "node:fs";
+import { loadParityConfig } from "../parity-config.mjs";
 const sec = readFileSync(process.env.HOME + "/.secrets", "utf8");
 const get = (k) => (sec.match(new RegExp(`^${k}=(.*)$`, "m"))?.[1] ?? "").replace(/^['"]|['"]$/g, "");
-const url = process.env.PARITY_SERVER_URL ?? "http://192.168.1.220:18500", pw = get("PLAYARR_PARITY_STATIC_PASSWORD");
-const list = await (await fetch("http://127.0.0.1:9226/json/list")).json();
+const url = loadParityConfig().PARITY_SERVER_URL, pw = process.env.PLAYARR_PARITY_STATIC_PASSWORD ?? get("PLAYARR_PARITY_STATIC_PASSWORD");
+if (!url || !pw) throw new Error("static parity server URL or password is not configured");
+const list = await (await fetch(`http://127.0.0.1:${process.env.WEBOS_CDP ?? 9226}/json/list`)).json();
 const t = list.find((x) => /webos-stage/.test(x.url));
 const ws = new WebSocket(t.webSocketDebuggerUrl); let id = 0; const p = new Map();
 ws.onmessage = (m) => { const d = JSON.parse(m.data); p.get(d.id)?.(d); };
