@@ -147,7 +147,9 @@ static-server account (password from the secrets file, never printed) and writes
 (`VBOX_USER_HOME` must point at the VirtualBox home of the VM; leave `PLAYARR_SF_SKIP_SIGNIN` unset to sign in first.) The
 script runs `vm-coldboot.sh`, then `suite-run.mjs --via route --only screens` for both themes with the pinned capture
 clock, and writes `<out>/<theme>/<screen>.png`. Extra arguments go to `suite-run.mjs` (for example `--screens home,movies`).
-Every capture also writes `<out>/layout/<theme>/<screen>.json` from the app's own QML item tree (`LayoutDump.js`, called by a `layoutDump()` step; text rects are glyph-run bounds), scored with `scripts/parity/layout-score.mjs`. `scripts/parity/sailfish/build-fonts.sh` builds the static Nunito Sans weights the client embeds. There are no D-pad checks: the phone has no D-pad. Detail pages are scrolled to the top before the shot, like the web refs.
+Every capture also writes `<out>/layout/<theme>/<screen>.json` through `LayoutDump.js`, called by a `layoutDump()` step and scored with `scripts/parity/layout-score.mjs`. These exports currently fail the measurement audit: declared wrapper geometry and estimated text bounds can produce 100% without matching the native drawing. See [the Sailfish measurement audit](SAILFISH-AUDIT.md) before accepting a layout result. `scripts/parity/sailfish/build-fonts.sh` builds the static Nunito Sans weights the client embeds. There are no D-pad checks: the phone has no D-pad. Detail pages are scrolled to the top before the shot, like the web refs.
+
+The standard run covers 15 screens. Capture the additional calendar-link screen in both themes with `node scripts/parity/sailfish/capture-extra.mjs <out>` using the same environment. A complete 16-screen acceptance run must include this extra capture and repeat it as well.
 
 ## Downloads: which platforms support them
 
