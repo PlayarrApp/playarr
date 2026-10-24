@@ -36,6 +36,7 @@ run() { case $1 in
   film-detail) open experience-detail/ca309574-c0f4-4564-bb54-4512eab7e531 18; python3 -I $HERE/uiexpect.py 'Chapters|Play' || { echo "detail still loading"; return 1; }; shot $1 4 ;;
   series-detail) open experience-detail/7ab4ce97-d59e-43d6-8e03-31d4d29a5c90 18; python3 -I $HERE/uiexpect.py 'Season|Episodes|Start|Resume' || { echo "detail still loading"; return 1; }; shot $1 4 ;;
   player-controls) open experience-detail/ca309574-c0f4-4564-bb54-4512eab7e531 18; python3 -I $HERE/uiexpect.py 'Chapters|Play' || { echo "detail still loading"; return 1; }; tapd 'Play' tap 20; shot $1 3 ;;
+  actions) open movies 16; python3 -I $HERE/uiexpect.py 'Amber Thicket 3' || { echo "wrong screen movies"; return 1; }; python3 -I $HERE/uitap.py '7 Distant Harbour 30' long-up || { echo 'actions card not found'; return 1; }; sleep 2; python3 -I $HERE/uiexpect.py 'Title actions|Mark as Watched' || { echo 'wrong screen actions'; return 1; }; shot $1 ;;
   filters) open movies 16; tapdesc '^Filters' 2; python3 -I $HERE/uiexpect.py 'Sort by|Library controls|Filters' || { echo "wrong screen filters"; return 1; }; shot $1 ;;
   *) echo "unknown $1" ;;
 esac; }
