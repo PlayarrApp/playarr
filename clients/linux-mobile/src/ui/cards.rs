@@ -152,15 +152,15 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         );
     }
     if o.unseen {
-        overlay.add_overlay(
-            &gtk4::Box::builder()
-                .css_classes(["pa-unseen"])
-                .halign(gtk4::Align::End)
-                .valign(gtk4::Align::Start)
-                .margin_top(7)
-                .margin_end(7)
-                .build(),
-        );
+        let dot = gtk4::Box::builder()
+            .css_classes(["pa-unseen"])
+            .halign(gtk4::Align::End)
+            .valign(gtk4::Align::Start)
+            .margin_top(7)
+            .margin_end(7)
+            .build();
+        crate::layout::tag(&dot, "img", "Unwatched", 50.0);
+        overlay.add_overlay(&dot);
     }
     // A fixed art height (the web's 16:9 at card width); AspectFrame reported no height inside a button.
     overlay.set_size_request(-1, art_h);
@@ -212,6 +212,11 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         })
         .valign(gtk4::Align::Start)
         .build();
+    // The web's card link: "Open <title>" in a library, "<title> <meta>" on Home.
+    match &o.meta {
+        Some(m) => crate::layout::tag_h(&b, "link", &format!("{} {m}", work.title), 0.0, art_h as f32 + 24.7),
+        None => crate::layout::tag(&b, "link", &format!("Open {}", work.title), 12.0),
+    }
     let w = work.clone();
     b.connect_clicked(move |_| on_open(&w));
     // Long-press opens the actions sheet.

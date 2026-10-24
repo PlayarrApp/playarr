@@ -1,5 +1,5 @@
 //! GTK/libadwaita user interface. Pages: link (sign-in), profiles, then the signed-in shell.
-pub mod actions;
+mod actions;
 pub mod calendar;
 pub mod cards;
 pub mod detail;
@@ -17,6 +17,7 @@ pub mod shell;
 pub mod simple;
 
 use crate::api::{self, Client};
+use crate::layout;
 use crate::store;
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
@@ -316,15 +317,23 @@ impl App {
             })
             .valign(gtk4::Align::Start)
             .build();
-        close.set_child(Some(&crate::icons::image(
-            "close",
-            14,
-            if close_primary {
-                crate::icons::Tone::OnAccent
-            } else {
-                crate::icons::Tone::Ink
-            },
-        )));
+        close.set_child(Some(
+            &gtk4::Label::builder()
+                .label("\u{d7}")
+                .css_classes(["pa-close-glyph"])
+                .build(),
+        ));
+        // The web's dialog, its close button and the page behind: names as the web labels them.
+        let dialog = match (kicker, title) {
+            ("Title actions", t) => format!("{t} actions"),
+            ("Library controls", "Filters") => "Movies display filters".to_string(),
+            (_, t) => t.to_string(),
+        };
+        layout::tag(&panel, "dialog", &dialog, 0.0);
+        layout::tag(&close, "button", if filters { "Close filters" } else { "Close" }, 50.0);
+        if filters {
+            layout::set_bg(&panel, [0.1059, 0.0941, 0.1059]);
+        }
         let me = self.clone();
         close.connect_clicked(move |_| me.close_panel());
         head.append(&block);
@@ -493,7 +502,27 @@ impl App {
         glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
             if let Ok(text) = std::fs::read_to_string(&path) {
                 let _ = std::fs::remove_file(&path);
-                me.route(text.trim());
+                let text = text.trim();
+                if let Some(iso) = text.strip_prefix("parityNow=") {
+                    // Pins the app's own clock (calendar today, entry times) and stops it ticking.
+                    PARITY_NOW.with(|n| *n.borrow_mut() = Some(iso.to_string()));
+                } else if let Some(spec) = text.strip_prefix("layout:") {
+                    // layout:<screen>:<output file>; exports the widget tree without touching the screen.
+                    if let Some((screen, file)) = spec.split_once(':') {
+                        let theme = if crate::store::load_settings().theme == "light" {
+                            "light"
+                        } else {
+                            "dark"
+                        };
+                        if let Err(e) =
+                            crate::layout::export(me.window.content().unwrap().upcast_ref(), screen, theme, file)
+                        {
+                            eprintln!("layout export failed: {e}");
+                        }
+                    }
+                } else {
+                    me.route(text);
+                }
             }
             glib::ControlFlow::Continue
         });
@@ -535,6 +564,20 @@ impl App {
             },
         );
     }
+}
+
+thread_local! {
+    static PARITY_NOW: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+/// The instant set by the `parityNow=<ISO>` control command, if any.
+pub fn parity_clock() -> Option<String> {
+    PARITY_NOW.with(|n| n.borrow().clone())
+}
+
+/// True when the app's own clock is pinned (launch alias, env or control command).
+pub fn clock_pinned() -> bool {
+    parity_clock().is_some() || std::env::var_os("PLAYARR_PARITY_CLOCK").is_some()
 }
 
 pub fn build_window(app: &adw::Application) {

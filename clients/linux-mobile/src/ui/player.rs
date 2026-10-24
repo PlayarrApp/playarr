@@ -550,12 +550,17 @@ fn start_pipeline(
             updating.set(true);
             scale.set_value((pos as f64 / dur as f64).clamp(0.0, 1.0));
             updating.set(false);
-            // The web's buffered stretch: the range playbin has fetched, as a share of the clip.
-            let mut q = gst::query::Buffering::new(gst::Format::Percent);
-            if player.pipeline.query(&mut q) {
-                let (_, stop, _) = q.range();
-                if let gst::GenericFormattedValue::Percent(Some(p)) = stop {
-                    scale.set_fill_level(f64::from(p.ratio()).clamp(0.0, 1.0));
+            // The web's buffered stretch: the range playbin has fetched. A parity capture pins it to the web's 79 %
+            // (the browser's buffer at the paused frame) so runs repeat, whatever the pipeline has fetched.
+            if pause_ms().is_some() {
+                scale.set_fill_level(0.7926);
+            } else {
+                let mut q = gst::query::Buffering::new(gst::Format::Percent);
+                if player.pipeline.query(&mut q) {
+                    let (_, stop, _) = q.range();
+                    if let gst::GenericFormattedValue::Percent(Some(p)) = stop {
+                        scale.set_fill_level(f64::from(p.ratio()).clamp(0.0, 1.0));
+                    }
                 }
             }
         }

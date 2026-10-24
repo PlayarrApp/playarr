@@ -10,7 +10,7 @@ fn glyph(icon: &str) -> &'static str {
     match icon {
         "play" => "▶",
         "downloads" => "⇩",
-        "add" => "+",
+        "add" => "\u{ff0b}",
         "check" => "✓",
         _ => "○",
     }
@@ -25,7 +25,9 @@ fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
             .build(),
     );
     content.append(&gtk4::Label::builder().label(label).xalign(0.0).hexpand(true).build());
-    gtk4::Button::builder().child(&content).css_classes(["pa-row"]).build()
+    let b = gtk4::Button::builder().child(&content).css_classes(["pa-row"]).build();
+    crate::layout::tag(&b, "button", &format!("{} {label}", glyph(icon)), 14.0);
+    b
 }
 
 pub fn show(app: &Rc<App>, work: &Work) {

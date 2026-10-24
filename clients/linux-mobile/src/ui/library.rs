@@ -381,8 +381,12 @@ impl Lib {
     fn mark_letter(&self, letter: char) {
         let mut child = self.rail.first_child();
         while let Some(c) = child {
-            if let Some(l) = c.downcast_ref::<gtk4::Button>() {
-                if l.label().and_then(|t| t.chars().next()) == Some(letter) {
+            if let Some(l) = c
+                .downcast_ref::<gtk4::Button>()
+                .and_then(|b| b.child())
+                .and_then(|w| w.downcast::<gtk4::Label>().ok())
+            {
+                if l.label().starts_with(letter) {
                     l.add_css_class("active");
                 } else {
                     l.remove_css_class("active");
@@ -645,24 +649,29 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
             }
         });
     }
-    // The web spreads the letters 18.64 css px apart; whole css px give 18 or 19. Tops of A..Z measured at 2x, in css px from A.
-    const LETTER_TOP: [i32; 26] = [
-        0, 19, 38, 56, 75, 94, 112, 131, 150, 168, 187, 205, 224, 243, 261, 280, 299, 317, 336, 354, 373, 392, 410,
-        429, 448, 466,
-    ];
+    // The web spreads the 44 px wide letter buttons 18.635 css px apart (the first at y 88); whole px give 18 or 19.
+    let top = |i: usize| (88.0 + 18.635 * i as f64).round() as i32;
     for (i, c) in ALPHABET.chars().enumerate() {
-        let gap = match i {
-            0 => 1,
-            1 => 0,
-            _ => LETTER_TOP[i - 1] - LETTER_TOP[i - 2] - 18,
+        let name = if c == '#' {
+            "Numbers and symbols".to_string()
+        } else {
+            c.to_string()
         };
-        let b = gtk4::Button::builder()
+        let glyph = gtk4::Label::builder()
             .label(c.to_string())
+            .css_classes(["pa-letter-label"])
+            .halign(gtk4::Align::Center)
+            .valign(gtk4::Align::Center)
+            .build();
+        let b = gtk4::Button::builder()
+            .child(&glyph)
             .css_classes(["pa-letter"])
             .halign(gtk4::Align::Center)
-            .height_request(18)
-            .margin_top(gap)
+            .width_request(44)
+            .height_request(top(i + 1) - top(i))
+            .margin_top(if i == 0 { top(0) - 88 } else { 0 })
             .build();
+        crate::layout::tag(&b, "button", &name, 50.0);
         let lib = lib.clone();
         b.connect_clicked(move |_| lib.jump(c));
         rail.append(&b);

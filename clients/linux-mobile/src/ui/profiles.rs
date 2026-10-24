@@ -2,6 +2,7 @@
 use super::{bg, App};
 use crate::api::Client;
 use crate::icons::{self, Tone};
+use crate::layout;
 use crate::model::Profile;
 use crate::{avatar, store, theme};
 use gtk4::prelude::*;
@@ -32,15 +33,15 @@ fn decorate_dropdown(d: &gtk4::DropDown, icon: &str) {
         return;
     };
     inner.set_halign(gtk4::Align::Center);
-    inner.set_spacing(8);
+    inner.set_spacing(10);
     if let Some(label) = inner.first_child() {
         label.set_hexpand(false);
     }
     if let Some(arrow) = inner.last_child() {
         arrow.set_visible(false);
     }
-    inner.prepend(&icons::image(icon, 14, Tone::Soft));
-    inner.append(&icons::image("chevron", 11, Tone::Soft));
+    inner.prepend(&icons::image(icon, 16, Tone::Soft));
+    inner.append(&icons::image("chevron", 12, Tone::Soft));
 }
 
 const THEMES: [(&str, &str); 3] = [("dark", "Dark"), ("light", "Light"), ("system", "Auto")];
@@ -73,7 +74,14 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     theme_pick.set_size_request(112, 48);
     let current = store::load_settings().theme;
     theme_pick.set_selected(THEMES.iter().position(|t| t.0 == current).unwrap_or(0) as u32);
+    layout::tag(
+        &theme_pick,
+        "button",
+        &format!("Theme: {}", THEMES[theme_pick.selected() as usize].1),
+        0.0,
+    );
     theme_pick.connect_selected_notify(|d| {
+        layout::tag(d, "button", &format!("Theme: {}", THEMES[d.selected() as usize].1), 0.0);
         let name = THEMES[d.selected() as usize].0;
         store::update_settings(|s| s.theme = name.into());
         theme::apply(name);
@@ -86,6 +94,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     lang.set_size_request(112, 48);
     lang.set_tooltip_text(Some("The app follows this device's language."));
     decorate_dropdown(&lang, "globe");
+    layout::tag(&lang, "button", "Auto", 0.0);
     top.append(&lang);
     root.append(&top);
 
@@ -134,7 +143,8 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .margin_top(21)
         .build();
     let settings = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
-    settings.set_child(Some(&icons::image("settings", 16, Tone::Brand)));
+    settings.set_child(Some(&icons::image("settings", 18, Tone::Brand)));
+    layout::tag(&settings, "button", &format!("{} settings", "Device Test"), 999.0);
     {
         let (app, client) = (app.clone(), client.clone());
         settings.connect_clicked(move |_| app.push_settings(client.clone()));
@@ -143,10 +153,11 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     // The web's Sign out pill is 3 px tighter on the left, 4 px on the right, and its icon sits 2 px further from the text.
     let out_row = gtk4::Box::builder().spacing(8).build();
     out_row.set_margin_start(-3);
-    out_row.set_margin_end(-4);
-    out_row.append(&icons::image("logout", 14, Tone::Ink));
+    out_row.set_margin_end(-9);
+    out_row.append(&icons::image("logout", 18, Tone::Ink));
     out_row.append(&gtk4::Label::new(Some("Sign out")));
     sign_out.set_child(Some(&out_row));
+    layout::tag(&sign_out, "button", "Sign out Device Test", 999.0);
     {
         let app = app.clone();
         sign_out.connect_clicked(move |_| app.sign_out());
@@ -191,8 +202,10 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .margin_bottom(22)
         .build();
     let clients_row = gtk4::Box::builder().spacing(9).build();
-    clients_row.append(&gtk4::Label::new(Some("Clients")));
-    clients_row.append(&gtk4::Label::builder().label("→").css_classes(["pa-back-arrow"]).build());
+    let clients_label = gtk4::Label::new(Some("Clients"));
+    layout::tag(&clients_label, "link", "Clients", 999.0);
+    clients_row.append(&clients_label);
+    clients_row.append(&gtk4::Label::builder().label("→").css_classes(["pa-pill-arrow"]).build());
     clients.set_child(Some(&clients_row));
     clients.connect_clicked(|_| {
         let _ = gtk4::gio::AppInfo::launch_default_for_uri(
@@ -247,6 +260,24 @@ fn tile(
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
+    // The web's avatar link starts 1.8 px in and 2.7 px down, and ends 3 px short of the label block; its round
+    // box and the avatar drawing inside it are separate elements.
+    let name = if p.is_current {
+        format!("{}, current profile", p.display_name)
+    } else {
+        p.display_name.clone()
+    };
+    layout::Tag::new("button", &name, 0.0)
+        .adjust([1.76, 2.69, -3.76, -3.03])
+        .apply(&b);
+    layout::Tag::new("container", "", 50.0)
+        .extra(layout::Extra {
+            role: "image",
+            label: "",
+            radius: 0.0,
+            inset: [11.8, 11.8, 11.8, 11.8],
+        })
+        .apply(&av);
     let (app, client, current, user_id) = (app.clone(), client.clone(), p.is_current, p.id.clone());
     b.connect_clicked(move |_| {
         if app.is_signing_out() {
@@ -387,8 +418,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .margin_top(15)
         .build();
     circle.set_size_request(144, 144);
-    let plus = icons::image("add", 28, Tone::Ink);
-    plus.set_opacity(0.7);
+    let plus = gtk4::Label::builder().label("+").css_classes(["pa-add-plus"]).build();
     // No vexpand: it would stretch the whole row and push Sign out to the page bottom.
     plus.set_hexpand(true);
     plus.set_valign(gtk4::Align::Center);
@@ -413,6 +443,8 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
+    layout::tag(&b, "button", "+ Sign in ADD ANOTHER PROFILE", 0.0);
+    layout::tag(&circle, "container", "", 50.0);
     let app = app.clone();
     b.connect_clicked(move |_| {
         if !app.is_signing_out() {

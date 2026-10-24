@@ -18,22 +18,36 @@ if [ -z "${SKIP_SIGNIN:-}" ]; then
   export PLAYARR_NURA_EXPECTED_SUB
 fi
 mkdir -p "$O"
+# Layout JSON (docs/parity/LAYOUT.md) of the screen now showing, written by the app itself: <outdir>/<theme>/layout/<screen>.json.
+layout() {
+  local theme=$1 name=$2 f=/tmp/pa-layout.json
+  "$H/pmssh.sh" "rm -f $f; printf %s 'layout:$name:$f' > $PLAYARR_CONTROL" </dev/null
+  for _ in $(seq 1 20); do "$H/pmssh.sh" "[ -s $f ]" </dev/null && break; sleep 1; done
+  mkdir -p "$O/$theme/layout"; "$H/pmssh.sh" "cat $f" </dev/null > "$O/$theme/layout/$name.json"
+}
 for t in $THEMES; do
   rm -f -- "$O/$t"/*.png
   "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
   # One route per call, each retried: a display repaint glitch can outlast one stability window.
   for r in home movies series music calendar-month calendar-week calendar-agenda search "film:$FILM" "series-detail:$SERIES" settings filters profiles actions; do
     for try in 1 2 3; do WAIT=${WAIT:-45} "$H/pmcap3.sh" "$O/$t" "theme:$t" "$r" </dev/null && break; [ "$try" = 3 ] && exit 1; done
+    case $r in film:*) n=film-detail;; series-detail:*) n=series-detail;; *) n=$r;; esac
+    layout "$t" "$n"
   done
   # Player: its own start, paused at 2 s with the controls pinned, like the web ref. Colour bars trip the green guard.
   PLAYARR_KEEP_CONTROLS=1 PLAYARR_PARITY_PAUSE_MS=2000 "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
   PLAYARR_CAPTURE_GREEN_CHECK=true "$H/pmcap3.sh" "$O/$t" "theme:$t" player </dev/null
+  layout "$t" player-controls
   for f in "$O/$t"/film_*.png; do mv -- "$f" "$O/$t/film.png"; done
   for f in "$O/$t"/series-detail_*.png; do mv -- "$f" "$O/$t/series-detail.png"; done
   (cd "$H/.." && PARITY_ROOT=$PARITY_ROOT node nura/score.mjs "$O/$t" "$t") | tee "$O/score-$t.txt"
 done
 if [ "${PUBLISH:-1}" = 1 ]; then
   D=$PARITY_ROOT/postmarketos/dev
+  for t in $THEMES; do
+    L=$D/layout/$t
+    mkdir -p "$L"; cp -- "$O/$t/layout"/*.json "$L/"
+  done
   python3 -I - "$O" "$D" "$THEMES" <<'PY'
 import sys, glob, os
 from PIL import Image
