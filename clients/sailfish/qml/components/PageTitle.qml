@@ -47,7 +47,8 @@ Item {
         anchors { left: parent.back ? btn.right : parent.left; leftMargin: parent.back ? 10 * Tokens.u : Tokens.pad; right: parent.right; verticalCenter: parent.verticalCenter }
         elide: Text.ElideRight
         color: Tokens.ink
-        font.family: Tokens.family580
+        font.family: Tokens.family610
         font.pixelSize: 19.6 * Tokens.u
+        font.letterSpacing: -0.3
     }
 }
