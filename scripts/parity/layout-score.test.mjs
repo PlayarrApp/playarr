@@ -76,3 +76,13 @@ test("the report carries the web occluded count", () => {
   assert.equal(scoreLayout(load("web.json"), load("device-ok.json")).occluded, 0);
   assert.match(formatReport(r), /3 occluded web elements dropped/);
 });
+
+test("the player audio button is volatile: a device 'Audio: English' at the same box passes, a moved one fails", () => {
+  assert.ok(volatileFor("player-controls").some((v) => v.name === "player-audio"));
+  const box = { x: 1500, y: 980, w: 48, h: 48 };
+  const el = (text, rect, extra = {}) => ({ text, role: "button", rect, color: "#ffffff", background: "#202020", fontSize: null, fontWeight: null, ...extra });
+  const web = { screen: "player-controls", theme: "dark", viewport: { w: 1920, h: 1080, dpr: 1 }, elements: [el("", box, { volatile: "player-audio" })] };
+  const dev = (text, rect) => ({ ...web, elements: [el(text, rect)] });
+  assert.equal(scoreLayout(web, dev("Audio: English", box)).score, 100);
+  assert.ok(scoreLayout(web, dev("Audio: English", { ...box, x: 1560 })).score < 100);
+});
