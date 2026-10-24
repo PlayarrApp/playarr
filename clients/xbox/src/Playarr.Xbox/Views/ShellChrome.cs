@@ -52,6 +52,8 @@ namespace Playarr.Xbox.Views
             Root.Children.Add(_chrome);
             Build();
             _frame.Navigated += (s, e) => Sync(e);
+            LayoutExport.SetLineBox(_time, true);
+            LayoutExport.SetLineBox(_date, true);
             _clockTimer.Tick += (s, e) => UpdateClock();
             _clockTimer.Start();
             UpdateClock();

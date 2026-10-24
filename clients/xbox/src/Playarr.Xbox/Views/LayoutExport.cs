@@ -37,6 +37,16 @@ namespace Playarr.Xbox.Views
 
         public static void SetPad(DependencyObject element, Thickness pad) => element.SetValue(PadProperty, pad);
 
+        /// <summary>The text's web box is its CSS line box (own line-height), not Chrome's content area.</summary>
+        public static readonly DependencyProperty LineBoxProperty = DependencyProperty.RegisterAttached("LineBox", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
+
+        public static void SetLineBox(DependencyObject element, bool value) => element.SetValue(LineBoxProperty, value);
+
+        /// <summary>A button the web exports as the box plus a separate text element (round letter and arrow buttons).</summary>
+        public static readonly DependencyProperty SplitProperty = DependencyProperty.RegisterAttached("Split", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
+
+        public static void SetSplit(DependencyObject element, bool value) => element.SetValue(SplitProperty, value);
+
         public static void SetBox(DependencyObject element, Rect box) => element.SetValue(BoxProperty, box);
 
         public static void SetShell(DependencyObject element, bool shell) => element.SetValue(ShellProperty, shell);
@@ -112,7 +122,7 @@ namespace Playarr.Xbox.Views
                     return; // a drawn icon is one image, not its strokes
                 }
 
-                if (element is Button { Content: TextBlock } && (GetRole(element) == null || GetRole(element) == "button"))
+                if (element is Button { Content: TextBlock } && element.GetValue(SplitProperty) is not true && (GetRole(element) == null || GetRole(element) == "button"))
                 {
                     return; // the web's label button is one element carrying the text run and its style
                 }
@@ -158,7 +168,7 @@ namespace Playarr.Xbox.Views
                 fontWeight = WebFont.WeightOf(block);
                 rect = TextRun(block, root, scale) ?? rect;
             }
-            else if (element is Button { Content: TextBlock drawerLabel } && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
+            else if (element is Button { Content: TextBlock drawerLabel } && element.GetValue(SplitProperty) is not true && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
             {
                 role = "button";
                 text = (string?)drawerLabel.GetValue(TextProperty) ?? (string.IsNullOrEmpty(name) ? drawerLabel.Text : name);
@@ -175,7 +185,7 @@ namespace Playarr.Xbox.Views
             {
                 role = "image";
             }
-            else if (element is Button { Content: TextBlock label } labelButton && !string.IsNullOrWhiteSpace(label.Text))
+            else if (element is Button { Content: TextBlock label } labelButton && element.GetValue(SplitProperty) is not true && !string.IsNullOrWhiteSpace(label.Text))
             {
                 role = "button";
                 text = string.IsNullOrEmpty(name) ? label.Text : name;
@@ -233,7 +243,7 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
+                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
@@ -263,7 +273,18 @@ namespace Playarr.Xbox.Views
                 var transform = block.TransformToVisual(root);
                 var a = transform.TransformPoint(new Point(first.X, 0));
                 var z = transform.TransformPoint(new Point(last.X + last.Width, 0));
-                return new Rect(a.X * scale, box.Y, Math.Max(0, (z.X - a.X) * scale), box.Height);
+                if (block.GetValue(LineBoxProperty) is true)
+                {
+                    // CSS line box (the clock and the date set their own line-height): the element's own box.
+                    return new Rect(a.X * scale, box.Y, Math.Max(0, (z.X - a.X) * scale), box.Height);
+                }
+
+                // Chrome's content area for Nunito Sans: ascent round(1.011 em) above the baseline, round(0.353 em) below.
+                var size = block.FontSize * scale;
+                var ascent = Math.Round(1.011 * size, MidpointRounding.AwayFromZero);
+                var height = ascent + Math.Round(0.353 * size, MidpointRounding.AwayFromZero);
+                var baseline = box.Y + block.BaselineOffset * scale * (box.Height / Math.Max(1, block.ActualHeight));
+                return new Rect(a.X * scale, baseline - ascent, Math.Max(0, (z.X - a.X) * scale), height);
             }
             catch (Exception)
             {
