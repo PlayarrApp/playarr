@@ -34,15 +34,16 @@ Item {
     Item {
         id: field
         property alias text: input.text
-        x: Tokens.pad; y: 89.4 * Tokens.u
-        width: parent.width - 2 * Tokens.pad; height: 60.4 * Tokens.u
+        x: Tokens.pad; y: 90 * Tokens.u
+        width: parent.width - 2 * Tokens.pad; height: 60 * Tokens.u
+        property var layoutEls: [ { role: "search", radius: 999, bg: String(Qt.rgba(1, 1, 1, 1)) }, { role: "textbox", text: qsTr("Search your libraries and playlists"), dx: 43, dy: 8, w: 298, h: 44 } ]
         RectangularGlow {   // web card shadow under the field: a wide, low soft shadow
             y: 22 * Tokens.u; width: parent.width; height: parent.height
             glowRadius: 26 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius
             color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, Tokens.dark ? 0.3 : 0.16)
         }
         Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: Tokens.lineStrong }
-        Image { x: 15.5 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; width: 17.5 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("search", Tokens.ink) }
+        Image { x: 17 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; width: 17.5 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("search", Tokens.ink) }
         TextInput {
             id: input
             property bool navigationFocusable: true
@@ -69,24 +70,28 @@ Item {
     }
     MouseArea {   // web: the Filters button at the end of the header row, as on the library pages
         id: filterBtn
-        anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: head.verticalCenter }
-        width: 43.7 * Tokens.u; height: width
+        anchors { right: parent.right; rightMargin: Tokens.pad; top: parent.top; topMargin: 14 * Tokens.u }
+        width: 44 * Tokens.u; height: width
+        property bool layoutSkip: true
+        property var layoutEls: [ { role: "button", text: qsTr("Filters"), radius: 14 }, { role: "image", dx: 13, dy: 13, w: 18, h: 18 } ]
         onClicked: pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
-        Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
-        Image { anchors.centerIn: parent; width: 16.8 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
+        Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
+        Image { property bool layoutSkip: true; anchors.centerIn: parent; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
     }
     // Web TvEmptyState (graphic search, "Start typing to search."): a round plate with the magnifier-minus drawing and the title beside it.
     Item {
         id: idle
         visible: root.works.length === 0 && !root.busy && field.text.trim().length < 2
-        x: Tokens.pad; y: field.y + field.height + 19.8 * Tokens.u
-        width: parent.width - 2 * Tokens.pad; height: 85 * Tokens.u
+        x: Tokens.pad; y: field.y + field.height + 20 * Tokens.u
+        width: parent.width - 2 * Tokens.pad; height: 86 * Tokens.u
         Rectangle {
             id: plate
-            width: 85 * Tokens.u; height: width; radius: width / 2
+            width: 86 * Tokens.u; height: width; radius: width / 2
             color: Qt.rgba(Tokens.surfaceStrong.r, Tokens.surfaceStrong.g, Tokens.surfaceStrong.b, 0.54)
             border.width: 1; border.color: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.5)
-            Canvas {   // the web's 48 x 32 viewBox drawing, 34 css px wide, 1.8 stroke
+            Canvas {
+                property var layoutEls: [ { role: "image" } ]
+                // the web's 48 x 32 viewBox drawing, 34 css px wide, 1.8 stroke
                 width: 34 * Tokens.u; height: 22.7 * Tokens.u
                 anchors.centerIn: parent
                 property color ink: Tokens.dark ? "#d65a78" : "#ae2e4a"

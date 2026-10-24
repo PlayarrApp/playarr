@@ -135,8 +135,8 @@ MouseArea {
             text: work && work.deckSub ? work.deckSub : work ? kindLabel(work.kind) + (work.release_date ? " · " + work.release_date.substr(0, 4) : "") : ""
             elide: Text.ElideRight
             color: root.firstInk ? (Tokens.dark ? "#ffffff" : "#000000") : Tokens.inkMuted
-            font.family: Tokens.family400; font.letterSpacing: -0.2
-            font.pixelSize: Tokens.fs(6.9)
+            font.family: Tokens.family400; font.letterSpacing: 0.2
+            font.pixelSize: Tokens.fsDown(6.88)
         }
     }
 }

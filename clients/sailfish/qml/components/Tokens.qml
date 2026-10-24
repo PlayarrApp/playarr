@@ -60,8 +60,9 @@ QtObject {
     readonly property string family610: nunito610.name
     readonly property string family820: nunito820.name
     // Device-pixel snapping like the browser: edges land on whole pixels so art is not resampled by a half pixel.
-    // A css font size as whole device pixels, rounded down: Chromium lays text out at the fractional size, Qt 5.6 only takes an int.
-    function fs(css) { return Math.floor(css * u) }
+    // A css font size as whole device pixels: Chromium lays text out at the fractional size, Qt 5.6 only takes an int.
+    function fs(css) { return Math.round(css * u) }
+    function fsDown(css) { return Math.floor(css * u) }
     function px(v) { return Math.round(v * u) }
     readonly property real pad: 16 * u
     readonly property real radius: 10 * u

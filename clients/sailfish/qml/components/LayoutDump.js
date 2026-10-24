@@ -56,9 +56,9 @@ function dump(root, u, weights, log) {
             var t = String(item.text)
             if (item.font.capitalization === 1) t = t.toUpperCase()
             // glyph-run bounds: ascent plus descent of the font per line (Nunito Sans 1.364 em), not Qt's taller line box
-            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = (lines - 1) * (ch / lines) + (Math.round(1.011 * ((fs + 0.5) / u)) + Math.round(0.353 * ((fs + 0.5) / u))) * u   // ascent and descent rounded as Chromium does; the device pixel size is the css size rounded down to whole device pixels, so add half of one
-            var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y + item.baselineOffset - Math.round(1.011 * ((fs + 0.5) / u)) * u, cw, gh),
-                color: hex(item.color), background: item.layoutBg ? String(item.layoutBg) : bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2((fs + 0.5) / u), fontWeight: wt }
+            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = (lines - 1) * (ch / lines) + (Math.round(1.011 * (fs / u)) + Math.round(0.353 * (fs / u))) * u   // ascent and descent rounded as Chromium does; the device pixel size is the css size rounded down to whole device pixels, so add half of one
+            var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y + item.baselineOffset - Math.round(1.011 * (fs / u)) * u, cw, gh),
+                color: hex(item.color), background: item.layoutBg ? String(item.layoutBg) : bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2(fs / u), fontWeight: wt }
             if (item.layoutRadius) el.radius = item.layoutRadius
             if (op < 0.999) el.opacity = r2(op)
             if (el.text !== "") emit(el)
