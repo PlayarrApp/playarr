@@ -315,6 +315,7 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
                 .then(LocalPlayarrBackFocus.current?.let { Modifier.focusRequester(it) } ?: Modifier)
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (focused || active) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
+                .parityBox("link", back.label, 50f, background = palette.surface)
                 .semantics { contentDescription = back.label; role = Role.Button },
         ) {
             Box(contentAlignment = Alignment.Center) {

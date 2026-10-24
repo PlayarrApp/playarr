@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.playarrEdgeFades
 import io.playarr.shared.designsystem.page.PlayarrRingShape
 import io.playarr.shared.designsystem.page.playarrFocusRing
@@ -2345,7 +2346,7 @@ private fun TvNavTile(
     val navScale = rememberPlayarrFocusScale(
         focused = focused,
         focusedScale = if (tabletNav) 1.1f else FocusMotion.navFocusScale,
-        unfocusedScale = if (selected && tabletNav) FocusMotion.navSelectedScale else FocusMotion.restScale, // TV web: the current link is not scaled
+        unfocusedScale = if (selected) FocusMotion.navSelectedScale else FocusMotion.restScale, // static web refs: the current link is 1.05 on TV too (67.2 px)
         label = "tvNavFocus",
     )
     Surface(

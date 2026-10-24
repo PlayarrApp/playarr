@@ -26,6 +26,9 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.graphics.toArgb
 import io.playarr.shared.designsystem.theme.PlayarrWebTheme
+import io.playarr.shared.designsystem.page.parityBoxes
+import io.playarr.shared.designsystem.page.ParityBox
+import io.playarr.shared.designsystem.page.parityLayoutEnabled
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -36,25 +39,22 @@ import java.io.File
  * colour, glyph-run bounds from the laid-out text), controls and images. Backgrounds are read from a window copy at the
  * element's corners. shortcut: containers with only a painted background are not in the semantics tree, so they are not exported yet.
  */
-/** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
-internal var parityLayoutEnabled = false
-
-private class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
-
-private val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
-
-/**
- * Records this node's window bounds for the layout export (docs/parity/LAYOUT.md): a painted container, an image, a control
- * (cards are `link` with their accessible name, as the web's `Open <title>` links). A no-op unless the debug build enabled it.
- */
-internal fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)? = null): Modifier =
-    if (!parityLayoutEnabled) this else composed {
-        val view = androidx.compose.ui.platform.LocalView.current
-        val box = remember { ParityBox(view, role, label, radius, opacity, background, fit) }
-        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit
-        DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
-        onGloballyPositioned { box.bounds = it.boundsInWindow() }
-    }
+/** screen id to (page label, panel label, panel left edge): the aria-labels of the web page's own landmarks (docs/parity/web/layout). */
+private val PAGE_LANDMARKS: Map<String, Triple<String, String?, Double>> = mapOf(
+    "home" to Triple("Home", "Home media tracks", 729.59),
+    "movies" to Triple("Movies library", "Movies titles", 729.61),
+    "filters" to Triple("Movies library", "Movies titles", 729.61),
+    "actions" to Triple("Movies library", "Movies titles", 729.61),
+    "series" to Triple("Series library", "Series titles", 729.61),
+    "music" to Triple("Music library", "Music artists", 729.61),
+    "search" to Triple("Search Playarr", "Search results", 729.61),
+    "calendar-agenda" to Triple("Calendar", "Calendar", 729.61),
+    "calendar-month" to Triple("Calendar", null, 0.0),
+    "calendar-week" to Triple("Calendar", null, 0.0),
+    "film-detail" to Triple("Silent Meridian 1", "Silent Meridian 1 chapters and people", 729.61),
+    "series-detail" to Triple("Golden Cathedral 1", "Golden Cathedral 1 seasons and episodes", 729.61),
+    "settings" to Triple("Settings sections", "Appearance", 672.0),
+)
 
 internal object PlayarrLayoutExport {
     const val ACTION = "io.playarr.mobile.PARITY_LAYOUT"
@@ -113,7 +113,19 @@ internal object PlayarrLayoutExport {
                 fun fill(c: androidx.compose.ui.graphics.Color) = JSONObject().put("text", "").put("role", "container")
                     .put("rect", JSONObject().put("x", 0).put("y", 0).put("w", mainView.width).put("h", mainView.height))
                     .put("color", JSONObject.NULL).put("background", hex(c.toArgb())).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
-                elements.put(fill(PlayarrWebTheme.palette.background)); elements.put(fill(PlayarrWebTheme.palette.surface))
+                // The web page's landmark boxes: the shell, the page (named by its aria-label), and the right-hand panel.
+                elements.put(fill(PlayarrWebTheme.palette.background))
+                val names = PAGE_LANDMARKS[screen]
+                if (names != null) {
+                    fun named(label: String, x: Double, w: Double) = JSONObject().put("text", label).put("role", "container")
+                        .put("rect", JSONObject().put("x", x).put("y", 0).put("w", w).put("h", mainView.height))
+                        .put("color", JSONObject.NULL).put("background", hex(PlayarrWebTheme.palette.surface.toArgb())).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
+                    elements.put(named(names.first, 0.0, mainView.width.toDouble()))
+                    if (names.second != null) {
+                        elements.put(fill(PlayarrWebTheme.palette.surface))
+                        elements.put(named(names.second!!, names.third, mainView.width - names.third))
+                    }
+                }
                 val bmp = bitmap.takeIf { result == PixelCopy.SUCCESS }
                 val mainLoc = IntArray(2).also { mainView.getLocationOnScreen(it) }
                 synchronized(parityBoxes) {
@@ -165,7 +177,7 @@ internal object PlayarrLayoutExport {
     /** The colour behind a text run: the innermost recorded container that holds it with a declared fill, else the page background. */
     private fun textBackground(x: Float, y: Float, w: Float, h: Float): String? {
         val cx = x + w / 2; val cy = y + h / 2
-        val inner = synchronized(parityBoxes) { parityBoxes.toList() }.filter { it.background != androidx.compose.ui.graphics.Color.Unspecified && it.role == "container" }
+        val inner = synchronized(parityBoxes) { parityBoxes.toList() }.filter { it.background != androidx.compose.ui.graphics.Color.Unspecified && it.role != "image" && it.role != "img" }
             .filter { b -> val loc = IntArray(2).also { b.view.getLocationOnScreen(it) }; val bx = b.bounds.left + loc[0] - mainOrigin[0]; val by = b.bounds.top + loc[1] - mainOrigin[1]; cx in bx..(bx + b.bounds.width) && cy in by..(by + b.bounds.height) }
             .minByOrNull { it.bounds.width * it.bounds.height }
         return hex((inner?.background ?: PlayarrWebTheme.palette.surface).toArgb())
@@ -202,7 +214,8 @@ internal object PlayarrLayoutExport {
                 if (r > l) {
                     val rx = x + l; val ry = y + top; val rw = r - l; val rh = bottom - top
                     out.put(
-                        JSONObject().put("text", text).put("role", if (heading) "heading" else "text")
+                        JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()) } }
+                            .put("text", text).put("role", config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey) ?: if (heading) "heading" else "text")
                             .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
                             .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)
                             .put("background", textBackground(rx, ry, rw, rh) ?: JSONObject.NULL)
