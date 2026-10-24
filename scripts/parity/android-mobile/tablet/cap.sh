@@ -25,7 +25,7 @@ run() { case $1 in
   movies) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen movies"; return 1; }; shot $1 ;;
   series) open home 20; adb shell input keyevent 59; kseq left down*12 up*7 select; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen series"; return 1; }; shot $1 ;;
   music) open home 20; adb shell input keyevent 59; kseq left down*12 up*5 select; python3 -I $HERE/uiexpect.py '[0-9,]+ (titles|artists)' || { echo "wrong screen music"; return 1; }; shot $1 ;;
-  search) open home 20; adb shell input keyevent 59; kseq left down*12 up*9 select; sleep 2; adb shell input keyevent 4; sleep 2; python3 -I $HERE/uiexpect.py 'Search your libraries' || { echo "wrong screen search"; return 1; }; shot $1 ;;
+  search) open home 20; adb shell input keyevent 59; kseq left down*12 up*9 select; sleep 2; python3 -I $HERE/uiexpect.py 'Search your libraries' || { adb shell input keyevent 4; sleep 2; python3 -I $HERE/uiexpect.py 'Search your libraries'; } || { echo "wrong screen search"; return 1; }; shot $1 ;;
   settings) open settings 20; adb shell input keyevent 59; sleep 2; python3 -I $HERE/uiexpect.py 'Colour theme' || { echo "wrong screen settings"; return 1; }; shot $1 ;;
   profiles) open home 20; adb shell input keyevent 59; kseq left down*12 select; python3 -I $HERE/uiexpect.py 'Who.s watching' || { echo "wrong screen profiles"; return 1; }; shot $1 ;;
   calendar-month) open "calendar?query=view%3Dmonth%26date%3D2026-10-14" 25; sleep 3; python3 -I $HERE/uiexpect.py 'Calendar' || { echo "wrong screen calendar-month"; return 1; }; shot $1 ;;
