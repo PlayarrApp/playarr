@@ -15,6 +15,9 @@ if cmd == "focus":
         if "Emulator" in name:
             w.set_input_focus(X.RevertToParent, X.CurrentTime)
             break
+elif cmd == "park":
+    # Park the pointer in the screen corner so no element keeps a hover look from the last real click.
+    d.screen().root.warp_pointer(int(sys.argv[3]) if len(sys.argv) > 3 else 1919, int(sys.argv[4]) if len(sys.argv) > 4 else 1079)
 elif cmd == "click":
     x, y = int(sys.argv[3]), int(sys.argv[4])
     d.screen().root.warp_pointer(x, y)

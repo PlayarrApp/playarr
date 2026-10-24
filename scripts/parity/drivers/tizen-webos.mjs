@@ -381,7 +381,12 @@ export async function createDriver() {
     // The layout schema document (docs/parity/LAYOUT.md): the same DOM dump as the web refs, run in the app page through the inspector or netlog channel.
     async layoutDump({ screen, theme }) {
       await guard();
+      // The web ref of Search rests with the text field focused (autofocus); the TV opens its system keyboard for that, so the screenshot is taken without it.
+      // The layout document only needs the DOM state: focus the field for the dump, then drop it again.
+      const focusedSearch = screen === "search" && (await ev(`(() => { const i = document.querySelector('input[type="search"]'); if (!i || document.activeElement === i) return false; i.focus(); return true; })()`));
+      if (focusedSearch) await sleep(800);
       const doc = await ev(layoutExpression(screen));
+      if (focusedSearch) await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
       if (!doc?.elements) throw new Error("layout dump returned no elements");
       return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements };
     },
@@ -564,11 +569,12 @@ export async function createDriver() {
           throw new Error("closing Search filters did not restore focus to Filters");
         }
         if (await keyboardVisible()) throw new Error("webOS system keyboard reopened after returning focus to Filters");
+        execFileSync("python3", [XCLICK, display, "park"], { stdio: "ignore" }); // the real click left the pointer over Filters: its hover look is not in the web ref
       }
       if (device === "webos" && (await keyboardVisible())) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
       if (await ev(BAD)) throw new Error("signed out or error page");
       // Search is reached through the Filters button on the device (the system keyboard is dismissed by selecting it), which leaves Filters focused; the web ref shows it unfocused.
-      if (await ev(`location.hash === "#/search" && document.activeElement?.getAttribute("aria-label") === "Filters"`)) await ev(`(document.activeElement.blur(), true)`);
+      if (await ev(`location.hash === "#/search" && document.activeElement?.matches('button[aria-controls="search-filters-drawer"]')`)) await ev(`(document.activeElement.blur(), true)`);
       if (device === "webos" && (await ev(`/^#\\/player\\//.test(location.hash)`))) await pinPlayerFrame();
       // Detail refs are taken at page top (the web driver does the same): the focus-scroll to the first episode card must not show in the capture.
       if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
