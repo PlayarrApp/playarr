@@ -264,12 +264,8 @@ enum TVWebFormat {
         out.timeZone = TimeZone(identifier: "UTC")
         out.dateFormat = "d MMM yyyy"
         let text = out.string(from: date)
-        #if os(macOS)
-        // Chrome's en-GB abbreviates September as "Sept"; the Mac's ICU says "Sep".
+        // Chrome's en-GB abbreviates September as "Sept"; the system ICU says "Sep".
         return text.replacingOccurrences(of: " Sep ", with: " Sept ")
-        #else
-        return text
-        #endif
     }
 
     static func year(_ iso: String?) -> String? {

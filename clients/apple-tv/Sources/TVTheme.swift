@@ -522,7 +522,7 @@ enum TVNavTab: String, CaseIterable, Identifiable {
         switch self {
         case .downloads: return "arrow.down.to.line"
         case .watchlist: return "bookmark"
-        case .requests: return "text.badge.plus"
+        case .requests: return "plus.circle"
         case .calendar: return "calendar"
         case .search: return "magnifyingglass"
         case .home: return "house"
