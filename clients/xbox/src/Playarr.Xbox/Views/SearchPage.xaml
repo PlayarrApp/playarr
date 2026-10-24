@@ -20,19 +20,21 @@
     <!-- Web TV search (1920x1080): header, 595x80 pill field, helper text, empty state centred in the right half. -->
     <Grid x:Name="Root">
         <Grid
-            Width="595"
-            Height="84"
-            Margin="152,169,0,0"
+            x:Name="SearchBox"
+            Width="590"
+            Height="76"
+            Margin="153.59,172.78,0,0"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
-            CornerRadius="42"
+            CornerRadius="38"
             Background="{StaticResource PlayarrSurfaceStrong}"
             BorderBrush="{StaticResource PlayarrLineStrong}"
             BorderThickness="1">
-            <FontIcon Glyph="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="18" Margin="30,0,0,0" HorizontalAlignment="Left" Foreground="{StaticResource PlayarrInkSoft}" />
+            <FontIcon x:Name="SearchGlyph" Glyph="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="18" Margin="25,0,0,0" HorizontalAlignment="Left" Foreground="{StaticResource PlayarrInkSoft}" />
             <TextBox
                 x:Name="QueryBox"
-                Margin="56,0,24,0"
+                Margin="62,0,22,0"
+                Height="60"
                 VerticalAlignment="Center"
                 FontSize="18"
                 Background="Transparent"
@@ -65,10 +67,10 @@
             x:Name="EmptyStatePanel"
             Orientation="Horizontal"
             Spacing="42"
-            Margin="1163,313,0,0"
+            Margin="1125.6,311.8,0,0"
             HorizontalAlignment="Left"
             VerticalAlignment="Top">
-            <Border Width="131" Height="131" CornerRadius="65.5" BorderBrush="{StaticResource PlayarrLineStrong}" BorderThickness="1" Background="{StaticResource PlayarrSurface}">
+            <Border Width="132" Height="132" CornerRadius="66" BorderBrush="{StaticResource PlayarrLineStrong}" BorderThickness="1" Background="{StaticResource PlayarrSurface}">
                 <FontIcon Glyph="&#xE71F;" FontFamily="Segoe MDL2 Assets" FontSize="30" Foreground="{StaticResource PlayarrBrand}" />
             </Border>
             <TextBlock x:Name="EmptyStateText" Text="Start typing to search." FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
