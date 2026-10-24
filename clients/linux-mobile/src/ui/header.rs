@@ -85,6 +85,8 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
     block.set_margin_top(2);
     crate::layout::Tag::new("button", "Filters", 14.0).apply(&action);
     crate::layout::Tag::new("button", "Calendar link", 14.0).apply(&extra);
+    // The web row gap is 8 px but the title block starts 10 px after the back button.
+    back.set_margin_end(2);
     row.append(&back);
     row.append(&block);
     row.append(&extra);
