@@ -8,17 +8,19 @@ here=$(cd "$(dirname "$0")" && pwd); repo=$(git -C "$here" rev-parse --show-topl
 root=${PARITY_LEGEND_ROOT:?set PARITY_LEGEND_ROOT to the legend root}
 devices=${1:-iphone,ipad}; screens=${2:-}
 sha=$(git -C "$repo" rev-parse HEAD); branch=$(git -C "$repo" branch --show-current)
+# Secondary rate limit (HTTP 403): retry with a 5 minute back-off, never a tight loop.
+ghr() { local n=0; until out=$(gh "$@" 2>&1); do n=$((n+1)); [ $n -ge 6 ] && { echo "$out" >&2; return 1; }; sleep 300; done; printf '%s\n' "$out"; }
 work=$(mktemp -d "${TMPDIR:-/tmp}/ios-parity.XXXXXX")
 declare -A dir=([iphone]=ios-phone [ipad]=ios-tablet) ids
 for d in ${devices//,/ }; do
-  gh workflow run parity-apple-ios.yml --ref "$branch" -f devices="$d" -f ref="$sha" ${screens:+-f screens="$screens"} >/dev/null
+  ghr workflow run parity-apple-ios.yml --ref "$branch" -f devices="$d" -f ref="$sha" ${screens:+-f screens="$screens"} >/dev/null
   sleep 15
-  ids[$d]=$(gh run list --workflow parity-apple-ios.yml --branch "$branch" --limit 10 --json databaseId,displayTitle,headSha,createdAt \
+  ids[$d]=$(ghr run list --workflow parity-apple-ios.yml --branch "$branch" --limit 10 --json databaseId,displayTitle,headSha,createdAt \
     -q "[.[]|select(.displayTitle|contains(\"[$d]\"))]|sort_by(.createdAt)|last|.databaseId")
 done
 for d in ${devices//,/ }; do
   gh-watcher wait --repo PlayarrApp/playarr --run "${ids[$d]}" --timeout 4h --json >"$work/$d.wait.json" || { echo "run ${ids[$d]} ($d) failed" >&2; exit 1; }
-  for t in dark light; do gh run download "${ids[$d]}" -n "apple-wall-$d-${ids[$d]}-$t" -D "$work/$d-$t"; done
+  for t in dark light; do ghr run download "${ids[$d]}" -n "apple-wall-$d-${ids[$d]}-$t" -D "$work/$d-$t" >/dev/null; done
   c="$root/${dir[$d]}/dev"; mkdir -p "$c/light"
   cp "$work/$d-dark/dark/"*.png "$c/"; cp "$work/$d-light/light/"*.png "$c/light/"
   for t in dark light; do [ -d "$work/$d-$t/layout/$t" ] && { mkdir -p "$c/layout/$t"; cp "$work/$d-$t/layout/$t/"*.json "$c/layout/$t/"; }; done
