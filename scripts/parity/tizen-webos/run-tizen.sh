@@ -13,4 +13,7 @@ cd "$here"
 eval "$(node parity-config.mjs --shell)"
 export DEVICE=tizen PARITY_CLIENT=${PARITY_CLIENT:-tizen} PARITY_LOCK_DIR=${PARITY_LOCK_DIR:-$out.lock}
 mkdir -p "$PARITY_LOCK_DIR"
+# The native Tizen run uses the same emulator: bring this app to the foreground (it keeps its sign-in) and let it start the netlog poll.
+"${TIZEN_CLI:-$HOME/tizen-studio/tools/ide/bin/tizen}" run -p StrmarrTV1.Playarr -s "${TIZEN_SERIAL:-emulator-26101}" >/dev/null
+sleep 15
 exec node suite-run.mjs --driver drivers/tizen-webos.mjs --out "$out" "$@" --only screens,dpad --skip-player
