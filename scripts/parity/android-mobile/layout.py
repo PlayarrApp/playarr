@@ -22,7 +22,7 @@ r2 = lambda v: round(v, 2)
 for e in doc["elements"]:
     e["rect"] = {k: r2(v / dpr) for k, v in e["rect"].items()}
     if e.get("fontSize") is not None: e["fontSize"] = r2(e["fontSize"] / dpr)
-    if e.get("radius") is not None: e["radius"] = r2(e["radius"] / dpr)
+    # radius is exported in dp, which is the web's CSS px (not device px)
 doc["viewport"] = {"w": view[0], "h": view[1], "dpr": r2(dpr)}
 doc["clockPinned"] = True
 os.makedirs(os.path.dirname(out), exist_ok=True)

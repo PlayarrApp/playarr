@@ -279,7 +279,7 @@ private fun PlayarrPhoneBackPill(
             modifier = Modifier.size(metrics.controlWidth, metrics.control).graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (below != null) Modifier.focusProperties { down = below } else Modifier)
                 .then(if (focused || focusScale > 1f) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
-                .parityTag("link", contentDescription, circle = true, background = palette.surfaceStrong.copy(alpha = 0.7f).compositeOver(palette.background))
+                .parityBox("link", contentDescription, 50f, background = palette.surfaceStrong.copy(alpha = 0.7f).compositeOver(palette.background))
                 .semantics { this.contentDescription = contentDescription },
             shape = androidx.compose.foundation.shape.CircleShape,
             color = if (active) palette.ink else palette.surfaceStrong.copy(alpha = 0.7f),
@@ -301,28 +301,24 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
     val metrics = PlayarrPageTokens.Tv
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
-    // Settings opens with the back button focused: web fills it with the ink colour, scales it 1.056 and draws the
-    // 3 px ink outline 2 px outside it (`.ui-btn:focus-visible`).
-    val scale = if (active) 1.056f else if (focused) 1.1f else 1f
+    // Settings opens with the back button focused: the static web ref keeps the 0.7 surface fill and draws only the
+    // 3 px ink ring 2 px outside it (`.ui-btn:focus-visible`), no scale.
+    val scale = if (active) 1f else if (focused) 1.1f else 1f
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         Surface(
             onClick = back.onBack,
             interactionSource = source,
             shape = CircleShape,
             // Web `a.ui-btn--icon`: rgba(33,29,33,.7) fill with a 1px ring and a text arrow.
-            color = if (active) palette.ink else palette.surfaceStrong.copy(alpha = 0.7f),
-            contentColor = if (active) palette.background else palette.inkSoft,
-            border = if (active) null else BorderStroke(1.dp, palette.pillBorder),
+            color = palette.surfaceStrong.copy(alpha = 0.7f),
+            contentColor = palette.inkSoft,
+            border = BorderStroke(1.dp, palette.pillBorder),
             modifier = Modifier
                 .size(metrics.controlWidth, metrics.control)
                 .then(LocalPlayarrBackFocus.current?.let { Modifier.focusRequester(it) } ?: Modifier)
-                .then(
-                    if (active) Modifier.drawBehind {
-                        drawCircle(palette.ink, radius = 29.9.dp.toPx(), style = Stroke(3.dp.toPx()))
-                    } else Modifier,
-                )
                 .graphicsLayer { scaleX = scale; scaleY = scale }
-                .then(if (focused && !active) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
+                .then(if (focused || active) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
+                .parityBox("link", back.label, 50f, background = palette.surface)
                 .semantics { contentDescription = back.label; role = Role.Button },
         ) {
             Box(contentAlignment = Alignment.Center) {

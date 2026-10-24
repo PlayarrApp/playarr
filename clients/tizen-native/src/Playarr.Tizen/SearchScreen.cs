@@ -95,6 +95,9 @@ internal sealed class SearchScreen : IPage
         _mediaType = requestedOption.Value is not null ? requestedType : "all";
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        Sem.Tag(_root, "container", "Search Playarr");
+        _root.Add(Ui.PanelWash(_t, 1248));
+        _root.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", "Search results")); // web .tv-search: the right 65 % carries the library panel frost
         _keyArt = new KeyArt(env);
         _panel = new DetailsPanel(env, library: true, flow: true);
         _root.Add(_keyArt.Root);
@@ -102,6 +105,7 @@ internal sealed class SearchScreen : IPage
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
+        Sem.Tag(back, "link", "Back to Home", radius: 50);
         _root.Add(back);
         _root.Add(Ui.Text("Search", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _count = new PageSubtitle(env, _root, "Search");
@@ -119,6 +123,8 @@ internal sealed class SearchScreen : IPage
         // query pill
         var form = Ui.Box(153.6f, 172.8f, 590, 76, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 38);
         form.BorderlineWidth = 1; form.BorderlineColor = Ui.LineA(_t, 0.15f);
+        Sem.Tag(form, "search", radius: 999);
+        form.Add(Sem.Tag(new View { PositionX = 62, PositionY = 8, Size = new Size(506, 60) }, "textbox", "Search your libraries and playlists"));
         form.Add(Ui.Icon("search", 25, 26, 24, _t.InkMuted));
         _field = new TextField { PositionX = 66, PositionY = 18, Size = new Size(440, 40), PixelSize = 17f, TextColor = Ui.C(_t.Ink), FontFamily = Ui.Font,
             PlaceholderText = "Search your libraries and playlists", PlaceholderTextColor = Ui.C(_t.InkMuted), EnableCursorBlink = true };

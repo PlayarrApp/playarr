@@ -66,8 +66,10 @@ export function stableCaptureObservation(previous, current) {
     previous.marker === current.marker && previous.focus === current.focus);
 }
 
-export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, accountGuard = guardAndroidDeviceAccount, execute = run } = {}) {
+export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, readinessTimeoutMs: readinessTimeoutArg = 60_000, readinessPollMs = 3_000, clock = {}, env: envOverride = process.env, accountGuard = guardAndroidDeviceAccount, execute = run } = {}) {
   const env = envOverride, pkg = env.PARITY_PACKAGE ?? "io.playarr.mobile";
+  // A loaded host can need longer than a minute for the player route's artwork: PARITY_READINESS_TIMEOUT_MS raises the wait.
+  const readinessTimeoutMs = env.PARITY_READINESS_TIMEOUT_MS ? Number(env.PARITY_READINESS_TIMEOUT_MS) : readinessTimeoutArg;
   const adbBin = adbOverride ?? (env.ANDROID_HOME ? `${env.ANDROID_HOME}/platform-tools/adb` : "adb");
   // Injectable clock (tests): the readiness loop's deadline arithmetic then never depends on how long a real process took.
   const now = clock.now ?? Date.now;
@@ -121,7 +123,16 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
 
   const parityLines = async () => (await adb("logcat", "-d", "-s", "PlayarrParity:I")).split("\n").map((l) => l.replace(/^.*PlayarrParity: /, "")).filter(Boolean);
   // pause: the debug build pauses the player at 2 s (0:02, as the web ref; PARITY_PAUSE_AT_MS overrides), a still frame for the player-controls screen; off for playback cases.
+  // The software-GL emulator leaks about 190 MiB of host memory per app launch and wedges adb near its cgroup limit: every
+  // PARITY_EMU_RECYCLE_EVERY launches (default 8) PARITY_EMU_RECYCLE_CMD restarts it (app data and the sign-in survive).
+  let launches = 0;
+  const recycleEvery = Number(env.PARITY_EMU_RECYCLE_EVERY ?? 8);
   const launch = async (route, pause = true) => {
+    if (env.PARITY_EMU_RECYCLE_CMD && ++launches > recycleEvery) {
+      launches = 1;
+      const [cmd, ...rest] = env.PARITY_EMU_RECYCLE_CMD.split(" ");
+      await execBounded(cmd, rest, { timeoutMs: 420_000, label: "emulator recycle command" });
+    }
     await guardDeviceAccount();
     const requestedCaptureScreen = captureTarget ? (captureSurface ? "movies" : captureTarget) : null;
     captureScreen = requestedCaptureScreen ?? (["movies", "series", "music"].includes(route) ? route : null);
@@ -272,7 +283,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       const displaySize = requestedSurface ? await shell("wm", "size") : "";
       const displayWidth = requestedSurface ? Number(/Override size:\s*(\d+)x/.exec(displaySize)?.[1] ?? /Physical size:\s*(\d+)x/.exec(displaySize)?.[1]) : 0;
       const deadline = now() + readinessTimeoutMs;
-      let previous = "", previousMarker = "", stable = 0;
+      let previous = "", previousMarker = "", stable = 0, lastReason = "";
       while (now() < deadline) {
         const lines = await parityLines();
         if (phase === "capture") {
@@ -285,12 +296,14 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
           }) ?? "";
           const lastRouteLine = lines.findLast((line) => line.startsWith("route=")) ?? "";
           const currentRoute = /^route=(\S+)/.exec(lastRouteLine)?.[1]?.split("/")[0];
+          lastReason = !capture.ready ? capture.reason : !focus ? "no focused node" : currentRoute !== EXPECTED_ROUTE[target] ? `route ${currentRoute ?? "none"}` : focus !== previous ? "focus still changing" : "marker still changing";
           if (stableCaptureObservation(
             { marker: previousMarker, focus: previous },
             { ready: capture.ready, routeMatches: currentRoute === EXPECTED_ROUTE[target], marker: capture.marker, focus },
           )) {
             stable += 1;
-            if (stable >= 2) return;
+            // The player's capture state flips between ready and loading every few seconds (controls auto-hide) and a UI dump takes seconds on a loaded host: one agreeing poll is all it offers.
+            if (stable >= (target === "player-controls" ? 1 : 2)) return;
           } else stable = 0;
           previous = focus;
           previousMarker = capture.ready ? capture.marker : "";
@@ -318,7 +331,7 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
         previous = focus ?? "";
         await sleep(Math.min(readinessPollMs, Math.max(0, deadline - now())));
       }
-      throw new Error(`Android ${phase} readiness timed out without stable focused content`);
+      throw new Error(`Android ${phase} readiness timed out without stable focused content${lastReason ? ` (${lastReason})` : ""}`);
     },
     async setCaptureTarget(screen) {
       captureTarget = screen in EXPECTED_ROUTE ? screen : null;

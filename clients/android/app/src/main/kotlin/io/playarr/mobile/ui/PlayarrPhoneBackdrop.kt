@@ -1,5 +1,7 @@
 package io.playarr.mobile.ui
 
+import androidx.compose.foundation.layout.size
+import io.playarr.shared.designsystem.page.parityBox
 import androidx.compose.ui.layout.layout
 import io.playarr.shared.designsystem.page.PlayarrCardShadows
 import io.playarr.shared.designsystem.page.PlayarrCardShadowLayer

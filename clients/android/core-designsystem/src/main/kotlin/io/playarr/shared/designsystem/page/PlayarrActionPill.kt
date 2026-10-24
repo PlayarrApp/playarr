@@ -97,7 +97,7 @@ fun PlayarrActionPill(
                     },
                 )
                 .then(if (focused && !(tv && active && suppressFocusRingWhenActive)) Modifier.playarrFocusRing(PlayarrRingShape.Rounded(metrics.pillRadius)) else Modifier)
-                .parityTag("button", label, radiusDp = metrics.pillRadius.value, background = palette.surfaceStrong.copy(alpha = 0.78f).compositeOver(palette.background))
+                .parityBox("button", label, 14f, background = parityPillGlass())
                 .semantics { contentDescription = label },
             shape = tile,
             // Focus draws the ring only; the open state (panel shown) keeps the ink fill.
@@ -112,8 +112,8 @@ fun PlayarrActionPill(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterVertically),
                 ) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp))
-                    Text(label, fontSize = 8.256.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1)
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp).parityBox("image", background = parityPillGlass()))
+                    Text(label, fontSize = 8.256.sp, lineHeight = 12.384.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1)
                     if (count > 0) {
                         Surface(color = palette.accent, shape = CircleShape) {
                             Text(
@@ -128,7 +128,7 @@ fun PlayarrActionPill(
                 }
             } else {
                 Box(contentAlignment = Alignment.Center) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityTag("image", background = palette.surfaceStrong.copy(alpha = 0.78f).compositeOver(palette.background)))
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityBox("image", background = parityPillGlass()))
                 }
             }
         }
