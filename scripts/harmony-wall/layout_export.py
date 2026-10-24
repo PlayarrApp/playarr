@@ -168,6 +168,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             page_base[0] = here if sampled else None
         if str(attrs.get("id", "")) == "px:navbar":
             here = root_bg  # web composites the nav bar over the body, not over the page
+        if dpr == 1 and kind in ("Column", "Stack") and bg is not None and bg[3] > 0.99 and box is not None and box[0] >= 1400 and box[2] >= 300 and box[3] >= vh - 1:
+            dialogs.add(id(node))  # a TV drawer: the full-height panel at the right edge is web's dialog
         if kind in ("Navigation", "NavDestination", "root"):
             bg = None  # system containers
         if dpr == 1 and bg is not None and bg[:3] == (0, 0, 0) and bg[3] > 0.99 and screen != "player-controls":
