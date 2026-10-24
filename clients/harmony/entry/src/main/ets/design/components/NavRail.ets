@@ -81,8 +81,8 @@ import { clientVersion } from '../../core/AppConfig';
 /** The id the rail reports when the profile tile is activated. */
 export const PROFILE_NAV_ID: string = 'profile';
 // Web `.app-user-identity`: the tile group sits at y=954 with the version line under it.
-const PROFILE_GROUP_TOP: number = 954;
-const PROFILE_AVATAR_SIZE: number = 28;
+const PROFILE_GROUP_TOP: number = 952.42;
+const PROFILE_AVATAR_SIZE: number = 20;
 const VERSION_SIZE: number = 8.832;
 
 /** Brief 5.8, "TV nav tile" row: `bg ink@0.14 / ink@0.09`. Not a
@@ -102,7 +102,7 @@ const NAV_TILE_LABEL_LETTER_SPACING: number = 0.31;
  * all (5.10 gives the tile's own outer size/radius/icon/label sizes, but
  * no internal icon-to-label gap) -- a small named UI constant in the same
  * spirit as `PosterCard.ets`'s own `PROGRESS_BAR_HEIGHT`. */
-const NAV_TILE_ICON_LABEL_GAP: number = 2;
+const NAV_TILE_ICON_LABEL_GAP: number = 2.75;
 
 /** One `NavRail` entry. `icon` accepts any `$r('app.media.*')` resource --
  * `NavTile` applies `.fillColor()` to it (assumes a monochrome/SVG-style
@@ -142,7 +142,7 @@ struct NavTile {
   }
 
   private contentColor(): RgbaColor {
-    return this.selected || this.focusPercent > 0 ? activeColors().ink : activeColors().inkSoft;
+    return this.selected || this.focusPercent > 0 ? activeColors().ink : activeColors().inkMuted;
   }
 
   private targetScale(): number {
@@ -186,9 +186,10 @@ struct NavTile {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
     .id(`${this.item.id}-nav-tile`)
+    .padding({ top: tv(15.2) }) // web: the icon sits 15.2 below the tile top, the label 2.75 under it
     .width(tv(TvGeometry.navTileSize))
     .height(tv(TvGeometry.navTileSize))
-    .justifyContent(FlexAlign.Center)
+    .justifyContent(FlexAlign.Start)
     .alignItems(HorizontalAlign.Center)
     .borderRadius(tv(TvGeometry.navTileRadius))
     .clip(true)
@@ -309,7 +310,7 @@ export struct NavRail {
           .fontSize(tv(TvGeometry.navTileLabelSize))
           .fontWeight(TvGeometry.navTileLabelWeight)
           .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
-          .fontColor(toResourceColor(activeColors().inkSoft))
+          .fontColor(toResourceColor(activeColors().inkMuted))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width(tv(TvGeometry.navTileSize - 8))
@@ -339,9 +340,9 @@ export struct NavRail {
       color: toResourceColorWithAlpha(activeColors().ink, TvGeometry.navGroupBorderOpacity),
     })
     .margin({ top: tv(this.profileGroupMargin()) })
-    Text('v' + clientVersion).fontFamily(nunito(400))
-      .fontSize(tv(VERSION_SIZE))
-      .fontColor(toResourceColor(activeColors().inkMuted))
+    Text('v' + clientVersion).fontFamily(nunito(700))
+      .fontSize(tv(8))
+      .fontColor(toResourceColor(activeColors().ink))
       .width(tv(TvGeometry.navTileSize + 2 * TvGeometry.navGroupPaddingH))
       .textAlign(TextAlign.Center)
   }
