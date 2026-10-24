@@ -143,8 +143,8 @@ struct TVWorkDetailView: View {
             .font(TVTheme.font(size: 12.29, css: 820))
             .tracking(0.98)
             .foregroundStyle(DesignTokens.Stage.brandInk)
-            .placed(x: 153.6, y: 259.2, w: 455, h: 18.4)
             .parityLayout(text: text.uppercased(), size: 12.29, weight: Int(820), color: DesignTokens.Stage.brandInk, tracking: 0.98)
+            .placed(x: 153.6, y: 259.2, w: 455, h: 18.4)
     }
 
     /// Title lines at 62.2 each from y 303.5; returns the title bottom through the block height.
@@ -156,9 +156,9 @@ struct TVWorkDetailView: View {
                     .tracking(-4.98)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
+                    .parityLayout(text: line, size: 69.12, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -4.98)
                     .fixedSize()
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
-                    .parityLayout(text: line, size: 69.12, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -4.98)
             }
         }
         .placed(x: 153.6, y: 303.5, w: 379.5, h: 62.2 * CGFloat(lines.count))
@@ -251,8 +251,8 @@ struct TVWorkDetailView: View {
                     .tracking(-0.74)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
                     .lineLimit(1)
-                    .placed(x: 153.6, y: episodeY, w: 309.2, h: 24.3)
                     .parityLayout(text: episodeTitle, size: 21.12, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textSecondary, tracking: -0.74)
+                    .placed(x: 153.6, y: episodeY, w: 309.2, h: 24.3)
             }
             metaRow(parts).placed(x: 153.6, y: metaY, h: 15.8)
             if let lagText {
@@ -260,17 +260,17 @@ struct TVWorkDetailView: View {
                     .font(TVTheme.font(size: 19.2, weight: .semibold))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
-                    .placed(x: 153.6, y: lagY, w: 455, h: 28.8)
                     .parityLayout(text: lagText, size: 19.2, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
+                    .placed(x: 153.6, y: lagY, w: 455, h: 28.8)
             }
             if !synopsis.isEmpty {
                 Text(synopsis)
                     .font(TVTheme.font(size: 12.86, weight: .regular))
                     .foregroundStyle(DesignTokens.Stage.inkMuted)
                     .lineLimit(5)
+                    .parityLayout(text: synopsis, size: 12.86, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Stage.inkMuted)
                     .frame(width: 336, alignment: .leading)
                     .placed(x: 153.6, y: synopsisY, w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
-                    .parityLayout(text: synopsis, size: 12.86, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Stage.inkMuted)
             }
             seriesStart(detail, ordered: ordered, x: 153.6, y: buttonsY)
             actionPill("Add to watchlist", glyph: "+", x: 325.6, y: buttonsY, width: 142)
@@ -457,13 +457,13 @@ struct TVWorkDetailView: View {
                 .font(TVTheme.font(size: 17.66, weight: .semibold))
                 .tracking(-0.53)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .placed(x: 881.6, y: y, w: 992.4, h: 26.5)
                 .parityLayout(text: title, size: 17.66, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.53)
+                .placed(x: 881.6, y: y, w: 992.4, h: 26.5)
             Text(count)
                 .font(TVTheme.font(size: 9.98, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .placed(x: 881.6, y: y + 30.5, w: 992.4, h: 15)
                 .parityLayout(text: count, size: 9.98, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
+                .placed(x: 881.6, y: y + 30.5, w: 992.4, h: 15)
         }
     }
 
@@ -487,21 +487,21 @@ struct TVWorkDetailView: View {
                             Text(String(format: "%02d", chapter.index + 1))
                                 .font(TVTheme.font(size: 19.2, css: 560))
                                 .foregroundStyle(Color.white)
+                                .parityLayout(text: String(format: "%02d", chapter.index + 1), size: 19.2, weight: Int(560), color: Color.white)
                                 .padding(.trailing, 11.6)
                                 .padding(.bottom, 8.8)
-                                .parityLayout(text: String(format: "%02d", chapter.index + 1), size: 19.2, weight: Int(560), color: Color.white)
                         }
                         Text(TVWebFormat.clock(ms: chapter.startMs))
                             .font(TVTheme.font(size: 8.83, weight: .bold))
                             .foregroundStyle(DesignTokens.Color.textDisabled)
-                            .placed(x: 0, y: 165.3, w: 28, h: 13.2)
                             .parityLayout(text: TVWebFormat.clock(ms: chapter.startMs), size: 8.83, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
+                            .placed(x: 0, y: 165.3, w: 28, h: 13.2)
                         Text("Chapter \(chapter.index + 1)")
                             .font(TVTheme.font(size: 11.52, css: 610))
                             .tracking(-0.17)
                             .foregroundStyle(DesignTokens.Color.textPrimary)
-                            .placed(x: 28.9, y: 162.3, w: 239.2, h: 17.3)
                             .parityLayout(text: "Chapter \(chapter.index + 1)", size: 11.52, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.17)
+                            .placed(x: 28.9, y: 162.3, w: 239.2, h: 17.3)
                     }
                     .frame(width: 268, height: 190, alignment: .topLeading)
                     .placed(x: x, y: 620.7, w: 268, h: 190, alignment: .topLeading)
@@ -537,8 +537,8 @@ struct TVWorkDetailView: View {
                                     .font(TVTheme.font(size: 11.52, weight: .semibold))
                                     .foregroundStyle(DesignTokens.Color.textPrimary)
                                     .lineLimit(1)
-                                    .frame(width: cardWidth, alignment: .leading)
                                     .parityLayout(text: other.title, size: 11.52, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
+                                    .frame(width: cardWidth, alignment: .leading)
                             }
                         }
                         .buttonStyle(TVFocusableCardButtonStyle())
@@ -574,13 +574,13 @@ struct TVWorkDetailView: View {
                 .font(TVTheme.font(size: 17.664, css: 610))
                 .tracking(-0.53)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .placed(x: 881.6, y: 891, w: 400, h: 26.5)
                 .parityLayout(text: "Cast", size: 17.664, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.53)
+                .placed(x: 881.6, y: 891, w: 400, h: 26.5)
             Text(cast.count == 1 ? "1 person" : "\(cast.count) people")
                 .font(TVTheme.font(size: 9.984, css: 400))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .placed(x: 881.6, y: 921.5, w: 400, h: 15)
                 .parityLayout(text: cast.count == 1 ? "1 person" : "\(cast.count) people", size: 9.984, weight: Int(400), color: DesignTokens.Color.textDisabled)
+                .placed(x: 881.6, y: 921.5, w: 400, h: 15)
             ForEach(Array(cast.prefix(12).enumerated()), id: \.element.id) { index, credit in
                 let initials = credit.person.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
                 ZStack {
@@ -727,9 +727,9 @@ struct TVWorkDetailView: View {
                 Text(String(format: "%02d", ep.episodeNumber))
                     .font(TVTheme.font(size: 19.2, weight: .semibold))
                     .foregroundStyle(Color.white)
+                    .parityLayout(text: String(format: "%02d", ep.episodeNumber), size: 19.2, weight: Int(TVTheme.cssWeight(.semibold)), color: Color.white)
                     .padding(.trailing, 11.6)
                     .padding(.bottom, 8.8)
-                    .parityLayout(text: String(format: "%02d", ep.episodeNumber), size: 19.2, weight: Int(TVTheme.cssWeight(.semibold)), color: Color.white)
             }
             .overlay(alignment: .topTrailing) {
                 Circle()
@@ -742,16 +742,16 @@ struct TVWorkDetailView: View {
                 .font(TVTheme.font(size: 8.83, weight: .bold))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .lineLimit(1)
+                .parityLayout(text: code, size: 8.83, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
                 .fixedSize()
                 .placed(x: 0, y: 158, w: 48, h: 13.2)
-                .parityLayout(text: code, size: 8.83, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
             Text(title)
                 .font(TVTheme.font(size: 11.52, weight: .semibold))
                 .tracking(-0.17)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .lineLimit(1)
-                .placed(x: 49.3, y: 155, w: 218.7, h: 17.3)
                 .parityLayout(text: title, size: 11.52, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.17)
+                .placed(x: 49.3, y: 155, w: 218.7, h: 17.3)
         }
         .frame(width: 268, height: 190, alignment: .topLeading)
         // Media cards show focus as a soft shadow plus a lift, never a ring or fill (owner ruling). Pinned web values

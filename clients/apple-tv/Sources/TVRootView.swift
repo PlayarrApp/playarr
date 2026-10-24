@@ -916,17 +916,17 @@ struct TVProfilesView: View {
                         .font(TVTheme.font(size: 10.37 * s, weight: .heavy))
                         .tracking(1.35 * s)
                         .foregroundStyle(palette.brandPink)
-                        .frame(height: 15.6 * s)
                         .parityLayout(text: "PROFILES", size: 10.37 * s, weight: Int(TVTheme.cssWeight(.heavy)), color: palette.brandPink, tracking: 1.35 * s)
+                        .frame(height: 15.6 * s)
 
                     Text("Who\u{2019}s watching?")
                         .font(TVTheme.font(size: 80.64 * s, weight: .medium))
                         .tracking(-5.8 * s)
                         .foregroundStyle(palette.ink)
                         .lineLimit(1)
+                        .parityLayout(text: "Who\u{2019}s watching?", size: 80.64 * s, weight: Int(TVTheme.cssWeight(.medium)), color: palette.ink, tracking: -5.8 * s)
                         .frame(height: 76.6 * s)
                         .padding(.top, 7.2 * s)
-                        .parityLayout(text: "Who\u{2019}s watching?", size: 80.64 * s, weight: Int(TVTheme.cssWeight(.medium)), color: palette.ink, tracking: -5.8 * s)
 
                     // Always paint the track (including the dashed + add tile).
                     // Never gate the empty household on isLoading — a spinner
@@ -1110,17 +1110,17 @@ struct TVProfilesView: View {
                         .font(TVTheme.font(size: 17.28 * s, weight: .semibold))
                         .foregroundStyle(active ? palette.ink : palette.inkSoft)
                         .lineLimit(1)
-                        .offset(y: active ? 4.6 : 0)
                         .parityLayout(text: profile.displayName.isEmpty ? profile.username : profile.displayName, size: 17.28 * s, weight: Int(TVTheme.cssWeight(.semibold)))
+                        .offset(y: active ? 4.6 : 0)
 
                     Text(statusLabel(for: profile, busy: busy))
                         .font(TVTheme.font(size: 9.41 * s, weight: .bold))
                         .tracking(0.42 * s)
                         .textCase(.uppercase)
                         .foregroundStyle(palette.inkMuted)
+                        .parityLayout(text: (statusLabel(for: profile, busy: busy)).uppercased(), size: 9.41 * s, weight: Int(TVTheme.cssWeight(.bold)), color: palette.inkMuted, tracking: 0.42 * s)
                         .frame(minHeight: 12 * s)
                         .offset(y: active ? 4.6 : 0)
-                        .parityLayout(text: (statusLabel(for: profile, busy: busy)).uppercased(), size: 9.41 * s, weight: Int(TVTheme.cssWeight(.bold)), color: palette.inkMuted, tracking: 0.42 * s)
                 }
                 .frame(width: size)
             }

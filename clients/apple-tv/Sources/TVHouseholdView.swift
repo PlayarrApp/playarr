@@ -22,13 +22,13 @@ struct TVHouseholdBlockedView: View {
                 .font(TVTheme.font(size: 22.08, weight: .semibold))
                 .tracking(-0.44)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .placed(x: 942.1, y: 183.4, w: 300, h: 33.1)
                 .parityLayout(text: "Not available right now", size: 22.08, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.44)
+                .placed(x: 942.1, y: 183.4, w: 300, h: 33.1)
             Text("This profile can\u{2019}t watch at this time.")
                 .font(TVTheme.font(size: 10.75, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .placed(x: 942.1, y: 223.7, w: 300, h: 16.1)
                 .parityLayout(text: "This profile can\u{2019}t watch at this time.", size: 10.75, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
+                .placed(x: 942.1, y: 223.7, w: 300, h: 16.1)
             actionButton("Ask a guardian for more time", x: 721.1, width: 300.7)
             actionButton("Switch profile", x: 1033.8, width: 165.2)
         }
@@ -40,10 +40,10 @@ struct TVHouseholdBlockedView: View {
         Text(label)
             .font(TVTheme.font(size: 19.2, weight: .regular))
             .foregroundStyle(DesignTokens.Color.textPrimary)
+            .parityLayout(text: label, size: 19.2, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textPrimary)
             .frame(width: width, height: 50)
             .overlay(Capsule().stroke(DesignTokens.Color.textPrimary, lineWidth: 1.5))
             .placed(x: x, y: 313.6, w: width, h: 50)
-            .parityLayout(text: label, size: 19.2, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textPrimary)
     }
 }
 

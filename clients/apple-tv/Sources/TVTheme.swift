@@ -1264,8 +1264,8 @@ struct TVProfileChip: View {
                 Text(version)
                     .font(TVTheme.font(size: 10, weight: .medium))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .padding(.leading, 44)
                     .parityLayout(text: version, size: 10, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textDisabled)
+                    .padding(.leading, 44)
             }
         }
     }
@@ -1319,10 +1319,10 @@ struct TVHeaderPill: View {
                 .font(TVTheme.font(size: 14.72, css: 720))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
                 .lineLimit(1)
+                .parityLayout(text: label, size: 14.72, weight: Int(720), color: DesignTokens.Color.textSecondary)
                 .frame(width: width, height: 50)
                 .background(Capsule().fill(DesignTokens.Color.backgroundElevated))
                 .overlay(Capsule().stroke(DesignTokens.Stage.line.opacity(0.35), lineWidth: 1))
-                .parityLayout(text: label, size: 14.72, weight: Int(720), color: DesignTokens.Color.textSecondary)
         } else {
             tile
         }

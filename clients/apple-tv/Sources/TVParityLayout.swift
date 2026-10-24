@@ -96,6 +96,7 @@ final class TVParityLayoutRegistry {
         var out = item
         let width = (text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width
         let height = (1.011 * size).rounded() + (0.353 * size).rounded()
+        if width > item.rect.width + 0.5 { return item } // wrapped: the view's own box is the text block
         out.rect = CGRect(x: item.rect.minX, y: item.rect.midY - height / 2, width: min(width, item.rect.width), height: height)
         return out
     }

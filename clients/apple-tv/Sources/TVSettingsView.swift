@@ -60,20 +60,20 @@ struct TVSettingsView: View {
                         Text(section.number)
                             .font(TVTheme.font(size: 9.92, weight: .bold))
                             .foregroundStyle(DesignTokens.Color.textDisabled)
-                            .placed(x: 32, y: 23.8, w: 32, h: 18.4)
                             .parityLayout(text: section.number, size: 9.92, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
+                            .placed(x: 32, y: 23.8, w: 32, h: 18.4)
                         Text(section.title)
                             .font(TVTheme.font(size: 29.6, weight: .regular))
                             .tracking(-1.04)
                             .foregroundStyle(DesignTokens.Color.textPrimary)
                             .lineLimit(1)
-                            .placed(x: 92, y: 23.8, w: 307.6, h: 44.4)
                             .parityLayout(text: section.title, size: 29.6, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textPrimary, tracking: -1.04)
+                            .placed(x: 92, y: 23.8, w: 307.6, h: 44.4)
                         Text("\u{2192}")
                             .font(TVTheme.font(size: 20.8, weight: .regular))
                             .foregroundStyle(selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                            .placed(x: selected ? mac(422.6, 432.6) : mac(417.6, 427.6), y: 30.3, w: 20.8, h: 31.2)
                             .parityLayout(text: "\u{2192}", size: 20.8, weight: Int(TVTheme.cssWeight(.regular)))
+                            .placed(x: selected ? mac(422.6, 432.6) : mac(417.6, 427.6), y: 30.3, w: 20.8, h: 31.2)
                     }
                     .frame(width: mac(470, 480.4), height: 91.9, alignment: .topLeading)
                     .modifier(TVNavItemFocusFill(fill: DesignTokens.Color.backgroundRaised, cornerRadius: 0))
@@ -123,8 +123,8 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: 210, w: 995, h: 39.6)
                     .parityLayout(text: "Colour theme", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .placed(x: 0, y: 210, w: 995, h: 39.6)
                 choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [343.3, 343.3, 343.3], y: 265.8) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
                 }
@@ -136,13 +136,13 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: 383.8, w: 995, h: 39.6)
                     .parityLayout(text: "Home screen artwork", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .placed(x: 0, y: 383.8, w: 995, h: 39.6)
                 Text("Show portrait covers instead of wide media thumbnails on the home screen.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .placed(x: 0, y: 429, w: 995, h: 20.3)
                     .parityLayout(text: "Show portrait covers instead of wide media thumbnails on the home screen.", size: 13.12, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
+                    .placed(x: 0, y: 429, w: 995, h: 20.3)
                 choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [519, 519], y: 465.5) { index in
                     displayPreferences.homeCovers = index == 1
                 }
@@ -155,13 +155,13 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .placed(x: 0, y: 583.8, w: 995, h: 39.6)
                     .parityLayout(text: "Artwork size", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .placed(x: 0, y: 583.8, w: 995, h: 39.6)
                 Text("Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .placed(x: 0, y: 629, w: 995, h: 20.3)
                     .parityLayout(text: "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.", size: 13.12, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
+                    .placed(x: 0, y: 629, w: 995, h: 20.3)
                 choice(["Small", "Medium", "Large"],
                        selected: TVDisplayPreferences.ArtworkSize.allCases.firstIndex(of: displayPreferences.artworkSize) ?? 1,
                        widths: [343.3, 343.3, 343.3], y: 665.5) { index in
@@ -216,11 +216,11 @@ struct TVSettingsView: View {
                     Text(label)
                         .font(TVTheme.font(size: 11.52, weight: .bold))
                         .foregroundStyle(index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
+                        .parityLayout(text: label, size: 11.52, weight: Int(TVTheme.cssWeight(.bold)))
                         .frame(width: widths[index], height: 56.5)
                         .background(index == selected ? DesignTokens.Color.textPrimary : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
-                        .parityLayout(text: label, size: 11.52, weight: Int(TVTheme.cssWeight(.bold)))
                 }
                 .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
                 .focusEffectDisabled()

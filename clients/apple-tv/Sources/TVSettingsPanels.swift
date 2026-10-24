@@ -112,8 +112,8 @@ struct TVSettingsPanel: View {
             Text(value ?? placeholder)
                 .font(TVTheme.font(size: 19.2, css: 400))
                 .foregroundStyle(value == nil ? muted : ink)
-                .padding(.leading, 17.2)
                 .parityLayout(text: value ?? placeholder, size: 19.2, weight: Int(400))
+                .padding(.leading, 17.2)
         }
         .frame(width: snap(x, y, w, h).width, height: snap(x, y, w, h).height)
         .offset(x: snap(x, y, w, h).minX, y: snap(x, y, w, h).minY)
