@@ -70,6 +70,17 @@ def backdrop(image, x, y, w, h, dpr, fallback):
     return tuple(colour) + (1.0,)
 
 
+def first_text(node):
+    for child in node.get("$children") or []:
+        attrs = child.get("$attrs") or child
+        if child.get("$type") == "Text" and (attrs.get("content") or attrs.get("text")):
+            return str(attrs.get("content") or attrs.get("text"))
+        found = first_text(child)
+        if found:
+            return found
+    return ""
+
+
 def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, image=None):
     """tree: the parsed inspector JSON; viewport: (w, h, dpr). Returns the schema document."""
     vw, vh, dpr = viewport
@@ -92,6 +103,13 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if radius:
                     el["radius"] = radius
+                out.append(el)
+            nid = str(attrs.get("id", ""))
+            if nid.endswith("-nav-tile") or nid == "pcard":  # functional focus ids: the control's name is its first text
+                label = first_text(node)
+                name = ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else (("Open " + label) if nid == "pcard" else label)
+                el = {"text": name, "role": "link", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                      "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else 12}
                 out.append(el)
             text = attrs.get("content", attrs.get("text")) if kind == "Text" else None
             if kind == "Text" and text:
