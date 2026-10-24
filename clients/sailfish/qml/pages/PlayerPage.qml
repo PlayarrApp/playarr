@@ -272,7 +272,7 @@ Page {
         color: "white"
         style: Text.Outline
         styleColor: "black"
-        font.pixelSize: 20 * Tokens.u
+        font.pixelSize: Tokens.fs(20)
     }
     Item {
         anchors.fill: parent
@@ -313,7 +313,7 @@ Page {
             elide: Text.ElideRight
             color: "white"
             font.family: Tokens.family
-            font.pixelSize: 17 * Tokens.u
+            font.pixelSize: Tokens.fs(17)
         }
         ParityIconButton {
             objectName: "parity-player-play"
@@ -336,7 +336,7 @@ Page {
                 anchors.verticalCenter: parent.verticalCenter
                 text: page.mmss(seek.pressed ? seek.sliderValue : page.positionMs)
                 color: "white"
-                font.pixelSize: 13 * Tokens.u
+                font.pixelSize: Tokens.fs(13)
             }
             Slider {
                 id: seek
@@ -361,7 +361,7 @@ Page {
                 horizontalAlignment: Text.AlignRight
                 text: page.mmss(page.durationMs)
                 color: "white"
-                font.pixelSize: 13 * Tokens.u
+                font.pixelSize: Tokens.fs(13)
             }
         }
     }
@@ -394,7 +394,7 @@ Page {
                 id: menuCol
                 width: parent.width
                 spacing: 4 * Tokens.u
-                Label { renderType: Text.NativeRendering; text: qsTr("Audio"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; visible: !!page.info && page.info.audio_tracks.length > 1 }
+                Label { renderType: Text.NativeRendering; text: qsTr("Audio"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); visible: !!page.info && page.info.audio_tracks.length > 1 }
                 Repeater {
                     model: page.info && page.info.audio_tracks.length > 1 ? page.info.audio_tracks : []
                     MenuRow {
@@ -408,7 +408,7 @@ Page {
                         onClicked: page.switchAudio(modelData)
                     }
                 }
-                Label { renderType: Text.NativeRendering; text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); topPadding: 10 * Tokens.u }
                 MenuRow {
                     objectName: page.info && page.info.audio_tracks.length > 1 ? "parity-player-menu-off" : "parity-player-menu-first"
                     navigationInitialFocus: !page.info || page.info.audio_tracks.length <= 1
@@ -430,7 +430,7 @@ Page {
                         onClicked: { page.chooseSubtitle(modelData.id); page.menuOpen = false }
                     }
                 }
-                Label { renderType: Text.NativeRendering; text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: 13 * Tokens.u; topPadding: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); topPadding: 10 * Tokens.u }
                 MenuRow {
                     parityRail: 1
                     parityIndex: 1000

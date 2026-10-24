@@ -54,7 +54,7 @@ Item {
         color: Tokens.ink
         property string parityRole: "heading"
         font.family: Tokens.family580
-        font.pixelSize: Math.round(21.6 * Tokens.u)
+        font.pixelSize: Tokens.fs(21.6)
         font.letterSpacing: -1.05 * Tokens.u
     }
 }

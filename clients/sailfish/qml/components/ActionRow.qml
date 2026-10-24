@@ -30,5 +30,5 @@ MouseArea {
     // Glyphs are centred in a 28 px box (web icon slot); the plus is drawn larger and the ring smaller than the font's own sizes, as the refs measure.
     Label { renderType: Text.NativeRendering; id: g; x: 16.5 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; horizontalAlignment: Text.AlignHCenter; text: root.glyph; color: Tokens.brandPink; font.family: Tokens.family; font.weight: Font.DemiBold; font.pixelSize: (root.glyph === "+" ? 29 : root.glyph === "\u25CB" ? 11 : 20) * Tokens.u; width: 28 * Tokens.u }
     Label { renderType: Text.NativeRendering; id: label; anchors { left: parent.left; leftMargin: 64 * Tokens.u; right: parent.right; verticalCenter: parent.verticalCenter }
-            elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16.5 * Tokens.u }
+            elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(16.5) }
 }

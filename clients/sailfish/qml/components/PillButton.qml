@@ -18,6 +18,12 @@ MouseArea {
     property color fillInk: Tokens.ink
     property color textInk: Tokens.ink   // label colour of the standard look (calendar toolbar pills are softer on web)
     property bool outlineOnly: false
+    // Layout export: "" = the box is a button (default); "text" = the web exports only the label as the button; "icon" = a 44 px link box
+    // (radius 50 %) around a glyph label.
+    property string layoutMode: ""
+    property string layoutLabel: ""
+    property bool layoutSkip: layoutMode !== ""
+    property var layoutEls: layoutMode === "icon" ? [ { role: "button", text: layoutLabel, dx: (width / Tokens.u - 44) / 2, dy: (height / Tokens.u - 44) / 2, w: 44, h: 44, radius: 50 } ] : []
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -38,6 +44,7 @@ MouseArea {
         color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12)
     }
     Rectangle {
+        property bool layoutSkip: root.layoutMode !== ""
         anchors.fill: parent
         radius: height / 2
         color: root.outlineOnly ? Tokens.surface : root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
@@ -93,6 +100,8 @@ MouseArea {
         maximumLineCount: 2
         horizontalAlignment: Text.AlignHCenter
         font.weight: Font.DemiBold
+        property string parityRole: root.layoutMode === "text" ? "button" : "text"
+        property int layoutRadius: root.layoutMode === "text" ? 999 : 0
         color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
     }
 }

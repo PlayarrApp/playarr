@@ -29,7 +29,7 @@ Item {
         Image {
             id: im
             width: root.imgH > 0 ? parent.width * 1.04 : parent.width   // Home: the web draws the picture 4 % larger, 7.5 px up and 7.8 px left
-            x: root.imgH > 0 ? -parent.width * 0.02 : 0
+            x: 0
             fillMode: root.imgH > 0 ? Image.PreserveAspectCrop : Image.Stretch   // Home: object-fit cover in the tall box
             height: root.imgH > 0 ? (parent.height + root.over) * 1.04 : (implicitWidth > 0 ? width * implicitHeight / implicitWidth : 0)
             y: root.imgH > 0 ? -7.51 * Tokens.u : -Math.max(0, height - parent.height) * 0.22   // object-position: center 22%

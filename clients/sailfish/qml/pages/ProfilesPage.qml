@@ -53,7 +53,7 @@ PlayarrPage {
                 anchors.centerIn: parent
                 spacing: 9 * Tokens.u
                 Image { anchors.verticalCenter: parent.verticalCenter; width: 14 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url(index === 0 ? "sun" : "globe", Tokens.inkSoft) }
-                Label { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto"); color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: 11.5 * Tokens.u }
+                Label { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto"); color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: Tokens.fs(11.5) }
                 Image { anchors.verticalCenter: parent.verticalCenter; width: 11 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("chevron", Tokens.inkSoft) }
             }
         }
@@ -63,14 +63,14 @@ PlayarrPage {
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("PROFILES")
         color: Tokens.dark ? Tokens.brandPinkSoft : "#8c2344"
-        font.family: Tokens.family820; font.letterSpacing: 1.5 * Tokens.u; font.pixelSize: 7.4 * Tokens.u
+        font.family: Tokens.family820; font.letterSpacing: 1.5 * Tokens.u; font.pixelSize: Tokens.fs(7.4)
     }
     Label { renderType: Text.NativeRendering;
         x: -14 * Tokens.u; width: parent.width; y: 82 * Tokens.u
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("Who’s watching?")
         color: Tokens.ink
-        font.family: Tokens.family580; font.letterSpacing: -2 * Tokens.u; font.pixelSize: 40.8 * Tokens.u
+        font.family: Tokens.family580; font.letterSpacing: -2 * Tokens.u; font.pixelSize: Tokens.fs(40.8)
     }
     Row {
         x: 17.3 * Tokens.u; y: 164 * Tokens.u
@@ -111,10 +111,10 @@ PlayarrPage {
                 }
                 Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 5.8 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink
-                        font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
+                        font.family: Tokens.family610; font.pixelSize: Tokens.fs(14) }
                 Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 34.2 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.inkMuted
-                        font.family: Tokens.family610; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
+                        font.family: Tokens.family610; font.letterSpacing: 1 * Tokens.u; font.pixelSize: Tokens.fs(6.4) }
             }
         }
         MouseArea {
@@ -159,14 +159,14 @@ PlayarrPage {
                         GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0) }
                     }
                 }
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "+"; color: Tokens.dark ? Qt.rgba(1, 1, 1, 0.7) : Qt.rgba(0.2, 0.15, 0.15, 0.8); font.pixelSize: 40 * Tokens.u }
+                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "+"; color: Tokens.dark ? Qt.rgba(1, 1, 1, 0.7) : Qt.rgba(0.2, 0.15, 0.15, 0.8); font.pixelSize: Tokens.fs(40) }
             }
             Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 9.8 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("Sign in"); color: Tokens.inkSoft
-                    font.family: Tokens.family610; font.pixelSize: 14 * Tokens.u }
+                    font.family: Tokens.family610; font.pixelSize: Tokens.fs(14) }
             Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.inkMuted
-                    font.family: Tokens.family610; font.letterSpacing: 1 * Tokens.u; font.pixelSize: 6.4 * Tokens.u }
+                    font.family: Tokens.family610; font.letterSpacing: 1 * Tokens.u; font.pixelSize: Tokens.fs(6.4) }
         }
     }
     Row {

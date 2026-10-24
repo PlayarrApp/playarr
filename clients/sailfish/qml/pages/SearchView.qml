@@ -50,7 +50,7 @@ Item {
             property bool navigationNavUp: true
             property string parityLabel: input.text || qsTr("Search")
             anchors { left: parent.left; leftMargin: 42 * Tokens.u; right: parent.right; rightMargin: 18 * Tokens.u; verticalCenter: parent.verticalCenter }
-            color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family610; font.pixelSize: 16.6 * Tokens.u
+            color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(16.6)
             inputMethodHints: Qt.ImhNoPredictiveText
             // D-pad focus rests on the field without the on-screen keyboard or a caret; Enter or a tap starts editing.
             property bool editing: false
@@ -102,7 +102,7 @@ Item {
         Label { renderType: Text.NativeRendering
             anchors { left: plate.right; leftMargin: 22.3 * Tokens.u; verticalCenter: plate.verticalCenter }
             text: qsTr("Start typing to search."); color: Tokens.ink
-            font.family: Tokens.family610; font.pixelSize: 11.52 * Tokens.u; font.letterSpacing: -0.23 * Tokens.u
+            font.family: Tokens.family610; font.pixelSize: Tokens.fs(11.52); font.letterSpacing: -0.23 * Tokens.u
         }
     }
     WorkGrid {

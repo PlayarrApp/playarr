@@ -56,15 +56,16 @@ function dump(root, u, weights, log) {
             var t = String(item.text)
             if (item.font.capitalization === 1) t = t.toUpperCase()
             // glyph-run bounds: ascent plus descent of the font per line (Nunito Sans 1.364 em), not Qt's taller line box
-            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = (lines - 1) * (ch / lines) + (Math.round(1.011 * fs / u) + Math.round(0.353 * fs / u)) * u
-            var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y0 + (ch - gh) / 2, cw, gh),
-                color: hex(item.color), background: item.layoutBg ? String(item.layoutBg) : bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2((item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333) / u), fontWeight: wt }
+            var fs = (item.font.pixelSize > 0 ? item.font.pixelSize : item.font.pointSize * 1.333), lines = Math.max(1, item.lineCount || 1), gh = (lines - 1) * (ch / lines) + (Math.round(1.011 * ((fs + 0.5) / u)) + Math.round(0.353 * ((fs + 0.5) / u))) * u   // ascent and descent rounded as Chromium does; the device pixel size is the css size rounded down to whole device pixels, so add half of one
+            var el = { text: t.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: rect(x0, y + item.baselineOffset - Math.round(1.011 * ((fs + 0.5) / u)) * u, cw, gh),
+                color: hex(item.color), background: item.layoutBg ? String(item.layoutBg) : bgAt(x0 + cw / 2, y0 + ch / 2), fontSize: r2((fs + 0.5) / u), fontWeight: wt }
+            if (item.layoutRadius) el.radius = item.layoutRadius
             if (op < 0.999) el.opacity = r2(op)
             if (el.text !== "") emit(el)
         } else if (item.border !== undefined && item.radius !== undefined && item.color !== undefined && w > 0 && h > 0) {
             var filled = item.color.a > 0 && !item.gradient
             if (filled) fills.push({ x: x, y: y, w: w, h: h, c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
-            if (filled || item.border.width > 0) {
+            if ((filled || item.border.width > 0) && item.layoutNoEmit !== true) {
                 var rc = { text: String(item.layoutLabel || ""), role: item.parityRole || "container", rect: rect(x, y, w, h), color: null, background: bgAt(x + w / 2, y + h / 2), fontSize: null, fontWeight: null }
                 if (item.radius > 0) rc.radius = item.radius >= Math.min(w, h) / 2 - 0.5 ? 50 : r2(Math.min(item.radius, Math.min(w, h) / 2) / u)   // a full circle is the web's border-radius 50%
                 if (op < 0.999) rc.opacity = r2(op)

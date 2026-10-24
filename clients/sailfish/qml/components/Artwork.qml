@@ -41,7 +41,7 @@ Item {
                 color: "#ffffff"
                 font.family: Tokens.family
                 font.weight: Font.Bold
-                font.pixelSize: 20 * Tokens.u
+                font.pixelSize: Tokens.fs(20)
             }
         }
         Rectangle {

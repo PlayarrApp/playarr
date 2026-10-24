@@ -194,7 +194,7 @@ PlayarrPage {
                 color: Tokens.brandInk
                 font.family: Tokens.family820
                 font.letterSpacing: 1 * Tokens.u
-                font.pixelSize: 10 * Tokens.u
+                font.pixelSize: Tokens.fs(10)
             }
             Label { renderType: Text.NativeRendering;
                 x: Tokens.pad
@@ -204,7 +204,7 @@ PlayarrPage {
                 color: Tokens.ink
                 font.family: Tokens.family580   // web .tv-detail-title: weight 560, letter-spacing -0.072em
                 font.letterSpacing: -2.8 * Tokens.u
-                font.pixelSize: 38.8 * Tokens.u   // web: clamp(2rem, 10vw, 3.5rem) at 384 px
+                font.pixelSize: Tokens.fs(38.8)   // web: clamp(2rem, 10vw, 3.5rem) at 384 px
                 lineHeight: lineCount > 1 ? 0.70 : 0.92   // web: 0.95 of the font size between wrapped lines
                 topPadding: -3 * Tokens.u   // the taller web title sits 6 px higher in its box
                 height: implicitHeight - 2.6 * Tokens.u
@@ -214,13 +214,13 @@ PlayarrPage {
                 spacing: 11.5 * Tokens.u
                 visible: !epMode
                 height: implicitHeight - 1.5 * Tokens.u
-                Label { renderType: Text.NativeRendering; text: work.kind === "movie" ? qsTr("Movie") : work.kind === "series" ? qsTr("Series") : qsTr("Music"); font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                Label { renderType: Text.NativeRendering; visible: !!detail && !!detail.runtime_ms; text: detail ? hm(detail.runtime_ms) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                Label { renderType: Text.NativeRendering; visible: !!work.release_date; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                Label { renderType: Text.NativeRendering; visible: !!work.release_date; text: work.release_date ? qsTr("Released %1").arg(dmy(work.release_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                Label { renderType: Text.NativeRendering; text: work.kind === "movie" ? qsTr("Movie") : work.kind === "series" ? qsTr("Series") : qsTr("Music"); font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
+                Label { renderType: Text.NativeRendering; visible: !!detail && !!detail.runtime_ms; text: detail ? hm(detail.runtime_ms) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
+                Label { renderType: Text.NativeRendering; visible: !!work.release_date; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
+                Label { renderType: Text.NativeRendering; visible: !!work.release_date; text: work.release_date ? qsTr("Released %1").arg(dmy(work.release_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
                 Repeater {
                     model: work.genres ? work.genres.slice(0, 3) : []
-                    Label { renderType: Text.NativeRendering; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
                 }
             }
             Label { renderType: Text.NativeRendering;
@@ -233,7 +233,7 @@ PlayarrPage {
                 elide: Text.ElideRight
                 color: Tokens.inkSoft
                 font.family: Tokens.family
-                font.pixelSize: 11.7 * Tokens.u
+                font.pixelSize: Tokens.fs(11.7)
                 lineHeight: 0.98
                 bottomPadding: 1.5 * Tokens.u
             }
@@ -315,19 +315,19 @@ PlayarrPage {
                     x: Tokens.pad; width: parent.width - 2 * Tokens.pad
                     text: page.target && page.target.episode ? (page.target.episode.episode.title || qsTr("Episode")) : ""
                     elide: Text.ElideRight
-                    color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 15 * Tokens.u
+                    color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(15)
                     height: implicitHeight - 3 * Tokens.u
                 }
                 Row {
                     x: Tokens.pad; spacing: 11.5 * Tokens.u
-                    Label { renderType: Text.NativeRendering; text: page.target && page.target.season ? qsTr("Season %1").arg(page.target.season.season_number) : ""; font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                    Label { renderType: Text.NativeRendering; text: page.target && page.target.episode ? "S" + ("0" + page.target.season.season_number).slice(-2) + " \u00B7 E" + ("0" + page.target.episode.episode.episode_number).slice(-2) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                    Label { renderType: Text.NativeRendering; visible: !!page.target && !!page.target.episode && !!page.target.episode.runtime_ms; text: page.target && page.target.episode ? Math.round((page.target.episode.runtime_ms || 0) / 60000) + " min" : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                    Label { renderType: Text.NativeRendering; visible: yearRange() !== ""; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
-                    Label { renderType: Text.NativeRendering; visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.air_date; text: page.target && page.target.episode && page.target.episode.episode.air_date ? qsTr("Aired %1").arg(dmy(page.target.episode.episode.air_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; text: page.target && page.target.season ? qsTr("Season %1").arg(page.target.season.season_number) : ""; font.weight: Font.Bold; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
+                    Label { renderType: Text.NativeRendering; text: page.target && page.target.episode ? "S" + ("0" + page.target.season.season_number).slice(-2) + " \u00B7 E" + ("0" + page.target.episode.episode.episode_number).slice(-2) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
+                    Label { renderType: Text.NativeRendering; visible: !!page.target && !!page.target.episode && !!page.target.episode.runtime_ms; text: page.target && page.target.episode ? Math.round((page.target.episode.runtime_ms || 0) / 60000) + " min" : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
+                    Label { renderType: Text.NativeRendering; visible: yearRange() !== ""; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
+                    Label { renderType: Text.NativeRendering; visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.air_date; text: page.target && page.target.episode && page.target.episode.episode.air_date ? qsTr("Aired %1").arg(dmy(page.target.episode.episode.air_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
                     Repeater {
                         model: work.genres ? work.genres.slice(0, 3) : []
-                        Label { renderType: Text.NativeRendering; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 10 * Tokens.u }
+                        Label { renderType: Text.NativeRendering; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
                     }
                 }
                 Label { renderType: Text.NativeRendering;
@@ -335,7 +335,7 @@ PlayarrPage {
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
                     wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: 11.7 * Tokens.u; lineHeight: 0.97
+                    color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(11.7); lineHeight: 0.97
                 }
                 Item { width: 1; height: 21.5 * Tokens.u }   // web: the actions sit lower under the episode copy
                 // The web lays the actions over a faded slice of the series backdrop.
@@ -413,8 +413,8 @@ PlayarrPage {
                     width: col.width
                     spacing: 6 * Tokens.u   // web: 24 px from the season heading to its count
                     property var sdata: modelData
-                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("Season %1").arg(modelData.season.season_number); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 15.4 * Tokens.u }
-                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("%1 episodes").arg(modelData.episodes.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10.6 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("Season %1").arg(modelData.season.season_number); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: Tokens.fs(15.4) }
+                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("%1 episodes").arg(modelData.episodes.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(10.6) }
                     Item { width: 1; height: 6.5 * Tokens.u }
                     Item {
                         width: col.width; height: 178.8 * Tokens.u * 9 / 16 + 58 * Tokens.u
@@ -490,7 +490,7 @@ PlayarrPage {
                                     Desaturate { id: thumbGrey; anchors.fill: parent; source: thumbArt; desaturation: 0.25; visible: false }
                                     OpacityMask { anchors.fill: parent; source: thumbGrey; maskSource: thumbMask }
                                     Label { renderType: Text.NativeRendering; anchors { right: parent.right; bottom: parent.bottom; rightMargin: 11.5 * Tokens.u; bottomMargin: 8.8 * Tokens.u }
-                                            text: ("0" + modelData.episode.episode_number).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: 12.8 * Tokens.u }
+                                            text: ("0" + modelData.episode.episode_number).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: Tokens.fs(12.8) }
                                     UnseenDot {
                                         visible: !epCard.pr || epCard.pr.state === "unseen"
                                         anchors { top: parent.top; right: parent.right; topMargin: 7 * Tokens.u; rightMargin: 7 * Tokens.u }
@@ -533,12 +533,12 @@ PlayarrPage {
                                     anchors { top: thumb.bottom; topMargin: 12 * Tokens.u; left: parent.left; right: parent.right; }
                                     spacing: 9.5 * Tokens.u
                                     readonly property bool current: !!page.target && page.target.id === modelData.media_file_id
-                                    Label { renderType: Text.NativeRendering; id: codeLbl; text: "S" + ("0" + seasonCol.sdata.season.season_number).slice(-2) + " \u00B7 E" + ("0" + modelData.episode.episode_number).slice(-2); color: parent.current ? Tokens.ink : Tokens.inkSoft; font.family: parent.current ? Tokens.family820 : Tokens.family580; font.pixelSize: 9.5 * Tokens.u }
+                                    Label { renderType: Text.NativeRendering; id: codeLbl; text: "S" + ("0" + seasonCol.sdata.season.season_number).slice(-2) + " \u00B7 E" + ("0" + modelData.episode.episode_number).slice(-2); color: parent.current ? Tokens.ink : Tokens.inkSoft; font.family: parent.current ? Tokens.family820 : Tokens.family580; font.pixelSize: Tokens.fs(9.5) }
                                     Label { renderType: Text.NativeRendering;
                                         id: titleLbl
                                         width: epCard.width - codeLbl.width - 14 * Tokens.u
                                         text: modelData.episode.title || ""; elide: Text.ElideRight
-                                        color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: 12 * Tokens.u
+                                        color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: Tokens.fs(12)
                                     }
                                 }
                         }
@@ -571,8 +571,8 @@ PlayarrPage {
                 Column {
                     width: parent.width; visible: chapters.length > 0; spacing: 6 * Tokens.u
                     topPadding: 23 * Tokens.u
-                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("Chapters"); color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 16 * Tokens.u }
-                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: chaptersFromServer ? qsTr("%1 chapters").arg(chapters.length) : qsTr("%1 scene markers").arg(chapters.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: 10.6 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("Chapters"); color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(16) }
+                    Label { renderType: Text.NativeRendering; x: Tokens.pad; text: chaptersFromServer ? qsTr("%1 chapters").arg(chapters.length) : qsTr("%1 scene markers").arg(chapters.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(10.6) }
                     Item { width: 1; height: 6 * Tokens.u }
                     ListView {
                         width: col.width; height: 132 * Tokens.u
@@ -589,13 +589,13 @@ PlayarrPage {
                                     source: detail && detail.media_file_id ? Api.url("/api/v1/media/" + detail.media_file_id + "/thumbnail?position_ms=" + modelData.start_ms) : ""
                                 }
                                 Label { renderType: Text.NativeRendering; anchors { right: parent.right; bottom: parent.bottom; rightMargin: 10 * Tokens.u; bottomMargin: 9 * Tokens.u }
-                                        text: ("0" + (index + 1)).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: 12.8 * Tokens.u }
+                                        text: ("0" + (index + 1)).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: Tokens.fs(12.8) }
                             }
                             Row {
                                 anchors { top: chThumb.bottom; topMargin: 12 * Tokens.u }
                                 spacing: 9 * Tokens.u
-                                Label { renderType: Text.NativeRendering; text: mmss(modelData.start_ms); color: Tokens.inkMuted; font.weight: Font.Bold; font.family: Tokens.family; font.pixelSize: 9.9 * Tokens.u }
-                                Label { renderType: Text.NativeRendering; text: modelData.title || qsTr("Chapter %1").arg(index + 1); color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: 12.5 * Tokens.u }
+                                Label { renderType: Text.NativeRendering; text: mmss(modelData.start_ms); color: Tokens.inkMuted; font.weight: Font.Bold; font.family: Tokens.family; font.pixelSize: Tokens.fs(9.9) }
+                                Label { renderType: Text.NativeRendering; text: modelData.title || qsTr("Chapter %1").arg(index + 1); color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(12.5) }
                             }
                         }
                     }
@@ -614,7 +614,7 @@ PlayarrPage {
                         text: modelData.album.title
                         color: Tokens.ink
                         font.family: Tokens.family
-                        font.pixelSize: 20 * Tokens.u
+                        font.pixelSize: Tokens.fs(20)
                     }
                     Repeater {
                         model: modelData.tracks
@@ -637,7 +637,7 @@ PlayarrPage {
                                 elide: Text.ElideRight
                                 color: Tokens.inkSoft
                                 font.family: Tokens.family
-                                font.pixelSize: 15 * Tokens.u
+                                font.pixelSize: Tokens.fs(15)
                             }
                         }
                     }

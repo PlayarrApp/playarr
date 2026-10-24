@@ -127,7 +127,7 @@ MouseArea {
             color: root.firstInk ? (Tokens.dark ? "#ffffff" : "#000000") : Tokens.ink
             font.family: Tokens.family610   // web --card-title-weight: 610
             font.letterSpacing: -0.0285 * 8.9 * Tokens.u - 0.1
-            font.pixelSize: 8.9 * Tokens.u
+            font.pixelSize: Tokens.fs(8.9)
         }
         Label { renderType: Text.NativeRendering;
             visible: !root.compact
@@ -136,7 +136,7 @@ MouseArea {
             elide: Text.ElideRight
             color: root.firstInk ? (Tokens.dark ? "#ffffff" : "#000000") : Tokens.inkMuted
             font.family: Tokens.family400; font.letterSpacing: -0.2
-            font.pixelSize: 6.9 * Tokens.u
+            font.pixelSize: Tokens.fs(6.9)
         }
     }
 }

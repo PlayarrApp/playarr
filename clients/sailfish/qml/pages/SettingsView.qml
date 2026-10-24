@@ -44,12 +44,12 @@ Item {
             onClicked: page.open(modelData.id)
             function navigationActivate() { page.open(modelData.id) }
             Rectangle { anchors { fill: parent; leftMargin: Tokens.pad; rightMargin: Tokens.pad } color: Tokens.dark ? (index === 0 ? "#312a30" : Tokens.surfaceStrong) : Tokens.surfaceSoft; opacity: index === 0 ? 1 : (parent.pressed ? 0.5 : 0) }
-            Label { x: 27.5 * Tokens.u; y: 16.5 * Tokens.u; text: (index + 1 < 10 ? "0" : "") + (index + 1); color: Tokens.inkMuted; font.family: Tokens.family820; font.pixelSize: 9 * Tokens.u; renderType: Text.NativeRendering }
+            Label { x: 27.5 * Tokens.u; y: 16.5 * Tokens.u; text: (index + 1 < 10 ? "0" : "") + (index + 1); color: Tokens.inkMuted; font.family: Tokens.family820; font.pixelSize: Tokens.fs(9); renderType: Text.NativeRendering }
             Column {
                 anchors { left: parent.left; leftMargin: 71 * Tokens.u; right: arrow.left; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                 spacing: 1 * Tokens.u
-                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.letterSpacing: -0.5 * Tokens.u; font.pixelSize: 16.5 * Tokens.u; renderType: Text.NativeRendering }
-                Label { width: parent.width; text: modelData.hint; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: 11.1 * Tokens.u; renderType: Text.NativeRendering }
+                Label { width: parent.width; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.letterSpacing: -0.5 * Tokens.u; font.pixelSize: Tokens.fs(16.5); renderType: Text.NativeRendering }
+                Label { width: parent.width; text: modelData.hint; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(11.1); renderType: Text.NativeRendering }
             }
             // The web's "→" is a thin system-font glyph (Nunito has none): 25 px shaft, small head; the active row's arrow is ink and 10 px further right.
             Canvas {

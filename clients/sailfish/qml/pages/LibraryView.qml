@@ -120,7 +120,7 @@ Item {
         color: Tokens.brandInk
         font.family: Tokens.family820
         font.letterSpacing: 1 * Tokens.u
-        font.pixelSize: 10.2 * Tokens.u
+        font.pixelSize: Tokens.fs(10.2)
     }
     WorkGrid {
         id: grid
@@ -180,7 +180,7 @@ Item {
                 }
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.dark ? "#d4d1d4" : Qt.rgba(0.22, 0.15, 0.13, 0.78) }   // web: ink at 78%
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Math.round(8.96 * Tokens.u); property color layoutBg: Tokens.bg
+                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.96); property color layoutBg: Tokens.bg
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft }
             }
         }
