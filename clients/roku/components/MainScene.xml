@@ -259,9 +259,9 @@
     -->
     <Group id="browseGroup" visible="false">
       <!-- Full-bleed key art (web TvStageShell) behind chrome; washed for text. -->
-      <Poster id="browseKeyArt" translation="[-20,-22.9]" width="1038" height="1191"
+      <Poster id="browseKeyArt" translation="[133.03,-22.9]" width="900" height="1190.6"
         loadDisplayMode="scaleToZoom" visible="false" />
-      <Poster id="browseKeyArtFade" translation="[727,-22.9]" width="291" height="1191" uri="pkg:/images/stage-key-art-fade.png" loadDisplayMode="scaleToFill" />
+      <Poster id="browseKeyArtFade" translation="[781.03,-22.9]" width="252" height="1190.6" uri="pkg:/images/stage-key-art-fade.png" loadDisplayMode="scaleToFill" />
       <StageScrims id="browseScrims" />
       <!-- Web .tv-library-heading: back is dock Home; h1 + "1,730 TITLES". -->
       <TrackedText id="browseTitle" translation="[226.6,58.2]" />

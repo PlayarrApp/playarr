@@ -388,7 +388,7 @@ sub init()
     m.profileLabel.text = FirstWord(m.session.profileName)
     ' The build label under the tile reads like web's (major.minor.0).
     ai = CreateObject("roAppInfo")
-    m.top.findNode("userVersion").text = "v " + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
+    m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
     m.profileId = m.session.profileId
     if m.profileId = invalid then m.profileId = ""
     m.avatarKind = ""
@@ -2938,7 +2938,7 @@ sub updateBrowsePreview(work as Object)
             m.browseArtTelemetryArmed = false
             previewSlot = m.artActiveScope + "-preview"
             if uri <> ""
-                emitArtSlot(m.artActiveGeneration, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+                emitArtSlot(m.artActiveGeneration, m.artActiveScope, previewSlot, true, 133.03, -22.9, 900, 1190.6, m.browseArtTelemetryVersion)
                 emitArtStatus(m.artActiveGeneration, m.artActiveScope, previewSlot, "pending", m.browseArtTelemetryVersion)
             else
                 emitArtOptionalEmpty(m.artActiveGeneration, m.artActiveScope, previewSlot, m.browseArtTelemetryVersion)
@@ -2972,7 +2972,7 @@ sub onBrowseKeyArtTimer()
     g = GetGlobalAA()
     if g.playarrArtHeaders <> invalid then agent.SetHeaders(g.playarrArtHeaders)
     m.browseKeyArt.SetHttpAgent(agent)
-    m.browseKeyArt.loadWidth = 1038
+    m.browseKeyArt.loadWidth = 900
     m.browseKeyArt.loadHeight = 1191
     m.browseArtTelemetryArmed = m.artTelemetryEnabled and (m.artActiveScope = "movies" or m.artActiveScope = "series" or m.artActiveScope = "music") and m.artActiveGeneration > 0
     m.browseKeyArt.uri = uri
@@ -3007,7 +3007,7 @@ sub declareCurrentBrowsePreviewArt(generation as Integer)
     if m.browseArtTelemetryVersion < 1 then m.browseArtTelemetryVersion = 1
     m.browseArtTelemetryArmed = true
     previewSlot = m.artActiveScope + "-preview"
-    emitArtSlot(generation, m.artActiveScope, previewSlot, true, -20, -22.9, 1038, 1191, m.browseArtTelemetryVersion)
+    emitArtSlot(generation, m.artActiveScope, previewSlot, true, 133.03, -22.9, 900, 1190.6, m.browseArtTelemetryVersion)
     emitArtStatus(generation, m.artActiveScope, previewSlot, "pending", m.browseArtTelemetryVersion)
     if m.browseKeyArt.uri = uri then sampleBrowseKeyArtStatus()
 end sub
@@ -4397,7 +4397,7 @@ sub finishHomeLoad()
         m.homeStage.artTelemetryVersion = 0
         m.homeStage.artTelemetryActive = heroUri <> ""
         if heroUri <> ""
-            emitArtSlot(m.artActiveGeneration, "home", "home-hero", true, -20, -22.9, 1038, 1191, 0)
+            emitArtSlot(m.artActiveGeneration, "home", "home-hero", true, 133.03, -22.9, 900, 1190.6, 0)
         end if
     else
         m.homeStage.artTelemetryActive = false
@@ -4908,7 +4908,7 @@ sub layoutNavDock()
                 m.navIcons[i].translation = [dockLeft + 5.2 + 23.6, itemY + 16]
                 m.navIcons[i].width = 20
                 m.navIcons[i].height = 20
-                m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 38.4]
+                m.navLabels[i].translation = [dockLeft + 5.2 + 33.6 - 50, itemY + 39.6]
                 itemY = itemY + itemStep
             end if
         end for

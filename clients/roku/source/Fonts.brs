@@ -109,7 +109,7 @@ function PlayarrTypeFor(scope as String, id as String) as Dynamic
             clockTime: { size: 17.28, weight: 760, tracking: -0.526, boxH: 25.92 }
             clockDate: { size: 11.14, weight: 640, tracking: 0.435, boxH: 12.25 }
             profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
-            userVersion: { size: 8, weight: 700, tracking: 0.86, role: "ink", boxH: 10 }
+            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink", boxH: 8 }
             "TvStage.stageMetaLabel": { size: 12.86, weight: 600, tracking: 0, role: "inkSoft" }
             "PosterCard.title": { size: 11.9, weight: 610, tracking: -0.183 }
             "PosterCard.kind": { size: 8.83, weight: 400, tracking: 0 }

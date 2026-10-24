@@ -119,6 +119,7 @@ sub onContentChanged()
         m.title.translation = [m.cardTitleX, m.titleY]
     end if
     clampCardTitle(content.title, hasPrefix)
+    applyCaptionFocus()
     watchState = ""
     if content.watchState <> invalid then watchState = content.watchState
     m.unwatchedBadge.visible = watchState = "unseen"
@@ -221,10 +222,11 @@ sub onFocusChanged()
     if shadowOpacity > 1 then shadowOpacity = 1
     if shadowOpacity < 0 then shadowOpacity = 0
     m.focusShadow.opacity = shadowOpacity
+    applyCaptionFocus()
     ' A focused card's caption is white (web .is-focused).
     if shadowOpacity > 0.5 and not m.cardListMode and not m.top.findNode("circleMask").visible
-        m.title.color = &hFFFFFFFF
-        m.kind.color = &hFFFFFFFF
+        m.title.color = ThemeColor("playerInk")
+        m.kind.color = ThemeColor("playerInk")
     else
         m.title.color = ThemeColor("ink")
         m.kind.color = ThemeColor("inkMuted")
@@ -338,7 +340,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.top.findNode("cornerTR").translation = [artW - 12, 0]
     m.top.findNode("cornerBL").translation = [0, artH - 12]
     m.top.findNode("cornerBR").translation = [artW - 12, artH - 12]
-    m.unwatchedBadge.translation = [artW - 23.5, 9.5]
+    m.unwatchedBadge.translation = [artW - 24.5, 9.56]
     m.progressTrack.translation = [0, artH - 3]
     m.progressTrack.width = artW
     ' Home RowList items reserve a 3 px inset around the art so this outer ring stays inside the item viewport.
@@ -447,4 +449,24 @@ sub onParityLayoutCard()
     ParityCard(m.top)
     ctx = { measure: CreateObject("roSGNode", "Label"), count: 0 }
     ParityLayoutWalk(m.cardRoot, 1.0, ctx)
+end sub
+
+' A focused grid card is scaled 1.015 as a whole and lifted 5 px: its caption follows (web .tv-title-card:focus).
+sub applyCaptionFocus()
+    effective = m.top.focusPercent * m.top.activeRailFactor
+    if m.global.cardFocusOff = true then effective = 0
+    if effective > 1 then effective = 1
+    if effective < 0 then effective = 0
+    m.title.scale = [1, 1]
+    m.kind.scale = [1, 1]
+    if m.cardScaleValue > 1 and m.homeCardFocusStyle <> true and m.cardListMode <> true and m.cardArtW <> invalid and m.cardArtW > 0 and effective > 0
+        k = 1 + 0.015 * effective
+        cx = m.cardArtW / 2
+        cy = (m.top.findNode("posterBg").height + 29.38) / 2
+        lift = -5 * effective
+        m.title.scale = [k, k]
+        m.title.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY - cy) * k + lift]
+        m.kind.scale = [k, k]
+        m.kind.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY + 19.5 - cy) * k + lift]
+    end if
 end sub

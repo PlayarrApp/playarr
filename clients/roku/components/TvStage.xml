@@ -88,14 +88,14 @@
       <!-- Key-art Poster loads GET /api/v1/artwork/...&style=stage (server
            greyscale + opacity + right fade). No client-side filter wash on
            the bitmap itself - - that used to fight a full-colour source. -->
-      <Poster id="keyArt" translation="[-20,-22.9]" width="1038" height="1191" loadDisplayMode="scaleToZoom" />
+      <Poster id="keyArt" translation="[133.03,-22.9]" width="900" height="1190.6" loadDisplayMode="scaleToZoom" />
       <!-- Web masks the cropped image with linear-gradient(90deg, #000 72%,
            transparent 100%). The server bakes that fade into the source
            bitmap, but scaleToZoom crops the sides off, so the fade never
            reaches the stage and the art ended in a hard edge at x=998.
            Re-apply it here: a surface-coloured ramp over the last 28%
            (x=718..998, from: 72% of 998). -->
-      <Poster id="keyArtFade" translation="[727,-22.9]" width="291" height="1191" uri="pkg:/images/stage-key-art-fade.png" loadDisplayMode="scaleToFill" />
+      <Poster id="keyArtFade" translation="[781.03,-22.9]" width="252" height="1190.6" uri="pkg:/images/stage-key-art-fade.png" loadDisplayMode="scaleToFill" />
       <!-- Soft stage wash only (left + vertical vignette). Pixel math for
            greyscale/contrast/brightness/opacity is baked server-side. -->
       <!-- Web gradients as stretched alpha ramps tinted with the page surface colour (ThemeSetRole in TvStage.brs):

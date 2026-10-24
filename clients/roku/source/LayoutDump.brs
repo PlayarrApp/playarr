@@ -110,11 +110,13 @@ sub ParityLayoutTracked(node as Object, spec as Object, colour as Dynamic, op as
         end if
     end for
     if x1 < x0 then return
-    x1 = x0 + node.textWidth
+    sc = 1.0
+    if m.parityRoot <> invalid then sc = ParityScale(node)
+    x1 = x0 + node.textWidth * sc
     ' Chrome's text rect is the content area at whole pixels: round(1.011 em) + round(0.353 em) tall; further lines are a line pitch lower.
-    contentH = Int(spec.size * 1.011 + 0.5) + Int(spec.size * 0.353 + 0.5)
+    contentH = (Int(spec.size * 1.011 + 0.5) + Int(spec.size * 0.353 + 0.5)) * sc
     y1 = ytop + contentH
-    if spec.rectH <> invalid and spec.rectH > 0 then y1 = ytop + spec.rectH
+    if spec.rectH <> invalid and spec.rectH > 0 then y1 = ytop + spec.rectH * sc
     tid = node.id
     if spec.id <> invalid then tid = spec.id
     meta = invalid
@@ -231,19 +233,45 @@ end function
 ' Position of a node's origin from its translation chain up to the item root (m.parityRoot, set while a list item answers) or the scene.
 ' sceneBoundingRect is not used inside list items: it leaves out the item's own transforms.
 function ParityPos(node as Object) as Object
-    x = 0.0
-    y = 0.0
-    n = node
+    ' Origin of `node` in item (or scene) coordinates: each ancestor maps its children's points by its translation and scale
+    ' about scaleRotateCenter.
+    t = [0.0, 0.0]
+    if node.hasField("translation") then t = [node.translation[0], node.translation[1]]
+    x = t[0]
+    y = t[1]
+    n = node.getParent()
     while n <> invalid
         if m.parityRoot <> invalid and n.isSameNode(m.parityRoot) then exit while
         if n.hasField("translation")
-            t = n.translation
-            x = x + t[0]
-            y = y + t[1]
+            tr = n.translation
+            sx = 1.0
+            sy = 1.0
+            cx = 0.0
+            cy = 0.0
+            if n.hasField("scale")
+                sx = n.scale[0]
+                sy = n.scale[1]
+                cx = n.scaleRotateCenter[0]
+                cy = n.scaleRotateCenter[1]
+            end if
+            x = tr[0] + cx + sx * (x - cx)
+            y = tr[1] + cy + sy * (y - cy)
         end if
         n = n.getParent()
     end while
     return [x, y]
+end function
+
+' Product of the scales above `node` (up to the item root): how much larger than its own coordinates a thing in it is drawn.
+function ParityScale(node as Object) as Float
+    k = 1.0
+    n = node.getParent()
+    while n <> invalid
+        if m.parityRoot <> invalid and n.isSameNode(m.parityRoot) then exit while
+        if n.hasField("scale") then k = k * n.scale[0]
+        n = n.getParent()
+    end while
+    return k
 end function
 
 ' A point of the card's art group (local q) drawn at its scale about scaleRotateCenter.
@@ -283,14 +311,16 @@ sub ParityCard(card as Object)
     lh = (bgNode.height + 29.38) * ls
     lx = r.x + r.width / 2 - lw / 2
     ly = r.y + r.height / 2 + 14.69 * ls - lh / 2 + (s - 1) * 0
-    ParityBox("link", name, lx, ly, lw, lh, 12, "surface")
+    lr = 0
+    if m.parityGrid = true then lr = 12
+    ParityBox("link", name, lx, ly, lw, lh, lr, "surface")
     ParityBox("container", "", r.x, r.y, r.width, r.height, 12.48, "surfaceSoft")
     ParityBox("image", "", r.x, r.y, r.width, r.height, 0, "surfaceSoft")
     badge = card.findNode("unwatchedBadge")
     if badge <> invalid and badge.visible
         q = badge.translation
         p = ParityArtPoint(ag, q)
-        ParityBox("img", "", p[0] + badge.width * s * 0.067, p[1] + badge.height * s * 0.067, badge.width * s * 0.867, badge.height * s * 0.867, 50, "accent")
+        ParityBox("img", "", p[0] + s, p[1] + s, 13 * s, 13 * s, 50, "accent")
     end if
     track = card.findNode("progressTrack")
     if track <> invalid and track.visible
@@ -317,34 +347,40 @@ sub ParityAnnotated(node as Object, op as Float)
     ParityBox(node.parityRole, node.parityName, r.x, r.y, r.width, r.height, node.parityRadius, node.parityBg, op)
 end sub
 
-' The page layers every web screen has: the root, the named page container, the key-art image, the page surface and the content panel.
+' The page layers every web screen has: the root, the page container, the key-art image (when the page has key art), the page surface and
+' the content panel. Which pages have which is the web's own layout (tv-web TvStageShell and the page shells).
 sub ParityPageShell()
     state = m.top.screenState
-    name = ""
-    panel = ""
     art = false
+    panel = false
+    shell = true
     if state = "home"
-        name = "Home"
-        panel = "Home media tracks"
         art = true
+        panel = true
     else if state = "browse"
-        if m.browseKind = "movie"
-            name = "Movies library"
-            panel = "Movies titles"
-        else if m.browseKind = "series"
-            name = "Series library"
-            panel = "Series titles"
-        else if m.browseKind = "artist"
-            name = "Music library"
-            panel = "Music artists"
-        end if
         art = true
+        panel = true
+    else if state = "detail"
+        art = true
+    else if state = "search"
+        panel = true
+    else if state = "page" and m.pageKind = "calendar"
+        art = m.calendarView = "agenda"
+    else if state = "settings"
+        shell = true
+    else
+        shell = false
     end if
     ParityBox("container", "", 0, 0, 1920, 1080, 0, "bg")
-    if name = "" then return
-    ParityBox("container", name, 0, 0, 1920, 1080, 0, "surface")
+    if not shell then return
     ParityBox("container", "", 0, 0, 1920, 1080, 0, "surface")
-    if panel <> "" then ParityBox("container", panel, 729.6, 0, 1190.4, 1080, 0, "surface")
+    if art
+        op = 0.72
+        if m.global.themeMode = "light" then op = 0.24
+        ParityBox("image", "", 133.03, -22.9, 899.97, 1190.59, 0, "surface", op)
+    end if
+    ParityBox("container", "", 0, 0, 1920, 1080, 0, "surface")
+    if panel then ParityBox("container", "", 729.6, 0, 1190.4, 1080, 0, "surface")
 end sub
 
 ' Where a list lays an item out is not reachable from the item, so the scene tells every card its origin before the cards answer.

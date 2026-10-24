@@ -89,7 +89,7 @@ sub onKeyArtUriChange()
         m.keyArtAgent.SetHeaders(m.top.keyArtHeaders)
     end if
     m.keyArt.SetHttpAgent(m.keyArtAgent)
-    m.keyArt.loadWidth = 1038
+    m.keyArt.loadWidth = 900
     m.keyArt.loadHeight = 1191
     m.keyArtBase = uri
     m.keyArtRetries = 0
