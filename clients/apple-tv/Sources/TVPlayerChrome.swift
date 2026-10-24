@@ -97,15 +97,19 @@ struct TVPlayerChrome: View {
             }
             .foregroundStyle(Color.white)
             .frame(width: 124, height: 48)
-            .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58)))
+            .background(Capsule().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.81)))
+            .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
             .placed(x: 1678, y: 37.8, w: 124, h: 48)
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .light))
                     .foregroundStyle(Color.white)
                     .frame(width: 48, height: 48)
                     .background(Circle().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58)))
+                    .overlay(Circle().stroke(Color.white.opacity(0.14), lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.28), radius: 12, y: 8)
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
@@ -178,9 +182,9 @@ struct TVPlayerChrome: View {
 
     private var rightGroup: some View {
         ZStack(alignment: .topLeading) {
-            icon("speaker.wave.2.fill", x: 1323.5)
-            icon("captions.bubble", x: 1401.1)
-            icon("list.bullet", x: 1478.7)
+            icon("speaker.wave.2.fill", x: 1323.5, opacity: 0.3)
+            icon("text.rectangle", x: 1401.1)
+            icon("text.line.last.and.arrowtriangle.forward", x: 1478.7)
             Button(action: onToggleQualityMenu) {
                 HStack(spacing: 11.8) {
                     Text("HD")
@@ -203,7 +207,7 @@ struct TVPlayerChrome: View {
             .modifier(TVFocusTag(binding: focus, control: .quality))
             .placed(x: 1527.8, y: 959.8, w: 173.4, h: 60.5)
             icon("info.circle", x: 1730.4)
-            icon("airplayvideo", x: 1808)
+            icon("macbook.and.iphone", x: 1808)
         }
     }
 
@@ -334,7 +338,7 @@ private struct TVScrubberBody: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Capsule().fill(Color.white.opacity(0.2)).frame(width: 1780, height: 6).offset(y: 15)
-            Capsule().fill(Color.white.opacity(0.34)).frame(width: 491.8, height: 6).offset(y: 15)
+            Capsule().fill(Color.white.opacity(0.34)).frame(width: 1380, height: 6).offset(y: 15)
             Capsule().fill(DesignTokens.Color.brandPrimary).frame(width: max(progress, 0), height: 6).offset(y: 15)
             if isFocused {
                 Capsule().stroke(Color.white, lineWidth: 3).frame(width: 1786, height: 12).offset(x: -3, y: 12)

@@ -49,9 +49,9 @@ struct TVWorkDetailView: View {
                                    startPoint: .top, endPoint: .bottom)
                         .frame(width: 1038.4, height: 55)
                         .allowsHitTesting(false)
-                        .ignoresSafeArea()
                 }
             }
+            .ignoresSafeArea() // the overlay must reach the physical bottom edge (tvOS insets it by the TV safe area)
             #endif
             .alert("Downloads", isPresented: $showDownloadNote) {
                 Button("OK", role: .cancel) {}
