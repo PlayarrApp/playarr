@@ -10,4 +10,13 @@ for part in screens-dark screens-light dpad playback; do
   cp -R "$DEST/dev/.part-$part/." "$DEST/dev/"
   rm -rf "$DEST/dev/.part-$part"
 done
+# Layout-score exports (<theme>/<screen>.layout.json) ride in the debug artifact until the workflow copies them into dev/layout.
+for part in screens-dark screens-light; do
+  T=${part#screens-}
+  T_DIR="$DEST/dev/.debug-$part"
+  gh run download "$RUN" -R PlayarrApp/playarr -n "xbox-wall-debug-$part" -D "$T_DIR" 2>/dev/null || { echo "no debug artifact for $part" >&2; continue; }
+  mkdir -p "$DEST/dev/layout/$T"
+  for f in "$T_DIR"/run/"$T"/*.layout.json; do [ -e "$f" ] && cp "$f" "$DEST/dev/layout/$T/$(basename "${f%.layout.json}").json"; done
+  rm -rf "$T_DIR"
+done
 cat "$DEST/dev/build.json"
