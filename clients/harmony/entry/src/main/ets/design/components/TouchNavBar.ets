@@ -84,6 +84,7 @@ export struct TouchNavBar {
         .focusable(false)
     }
     .id('px:link:' + item.label)
+    .flexShrink(0)
     .width(TILE_WIDTH)
     .height(TILE_HEIGHT)
     .justifyContent(FlexAlign.Center)
@@ -108,6 +109,7 @@ export struct TouchNavBar {
               .focusable(false)
           }
           .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
+          .flexShrink(0)
           .width(TILE_WIDTH)
           .height(TILE_HEIGHT)
           .justifyContent(FlexAlign.Center)

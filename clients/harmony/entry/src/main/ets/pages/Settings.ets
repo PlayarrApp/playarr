@@ -645,13 +645,13 @@ export struct SettingsScreen {
                 .maxLines(1)
             }
             .alignItems(HorizontalAlign.Start)
-            .width(272) // web dump: the copy runs 261.6 wide and sits under the arrow, unclipped
+            .width(340) // web dump: the copy is not clipped and runs under the arrow
             .position({ x: 56, y: 22.9 })
             Text('→').fontFamily(nunito(400))
               .fontSize(20.8)
               .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
               .height(88)
-              .position({ x: section.id === this.openSection ? 303 : 298, y: 3 }) // web: the unselected rows' arrow sits 5 vp further left
+              .position({ x: section.id === this.openSection ? 300.2 : 295.2, y: -0.6 }) // web: the unselected rows' arrow sits 5 vp further left
           }
           .id('px:link:' + section.number + ' ' + section.title + ' ' + sectionCopyOf(section.id) + ' →')
           .width(328)
@@ -676,6 +676,7 @@ export struct SettingsScreen {
         railFrostWidthPct: 65,
         title: t('settings.index.title', 'Preferences'),
         backLabel: 'Settings',
+        backRole: 'button',
         touch: true,
         selectedId: '',
         kicker: this.sectionOpen ? this.sectionTitle() : '',

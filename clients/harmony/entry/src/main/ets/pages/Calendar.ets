@@ -412,8 +412,8 @@ export struct ReleaseCalendar {
 
   @Builder
   private statusPill(tone: EntryPillTone): void {
-    Text(pillLabel(tone)).fontFamily(nunito(700))
-      .fontSize(isTvMetrics() ? tv(PILL_SIZE) : PHONE_PILL_SIZE)
+    Text(pillLabel(tone)).fontFamily(nunito(750))
+      .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
@@ -499,12 +499,12 @@ export struct ReleaseCalendar {
   @Builder
   private dayHeader(day: string): void {
     Row({ space: tv(10) }) {
-      Text(dayHeading(day)).fontFamily(nunito(500))
+      Text(dayHeading(day)).fontFamily(nunito(640))
         .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColorWithAlpha(activeColors().ink, day === this.today ? 0.9 : 1))
       if (day === this.today) {
-        Text(t('pages.calendar.today', 'Today')).fontFamily(nunito(500))
+        Text(t('pages.calendar.today', 'Today')).fontFamily(nunito(640))
           .fontSize(tv(TODAY_TAG_SIZE))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
@@ -1015,8 +1015,9 @@ export struct ReleaseCalendar {
   @Builder
   private touchControls(): void {
     Row({ space: PHONE_CONTROL_GAP }) {
-      Text(rangeLabel(this.view, this.anchor)).fontFamily(nunito(700))
-        .fontSize(PHONE_CONTROL_FONT)
+      Text(rangeLabel(this.view, this.anchor)).fontFamily(nunito(720))
+        .id('px:button:' + rangeLabel(this.view, this.anchor))
+        .fontSize(11.52)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(44)
@@ -1047,8 +1048,9 @@ export struct ReleaseCalendar {
   private touchControl(label: string, width: number, onTap: () => void): void {
     Stack() {
       // web: the arrows are thin, smaller glyphs than the bold labels
-      Text(label).fontFamily(nunito(label.length === 1 ? 400 : 700))
-        .fontSize(label.length === 1 ? 9 : PHONE_CONTROL_FONT)
+      Text(label).fontFamily(nunito(720))
+        .id(label.length === 1 ? '' : 'px:button:' + label)
+        .fontSize(11.52)
         .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .textAlign(TextAlign.Center)
@@ -1067,6 +1069,7 @@ export struct ReleaseCalendar {
           .hitTestBehavior(HitTestMode.None)
       }
     }
+    .id(label.length === 1 ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : '')
     .width(width)
     .height(44)
     .onClick(() => {
@@ -1136,10 +1139,10 @@ export struct ReleaseCalendar {
             .fontColor(toResourceColor(activeColors().inkSoft))
         }
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(ENTRY_META_GAP), cross: LengthMetrics.vp(PHONE_WEEK_META_ROW_GAP) } }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkSoft))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkSoft))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkSoft))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
           }
           this.statusPill(itemPillTone(item, this.today))
         }

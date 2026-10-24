@@ -85,7 +85,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             here = over(bg, under)
         if box is not None:
             x, y, w, h = (v / dpr for v in box)
-            if str(attrs.get("id", "")).startswith("px:"):
+            if str(attrs.get("id", "")).startswith("px:") and kind != "Text":
                 _, prole, pname = str(attrs["id"]).split(":", 2)  # the app tags controls "px:<web role>:<accessible name>"
                 el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None}
@@ -102,16 +102,21 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 text = str(text).upper() if "upper" in case or case.endswith("1") else (str(text).lower() if "lower" in case or case.endswith("2") else text)
                 tw = text_width(text, size, weight, spacing, measure)
                 ch = round(size * 1.011) + round(size * 0.353)  # Chrome's content area: rounded ascent plus rounded descent (hhea 1011 / 353)
-                if tw > w + 0.5:  # wrapped or clipped: the box is the run
+                if tw > w + 2:  # wrapped or clipped: the box is the run
                     rx, ry, rw, rh = x, y, w, h
                 else:
                     align = str(attrs.get("textAlign", "")).lower()
-                    rx = x + (w - tw) / 2 if "center" in align else (x + w - tw if "end" in align else x)
+                    pill = bool(num(attrs.get("borderRadius"), 0.0)) or (bg is not None and bg[3] > 0.01)  # a padded pill: the run is centred in the box
+                    rx = x + (w - tw) / 2 if ("center" in align or pill) else (x + w - tw if "end" in align else x)
                     rx, ry, rw, rh = rx, y + (h - ch) / 2, tw, ch
                 here = backdrop(image, rx, ry, rw, rh, dpr, here)
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
-                el = {"text": " ".join(str(text).split()), "role": "heading" if size >= 21 else "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
+                prole = str(attrs.get("id", "")).split(":")[1] if str(attrs.get("id", "")).startswith("px:") else None
+                el = {"text": " ".join(str(text).split()), "role": prole or ("heading" if size >= 21 else "text"), "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, here)), "background": hex_of(here), "fontSize": size, "fontWeight": weight}
+                radius = num(attrs.get("borderRadius"), 0.0)
+                if radius:
+                    el["radius"] = 999 if radius >= min(w, h) / 2 - 0.5 else radius
                 out.append(el)
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "container")

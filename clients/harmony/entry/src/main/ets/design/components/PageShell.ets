@@ -232,6 +232,7 @@ export struct PageShell {
 
   /** The phone Back control's accessible name (web `aria-label` on the round Back link; it differs per page). */
   @Prop backLabel: string = 'Back to Home';
+  @Prop backRole: string = 'link';
 
   @Builder
   private touchChrome(): void {
@@ -248,7 +249,7 @@ export struct PageShell {
             .borderRadius('50%')
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
-            .id('px:link:' + this.backLabel)
+            .id('px:' + this.backRole + ':' + this.backLabel)
             .onClick(() => {
               popRoute(getNavStack());
             })
