@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "playarr-parity-layout",
+  "title": "Parity layout document: one per screen and theme",
+  "type": "object",
+  "required": ["screen", "theme", "viewport", "elements"],
+  "additionalProperties": false,
+  "properties": {
+    "screen": { "type": "string" },
+    "theme": { "enum": ["dark", "light"] },
+    "viewport": {
+      "type": "object",
+      "required": ["w", "h", "dpr"],
+      "properties": { "w": { "type": "number" }, "h": { "type": "number" }, "dpr": { "type": "number" } }
+    },
+    "occluded": { "type": "integer", "description": "Web documents: how many otherwise exportable elements the exporter dropped because a modal or drawer fully covers them (sanity count, 0 on screens without an overlay)." },
+    "clockPinned": { "type": "boolean", "description": "Device documents only: the app's own clock was pinned to the fixture instant for this capture." },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "role", "rect", "color", "background", "fontSize", "fontWeight"],
+        "additionalProperties": false,
+        "properties": {
+          "text": { "type": "string" },
+          "role": { "type": "string", "description": "text, heading, button, link, textbox, switch, select, image, video, container, tab, list, or an ARIA role; system = OS chrome (ignored)." },
+          "rect": {
+            "type": "object",
+            "required": ["x", "y", "w", "h"],
+            "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "w": { "type": "number" }, "h": { "type": "number" } }
+          },
+          "colorGradient": { "type": "boolean", "description": "Web only: the text is clipped to a gradient; color is the gradient's first stop." },
+          "color": { "type": ["string", "null"], "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" },
+          "background": { "type": ["string", "null"], "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$" },
+          "fontSize": { "type": ["number", "null"] },
+          "fontWeight": { "type": ["number", "null"] },
+          "radius": { "type": "number" },
+          "opacity": { "type": "number" },
+          "volatile": { "type": "string", "description": "Web documents: name from layout-volatile.json; text is not compared." },
+          "clock": { "type": "boolean", "description": "Web documents: volatile unless the device declares clockPinned." },
+          "maskOnly": { "type": "boolean", "description": "Web documents: never scored; the pixel scorer blanks the rect." }
+        }
+      }
+    }
+  }
+}
