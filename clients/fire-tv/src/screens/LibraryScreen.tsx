@@ -51,7 +51,7 @@ import {Icon} from '../shell/icons';
 import {ActionTile} from '../tv/ActionTile';
 import {Button} from '../tv/forms';
 import {EdgeFade} from '../tv/EdgeFade';
-import {MediaFocus} from '../tv/mediaFocus';
+import {CardCaption, MediaFocus} from '../tv/mediaFocus';
 import {Box, T, u} from '../tv/kit';
 import {PageHeader} from '../tv/PageHeader';
 import {Preview} from '../tv/Preview';
@@ -703,9 +703,11 @@ function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.Re
         </View>
       </MediaFocus>
       <View style={{marginTop: u(11.5), paddingHorizontal: u(1.9)}}>
-        <T size={11.904} weight={610} ls={-0.1786} lh={17.9} color={colour.ink} lines={1}>
-          {work.title}
-        </T>
+        <CardCaption focused={selected} variant="library" artH={card.cardH} gap={11.5}>
+          <T size={11.904} weight={610} ls={-0.1786} lh={17.9} color={colour.ink} lines={1}>
+            {work.title}
+          </T>
+        </CardCaption>
       </View>
     </Pressable>
   );

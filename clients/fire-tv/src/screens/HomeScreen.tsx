@@ -23,7 +23,7 @@ import {loadOnDeck, type OnDeckEntry} from '../lib/onDeck';
 import {runtimeLabel} from '../lib/runtimeLabel';
 import {blend} from '../theme/color';
 import {EdgeFade} from '../tv/EdgeFade';
-import {MediaFocus} from '../tv/mediaFocus';
+import {CardCaption, MediaFocus} from '../tv/mediaFocus';
 import {BalancedT, Box, T, u} from '../tv/kit';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -278,7 +278,7 @@ export function HomeScreen(): React.ReactElement {
         <T size={12.288} weight={860} ls={0.983} color={dark ? '#eaa6b6' : '#821e36'} upper lh={18.4}>
           {kicker}
         </T>
-        <View style={{marginTop: u(25.9), left: u(2.5), top: u(3)}}>
+        <View style={{marginTop: u(25.9)}}>
           <BalancedT key={featureTitle} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
             {featureTitle}
           </BalancedT>
@@ -548,14 +548,16 @@ const HomeCard = memo(function HomeCard(props: {
         </View>
       </MediaFocus>
       <View style={{marginTop: u(11.25)}}>
-        <T size={11.904} weight={610} ls={-0.17856} color={colour.ink} lh={17.9} lines={1} dy={-2}>
-          {title}
-        </T>
-      </View>
-      <View style={{marginTop: u(2.5)}}>
-        <T size={8.832} weight={400} color={colour.inkMuted} lh={11.5} lines={1} dy={-2}>
-          {subtitle}
-        </T>
+        <CardCaption focused={selected} variant="home" artH={layout.artH} gap={11.25}>
+          <T size={11.904} weight={610} ls={-0.17856} color={colour.ink} lh={17.9} lines={1} dy={-2}>
+            {title}
+          </T>
+          <View style={{marginTop: u(2.5)}}>
+            <T size={8.832} weight={400} color={colour.inkMuted} lh={11.5} lines={1} dy={-2}>
+              {subtitle}
+            </T>
+          </View>
+        </CardCaption>
       </View>
     </Pressable>
   );

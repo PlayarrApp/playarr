@@ -79,12 +79,12 @@ export interface TProps {
  * Where a browser puts the glyphs inside a line box: the extra line height splits evenly above and below the font's
  * content area (Nunito Sans: 1.364 em). Vega places the first line at the top of the box, so text is moved down by that
  * half-leading. When the line height is smaller than the content area (the big titles) the correction is smaller.
- * Calibrated on the device against the web's text positions.
+ * Calibrated on the device against the web's text positions (the big titles: 0.274, measured 2026-10-24 on the 69.12 px hero).
  */
 export function halfLeading(size: number, lh: number | undefined): number {
   if (lh === undefined) return 0;
   const content = 1.364 * size;
-  return lh >= content ? (lh - content) / 2 : (content - lh) * 0.18;
+  return lh >= content ? (lh - content) / 2 : (content - lh) * 0.274;
 }
 
 export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, style, onTextLayout, children}: TProps): React.ReactElement {
@@ -94,7 +94,7 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
       numberOfLines={lines}
       onTextLayout={onTextLayout}
       allowFontScaling={false}
-      style={[run, {color, includeFontPadding: false, position: 'relative', top: u(halfLeading(size, lh) + dy)}, upper ? {textTransform: 'uppercase'} : null, style]}
+      style={[run, {color, includeFontPadding: false, position: 'relative', top: u(halfLeading(size, lh) + dy), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}
     >
       {children}
     </Text>

@@ -72,7 +72,7 @@ function ShadowLayers({shadows, radius, backgroundColor, strength = 1}: {shadows
   );
 }
 
-/** The web's `--card-glow`: a 3 px outline plus a blurred 20 px halo. */
+/** The web's `--card-glow`: a 3 px outline plus a blurred 20 px halo (the halo's fill stays under the ring, so no band shows outside it). */
 function GlowRing({radius, colour, backgroundColor}: {radius: number; colour: string; backgroundColor: string}): React.ReactElement {
   return (
     <>
@@ -80,11 +80,11 @@ function GlowRing({radius, colour, backgroundColor}: {radius: number; colour: st
         pointerEvents="none"
         style={{
           position: 'absolute',
-          left: -u(7),
-          top: -u(7),
-          right: -u(7),
-          bottom: -u(7),
-          borderRadius: u(radius + 7),
+          left: -u(3),
+          top: -u(3),
+          right: -u(3),
+          bottom: -u(3),
+          borderRadius: u(radius + 3),
           backgroundColor,
           shadowColor: colour,
           shadowOffset: {width: 0, height: 0},
@@ -108,21 +108,48 @@ export interface MediaFocusProps {
 }
 
 /** Wraps the artwork of a card: lifts and enlarges it and cross-fades its shadow from the rest shadow to the focused one. */
+/** 0 to 1 over the web's card transition when `focused` flips; `onSettled` runs when a fade-out has finished. */
+function useFocusProgress(focused: boolean, onSettled?: () => void): Animated.Value {
+  const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  useEffect(() => {
+    const animation = Animated.timing(progress, {toValue: focused ? 1 : 0, duration: MEDIA_FOCUS.durationMs, easing: MEDIA_FOCUS.easing, useNativeDriver: true});
+    animation.start(({finished}) => {
+      if (finished && !focused) onSettled?.();
+    });
+    return () => animation.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focused, progress]);
+  return progress;
+}
+
+/**
+ * The text under a card's art. The web lifts and scales the whole card (`transform: translateY(-lift) scale(s)` about the card's
+ * centre), so the caption rises with the art: translateY(-lift) plus the scale's push away from the centre, which sits
+ * `(artH + gap) / 2` above the caption's own centre.
+ */
+export function CardCaption({focused, variant = 'default', artH, gap, children}: {focused: boolean; variant?: MediaFocusVariant; artH: number; gap: number; children: React.ReactNode}): React.ReactElement {
+  const spec = MEDIA_FOCUS.variants[variant];
+  const progress = useFocusProgress(focused);
+  const shift = -spec.lift + (spec.scale - 1) * ((artH + gap) / 2);
+  return (
+    <Animated.View
+      style={{
+        transform: [{translateY: progress.interpolate({inputRange: [0, 1], outputRange: [0, u(shift)]})}, {scale: progress.interpolate({inputRange: [0, 1], outputRange: [1, spec.scale]})}],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 export function MediaFocus({focused, width, height, radius, variant = 'default', style, children}: MediaFocusProps): React.ReactElement {
   const spec = MEDIA_FOCUS.variants[variant];
   const {scheme, colour: palette} = useTheme();
   const glow = scheme === 'dark' ? '#eaa6b6' : '#a52745';
-  const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
   // The focused shadow is only mounted while it is visible or fading: a Home or library page holds dozens of cards.
   const [shadowMounted, setShadowMounted] = useState(focused);
-  useEffect(() => {
-    if (focused) setShadowMounted(true);
-    const animation = Animated.timing(progress, {toValue: focused ? 1 : 0, duration: MEDIA_FOCUS.durationMs, easing: MEDIA_FOCUS.easing, useNativeDriver: true});
-    animation.start(({finished}) => {
-      if (finished && !focused) setShadowMounted(false);
-    });
-    return () => animation.stop();
-  }, [focused, progress]);
+  if (focused && !shadowMounted) setShadowMounted(true);
+  const progress = useFocusProgress(focused, () => setShadowMounted(false));
   const lift = progress.interpolate({inputRange: [0, 1], outputRange: [0, -u(spec.lift)]});
   const scale = progress.interpolate({inputRange: [0, 1], outputRange: [1, spec.scale * MEDIA_FOCUS.artScale]});
   const restOpacity = progress.interpolate({inputRange: [0, 1], outputRange: [1, 0]});

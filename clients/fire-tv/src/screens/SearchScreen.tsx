@@ -22,7 +22,7 @@ import {EdgeFade} from '../tv/EdgeFade';
 import {ActionTile} from '../tv/ActionTile';
 import {FilterDrawer, type DrawerSection} from '../tv/FilterDrawer';
 import {BalancedT, Box, T, u} from '../tv/kit';
-import {MediaFocus} from '../tv/mediaFocus';
+import {CardCaption, MediaFocus} from '../tv/mediaFocus';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
@@ -463,15 +463,19 @@ function ResultCard(props: {
           <WatchState progress={props.progress} showUnwatched={props.progressReady} />
         </View>
       </MediaFocus>
-      <View style={{marginTop: u(11.5), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: u(1.9)}}>
-        <View style={{width: u(259.5)}}>
-          <T size={11.904} weight={610} ls={-0.179} lh={17.9} color={colour.ink} lines={1}>
-            {work.title}
-          </T>
-        </View>
-        <T size={8.448} weight={720} lh={12.7} color={colour.inkMuted} upper>
-          {props.label}
-        </T>
+      <View style={{marginTop: u(11.5), paddingHorizontal: u(1.9)}}>
+        <CardCaption focused={props.selected} variant="search" artH={ART_H} gap={11.5}>
+          <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+            <View style={{width: u(259.5)}}>
+              <T size={11.904} weight={610} ls={-0.179} lh={17.9} color={colour.ink} lines={1}>
+                {work.title}
+              </T>
+            </View>
+            <T size={8.448} weight={720} lh={12.7} color={colour.inkMuted} upper>
+              {props.label}
+            </T>
+          </View>
+        </CardCaption>
       </View>
     </Pressable>
   );
