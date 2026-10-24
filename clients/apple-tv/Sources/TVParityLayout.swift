@@ -101,8 +101,8 @@ final class TVParityLayoutRegistry {
             guard visited < 4000, depth < 40 else { return }
             visited += 1
             guard let element = object as? NSAccessibilityProtocol else { return }
-            let role: NSAccessibility.Role? = element.accessibilityRole
-            let label: String = element.accessibilityLabel ?? ""
+            let role: NSAccessibility.Role? = element.accessibilityRole()
+            let label: String = element.accessibilityLabel() ?? ""
             let frame: NSRect = element.accessibilityFrame()
             let skipped: [NSAccessibility.Role] = [.group, .scrollArea, .window]
             if let role, !label.isEmpty || role == NSAccessibility.Role.image, !skipped.contains(role) {
@@ -114,7 +114,7 @@ final class TVParityLayoutRegistry {
                 let rect = CGRect(x: inWindow.minX, y: height - inWindow.maxY, width: inWindow.width, height: inWindow.height)
                 found.append(Item(text: label.isEmpty ? nil : label, role: mapped, rect: rect))
             }
-            for child in element.accessibilityChildren ?? [] { visit(child, depth: depth + 1) }
+            for child in element.accessibilityChildren() ?? [] { visit(child, depth: depth + 1) }
         }
         visit(content, depth: 0)
         return found
