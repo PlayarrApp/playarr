@@ -207,25 +207,5 @@
       "reason": "Nura has no offline downloads yet (README) (nav entry)",
       "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
     }
-  ],
-  "harmony": [
-    {
-      "screen": "profiles",
-      "match": {
-        "text": "Check for updates"
-      },
-      "reason": "HarmonyOS HAP is immutable once installed; updates come from AppGallery or a sideload",
-      "doc": "docs/versioning-policy.md#harmonyos--appgallery-package"
-    }
-  ],
-  "harmony-phone": [
-    {
-      "screen": "profiles",
-      "match": {
-        "text": "Check for updates"
-      },
-      "reason": "HarmonyOS HAP is immutable once installed; updates come from AppGallery or a sideload",
-      "doc": "docs/versioning-policy.md#harmonyos--appgallery-package"
-    }
   ]
 }

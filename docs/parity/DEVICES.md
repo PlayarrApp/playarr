@@ -155,7 +155,6 @@ store or a sideload. Native packages and their update paths are in `docs/version
 | Roku | No | Channel Store updates only; Roku has no API to install a channel from inside a channel |
 | Fire TV (Vega OS) | No | `.vpkg` is immutable once installed (`docs/versioning-policy.md`) |
 | Xbox | No | MSIX: Microsoft Store or sideload (`docs/versioning-policy.md`) |
-| HarmonyOS TV and phone | No | HAP: AppGallery or sideload (`docs/versioning-policy.md`) |
 
 ## Legend and build.json rules
 

@@ -65,9 +65,9 @@ the web and device values, and the delta. Extra device elements are counted, not
 
 ## Per-client exclusions
 
-`scripts/parity/layout-exclusions.json`, keyed by legend client dir (`roku`, `firetv`, `xbox`, `harmony`, ...): web elements a
+`scripts/parity/layout-exclusions.json`, keyed by legend client dir (`roku`, `firetv`, `xbox`, ...): web elements a
 client legitimately cannot have because the product documents a capability gap (no downloads on Roku, Fire TV Vega, Xbox and
-Nura; no in-app updater on Roku, Fire TV Vega, Xbox and HarmonyOS). Each entry is
+Nura; no in-app updater on Roku, Fire TV Vega, Xbox). Each entry is
 `{ screen ("*" = all), match: { role?, text | textPrefix | textRegex }, reason, doc: "<repo path>#<heading anchor>" }`, and the doc
 line must state the gap (`DEVICES.md` downloads and updater tables, `fire-tv.md`, `versioning-policy.md`). An entry without a
 citation makes the loader throw.
