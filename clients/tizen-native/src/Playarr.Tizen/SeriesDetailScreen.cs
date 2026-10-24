@@ -125,7 +125,7 @@ internal sealed class SeriesDetailScreen : IPage
             var still = ep.Episode.Images.Any(i => i.Kind == ImageKind.Thumb) ? $"/api/v1/artwork/episode/{_detail!.Work.Id:D}/{ep.Episode.Id:D}/thumb?w=540" : null;
             if (still is not null || ep.MediaFileId is not null) SetThumbAsync(art, still, ep.MediaFileId);
             art.Add(Ui.Gradient(0, 0, 268, 150.8f, false, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
-            art.Add(Ui.Text(ep.Episode.EpisodeNumber.ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
+            art.Add(Ui.Text(ep.Episode.EpisodeNumber.ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f - 1.4f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
             var epFocused = false;
             var unseen = ep.MediaFileId is { } mf && (!_progress.TryGetValue(mf, out var pr) || pr.State == WatchState.Unwatched);
             var inProgress = ep.MediaFileId is { } mf2 && _progress.TryGetValue(mf2, out var pr2) && pr2.State == WatchState.InProgress ? pr2 : null;
@@ -232,7 +232,7 @@ internal sealed class SeriesDetailScreen : IPage
         foreach (var c in _copy.Children.ToArray()) { _copy.Remove(c); c.Dispose(); }
         var w = _detail!.Work;
         var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
-        _copy.Add(Ui.Text($"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}", 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
+        _copy.Add(Sem.Tag(Ui.Text(code, 153.6f, 259.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f), "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}"));
         var lines = Ui.Paragraph(_copy, w.Title, 153.6f, 303.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5, balance: true, role: "heading");
         var bas = 303.5f + 62.208f * lines;
         _copy.Add(Sem.Tag(Ui.Text(ep.Episode.Title ?? "", 153.6f, bas + 18.7f, 21.12f, 570, _t.InkSoft, 312, 24.288f, spacing: -0.74f), "heading"));

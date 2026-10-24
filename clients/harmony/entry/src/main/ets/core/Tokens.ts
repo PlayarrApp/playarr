@@ -208,6 +208,8 @@ export interface TvGeometryTokens {
   keyArtHeightPct: number;
   keyArtHeightPx: number;
   keyArtOffsetY: number;
+  keyArtImageWidthPx: number;
+  keyArtImageLeft: number;
   keyArtScale: number;
   keyArtObjectPositionYPct: number;
   keyArtMaskFadeStartPct: number;
@@ -332,6 +334,8 @@ export const TvGeometry: TvGeometryTokens = {
   keyArtHeightPct: 106,
   keyArtHeightPx: 1145,
   keyArtOffsetY: -33,
+  keyArtImageWidthPx: 865.3, // web layout ref: the key-art img is 865.3 x 1145 at (150.3, 0), scaled 1.04 about its centre
+  keyArtImageLeft: 150.3,
   keyArtScale: 1.04,
   keyArtObjectPositionYPct: 20,
   keyArtMaskFadeStartPct: 72,

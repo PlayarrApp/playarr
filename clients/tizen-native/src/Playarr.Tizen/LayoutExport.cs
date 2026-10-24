@@ -119,14 +119,16 @@ internal static class LayoutExport
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
                 var lines = m.Multiline ? Ui.WrapLines(label.Text, m.Size, m.Weight, m.Spacing, w, 9) : null;
-                var tw = lines is not null ? lines.Max(l => Ui.TextWidth(l, m.Size, m.Weight, m.Spacing, m.Family)) : label.Text is "←" or "→" ? m.Size : Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing, m.Family); // the arrows come from a fallback font whose advance NUI reports differently; web advances one em
+                var tw = lines is not null ? lines.Max(l => Ui.TextWidth(l, m.Size, m.Weight, m.Spacing, m.Family)) : label.Text is "←" or "→" or "⌄" ? m.Size : Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing, m.Family); // the arrows come from a fallback font whose advance NUI reports differently; web advances one em
+                var k = child.Scale.X * Ui.TextScale; // a caption that scales with a focused card (1.045) draws its run bigger
+                tw *= k;
                 var box = label.WidthResizePolicy == ResizePolicyType.Fixed ? w : tw;
                 var tx = cx + (m.Align == HorizontalAlignment.Center ? (box - tw) / 2 : m.Align == HorizontalAlignment.End ? box - tw : 0);
                 var c = label.TextColor;
                 // The drawn glyph run: Chromium's is the rounded ascent plus rounded descent, in the CSS line box with half-leading
                 var asc = (float)Math.Round(1.011 * m.Size); var content = asc + (float)Math.Round(0.353 * m.Size);
                 var th = lines is not null ? (lines.Count - 1) * m.LineHeight + content : sem is { Blockified: true } ? m.LineHeight : content;
-                var runTop = cy + m.Dy * sy + (m.LineHeight - th) / 2f + RunTopShift(m.Size);
+                var runTop = cy + m.Dy * sy * k + (m.LineHeight * k - (lines is not null ? content : th) * k) / 2f + RunTopShift(m.Size) * k; th *= k;
                 var role = sem?.Role ?? (Math.Abs(m.Size - 33.6f) < 0.01f || Math.Abs(m.Size - 17.664f) < 0.01f ? "heading" : "text"); // page title and rail headings are h1/h2 on web
                 var lbg = sem?.Backdrop is not null && sem.Role != "text" ? ebg : bg;
                 outList.Add(new Node(sem?.Name ?? label.Text, role, tx, runTop, tw, th, Hex(c.R, c.G, c.B, c.A * cop), Hex(lbg.Item1, lbg.Item2, lbg.Item3, 1), m.Size, m.Weight, sem?.Radius ?? 0, cop, m.Group));

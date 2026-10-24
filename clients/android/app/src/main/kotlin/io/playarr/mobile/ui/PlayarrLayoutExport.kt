@@ -100,6 +100,7 @@ internal object PlayarrLayoutExport {
         val roots = rootViews(activity)
         val mainView = activity.window.decorView
         pageBackground = when (screen) { "player-controls" -> androidx.compose.ui.graphics.Color.Black; "profiles" -> PlayarrWebTheme.palette.background; else -> PlayarrWebTheme.palette.surface }
+        mainRoot = mainView.rootView
         mainOrigin = IntArray(2).also { mainView.getLocationOnScreen(it) }
         val bitmap = Bitmap.createBitmap(mainView.width, mainView.height, Bitmap.Config.ARGB_8888)
         PixelCopy.request(activity.window, bitmap, { result ->
@@ -195,10 +196,11 @@ internal object PlayarrLayoutExport {
         val cx = x + w / 2; val cy = y + h / 2
         val inner = synchronized(parityBoxes) { parityBoxes.toList() }.filter { it.background != androidx.compose.ui.graphics.Color.Unspecified && it.role != "image" && it.role != "img" }
             .filter { b -> val loc = IntArray(2).also { b.view.getLocationOnScreen(it) }; val bx = b.bounds.left + loc[0] - mainOrigin[0]; val by = b.bounds.top + loc[1] - mainOrigin[1]; cx in bx..(bx + b.bounds.width) && cy in by..(by + b.bounds.height) }
-            .minByOrNull { it.bounds.width * it.bounds.height }
+            .let { c -> val top = c.filter { it.view.rootView !== mainRoot }; (if (top.isNotEmpty()) top else c).minByOrNull { it.bounds.width * it.bounds.height } }
         return hex((inner?.background ?: pageBackground).toArgb())
     }
 
+    private var mainRoot: View? = null
     private var pageBackground = PlayarrWebTheme.palette.surface
     private var mainOrigin = IntArray(2)
 

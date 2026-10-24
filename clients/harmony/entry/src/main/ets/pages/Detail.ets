@@ -2436,7 +2436,7 @@ struct Detail {
   /** Phone: the meta chips (web `.work-meta`): the first bold, the rest muted, 12 vp apart, wrapping. */
   @Builder
   private touchMetaChips(): void {
-    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 8.9), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
+    Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
           .fontSize(10.24)
@@ -2589,20 +2589,19 @@ struct Detail {
       // opacity, under `linear-gradient(0deg, surface 46%, transparent 74%)` and the 72 vh stage wash `(0deg, surface 34%, transparent 68%)`
       if (this.heroArtwork !== undefined) {
         Image(this.heroArtwork)
-          .width('100%')
-          .height(HERO_ART_HEIGHT)
+          .width(374.4)
+          .height(258.76)
+          .position({ x: 0, y: -4.98 }) // web layout ref: the img box is 374.4 x 258.76 at (0, -4.98)
           .objectFit(ImageFit.Cover)
           .grayscale(1)
+          .brightness(resolvedThemeMode() === 'dark' ? 0.6 : 1.1)
+          .contrast(resolvedThemeMode() === 'dark' ? 0.82 : 0.88)
+          .opacity(resolvedThemeMode() === 'dark' ? 0.72 : 0.24) // web `.tv-key-art img`
           .draggable(false)
           .focusable(false)
       } else {
         Skeleton({ blockWidth: TouchGeometry.homeRailCardWidthLandscape * 4, blockHeight: HERO_ART_HEIGHT, radius: 0 })
       }
-      // opacity 0.42 as a surface veil over the art (ArkUI's Image opacity/brightness did not match the web in the Previewer)
-      Column()
-        .width('100%')
-        .height(HERO_ART_HEIGHT)
-        .backgroundColor(toResourceColorWithAlpha(activeColors().surface, resolvedThemeMode() === 'dark' ? 0.6 : 0.76)) // measured against the static refs (web art opacity 0.72 dark with brightness 0.6, 0.24 light)
       Column()
         .width('100%')
         .height(HERO_TOUCH_HEIGHT)

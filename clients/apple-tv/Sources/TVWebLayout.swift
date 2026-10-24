@@ -46,6 +46,7 @@ struct TVRailPanelGradient: View {
         LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
             .frame(width: width)
             .frame(maxWidth: .infinity, alignment: .trailing)
+            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface) }
     }
 
     private var stops: [Gradient.Stop] {
@@ -146,8 +147,9 @@ struct TVPageHeader: View {
                     Text("\u{2190}")
                         .font(TVTheme.font(size: 17.3, weight: .semibold))
                         .foregroundStyle(DesignTokens.Color.textSecondary)
-                        .parityLayout(text: "\u{2190}", size: 17.3, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textSecondary)
+                        .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
                 )
+                .parityBox("link", text: "Back to Home", radius: 25, fill: Color(red: 0x1f / 255, green: 0x1b / 255, blue: 0x1f / 255))
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
@@ -156,7 +158,7 @@ struct TVPageHeader: View {
                 .tracking(-1.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .fixedSize()
-                .parityLayout(text: title, role: "heading", size: 33.6, weight: 580, color: DesignTokens.Color.textPrimary, tracking: -1.5)
+                .parityLayout(text: title, role: "heading", size: 33.6, weight: 580, color: DesignTokens.Color.textPrimary, tracking: -1.5, lineHeight: 46)
             let subtitle = detail.map {
                 Text($0.uppercased())
                     .font(TVTheme.font(size: 11.14, css: 680))
@@ -469,11 +471,11 @@ struct TVHeroTitle: View {
                     .tracking(-4.98)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
-                    .parityLayout(text: line, size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98)
                     .fixedSize()
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
             }
         }
+        .parityLayout(text: title, role: "heading", size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98, lines: lines, pitch: 62.2)
     }
 }
 
@@ -1073,6 +1075,6 @@ private struct MacEdgeFade: ViewModifier {
 private struct TVLibraryLinkBox: ViewModifier {
     let title: String?
     func body(content: Content) -> some View {
-        if let title { content.parityBox("link", text: title, fill: DesignTokens.Stage.surface) } else { content }
+        if let title { content.parityBox("link", text: title, radius: 12, fill: DesignTokens.Stage.surface) } else { content }
     }
 }

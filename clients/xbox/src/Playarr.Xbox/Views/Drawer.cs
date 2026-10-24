@@ -43,20 +43,22 @@ namespace Playarr.Xbox.Views
                 TabFocusNavigation = KeyboardNavigationMode.Cycle,
             };
             var header = new StackPanel { Margin = new Thickness(0, 0, 56, 0), VerticalAlignment = VerticalAlignment.Top };
-            var eyebrowText = Ui.Text(eyebrow.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft");
+            var eyebrowText = Ui.Text(eyebrow.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted");
             eyebrowText.CharacterSpacing = 120;
             header.Children.Add(eyebrowText);
-            var titleText = Ui.Text(title, 32, FontWeights.Bold, "PlayarrInk", new Thickness(0, 10, 0, 0));
+            var titleText = Ui.Text(title, 38.4, new FontWeight { Weight = 590 }, "PlayarrInk", new Thickness(0, 6, 0, 0));
+            LayoutExport.SetRole(titleText, "heading");
             titleText.TextWrapping = TextWrapping.WrapWholeWords;
-            titleText.LineHeight = 57;
+            titleText.LineHeight = 53;
+            titleText.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
             titleText.MaxLines = 3;
             header.Children.Add(titleText);
             panel.Children.Add(header);
 
             var close = Ui.RoundButton("", Close);
             close.Width = close.Height = 50;
-            ((FontIcon)close.Content).Glyph = "\uE8BB"; // ChromeClose: the web's bold X
-            ((FontIcon)close.Content).FontSize = 13;
+            close.Content = new TextBlock { Text = "\u00d7", FontSize = 26.88, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 36, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInk"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            LayoutExport.Tag(close, "button", "Close " + title.ToLowerInvariant());
             close.Background = Ui.Res("PlayarrSurfaceStrong");
             close.HorizontalAlignment = HorizontalAlignment.Right;
             close.VerticalAlignment = VerticalAlignment.Top;
@@ -69,6 +71,7 @@ namespace Playarr.Xbox.Views
             header.SizeChanged += (s, e) => bodyHost.Margin = new Thickness(0, e.NewSize.Height + 28, 0, 0);
             panel.Children.Add(bodyHost);
 
+            LayoutExport.SetRole(panel, "dialog");
             _overlay = new Grid();
             // A click outside the panel closes it, like the web scrim.
             var outside = new Grid { Background = new SolidColorBrush(Color.FromArgb(0x01, 0, 0, 0)) };
@@ -152,7 +155,7 @@ namespace Playarr.Xbox.Views
             // A labelled group is a drawer's (web filter section); the unlabelled one is the Settings page's own control.
             var drawer = label.Length > 0;
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, drawer ? 30 : 24) };
-            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, drawer ? 14 : 10));
+            var caption = LayoutExport.Tag(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, drawer ? 14 : 10)), "heading");
             caption.CharacterSpacing = 120;
             if (drawer)
             {
@@ -207,10 +210,10 @@ namespace Playarr.Xbox.Views
                     button.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
                 }
 
+                LayoutExport.Tag(button, "button", options[i]);
                 if (!drawer || icons != null)
                 {
                     // Web: the button holds a separate lower-case text run that CSS capitalises.
-                    LayoutExport.Tag(button, "button", options[i]);
                     LayoutExport.SetText(labelText, options[i].ToLowerInvariant());
                 }
 
@@ -255,13 +258,13 @@ namespace Playarr.Xbox.Views
         public static StackPanel Dropdown(string label, string current, Func<System.Threading.Tasks.Task<System.Collections.Generic.IList<Playarr.Core.Models.LanguageFacet>>> load, Action<string?> onSelect, System.Collections.Generic.ICollection<string> selected)
         {
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, 30) };
-            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 14));
+            var caption = LayoutExport.Tag(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, 14)), "heading");
             caption.CharacterSpacing = 120;
             group.Children.Add(caption);
             var content = new Grid();
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            content.Children.Add(Ui.Text(current, 10.5, FontWeights.SemiBold, "PlayarrInk"));
+            content.Children.Add(Ui.Text(current, 11.84, new FontWeight { Weight = 680 }, "PlayarrInk"));
             var chevron = new FontIcon { Glyph = "\uE70D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 8, Foreground = Ui.Res("PlayarrInkSoft") };
             Grid.SetColumn(chevron, 1);
             content.Children.Add(chevron);
@@ -311,7 +314,7 @@ namespace Playarr.Xbox.Views
         public static StackPanel Choice(string label, string[] options, int selected, Action<int> onSelect)
         {
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
-            var caption = Ui.Text(label.ToUpperInvariant(), 9, FontWeights.Bold, "PlayarrInkSoft", new Thickness(0, 0, 0, 10));
+            var caption = LayoutExport.Tag(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, 10)), "heading");
             caption.CharacterSpacing = 120;
             group.Children.Add(caption);
             for (var i = 0; i < options.Length; i++)

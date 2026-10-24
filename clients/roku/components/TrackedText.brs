@@ -17,6 +17,8 @@ sub onSpecChange()
     if spec.tracking <> invalid then tracking = spec.tracking
     font = PlayarrMakeFont(weight, size)
     m.measure.font = font
+    m.size = size
+    m.weight = weight
     wrapWidth = 0.0
     if spec.width <> invalid then wrapWidth = spec.width
     maxLines = 1
@@ -34,8 +36,8 @@ sub onSpecChange()
     m.used = 0
     ' Untracked text is set a whole line per Label; a clamped last line ends in an ellipsis at a word boundary, like
     ' -webkit-line-clamp.
-    wholeLines = tracking = 0
-    if wholeLines and m.overflow = true and lines.Count() > 0
+    wholeLines = false
+    if tracking = 0 and m.overflow = true and lines.Count() > 0
         last = lines[lines.Count() - 1]
         while Len(last) > 0 and lineWidth(last + "…", 0) > wrapWidth
             cut = 0
@@ -58,29 +60,36 @@ sub onSpecChange()
         else if wrapWidth > 0 and spec.horizAlign = "right"
             lineOffset = wrapWidth - lineWidth(line, tracking)
         end if
-        if wholeLines
-            glyph = nextGlyph()
-            glyph.font = font
-            glyph.text = line
-            glyph.color = ThemeColor(spec.role)
-            ThemeSetRole(glyph, spec.role)
-            glyph.translation = [lineOffset, lineIndex * lineHeight]
-            glyph.visible = true
-            line = ""
-        end if
-        for i = 1 to Len(line)
+        ' Untracked text is one Label per word, tracked text one per character, each at the web's own position.
+        i = 1
+        total = Len(line)
+        while i <= total
             ch = Mid(line, i, 1)
-            if ch <> " "
-                x = advanceOf(Left(line, i - 1)) + tracking * (i - 1)
+            if ch = " "
+                i = i + 1
+            else
+                j = i
+                if tracking = 0
+                    while j < total and Mid(line, j + 1, 1) <> " "
+                        j = j + 1
+                    end while
+                end if
+                piece = Mid(line, i, j - i + 1)
+                x = advanceOf(Left(line, j)) - advanceOf(piece) + tracking * (i - 1)
                 glyph = nextGlyph()
                 glyph.font = font
-                glyph.text = ch
-                glyph.color = ThemeColor(spec.role)
-                ThemeSetRole(glyph, spec.role)
+                glyph.text = piece
+                if spec.color <> invalid
+                    glyph.color = spec.color
+                else
+                    glyph.color = ThemeColor(spec.role)
+                    ThemeSetRole(glyph, spec.role)
+                end if
                 glyph.translation = [lineOffset + x, lineIndex * lineHeight]
                 glyph.visible = true
+                i = j + 1
             end if
-        end for
+        end while
     end for
     widest = 0.0
     for each line in lines
@@ -103,18 +112,13 @@ function nextGlyph() as Object
     return glyph
 end function
 
-' Width of `prefix` as drawn by the font (kerning included). A trailing "|" keeps trailing spaces from being trimmed.
+' Width of `prefix` as the web sets it (web advances at the real size, kerning included; fonts/NunitoSans-<w>.json).
 function advanceOf(prefix as String) as Float
-    if prefix = "" then return 0
-    m.measure.text = prefix + "|"
-    full = m.measure.boundingRect().width
-    m.measure.text = "|"
-    bar = m.measure.boundingRect().width
-    return full - bar
+    return PlayarrTextWidth(prefix, m.size, m.weight, 0)
 end function
 
 function lineWidth(line as String, tracking as Float) as Float
-    return advanceOf(line) + tracking * Len(line)
+    return PlayarrTextWidth(line, m.size, m.weight, tracking)
 end function
 
 ' Greedy word wrap into `width`; with `balance`, the narrowest width that keeps the same number of lines (CSS text-wrap: balance).

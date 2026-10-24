@@ -80,7 +80,17 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         &format!("Theme: {}", THEMES[theme_pick.selected() as usize].1),
         0.0,
     );
-    theme_pick.connect_selected_notify(|d| {
+    // The web button is as wide as its label: "Light" is 1.7 px wider than "Dark" or "Auto".
+    let width = |d: &gtk4::DropDown| {
+        if THEMES[d.selected() as usize].1 == "Light" {
+            114
+        } else {
+            112
+        }
+    };
+    theme_pick.set_size_request(width(&theme_pick), 48);
+    theme_pick.connect_selected_notify(move |d| {
+        d.set_size_request(width(d), 48);
         layout::tag(d, "button", &format!("Theme: {}", THEMES[d.selected() as usize].1), 0.0);
         let name = THEMES[d.selected() as usize].0;
         store::update_settings(|s| s.theme = name.into());

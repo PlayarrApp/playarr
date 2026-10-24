@@ -586,7 +586,7 @@ export struct PlayerChrome {
 
   /** One bare TV control icon in web's 64 px round slot. */
   @Builder
-  private tvIcon(icon: Resource, onTap: () => void, active: boolean): void {
+  private tvIcon(icon: Resource, onTap: () => void, active: boolean, name: string = ''): void {
     ChromeButton({
       label: '',
       icon: icon,
@@ -602,6 +602,7 @@ export struct PlayerChrome {
         this.setChildFocused(focused);
       }),
     })
+      .id(isTvMetrics() ? 'px:button:' + name : '')
   }
 
   /** Previous / next as web draws them: a bar and a triangle in the 64 px slot, dimmed while there is nothing to skip to. */
@@ -618,6 +619,7 @@ export struct PlayerChrome {
     }
     .width(tv(TV_SEEK_SIZE))
     .height(tv(TV_SEEK_SIZE))
+    .id('px:button:' + (previous ? 'Previous episode' : 'Next episode'))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .opacity(active ? 1 : 0.35)
@@ -636,11 +638,12 @@ export struct PlayerChrome {
       Row({ space: tv(12) }) {
         // web: the Minimise pill (glass, hairline) beside the round close button
         Row({ space: tv(10) }) {
-          Image($r('app.media.player_minimize')).width(tv(15)).height(tv(15))
-          Text('Minimise').fontFamily(nunitoAt(700, tv(12.5))).fontSize(tv(12.5)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+          Image($r('app.media.player_minimize')).width(tv(20)).height(tv(20))
+          Text('Minimise').fontFamily(nunitoAt(700, tv(11.2))).fontSize(tv(11.2)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
         }
         .width(tv(124))
         .height(tv(TV_CLOSE_SIZE))
+        .id('px:button:Minimise player')
         .justifyContent(FlexAlign.Center)
         .alignItems(VerticalAlign.Center)
         .borderRadius(tv(TV_CLOSE_SIZE / 2))
@@ -666,6 +669,7 @@ export struct PlayerChrome {
             this.setChildFocused(focused);
           }),
         })
+          .id('px:button:Close player')
       }
       .width('100%')
       .justifyContent(FlexAlign.End)
@@ -693,6 +697,7 @@ export struct PlayerChrome {
               this.setChildFocused(focused);
             }),
           })
+            .id('px:button:' + (this.isPlaying ? 'Pause' : 'Play'))
           this.tvSkip(false, this.canNext, this.onNext)
           if (this.isLive()) {
             Text('LIVE').fontFamily(nunitoAt(700, tv(TV_TIME_FONT_SIZE))).fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
@@ -702,24 +707,25 @@ export struct PlayerChrome {
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           Blank()
-          this.tvIcon($r('app.media.player_volume'), this.onToggleMute, true)
-          this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true)
-          this.tvIcon($r('app.media.player_queue'), (): void => {}, true)
+          this.tvIcon($r('app.media.player_volume'), this.onToggleMute, true, '')
+          this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true, 'Subtitles: Off')
+          this.tvIcon($r('app.media.player_queue'), (): void => {}, true, 'Playlist: 1 item')
           if (this.qualityLabel.length > 0) {
             // web: the HD badge and the negotiated quality's name, between the queue and info buttons
             Row({ space: tv(12) }) {
-              Text('HD').fontFamily(nunitoAt(600, tv(7.5))).fontSize(tv(7.5)).fontWeight(FontWeight.Medium).fontColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.85))
-              Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.4))).fontSize(tv(10.4)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+              Text('HD').fontFamily(nunitoAt(700, tv(7.68))).fontSize(tv(7.68)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
             }
-            .width(tv(161))
+            .width(tv(160.45))
+            .id('px:button:Quality: ' + this.qualityLabel)
             .padding({ left: tv(10) })
             .justifyContent(FlexAlign.Center)
             .onClick(() => {
               this.onOpenQuality();
             })
           }
-          this.tvIcon($r('app.media.player_info'), this.onOpenInfo, true)
-          this.tvIcon($r('app.media.player_cast'), (): void => {}, true)
+          this.tvIcon($r('app.media.player_info'), this.onOpenInfo, true, 'Info and playback health')
+          this.tvIcon($r('app.media.player_cast'), (): void => {}, true, 'Play on another device')
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)
