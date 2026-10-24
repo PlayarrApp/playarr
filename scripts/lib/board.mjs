@@ -154,25 +154,26 @@ export const dependsProblems = (cell, epics) => {
 // Fragments written before the epic headings were renamed (#465, #467, #469) still carry the old
 // `section:` text. Resolving it against the live headings (instead of creating a heading for anything
 // unknown) keeps stale epics from coming back.
+// A trailing date "(YYYY-MM-DD)" is dropped too: headings no longer carry one, old fragments may.
 // A leading epic number ("3. ") is dropped too, so the bare name and `N. Name` both match.
-export const normaliseSection = (s) => stripEpicNumber(s.replace(/^\s*(?:active|planned):\s*/i, '')).replace(/\s+/g, ' ').trim().toLowerCase();
+export const normaliseSection = (s) => stripEpicNumber(s.replace(/^\s*(?:active|planned):\s*/i, '')).replace(/\s+/g, ' ').trim().replace(/\s*\(\d{4}-\d{2}-\d{2}\)$/, '').toLowerCase();
 
 // Old heading (normalised: no "Active: "/"Planned: " prefix, lower case) -> current heading text.
 // A value of null rejects the section with the message in REJECTED_SECTIONS.
 const SECTION_ALIASES = {
-  'server performance, security and relay cut-over (2026-10-03)': 'Server performance and security (2026-10-03)',
+  'server performance, security and relay cut-over': 'Server performance and security',
   'owner actions (blocked on the owner)': null,
   'games, tv/pvr, playarros and clients hub (2026-09-05): games library': 'Games library',
   'games, tv/pvr, playarros and clients hub (2026-09-05): live tv and pvr': 'Live TV and recording',
   'games, tv/pvr, playarros and clients hub (2026-09-05): playarros': 'PlayarrOS',
   'games, tv/pvr, playarros and clients hub (2026-09-05): clients hub listings (no epic; each epic owns its listing sub-item)': 'Client listings on the clients hub',
-  'player audit fixes': 'Player progress and resume (2026-10-07)',
-  'player progress data-loss fixes (2026-10-08)': 'Player progress and resume (2026-10-07)',
-  'player progress and resume fixes (2026-10-07)': 'Player progress and resume (2026-10-07)',
-  'pixel parity campaign': 'Pixel parity campaign (2026-10-07)',
+  'player audit fixes': 'Player progress and resume',
+  'player progress data-loss fixes': 'Player progress and resume',
+  'player progress and resume fixes': 'Player progress and resume',
+  'pixel parity campaign': 'Pixel parity campaign',
 };
 const REJECTED_SECTIONS = {
-  'owner actions (blocked on the owner)': 'the "Owner actions" epic no longer exists; put the row in the epic it belongs to (for example "Public repository readiness (2026-10-05)" or "Release automation (2026-10-07)")',
+  'owner actions (blocked on the owner)': 'the "Owner actions" epic no longer exists; put the row in the epic it belongs to (for example "Public repository readiness" or "Release automation")',
 };
 
 // Resolves a fragment's `section:` text against the board's `## ` headings. Returns

@@ -17,7 +17,8 @@ for c in $(git rev-list --no-merges "origin/$base..$head"); do
   # titles) that must rewrite existing CHANGELOG.md/TASKS.md text, which fragments cannot express.
   # "chore(board-format):" is reserved for a repository-wide migration of TASKS.md to the canonical
   # epic-table format (one ## heading per epic, eight columns), which rewrites every row.
-  case "$(git log -1 --format=%s "$c")" in "chore(board): fold fragments"*|"chore(train): fold fragments"*|"chore(scrub):"*|"chore(board-format):"*) continue ;; esac
+  # "docs(tasks): apply board writing rules" is the one-off rewrite of long Task/Notes cells and epic names.
+  case "$(git log -1 --format=%s "$c")" in "docs(tasks): apply board writing rules"*|"chore(board): fold fragments"*|"chore(train): fold fragments"*|"chore(scrub):"*|"chore(board-format):"*) continue ;; esac
   # Key mode: a fold commit carries a Board-Fold trailer (Merge-Train: older history).
   git log -1 --format=%B "$c" | grep -qxE 'Board-Fold: yes|Merge-Train: yes' && continue
   if git diff-tree --no-commit-id --name-only -r "$c" | grep -qxE 'CHANGELOG\.md|TASKS\.md'; then
