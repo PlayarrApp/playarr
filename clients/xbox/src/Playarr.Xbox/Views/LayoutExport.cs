@@ -72,6 +72,11 @@ namespace Playarr.Xbox.Views
                 {
                     return; // a drawn icon is one image, not its strokes
                 }
+
+                if (element is Button { Content: TextBlock })
+                {
+                    return; // the web's label button is one element carrying the text run and its style
+                }
             }
 
             var count = VisualTreeHelper.GetChildrenCount(node);
@@ -112,6 +117,15 @@ namespace Playarr.Xbox.Views
             {
                 role = "image";
             }
+            else if (element is Button { Content: TextBlock label } labelButton && !string.IsNullOrWhiteSpace(label.Text))
+            {
+                role = "button";
+                text = string.IsNullOrEmpty(name) ? label.Text : name;
+                color = Hex(label.Foreground);
+                fontSize = Math.Round(label.FontSize, 2);
+                fontWeight = label.FontWeight.Weight;
+                rect = TextRun(label, root, scale) ?? rect;
+            }
             else if (element is Button || element is ToggleButton || element is ListViewItem || element is GridViewItem)
             {
                 role = "button";
@@ -142,6 +156,13 @@ namespace Playarr.Xbox.Views
             }
 
             var radius = element is Border b ? b.CornerRadius.TopLeft : element is Control c ? c.CornerRadius.TopLeft : 0;
+            var pill = element is TextBlock && VisualTreeHelper.GetParent(element) is Border { CornerRadius.TopLeft: > 0 } pillBorder ? pillBorder : null;
+            if (pill != null)
+            {
+                // A status pill: the web puts the radius on the text element and keeps the page colour behind it.
+                radius = pill.CornerRadius.TopLeft;
+            }
+
             if (radius > 0 && radius * 2 >= Math.Min(element.ActualWidth, element.ActualHeight) - 0.5)
             {
                 // The web reports a circle as 50 and any other fully rounded pill as 999.
@@ -154,7 +175,7 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                background = role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
+                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) ?? BackgroundBehind(element)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,

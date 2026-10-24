@@ -264,7 +264,7 @@ namespace Playarr.Xbox.Views
             BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Child = new TextBlock { Text = text, FontSize = web ? 12.7 : 9, FontWeight = web ? FontWeights.Bold : FontWeights.SemiBold, Foreground = web ? Res("PlayarrInk") : new SolidColorBrush(color) },
+            Child = new TextBlock { Text = text, FontSize = web ? 13.44 : 9, FontWeight = web ? new FontWeight { Weight = 750 } : FontWeights.SemiBold, LineHeight = web ? 19 : 0, LineStackingStrategy = web ? LineStackingStrategy.BlockLineHeight : LineStackingStrategy.MaxHeight, Foreground = web ? Res("PlayarrInk") : new SolidColorBrush(color) },
         };
     }
 }
