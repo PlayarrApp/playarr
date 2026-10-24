@@ -6,7 +6,7 @@
  * between pages.
  */
 
-import { nunito, arrowFont } from '../Typography';
+import { nunito, arrowFont, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry } from '../Metrics';
@@ -135,7 +135,7 @@ export struct PageShell {
 
   @Builder
   private headerTitle(): void {
-    Text(this.title).fontFamily(nunito(580))
+    Text(this.title).fontFamily(nunitoAt(580, tv(TITLE_SIZE)))
       .id('px:heading:' + this.title)
       .fontSize(tv(TITLE_SIZE))
       .fontWeight(FontWeight.Medium)
@@ -146,7 +146,7 @@ export struct PageShell {
 
   @Builder
   private headerDetail(inline: boolean): void {
-    Text(this.kicker).fontFamily(nunito(700))
+    Text(this.kicker).fontFamily(nunitoAt(700, tv(DETAIL_SIZE)))
       .fontSize(tv(DETAIL_SIZE))
       .fontWeight(DETAIL_WEIGHT)
       .letterSpacing(tv(DETAIL_LETTER_SPACING))
@@ -255,7 +255,7 @@ export struct PageShell {
               popRoute(getNavStack());
             })
           Column() {
-            Text(this.title).fontFamily(nunito(580))
+            Text(this.title).fontFamily(nunitoAt(580, 21.6))
               .id('px:heading:' + this.title)
               .fontSize(21.6) // web 1.35rem
               .fontWeight(FontWeight.Medium)

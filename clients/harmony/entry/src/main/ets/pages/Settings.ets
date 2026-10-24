@@ -8,7 +8,7 @@
  * profile) and Server connection (the address in use). The other web sections land with 13.10018's later steps.
  */
 
-import { nunito, arrowFont } from '../design/Typography';
+import { nunito, arrowFont, nunitoAt } from '../design/Typography';
 import { activeColors, setThemeModeSetting, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
@@ -282,12 +282,12 @@ export struct SettingsScreen {
   @Builder
   private sectionRow(section: SettingsSection): void {
     Stack({ alignContent: Alignment.TopStart }) {
-      Text(section.number).fontFamily(nunito(700))
+      Text(section.number).fontFamily(nunitoAt(700, tv(NUMBER_SIZE)))
         .fontSize(tv(NUMBER_SIZE))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .position({ x: tv(NUMBER_LEFT), y: tv(NUMBER_TOP) })
-      Text(section.title).fontFamily(nunito(480))
+      Text(section.title).fontFamily(nunitoAt(480, tv(TITLE_SIZE)))
         .fontSize(tv(TITLE_SIZE))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(TITLE_LETTER_SPACING))
@@ -365,12 +365,12 @@ export struct SettingsScreen {
 
   @Builder
   private panelHeading(title: string, description: string): void {
-    Text(title).fontFamily(nunito(500))
+    Text(title).fontFamily(nunitoAt(500, tv(26.4)))
       .fontSize(tv(26.4))
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(-0.924))
       .fontColor(toResourceColor(activeColors().ink))
-    Text(description).fontFamily(nunito(400))
+    Text(description).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
       .fontSize(tv(PANEL_TEXT_SIZE))
       .fontColor(toResourceColor(activeColors().inkSoft))
   }
@@ -418,10 +418,10 @@ export struct SettingsScreen {
             this.chooseAudioLanguage(value);
           },
         })
-        Text(this.audioStatusText()).fontFamily(nunito(400))
+        Text(this.audioStatusText()).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(this.audioStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
-        Text('Quality and subtitle defaults are saved on this device. Audio language follows your profile.').fontFamily(nunito(400))
+        Text('Quality and subtitle defaults are saved on this device. Audio language follows your profile.').fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(activeColors().inkMuted))
       }
@@ -438,7 +438,7 @@ export struct SettingsScreen {
   @Builder
   private profileLockPanel(): void {
     Column({ space: tv(16) }) {
-      Text(this.pinLocked ? t('settings.profileLock.replacePinLabel', 'Replace PIN') : t('settings.profileLock.newPinLabel', 'New PIN')).fontFamily(nunito(700))
+      Text(this.pinLocked ? t('settings.profileLock.replacePinLabel', 'Replace PIN') : t('settings.profileLock.newPinLabel', 'New PIN')).fontFamily(nunitoAt(700, tv(PANEL_TEXT_SIZE)))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
@@ -456,7 +456,7 @@ export struct SettingsScreen {
           .onChange((value: string) => {
             this.pinDraft = value;
           })
-        Text(this.lockStatus === 'saving' ? t('settings.profileLock.saving', 'Saving…') : this.pinLocked ? t('settings.profileLock.replace', 'Replace') : t('settings.profileLock.setPin', 'Set PIN')).fontFamily(nunito(700))
+        Text(this.lockStatus === 'saving' ? t('settings.profileLock.saving', 'Saving…') : this.pinLocked ? t('settings.profileLock.replace', 'Replace') : t('settings.profileLock.setPin', 'Set PIN')).fontFamily(nunitoAt(700, tv(PANEL_TEXT_SIZE)))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(this.pinDraft.length === 4 ? activeColors().bg : activeColors().inkMuted))
@@ -469,11 +469,11 @@ export struct SettingsScreen {
           })
       }
       Row({ space: tv(16) }) {
-        Text(this.lockStatusText()).fontFamily(nunito(400))
+        Text(this.lockStatusText()).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(this.lockStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
         if (this.pinLocked) {
-          Text('Remove PIN').fontFamily(nunito(700))
+          Text('Remove PIN').fontFamily(nunitoAt(700, tv(PANEL_TEXT_SIZE)))
             .fontSize(tv(PANEL_TEXT_SIZE))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
@@ -495,12 +495,12 @@ export struct SettingsScreen {
   @Builder
   private pendingPanel(): void {
     Column({ space: tv(16) }) {
-      Text(this.sectionTitle()).fontFamily(nunito(500))
+      Text(this.sectionTitle()).fontFamily(nunitoAt(500, tv(26.4)))
         .fontSize(tv(26.4))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(sectionCopyOf(this.openSection)).fontFamily(nunito(400))
+      Text(sectionCopyOf(this.openSection)).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
@@ -537,12 +537,12 @@ export struct SettingsScreen {
   @Builder
   private serverPanel(): void {
     Column({ space: tv(16) }) {
-      Text('Server connection').fontFamily(nunito(500))
+      Text('Server connection').fontFamily(nunitoAt(500, tv(26.4)))
         .fontSize(tv(26.4))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(getServerDirectory().getActiveBaseUrl() ?? 'No server connected.').fontFamily(nunito(400))
+      Text(getServerDirectory().getActiveBaseUrl() ?? 'No server connected.').fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
         .fontSize(tv(PANEL_TEXT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
@@ -625,20 +625,20 @@ export struct SettingsScreen {
         ForEach(buildSections(), (section: SettingsSection) => {
           // Web phone `.settings-option`: 328 x 88 rows (16 vp page margin), number at +12/+14, copy at +56, arrow centred at +310.
           Stack({ alignContent: Alignment.TopStart }) {
-            Text(section.number).fontFamily(nunito(760))
+            Text(section.number).fontFamily(nunitoAt(760, 8.96))
               .fontSize(8.96)
               .fontWeight(FontWeight.Bold)
               .lineHeight(12)
               .fontColor(toResourceColor(activeColors().ink))
               .position({ x: 12, y: 15.3 })
             Column({ space: 2.4 }) {
-              Text(section.title).fontFamily(nunito(480))
+              Text(section.title).fontFamily(nunitoAt(480, 16))
                 .fontSize(16)
                 .fontWeight(FontWeight.Medium)
                 .lineHeight(22)
                 .letterSpacing(-0.54)
                 .fontColor(toResourceColor(activeColors().ink))
-              Text(sectionCopyOf(section.id)).fontFamily(nunito(400))
+              Text(sectionCopyOf(section.id)).fontFamily(nunitoAt(400, 10.88))
                 .fontSize(10.88)
                 .lineHeight(15)
                 .fontColor(toResourceColor(activeColors().ink))

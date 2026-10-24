@@ -3,7 +3,7 @@
  * buttons on the right edge; the current letter is filled with ink. Geometry from the live web TV DOM.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -56,7 +56,7 @@ export struct AlphabetRail {
                 .borderRadius((TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH) / 2)
                 .border({ width: RING_WIDTH, color: toResourceColor(BRAND_PINK) })
             }
-            Text(letter).fontFamily(nunito(700))
+            Text(letter).fontFamily(nunitoAt(700, TOUCH_LETTER_SIZE))
               .width(TOUCH_DISC)
               .height(TOUCH_DISC)
               .textAlign(TextAlign.Center)
@@ -98,7 +98,7 @@ export struct AlphabetRail {
   @Builder
   private tvLetter(letter: string): void {
     Column() {
-      Text(letter).fontFamily(nunito(400))
+      Text(letter).fontFamily(nunitoAt(400, tv(LETTER_SIZE)))
         .width(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
         .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
         .textAlign(TextAlign.Center)

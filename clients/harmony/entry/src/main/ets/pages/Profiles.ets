@@ -44,7 +44,7 @@
  * established for their own routes in this same slice.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import type { AvailableProfileResponse } from '../core/Types/Profiles.ts';
 import { resolveAvatarPreset } from '../core/AvatarPreset.ts';
 import { BRAND_PINK, BRAND_PINK_SOFT, Spacing, Radii } from '../core/Tokens';
@@ -348,7 +348,7 @@ struct Profiles {
   /** Web's foot-of-page pills (Check for updates, Clients): a 44 px pill on surface-strong at 0.64, text only. */
   @Builder
   private footerPill(label: string, x: number, y: number, onTap: () => void, phone: boolean = false): void {
-    Text(label).fontFamily(nunito(phone ? 720 : 700))
+    Text(label).fontFamily(nunitoAt(phone ? 720 : 700, phone ? 7.68 : tv(TV_ACTION_TEXT)))
       .fontSize(phone ? 7.68 : tv(TV_ACTION_TEXT))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
@@ -372,7 +372,7 @@ struct Profiles {
         .height(tv(TV_ACTION_ICON))
         .colorFilter(tintFilter(tint))
       if (label.length > 0) {
-        Text(label).fontFamily(nunito(isTvMetrics() ? 700 : 720))
+        Text(label).fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68))
           .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -405,7 +405,7 @@ struct Profiles {
         })
       }
       if (this.updateNote.length > 0 && isTvMetrics()) {
-        Text(this.updateNote).fontFamily(nunito(400))
+        Text(this.updateNote).fontFamily(nunitoAt(400, tv(13.4)))
           .fontSize(tv(13.4))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .position({ x: tv(FOOTER_LEFT), y: tv(FOOTER_TOP - 28) })
@@ -454,7 +454,7 @@ struct Profiles {
         .markAnchor(isTvMetrics() ? { x: 0, y: 0 } : { x: PHONE_SELECT_RIGHT + PHONE_SELECT_WIDTH * 2 + 8, y: 0 })
         .zIndex(2)
       Column() {
-      Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunito(isTvMetrics() ? 900 : 820))
+      Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunitoAt(isTvMetrics() ? 900 : 820, isTvMetrics() ? tv(10.368) : 7.36))
         .fontSize(isTvMetrics() ? tv(10.368) : 7.36)
         .fontWeight(FontWeight.Bolder)
         .letterSpacing(isTvMetrics() ? tv(1.348) : tv(1.348) * 0.705)
@@ -463,7 +463,7 @@ struct Profiles {
         .height(tv(16))
         .margin({ top: this.pick(162, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 142.3 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
-      Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunito(500))
+      Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunitoAt(500, this.pick(80.64, PHONE_HEADING_SIZE)))
         .id('px:heading:' + t('pages.profiles.heading', 'Who’s watching?'))
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE))
         .fontWeight(FontWeight.Medium)
@@ -490,12 +490,12 @@ struct Profiles {
               // web phone: the current avatar throws a wide crimson glow (0.28 at the ring, 0.11 at 17 vp out on the static ref, light theme; none above it)
               .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
               .shadow(profile.is_current && !isTvMetrics() ? { radius: 40, color: 'rgba(130, 40, 66, 0.56)', offsetY: 16 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
-            Text(profile.display_name).fontFamily(nunito(this.pick(700, 680)))
+            Text(profile.display_name).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
               .fontSize(this.pick(17.28, 13.12))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: this.pick(6, profile.is_current ? 5.5 : 10.8) })  // web phone: the lifted current avatar pulls its name up
-            Text(this.statusLabel(profile)).fontFamily(nunito(this.pick(700, 690)))
+            Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
               .fontSize(this.pick(9.408, 6.72))
               .fontWeight(FontWeight.Bold)
               .letterSpacing(this.pick(0.423, 0.33))
@@ -534,7 +534,7 @@ struct Profiles {
                 radius: this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH) * 0.27,
                 colors: [['rgba(255, 255, 255, 0.28)', 0], ['rgba(255, 255, 255, 0)', 1]],
               })
-            Text('+').fontFamily(nunito(300))
+            Text('+').fontFamily(nunitoAt(300, this.pick(76.8, 38.4)))
               .fontSize(this.pick(76.8, 38.4))
               .fontWeight(FontWeight.Lighter)
               .fontColor(toResourceColor(activeColors().inkSoft))
@@ -544,12 +544,12 @@ struct Profiles {
           .borderRadius(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH) / 2)
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
-          Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunito(this.pick(700, 680)))
+          Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
             .fontSize(this.pick(17.28, 13.12))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: this.pick(9, 10.8) })
-          Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunito(this.pick(700, 690)))
+          Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
             .fontSize(this.pick(9.408, 6.72))
             .fontWeight(FontWeight.Bold)
             .letterSpacing(this.pick(0.423, 0.33))
@@ -627,7 +627,7 @@ struct Profiles {
         } else {
         Scroll() {
           Column({ space: Spacing.xl }) {
-            Text($r('app.string.profiles_heading')).fontFamily(nunito(700))
+            Text($r('app.string.profiles_heading')).fontFamily(nunitoAt(700, HEADING_FONT_SIZE))
               .fontSize(HEADING_FONT_SIZE)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
@@ -661,16 +661,16 @@ struct Profiles {
                         },
                       })
 
-                      Text(profile.display_name).fontFamily(nunito(400))
+                      Text(profile.display_name).fontFamily(nunitoAt(400, PROFILE_NAME_FONT_SIZE))
                         .fontSize(PROFILE_NAME_FONT_SIZE)
                         .fontColor(toResourceColor(activeColors().ink))
 
                       if (profile.is_current) {
-                        Text($r('app.string.profiles_current_badge')).fontFamily(nunito(400))
+                        Text($r('app.string.profiles_current_badge')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
                           .fontSize(PROFILE_STATUS_FONT_SIZE)
                           .fontColor(toResourceColor(activeColors().accent))
                       } else if (profile.pin_locked) {
-                        Text($r('app.string.profiles_pin_locked_badge')).fontFamily(nunito(400))
+                        Text($r('app.string.profiles_pin_locked_badge')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
                           .fontSize(PROFILE_STATUS_FONT_SIZE)
                           .fontColor(toResourceColor(activeColors().inkMuted))
                       }
@@ -686,7 +686,7 @@ struct Profiles {
                 // management stays on Playarr Server's own admin surface.
                 Column({ space: Spacing.sm }) {
                   Column() {
-                    Text('+').fontFamily(nunito(400))
+                    Text('+').fontFamily(nunitoAt(400, ADD_PROFILE_GLYPH_FONT_SIZE))
                       .fontSize(ADD_PROFILE_GLYPH_FONT_SIZE)
                       .fontColor(toResourceColor(activeColors().inkMuted))
                   }
@@ -697,11 +697,11 @@ struct Profiles {
                   .justifyContent(FlexAlign.Center)
                   .alignItems(HorizontalAlign.Center)
 
-                  Text($r('app.string.profiles_add_profile')).fontFamily(nunito(400))
+                  Text($r('app.string.profiles_add_profile')).fontFamily(nunitoAt(400, PROFILE_NAME_FONT_SIZE))
                     .fontSize(PROFILE_NAME_FONT_SIZE)
                     .fontColor(toResourceColor(activeColors().inkMuted))
 
-                  Text($r('app.string.profiles_add_profile_hint')).fontFamily(nunito(400))
+                  Text($r('app.string.profiles_add_profile_hint')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
                     .fontSize(PROFILE_STATUS_FONT_SIZE)
                     .fontColor(toResourceColor(activeColors().inkMuted))
                     .textAlign(TextAlign.Center)
@@ -773,12 +773,12 @@ struct Profiles {
                 onSelect: () => {},
               })
 
-              Text($r('app.string.profiles_pin_title')).fontFamily(nunito(700))
+              Text($r('app.string.profiles_pin_title')).fontFamily(nunitoAt(700, PIN_TITLE_FONT_SIZE))
                 .fontSize(PIN_TITLE_FONT_SIZE)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
 
-              Text(this.pinTargetProfile.display_name).fontFamily(nunito(400))
+              Text(this.pinTargetProfile.display_name).fontFamily(nunitoAt(400, SUBHEADING_FONT_SIZE))
                 .fontSize(SUBHEADING_FONT_SIZE)
                 .fontColor(toResourceColor(activeColors().inkSoft))
 
@@ -792,7 +792,7 @@ struct Profiles {
                 })
 
               if (this.pinError.length > 0) {
-                Text(this.pinError).fontFamily(nunito(400))
+                Text(this.pinError).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
                   .fontSize(PROFILE_STATUS_FONT_SIZE)
                   .fontColor(toResourceColor(activeColors().danger))
               }

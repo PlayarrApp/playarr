@@ -104,7 +104,7 @@
  */
 
 import { t } from '../core/Language';
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -356,7 +356,7 @@ struct LibraryChip {
 
   build() {
 
-    Text(this.label).fontFamily(nunito(500))
+    Text(this.label).fontFamily(nunitoAt(500, 13))
       .fontSize(13)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor((this.selected ? activeColors().onAccent : activeColors().ink)))
@@ -999,7 +999,7 @@ export struct Library {
         }
 
         if (this.loadMoreFailed && !this.isLoadingMore) {
-          Text("Couldn't load more. Scroll to try again.").fontFamily(nunito(400))
+          Text("Couldn't load more. Scroll to try again.").fontFamily(nunitoAt(400, 12))
             .fontSize(12)
             .fontColor(toResourceColor(activeColors().inkMuted))
             .textAlign(TextAlign.Center)
@@ -1225,14 +1225,14 @@ export struct Library {
         (work: Work) => {
           ListItem() {
             Row({ space: tv(16) }) {
-              Text(work.title).fontFamily(nunito(700))
+              Text(work.title).fontFamily(nunitoAt(700, tv(16.32)))
                 .fontSize(tv(16.32))
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .layoutWeight(1)
-              Text(releaseYearOf(work)).fontFamily(nunito(400))
+              Text(releaseYearOf(work)).fontFamily(nunitoAt(400, tv(13.4)))
                 .fontSize(tv(13.4))
                 .fontColor(toResourceColor(activeColors().inkMuted))
             }

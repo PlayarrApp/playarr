@@ -3,7 +3,7 @@
  * accent colour and a bold label, on surface-soft with a 14 radius, 14 apart. Lives in the shared `Drawer` body.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv, isTvMetrics } from '../Metrics';
@@ -42,11 +42,11 @@ export struct ActionList {
       ForEach(this.actions, (action: ActionItem) => {
         Column() {
           Row() {
-            Text(action.glyph).fontFamily(nunito(400))
+            Text(action.glyph).fontFamily(nunitoAt(400, isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)))
               .width(tv(GLYPH_COLUMN))
               .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))
               .fontColor(toResourceColor(BRAND_PINK))
-            Text(action.label).fontFamily(nunito(700))
+            Text(action.label).fontFamily(nunitoAt(700, isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE))
               .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))

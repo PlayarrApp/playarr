@@ -91,7 +91,7 @@
  * `SPINNER_BORDER_WIDTH`.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { image } from '@kit.ImageKit';
 import { activeColors, resolvedThemeMode, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
@@ -438,7 +438,7 @@ export struct PosterCard {
             .position({ x: this.cardWidth - this.dotSize() - this.dotInset(), y: this.dotInset() })
         }
         if (this.episodeNumberOverlay.length > 0) {
-          Text(this.episodeNumberOverlay).fontFamily(nunito(600))
+          Text(this.episodeNumberOverlay).fontFamily(nunitoAt(600, isTvMetrics() ? tv(20) : 13))
             .width(isTvMetrics() ? tv(24) : 16)
             .fontSize(isTvMetrics() ? tv(20) : 13)
             .fontWeight(600)
@@ -486,13 +486,13 @@ export struct PosterCard {
             .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
             .letterSpacing(tv(this.titleFontSize * -0.015))
         }
-        .fontFamily(nunito(400))
+        .fontFamily(nunitoAt(400, this.titleFontSize))
         .width(this.cardWidth)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
       } else {
-        Text(this.title).fontFamily(nunito(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT))
+        Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
@@ -505,7 +505,7 @@ export struct PosterCard {
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
-        Text(this.subtitle).fontFamily(nunito(400))
+        Text(this.subtitle).fontFamily(nunitoAt(400, this.subtitleFontSize))
           .width(this.cardWidth)
           .fontSize(this.subtitleFontSize)
           .fontWeight(FontWeight.Normal)

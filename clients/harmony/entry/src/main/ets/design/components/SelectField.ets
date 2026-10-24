@@ -6,7 +6,7 @@
  * keys are not wired; add both with the shared scroll-fade work.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -85,13 +85,13 @@ export struct SelectField {
             .margin({ right: isTvMetrics() ? 0 : 3.52 })
             .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
         }
-        Text(this.labelOf(this.value)).fontFamily(nunito(this.labelWeight))
+        Text(this.labelOf(this.value)).fontFamily(nunitoAt(this.labelWeight, tv(this.labelSize)))
           .fontSize(tv(this.labelSize))
           .fontWeight(this.labelWeight >= 700 ? FontWeight.Bold : FontWeight.Medium)
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .layoutWeight(1)
         if (isTvMetrics()) {
-          Text('⌄').fontFamily(nunito(400))
+          Text('⌄').fontFamily(nunitoAt(400, tv(FONT)))
             .fontSize(tv(FONT))
             .fontColor(this.textColor(this.highlighted === '#trigger'))
             .rotate({ angle: this.open ? 180 : 0 })
@@ -129,12 +129,12 @@ export struct SelectField {
           Column({ space: tv(LIST_GAP) }) {
             ForEach(this.options, (option: Choice) => {
               Row({ space: tv(GAP) }) {
-                Text(option.label).fontFamily(nunito(700))
+                Text(option.label).fontFamily(nunitoAt(700, tv(FONT)))
                   .fontSize(tv(FONT))
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.textColor(this.highlighted === option.value))
                   .layoutWeight(1)
-                Text(option.value === this.value ? '✓' : '').fontFamily(nunito(400))
+                Text(option.value === this.value ? '✓' : '').fontFamily(nunitoAt(400, tv(FONT)))
                   .fontSize(tv(FONT))
                   .fontColor(this.textColor(this.highlighted === option.value))
                   .width(tv(FONT))

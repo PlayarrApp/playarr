@@ -22,7 +22,7 @@
  */
 
 import { LengthMetrics } from '@kit.ArkUI';
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -157,7 +157,7 @@ export struct FeatureCopy {
   build() {
     Column() {
       if (this.kicker.length > 0) {
-        Text(this.kicker).fontFamily(nunito(KICKER_FONT_WEIGHT))
+        Text(this.kicker).fontFamily(nunitoAt(KICKER_FONT_WEIGHT, tv(KICKER_FONT_SIZE)))
           .fontSize(tv(KICKER_FONT_SIZE))
           .fontWeight(KICKER_FONT_WEIGHT)
           .letterSpacing(tv(KICKER_LETTER_SPACING))
@@ -167,7 +167,7 @@ export struct FeatureCopy {
       }
 
       if (this.title.length > 0) {
-        Text(this.balancedTitle()).fontFamily(nunito(HERO_TITLE_FONT_WEIGHT))
+        Text(this.balancedTitle()).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
           .id('px:heading:' + this.title)
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
@@ -178,7 +178,7 @@ export struct FeatureCopy {
       }
 
       if (this.subtitle.length > 0) {
-        Text(this.subtitle).fontFamily(nunito(EPISODE_TITLE_FONT_WEIGHT))
+        Text(this.subtitle).fontFamily(nunitoAt(EPISODE_TITLE_FONT_WEIGHT, tv(EPISODE_TITLE_FONT_SIZE)))
           .fontSize(tv(EPISODE_TITLE_FONT_SIZE))
           .fontWeight(EPISODE_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(EPISODE_TITLE_LETTER_SPACING))
@@ -193,7 +193,7 @@ export struct FeatureCopy {
           ForEach(
             this.metaChips,
             (chip: string, index: number) => {
-              Text(chip).fontFamily(nunito(index === 0 ? 700 : 400))
+              Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, tv(META_CHIP_FONT_SIZE)))
                 .fontSize(tv(META_CHIP_FONT_SIZE))
                 .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
                 .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
@@ -208,7 +208,7 @@ export struct FeatureCopy {
           ForEach(
             this.metaRuns,
             (run: string) => {
-              Text(run).fontFamily(nunito(COPY_TEXT_FONT_WEIGHT))
+              Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE))
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
                 .fontColor(this.copyTextColor())
@@ -222,7 +222,7 @@ export struct FeatureCopy {
           ForEach(
             this.metaLines,
             (line: string) => {
-              Text(line).fontFamily(nunito(COPY_TEXT_FONT_WEIGHT))
+              Text(line).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE))
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
                 .fontColor(this.copyTextColor())
@@ -236,7 +236,7 @@ export struct FeatureCopy {
 
       if (this.synopsis.length > 0) {
         // web `.tv-detail-synopsis`: --ink-muted, no weight set (body 400)
-        Text(this.synopsis).fontFamily(nunito(SYNOPSIS_FONT_WEIGHT))
+        Text(this.synopsis).fontFamily(nunitoAt(SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
           .fontWeight(SYNOPSIS_FONT_WEIGHT)
           .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))

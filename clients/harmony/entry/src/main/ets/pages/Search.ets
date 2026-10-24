@@ -7,7 +7,7 @@
  */
 
 import { t } from '../core/Language';
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../design/Theme';
@@ -268,7 +268,7 @@ export struct SearchScreen {
       .borderRadius(tv(EMPTY_ART_SIZE / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
-      Text(message).fontFamily(nunito(500))
+      Text(message).fontFamily(nunitoAt(500, tv(EMPTY_TEXT_SIZE)))
         .fontSize(tv(EMPTY_TEXT_SIZE))
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
@@ -350,7 +350,7 @@ export struct SearchScreen {
           this.onQueryChange(value);
         })
       if (this.query.length > 0) {
-        Text(t('pages.search.clear', 'Clear')).fontFamily(nunito(700))
+        Text(t('pages.search.clear', 'Clear')).fontFamily(nunitoAt(700, tv(CLEAR_SIZE)))
           .fontSize(tv(CLEAR_SIZE))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -412,7 +412,7 @@ export struct SearchScreen {
         .width(tv(PREVIEW_WIDTH))
         .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PREVIEW_TOP) })
     } else {
-      Text(t('pages.search.emptyPrompt', 'Find any available movie, series, artist or playlist.')).fontFamily(nunito(400))
+      Text(t('pages.search.emptyPrompt', 'Find any available movie, series, artist or playlist.')).fontFamily(nunitoAt(400, tv(PROMPT_SIZE)))
         .fontSize(tv(PROMPT_SIZE))
         .fontColor(toResourceColor(activeColors().inkSoft))
         .width(tv(PROMPT_WIDTH))
@@ -515,7 +515,7 @@ export struct SearchScreen {
           .borderRadius('50%')
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
-          Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunito(650))
+          Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunitoAt(650, 11.52))
             .fontSize(11.52)
             .fontWeight(600)
             .fontColor(toResourceColor(activeColors().ink))

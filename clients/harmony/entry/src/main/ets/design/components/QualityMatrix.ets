@@ -4,7 +4,7 @@
  * its level. The chosen cell is filled with ink, as the other choice tiles.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -38,11 +38,11 @@ export struct QualityMatrix {
   @Builder
   private cell(id: string, label: string, detail: string, cellWidth: number): void {
     Column({ space: tv(2) }) {
-      Text(label).fontFamily(nunito(700))
+      Text(label).fontFamily(nunitoAt(700, tv(LABEL_SIZE)))
         .fontSize(tv(LABEL_SIZE))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(id === this.selected ? activeColors().bg : activeColors().ink))
-      Text(detail).fontFamily(nunito(400))
+      Text(detail).fontFamily(nunitoAt(400, tv(DETAIL_SIZE)))
         .fontSize(tv(DETAIL_SIZE))
         .fontColor(toResourceColor(id === this.selected ? activeColors().bg : activeColors().inkSoft))
     }
@@ -65,7 +65,7 @@ export struct QualityMatrix {
       Row({ space: tv(CELL_GAP) }) {
         Blank().width(tv(HEADING_COLUMN))
         ForEach(QUALITY_LEVELS, (level: string) => {
-          Text(level).fontFamily(nunito(700))
+          Text(level).fontFamily(nunitoAt(700, tv(HEADING_SIZE)))
             .width(tv(this.cellWidth()))
             .fontSize(tv(HEADING_SIZE))
             .fontWeight(FontWeight.Bold)
@@ -76,11 +76,11 @@ export struct QualityMatrix {
       ForEach(QUALITY_TIERS, (tier: QualityTier) => {
         Row({ space: tv(CELL_GAP) }) {
           Column({ space: tv(2) }) {
-            Text(tier.label).fontFamily(nunito(700))
+            Text(tier.label).fontFamily(nunitoAt(700, tv(LABEL_SIZE)))
               .fontSize(tv(LABEL_SIZE))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-            Text(tier.resolution).fontFamily(nunito(400))
+            Text(tier.resolution).fontFamily(nunitoAt(400, tv(DETAIL_SIZE)))
               .fontSize(tv(DETAIL_SIZE))
               .fontColor(toResourceColor(activeColors().inkSoft))
           }

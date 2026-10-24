@@ -5,6 +5,7 @@
  */
 
 import type { UIContext } from '@kit.ArkUI';
+import { WEB_SIZES, WEB_WEIGHTS } from '../core/WebWeights';
 
 const WEIGHTS: number[] = [300, 400, 480, 560, 580, 610, 640, 680, 700, 720, 760, 820, 860, 900];
 
@@ -44,4 +45,22 @@ export function nunito(weight: number): string {
 /** Web draws the arrow glyphs (U+2190, U+2192) with Chromium's fallback, Liberation Sans (bold from weight 600 up); the subsets bundled here carry the same glyphs. */
 export function arrowFont(weight: number): string {
   return weight >= 600 ? 'PlayarrArrows' : 'PlayarrArrowsRegular';
+}
+
+/** The family for a call site that asks for `weight` at font size `size`: the web weight nearest to it among those web CSS uses
+ * at that size (core/WebWeights.ts, generated from the web layout refs), else the nearest instance. */
+export function nunitoAt(weight: number, size: number): string {
+  const key: number = Math.round(size * 100) / 100;
+  const at: number = WEB_SIZES.indexOf(key);
+  if (at >= 0) {
+    const row: number[] = WEB_WEIGHTS[at];
+    let best: number = row[0];
+    for (const w of row) {
+      if (Math.abs(w - weight) < Math.abs(best - weight)) {
+        best = w;
+      }
+    }
+    return nunito(best);
+  }
+  return nunito(weight);
 }

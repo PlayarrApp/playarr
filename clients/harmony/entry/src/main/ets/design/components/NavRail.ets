@@ -65,7 +65,7 @@
  * on the topmost rail's own item content to target it explicitly.
  */
 
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -176,7 +176,7 @@ struct NavTile {
         .draggable(false)
         .focusable(false)
 
-      Text(this.item.label).fontFamily(nunito(TvGeometry.navTileLabelWeight))
+      Text(this.item.label).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
         .fontSize(tv(TvGeometry.navTileLabelSize))
         .fontWeight(TvGeometry.navTileLabelWeight)
         .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
@@ -306,7 +306,7 @@ export struct NavRail {
       Column({ space: NAV_TILE_ICON_LABEL_GAP }) {
         ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
           .focusable(false)
-        Text(this.firstName()).fontFamily(nunito(TvGeometry.navTileLabelWeight))
+        Text(this.firstName()).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
           .fontSize(tv(TvGeometry.navTileLabelSize))
           .fontWeight(TvGeometry.navTileLabelWeight)
           .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
@@ -340,7 +340,7 @@ export struct NavRail {
       color: toResourceColorWithAlpha(activeColors().ink, TvGeometry.navGroupBorderOpacity),
     })
     .margin({ top: tv(this.profileGroupMargin()) })
-    Text('v' + clientVersion).fontFamily(nunito(700))
+    Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
       .fontSize(tv(8))
       .fontColor(toResourceColor(activeColors().ink))
       .width(tv(TvGeometry.navTileSize + 2 * TvGeometry.navGroupPaddingH))

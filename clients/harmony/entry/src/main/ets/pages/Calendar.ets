@@ -13,7 +13,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 import { image } from '@kit.ImageKit';
 import { fetchWorkArtwork } from '../data/ArtworkRepository';
 import { t } from '../core/Language';
-import { nunito, arrowFont } from '../design/Typography';
+import { nunito, arrowFont, nunitoAt } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
@@ -412,7 +412,7 @@ export struct ReleaseCalendar {
 
   @Builder
   private statusPill(tone: EntryPillTone): void {
-    Text(pillLabel(tone)).fontFamily(nunito(750))
+    Text(pillLabel(tone)).fontFamily(nunitoAt(750, isTvMetrics() ? tv(PILL_SIZE) : 10.24))
       .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
@@ -433,14 +433,14 @@ export struct ReleaseCalendar {
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
       Column({ space: isTvMetrics() ? 0 : phoneTextGap }) {
-        Text(item.title).fontFamily(nunito(500))
+        Text(item.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE))
           .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         if (itemSubtitle(item).length > 0) {
-          Text(itemSubtitle(item)).fontFamily(nunito(400))
+          Text(itemSubtitle(item)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .maxLines(1)
@@ -448,10 +448,10 @@ export struct ReleaseCalendar {
             .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           }
           this.statusPill(itemPillTone(item, this.today))
         }
@@ -499,12 +499,12 @@ export struct ReleaseCalendar {
   @Builder
   private dayHeader(day: string): void {
     Row({ space: tv(10) }) {
-      Text(dayHeading(day)).fontFamily(nunito(640))
+      Text(dayHeading(day)).fontFamily(nunitoAt(640, isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE))
         .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColorWithAlpha(activeColors().ink, day === this.today ? 0.9 : 1))
       if (day === this.today) {
-        Text(t('pages.calendar.today', 'Today')).fontFamily(nunito(640))
+        Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, tv(TODAY_TAG_SIZE)))
           .fontSize(tv(TODAY_TAG_SIZE))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
@@ -570,12 +570,12 @@ export struct ReleaseCalendar {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) }) {
             Row({ space: tv(10) }) {
-              Text(dayHeading(cell.day)).fontFamily(nunito(500))
+              Text(dayHeading(cell.day)).fontFamily(nunitoAt(500, tv(DAY_HEADING_SIZE)))
                 .fontSize(tv(DAY_HEADING_SIZE))
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
               if (cell.isToday) {
-                Text(t('pages.calendar.today', 'Today')).fontFamily(nunito(500))
+                Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(500, tv(TODAY_TAG_SIZE)))
                   .fontSize(tv(TODAY_TAG_SIZE))
                   .fontWeight(FontWeight.Medium)
                   .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
@@ -591,7 +591,7 @@ export struct ReleaseCalendar {
             Scroll() {
               Column({ space: tv(ENTRY_GAP + 1) }) {
                 if (cell.entries.length === 0) {
-                  Text(t('pages.calendar.dayEmpty', 'Nothing scheduled')).fontFamily(nunito(400))
+                  Text(t('pages.calendar.dayEmpty', 'Nothing scheduled')).fontFamily(nunitoAt(400, tv(ENTRY_TITLE_SIZE)))
                     .fontSize(tv(ENTRY_TITLE_SIZE))
                     .fontColor(toResourceColor(activeColors().inkSoft))
                 }
@@ -631,7 +631,7 @@ export struct ReleaseCalendar {
               .width(tv(MONTH_DOT_SIZE))
               .height(tv(MONTH_DOT_SIZE))
               .fill(toResourceColor(toneColor(itemPillTone(item, this.today))))
-            Text(itemLineText(item)).fontFamily(nunito(item.grouped ? 700 : 400))
+            Text(itemLineText(item)).fontFamily(nunitoAt(item.grouped ? 700 : 400, tv(MONTH_LINE_SIZE)))
               .fontSize(tv(MONTH_LINE_SIZE))
               .fontWeight(item.grouped ? FontWeight.Bold : FontWeight.Normal)
               .fontColor(toResourceColor(activeColors().ink))
@@ -647,12 +647,12 @@ export struct ReleaseCalendar {
       .layoutWeight(1)
       .width('100%')
       Row({ space: tv(6) }) {
-        Text(String(dayOfMonth(cell.day))).fontFamily(nunito(500))
+        Text(String(dayOfMonth(cell.day))).fontFamily(nunitoAt(500, tv(MONTH_DAY_SIZE)))
           .fontSize(tv(MONTH_DAY_SIZE))
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().inkSoft))
         if (groupSeriesEpisodes(cell.entries).length > this.monthLinesFor(cellHeight)) {
-          Text(`+${groupSeriesEpisodes(cell.entries).length - this.monthLinesFor(cellHeight)} more`).fontFamily(nunito(400))
+          Text(`+${groupSeriesEpisodes(cell.entries).length - this.monthLinesFor(cellHeight)} more`).fontFamily(nunitoAt(400, tv(MONTH_LINE_SIZE)))
             .fontSize(tv(MONTH_LINE_SIZE))
             .fontColor(toResourceColor(activeColors().inkSoft))
         }
@@ -685,7 +685,7 @@ export struct ReleaseCalendar {
     Column() {
       Row() {
         ForEach(weekdayShort(), (name: string) => {
-          Text(name).fontFamily(nunito(400))
+          Text(name).fontFamily(nunitoAt(400, tv(MONTH_WEEKDAY_SIZE)))
             .fontSize(tv(MONTH_WEEKDAY_SIZE))
             .letterSpacing(tv(0.96))
             .textCase(TextCase.UpperCase)
@@ -748,7 +748,7 @@ export struct ReleaseCalendar {
       })
       this.monitoringToggle()
       if (activeFilterCount(this.filters) > 0) {
-        Text(t('pages.calendar.clearFilters', 'Clear filters')).fontFamily(nunito(700))
+        Text(t('pages.calendar.clearFilters', 'Clear filters')).fontFamily(nunitoAt(700, tv(CHOICE_FONT)))
           .fontSize(tv(CHOICE_FONT))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
@@ -771,14 +771,14 @@ export struct ReleaseCalendar {
   @Builder
   private monitoringToggle(): void {
     Column({ space: tv(12) }) {
-      Text(t('pages.calendar.filterMonitored', 'Monitoring')).fontFamily(nunito(700))
+      Text(t('pages.calendar.filterMonitored', 'Monitoring')).fontFamily(nunitoAt(700, tv(9.6)))
         .fontSize(tv(9.6))
         .fontWeight(FontWeight.Bold)
         .letterSpacing(tv(0.672))
         .textCase(TextCase.UpperCase)
         .fontColor(toResourceColor(activeColors().inkSoft))
       Row({ space: tv(27) }) {
-        Text(this.filters.monitoredOnly ? '✓' : '').fontFamily(nunito(700))
+        Text(this.filters.monitoredOnly ? '✓' : '').fontFamily(nunitoAt(700, tv(14)))
           .fontSize(tv(14))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().surface))
@@ -788,7 +788,7 @@ export struct ReleaseCalendar {
           .borderRadius(tv(4))
           .border({ width: 2, color: toResourceColor(activeColors().inkSoft) })
           .backgroundColor(toResourceColor(this.filters.monitoredOnly ? activeColors().inkSoft : activeColors().surface))
-        Text(t('pages.calendar.monitoredOnly', 'Monitored only')).fontFamily(nunito(400))
+        Text(t('pages.calendar.monitoredOnly', 'Monitored only')).fontFamily(nunitoAt(400, tv(19.2)))
           .fontSize(tv(19.2))
           .fontColor(toResourceColor(activeColors().ink))
       }
@@ -804,7 +804,7 @@ export struct ReleaseCalendar {
 
   @Builder
   private panelButton(label: string, primary: boolean, onTap: () => void): void {
-    Text(label).fontFamily(nunito(700))
+    Text(label).fontFamily(nunitoAt(700, tv(PANEL_BUTTON_FONT)))
       .fontSize(tv(PANEL_BUTTON_FONT))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
@@ -836,7 +836,7 @@ export struct ReleaseCalendar {
             })
         }
         if (this.plan()!.watchlist !== null && this.plan()!.watchlist!.enabled && this.plan()!.snapshot !== null) {
-          Text(this.listed ? '✓  Remove from watchlist' : '+  Add to watchlist').fontFamily(nunito(700))
+          Text(this.listed ? '✓  Remove from watchlist' : '+  Add to watchlist').fontFamily(nunitoAt(700, tv(PANEL_BUTTON_FONT)))
             .fontSize(tv(PANEL_BUTTON_FONT))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
@@ -861,7 +861,7 @@ export struct ReleaseCalendar {
       Column({ space: tv(PANEL_GAP) }) {
         this.statusPill(entryPillTone(this.selected, this.today))
         if (this.selected.overview !== undefined && this.selected.overview !== null) {
-          Text(this.selected.overview).fontFamily(nunito(500))
+          Text(this.selected.overview).fontFamily(nunitoAt(500, tv(OVERVIEW_SIZE)))
             .fontSize(tv(OVERVIEW_SIZE))
             .fontWeight(FontWeight.Medium)
             .lineHeight(tv(OVERVIEW_LINE_HEIGHT))
@@ -880,7 +880,7 @@ export struct ReleaseCalendar {
   @Builder
   private headerControl(label: string, round: boolean, onTap: () => void): void {
     // web: the round arrow buttons hold a small regular-weight glyph, the Today pill a bold label
-    Text(label).fontFamily(round ? arrowFont(720) : nunito(700))
+    Text(label).fontFamily(round ? arrowFont(720) : nunitoAt(700, tv(round ? HEADER_CONTROL_FONT : HEADER_CONTROL_FONT)))
       .fontSize(tv(round ? HEADER_CONTROL_FONT : HEADER_CONTROL_FONT))
       .fontWeight(round ? FontWeight.Normal : FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
@@ -968,7 +968,7 @@ export struct ReleaseCalendar {
   @Builder
   private pageControls(): void {
     Row({ space: tv(HEADER_CONTROL_GAP) }) {
-      Text(rangeLabel(this.view, this.anchor)).fontFamily(nunito(700))
+      Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(700, tv(HEADER_CONTROL_FONT)))
         .fontSize(tv(HEADER_CONTROL_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1015,7 +1015,7 @@ export struct ReleaseCalendar {
   @Builder
   private touchControls(): void {
     Row({ space: PHONE_CONTROL_GAP }) {
-      Text(rangeLabel(this.view, this.anchor)).fontFamily(nunito(720))
+      Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(720, 11.52))
         .id('px:button:' + rangeLabel(this.view, this.anchor))
         .fontSize(11.52)
         .fontWeight(FontWeight.Bold)
@@ -1048,7 +1048,7 @@ export struct ReleaseCalendar {
   private touchControl(label: string, width: number, onTap: () => void): void {
     Stack() {
       // web: the arrows are thin, smaller glyphs than the bold labels
-      Text(label).fontFamily(label.length === 1 ? arrowFont(720) : nunito(720))
+      Text(label).fontFamily(label.length === 1 ? arrowFont(720) : nunitoAt(720, 11.52))
         .id(label.length === 1 ? '' : 'px:button:' + label)
         .fontSize(11.52)
         .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
@@ -1125,24 +1125,24 @@ export struct ReleaseCalendar {
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
       Column({ space: fixedHeight > 0 ? 2.4 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
-        Text(item.title).fontFamily(nunito(600)) // web 640: the 610 instance is the nearest
+        Text(item.title).fontFamily(nunitoAt(600, PHONE_ENTRY_TITLE_SIZE)) // web 640: the 610 instance is the nearest
           .fontSize(PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
           .lineHeight(PHONE_LINE_TITLE)
           .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
           .fontColor(toResourceColor(activeColors().ink))
         if (itemSubtitle(item).length > 0) {
-          Text(itemSubtitle(item)).fontFamily(nunito(400))
+          Text(itemSubtitle(item)).fontFamily(nunitoAt(400, PHONE_ENTRY_TITLE_SIZE))
             .fontSize(PHONE_ENTRY_TITLE_SIZE)
             .lineHeight(PHONE_LINE_TITLE)
             .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
             .fontColor(toResourceColor(activeColors().inkSoft))
         }
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(ENTRY_META_GAP), cross: LengthMetrics.vp(PHONE_WEEK_META_ROW_GAP) } }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunito(400)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(PHONE_LINE_META).fontColor(toResourceColor(activeColors().inkMuted))
           }
           this.statusPill(itemPillTone(item, this.today))
         }
@@ -1188,7 +1188,7 @@ export struct ReleaseCalendar {
       Row({ space: PHONE_WEEK_GAP }) {
         ForEach(buildWeekDays(this.anchor, this.groups, this.today), (cell: CalendarCell) => {
           Column({ space: tv(WEEK_HEADING_GAP) }) {
-            Text(dayHeading(cell.day)).fontFamily(nunito(500))
+            Text(dayHeading(cell.day)).fontFamily(nunitoAt(500, tv(DAY_HEADING_SIZE)))
               .fontSize(tv(DAY_HEADING_SIZE))
               .fontWeight(FontWeight.Medium)
               .fontColor(toResourceColor(activeColors().ink))
@@ -1227,7 +1227,7 @@ export struct ReleaseCalendar {
       Column() {
         Row() {
           ForEach(weekdayShort(), (name: string) => {
-            Text(name).fontFamily(nunito(400))
+            Text(name).fontFamily(nunitoAt(400, tv(MONTH_WEEKDAY_SIZE)))
               .fontSize(tv(MONTH_WEEKDAY_SIZE))
               .letterSpacing(tv(0.96))
               .textCase(TextCase.UpperCase)

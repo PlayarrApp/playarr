@@ -5,7 +5,7 @@
  */
 
 import { atLeast } from '../../core/SafeInsets';
-import { nunito } from '../Typography';
+import { nunito, nunitoAt } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -65,13 +65,13 @@ export struct Drawer {
     Column() {
       Row() {
         Column({ space: isTvMetrics() ? tv(6.5) : TOUCH_KICKER_GAP }) {
-          Text(this.kicker).fontFamily(nunito(700))
+          Text(this.kicker).fontFamily(nunitoAt(700, isTvMetrics() ? tv(KICKER_SIZE) : 7.2))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
             .letterSpacing(tv(KICKER_LETTER_SPACING))
             .textCase(TextCase.UpperCase)
             .fontColor(toResourceColor(activeColors().inkSoft))
-          Text(this.title).fontFamily(nunito(500))
+          Text(this.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
             .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
@@ -81,7 +81,7 @@ export struct Drawer {
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
         Stack() {
-          Text('×').fontFamily(nunito(isTvMetrics() ? 700 : 500))
+          Text('×').fontFamily(nunitoAt(isTvMetrics() ? 700 : 500, isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE))
             .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
             .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))

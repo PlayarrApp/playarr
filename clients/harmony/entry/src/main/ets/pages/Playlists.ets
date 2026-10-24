@@ -7,7 +7,7 @@
  * panel's job) and moving a playlist between parents.
  */
 
-import { nunito } from '../design/Typography';
+import { nunito, nunitoAt } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { tv } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
@@ -258,7 +258,7 @@ export struct PlaylistsScreen {
 
   @Builder
   private pill(label: string, onTap: () => void): void {
-    Text(label).fontFamily(nunito(400))
+    Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
       .fontSize(tv(PILL_SIZE))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
@@ -273,14 +273,14 @@ export struct PlaylistsScreen {
   private rowShell(title: string, meta: string, actionLabel: string, onAction: () => void): void {
     Row() {
       Column({ space: tv(COPY_GAP) }) {
-        Text(title).fontFamily(nunito(700))
+        Text(title).fontFamily(nunitoAt(700, tv(TITLE_SIZE_ROW)))
           .fontSize(tv(TITLE_SIZE_ROW))
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         if (meta.length > 0) {
-          Text(meta).fontFamily(nunito(400))
+          Text(meta).fontFamily(nunitoAt(400, tv(META_SIZE)))
             .fontSize(tv(META_SIZE))
             .fontColor(toResourceColor(activeColors().inkMuted))
         }
@@ -299,7 +299,7 @@ export struct PlaylistsScreen {
   @Builder
   private itemRow(item: ItemRow, index: number): void {
     Row({ space: tv(PILL_GAP) }) {
-      Text(item.title).fontFamily(nunito(700))
+      Text(item.title).fontFamily(nunitoAt(700, tv(TITLE_SIZE_ROW)))
         .fontSize(tv(TITLE_SIZE_ROW))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
@@ -331,7 +331,7 @@ export struct PlaylistsScreen {
   private drawerBody(): void {
     Column({ space: tv(16) }) {
       if (this.drawer === 'delete') {
-        Text('Deleting removes this playlist and its nested playlists. Titles in it are not deleted.').fontFamily(nunito(400))
+        Text('Deleting removes this playlist and its nested playlists. Titles in it are not deleted.').fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width(tv(268))
@@ -358,7 +358,7 @@ export struct PlaylistsScreen {
         this.drawer = '';
       })
       if (this.notice.length > 0) {
-        Text(this.notice).fontFamily(nunito(400))
+        Text(this.notice).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
           .fontSize(tv(PANEL_TEXT_SIZE))
           .fontColor(toResourceColor(activeColors().danger))
           .width(tv(268))
@@ -370,13 +370,13 @@ export struct PlaylistsScreen {
   @Builder
   private message(title: string, description: string): void {
     Column({ space: tv(8) }) {
-      Text(title).fontFamily(nunito(500))
+      Text(title).fontFamily(nunitoAt(500, tv(26.4)))
         .fontSize(tv(26.4))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
       if (description.length > 0) {
-        Text(description).fontFamily(nunito(400))
+        Text(description).fontFamily(nunitoAt(400, tv(13.824)))
           .fontSize(tv(13.824))
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -438,7 +438,7 @@ export struct PlaylistsScreen {
         }
         if (this.notice.length > 0 && this.drawer === '') {
           ListItem() {
-            Text(this.notice).fontFamily(nunito(400))
+            Text(this.notice).fontFamily(nunitoAt(400, tv(META_SIZE)))
               .fontSize(tv(META_SIZE))
               .fontColor(toResourceColor(activeColors().danger))
           }
@@ -458,7 +458,7 @@ export struct PlaylistsScreen {
           }, (item: ItemRow): string => item.id)
           if (this.items.length === 0 && this.shownPlaylists().length === 0) {
             ListItem() {
-              Text('This playlist is empty.').fontFamily(nunito(400))
+              Text('This playlist is empty.').fontFamily(nunitoAt(400, tv(META_SIZE)))
                 .fontSize(tv(META_SIZE))
                 .fontColor(toResourceColor(activeColors().inkSoft))
             }
