@@ -240,7 +240,7 @@ fn tile(
         .adjust([-0.87, 0.06, -1.12, 0.0])
         .extra(layout::Extra {
             role: "image",
-            label: "",
+            label: String::new(),
             radius: 0.0,
             inset: [10.96, 11.89, 12.97, 12.04],
             height: None,

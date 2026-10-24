@@ -311,7 +311,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         .adjust([0.0, 0.0, 0.0, 73.0])
         .extra(crate::layout::Extra {
             role: "container",
-            label: "",
+            label: String::new(),
             radius: 0.0,
             inset: [0.0, 0.0, 0.0, 0.0],
             height: Some(484.55),

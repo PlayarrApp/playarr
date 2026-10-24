@@ -495,7 +495,7 @@ impl Lib {
                 .height(58.78)
                 .extra(crate::layout::Extra {
                     role: "button",
-                    label: "Any language \u{2304}",
+                    label: "Any language \u{2304}".into(),
                     radius: 10.0,
                     inset: [7.39; 4],
                     height: None,
@@ -850,7 +850,7 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
         let left = x + dx - tile_x;
         t = t.extra(crate::layout::Extra {
             role: "container",
-            label: "",
+            label: String::new(),
             radius: 1.0,
             inset: [left, y + dy - 116.0, 101.0 - left - w, 0.0],
             height: Some(h),

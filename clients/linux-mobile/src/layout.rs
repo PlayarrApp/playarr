@@ -168,7 +168,7 @@ fn over(top: [f32; 4], under: [f32; 4]) -> [f32; 4] {
 #[derive(Clone)]
 pub struct Extra {
     pub role: &'static str,
-    pub label: &'static str,
+    pub label: String,
     pub radius: f32,
     pub inset: [f32; 4],
     /// Absolute height from the inset top edge, when the web box ends where the widget does not.
@@ -355,7 +355,14 @@ impl Walk<'_> {
         let Some(b) = w.compute_bounds(self.root) else {
             return;
         };
-        let opacity = opacity * w.opacity();
+        // The web dims a disabled control to 28 %.
+        let opacity = opacity
+            * w.opacity()
+            * if w.is::<gtk4::Button>() && !w.is_sensitive() {
+                0.28
+            } else {
+                1.0
+            };
         if opacity < 0.01 || b.width() < 1.0 || b.height() < 1.0 {
             return;
         }
@@ -389,12 +396,6 @@ impl Walk<'_> {
                 l.push_str(&format!(" own={}", own.map_or("-".into(), |p| hex(p.rgba, true))));
             }
         }
-        // The floating navigation is an overlay in the app, a child of the page on the web.
-        let parent_bg = if classes.iter().any(|c| c == "pa-nav") {
-            self.page
-        } else {
-            parent_bg
-        };
         let mut bg = own.filter(|p| !p.border).map_or(parent_bg, |p| over(p.rgba, parent_bg));
         // A tagged page container is the web's page: its colour is the page colour above the body.
         if tag_of(w).is_some_and(|t| t.role == "page") {
@@ -640,7 +641,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
     walk.out.push(json!({
         "text": "", "role": "container", "rect": {"x": 0, "y": 0, "w": root.width(), "h": root.height()},
         // The web's title-actions sheet replaces the page: its first box is the page colour, the sheet sits on the body.
-        "color": Value::Null, "background": hex(if screen == "actions" { walk.page } else { base }, false), "fontSize": Value::Null, "fontWeight": Value::Null,
+        "color": Value::Null, "background": hex(if screen == "actions" { walk.page } else if screen == "player-controls" { [0.0, 0.0, 0.0, 1.0] } else { base }, false), "fontSize": Value::Null, "fontWeight": Value::Null,
     }));
     walk.visit(root, 1.0, base);
     if !walk.trace.is_empty() {

@@ -86,7 +86,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
                     crate::layout::Tag::new("page", label, 0.0)
                         .extra(crate::layout::Extra {
                             role: "container",
-                            label: "",
+                            label: String::new(),
                             radius: 0.0,
                             inset: [0.0, 72.0, 0.0, 0.0],
                             height: None,

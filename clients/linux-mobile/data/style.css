@@ -59,7 +59,8 @@ button.pa-episode:disabled { opacity: 0.5; }
 .pa-player { background: #000000; }
 .pa-player-scrim { background: linear-gradient(to top, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0)); padding: 24px 12px 14px 12px; }
 .pa-player-top { background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0)); padding: 14px 16px 28px 16px; }
-.pa-player button.pa-round { background: rgba(12, 10, 11, 0.58); color: #ffffff; border-radius: 999px; min-width: 44px; min-height: 44px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.28); box-shadow: none; }
+.pa-player-top { border-spacing: 8px; }
+.pa-player button.pa-round { background: rgba(12, 10, 11, 0.58); color: #ffffff; border-radius: 999px; min-width: 42px; min-height: 42px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.28); box-shadow: none; }
 .pa-player button.pa-ctl { background: transparent; color: #ffffff; border-radius: 999px; min-width: 44px; min-height: 44px; padding: 0; border: none; box-shadow: none; }
 .pa-player button.pa-ctl.primary { background: rgba(255, 255, 255, 0.14); }
 .pa-player button.pa-ctl:disabled { opacity: 0.56; }
@@ -203,9 +204,9 @@ button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 1px 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
 button.pa-entry.have { border-left-color: #8ac5a5; }
 button.pa-entry.missing { border-left-color: @pa_muted; }
-button.pa-entry:not(.week) { padding: 9px 12px 8px 12px; }
-button.pa-entry:not(.week) .pa-entry-sub { margin-top: 1px; }
-button.pa-entry:not(.week) .pa-entry-metarow { margin-top: 0; }
+button.pa-entry:not(.week) { padding: 8px 12px 8px 12px; }
+button.pa-entry:not(.week) .pa-entry-sub { margin-top: 3px; }
+button.pa-entry:not(.week) .pa-entry-metarow { margin-top: -2px; }
 button.pa-entry .pa-chip-status.agenda { min-height: 21px; }
 /* Week cards keep their earlier look until measured against the web week */
 button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface; border-color: @pa_line; }
@@ -342,5 +343,6 @@ button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 .pa-mline .pa-dot { margin-top: 2px; }
 .pa-seg-tile { font-kerning: none; }
 .pa-pref-arrow { margin-bottom: 3px; }
-button.pa-entry:not(.week).nosub { padding-bottom: 5px; }
+button.pa-entry:not(.week).nosub { padding-bottom: 3.5px; }
 .pa-cal-controls .pa-pill-label { margin-left: 1px; }
+button.pa-entry:not(.week).nosub .pa-entry-metarow { margin-top: 3px; }

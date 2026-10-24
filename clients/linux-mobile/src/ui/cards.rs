@@ -154,7 +154,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
             .bg([0.3529, 0.3333, 0.3490], [0.8980, 0.8902, 0.8941])
             .extra(crate::layout::Extra {
                 role: "container",
-                label: "",
+                label: String::new(),
                 radius: 0.0,
                 inset: [0.0, 0.0, width * (1.0 - p.clamp(0.0, 1.0) as f32), 0.0],
                 height: Some(3.0),

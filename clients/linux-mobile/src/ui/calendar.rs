@@ -403,6 +403,17 @@ impl Cal {
         }
     }
 
+    /// The long period text of the web's status region.
+    fn period_text(&self) -> String {
+        let (from, to) = self.range();
+        let long = |d: Date| format!("{} {} {}", d.d, &MONTHS[d.m as usize - 1][..3], d.y);
+        match self.view.get() {
+            View::Month => format!("{} {}", MONTHS[self.anchor.get().m as usize - 1], self.anchor.get().y),
+            View::Week => format!("{} {} – {}", from.d, &MONTHS[from.m as usize - 1][..3], long(to)),
+            View::Agenda => format!("{} {} – {}", from.d, &MONTHS[from.m as usize - 1][..3], long(to)),
+        }
+    }
+
     fn refresh(self: &Rc<Self>) {
         self.generation.set(self.generation.get() + 1);
         let gen = self.generation.get();
@@ -746,7 +757,7 @@ impl Cal {
     fn set_view(self: &Rc<Self>, v: View) {
         self.view.set(v);
         self.controls.set_margin_top(if v == View::Agenda { 3 } else { 21 });
-        self.days_view.set_margin_top(if v == View::Agenda { 7 } else { 6 });
+        self.days_view.set_margin_top(if v == View::Agenda { 8 } else { 6 });
         let t = today();
         self.anchor.set(match v {
             View::Agenda => t,
@@ -757,11 +768,26 @@ impl Cal {
         // The web names the agenda's page and its inner list alike.
         if let Some(scroller) = self.page.ancestor(gtk4::ScrolledWindow::static_type()) {
             let mut t = crate::layout::Tag::new("page", if v == View::Agenda { "|" } else { "" }, 0.0);
+            // The web's live region names the period shown ("5 Oct – 11 Oct 2026"); no drawn text carries it here.
+            let (sx, sy, sw) = match v {
+                View::Agenda => (33.81, 91.0, 140.31),
+                View::Week => (16.0, 109.0, 146.34),
+                View::Month => (16.0, 109.0, 100.19),
+            };
+            t = t.extra(crate::layout::Extra {
+                role: "status",
+                label: self.period_text(),
+                radius: 0.0,
+                inset: [sx, sy, 360.0 - sx - sw, 0.0],
+                height: Some(22.0),
+                bg: None,
+                art: false,
+            });
             if v == View::Agenda {
                 // The web's agenda also draws the faded key art as its own image.
                 t = t.extra(crate::layout::Extra {
                     role: "image",
-                    label: "",
+                    label: String::new(),
                     radius: 0.0,
                     inset: [0.0, -7.4, -14.4, 295.45],
                     height: None,
