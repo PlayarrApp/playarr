@@ -32,8 +32,6 @@ export function mapRaw(doc, screen, theme) {
       fontSize: e.fontSize ?? null,
       fontWeight: e.fontWeight ?? null,
     };
-    // a full-bleed container is the viewport (the app's frame sits inside the TV safe area)
-    if (e.role === "container" && out.rect.w >= 1700 && out.rect.h >= 900) out.rect = { x: 0, y: 0, w: doc.viewport.w, h: doc.viewport.h };
     if (e.radius > 0) out.radius = e.radius;
     // the web models a rounded media tile as a container with the radius around a square-cornered image
     if (e.role === "image" && e.radius > 0) {

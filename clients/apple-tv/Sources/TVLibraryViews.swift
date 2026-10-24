@@ -288,8 +288,10 @@ struct TVHomeView: View {
                 LazyHStack(alignment: .top, spacing: 24.9) {
                     ForEach(Array(works.enumerated()), id: \.element.id) { index, work in
                         let focus = HomeRailCardFocus(rail: id, workID: work.id)
-                        TVCardButton(work: work, parityPosition: (Int(id.dropFirst()) ?? 0, index)) {
-                            TVWebHomeCard(work: work, apiClient: environment.apiClient, focused: focusedCard == focus,
+                        TVCardButton(work: work, parityPosition: (Int(id.dropFirst()) ?? 0, index),
+                                     accessibleName: TVWebHomeCard.accessibleName(work)) {
+                            TVWebHomeCard(work: work, apiClient: environment.apiClient,
+                                          focused: (focusedCard ?? (TVParityLaunch.pinnedClock && id == "r0" ? HomeRailCardFocus(rail: "r0", workID: works.first?.id ?? work.id) : nil)) == focus,
                                           progress: id == "r0" ? viewModel?.progress[work.id] : nil,
                                           artWidth: homeCardWidth, cover: homeCovers)
                         }
@@ -1007,6 +1009,11 @@ struct TVWebHomeCard: View {
     var cover = false
 
     private var artHeight: CGFloat { cover ? artWidth * 1.5 : artWidth * 9 / 16 }
+    /// The web's accessible name for a Home card link: "<title> <kind> · <year>".
+    static func accessibleName(_ work: Work) -> String {
+        "\(work.title) " + [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} ")
+    }
+
     static func height(width: CGFloat, cover: Bool = false) -> CGFloat { (cover ? width * 1.5 : width * 9 / 16) + 10.2 + 17.9 + 3.6 + 11.5 }
 
     var body: some View {
@@ -1041,28 +1048,30 @@ struct TVWebHomeCard: View {
                     .shadow(color: Self.shadow.opacity(focused ? 0.22 : 0.10), radius: focused ? 11 : 4.5, y: focused ? 11 : 3)
             )
             .modifier(TVCardFocusGlow(focused: focused, cornerRadius: 12.48))
+            .parityTransformScope(scale: focused ? 1.025 : 1, lift: focused ? -6 : 0)
             .scaleEffect(focused ? 1.025 : 1)
             Text(work.title)
                 .font(TVTheme.font(size: 11.904, css: 610))
                 .tracking(-0.18)
-                .foregroundStyle(DesignTokens.Color.textPrimary)
+                .foregroundStyle(focused ? Color.white : DesignTokens.Color.textPrimary) // web: the focused card's text is white
                 .lineLimit(1)
-                .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.18)
+                .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: focused ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18)
                 .frame(width: artWidth - 1.91, height: 17.9, alignment: .leading)
                 .padding(.leading, 1.91) // web: the text sits 1.91 pt inside the card
                 .frame(width: artWidth, alignment: .leading)
                 .padding(.top, 10.2)
             Text([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))
                 .font(TVTheme.font(size: 8.832, css: 400))
-                .foregroundStyle(DesignTokens.Color.textDisabled)
+                .foregroundStyle(focused ? Color.white : DesignTokens.Color.textDisabled)
                 .lineLimit(1)
-                .parityLayout(text: [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "), size: 8.832, weight: Int(400), color: DesignTokens.Color.textDisabled)
+                .parityLayout(text: [work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "), size: 8.832, weight: Int(400), color: focused ? Color.white : DesignTokens.Color.textDisabled)
                 .frame(width: artWidth - 1.91, height: 11.5, alignment: .leading)
                 .padding(.leading, 1.91)
                 .frame(width: artWidth, alignment: .leading)
                 .padding(.top, 3.6)
         }
-        .background(alignment: .top) { Color.clear.frame(width: artWidth, height: artHeight + 29.36).parityBox("link", text: "\(work.title) \([work.kind.rawValue.capitalized, work.releaseDate.map { String($0.prefix(4)) }].compactMap { $0 }.joined(separator: " \u{00B7} "))", radius: 0, fill: DesignTokens.Stage.surface) }
+        .background(alignment: .top) { Color.clear.frame(width: artWidth, height: artHeight + 29.36).parityBox("link", text: Self.accessibleName(work), radius: 0, fill: DesignTokens.Stage.surface) }
+        .parityTransformScope(scale: 1, lift: focused ? -6 : 0)
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
@@ -2111,7 +2120,7 @@ struct TVLibraryKindView: View {
     ) -> some View {
         let isSelected = selected?.id == work.id && actionsWorkID == nil && !filtersOpen // web: the open drawer holds focus, so no card is lifted or ringed
         return TVCardButton(work: work, route: playlistCounts[work.id] != nil ? .playlist(id: work.id, name: work.title) : nil,
-                            parityGridPosition: gridPosition) {
+                            parityGridPosition: gridPosition, accessibleName: "Open \(work.title)") {
             // SPA `.tv-title-card-copy { padding-top: 0.72rem; gap }` +
             // `strong { font-size: clamp(0.54rem, 0.6vw, 0.74rem) → ~11.5 @ 1920,
             // font-weight: 610, letter-spacing: -0.015em }`.
@@ -2162,14 +2171,16 @@ struct TVLibraryKindView: View {
                     Text(work.title)
                         .font(TVTheme.font(size: 11.9, weight: .semibold))
                         .tracking(-0.18)
-                        .foregroundStyle(DesignTokens.Color.textPrimary)
+                        .foregroundStyle(isSelected ? Color.white : DesignTokens.Color.textPrimary) // web: the focused card's text is white
                         .lineLimit(1)
-                        .parityLayout(text: work.title, size: 11.9, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.18)
+                        .parityLayout(text: work.title, size: 11.9, weight: Int(TVTheme.cssWeight(.semibold)), color: isSelected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18)
                         .padding(.leading, 1.91) // web: the title sits 1.91 pt inside the card
                         .frame(width: width, alignment: .leading)
                 }
             }
             .frame(width: width, alignment: .leading)
+            .parityBox("link", text: "Open \(work.title)", radius: 12, fill: DesignTokens.Stage.surface)
+            .parityTransformScope(scale: isSelected ? 1.025 : 1, lift: isSelected ? -7 : 0)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
             .scaleEffect(isSelected ? 1.025 : 1)
             .offset(y: isSelected ? -7 : 0)

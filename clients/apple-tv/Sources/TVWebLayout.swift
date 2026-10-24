@@ -763,6 +763,8 @@ struct TVCardButton<Label: View>: View {
     var parityPosition: (rail: Int, index: Int)? = nil
     /// Debug parity only: a library grid cell's zero-based row and column.
     var parityGridPosition: TVParityGridPosition? = nil
+    /// The card's accessible name as the web has it (library cards "Open <title>", Home cards "<title> <kind> · <year>").
+    var accessibleName: String? = nil
     @ViewBuilder var label: () -> Label
     @Environment(\.openActions) private var openActions
     @Environment(\.openRoute) private var openRoute
@@ -779,13 +781,14 @@ struct TVCardButton<Label: View>: View {
         } label: {
             label().parityFocusTag(work.title, id: work.id.uuidString, rail: parityPosition?.rail, index: parityPosition?.index,
                                    gridPosition: parityGridPosition)
-                .modifier(TVLibraryLinkBox(title: parityGridPosition == nil ? nil : "Open \(work.title)"))
+
         }
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focused) { _, now in TVParityState.setFocus(work.title, now, id: work.id.uuidString,
                                                                   rail: parityPosition?.rail, index: parityPosition?.index,
                                                                   gridPosition: parityGridPosition) }
         #endif
+        .accessibilityLabel(accessibleName ?? work.title)
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.65).onEnded { _ in
             longPressed = true
             openActions(work)
@@ -1071,10 +1074,3 @@ private struct MacEdgeFade: ViewModifier {
 }
 #endif
 
-/// Layout export: a library grid card is a link named "Open <title>" (web accessible name).
-private struct TVLibraryLinkBox: ViewModifier {
-    let title: String?
-    func body(content: Content) -> some View {
-        if let title { content.parityBox("link", text: title, radius: 12, fill: DesignTokens.Stage.surface) } else { content }
-    }
-}
