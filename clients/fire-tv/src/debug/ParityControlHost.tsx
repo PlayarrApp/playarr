@@ -113,9 +113,11 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     const pauser = setInterval(() => {
       if (armedPause === null) return;
       const state = engine.getState();
-      if (state.state === 'playing' && state.currentTimeSeconds * 1000 >= armedPause) {
+      if (state.state === 'playing' && state.currentTimeSeconds * 1000 >= armedPause - 150) {
+        const target = armedPause;
         armedPause = null;
-        void engine.pause();
+        // Land on exactly the requested instant: pause first, then seek to it (the clip is paused, so the frame is the one at target).
+        void engine.pause().then(() => engine.seek(target / 1000));
       }
     }, 40);
     const timer = setInterval(() => {

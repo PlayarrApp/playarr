@@ -9,7 +9,7 @@ import type {CalendarEntry} from '@playarr-tv/api-client';
 import {useLanguage} from '../../i18n/LanguageProvider';
 import {type CalendarItem, type Day, type DayGroup, type MonthCell, buildMonthGrid, buildWeekDays, groupSeriesEpisodes, itemAvailability, itemPillTone, parseDay} from '../../lib/calendar';
 import {reportFocus} from '../../debug/parityControl';
-import {lb, lx} from '../../debug/layoutMarks';
+import {lx} from '../../debug/layoutMarks';
 import {mix} from '../../theme/color';
 import {useTheme} from '../../theme/ThemeProvider';
 import {EdgeFade} from '../../tv/EdgeFade';
@@ -54,7 +54,7 @@ function DayHeading({day, today, locale, height = HEADING_H, background}: {day: 
   const {colour} = useTheme();
   const {t} = useLanguage();
   return (
-    <View {...lx('heading', '')} {...lb(colour.bg)} style={{flexDirection: 'row', alignItems: 'center', height: u(height), backgroundColor: background}}>
+    <View {...lx('heading', '')} style={{flexDirection: 'row', alignItems: 'center', height: u(height), backgroundColor: background ?? colour.bg}}>
       <T size={18.4} weight={640} lh={HEADING_H} color={day === today ? colour.accent : colour.ink}>
         {dayHeading(day, locale)}
       </T>

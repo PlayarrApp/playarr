@@ -4,6 +4,7 @@
  * its resolved style and window rect. `cmd=layout` logs the document in chunks the driver reassembles.
  */
 import React from 'react';
+import {sansWeight} from '../theme/fonts';
 import {Dimensions, StyleSheet} from 'react-native';
 
 export interface TextInfo {
@@ -85,8 +86,6 @@ function over(top: string, under: string): string {
   return `#${[0, 1, 2].map((i) => h(t[i]! * a + u[i]! * (1 - a))).join('')}`;
 }
 
-/** Measured against the web refs over 170 text runs: the median remainder after centring the glyph run in the line box (CSS px). */
-const TEXT_BIAS = 0.4;
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 export interface LayoutElement {
@@ -136,10 +135,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
         const style = StyleSheet.flatten(f.memoizedProps?.style) ?? {};
         const own = hex(style.backgroundColor);
         if (own && own !== '#f2f2f2' && own !== '#00000000') nextBg = over(own, under);
-        const reported = f.memoizedProps?.parityBgUnder ? under : nextBg;
-        if (typeof f.memoizedProps?.parityBg === 'string') nextBg = f.memoizedProps.parityBg;
-        if (typeof f.memoizedProps?.parityOpacity === 'number') nextOpacity *= f.memoizedProps.parityOpacity;
-        hosts.push({fiber: f, bg: reported, opacity: nextOpacity, path: []});
+        if (typeof style.opacity === 'number') nextOpacity *= style.opacity;
+        hosts.push({fiber: f, bg: nextBg, opacity: nextOpacity, path: []});
       }
       visit(f, nextBg, nextOpacity);
     }
@@ -147,8 +144,6 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
   visit(root, bg, 1);
   const scale = Dimensions.get('window').width / 1920;
   const out: LayoutElement[] = [];
-  const groupAt = new Map<string, LayoutElement>();
-  const groupLines = new Map<string, number>();
   const rects = await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber))));
   hosts.forEach((h, i) => {
     const r = rects[i];
@@ -178,49 +173,37 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       const lines = textLines.get(inst);
       const text = textOf(f);
       if (!text) return;
-      // The web's text rect is the glyph run: the content area (about 1.364 em) of the first line down to the last line's. Vega draws
-      // the first line's glyphs from the top of the Text view, and the lines are one line height apart.
+      // One export entry per laid-out line, from the native line boxes: x and width are the renderer's own line extents, and the glyph
+      // run is the shipped font's ascent plus descent (Nunito Sans hhea: 1.011 and 0.353 em, each rounded) centred in the native line
+      // box (Vega draws the glyphs centred in `lineHeight`). The font weight is the static font file the app actually loads.
       const size = info?.size ?? round2((style.fontSize ?? 0) / scale);
       const lh = info?.lh ?? (style.lineHeight ? style.lineHeight / scale : 1.364 * size);
-      const content = Math.min(1.364 * size, lh > 0 ? Math.max(lh, 1) : 1.364 * size);
-      const n = lines && lines.length ? lines.length : 1;
-      const x0 = lines && lines.length ? Math.min(...lines.map((l) => l.x)) : 0;
-      const x1 = lines && lines.length ? Math.max(...lines.map((l) => l.x + l.width)) : rect.w * scale;
-      // Chrome's glyph run is the font's ascent plus descent, each rounded (Nunito Sans: 1.011 and 0.353 em). The line box starts
-      // at the Text view's top less the relative `top` shift `T` applies, and the run is centred in it.
       const runH = Math.round(1.011 * size) + Math.round(0.353 * size);
-      const lineTop = rect.y - (style.position === 'relative' && typeof style.top === 'number' ? style.top / scale : 0);
-      const y = info?.exact ? rect.y + (rect.h - lh) / 2 : lineTop + (lh - runH) / 2 + TEXT_BIAS;
-      const box = {x: round2(rect.x + x0 / scale), y: round2(y), w: round2((x1 - x0) / scale), h: round2((n - 1) * lh + (info?.exact ? lh : runH))};
-      void content;
-      const fontSize = size;
-      const m = /-w(\d+)$/.exec(String(style.fontFamily ?? ''));
       const upper = style.textTransform === 'uppercase';
-      const textSrc = debug ? JSON.stringify({view: rect, size, lines, lh: style.lineHeight ? round2(style.lineHeight / scale) : null, ls: style.letterSpacing, top: style.top, left: style.left}) : undefined;
-      const element: LayoutElement = {
-        ...(base as LayoutElement),
-        text: upper ? text.toUpperCase() : text,
-        role: info?.role ?? 'text',
-        ...(info?.radius ? {radius: info.radius} : null),
-        rect: box,
-        color: hex(style.color),
-        fontSize: round2(fontSize),
-        fontWeight: info?.weight ?? (m ? Number(m[1]) : 400),
-        src: textSrc,
-      };
-      const prior = info?.group ? groupAt.get(info.group) : undefined;
-      if (prior) {
-        // One web element drawn as one Text per line: the lines are exactly one line height apart on the web.
-        const x1 = Math.max(prior.rect.x + prior.rect.w, element.rect.x + element.rect.w);
-        const x0 = Math.min(prior.rect.x, element.rect.x);
-        const count = (groupLines.get(info!.group!) ?? 1) + 1;
-        groupLines.set(info!.group!, count);
-        prior.rect = {x: x0, y: prior.rect.y, w: round2(x1 - x0), h: round2((count - 1) * lh + runH)};
-        prior.text = `${prior.text} ${element.text}`;
-        return;
-      }
-      if (info?.group) groupAt.set(info.group, element);
-      out.push(element);
+      const weight = sansWeight(info?.weight ?? 400);
+      const native = lines && lines.length ? lines : [{x: 0, y: 0, width: rect.w * scale, height: lh * scale, text}];
+      native.forEach((line, index) => {
+        const lineText = ((line as {text?: string}).text ?? (native.length === 1 ? text : '')).replace(/\s+/g, ' ').trim();
+        if (!lineText) return;
+        const lineH = line.height / scale;
+        const element: LayoutElement = {
+          ...(base as LayoutElement),
+          text: upper ? lineText.toUpperCase() : lineText,
+          role: info?.role ?? 'text',
+          ...(info?.radius ? {radius: info.radius} : null),
+          rect: {
+            x: round2(rect.x + line.x / scale),
+            y: round2(info?.exact ? rect.y + (rect.h - lh) / 2 : rect.y + line.y / scale + (lineH - runH) / 2),
+            w: round2(line.width / scale),
+            h: info?.exact ? lh : runH,
+          },
+          color: hex(style.color),
+          fontSize: round2(size),
+          fontWeight: weight,
+          ...(debug && index === 0 ? {src: JSON.stringify({view: rect, size, lines, lh, top: style.top})} : null),
+        };
+        out.push(element);
+      });
       return;
     }
     if (debug && !['RCTView', 'RCTText', 'RCTImageView', 'RCTVirtualText'].includes(type)) out.push({text: type, role: 'system', rect, color: null, background: h.bg, fontSize: null, fontWeight: null, src: JSON.stringify(Object.keys(props))});

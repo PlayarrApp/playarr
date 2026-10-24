@@ -14,7 +14,7 @@ import {ArtworkImage} from '../components/ArtworkImage';
 import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, Fill, u} from './kit';
-import {lo, lx} from '../debug/layoutMarks';
+import {lx} from '../debug/layoutMarks';
 
 export interface StageProps {
   artUri?: string | null;
@@ -75,7 +75,7 @@ export function Stage({artUri, accessToken, children}: StageProps): React.ReactE
           {/* The server bakes the web's greyscale, contrast and brightness (`stage-grey`); the opacity and the edge mask are applied
               here. A server that predates it answers with the PNG look, and one that knows neither gets the colour original. */}
           {tier === 'grey' ? (
-            <View {...lo(dark ? 0.72 : 0.4)} style={[StyleSheet.absoluteFill, {opacity: dark ? 0.72 : 0.4}]}>
+            <View style={[StyleSheet.absoluteFill, {opacity: dark ? 0.72 : 0.4}]}>
               <ArtworkImage uri={styledArtUri(artUri, dark)} accessToken={accessToken} style={{width: '100%', height: '100%'}} resizeMode="cover" onFailed={() => setTier('png')} />
             </View>
           ) : tier === 'png' ? (

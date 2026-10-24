@@ -9,20 +9,8 @@ export function lx(role: string, label?: string, radius?: number, opacity?: numb
   return PARITY_CONTROL ? {parityRole: role, parityLabel: label, parityRadius: radius, parityOpacity: opacity} : {};
 }
 
-/** A background the web draws that the app gets from elsewhere (the day headings sit on the app shell's colour). */
-export function lb(color: string): object {
-  return PARITY_CONTROL ? {parityBg: color} : {};
-}
 
-/** A translucent surface whose own reported background is the one behind it (the web rail groups); its children composite it. */
-export function lu(): object {
-  return PARITY_CONTROL ? {parityBgUnder: true} : {};
-}
 
-/** The opacity a screen applies through a native animation or an ancestor (the exporter cannot read animated values). */
-export function lo(opacity: number): object {
-  return PARITY_CONTROL ? {parityOpacity: opacity} : {};
-}
 
 /** A drawn glyph or text that is a text element on the web (an svg icon standing for a character). */
 export function lt(text: string, size: number, weight: number, color: string): object {

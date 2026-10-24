@@ -243,7 +243,7 @@ export async function createDriver({ out } = {}) {
     async playerControls() {
       const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
       if (!film) throw new Error("suite has no pinned film for player-controls");
-      await command({ cmd: "armPause", ms: "1870" }, 500);
+      await command({ cmd: "armPause", ms: "2000" }, 500);
       // Play on the pinned film's page; if the clip has not started within 50 s (a dropped Select), open the page again and retry once.
       let paused = false;
       for (let attempt = 0; attempt < 2 && !paused; attempt++) {
@@ -253,7 +253,7 @@ export async function createDriver({ out } = {}) {
         const t0 = Date.now();
         while (Date.now() - t0 < 50000) {
           const player = (await state(20000).catch(() => ({}))).player ?? {};
-          if (player.state === "paused" && player.positionSeconds < 5) { paused = true; break; }
+          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.05) { paused = true; break; }
           await sleep(1500);
         }
       }

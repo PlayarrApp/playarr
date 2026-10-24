@@ -13,7 +13,7 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {FocusRing} from '../tv/FocusRing';
 import {T, u} from '../tv/kit';
-import {lb, lo, lx} from '../debug/layoutMarks';
+import {lx} from '../debug/layoutMarks';
 
 export type ChromeControl = 'close' | 'scrubber' | 'play' | 'subtitles' | 'quality';
 
@@ -68,7 +68,7 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
   const buffered = duration > 0 ? Math.min(1, Math.max(played, props.bufferedSeconds / duration)) : 0;
 
   return (
-    <View {...lx('container', '')} {...lb('#000000')} style={StyleSheet.absoluteFill} pointerEvents={props.visible ? 'box-none' : 'none'}>
+    <View {...lx('container', '')} style={StyleSheet.absoluteFill} pointerEvents={props.visible ? 'box-none' : 'none'}>
       <View {...lx('video', '')} pointerEvents="none" style={StyleSheet.absoluteFill} />
       {/* Scrim: rises from the bottom, recedes downwards. */}
       <Animated.View pointerEvents="none" {...lx('container', '')} style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: u(518.39), transform: [{translateY: scrimShift}]}}>
@@ -218,8 +218,8 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
 /** A drawn-only transport button (previous, next episode) at the web's 64 px box, dimmed like a disabled control. */
 function Decor({icon, label, x, y}: {icon: IconName; label: string; x: number; y: number}): React.ReactElement {
   return (
-    <View pointerEvents="none" {...lx('button', label, 50)} {...lo(0.28)} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center'}}>
-      <Icon name={icon} size={u(20)} color="rgba(255,255,255,0.34)" strokeWidth={2} />
+    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
+      <Icon name={icon} size={u(20)} color="#ffffff" strokeWidth={2} />
     </View>
   );
 }
