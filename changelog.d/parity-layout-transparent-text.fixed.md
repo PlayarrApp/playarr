@@ -1,0 +1,1 @@
+- Parity: web layout refs treat transparent skeleton text as a container and report gradient-clipped text with its first stop colour.

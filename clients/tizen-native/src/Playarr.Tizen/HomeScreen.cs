@@ -46,9 +46,11 @@ internal sealed class HomeScreen : IPage
         _env = env; var (homeView, artworkSize) = env.Store.Appearance(); _layout = CardLayout.From(homeView, artworkSize); _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        Sem.Tag(_root, "container", "Home");
         _keyArt = new KeyArt(env, armed: true);
         _panel = new DetailsPanel(env, library: false);
         _root.Add(_keyArt.Root);
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1190), "container", "Home media tracks"));
         _root.Add(_panel.Root);
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _stack.PositionX = -ClipX;
