@@ -29,7 +29,7 @@ parity server with the pinned clock (`2026-10-07T12:00:00Z`). Prerequisites: the
 (Xvfb, never a VNC server), the debug tpk (`clients/tizen-native/scripts/deploy.sh` with `PLAYARR_BUILD_ARGS=-p:PlayarrDebug=true`)
 installed and signed in as the static `parity` account (uninstall first for a fresh sign-in), `PARITY_LOCK_DIR` set to a scratch
 directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the tizen-webos lane. Output is `<out>/dark`, `<out>/light`
-and `<out>/dpad.json`; point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens.
+`<out>/dpad.json` and the layout documents `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md; the debug mirror's `POST /layout` walks the NUI view tree, the driver writes it with every screenshot; `PARITY_NO_LAYOUT=1` skips it); point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens.
 
 ### Tizen and webOS: how the shared runs work
 
