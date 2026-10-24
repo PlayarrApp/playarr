@@ -287,7 +287,7 @@ export struct SettingsScreen {
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .position({ x: tv(NUMBER_LEFT), y: tv(NUMBER_TOP) })
-      Text(section.title).fontFamily(nunito(500))
+      Text(section.title).fontFamily(nunito(480))
         .fontSize(tv(TITLE_SIZE))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(TITLE_LETTER_SPACING))
@@ -625,35 +625,35 @@ export struct SettingsScreen {
         ForEach(buildSections(), (section: SettingsSection) => {
           // Web phone `.settings-option`: 328 x 88 rows (16 vp page margin), number at +12/+14, copy at +56, arrow centred at +310.
           Stack({ alignContent: Alignment.TopStart }) {
-            Text(section.number).fontFamily(nunito(700))
+            Text(section.number).fontFamily(nunito(760))
               .fontSize(8.96)
               .fontWeight(FontWeight.Bold)
               .lineHeight(12)
               .fontColor(toResourceColor(activeColors().ink))
               .position({ x: 12, y: 15.3 })
             Column({ space: 2.4 }) {
-              Text(section.title).fontFamily(nunito(500))
+              Text(section.title).fontFamily(nunito(480))
                 .fontSize(16)
                 .fontWeight(FontWeight.Medium)
                 .lineHeight(22)
-                .letterSpacing(-0.8)
+                .letterSpacing(-0.54)
                 .fontColor(toResourceColor(activeColors().ink))
               Text(sectionCopyOf(section.id)).fontFamily(nunito(400))
                 .fontSize(10.88)
                 .lineHeight(15)
-                .fontColor(toResourceColor(activeColors().inkSoft))
+                .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
             .alignItems(HorizontalAlign.Start)
-            .width(262) // web dump: the copy runs 261.6 wide, under the arrow
-            .position({ x: 56, y: 22.1 })
+            .width(272) // web dump: the copy runs 261.6 wide and sits under the arrow, unclipped
+            .position({ x: 56, y: 22.9 })
             Text('→').fontFamily(nunito(400))
-              .fontSize(14)
-              .fontColor(toResourceColor(activeColors().ink))
+              .fontSize(20.8)
+              .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
               .height(88)
               .position({ x: section.id === this.openSection ? 303 : 298, y: 3 }) // web: the unselected rows' arrow sits 5 vp further left
           }
+          .id('px:link:' + section.number + ' ' + section.title + ' ' + sectionCopyOf(section.id) + ' →')
           .width(328)
           .height(88)
           .margin({ left: 16, right: 16 })
@@ -675,6 +675,7 @@ export struct SettingsScreen {
       PageShell({
         railFrostWidthPct: 65,
         title: t('settings.index.title', 'Preferences'),
+        backLabel: 'Settings',
         touch: true,
         selectedId: '',
         kicker: this.sectionOpen ? this.sectionTitle() : '',

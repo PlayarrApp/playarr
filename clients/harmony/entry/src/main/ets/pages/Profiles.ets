@@ -120,7 +120,7 @@ const PHONE_CHOICE_WIDTH: number = 144;
 const PHONE_CHOICE_GAP: number = 23;
 const PHONE_CHOICES_LEFT: number = 25;
 const PHONE_HEADING_LEFT: number = 32.5;
-const PHONE_HEADING_SIZE: number = 38.4;
+const PHONE_HEADING_SIZE: number = 39.6; // web dump
 const PHONE_KICKER_TOP: number = 68;
 const PHONE_CHOICES_TOP: number = 64.3;
 const PHONE_SELECT_HEIGHT: number = 48;
@@ -348,8 +348,8 @@ struct Profiles {
   /** Web's foot-of-page pills (Check for updates, Clients): a 44 px pill on surface-strong at 0.64, text only. */
   @Builder
   private footerPill(label: string, x: number, y: number, onTap: () => void, phone: boolean = false): void {
-    Text(label).fontFamily(nunito(700))
-      .fontSize(phone ? tv(TV_ACTION_TEXT) * 0.73 : tv(TV_ACTION_TEXT))
+    Text(label).fontFamily(nunito(phone ? 720 : 700))
+      .fontSize(phone ? 7.68 : tv(TV_ACTION_TEXT))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .height(tv(TV_ACTION_HEIGHT))
@@ -372,8 +372,8 @@ struct Profiles {
         .height(tv(TV_ACTION_ICON))
         .colorFilter(tintFilter(tint))
       if (label.length > 0) {
-        Text(label).fontFamily(nunito(700))
-          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : tv(TV_ACTION_TEXT) * 0.7)
+        Text(label).fontFamily(nunito(isTvMetrics() ? 700 : 720))
+          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -454,8 +454,8 @@ struct Profiles {
         .markAnchor(isTvMetrics() ? { x: 0, y: 0 } : { x: PHONE_SELECT_RIGHT + PHONE_SELECT_WIDTH * 2 + 8, y: 0 })
         .zIndex(2)
       Column() {
-      Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunito(900))
-        .fontSize(isTvMetrics() ? tv(10.368) : tv(10.368) * 0.705)
+      Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunito(isTvMetrics() ? 900 : 820))
+        .fontSize(isTvMetrics() ? tv(10.368) : 7.36)
         .fontWeight(FontWeight.Bolder)
         .letterSpacing(isTvMetrics() ? tv(1.348) : tv(1.348) * 0.705)
         .textCase(TextCase.UpperCase)
@@ -463,7 +463,7 @@ struct Profiles {
         .height(tv(16))
         .margin({ top: this.pick(162, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 145 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
-      Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunito(500))
+      Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunito(isTvMetrics() ? 500 : 500))
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE))
         .fontWeight(FontWeight.Medium)
         .letterSpacing(this.pick(-5.806, -2.77))
@@ -489,13 +489,13 @@ struct Profiles {
               // web phone: the current avatar throws a wide crimson glow (0.28 at the ring, 0.11 at 17 vp out on the static ref, light theme; none above it)
               .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
               .shadow(profile.is_current && !isTvMetrics() ? { radius: 40, color: 'rgba(130, 40, 66, 0.56)', offsetY: 16 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
-            Text(profile.display_name).fontFamily(nunito(700))
-              .fontSize(this.pick(17.28, 12))
+            Text(profile.display_name).fontFamily(nunito(this.pick(700, 680)))
+              .fontSize(this.pick(17.28, 13.12))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: this.pick(6, profile.is_current ? 5.5 : 10.8) })  // web phone: the lifted current avatar pulls its name up
-            Text(this.statusLabel(profile)).fontFamily(nunito(700))
-              .fontSize(this.pick(9.408, 7.3))
+            Text(this.statusLabel(profile)).fontFamily(nunito(this.pick(700, 690)))
+              .fontSize(this.pick(9.408, 6.72))
               .fontWeight(FontWeight.Bold)
               .letterSpacing(this.pick(0.423, 0.33))
               .textCase(TextCase.UpperCase)
@@ -534,7 +534,7 @@ struct Profiles {
                 colors: [['rgba(255, 255, 255, 0.28)', 0], ['rgba(255, 255, 255, 0)', 1]],
               })
             Text('+').fontFamily(nunito(300))
-              .fontSize(this.pick(76.8, 45))
+              .fontSize(this.pick(76.8, 38.4))
               .fontWeight(FontWeight.Lighter)
               .fontColor(toResourceColor(activeColors().inkSoft))
           }
@@ -543,13 +543,13 @@ struct Profiles {
           .borderRadius(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH) / 2)
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
-          Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunito(700))
-            .fontSize(this.pick(17.28, 12))
+          Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunito(this.pick(700, 680)))
+            .fontSize(this.pick(17.28, 13.12))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: this.pick(9, 10.8) })
-          Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunito(700))
-            .fontSize(this.pick(9.408, 7.3))
+          Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunito(this.pick(700, 690)))
+            .fontSize(this.pick(9.408, 6.72))
             .fontWeight(FontWeight.Bold)
             .letterSpacing(this.pick(0.423, 0.33))
             .textCase(TextCase.UpperCase)

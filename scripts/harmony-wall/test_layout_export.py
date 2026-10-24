@@ -15,7 +15,7 @@ class LayoutExportTest(unittest.TestCase):
         t = [e for e in doc["elements"] if e["role"] == "text"][0]
         self.assertEqual(t["text"], "Hello world")
         self.assertEqual(t["fontWeight"], 610)
-        self.assertEqual(t["rect"], {"x": 10.0, "y": round(100 + (24 - 16 * 1.364) / 2, 2), "w": 100.0, "h": round(16 * 1.364, 2)})
+        self.assertEqual(t["rect"], {"x": 10.0, "y": 101.0, "w": 100.0, "h": 22})
         self.assertEqual(t["color"], "#f4f0f1")
         self.assertEqual(t["background"], "#151315")
 

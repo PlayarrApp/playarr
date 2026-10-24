@@ -21,7 +21,7 @@ const BAR_SIDE: number = 10;
 const BAR_BOTTOM: number = 8;
 const BAR_PADDING: number = 5;
 const BAR_RADIUS: number = 20;
-const TILE_WIDTH: number = 44;
+const TILE_WIDTH: number = 42;
 const TILE_HEIGHT: number = 46;
 const TILE_RADIUS: number = 14;
 const ICON_SIZE: number = 21;
@@ -50,6 +50,7 @@ export struct TouchNavBar {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
   @StorageProp('currentProfileId') private profileId: string = '';
+  @StorageProp('currentProfileName') private profileName: string = '';
   @StorageProp('currentAvatarPreset') private avatarOverride: string = ''; // the profile's saved avatar, as on the TV rail
   @StorageProp('safeBottom') private safeBottom: number = 0;
   @StorageProp('safeLeft') private safeLeft: number = 0;
@@ -82,6 +83,7 @@ export struct TouchNavBar {
         .draggable(false)
         .focusable(false)
     }
+    .id('px:link:' + item.label)
     .width(TILE_WIDTH)
     .height(TILE_HEIGHT)
     .justifyContent(FlexAlign.Center)
@@ -105,6 +107,7 @@ export struct TouchNavBar {
             })
               .focusable(false)
           }
+          .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
           .width(TILE_WIDTH)
           .height(TILE_HEIGHT)
           .justifyContent(FlexAlign.Center)

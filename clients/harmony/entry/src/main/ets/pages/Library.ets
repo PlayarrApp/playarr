@@ -922,6 +922,7 @@ export struct Library {
   private touchFiltersButton(): void {
     TouchIconButton({
       icon: $r('app.media.action_filters'),
+      label: 'Filters',
       onTap: (): void => {
         this.filtersOpen = true;
         this.loadLanguageFacets();

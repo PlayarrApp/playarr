@@ -27,23 +27,14 @@ export function registerNunito(ui: UIContext): void {
   font.registerFont({ familyName: 'NunitoSansW900', familySrc: $rawfile('fonts/NunitoSans-W900.ttf') });
 }
 
-/** The family for a weight: an exact web weight (WEIGHTS) names its static instance; the nominal ArkUI weights keep their old picks
- * (500 headings 580, 600 labels 610, 800+ heavy 820, below 500 regular 400). */
+/** The family for a weight: the nearest static instance. Call sites pass the web CSS weight; the nominal ArkUI weights
+ * (500, 600, 800) land on the nearest web instance. */
 export function nunito(weight: number): string {
-  if (WEIGHTS.indexOf(weight) >= 0) {
-    return 'NunitoSansW' + weight.toString();
+  let best: number = WEIGHTS[0];
+  for (const w of WEIGHTS) {
+    if (Math.abs(w - weight) < Math.abs(best - weight)) {
+      best = w;
+    }
   }
-  if (weight >= 800) {
-    return 'NunitoSansW820';
-  }
-  if (weight >= 700) {
-    return 'NunitoSansW700';
-  }
-  if (weight >= 600) {
-    return 'NunitoSansW610';
-  }
-  if (weight >= 500) {
-    return 'NunitoSansW580';
-  }
-  return 'NunitoSansW400';
+  return 'NunitoSansW' + best.toString();
 }

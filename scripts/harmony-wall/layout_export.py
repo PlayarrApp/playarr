@@ -8,6 +8,7 @@ CONTENT_AREA = 1.364  # Nunito Sans ascent + descent per em
 FONT_FILES = {w: f"NunitoSans-W{w}.ttf" for w in (300, 400, 480, 560, 580, 610, 640, 680, 700, 720, 760, 820, 860, 900)}
 WEIGHT_NAMES = {"lighter": 300, "regular": 400, "normal": 400, "medium": 500, "bold": 700, "bolder": 800}
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "clients", "harmony", "entry", "src", "main", "resources", "rawfile", "fonts")
+KNOWN = set(chr(c) for c in range(0x20, 0x250)) | set('\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u00b7')
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
 
 
@@ -53,7 +54,8 @@ def text_width(text, size, weight, spacing, measure=None):
         return measure(text, size, weight) + spacing * len(text)
     from PIL import ImageFont  # noqa: PLC0415
     font = ImageFont.truetype(os.path.join(FONT_DIR, FONT_FILES[min(FONT_FILES, key=lambda w: abs(w - weight))]), 1000)
-    return font.getlength(text) * size / 1000 + spacing * len(text)
+    advance = sum(font.getlength(ch) if ch in KNOWN else 1000 for ch in text)  # a glyph the font lacks falls back to a 1 em box, as web's fallback font does for arrows
+    return advance * size / 1000 + spacing * len(text)
 
 
 def backdrop(image, x, y, w, h, dpr, fallback):
@@ -83,22 +85,29 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             here = over(bg, under)
         if box is not None:
             x, y, w, h = (v / dpr for v in box)
+            if str(attrs.get("id", "")).startswith("px:"):
+                _, prole, pname = str(attrs["id"]).split(":", 2)  # the app tags controls "px:<web role>:<accessible name>"
+                el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                      "color": None, "background": hex_of(here), "fontSize": None, "fontWeight": None}
+                radius = num(attrs.get("borderRadius"), 0.0)
+                if radius:
+                    el["radius"] = radius
+                out.append(el)
             text = attrs.get("content", attrs.get("text")) if kind == "Text" else None
             if kind == "Text" and text:
                 size = num(attrs.get("fontSize"), 16.0)
                 weight = weight_of(attrs)
                 spacing = num(attrs.get("letterSpacing"), 0.0)
-                tw = text_width(str(text), size, weight, spacing, measure)
-                ch = size * CONTENT_AREA
+                case = str(attrs.get("textCase", attrs.get("textTransform", ""))).lower()
+                text = str(text).upper() if "upper" in case or case.endswith("1") else (str(text).lower() if "lower" in case or case.endswith("2") else text)
+                tw = text_width(text, size, weight, spacing, measure)
+                ch = round(size * 1.011) + round(size * 0.353)  # Chrome's content area: rounded ascent plus rounded descent (hhea 1011 / 353)
                 if tw > w + 0.5:  # wrapped or clipped: the box is the run
                     rx, ry, rw, rh = x, y, w, h
                 else:
                     align = str(attrs.get("textAlign", "")).lower()
                     rx = x + (w - tw) / 2 if "center" in align else (x + w - tw if "end" in align else x)
                     rx, ry, rw, rh = rx, y + (h - ch) / 2, tw, ch
-                case = str(attrs.get("textCase", attrs.get("textTransform", ""))).lower()
-                text = str(text).upper() if "upper" in case or case.endswith("1") else (str(text).lower() if "lower" in case or case.endswith("2") else text)
-                tw = text_width(text, size, weight, spacing, measure)
                 here = backdrop(image, rx, ry, rw, rh, dpr, here)
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
                 el = {"text": " ".join(str(text).split()), "role": "heading" if size >= 21 else "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
