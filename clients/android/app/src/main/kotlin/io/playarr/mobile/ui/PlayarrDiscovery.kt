@@ -309,7 +309,7 @@ internal fun WatchlistToggleButton(
             enabled = listed != null,
             exportLabel = (if (listed == true) "✓ " else "+ ") + playarrString(if (listed == true) PlayarrString.WatchlistRemove else PlayarrString.WatchlistAdd),
         ) {
-            Text(if (listed == true) "✓" else "+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
+            Text(if (listed == true) "✓" else "+", color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
             Spacer(Modifier.width(7.6.dp))
             Text(
                 playarrString(if (listed == true) PlayarrString.WatchlistRemove else PlayarrString.WatchlistAdd),

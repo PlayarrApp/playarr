@@ -123,10 +123,11 @@ internal fun playarrPageHeader(
     countLine: Boolean = false,
     /** The Back button's accessible name (web: `Back to Home`, `Back to Movies`); defaults to plain Back. */
     backLabel: String? = null,
+    backAsButton: Boolean = false,
 ): PlayarrPageHeaderSpec = PlayarrPageHeaderSpec(
     title = title,
     detail = subtitle,
-    back = PlayarrBack(backLabel ?: playarrString(PlayarrString.CommonBack), onBack),
+    back = PlayarrBack(backLabel ?: playarrString(PlayarrString.CommonBack), onBack).also { it.asButton = backAsButton },
     actions = buildList {
         addAll(actions)
         if (filters != null) {

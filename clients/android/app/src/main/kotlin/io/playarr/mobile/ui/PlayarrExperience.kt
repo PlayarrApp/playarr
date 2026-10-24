@@ -3734,7 +3734,7 @@ internal fun ExperienceLandscapeCard(
             webPhoneRemoteFocus -> Modifier.mediaCardLift(liftActive, webPhoneMotion)
             else -> Modifier
         },
-    ).parityBox("link", if (webTvLibrary || (webPhone && !webHome)) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary || (webPhone && !webHome)) LocalParityLinkRadius.current else 0f, background = WebSurface, fit = if (webTvLibrary) null else if (webPhone && webHome) { r -> r.copy(bottom = r.bottom - 12.88f * phoneDensity) } else if (!webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
+    ).parityBox("link", if (webTvLibrary || (webPhone && !webHome)) "Open $displayTitle" else listOfNotNull(displayTitle, resolvedSubtitle.takeIf { it.isNotBlank() }).joinToString(" "), if (webTvLibrary || (webPhone && !webHome)) LocalParityLinkRadius.current * LocalStageScale.current else 0f, background = WebSurface, fit = if (webTvLibrary) null else if (webPhone && webHome) { r -> r.copy(bottom = r.bottom - 12.88f * phoneDensity) } else if (!webTvStyle) null else { r -> r.copy(bottom = r.top + r.width * 9f / 16f + 29.36f) })) {
         WebShadowedBox(
             shadows = if (webPhone) webCardShadows(selected || visualFocus, webHome, webSearch) else if (webTvStyle) (if (visualFocus) (if (webTvLibrary) webCardFocusShadows else webRemoteFocusShadows) else webCardShadows(false, !webTvLibrary, false)) else emptyList(),
             shape = RoundedCornerShape(if (webPhone) 8.dp else cardRadius),
@@ -6136,7 +6136,7 @@ private fun ExperienceDetailScreen(
             PlayarrPageLayout(
                 pageId = PlayarrPageId.Detail,
                 // Web phone detail header: the back pill and the kind title only (live dom dump); the work title is a TV subtitle.
-                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), backLabel = playarrString(PlayarrString.CommonBackToDestination, "destination" to detail.work.kind.playarrPluralLabel()), onBack = onBack, subtitle = detail.work.title.takeIf { isTelevision }, largeTitle = true, countLine = true),
+                header = playarrPageHeader(title = detail.work.kind.playarrPluralLabel(), backLabel = playarrString(PlayarrString.CommonBackToDestination, "destination" to detail.work.kind.playarrPluralLabel()), onBack = onBack, backAsButton = true, subtitle = detail.work.title.takeIf { isTelevision }, largeTitle = true, countLine = true),
                 body = PlayarrPageBody.Bleed,
             ) {
             Box(Modifier.fillMaxSize()) {
@@ -6659,7 +6659,7 @@ private fun PhoneVideoDetailBody(
     val language = LocalPlayarrLanguage.current
     val episode = selectedEpisode?.episode
     val seasonNumber = selectedSeason?.season?.seasonNumber
-    val episodeCode = episode?.let { "S${(seasonNumber ?: 0).toString().padStart(2, '0')} · E${it.episodeNumber.toString().padStart(2, '0')}" }
+    val episodeCode = episode?.let { "S ${(seasonNumber ?: 0).toString().padStart(2, '0')} · E ${it.episodeNumber.toString().padStart(2, '0')}" }
     val dateFormat = remember(language) { PlayarrDateFormat("yMMMd", language.locale, java.time.ZoneOffset.UTC) }
     val metaItems = buildList {
         if (episode != null) {
@@ -6950,7 +6950,7 @@ private fun PhoneDetailActions(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             // Series: the primary Start pill grows to fill the row, the watchlist pill follows.
             PhonePill(
-                onClick = onPlayClick, container = WebInk, fill = true, exportRole = "link", exportLabel = "Play $title",
+                onClick = onPlayClick, container = WebInk, fill = true, exportRole = if (series) "button" else "link", exportLabel = "$playLabel ${work.title}",
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
                 modifier = Modifier.weight(1f).focusRequester(firstPill),
             ) {
@@ -6960,7 +6960,7 @@ private fun PhoneDetailActions(
             }
             WatchlistToggleButton(work, webPhone = true)
             PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor, exportLabel = "+ Add to Playlist") {
-                Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
+                Text("+", color = PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 Spacer(Modifier.width(7.6.dp))
                 Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
             }
@@ -6971,14 +6971,14 @@ private fun PhoneDetailActions(
         run {
             if (canDownload) {
                 PhonePill(onClick = { onDownload(listOf(downloadCandidate)) }, container = pillColor, width = 104.dp, exportLabel = "Download $title", modifier = Modifier.focusRequester(firstPill)) {
-                    Text("⇩", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
+                    Text("⇩", color = PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                     Spacer(Modifier.width(10.dp))
                     Text(playarrString(PlayarrString.DetailDownloadButton), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 }
             }
             onPlaybackSettings?.let { open ->
                 PhonePill(onClick = open, container = pillColor, width = 119.dp, exportLabel = "Playback settings for $title", modifier = if (canDownload) Modifier else Modifier.focusRequester(firstPill)) {
-                    Text("☷", color = WebKicker, fontSize = 12.88.sp, lineHeight = 19.32.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
+                    Text("☷", color = PlayarrWebTheme.palette.brandInk, fontSize = 12.88.sp, lineHeight = 19.32.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                     Spacer(Modifier.width(10.dp))
                     Text(playarrString(PlayarrString.DetailPlayback), color = WebInk, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 }
@@ -6986,7 +6986,7 @@ private fun PhoneDetailActions(
             // Web phone `.tv-detail-play`: the ink pill (no hover scale on touch) that fills what is left of the first row;
             // a long label such as "Resume from 0:02" wraps to two lines inside it.
             PhonePill(
-                onClick = onPlayClick, container = WebInk, width = 118.5.dp, exportRole = "link", exportLabel = "Play $title",
+                onClick = onPlayClick, container = WebInk, width = 118.5.dp, exportRole = if (series) "button" else "link", exportLabel = "$playLabel ${work.title}",
                 shadow = WebShadow(18.dp, 46.dp, Color(0xFF382621).copy(alpha = 0.18f)),
                 modifier = if (canDownload || onPlaybackSettings != null) Modifier else Modifier.focusRequester(firstPill),
             ) {
@@ -6996,7 +6996,7 @@ private fun PhoneDetailActions(
             }
             WatchlistToggleButton(work, webPhone = true)
             PhonePill(onClick = { onAddToPlaylist(episode?.episode?.id) }, container = pillColor, exportLabel = "+ Add to Playlist") {
-                Text("+", color = WebKicker, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
+                Text("+", color = PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
                 Spacer(Modifier.width(7.6.dp))
                 Text(playarrString(PlayarrString.ContextAddToPlaylist), color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
             }
