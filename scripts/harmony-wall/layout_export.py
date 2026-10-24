@@ -345,6 +345,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 cell_bg = argb(attrs.get("backgroundColor"))  # a month cell: web's container with a hairline border
                 out.append({"text": "", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                             "color": None, "background": hex_of(over(cell_bg, under) if cell_bg is not None and cell_bg[3] > 0 else under), "fontSize": None, "fontWeight": None})
+            elif kind == "Column" and dpr == 3 and screen.endswith("-detail") and isinstance(attrs.get("linearGradient"), dict) and attrs["linearGradient"].get("colors") and w >= vw - 1 and h > 500:
+                out.append({"text": "", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+                            "color": None, "background": hex_of(page_colour[0] or under), "fontSize": None, "fontWeight": None})  # the hero wash gradient: web's full-width container
             elif kind in ("Image", "Button", "Toggle", "TextInput") or (bg is not None and bg[3] > 0.01 and w >= 1 and h >= 1):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "dialog" if id(node) in dialogs else "container")
                 if role == "container" and ((h <= 3.5 and w >= 100 and bg is not None and bg[3] < 0.99) or ((abs(w - 9) < 0.3 or 12.5 < w < 14) and abs(w - h) < 1.5 and bg is not None and bg[3] > 0.99 and abs(num(attrs.get("borderRadius"), 0.0) * 2 - w) < 1.5)):
