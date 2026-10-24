@@ -1672,10 +1672,11 @@ struct TVLibraryKindView: View {
         // The scroll can hand focus to the card that slides under the resting pointer or the settle step (a dark D-pad run
         // landed on the third-row card); ask again, bounded, until the opened card holds it.
         Task { @MainActor in
-            for _ in 0..<4 {
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                if selectedID == id { return }
-                focusRequestID = id
+            // The opened card must hold the focus for 1.5 s (three checks): a late settle step stole it on a loaded hosted runner.
+            var held = 0
+            for _ in 0..<16 {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                if selectedID == id { held += 1; if held >= 3 { return } } else { held = 0; focusRequestID = id }
             }
         }
     }
