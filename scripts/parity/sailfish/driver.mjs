@@ -66,10 +66,12 @@ export async function createDriver() {
     // Detail refs are at the page top, but the series page scrolls itself to the next-up episode.
     const probedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id)), "js:pageStack.currentPage.scrollTop()"] : resolvedSteps;
     // Layout export (docs/parity/LAYOUT.md) runs as the last step, at the end of the settle time, in the state that is captured.
-    const dumpAt = Math.max(1, Math.ceil((pendingSettle - 4) / 1.5));
+    const dumpAt = Math.max(1, Math.ceil((pendingSettle - 4) / 1.5) - (detail ? 2 : 0));
+    // Detail pages are put back at the top again right before the export: late data (similar titles, the next-up scroll) can move them.
+    const dumpSteps = detail ? ["js:pageStack.currentPage.scrollTop()", "wait", "js:layoutDump()"] : ["js:layoutDump()"];
     const checkedSteps = probedSteps.length >= dumpAt
-      ? [...probedSteps.slice(0, dumpAt), "js:layoutDump()", ...probedSteps.slice(dumpAt)]
-      : [...probedSteps, ...Array(dumpAt - probedSteps.length).fill("wait"), "js:layoutDump()"];
+      ? [...probedSteps.slice(0, dumpAt), ...dumpSteps, ...probedSteps.slice(dumpAt)]
+      : [...probedSteps, ...Array(dumpAt - probedSteps.length).fill("wait"), ...dumpSteps];
     const script = serializeSteps(theme, checkedSteps);
     writeFileSync(join(tmp, "steps"), script);
     execFileSync("scp", ["-i", env.PLAYARR_SF_SSH_KEY, "-P", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", join(tmp, "steps"), `defaultuser@${host}:/run/user/100000/pa-steps.txt`]);
