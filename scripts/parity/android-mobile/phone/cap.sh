@@ -29,7 +29,7 @@ run() { case $1 in
   music) open music 16; python3 -I $HERE/uiexpect.py 'Music' || { echo "wrong screen music"; return 1; }; shot $1 ;;
   search) open search 14; python3 -I $HERE/uiexpect.py 'Search your libraries' || { echo "wrong screen search"; return 1; }; shot $1 ;;
   settings) open settings 14; python3 -I $HERE/uiexpect.py 'Appearance' || { echo "wrong screen settings"; return 1; }; shot $1 ;;
-  profiles) open home 14; tapdesc 'Profiles for' 3; python3 -I $HERE/uiexpect.py 'Who.s watching' || { echo "wrong screen profiles"; return 1; }; shot $1 ;;
+  profiles) open home 14; tapdesc 'Open profiles' 3; python3 -I $HERE/uiexpect.py 'Who.s watching' || { echo "wrong screen profiles"; return 1; }; shot $1 ;;
   calendar-month) open "calendar?query=view%3Dmonth" 18; python3 -I $HERE/uiexpect.py 'Calendar' || return 1; shot $1 ;;
   calendar-week) open "calendar?query=view%3Dweek" 18; python3 -I $HERE/uiexpect.py 'Calendar' || return 1; shot $1 ;;
   calendar-agenda) open "calendar?query=view%3Dagenda" 18; python3 -I $HERE/uiexpect.py 'Calendar' || return 1; shot $1 ;;

@@ -1891,7 +1891,7 @@ internal enum class PlayarrString(
     ),
 
     ProfileViewerFallback("Viewer", "ผู้ชม", "視聴者"),
-    ProfileControl("Profiles for {{name}}", "โปรไฟล์สำหรับ {{name}}", "{{name}}のプロフィール"),
+    ProfileControl("Signed in as {{name}}. Open profiles.", "เข้าสู่ระบบในชื่อ {{name}} เปิดโปรไฟล์", "{{name}}としてサインイン中。プロフィールを開く。"),
 
     CastButtonLabel("Cast", "แคสต์", "キャスト"),
     CastButtonConnectedLabel(
