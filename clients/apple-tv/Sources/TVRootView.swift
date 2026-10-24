@@ -1136,6 +1136,7 @@ struct TVProfilesView: View {
             .disabled(switchingID != nil)
             .accessibilityLabel(profile.displayName.isEmpty ? profile.username : profile.displayName)
             #if os(macOS)
+            .environment(\.macDownTo, selected ? "profile-gear" : nil) // web: Down from the avatar lands on the gear
             // The driver reads the focused profile from the Mac focus engine's tag (the household page reported none, so the
             // Down, Down, Select path of the Settings capture could not follow focus).
             .environment(\.macParityTag, MacParityTag(title: profile.displayName.isEmpty ? profile.username : profile.displayName,
@@ -1167,6 +1168,10 @@ struct TVProfilesView: View {
             .focusEffectDisabled(true)
             .focused($focusedTarget, equals: .settings)
             .accessibilityLabel("Settings for \(profile.displayName)")
+            #if os(macOS)
+            .environment(\.macFocusName, "profile-gear")
+            .environment(\.macParityTag, MacParityTag(title: "Settings", id: "profile-settings", rail: 1, index: 0, gridPosition: nil))
+            #endif
 
             // Web `.profile-sign-out-button` — glass pill, danger on focus.
             Button {
@@ -1182,6 +1187,9 @@ struct TVProfilesView: View {
             .buttonStyle(TVProfileActionButtonStyle())
             .focusEffectDisabled(true)
             .accessibilityLabel("Sign out \(profile.displayName)")
+            #if os(macOS)
+            .environment(\.macParityTag, MacParityTag(title: "Sign out", id: "profile-sign-out", rail: 1, index: 1, gridPosition: nil))
+            #endif
         }
     }
 
