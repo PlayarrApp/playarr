@@ -132,7 +132,9 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       if (state.route.startsWith("/player/")) await this.pausePlayerAtTwoSeconds();
       if (state.route.startsWith("/player/") && state.playing) throw new Error("Tizen player capture requires paused playback for deterministic pixels");
       const first = `${file}.stability.png`;
-      const capture = captureScreenshot ?? ((path) => execFileSync("import", ["-window", process.env.PLAYARR_TIZEN_WINDOW ?? "root", path], { env: { ...process.env, DISPLAY } }));
+      // PLAYARR_TIZEN_CROP=<w>x<h>+<x>+<y>: the app area inside a decorated emulator window (a skin with a title bar draws the 1920x1080 app at an offset)
+      const crop = process.env.PLAYARR_TIZEN_CROP;
+      const capture = captureScreenshot ?? ((path) => execFileSync("import", ["-window", process.env.PLAYARR_TIZEN_WINDOW ?? "root", ...(crop ? ["-crop", crop, "+repage"] : []), path], { env: { ...process.env, DISPLAY } }));
       const signature = pixelSignature ?? ((path) => execFileSync("identify", ["-format", "%#", path], { encoding: "utf8" }).trim());
       capture(first);
       await delay(1000);
