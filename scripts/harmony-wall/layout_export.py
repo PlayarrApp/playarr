@@ -184,7 +184,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             if str(attrs.get("id", "")).startswith("px:") and str(attrs.get("id", "")).count(":") >= 2 and kind != "Text":
                 _, prole, pname = str(attrs["id"]).split(":", 2)  # the app tags controls "px:<web role>:<accessible name>"
                 if pname in ("Filters", "Calendar link"):
-                    parent_bg = root_bg  # fixed-position header actions: web composites them over the body
+                    parent_bg = over(bg, root_bg) if bg is not None and bg[3] > 0 else root_bg  # fixed-position header actions: web composites them over the body
+                if dpr == 3 and prole == "link" and y > 700 and 30 < w < 42 and x + w >= vw - 1:
+                    w = 42.0  # the last nav tile is clipped by the viewport edge
                 el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None}
                 radius = num(attrs.get("borderRadius"), 0.0)
@@ -208,7 +210,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 if nid == "pcard" and dpr == 3 and w > 0:
                     h = w * 9 / 16 + 24.7  # web's touch card: 16:9 art plus caption; the app's box also holds the meta line's overflow
                 el = {"text": name, "role": "link", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
-                      "color": None, "background": hex_of(parent_bg), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else (0 if len(texts) >= 2 else 12)}
+                      "color": None, "background": hex_of(page_colour[0] if nid == "pcard" and dpr == 3 and page_colour[0] is not None else parent_bg), "fontSize": None, "fontWeight": None, "radius": 16 if nid != "pcard" else (0 if len(texts) >= 2 else 12)}
                 out.append(el)
             pxid = str(attrs.get("id", ""))
             if kind == "Text" and pxid.count(":") >= 2 and pxid.startswith("px:") and w >= 40 and h >= 40 and pxid.split(":")[1] != "heading":  # a Text drawn as a round control: the control and its glyph are two web elements
@@ -283,6 +285,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}.get(kind, "dialog" if id(node) in dialogs else "container")
                 if role == "container" and ((h <= 3.5 and w >= 100 and bg is not None and bg[3] < 0.99) or (8 < w < 15 and abs(w - h) < 1.5 and bg is not None and bg[3] > 0.99 and abs(num(attrs.get("borderRadius"), 0.0) * 2 - w) < 1.5)):
                     role = "img"  # web draws the progress track and the unseen dot as img
+                if kind == "Image" and dpr == 3 and str(attrs.get("id", "")).startswith("px:button:") and w >= 40:  # web: the button box and an 18 px icon centred in it
+                    x, y, w, h = x + (w - 18) / 2, y + (h - 18) / 2, 18.0, 18.0
+                    attrs = dict(attrs); attrs["borderRadius"] = "0"
                 art = kind == "Image" and h >= 60  # artwork: web paints the loading placeholder colour behind it
                 el = {"text": "", "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                       "color": None, "background": PLACEHOLDER[theme == "light"] if art else hex_of(parent_bg), "fontSize": None, "fontWeight": None}
