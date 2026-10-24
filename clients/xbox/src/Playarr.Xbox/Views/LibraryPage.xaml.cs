@@ -407,13 +407,23 @@ namespace Playarr.Xbox.Views
             var soft = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"];
             var surface = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceStrong"];
             return active
+                // The web draws the active letter as a disc inside a 2 px gap and a 2 px crimson ring (32 px overall), in both themes.
                 ? new Border
                 {
-                    Width = 24,
-                    Height = 24,
-                    CornerRadius = new CornerRadius(12),
-                    Background = ink,
-                    Child = new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = surface },
+                    Width = 32,
+                    Height = 32,
+                    CornerRadius = new CornerRadius(16),
+                    BorderThickness = new Thickness(2),
+                    BorderBrush = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 220, 45, 90)),
+                    Background = new Windows.UI.Xaml.Media.SolidColorBrush(Theme.IsLight ? Windows.UI.Colors.White : Windows.UI.Color.FromArgb(255, 12, 10, 12)),
+                    Child = new Border
+                    {
+                        Width = 24,
+                        Height = 24,
+                        CornerRadius = new CornerRadius(12),
+                        Background = ink,
+                        Child = new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = surface },
+                    },
                 }
                 : new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = soft };
         }
@@ -480,7 +490,7 @@ namespace Playarr.Xbox.Views
                 Appearance.LibraryView = views[i];
                 Drawer.TryCloseCurrent();
                 App.Navigation.NavigateReplacingCurrent(typeof(LibraryPage), _viewModel.SelectedKind!);
-            }));
+            }, null, new[] { "list", "screen", "cover" }));
             body.Children.Add(Drawer.Segmented("Sort by", new[] { "Title", "Date Added" }, _viewModel.SelectedSort == null ? 0 : 1, i =>
             {
                 _viewModel.SelectSort(i == 0 ? null : LibraryViewModel.SortRecentlyAdded);
