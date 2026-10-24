@@ -351,17 +351,23 @@ namespace Playarr.Xbox.Views
         /// <summary>The web's settings group: a heading, an optional note, the segmented choice, then a divider line.</summary>
         private static StackPanel SettingGroup(string title, string? note, string[] options, int selected, System.Action<int> onSelect, bool first = false, bool divider = true, string? automationIdPrefix = null)
         {
-            var group = new StackPanel { Margin = new Thickness(0, first ? 16 : 38, 0, 0) };
-            group.Children.Add(Ui.Text(title, 26.4, new Windows.UI.Text.FontWeight { Weight = 560 }, "PlayarrInk"));
+            var group = new StackPanel { Margin = new Thickness(0, first ? 10 : 31, 0, 0) };
+            var heading = Ui.Text(title, 26.4, new Windows.UI.Text.FontWeight { Weight = 560 }, "PlayarrInk");
+            heading.LineHeight = 36;
+            heading.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            LayoutExport.SetRole(heading, "heading");
+            group.Children.Add(heading);
             if (note != null)
             {
-                var text = Ui.Text(note, 13.12, Windows.UI.Text.FontWeights.Normal, "PlayarrInkMuted", new Thickness(0, 6, 0, 0));
+                var text = Ui.Text(note, 13.12, Windows.UI.Text.FontWeights.Normal, "PlayarrInkMuted", new Thickness(0, 9, 0, 0));
+                text.LineHeight = 18;
+                text.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
                 text.TextWrapping = TextWrapping.WrapWholeWords;
                 group.Children.Add(text);
             }
 
             var choice = Drawer.Segmented(string.Empty, options, selected, onSelect, automationIdPrefix);
-            choice.Margin = new Thickness(0, 4, 0, 30);
+            choice.Margin = new Thickness(0, note != null ? 17 : 18.8, 0, 31);
             group.Children.Add(choice);
             if (divider)
             {
