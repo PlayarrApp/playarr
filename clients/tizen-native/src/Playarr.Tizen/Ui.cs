@@ -13,7 +13,7 @@ internal static class Ui
     public static float TextWidth(string text, float size, int weight, float spacing, string family = Font)
     {
         if (_measure is null) { _measure = new TextLabel { MultiLine = false, WidthResizePolicy = ResizePolicyType.UseNaturalSize, HeightResizePolicy = ResizePolicyType.UseNaturalSize }; _measure.Opacity = 0; Window.Default.Add(_measure); }
-        (family, weight) = Face(family, weight);
+        (family, weight) = Face(family, weight, size);
         _measure.PixelSize = size * TextScale; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = spacing * TextScale; _measure.Text = text;
         return _measure.NaturalSize.Width / TextScale;
     }
@@ -58,16 +58,18 @@ internal static class Ui
     /// </summary>
     internal const float TextScale = 4f;
 
-    private static HashSet<int>? _instanced;
+    private static readonly Dictionary<int, int[]> WebBySize = WebWeights.BySize.ToDictionary(kv => (int)Math.Round(kv.Key * 1000), kv => kv.Value);
 
     /// <summary>
-    /// NUI only picks the named weights of a family, the web interpolates its variable font (640, 750, ...). res/fonts holds static instances
-    /// "Nunito Sans W&lt;weight&gt;" (scripts/make-weight-fonts.py) for the fractional weights the screens use; those are selected by family name.
+    /// NUI only picks the named weights of a family, the web interpolates its variable font (560, 640, 860, ...). The weights web CSS uses at
+    /// each size are in <see cref="WebWeights"/> (generated from web DOM dumps); a call site's weight snaps to the nearest of them, and
+    /// the fractional ones are drawn from the static instances "Nunito Sans W&lt;weight&gt;" in res/fonts (scripts/make-web-weights.py).
     /// </summary>
-    private static (string Family, int Weight) Face(string family, int weight)
+    private static (string Family, int Weight) Face(string family, int weight, float size)
     {
-        _instanced ??= Directory.EnumerateFiles(ResPath("fonts"), "NunitoSansW*.ttf").Select(f => int.Parse(System.IO.Path.GetFileNameWithoutExtension(f)["NunitoSansW".Length..])).ToHashSet();
-        return family == Font && _instanced.Contains(weight) ? ($"{Font} W{weight}", 400) : (family, weight);
+        if (family != Font) return (family, weight);
+        if (WebBySize.TryGetValue((int)Math.Round(size * 1000), out var ws)) weight = ws.OrderBy(w => Math.Abs(w - weight)).First();
+        return Array.IndexOf(WebWeights.Instanced, weight) >= 0 ? ($"{Font} W{weight}", 400) : (family, weight);
     }
 
     /// <summary>Registers the bundled Nunito Sans weights so TextLabel can use them by family name.</summary>
@@ -88,10 +90,10 @@ internal static class Ui
     public static TextLabel Text(string text, float x, float y, float size, int weight, Rgba color, float w = 0, float lh = 0,
         HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0)
     {
-        (family, weight) = Face(family, weight);
+        (family, weight) = Face(family, weight, size);
         var line = lh > 0 ? lh : size * 1.4f;
         var boxH = Math.Max(line, size * 1.45f); // tall enough that descenders are not clipped; the text stays centred on the CSS line box
-        y -= (boxH - line) / 2f;
+        y -= (boxH - line) / 2f + (multiline ? 0 : 1f); // NUI centres a single-line label 1 px higher than the browser's line box (measured against web)
         var t = new TextLabel(upper ? text.ToUpperInvariant() : text)
         {
             PositionX = x,
@@ -152,11 +154,11 @@ internal static class Ui
     /// Web .tv-library-grid-panel / .tv-rail-surface: the right 1190 px carry a frost (soft surface over the strong one, 48 % in light and 44 % in dark)
     /// that fades in from nothing at the left edge to full at the right.
     /// </summary>
-    public static View PanelWash(PlayarrTheme t)
+    public static View PanelWash(PlayarrTheme t, float width = 1190)
     {
         var dark = t.Name == "dark"; var mix = dark ? 0.44f : 0.48f;
         Rgba Frost(float a) => new(t.SurfaceSoft.R * mix + t.SurfaceStrong.R * (1 - mix), t.SurfaceSoft.G * mix + t.SurfaceStrong.G * (1 - mix), t.SurfaceSoft.B * mix + t.SurfaceStrong.B * (1 - mix), a);
-        const float w = 1190;
+        var w = width;
         return Gradient(TizenClient.DesignWidth - w, 0, w, TizenClient.DesignHeight, true,
             (0, Frost(0)), (0.12f, Frost(dark ? 0.72f : 0.68f)), (0.34f, Frost(dark ? 0.9f : 0.88f)), (0.62f, Frost(dark ? 0.97f : 0.96f)), (1, Frost(1)));
     }

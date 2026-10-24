@@ -62,7 +62,7 @@ internal sealed class LibraryScreen : IPage
         _panel = new DetailsPanel(env, library: true);
         _root.Add(_keyArt.Root);
         _root.Add(_panel.Root);
-        _root.Add(Ui.PanelWash(_t));
+        _root.Add(Ui.PanelWash(_t, 1248)); // web .tv-library-grid-panel: the right 65 %
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
         _grid.PositionX = -ClipX;
         clip.Add(_grid);
