@@ -156,7 +156,7 @@ struct CalendarView: View {
                     }
                 } label: {
                     WMText(phoneRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
-                        .parityBox("button", name: phoneRangeLabel, background: WM.page, radius: 999)
+                        .parityLayout(text: phoneRangeLabel, role: "button", size: 11.52, weight: 720, color: WM.inkSoft, box: WM.page, radius: 999)
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
@@ -166,7 +166,7 @@ struct CalendarView: View {
                 roundButton("\u{2190}", label: "Previous") { Task { await viewModel.step(-1) } }
                 Button { Task { await viewModel.goToToday() } } label: {
                     WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
-                        .parityBox("button", name: "Today", background: WM.page, radius: 999)
+                        .parityLayout(text: "Today", role: "button", size: 11.52, weight: 720, color: WM.inkSoft, box: WM.page, radius: 999)
                         .frame(width: 74, height: 44)
                         .background(WM.page, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
@@ -305,7 +305,7 @@ struct CalendarView: View {
                     }
                 } label: {
                     WMText(phoneRangeLabel, 11.52, 720, color: WM.inkSoft, lh: 17.28)
-                        .parityBox("button", name: phoneRangeLabel, background: WM.page, radius: 999)
+                        .parityLayout(text: phoneRangeLabel, role: "button", size: 11.52, weight: 720, color: WM.inkSoft, box: WM.page, radius: 999)
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
@@ -315,7 +315,7 @@ struct CalendarView: View {
                 roundButton("\u{2190}", label: "Previous") { Task { await viewModel.step(-1) } }
                 Button { Task { await viewModel.goToToday() } } label: {
                     WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
-                        .parityBox("button", name: "Today", background: WM.page, radius: 999)
+                        .parityLayout(text: "Today", role: "button", size: 11.52, weight: 720, color: WM.inkSoft, box: WM.page, radius: 999)
                         .frame(width: 74, height: 44)
                         .background(WM.page, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))

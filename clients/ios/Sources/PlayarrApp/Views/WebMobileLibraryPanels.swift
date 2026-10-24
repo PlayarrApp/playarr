@@ -271,6 +271,7 @@ struct WMTitleActionsPanel: View {
             }
             .padding(.horizontal, 18)
             .frame(minHeight: isPad ? 68 : 67, maxHeight: isPad ? nil : 67)
+            .parityBox("button", name: "\(glyph) \(label)", background: WM.artFill, radius: 14)
             .background(
                 WM.artFill,
                 in: RoundedRectangle(cornerRadius: isPad ? 14 : 16, style: .continuous)
