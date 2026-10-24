@@ -608,6 +608,11 @@ fn start_pipeline(
         if pause_pending.get() && player.pipeline.query_position::<gst::ClockTime>().is_some_and(|p| p.mseconds() as i64 + player.offset_ms >= start_ms) {
             pause_pending.set(false);
             let _ = player.pipeline.set_state(gst::State::Paused);
+            // Playback ran past the mark; land the paused frame exactly on it (the web ref shows 0:02.000).
+            let _ = player.pipeline.seek_simple(
+                gst::SeekFlags::FLUSH | gst::SeekFlags::ACCURATE,
+                gst::ClockTime::from_mseconds((start_ms - player.offset_ms).max(0) as u64),
+            );
             playing.set(false);
             set_icon(&toggle, "p-play");
         }
