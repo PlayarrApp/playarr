@@ -419,7 +419,7 @@ export struct ReleaseCalendar {
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
       .padding({ left: tv(PILL_PADDING_H), right: tv(PILL_PADDING_H) })
       .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
-      .backgroundColor(toResourceColorWithAlpha(toneColor(tone), isTvMetrics() ? 0.14 : 0.112))
+      .backgroundColor(toResourceColorWithAlpha(toneColor(tone), 0.112))
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
   }
 
@@ -433,7 +433,7 @@ export struct ReleaseCalendar {
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
       Column({ space: isTvMetrics() ? 0 : phoneTextGap }) {
-        Text(item.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE))
+        Text(item.title).fontFamily(isTvMetrics() ? nunito(640) : nunitoAt(500, PHONE_ENTRY_TITLE_SIZE))
           .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
@@ -459,6 +459,7 @@ export struct ReleaseCalendar {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
+      .margin({ left: isTvMetrics() ? -1 : 0, top: isTvMetrics() ? -1.5 : 0 }) // web: the text block sits 1 px left and 1.5 px higher
     }
     .width(isTvMetrics() ? tv(width) : '100%')
     .constraintSize({ minWidth: isTvMetrics() ? 0 : phoneMinWidth })
