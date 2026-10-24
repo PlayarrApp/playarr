@@ -1,4 +1,4 @@
-name: "Parity captures: HarmonyOS"
+name: 'Parity captures: HarmonyOS'
 
 # HarmonyOS parity captures on GitHub-hosted runners (replaces the owner's MacBook while it is away). A Linux job builds the preview
 # bundle with the public OpenHarmony SDK (no Huawei login); a Windows job renders it with the public SDK's Windows Previewer, using
@@ -66,8 +66,8 @@ env:
   PARITY_SERVER_URL: ${{ secrets.PARITY_STATIC_URL }}
   PARITY_USERNAME: ${{ secrets.PARITY_STATIC_USERNAME }}
   PARITY_PASSWORD: ${{ secrets.PARITY_STATIC_PASSWORD }}
-  PARITY_STATIC_SERVER: "1" # the static server's deck is canonical: no live-fixture seeding or pins
-  PARITY_STABLE: "0"
+  PARITY_STATIC_SERVER: '1' # the static server's deck is canonical: no live-fixture seeding or pins
+  PARITY_STABLE: '0'
 
 jobs:
   build:
@@ -107,6 +107,10 @@ jobs:
           ~/.cache/ohos-sdk/command-line-tools/ohpm/bin/ohpm config set registry https://ohpm.openharmony.cn/ohpm/
       - name: Build the preview bundle
         run: bash scripts/harmony-wall/preview.sh build "$DEVICE"
+      - name: Verify Previewer handoff files
+        run: python3 scripts/harmony-wall/preview_handoff.py check "$WORK/app/entry/.preview"
+      - name: Test the Previewer handoff contract
+        run: PREVIEW_ROOT="$WORK/app/entry/.preview" python3 -m unittest discover -s scripts/harmony-wall -p test_preview_handoff.py
       - uses: actions/upload-artifact@v4
         with:
           name: harmony-bundle-${{ env.DEVICE }}
@@ -141,7 +145,7 @@ jobs:
       POSTER_MODE: ${{ inputs.poster == true && 'true' || 'false' }}
       MESA_VERSION: 26.2.4
       THEME: ${{ matrix.theme }}
-      SDK_BUILD: "31" # the public SDK is 6.1.0.<build>; split so the env-data guard does not read it as an IPv4 address
+      SDK_BUILD: '31' # the public SDK is 6.1.0.<build>; split so the env-data guard does not read it as an IPv4 address
     steps:
       - uses: actions/checkout@v4
       - name: Check capture script syntax
@@ -190,7 +194,7 @@ jobs:
           SHA: ${{ github.sha }}
           CHECKS: ${{ inputs.checks }}
           GALLIUM_DRIVER: llvmpipe
-          MESA_GL_VERSION_OVERRIDE: "4.5"
+          MESA_GL_VERSION_OVERRIDE: '4.5'
         run: |
           W=$(cygpath -m "$GITHUB_WORKSPACE"); I="$W/harmony-wall-work/app/entry/.preview/default/intermediates"
           if [ "$DEVICE" = phone ]; then CTL=40117; WS=40107; DBG=40127; else CTL=40017; WS=40007; DBG=40027; fi
