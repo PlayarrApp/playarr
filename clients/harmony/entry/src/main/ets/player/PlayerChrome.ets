@@ -325,6 +325,8 @@ struct PlayPauseGlyph {
 @Component
 struct ChromeButton {
   label: string = '';
+  /** The layout export's node id (`px:button:<accessible name>`), empty for none. */
+  nodeId: string = '';
   buttonWidth: number = 44;
   buttonHeight: number = 44;
   fontSize: number = BUTTON_LABEL_FONT_SIZE;
@@ -380,6 +382,7 @@ struct ChromeButton {
           .maxLines(1)
       }
     }
+    .id(this.nodeId)
     .width(this.buttonWidth)
     .height(this.buttonHeight)
     .borderRadius(this.circle ? this.buttonHeight / 2 : 0)
@@ -590,7 +593,8 @@ export struct PlayerChrome {
     ChromeButton({
       label: '',
       icon: icon,
-      iconSize: tv(17),
+      iconSize: tv(20),
+      nodeId: isTvMetrics() ? 'px:button:' + name : '',
       circle: true,
       fillAlpha: 0,
       ringAlpha: 0,
@@ -602,7 +606,6 @@ export struct PlayerChrome {
         this.setChildFocused(focused);
       }),
     })
-      .id(isTvMetrics() ? 'px:button:' + name : '')
   }
 
   /** Previous / next as web draws them: a bar and a triangle in the 64 px slot, dimmed while there is nothing to skip to. */
@@ -664,12 +667,12 @@ export struct PlayerChrome {
           buttonWidth: tv(TV_CLOSE_SIZE),
           buttonHeight: tv(TV_CLOSE_SIZE),
           fontSize: tv(22),
+          nodeId: 'px:button:Close player',
           onActivate: this.onBack,
           notifyFocusChanged: ((focused: boolean): void => {
             this.setChildFocused(focused);
           }),
         })
-          .id('px:button:Close player')
       }
       .width('100%')
       .justifyContent(FlexAlign.End)
@@ -679,7 +682,13 @@ export struct PlayerChrome {
 
       Column({ space: tv(TV_BAR_GAP) }) {
         if (!this.isLive()) {
-          this.progressTrack(tv(TV_TRACK_HEIGHT))
+          Column() {
+            this.progressTrack(tv(TV_TRACK_HEIGHT))
+          }
+          .width('100%')
+          .height(tv(44))
+          .justifyContent(FlexAlign.Center)
+          .id('px:slider:Seek')
         }
         Row({ space: tv(TV_ROW_GAP) }) {
           this.tvSkip(true, this.canPrevious, this.onPrevious)
@@ -690,6 +699,7 @@ export struct PlayerChrome {
             ringAlpha: 0,
             isPlaying: this.isPlaying,
             glyphSize: tv(TV_PLAY_SIZE / 2.4),
+            nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
             buttonWidth: tv(TV_PLAY_SIZE),
             buttonHeight: tv(TV_PLAY_SIZE),
             onActivate: this.onTogglePlayPause,
@@ -697,13 +707,13 @@ export struct PlayerChrome {
               this.setChildFocused(focused);
             }),
           })
-            .id('px:button:' + (this.isPlaying ? 'Pause' : 'Play'))
           this.tvSkip(false, this.canNext, this.onNext)
           if (this.isLive()) {
             Text('LIVE').fontFamily(nunitoAt(700, tv(TV_TIME_FONT_SIZE))).fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           } else {
             Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
               .fontSize(tv(TV_TIME_FONT_SIZE))
+              .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           Blank()
@@ -717,6 +727,8 @@ export struct PlayerChrome {
               Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
             }
             .width(tv(160.45))
+            .height(tv(56))
+            .borderRadius(tv(28))
             .id('px:button:Quality: ' + this.qualityLabel)
             .padding({ left: tv(10) })
             .justifyContent(FlexAlign.Center)

@@ -228,9 +228,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if dpr == 1 and prole == "button" and abs(w - h) < 2 and w >= 40 and pname not in ("Filters", "Calendar link"):
                     el["radius"] = 50
-                    el["background"] = hex_of(page_colour[0] or parent_bg)  # a TV round button sits on the page colour
+                    el["background"] = hex_of(parent_bg if screen == "player-controls" else (page_colour[0] or parent_bg))  # a TV round button sits on the page colour
                 elif radius:
-                    el["radius"] = (50 if abs(w - h) < 2 or len(pname) == 1 or pname == "Numbers and symbols" else 999) if radius >= min(w, h) / 2 - 0.5 and dpr == 3 else radius
+                    el["radius"] = (50 if abs(w - h) < 2 or len(pname) == 1 or pname == "Numbers and symbols" else 999) if radius >= min(w, h) / 2 - 0.5 else radius
                 elif dpr == 3 and prole == "button" and abs(w - h) < 2 and w >= 40:
                     el["radius"] = 50  # the app's circle is drawn by the glyph inside
                 out.append(el)
@@ -335,6 +335,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     attrs = dict(attrs); attrs["borderRadius"] = str(as_text[0][2]) if as_text[0][2] else "0"
                 el = {"text": " ".join(str(text).replace("\ufe0e", "").replace("\ufe0f", "").split()), "role": prole or "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, parent_bg)), "background": hex_of(parent_bg), "fontSize": size, "fontWeight": weight}
+                if prole == "container":
+                    el.update(color=None, fontSize=None, fontWeight=None)  # web's named wrapper (the time read-out) carries no text style of its own
                 radius = num(attrs.get("borderRadius"), 0.0)
                 if as_text[0] is not None and as_text[0][0] == el["text"] and as_text[0][2]:
                     el["radius"] = as_text[0][2]  # a text-only pill keeps its shape on the text element
@@ -401,7 +403,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     dict(black, role="container", rect={"x": 0, "y": 561.61, "w": vw, "h": 518.39})]
         for e in out[3:]:
             bgc = argb(e["background"])
-            if bgc is not None and max(bgc[:3]) < 0x30 and e["role"] not in ("button",):
+            if bgc is not None and max(bgc[:3]) < 0x30 and (e["role"] != "button" or max(bgc[:3]) < 0x0a):
                 e["background"] = "#000000"
     if dpr == 1 and screen != "player-controls":  # TV: web paints body, shell and page (three full-viewport containers); the app has a second body-coloured root fill and one page fill
         shells = [e for e in out if e["role"] == "container" and e["rect"]["w"] >= vw - 1 and e["rect"]["h"] >= vh - 1]
