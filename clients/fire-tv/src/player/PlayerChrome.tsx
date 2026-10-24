@@ -13,6 +13,7 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {FocusRing} from '../tv/FocusRing';
 import {T, u} from '../tv/kit';
+import {lx} from '../debug/layoutMarks';
 
 export type ChromeControl = 'close' | 'scrubber' | 'play' | 'subtitles' | 'quality';
 
@@ -50,7 +51,8 @@ export interface PlayerChromeProps {
 
 const SCRUB_X = 70;
 const SCRUB_W = 1780;
-const SCRUB_Y = 936;
+/** The web slider box: 70, 914, 1780 x 44; its 6 px track sits at y 933. */
+const SCRUB_TOP = 914;
 
 export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
   const {colour} = useTheme();
@@ -66,10 +68,11 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
   const buffered = duration > 0 ? Math.min(1, Math.max(played, props.bufferedSeconds / duration)) : 0;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents={props.visible ? 'box-none' : 'none'}>
+    <View {...lx('container', '')} style={StyleSheet.absoluteFill} pointerEvents={props.visible ? 'box-none' : 'none'}>
+      <View {...lx('video', '')} pointerEvents="none" style={StyleSheet.absoluteFill} />
       {/* Scrim: rises from the bottom, recedes downwards. */}
-      <Animated.View pointerEvents="none" style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: u(420), transform: [{translateY: scrimShift}]}}>
-        <LinearGradient style={StyleSheet.absoluteFill} start={{x: 0, y: 0}} end={{x: 0, y: 1}} colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.86)']} locations={[0, 0.55, 1]} />
+      <Animated.View pointerEvents="none" {...lx('container', '')} style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: u(518.39), transform: [{translateY: scrimShift}]}}>
+        <LinearGradient style={StyleSheet.absoluteFill} start={{x: 0, y: 0}} end={{x: 0, y: 1}} colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.86)']} locations={[0, 0.19, 0.6355, 1]} />
       </Animated.View>
       {/* The top gradient fades separately. */}
       <Animated.View pointerEvents="none" style={{position: 'absolute', left: 0, right: 0, top: 0, height: u(200), opacity: topFade}}>
@@ -77,15 +80,15 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
       </Animated.View>
 
       <Animated.View style={{...StyleSheet.absoluteFillObject, opacity: rise}} pointerEvents={props.visible ? 'box-none' : 'none'}>
-        <RoundButton icon="close" label="Close" size={46} x={1815} y={39} control="close" {...props} onPress={props.onClose} />
+        <RoundButton icon="close" label="Close" web="Close player" size={48} x={1814} y={37.8} iconSize={14} control="close" {...props} onPress={props.onClose} />
         <MinimisePill />
 
         <Scrubber {...props} played={played} buffered={buffered} targetShown={props.seekTargetSeconds !== null} shownSeconds={shown} />
 
-        <Decor icon="skipPrev" x={101} y={989} size={18} />
-        <Decor icon="skipNext" x={257} y={989} size={18} />
-        <RoundButton icon={props.playing ? 'pause' : 'play'} label={props.playing ? 'Pause' : 'Play'} size={64} x={148} y={958} iconSize={20} control="play" {...props} nodeRef={props.playRef} onPress={props.onTogglePlay} filled />
-        <View style={{position: 'absolute', left: u(303), top: u(978), flexDirection: 'row'}} pointerEvents="none">
+        <Decor icon="skipPrev" label="Previous episode" x={70} y={958} />
+        <Decor icon="skipNext" label="Next episode" x={225.19} y={958} />
+        <RoundButton icon={props.playing ? 'pause' : 'play'} label={props.playing ? 'Pause' : 'Play'} web={props.playing ? 'Pause' : 'Play'} size={64} x={147.59} y={958} iconSize={20} control="play" {...props} nodeRef={props.playRef} onPress={props.onTogglePlay} filled />
+        <View {...lx('container', `${formatTime(shown)} / ${formatTime(duration)}`)} style={{position: 'absolute', left: u(302.78), top: u(978.7), flexDirection: 'row'}} pointerEvents="none">
           <T size={11.136} weight={600} color={colour.ink} lh={22}>
             {formatTime(shown)}
           </T>
@@ -99,22 +102,20 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
           </T>
         </View>
 
-        {/* The right group is right-aligned like the web's, so it follows the quality label's width. Volume, queue, info and
-            cast are drawn dimmed: this player has no control behind them yet (the remote's own keys set the volume). */}
-        <View style={{position: 'absolute', right: u(79), top: u(959), height: u(60), flexDirection: 'row', alignItems: 'center'}} pointerEvents="box-none">
-          <InlineIcon icon="volume" />
-          <RoundButton inline focusable={props.hasSubtitles} icon="subtitles" label="Subtitles" size={46} iconSize={22} control="subtitles" {...props} nodeRef={props.subtitlesRef} onPress={props.onOpenSubtitles} dim={!props.subtitlesOn} />
-          <InlineIcon icon="queue" />
-          <QualityPill {...props} />
-          <InlineIcon icon="info" bright />
-          <InlineIcon icon="cast" bright />
-        </View>
+        {/* The right group at the web's positions (64 px buttons 77.59 px apart, right edge 1850). Volume, queue, info and cast are
+            drawn dimmed or plain: this player has no control behind them yet (the remote's own keys set the volume). */}
+        <InlineIcon icon="volume" label="" x={1301.58} />
+        <RoundButton icon="subtitles" label="Subtitles" web={`Subtitles: ${props.subtitlesOn ? 'On' : 'Off'}`} size={64} x={1379.17} y={958} iconSize={20} control="subtitles" focusable={props.hasSubtitles} {...props} nodeRef={props.subtitlesRef} onPress={props.onOpenSubtitles} dim={!props.subtitlesOn} />
+        <InlineIcon icon="queue" label="Playlist: 1 item" x={1456.77} />
+        <QualityPill {...props} />
+        <InlineIcon icon="info" label="Info and playback health" x={1708.41} bright />
+        <InlineIcon icon="cast" label="Play on another device" x={1786} bright />
       </Animated.View>
     </View>
   );
 }
 
-function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>; icon: IconName; label: string; size: number; x?: number; y?: number; iconSize?: number; control: ChromeControl; onPress: () => void; filled?: boolean; dim?: boolean; inline?: boolean; focusable?: boolean}): React.ReactElement {
+function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>; icon: IconName; label: string; web?: string; size: number; x?: number; y?: number; iconSize?: number; control: ChromeControl; onPress: () => void; filled?: boolean; dim?: boolean; inline?: boolean; focusable?: boolean}): React.ReactElement {
   const {colour} = useTheme();
   const focused = props.focused === props.control;
   return (
@@ -122,6 +123,7 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
       ref={props.nodeRef}
       accessibilityRole="button"
       accessibilityLabel={props.label}
+      {...lx('button', props.web ?? props.label, 50)}
       focusable={props.focusable}
       hasTVPreferredFocus={props.control === 'play'}
       onFocus={() => props.onFocusControl(props.control)}
@@ -133,7 +135,7 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
         borderRadius: 999,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: props.filled ? 'rgba(255,255,255,0.16)' : props.inline ? 'transparent' : mix('#000000', 0.42),
+        backgroundColor: props.filled ? 'rgba(255,255,255,0.14)' : props.inline ? 'transparent' : mix('#000000', 0.42),
       }}
     >
       <Icon name={props.icon} size={u(props.iconSize ?? 16)} color={props.dim ? colour.inkMuted : '#ffffff'} strokeWidth={2} />
@@ -148,21 +150,22 @@ function Scrubber(props: PlayerChromeProps & {played: number; buffered: number; 
     <Pressable
       accessibilityRole="adjustable"
       accessibilityLabel="Seek"
+      {...lx('slider', 'Seek')}
       onFocus={() => props.onFocusControl('scrubber')}
       onPress={props.onTogglePlay}
-      style={{position: 'absolute', left: u(SCRUB_X - 12), top: u(SCRUB_Y - 17), width: u(SCRUB_W + 24), height: u(40), justifyContent: 'center', paddingHorizontal: u(12)}}
+      style={{position: 'absolute', left: u(SCRUB_X), top: u(SCRUB_TOP), width: u(SCRUB_W), height: u(44), justifyContent: 'center'}}
     >
       <View style={{height: u(focused ? 8 : 6), borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden'}}>
         <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.buffered * 100}%`, backgroundColor: 'rgba(255,255,255,0.38)'}} />
-        <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.played * 100}%`, backgroundColor: '#cf3157'}} />
+        <View {...lx('container', '')} style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${props.played * 100}%`, backgroundColor: '#cf3157'}} />
       </View>
       {focused ? (
         <>
           <View
-            style={{position: 'absolute', left: u(12) + props.played * u(SCRUB_W) - u(11), top: u(9), width: u(22), height: u(22), borderRadius: 999, backgroundColor: '#ffffff', borderWidth: u(2), borderColor: '#cf3157'}}
+            style={{position: 'absolute', left: props.played * u(SCRUB_W) - u(11), top: u(11), width: u(22), height: u(22), borderRadius: 999, backgroundColor: '#ffffff', borderWidth: u(2), borderColor: '#cf3157'}}
           />
           {props.targetShown ? (
-            <View style={{position: 'absolute', left: u(12) + props.played * u(SCRUB_W) - u(36), top: u(-34), width: u(72), alignItems: 'center'}}>
+            <View style={{position: 'absolute', left: props.played * u(SCRUB_W) - u(36), top: u(-34), width: u(72), alignItems: 'center'}}>
               <T size={12} weight={700} color="#ffffff" lh={20}>
                 {formatTime(props.shownSeconds)}
               </T>
@@ -183,13 +186,17 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
       ref={props.qualityRef}
       accessibilityRole="button"
       accessibilityLabel={`Quality: ${props.qualityLabel}`}
+      {...lx('button', `Quality: ${props.qualityLabel}`, 999)}
       onFocus={() => props.onFocusControl('quality')}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       onPress={props.onOpenQuality}
       style={{
-        height: u(60),
-        paddingHorizontal: u(14),
+        position: 'absolute',
+        left: u(1534.36),
+        top: u(962),
+        height: u(56),
+        paddingHorizontal: u(22),
         borderRadius: 999,
         flexDirection: 'row',
         alignItems: 'center',
@@ -199,7 +206,7 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
     >
       <Icon name="hd" size={u(18)} color="#ffffff" strokeWidth={1.8} />
       <View style={{marginLeft: u(12)}}>
-        <T size={11.136} weight={600} color="#ffffff" lh={20} lines={1}>
+        <T size={10.56} weight={700} color="#ffffff" lh={20} lines={1}>
           {props.qualityLabel}
         </T>
       </View>
@@ -208,19 +215,19 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
   );
 }
 
-/** A drawn-only icon centred on (x, y), dimmed like a disabled control. */
-function Decor({icon, x, y, size}: {icon: IconName; x: number; y: number; size: number}): React.ReactElement {
+/** A drawn-only transport button (previous, next episode) at the web's 64 px box, dimmed like a disabled control. */
+function Decor({icon, label, x, y}: {icon: IconName; label: string; x: number; y: number}): React.ReactElement {
   return (
-    <View pointerEvents="none" style={{position: 'absolute', left: u(x - size), top: u(y - size), width: u(2 * size), height: u(2 * size), alignItems: 'center', justifyContent: 'center'}}>
-      <Icon name={icon} size={u(size)} color="rgba(255,255,255,0.34)" strokeWidth={2} />
+    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
+      <Icon name={icon} size={u(20)} color="#ffffff" strokeWidth={2} />
     </View>
   );
 }
 
-function InlineIcon({icon, bright}: {icon: IconName; bright?: boolean}): React.ReactElement {
+function InlineIcon({icon, label, x, bright}: {icon: IconName; label: string; x: number; bright?: boolean}): React.ReactElement {
   return (
-    <View pointerEvents="none" style={{width: u(46), height: u(46), marginHorizontal: u(15.5), alignItems: 'center', justifyContent: 'center'}}>
-      <Icon name={icon} size={u(19)} color={bright ? '#ffffff' : 'rgba(255,255,255,0.34)'} strokeWidth={2} />
+    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(958), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center'}}>
+      <Icon name={icon} size={u(20)} color={bright ? '#ffffff' : 'rgba(255,255,255,0.34)'} strokeWidth={2} />
     </View>
   );
 }
@@ -229,11 +236,12 @@ function MinimisePill(): React.ReactElement {
   return (
     <View
       pointerEvents="none"
-      style={{position: 'absolute', left: u(1678), top: u(38), width: u(124), height: u(48), borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}
+      {...lx('button', 'Minimise player', 999)}
+      style={{position: 'absolute', left: u(1678), top: u(37.8), width: u(124), height: u(48), borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}
     >
-      <Icon name="minimise" size={u(15)} color="#ffffff" strokeWidth={2} />
+      <Icon name="minimise" size={u(20)} color="#ffffff" strokeWidth={2} />
       <View style={{marginLeft: u(10)}}>
-        <T size={11.136} weight={700} color="#ffffff" lh={20} lines={1}>
+        <T size={11.2} weight={700} color="#ffffff" lh={20} lines={1}>
           Minimise
         </T>
       </View>

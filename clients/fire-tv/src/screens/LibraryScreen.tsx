@@ -51,7 +51,8 @@ import {Icon} from '../shell/icons';
 import {ActionTile} from '../tv/ActionTile';
 import {Button} from '../tv/forms';
 import {EdgeFade} from '../tv/EdgeFade';
-import {MediaFocus} from '../tv/mediaFocus';
+import {CardCaption, focusInk, MediaFocus} from '../tv/mediaFocus';
+import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
 import {Box, T, u} from '../tv/kit';
 import {PageHeader} from '../tv/PageHeader';
 import {Preview} from '../tv/Preview';
@@ -436,7 +437,7 @@ export function LibraryScreen({kind, navigation}: LibraryScreenProps): JSX.Eleme
     if (nextGridOffset !== gridOffset.current) {
       gridOffset.current = nextGridOffset;
       scrollY.stopAnimation();
-      Animated.timing(scrollY, {toValue: -nextGridOffset, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start(({finished}) => {
+      Animated.timing(scrollY, {toValue: -nextGridOffset, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER}).start(({finished}) => {
         if (finished) currentScrollOffset.current = nextGridOffset;
       });
     }
@@ -679,7 +680,7 @@ interface CardProps {
 
 function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.ReactElement {
   const {work, x, y, card, baseUrl, token, selected, first, progress, progressReady, onFocus, onPress} = props;
-  const {colour} = useTheme();
+  const {colour, scheme} = useTheme();
   const kinds: readonly ('backdrop' | 'poster')[] = card.posters ? ['poster', 'backdrop'] : ['backdrop', 'poster'];
   const artKind = preferredArtworkKind(work, kinds);
   const uri = artKind ? workArtworkUrl(baseUrl, work.id, artKind) : undefined;
@@ -687,6 +688,7 @@ function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.Re
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={work.title}
+      {...lx('link', `Open ${work.title}`, 12)}
       hasTVPreferredFocus={first}
       onFocus={(event) => {
         reportFocus(`open ${work.title}`, undefined, undefined, event.nativeEvent.target);
@@ -703,9 +705,11 @@ function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.Re
         </View>
       </MediaFocus>
       <View style={{marginTop: u(11.5), paddingHorizontal: u(1.9)}}>
-        <T size={11.904} weight={610} ls={-0.1786} lh={17.9} color={colour.ink} lines={1}>
-          {work.title}
-        </T>
+        <CardCaption focused={selected} variant="library" artH={card.cardH} gap={11.5}>
+          <T size={11.904} weight={610} ls={-0.1786} lh={17.9} color={selected ? focusInk(scheme) : colour.ink} lines={1}>
+            {work.title}
+          </T>
+        </CardCaption>
       </View>
     </Pressable>
   );
@@ -765,7 +769,7 @@ function Alphabet({active, onJump}: {active: string | null; onJump: (letter: str
   useEffect(() => {
     if (at < 0) return;
     const to = Math.min(RAIL_SCROLL_MAX, Math.max(0, 8 + at * RAIL_ROW + RAIL_ROW / 2 - (1080 - RAIL_TOP) / 2));
-    const animation = Animated.timing(scroll, {toValue: -to, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true});
+    const animation = Animated.timing(scroll, {toValue: -to, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER});
     animation.start();
     return () => animation.stop();
   }, [at, scroll]);
@@ -779,6 +783,7 @@ function Alphabet({active, onJump}: {active: string | null; onJump: (letter: str
               key={letter}
               accessibilityRole="button"
               accessibilityLabel={letter}
+              {...lx('button', letter === '#' ? 'Numbers and symbols' : letter, 50)}
               onPress={() => onJump(letter)}
               style={{position: 'absolute', left: u(6), top: u(8 + index * RAIL_ROW), width: u(RAIL_ROW), height: u(RAIL_ROW), alignItems: 'center', justifyContent: 'center'}}
             >

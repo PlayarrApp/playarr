@@ -36,10 +36,12 @@ import {EmptyState} from '../tv/EmptyState';
 import {FocusRing} from '../tv/FocusRing';
 import {PageHeader} from '../tv/PageHeader';
 import {Box, T, u} from '../tv/kit';
-import {Stage} from '../tv/Stage';
+import {RailFrost, Stage} from '../tv/Stage';
 import {DetailSheet, FiltersPanel, LinkPanel, PeriodPicker} from './calendar/CalendarPanels';
 import {AgendaView, MonthView, WeekView, type ViewShared} from './calendar/CalendarViews';
 import {reportQuery, takePendingQuery} from '../debug/parityControl';
+import {lx} from '../debug/layoutMarks';
+import {appNow, isClockFrozen} from '../shell/clock';
 
 export function CalendarScreen(): React.ReactElement {
   const client = useApiClient();
@@ -48,7 +50,8 @@ export function CalendarScreen(): React.ReactElement {
   const {colour, scheme} = useTheme();
   const locale = language === 'en' ? 'en-GB' : language;
   const firstDay = weekStartsOn(locale);
-  const today = useMemo(() => localDayOf(new Date()), []);
+  // The app clock, so a pinned parity clock moves "today" too (a frozen clock is a UTC instant: its UTC day).
+  const today = useMemo(() => (isClockFrozen() ? appNow().toISOString().slice(0, 10) : localDayOf(appNow())), []);
   const [view, setView] = useState<CalendarView>(() => (takePendingQuery('view') as CalendarView | undefined) ?? 'agenda');
   useEffect(() => {
     reportQuery('view', view);
@@ -124,7 +127,9 @@ export function CalendarScreen(): React.ReactElement {
 
   return (
     <Stage>
-      <PageHeader title={t('pages.calendar.title')} onBack={() => navigation.navigate(ROUTES.home)} />
+      {/* The agenda sits on the same frosted rail panel as the library pages; the month and week grids span the page without it. */}
+      {view === 'agenda' ? <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} /> : null}
+      <PageHeader title={t('pages.calendar.title')} onBack={() => navigation.navigate(ROUTES.home)} webBack={{role: 'link', label: 'Back to home'}} />
 
       <RoundNav x={1629.3} glyph={'←'} label={t('pages.calendar.previous')} onPress={() => setAnchor(shiftAnchor(view, anchor, -1))} />
       <TodayPill label={t('pages.calendar.today')} settled={state.status === 'ready'} onPress={() => setAnchor(anchorForView(view, today))} />
@@ -187,6 +192,7 @@ function RoundNav({x, glyph, label, onPress}: {x: number; glyph: string; label: 
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('button', label, 50)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
@@ -225,13 +231,14 @@ function TodayPill({label, onPress, settled}: {label: string; onPress: () => voi
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('none')}
       hasTVPreferredFocus
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
       style={{position: 'absolute', left: u(1694.7), top: u(56.2), width: u(83.2), height: u(50), borderRadius: 999, backgroundColor: colour.surface, borderWidth: 1, borderColor: colour.line, alignItems: 'center', justifyContent: 'center'}}
     >
-      <T size={14.72} weight={720} color={colour.inkSoft}>
+      <T wrole="button" size={14.72} weight={720} color={colour.inkSoft}>
         {label}
       </T>
       {focused ? <FocusRing /> : null}

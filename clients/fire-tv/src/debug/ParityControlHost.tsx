@@ -8,6 +8,7 @@ import {ROUTES} from '../navigation/routes';
 import {getSharedVegaPlaybackEngine} from '../platform/media/VegaPlaybackEngine';
 import type {PlayerScreenHandle} from '../screens/PlayerScreen';
 import {useTheme} from '../theme/ThemeProvider';
+import {exportLayout, LayoutProbe} from './layoutExport';
 import {currentQuery, installParityControl, PARITY_CONTROL, setPendingQuery} from './parityControl';
 
 /** The slice of the navigation container ref this host uses (the typed ref's route-name union is narrower than the strings it is given). */
@@ -39,6 +40,7 @@ const ROUTE_TO_WEB: Record<string, string> = Object.fromEntries(Object.entries(W
 
 export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; playerRef: React.RefObject<PlayerScreenHandle>}): React.ReactElement | null {
   const {scheme, setPreference} = useTheme();
+  const probeRef = useRef<LayoutProbe>(null);
   const schemeRef = useRef(scheme);
   schemeRef.current = scheme;
   const setPreferenceRef = useRef(setPreference);
@@ -49,7 +51,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     const engine = getSharedVegaPlaybackEngine();
     return installParityControl({
       location: () => {
-        if (playerRef.current?.isVisible()) return `/player/${lastPlayed}`;
+        if (playerRef.current?.isVisible()) return `/player/${lastPlayed || 'current'}`;
         const route = navRef.isReady() ? navRef.getCurrentRoute() : undefined;
         if (!route) return null;
         if (route.name === ROUTES.profiles) return '/profiles';
@@ -86,12 +88,19 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         playerRef.current?.show(file);
       },
       stop: () => void playerRef.current?.stop(),
+      armPause: (ms) => {
+        armedPause = ms;
+      },
       setTheme: (name) => setPreferenceRef.current(name),
       player: () => {
         const state = engine.getState();
         return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message};
       },
       theme: () => schemeRef.current,
+      layout: async (debug) => {
+        const elements = probeRef.current ? await exportLayout(probeRef.current, schemeRef.current === 'dark' ? '#151315' : '#f5f3f2', debug) : [];
+        return JSON.stringify(elements);
+      },
     });
   }, [navRef, playerRef]);
 
@@ -100,15 +109,31 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
   useEffect(() => {
     if (!PARITY_CONTROL) return undefined;
     const engine = getSharedVegaPlaybackEngine();
+    // Pause on the app's own clock: a host-side poll would overshoot by the length of a slow log round trip.
+    const pauser = setInterval(() => {
+      if (armedPause === null) return;
+      const state = engine.getState();
+      if (state.state === 'playing' && state.currentTimeSeconds * 1000 >= armedPause - 150) {
+        const target = armedPause;
+        armedPause = null;
+        // Land on exactly the requested instant: pause first, then seek to it (the clip is paused, so the frame is the one at target).
+        void engine.pause().then(() => engine.seek(target / 1000));
+      }
+    }, 40);
     const timer = setInterval(() => {
       if (!playerRef.current?.isVisible()) return;
       const state = engine.getState();
       console.log('PARITY ' + JSON.stringify({cmd: 'tick', t: Date.now(), route: `/player/${lastPlayed}`, player: {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message}}));
     }, 2000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      clearInterval(pauser);
+    };
   }, [playerRef]);
 
-  return null;
+  return <LayoutProbe ref={probeRef} />;
 }
 
 let lastPlayed = '';
+/** A position (ms) at which the player pauses itself, set by cmd=armPause. */
+let armedPause: number | null = null;

@@ -41,7 +41,8 @@ describe('parityControl', () => {
       control.clearFocus(owner);
       const cleanup = control.installParityControl({
         location: () => '/search', route: () => undefined, open: () => undefined, play: () => undefined,
-        stop: () => undefined, setTheme: () => undefined,
+        stop: () => undefined,
+      armPause: () => undefined, setTheme: () => undefined,
         player: () => ({state: 'idle', positionSeconds: 0, durationSeconds: 0}), theme: () => 'dark',
       });
       await Promise.resolve();
@@ -91,7 +92,8 @@ describe('parityControl', () => {
       control.reportFocus('home stale', {rail: 0, index: 0}, undefined, 688);
       const cleanup = control.installParityControl({
         location: () => '/movies', route: () => undefined, open: () => undefined, play: () => undefined,
-        stop: () => undefined, setTheme: () => undefined,
+        stop: () => undefined,
+      armPause: () => undefined, setTheme: () => undefined,
         player: () => ({state: 'idle', positionSeconds: 0, durationSeconds: 0}), theme: () => 'dark',
       });
       await Promise.resolve();
@@ -132,7 +134,8 @@ describe('parityControl', () => {
       jest.isolateModules(() => { control = require('./parityControl') as typeof import('./parityControl'); });
       const cleanup = control.installParityControl({
         location: () => '/', route: () => undefined, open: () => undefined, play: () => undefined,
-        stop: () => undefined, setTheme: () => undefined,
+        stop: () => undefined,
+      armPause: () => undefined, setTheme: () => undefined,
         player: () => ({state: 'idle', positionSeconds: 0, durationSeconds: 0}), theme: () => 'dark',
       });
       await Promise.resolve();

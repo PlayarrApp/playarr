@@ -7,6 +7,7 @@
  *   cmd=route&path=/movies         go to a web route (library pages, calendar views, settings, profiles)
  *   cmd=open&kind=movies&id=<id>   open a title's detail page by work id
  *   cmd=play&file=<media file id>  start playback of a media file
+ *   cmd=armPause&ms=<n>            pause the player at n ms of playback, on the app's own clock
  *   cmd=stop                       stop playback and close the player
  *   cmd=theme&name=dark|light      set the in-app theme preference
  *   cmd=clock&now=<ISO instant>    freeze the app clock (shown in UTC, en-GB, like the web refs); `now` empty releases it
@@ -97,9 +98,23 @@ export interface ParityHooks {
   open(kind: string, id: string): void;
   play(file: string): void;
   stop(): void;
+  /** cmd=armPause&ms=<n>: pause the player itself the first time its position reaches n ms (ms empty disarms). */
+  armPause(ms: number | null): void;
   setTheme(name: 'dark' | 'light'): void;
   player(): {state: string; positionSeconds: number; durationSeconds: number; error?: string};
   theme(): string;
+  /** The layout document of the screen as drawn now, as JSON text (cmd=layout). */
+  layout?(debug: boolean): Promise<string>;
+}
+
+let layoutChunks: string[] = [];
+let layoutSeq: string | null = null;
+function emitLayoutChunks(indexes: number[]): void {
+  indexes.forEach((i, k) => {
+    setTimeout(() => {
+      if (layoutChunks[i] !== undefined) console.log('PARITYL ' + JSON.stringify({seq: layoutSeq, i, n: layoutChunks.length, d: layoutChunks[i]}));
+    }, k * 40);
+  });
 }
 
 export function parseCommand(url: string): Record<string, string> | null {
@@ -118,13 +133,31 @@ export function installParityControl(hooks: ParityHooks): () => void {
   const handle = (url: string | null): void => {
     const command = url ? parseCommand(url) : null;
     if (!command) return;
+    if (command.cmd === 'layout' && hooks.layout) {
+      // The document is long and the device log drops lines in bursts: keep the numbered chunks, log them paced, and let the driver
+      // ask again for the ones it did not read (cmd=layoutchunk&i=3,7).
+      void hooks.layout(command.debug === '1').then((json) => {
+        layoutChunks = [];
+        for (let at = 0; at < json.length; at += 700) layoutChunks.push(json.slice(at, at + 700));
+        layoutSeq = command.seq ?? null;
+        emitLayoutChunks(layoutChunks.map((_, i) => i));
+      }, (error: unknown) => console.log('PARITY ' + JSON.stringify({error: String(error), cmd: 'layout'})));
+      return;
+    }
+    if (command.cmd === 'layoutchunk') {
+      emitLayoutChunks((command.i ?? '').split(',').filter(Boolean).map(Number));
+      return;
+    }
     try {
       switch (command.cmd) {
         case 'route': hooks.route(command.path ?? '/'); break;
         case 'open': hooks.open(command.kind ?? 'movies', command.id ?? ''); break;
         case 'play': hooks.play(command.file ?? ''); break;
         case 'stop': hooks.stop(); break;
+        case 'armPause': hooks.armPause(command.ms ? Number(command.ms) : null); break;
         case 'theme': hooks.setTheme(command.name === 'light' ? 'light' : 'dark'); break;
+        // `parityNow` is the campaign's name for the same freeze; both take now=<ISO> and the clock stays frozen (it does not tick).
+        case 'parityNow':
         case 'clock': setParityClock(command.now ? command.now : null); break;
         default: break;
       }

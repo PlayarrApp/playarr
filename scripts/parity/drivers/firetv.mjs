@@ -11,10 +11,11 @@
 //   ANDROID_ADB_SERVER_PORT  the adb server the vega CLI uses, if it is not the default one
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, basename } from "node:path";
 import { intoHome as pickProfile } from "./firetv-profile-pick.mjs";
+import { expandKeys } from "../suite-lib.mjs";
 
 const execFileP = promisify(execFile);
 const VEGA = (process.env.PLAYARR_FIRETV_VEGA ?? "vega").split(" ");
@@ -36,6 +37,13 @@ async function press(key) {
   if (win) await xdo("windowfocus", win).catch(() => {});
   await xdo("key", key);
 }
+// Screens whose web reference needs a focused card or an open drawer: a deep link alone gives another state, so after the route
+// these keys run (the suite's own keys after the nav selection, except where the Vega layout reaches the same control directly:
+// the grid's right edge is the Filters tile, with no alphabet rail in between to climb out of).
+const TAIL_KEYS = {
+  filters: ["right*12", "select"],
+  actions: ["right", "select:long"],
+};
 const KEYS = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
 
 const scratch = mkdtempSync(join(tmpdir(), "firetv-"));
@@ -62,6 +70,7 @@ export async function createDriver({ out } = {}) {
   let seq = 0;
   let pinnedClock = null;
   const answers = new Map();
+  const chunks = new Map();
 
   // The vega CLI prints a command's output only when it ends, so a log cannot be streamed: read what the app has logged since
   // the run began (`loggingctl log -S`, its own lines only) until the answer with our sequence number shows up.
@@ -78,6 +87,15 @@ export async function createDriver({ out } = {}) {
     const from = fmt(Date.now() + offsetMs - 25000);
     const text = await onDevice(`loggingctl log -S '${from}' -v ${APP.replace(/\.main$/, "")}`);
     for (const line of text.split("\n")) {
+      const chunk = line.indexOf("PARITYL {");
+      if (chunk >= 0) {
+        try {
+          const c = JSON.parse(line.slice(chunk + 8).replace(/'?\s*$/, ""));
+          if (!chunks.has(String(c.seq))) chunks.set(String(c.seq), new Map());
+          chunks.get(String(c.seq)).set(c.i, { n: c.n, d: c.d });
+        } catch { /* a line cut off */ }
+        continue;
+      }
       const hit = line.indexOf("PARITY {");
       if (hit < 0) continue;
       try {
@@ -93,6 +111,23 @@ export async function createDriver({ out } = {}) {
     const query = Object.entries({ ...params, seq: n }).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
     await onDevice(`vmsgr send 'pkg://${APP}?${query}'`);
     return n;
+  }
+  // The layout document (cmd=layout): the app logs it in numbered chunks; wait until every chunk of this request has been read.
+  async function layoutDocument() {
+    const n = await send({ cmd: "layout", debug: process.env.PARITY_LAYOUT_DEBUG ? "1" : "0" });
+    const t0 = Date.now();
+    let lastAsk = 0;
+    while (Date.now() - t0 < 90000) {
+      await sleep(2500);
+      await readAnswers();
+      const got = chunks.get(n);
+      if (!got || !got.size) continue;
+      const total = [...got.values()][0].n;
+      const missing = [...Array(total).keys()].filter((i) => !got.has(i));
+      if (!missing.length) return JSON.parse([...got.keys()].sort((x, y) => x - y).map((i) => got.get(i).d).join(""));
+      if (Date.now() - lastAsk > 5000) { lastAsk = Date.now(); await onDevice(`vmsgr send 'pkg://${APP}?cmd=layoutchunk&seq=${n}-r&i=${missing.slice(0, 12).join(",")}'`); }
+    }
+    throw new Error("the app did not deliver its layout document");
   }
   async function state(timeoutMs = 25000) {
     const n = await send({ cmd: "state" });
@@ -149,7 +184,7 @@ export async function createDriver({ out } = {}) {
     async waitReady() { throw new Error("Fire TV stable deterministic capture unsupported: readiness is not exposed by the app"); },
     supports: { nowPlaying: false },
     /** For one-off scripts (player captures): the raw control-channel calls. */
-    raw: { command, state, press },
+    raw: { command, state, press, layoutDocument },
     async start() {
       await launch();
       await intoHome();
@@ -158,8 +193,8 @@ export async function createDriver({ out } = {}) {
     async stop() {
     },
     async setTheme(theme) {
-      const s = await state();
-      if (s.theme === theme) return;
+      // Always sent: the state's theme is the resolved one, so a system preference that happens to resolve to the wanted theme would
+      // otherwise stay "System" and the Appearance panel would not show the chosen theme as web's does.
       await command({ cmd: "theme", name: theme }, 6000);
     },
     async home() {
@@ -204,11 +239,46 @@ export async function createDriver({ out } = {}) {
       await press(key);
       await sleep(900);
     },
-    async route(path) {
+    // player-controls: open the pinned film, press Play, pause the static clip at about 2 s (as the web ref) and raise the controls.
+    async playerControls() {
+      const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
+      if (!film) throw new Error("suite has no pinned film for player-controls");
+      await command({ cmd: "armPause", ms: "2000" }, 500);
+      // Play on the pinned film's page; if the clip has not started within 50 s (a dropped Select), open the page again and retry once.
+      let paused = false;
+      for (let attempt = 0; attempt < 2 && !paused; attempt++) {
+        await this.route(film);
+        await sleep(2000);
+        await press("Return");
+        const t0 = Date.now();
+        while (Date.now() - t0 < 50000) {
+          const player = (await state(20000).catch(() => ({}))).player ?? {};
+          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.05) { paused = true; break; }
+          await sleep(1500);
+        }
+      }
+      if (!paused) throw new Error("the Vega player did not pause at 2 s");
+      await press("Right"); // the first input only raises the controls
+      await sleep(2500);
+    },
+    async route(path, { screenId } = {}) {
+      if (path.startsWith("/player/")) return this.playerControls();
+      if (TAIL_KEYS[screenId]) {
+        await command({ cmd: "route", path: "/movies" }, 4000);
+        await waitSettled();
+        for (const { key, long } of expandKeys(TAIL_KEYS[screenId])) await this.key(key, { long });
+        return;
+      }
       const title = path.match(/^\/(movies|series)\/([0-9a-f-]{36})/);
       if (title) await command({ cmd: "open", kind: title[1], id: title[2] }, 9000);
       else await command({ cmd: "route", path }, 4000);
       await waitSettled();
+      // A library page draws its grid after the data arrives: a key before a card holds focus is spent on claiming it.
+      for (let i = 0; i < (/^\/(movies|series|music)(\?|$)/.test(path) ? 10 : 0); i++) {
+        const f = (await state(8000).catch(() => null))?.focus;
+        if (f && f.position?.rail !== "nav") break;
+        await sleep(2000);
+      }
       if (path === "/search") {
         // The search field opens the system keyboard on arrival; the suite captures the page with it dismissed (as on web).
         await press("Escape");
@@ -227,6 +297,14 @@ export async function createDriver({ out } = {}) {
       const s = await state();
       if (!s.route || s.route === "/profiles" && !file.includes("profiles")) throw new Error(`not a content screen: ${s.route}`);
       await sleep(1500);
+      // The layout document of the same screen state goes next to the capture: <out>/layout/<theme>/<screen>.json.
+      const theme = basename(dirname(file));
+      if (theme === "dark" || theme === "light") {
+        const layout = await layoutDocument();
+        const dir = join(dirname(dirname(file)), "layout", theme);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, `${basename(file, ".png")}.json`), JSON.stringify({ screen: basename(file, ".png"), theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: pinnedClock !== null, elements: process.env.PARITY_LAYOUT_DEBUG ? layout : layout.map(({ src, ...element }) => element) }));
+      }
       await execFileP("import", ["-window", "root", "-crop", "1920x1080+0+0", "+repage", file], { env });
     },
     async play(c, expect) {
