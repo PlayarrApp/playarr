@@ -1121,7 +1121,7 @@ export struct ReleaseCalendar {
         .borderRadius(tv(POSTER_RADIUS))
         .objectFit(ImageFit.Cover)
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-      Column({ space: fixedHeight > 0 ? 1.85 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
+      Column({ space: fixedHeight > 0 ? 2.4 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
         Text(item.title).fontFamily(nunito(600)) // web 640: the 610 instance is the nearest
           .fontSize(PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
@@ -1144,7 +1144,7 @@ export struct ReleaseCalendar {
           this.statusPill(itemPillTone(item, this.today))
         }
         .width('100%')
-        .margin({ top: fixedHeight > 0 ? -1 : 0 })
+        .margin({ top: fixedHeight > 0 ? -0.5 : 0 })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)

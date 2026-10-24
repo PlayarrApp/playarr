@@ -630,13 +630,13 @@ export struct SettingsScreen {
               .fontWeight(FontWeight.Bold)
               .lineHeight(12)
               .fontColor(toResourceColor(activeColors().ink))
-              .position({ x: 12, y: 16 })
+              .position({ x: 12, y: 15.3 })
             Column({ space: 2.4 }) {
               Text(section.title).fontFamily(nunito(500))
                 .fontSize(16)
                 .fontWeight(FontWeight.Medium)
                 .lineHeight(22)
-                .letterSpacing(-0.54)
+                .letterSpacing(-0.8)
                 .fontColor(toResourceColor(activeColors().ink))
               Text(sectionCopyOf(section.id)).fontFamily(nunito(400))
                 .fontSize(10.88)
@@ -647,12 +647,12 @@ export struct SettingsScreen {
             }
             .alignItems(HorizontalAlign.Start)
             .width(262) // web dump: the copy runs 261.6 wide, under the arrow
-            .position({ x: 56, y: 22.9 })
+            .position({ x: 56, y: 22.1 })
             Text('→').fontFamily(nunito(400))
-              .fontSize(20.8)
+              .fontSize(14)
               .fontColor(toResourceColor(activeColors().ink))
               .height(88)
-              .position({ x: section.id === this.openSection ? 300.2 : 295.2, y: 0 }) // web: the selected row's arrow sits 5 vp further right
+              .position({ x: section.id === this.openSection ? 303 : 298, y: 3 }) // web: the unselected rows' arrow sits 5 vp further left
           }
           .width(328)
           .height(88)
