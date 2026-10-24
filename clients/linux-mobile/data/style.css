@@ -204,12 +204,12 @@ button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 1px 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
 button.pa-entry.have { border-left-color: #8ac5a5; }
 button.pa-entry.missing { border-left-color: @pa_muted; }
-button.pa-entry:not(.week) { padding: 8px 12px 8px 12px; }
+button.pa-entry:not(.week) { padding: 8px 12px 8.5px 12px; }
 button.pa-entry:not(.week) .pa-entry-sub { margin-top: 3px; }
 button.pa-entry:not(.week) .pa-entry-metarow { margin-top: -2px; }
 button.pa-entry .pa-chip-status.agenda { min-height: 21px; }
 /* Week cards keep their earlier look until measured against the web week */
-button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface; border-color: @pa_line; }
+button.pa-entry.week, button.pa-entry.week:hover { background: @pa_surface_strong; border-color: @pa_line; }
 button.pa-entry.week.missing { border-left-color: @pa_brand_ink; }
 .pa-today-chip { font-size: 11.2px; letter-spacing: 1px; font-weight: 640; padding: 0 10px; min-height: 20px; color: @pa_day; }
 .pa-thumb { border-radius: 6px; }
@@ -247,7 +247,7 @@ button.pa-letter { background: transparent; border: none; box-shadow: none; padd
 .pa-search text { caret-color: transparent; }
 
 /* Month grid, as the web's calendar-month cells */
-.pa-mday { font-size: 12px; letter-spacing: 1px; color: @pa_muted; padding: 14px 6px 6px; }
+.pa-mday { font-size: 12px; letter-spacing: 1.3px; color: @pa_muted; padding: 14px 6px 6px; }
 .pa-mcell { border: 1px solid @pa_line; padding: 1px 5px 1px; }
 .pa-mcell.outside { background: #241f23; color: @pa_muted; }
 .pa-mcell.today { box-shadow: inset 0 0 0 2px @pa_accent; }
@@ -273,7 +273,7 @@ dropdown.pa-filter arrow, dropdown.pa-filter image { -gtk-icon-size: 8px; min-wi
 
 /* Search empty state */
 .pa-empty-ring { border: 1px solid @pa_line; border-radius: 999px; }
-.pa-empty-text { font-size: 11.52px; font-weight: 650; color: @pa_ink; }
+.pa-empty-text { letter-spacing: -0.24px; font-size: 11.52px; font-weight: 650; color: @pa_ink; }
 
 
 /* Detail hero fades, as the web phone's .tv-key-art::after and .tv-stage-wash */
@@ -305,7 +305,7 @@ button.pa-clients-link { min-height: 42px; box-shadow: 0 14px 38px rgba(31, 14, 
 button.pa-entry.week .pa-entry-title, button.pa-entry.week .pa-entry-sub, button.pa-entry.week .pa-entry-meta { line-height: 1.09; }
 button.pa-entry.week.have, button.pa-entry.week.have:hover { border-left-color: #8ac5a5; }
 button.pa-entry.week.missing, button.pa-entry.week.missing:hover { border-left-color: @pa_muted; }
-button.pa-entry.week .pa-chip-status { margin-top: 0; min-height: 19px; }
+button.pa-entry.week .pa-chip-status { margin-top: 3px; margin-bottom: -3px; margin-left: 1px; min-height: 19px; }
 
 /* The web agenda sits on a faint wash with a lighter corner at the top left (white over the page, so invisible on the light theme) */
 .pa-agenda-bg { background: radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 150px), linear-gradient(180deg, rgba(255, 255, 255, 0.057) 0px, rgba(255, 255, 255, 0.057) 350px, rgba(255, 255, 255, 0) 450px); }
@@ -323,7 +323,7 @@ button.pa-close:not(.soft) .pa-close-glyph { color: @pa_bg; }
 .pa-pref-arrow { font-size: 20.8px; font-weight: 400; color: @pa_muted; }
 button.pa-pref:first-child .pa-pref-arrow { color: @pa_ink; }
 .pa-cap-title.lead, .pa-cap-meta.lead { color: #ffffff; }
-.pa-dd-caret { font-size: 8.96px; font-weight: 680; color: @pa_muted; }
+.pa-dd-caret { font-size: 8.96px; font-weight: 680; color: @pa_muted; margin-bottom: 2px; }
 dropdown.pa-dropdown > button > box { border-spacing: 9.6px; }
 .pa-profile-name, .pa-tiny { font-kerning: none; }
 .pa-profile-name { letter-spacing: 0.16px; }
@@ -341,8 +341,21 @@ button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 .pa-display.two { letter-spacing: -2.85px; }
 .pa-cal-arrow { margin-left: 2px; }
 .pa-seg-tile { font-kerning: none; }
+.pa-seg-tile.wide { letter-spacing: 0.15px; }
 .pa-pref-arrow { margin-bottom: 3px; }
 button.pa-entry:not(.week).nosub { padding-bottom: 3.5px; }
 .pa-cal-controls .pa-pill-label { margin-left: 1px; }
-button.pa-entry:not(.week).nosub .pa-entry-metarow { margin-top: 3px; }
+button.pa-entry:not(.week).nosub .pa-entry-metarow { margin-top: 2px; }
+button.pa-entry:not(.week).nosub .pa-entry-title { margin-top: 1px; }
 button.pa-pill.small.pa-clients-link { padding: 0 15px 0 17px; }
+/* Week card: the web's subtitle sits 1.6 px lower than GTK's line pitch gives (whole-pixel margins, the meta row compensates) */
+button.pa-entry.week .pa-entry-sub { margin-top: 2px; }
+button.pa-entry.week .pa-entry-metarow { margin-top: -2px; }
+/* Agenda chip: 3 px lower than the centred GTK row, 1 px right of the meta text; the line-wrapped chip sits 2 px lower and pads its card */
+button.pa-entry:not(.week) .pa-chip-status.agenda { margin: 3px 0 -3px 1px; }
+button.pa-entry:not(.week).nosub { padding-bottom: 6.8px; }
+/* The web status pill is its tone at 14% over the page surface (opaque), with a 60% border */
+.pa-chip-status.soon { background: mix(@pa_brand, @pa_surface, 0.86); border-color: alpha(@pa_brand, 0.6); }
+.pa-chip-status.gone { background: mix(@pa_missing, @pa_surface, 0.86); border-color: alpha(@pa_missing, 0.6); }
+/* Agenda range button: the web text starts 1.4 px right of the pill's padding (whole-pixel padding, the right side gives it back) */
+.pa-cal-controls box.pa-pill { padding: 0 19px 0 21px; }

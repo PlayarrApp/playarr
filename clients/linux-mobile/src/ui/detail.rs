@@ -191,7 +191,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
 /// A web action pill: fixed 44 px tall, icon then label.
 fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) -> gtk4::Button {
     let row = gtk4::Box::builder()
-        .spacing(if primary || icon == "downloads" { 10 } else { 8 })
+        .spacing(if primary { 10 } else { 8 })
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Center)
         .build();
@@ -202,7 +202,7 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
             &gtk4::Label::builder()
                 .label("\u{21E9}")
                 .css_classes(["pa-glyph", "s"])
-                .margin_start(3)
+                .margin_start(1)
                 .build(),
         ),
         ("list", false) => row.append(
