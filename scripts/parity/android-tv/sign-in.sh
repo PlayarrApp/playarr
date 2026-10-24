@@ -10,6 +10,8 @@ eval "$(node "$here/../parity-config.mjs" --shell)"
 server=$PARITY_SERVER_URL; user=$PARITY_ACCOUNT_NAME
 password=$(node -e 'import(process.argv[1]).then((m) => process.stdout.write(m.readSecrets().PLAYARR_PARITY_STATIC_PASSWORD ?? ""))' "$here/../dpad-account.mjs")
 [ -n "$password" ] || { echo "PLAYARR_PARITY_STATIC_PASSWORD missing" >&2; exit 2; }
+# Never act on another lane's device: every adb call below goes to this one serial.
+export ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5560}
 pkg=${PARITY_PACKAGE:-io.playarr.mobile}
 tap() { adb shell input tap "$1" "$2"; }
 key() { adb shell input keyevent "KEYCODE_$1"; }
