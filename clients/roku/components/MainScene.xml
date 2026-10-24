@@ -357,7 +357,7 @@
         <Label id="searchFilterArtist" translation="[620,290]" width="140" height="36" text="Music" horizAlign="center" scale="[0.5,0.5]" scaleRotateCenter="[70,18]" color="0xA9B7C9FF" />
         <Label id="searchFilterPlaylists" translation="[760,290]" width="140" height="36" text="Playlists" horizAlign="center" scale="[0.5,0.5]" scaleRotateCenter="[70,18]" color="0xA9B7C9FF" />
       </Group>
-      <Label id="searchEmptyHint" translation="[153.6,303.8]" width="454" height="80" wrap="true" text="Find any available movie, series, artist or playlist." scale="[0.55,0.55]" color="0x887A82FF" />
+      <Label id="searchEmptyHint" translation="[153.6,303.8]" width="476" height="80" wrap="true" text="Find any available movie, series, artist or playlist." scale="[0.55,0.55]" color="0x887A82FF" />
       <Group id="searchEmptyState">
         <Poster id="searchEmptyIcon" translation="[1124.6,311.8]" width="132" height="132"
           uri="pkg:/images/search-empty-icon.png" loadDisplayMode="scaleToFit" />

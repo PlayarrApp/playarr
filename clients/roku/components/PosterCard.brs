@@ -111,10 +111,12 @@ sub onContentChanged()
     hasPrefix = content.captionPrefix <> invalid and content.captionPrefix <> ""
     m.captionPrefix.visible = hasPrefix
     if hasPrefix
+        m.title.setFields({ size: 11.52, tracking: -0.177 })
         m.captionPrefix.tracking = EpisodeCodeTracking(content.captionPrefix, -0.433)
         m.captionPrefix.text = content.captionPrefix
         m.title.translation = [m.captionPrefix.textWidth + 8.8, m.titleY]
     else
+        m.title.setFields({ size: 11.9, tracking: -0.183 })
         m.title.translation = [m.cardTitleX, m.titleY]
     end if
     clampCardTitle(content.title, hasPrefix)
@@ -216,6 +218,8 @@ end sub
 sub onFocusChanged()
     effective = m.top.focusPercent * m.top.activeRailFactor
     ' A drawer over the page owns focus: the cards behind it draw no focus (web keeps the ring on the drawer's control).
+    ' Caption ink follows the card's own focus, which an open drawer does not take away (web keeps the text colour).
+    inkFocus = effective
     if m.global.cardFocusOff = true then effective = 0
     shadowOpacity = effective
     if shadowOpacity > 1 then shadowOpacity = 1
@@ -224,7 +228,7 @@ sub onFocusChanged()
     applyCaptionFocus()
     ' A focused card's caption is white (web .is-focused).
     chapterCard = m.captionPrefix.visible and Left(m.captionPrefix.text, 2) <> "S "
-    if (shadowOpacity > 0.5 or chapterCard) and not m.cardListMode and not m.top.findNode("circleMask").visible
+    if (inkFocus > 0.5 or chapterCard) and not m.cardListMode and not m.top.findNode("circleMask").visible
         m.title.color = ThemeColor("cardFocusInk")
         m.kind.color = ThemeColor("cardFocusInk")
         m.captionPrefix.color = ThemeColor("cardFocusInk")

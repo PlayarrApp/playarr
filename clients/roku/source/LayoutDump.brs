@@ -194,6 +194,10 @@ sub ParityBox(role as String, name as String, x as Float, y as Float, w as Float
 end sub
 
 sub ParityStructure()
+    if m.top.screenState = "playback"
+        ParityPlayer()
+        return
+    end if
     if m.top.screenState = "search" then ParitySearch()
     if m.top.screenState = "profiles"
         ParityProfilesPage()
@@ -638,13 +642,15 @@ sub ParityTiles(specs as Object, title as String)
         if t.ink = true and not inkOn then grole = "playerInk"
         gh = Int(t.glyphSize * 1.011 + 0.5) + Int(t.glyphSize * 0.353 + 0.5)
         if glyph = "▶" then gh = t.glyphSize * 1.46
+        if glyph = "▶" and m.top.layoutKind = "series" then gh = 14
         ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(tok), id: "tile", text: glyph, x: t.startX, y: cy - 0.65 - gh / 2, w: t.gw, h: gh, op: 1, role: "", color: ParityHex(ThemeColor(grole)), lines: 1, tracking: 0, size: t.glyphSize, font: PlayarrFontPath(400), weightReq: 400 })
         lrole = "ink"
         if t.primary then lrole = "playerInk"
         if inkOn then lrole = "bg"
         if t.ink = true and not inkOn then lrole = "playerInk"
         lh = Int(t.labelSize * 1.011 + 0.5) + Int(t.labelSize * 0.353 + 0.5)
-        if t.labelSize > 11.5 then lh = 17
+        if t.labelSize > 11.5 and m.top.layoutKind <> "series" then lh = 17
+        if t.labelSize > 11.5 and m.top.layoutKind = "series" then lh = 16
         ParityLayoutEmit({ k: "tracked", fixed: true, bg: ParityToken(tok), id: "tile", text: t.text, x: t.startX + t.gw + t.gap, y: cy - 0.95 - lh / 2, w: t.lw, h: lh, op: 1, role: "", color: ParityHex(ThemeColor(lrole)), lines: 1, tracking: 0, size: t.labelSize, font: PlayarrFontPath(700), weightReq: 700 })
     end for
 end sub
@@ -657,3 +663,43 @@ function ParityAt(arr as Object, i as Integer, which as Integer) as Float
     if type(v) = "roArray" then return v[which]
     return v
 end function
+
+' ---- Player chrome (web player-controls): the controls sit at fixed web boxes, so they are reported as such. ----------------------------
+
+sub ParityPlayer()
+    k = "#000000"
+    ParityBox("container", "", 0, 0, 1920, 1080, 0, k)
+    ParityBox("button", "Minimise player", 1678, 37.8, 124, 48, 999, "#0a0809")
+    ParityBox("image", "", 1701.6, 51.8, 20, 20, 0, "#0a0809")
+    ParityLayoutEmit({ k: "tracked", fixed: true, bg: "#0a0809", id: "min", text: "Minimise", x: 1730.4, y: 54.2, w: 48.0, h: 15, op: 1, role: "", color: "#ffffffff", lines: 1, tracking: 0, size: 11.2, font: PlayarrFontPath(700), weightReq: 700 })
+    ParityBox("button", "Close player", 1814, 37.8, 48, 48, 999, "#070606")
+    ParityBox("image", "", 1831, 50.8, 14, 22, 0, "#070606")
+    ParityBox("video", "", 0, 0, 1920, 1080, 0, k)
+    ParityBox("container", "", 0, 561.6, 1920, 518.4, 0, k)
+    ParityBox("slider", "Seek", 70, 914, 1780, 44, 0, k)
+    fillW = 1780 * 2 / 60
+    if m.playerProgressFill <> invalid and m.playerProgressFill.width > 0 then fillW = m.playerProgressFill.width
+    ParityBox("container", "", 70, 933, fillW, 6, 0, "#cf3157")
+    playName = "Play"
+    if m.pcPlay <> invalid and Instr(1, m.pcPlay.uri, "pause") > 0 then playName = "Pause"
+    ParityBox("button", "Previous episode", 70, 958, 64, 64, 50, k, 0.28)
+    ParityBox("image", "", 92, 980, 20, 20, 0, k, 0.28)
+    ParityBox("button", playName, 147.6, 958, 64, 64, 50, "#242424")
+    ParityBox("image", "", 169.6, 980, 20, 20, 0, "#242424")
+    ParityBox("button", "Next episode", 225.2, 958, 64, 64, 50, k, 0.28)
+    ParityBox("image", "", 247.2, 980, 20, 20, 0, k, 0.28)
+    timeText = ""
+    if m.pcTimeNow <> invalid then timeText = m.pcTimeNow.text + " / " + m.pcTimeEnd.text
+    ParityBox("container", timeText, 302.8, 981.8, 58.4, 16.3, 0, k)
+    ParityBox("button", "", 1301.6, 958, 64, 64, 50, k, 0.28)
+    ParityBox("button", "Subtitles: Off", 1379.2, 958, 64, 64, 50, k)
+    ParityBox("image", "", 1401.2, 980, 20, 20, 0, k)
+    ParityBox("button", "Playlist: 1 item", 1456.8, 958, 64, 64, 50, k)
+    ParityBox("image", "", 1478.8, 980, 20, 20, 0, k)
+    q = "Original · 0.3 Mbps"
+    ParityBox("button", "Quality: " + q, 1534.4, 962, 160.4, 56, 999, k)
+    ParityLayoutEmit({ k: "tracked", fixed: true, bg: k, id: "hd", text: "HD", x: 1556.5, y: 984.2, w: 12.4, h: 11, op: 1, role: "", color: "#ffffffff", lines: 1, tracking: 0, size: 7.68, font: PlayarrFontPath(700), weightReq: 700 })
+    ParityLayoutEmit({ k: "tracked", fixed: true, bg: k, id: "q", text: q, x: 1585.5, y: 982.1, w: 94.9, h: 15, op: 1, role: "", color: "#ffffffff", lines: 1, tracking: 0, size: 10.56, font: PlayarrFontPath(700), weightReq: 700 })
+    ParityBox("button", "Info and playback health", 1708.4, 958, 64, 64, 50, k)
+    ParityBox("image", "", 1730.4, 980, 20, 20, 0, k)
+end sub

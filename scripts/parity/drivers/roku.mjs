@@ -1132,7 +1132,15 @@ export function createDriver({ out, args = [] } = {}) {
       if (artEnabled && screen === "browse" && browse === "series") await waitForArt("series");
       if (artEnabled && screen === "browse" && ["artist", "music"].includes(browse)) await waitForArt("music");
       if (artEnabled && screen === "page" && page === "calendar" && ["week", "agenda"].includes(parityState.calendarView)) await waitForArt("calendar");
-      const { jpeg, generation } = captureFrame();
+      // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).
+      let { jpeg, generation } = captureFrame();
+      for (let i = 0; i < 8; i += 1) {
+        await sleep(700);
+        const next = captureFrame();
+        const same = next.jpeg.equals(jpeg);
+        jpeg = next.jpeg; generation = next.generation;
+        if (same) break;
+      }
       mkdirSync(dirname(resolve(file)), { recursive: true });
       const png = pngFromJpeg(jpeg);
       if (png.length < 24 || png.readUInt32BE(16) !== 1920 || png.readUInt32BE(20) !== 1080) {

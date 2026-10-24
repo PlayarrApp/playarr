@@ -3186,6 +3186,7 @@ sub searchChromeInit()
     m.searchClearLabel.visible = false
     ThemeSetRole(m.searchClearLabel, "inkSoft")
     holder.AppendChild(m.searchClearLabel)
+    pgShellTile(holder, shellActionX(), shellActionY(0), "Filters", "tile-filters.png")
     setSearchHeader("")
 end sub
 
@@ -3238,7 +3239,7 @@ sub showSearchEmptyState(empty as Boolean)
     if m.searchPreviewOverview <> invalid then m.searchPreviewOverview.visible = not empty
     ' Empty shell: Filters summary label; after results, type-filter Labels.
     chip = m.top.findNode("searchFiltersChip")
-    if chip <> invalid then chip.visible = empty
+    if chip <> invalid then chip.visible = false
     if m.searchFilterLabels <> invalid
         for each lab in m.searchFilterLabels
             if lab <> invalid then lab.visible = not empty
@@ -3977,7 +3978,8 @@ sub enterHome(profileName as String)
     m.top.screenState = "home"
     if m.homeStage <> invalid
         m.homeStage.stageTitle = "Home"
-        m.homeStage.stageKicker = "PLAYARR"
+        m.homeStage.kickerWeight = 860
+    m.homeStage.stageKicker = "PLAYARR"
         m.homeStage.stageMeta = ""
         m.homeStage.stageOverview = ""
         m.homeStage.callFunc("revealStage")
@@ -4474,6 +4476,7 @@ sub updateHeroFromWork(work as Object)
     if work.genres <> invalid and work.genres.Count() > 0
         kicker = kicker + " · " + UCase(work.genres[0])
     end if
+    m.homeStage.kickerWeight = 860
     m.homeStage.stageKicker = kicker
     meta = ""
     if work.release_date <> invalid and work.release_date.Len() >= 4
@@ -5093,7 +5096,7 @@ sub renderNavDockFocus()
                     m.navIcons[i].translation = [base[0] - 0.5, base[1] - 0.8]
                     m.navIcons[i].width = 21
                     m.navIcons[i].height = 21
-                    m.navLabels[i].setFields({ size: 9.27, tracking: 0.55 })
+                    m.navLabels[i].setFields({ size: 9.27, tracking: 0.325 })
                     lt = m.navLabels[i].translation
                     m.navLabels[i].translation = [lt[0], lt[1] + 0.3]
                 end if

@@ -228,7 +228,12 @@ end function
 
 ' Parity layout dump: the tiles answer for themselves (web buttons, glyphs and labels).
 sub onParityLayoutTiles()
-    if m.global.parityArtEnabled <> true or not m.top.visible or m.specs = invalid then return
+    if m.global.parityArtEnabled <> true or m.specs = invalid then return
+    anc = m.top
+    while anc <> invalid
+        if anc.hasField("visible") and anc.visible = false then return
+        anc = anc.getParent()
+    end while
     o = ParityOrigin(m.top)
     m.parityDx = o[0]
     m.parityDy = o[1]

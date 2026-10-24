@@ -41,6 +41,7 @@
     <field id="artTelemetryActive" type="boolean" value="false" />
     <!-- from: .tv-provider / .tv-detail-kicker text content -->
     <field id="stageKicker" type="string" onChange="onStageKickerChange" />
+    <field id="kickerWeight" type="integer" value="820" />
     <!-- from: .tv-title-panel h1 text content -->
     <field id="stageTitle" type="string" onChange="onStageTitleChange" />
     <!-- from: .tv-title-meta text content (kind / year / genres line) -->
