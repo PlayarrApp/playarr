@@ -231,7 +231,7 @@ namespace Playarr.Xbox.Views
         {
             var content = new StackPanel { Spacing = 2, Margin = new Thickness(0, 2, 0, 0) };
             content.Children.Add(NavIcons.Create(label, (Brush)Application.Current.Resources["PlayarrInkMuted"]));
-            var text = new TextBlock { Text = Lang.T("shell.nav." + label.ToLowerInvariant()), FontSize = 8.83, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
+            var text = new TextBlock { Text = Lang.T("shell.nav." + label.ToLowerInvariant()), FontSize = 8.83, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), CharacterSpacing = 34, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
             _labels.Add((text, label));
             content.Children.Add(text);
             var button = RailButton(content, page, kind);

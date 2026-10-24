@@ -25,7 +25,7 @@ namespace Playarr.Xbox.Views
             var backButton = BackButton(back);
             host.Children.Add(backButton);
             var titles = new StackPanel { Margin = new Thickness(226.63, 58.16, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"], FontSize = 33.6, FontFamily = WebFont.Face(580), FontWeight = WebFont.Weight(580), LineHeight = 46, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+            var titleText = new TextBlock { Text = title, Style = (Style)Application.Current.Resources["PlayarrPageTitle"], FontSize = 33.6, FontFamily = WebFont.Face(580), FontWeight = WebFont.Weight(580), LineHeight = 46, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, CharacterSpacing = -52 };
             LayoutExport.SetRole(titleText, "heading");
             var subtitleText = new TextBlock { Text = subtitle ?? string.Empty };
             LayoutHeader(titles, titleText, subtitleText);

@@ -125,7 +125,7 @@ namespace Playarr.Xbox.Views
                         }
                     }
 
-                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25, 27)));
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25, 27.4)));
                     _gridCardContainerStyle = style;
                 }
 
@@ -305,7 +305,7 @@ namespace Playarr.Xbox.Views
                 FontFamily = WebFont.Face(caption ? 600 : 610),
                 FontWeight = WebFont.Weight(caption ? 600 : 610),
                 CharacterSpacing = caption ? 0 : -15,
-                Margin = new Thickness(2, caption ? 12 : 11, 0, 0),
+                Margin = new Thickness(2, caption ? 12 : 12.4, 0, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 // Library grid rows repeat every 240.5 px, as the web: 184 px art, 12 px gap, 19 px title and a 25.5 px row gap (25 here: layout rounding lifts each 240.5 px row to 241).
                 LineHeight = caption ? 0 : 16,
