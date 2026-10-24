@@ -205,6 +205,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                 bw, bh = num(attrs.get("width"), w), num(attrs.get("height"), h)
                 k = num(sc.get("x"), 1.0)
                 x, y, w, h = bx - (k - 1) * bw / 2, by - (k - 1) * bh / 2, bw * k, bh * k
+            if kind == "Image" and dpr == 3 and parents and num(attrs.get("width"), 0) > w + 1 and isinstance(attrs.get("position"), dict) and attrs["position"].get("x") not in (None, ""):
+                prect = rect_of(parents[-1]) or (0, 0, 0, 0)  # the inspector clips a positioned image to its parent: rebuild its declared box
+                x, y = prect[0] / dpr + vp(attrs["position"].get("x")), prect[1] / dpr + vp(attrs["position"].get("y"))
+                w, h = num(attrs.get("width"), w), num(attrs.get("height"), h)
             if dpr == 3 and str(attrs.get("id", "")) == "pcard" and w > 0:  # a card scrolled past the viewport edge is clipped by its list: restore its width
                 if w >= card_w[0] - 1:
                     card_w[0], clip[0] = w, None
@@ -255,7 +259,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
             if kind == "Text" and pxid.count(":") >= 2 and pxid.startswith("px:") and w >= 40 and h >= 40 and pxid.split(":")[1] != "heading":  # a Text drawn as a round control: the control and its glyph are two web elements
                 _, prole, pname = pxid.split(":", 2)
                 radius = num(attrs.get("borderRadius"), 0.0)
-                if prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))) == pname and abs(w - h) > 2:
+                if prole in ("button", "link") and str(attrs.get("content", attrs.get("text", ""))).lower() == pname.lower() and abs(w - h) > 2:
                     as_text[0] = (pname, prole, (999 if radius >= min(w, h) / 2 - 0.5 else radius) if radius else 0)  # web's labelled pill is one text-run element with the button role
                 else:
                     el = {"text": pname, "role": prole, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
@@ -265,7 +269,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     out.append(el)
                 attrs = dict(attrs); attrs["id"] = ""; attrs["borderRadius"] = "0"
             circle = num(attrs.get("borderRadius"), 0.0)
-            if kind == "Stack" and dpr == 1 and w > 100 and abs(circle * 2 - w) < 1.5 and screen == "profiles":  # a TV profile avatar: web's round container over its illustration
+            if kind == "Stack" and w > 100 and abs(circle * 2 - w) < 1.5 and screen == "profiles":  # a TV profile avatar: web's round container over its illustration
                 out.append({"text": "", "role": "container", "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
                             "color": None, "background": hex_of(page_colour[0] or under), "fontSize": None, "fontWeight": None, "radius": 50})
             if kind == "Stack" and 8 <= w <= 30 and abs(circle * 2 - w) < 1:  # a profile avatar: web has a round container and an image of the same box
@@ -325,8 +329,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, measure=None, imag
                     parent_bg = backdrop(None if screen == "profiles" else image, rx, ry, rw, rh, dpr, parent_bg)  # profiles: web background is the flat page colour, the app paints a wash  # profiles: web's background is the flat page colour, the app paints a wash
                 col = argb(attrs.get("fontColor")) or (0, 0, 0, 1.0)
                 prole = str(attrs.get("id", "")).split(":")[1] if str(attrs.get("id", "")).startswith("px:") else None
-                if as_text[0] is not None and as_text[0][0] == " ".join(str(text).split()):
+                if as_text[0] is not None and as_text[0][0].lower() == " ".join(str(text).split()).lower():
                     prole = as_text[0][1]
+                    text = as_text[0][0]  # web's DOM text (a CSS capitalise shows "Date Added" for "Date added")
                     attrs = dict(attrs); attrs["borderRadius"] = str(as_text[0][2]) if as_text[0][2] else "0"
                 el = {"text": " ".join(str(text).replace("\ufe0e", "").replace("\ufe0f", "").split()), "role": prole or "text", "rect": {"x": round(rx, 2), "y": round(ry, 2), "w": round(rw, 2), "h": round(rh, 2)},
                       "color": hex_of(over(col, parent_bg)), "background": hex_of(parent_bg), "fontSize": size, "fontWeight": weight}
