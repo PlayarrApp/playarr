@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { installRegionPin, installVisualDate } from "./web.mjs";
+import { layoutExpression } from "../layout-dump.mjs";
 import { assertDeviceTestIdentity, fetchCurrentIdentity, loadAllowedDeviceTestUsernames, loadTrustedDeviceTestServerUrl } from "../device-test-guard.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -376,6 +377,13 @@ export async function createDriver() {
       }
       pin = { fixedNow, timeZone, locale };
       if (ws && ws.readyState === 1) { closeCdp(); await cdpConnect(); }
+    },
+    // The layout schema document (docs/parity/LAYOUT.md): the same DOM dump as the web refs, run in the app page through the inspector or netlog channel.
+    async layoutDump({ screen, theme }) {
+      await guard();
+      const doc = await ev(layoutExpression(screen));
+      if (!doc?.elements) throw new Error("layout dump returned no elements");
+      return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements };
     },
     async captureBuildIdentity() { throw new Error(`${device} stable build identity unsupported: deployed package digest is not exposed by this driver`); },
     async waitReady() { throw new Error(`${device} stable deterministic capture unsupported: readiness is not exposed through the native app contract`); },
