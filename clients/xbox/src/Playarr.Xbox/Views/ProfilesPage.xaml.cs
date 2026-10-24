@@ -51,6 +51,9 @@ namespace Playarr.Xbox.Views
         public ProfilesPage()
         {
             InitializeComponent();
+            EyebrowText.FontWeight = new FontWeight { Weight = 820 };
+            TitleText.FontWeight = new FontWeight { Weight = 500 };
+            LayoutExport.SetRole(TitleText, "heading");
             _viewModel = new ProfilesViewModel(App.Environment);
             CardFocus.ReserveFocusRoom(ProfilesScrollViewer);
             BuildTopControls();
