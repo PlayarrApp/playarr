@@ -56,7 +56,7 @@ internal static class Ui
     /// NUI lays text out with whole-pixel glyph advances (a 12.8 px "01:00" is 36 px, the web's subpixel layout 33.6 px). Labels are laid out at
     /// this multiple of the CSS size and drawn scaled back down, so advances land on 1/TextScale px like the browser's.
     /// </summary>
-    private const float TextScale = 4f;
+    internal const float TextScale = 4f;
 
     private static HashSet<int>? _instanced;
 
@@ -221,15 +221,15 @@ internal static class Ui
     /// An image drawn at exactly (w, h) design px with object-fit: cover (centre crop) and a high-quality downscale filter, so the TV
     /// resamples as little and as well as the browser does (owner ruling: art scales exactly as web).
     /// </summary>
-    public static ImageView Remote(string file, float w, float h, SamplingModeType sampling = SamplingModeType.BoxThenLinear)
+    public static ImageView Remote(string file, float w, float h, SamplingModeType sampling = SamplingModeType.Linear)
     {
         var map = new PropertyMap();
         map.Add(Visual.Property.Type, new PropertyValue((int)Visual.Type.Image));
         map.Add(ImageVisualProperty.URL, new PropertyValue(file));
         map.Add(ImageVisualProperty.FittingMode, new PropertyValue((int)FittingModeType.ScaleToFill));
         map.Add(ImageVisualProperty.SamplingMode, new PropertyValue((int)sampling));
-        map.Add(ImageVisualProperty.DesiredWidth, new PropertyValue((int)Math.Round(w)));
-        map.Add(ImageVisualProperty.DesiredHeight, new PropertyValue((int)Math.Round(h)));
+        // no DesiredWidth: the full-size texture is sampled by the GPU (bilinear) as the browser does
+
         return new ImageView { Size = new Size(w, h), Image = map };
     }
 
