@@ -166,9 +166,13 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
                     mode: "direct".into(),
                     duration_ms: 0,
                     source_offset_ms: 0,
+                    original_bps: None,
                 })
             } else {
-                c.playback(&file, start)
+                c.playback(&file, start).map(|mut info| {
+                    info.original_bps = c.original_bitrate_bps(&file);
+                    info
+                })
             }
         },
         move |res| match res {
@@ -180,6 +184,15 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
         },
     );
     root.upcast()
+}
+
+/// The web's quality label: "Original · 0.3 Mbps" (one decimal, none below 0.05), "Transcoded" when the server re-encodes.
+fn quality_text(direct: bool, bps: Option<i64>) -> String {
+    match (direct, bps.filter(|b| *b as f64 / 1e6 >= 0.05)) {
+        (false, _) => "Transcoded".into(),
+        (true, Some(b)) => format!("Original \u{b7} {:.1} Mbps", b as f64 / 1e6),
+        (true, None) => "Original".into(),
+    }
 }
 
 fn pause_ms() -> Option<i64> {
@@ -252,15 +265,17 @@ fn start_pipeline(
     let skip_fwd = ctl("p-next", false);
     let mute = ctl("p-volume", false);
     let fullscreen = ctl("p-fullscreen", false);
-    // shortcut: audio and subtitle track, queue, quality, health and play-on buttons are shown disabled (the web
-    // disables them too without data); wire each when the native player gains that feature.
-    let idle = |icon: &str| {
+    // shortcut: the subtitle, queue, info and play-on buttons look enabled, as the web's do on the static server, but
+    // do nothing yet; wire each when the native player gains that feature. Audio is disabled, as the web's is without tracks.
+    let idle = |icon: &str, enabled: bool| {
         let b = ctl(icon, false);
-        b.set_sensitive(false);
+        b.set_sensitive(enabled);
         b
     };
     let scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.001);
     scale.set_hexpand(true);
+    scale.set_show_fill_level(true);
+    scale.set_restrict_to_fill_level(false);
     let pos_label = gtk4::Label::builder()
         .label("0:00")
         .css_classes(["pa-player-time"])
@@ -269,35 +284,58 @@ fn start_pipeline(
         .label("0:00")
         .css_classes(["pa-player-time"])
         .build();
-    let times = gtk4::Box::builder().spacing(6).halign(gtk4::Align::Center).build();
+    // The web's gaps: 13 px under the scrubber, 6 px above the first control row.
+    let times = gtk4::Box::builder()
+        .spacing(6)
+        .halign(gtk4::Align::Center)
+        .margin_top(13)
+        .margin_bottom(6)
+        .height_request(15)
+        .build();
     times.append(&pos_label);
     times.append(
         &gtk4::Label::builder()
             .label("/")
-            .css_classes(["pa-player-time"])
+            .css_classes(["pa-player-time", "sep"])
             .build(),
     );
     times.append(&dur_label);
-    let row = || gtk4::Box::builder().spacing(1).halign(gtk4::Align::Center).build();
-    let (row1, row2) = (row(), row());
+    let row1 = gtk4::Box::builder().spacing(2).halign(gtk4::Align::Center).build();
     for b in [&skip_back, &toggle, &skip_fwd, &mute] {
         row1.append(b);
     }
-    for icon in ["p-audio", "p-subtitles", "p-queue"] {
-        row1.append(&idle(icon));
+    for (icon, enabled) in [("p-audio", false), ("p-subtitles", true), ("p-queue", true)] {
+        row1.append(&idle(icon, enabled));
     }
-    let quality = gtk4::Button::builder()
-        .css_classes(["pa-ctl", "pa-quality"])
-        .label(if direct { "Original" } else { "Transcoded" })
-        .sensitive(false)
+    // The web's quality button: an "HD" glyph left of the 44 px button and the wrapped label centred over it.
+    let quality = gtk4::Button::builder().css_classes(["pa-ctl"]).build();
+    quality.set_size_request(44, 44);
+    let quality_label = gtk4::Label::builder()
+        .label(quality_text(direct, info.original_bps))
+        .css_classes(["pa-quality"])
+        .wrap(true)
+        .justify(gtk4::Justification::Center)
+        .width_request(40)
         .build();
-    row2.append(&quality);
-    row2.append(&idle("p-info"));
-    row2.append(&idle("p-devices"));
-    row2.append(&fullscreen);
+    let hd = gtk4::Label::builder()
+        .label("HD")
+        .css_classes(["pa-quality-glyph"])
+        .build();
+    let row2 = gtk4::Fixed::new();
+    row2.set_halign(gtk4::Align::Center);
+    row2.set_size_request(210, 44);
+    row2.set_margin_top(4);
+    row2.put(&quality, 14.0, 0.0);
+    row2.put(&hd, 5.5, 16.5);
+    row2.put(&quality_label, 31.3, -1.3);
+    for (i, b) in [idle("p-info", true), idle("p-devices", true), fullscreen.clone()]
+        .iter()
+        .enumerate()
+    {
+        row2.put(b, 14.0 + 46.0 * (i + 1) as f64, 0.0);
+    }
     let bottom = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .spacing(4)
         .valign(gtk4::Align::End)
         .css_classes(["pa-player-scrim"])
         .build();
@@ -512,6 +550,14 @@ fn start_pipeline(
             updating.set(true);
             scale.set_value((pos as f64 / dur as f64).clamp(0.0, 1.0));
             updating.set(false);
+            // The web's buffered stretch: the range playbin has fetched, as a share of the clip.
+            let mut q = gst::query::Buffering::new(gst::Format::Percent);
+            if player.pipeline.query(&mut q) {
+                let (_, stop, _) = q.range();
+                if let gst::GenericFormattedValue::Percent(Some(p)) = stop {
+                    scale.set_fill_level(f64::from(p.ratio()).clamp(0.0, 1.0));
+                }
+            }
         }
         let show = Instant::now() < shown_until.get() || !playing.get() || pin_controls;
         for c in &controls {
@@ -536,5 +582,13 @@ mod tests {
         assert!(!super::completed(91_000, 100_000));
         assert!(super::completed(92_000, 100_000));
         assert!(!super::completed(5, 0));
+    }
+
+    #[test]
+    fn quality_label_follows_the_web() {
+        assert_eq!(super::quality_text(true, Some(300_000)), "Original \u{b7} 0.3 Mbps");
+        assert_eq!(super::quality_text(true, Some(40_000)), "Original");
+        assert_eq!(super::quality_text(true, None), "Original");
+        assert_eq!(super::quality_text(false, Some(8_000_000)), "Transcoded");
     }
 }

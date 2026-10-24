@@ -39,7 +39,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         .build();
     me.set_child(Some(&profiles::avatar_widget(
         &preset.unwrap_or_else(|| "alien".into()),
-        22,
+        21,
     )));
     {
         let (app, client) = (app.clone(), client.clone());
@@ -56,7 +56,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
         tabs.iter()
             .map(|(name, page)| {
                 pages.add_named(page, Some(name));
-                let icon = icons::image(name, 22, Tone::Soft);
+                let icon = icons::image(name, 21, Tone::Soft);
                 let button = gtk4::Button::builder()
                     .css_classes(["pa-navbtn"])
                     .tooltip_text(name.to_string())

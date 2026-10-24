@@ -287,6 +287,23 @@ pub struct PlaybackInfo {
     pub duration_ms: i64,
     #[serde(default)]
     pub source_offset_ms: i64,
+    /// The source's video bitrate for the quality label; filled from the playback options, not this response.
+    #[serde(skip)]
+    pub original_bps: Option<i64>,
+}
+
+/// The one field of `/media/{id}/playback-options` the player label needs.
+#[derive(Debug, Deserialize)]
+pub struct PlaybackOptions {
+    #[serde(default)]
+    pub quality_options: Vec<QualityOption>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct QualityOption {
+    pub id: String,
+    #[serde(default)]
+    pub video_bitrate_bps: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]

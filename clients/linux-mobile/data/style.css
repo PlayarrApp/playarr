@@ -62,13 +62,17 @@ button.pa-episode:disabled { opacity: 0.5; }
 .pa-player button.pa-round { background: rgba(12, 10, 11, 0.58); color: #ffffff; border-radius: 999px; min-width: 44px; min-height: 44px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.28); box-shadow: none; }
 .pa-player button.pa-ctl { background: transparent; color: #ffffff; border-radius: 999px; min-width: 44px; min-height: 44px; padding: 0; border: none; box-shadow: none; }
 .pa-player button.pa-ctl.primary { background: rgba(255, 255, 255, 0.14); }
-.pa-player button.pa-ctl:disabled { opacity: 0.28; }
-.pa-player button.pa-quality { padding: 0 10px; font-size: 10.5px; font-weight: 700; }
+.pa-player button.pa-ctl:disabled { opacity: 0.56; }
+.pa-player label.pa-quality { font-size: 10.56px; font-weight: 700; letter-spacing: 0.1056px; line-height: 1.09; }
+.pa-player label.pa-quality-glyph { font-size: 7.68px; font-weight: 700; letter-spacing: 0.3072px; }
 .pa-player label { color: #ffffff; }
-.pa-player scale trough { background: rgba(255, 255, 255, 0.2); min-height: 6px; border-radius: 0; }
+.pa-player scale { padding: 0; margin: 0; min-height: 6px; }
+.pa-player scale trough { background: rgba(255, 255, 255, 0.2); min-height: 6px; margin: 0; border-radius: 0; }
+.pa-player scale fill { background: rgba(255, 255, 255, 0.34); border-radius: 0; }
 .pa-player scale highlight { background: @pa_brand; border-radius: 0; }
 .pa-player scale slider { opacity: 0; min-width: 0; min-height: 0; margin: 0; padding: 0; }
-.pa-player-time { font-size: 10px; color: #ffffff; }
+.pa-player-time { font-size: 9.92px; color: #ffffff; }
+.pa-player label.pa-player-time.sep { color: #a5969e; }
 headerbar.pa-header { background: @pa_bg; color: @pa_ink; box-shadow: none; border: none; }
 headerbar.pa-header button { color: @pa_ink; }
 
