@@ -187,18 +187,19 @@ internal object PlayarrLayoutExport {
                 // line (ascent 1.011 em above the baseline, descent 0.353 em below it for Nunito Sans), not the line box.
                 val style = layout.layoutInput.style
                 val size = style.fontSize.value * density.fontScale * density.density
-                var l = Float.MAX_VALUE; var r = 0f; var top = Float.MAX_VALUE; var bottom = 0f
+                val colour = style.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified }
+                val heading = config.contains(SemanticsProperties.Heading)
+                // One element per laid-out line, with the glyph-run bounds the browser reports: the font's content area (Nunito Sans:
+                // ascent 1.011 em above the baseline, descent 0.353 em below), from the first to the last glyph of the line.
                 for (i in 0 until layout.lineCount) {
-                    if (layout.getLineEnd(i, true) == layout.getLineStart(i)) continue
-                    l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
-                    top = minOf(top, layout.getLineTop(i)); bottom = maxOf(bottom, layout.getLineBottom(i))
-                }
-                if (r > l) {
-                    val colour = style.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified }
+                    val start = layout.getLineStart(i); val end = layout.getLineEnd(i, true)
+                    val line = layout.layoutInput.text.text.substring(start, end).trim()
+                    if (line.isEmpty()) continue
+                    val l = layout.getLineLeft(i); val r = layout.getLineRight(i)
+                    val top = layout.getLineBaseline(i) - 1.011f * size; val bottom = layout.getLineBaseline(i) + 0.353f * size
                     val rx = x + l; val ry = y + top; val rw = r - l; val rh = bottom - top
-                    val heading = config.contains(SemanticsProperties.Heading)
                     out.put(
-                        JSONObject().put("text", text).put("role", if (heading) "heading" else "text")
+                        JSONObject().put("text", line).put("role", if (heading) "heading" else "text")
                             .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
                             .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)
                             .put("background", textBackground(rx, ry, rw, rh) ?: JSONObject.NULL)
