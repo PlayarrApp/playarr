@@ -2125,7 +2125,8 @@ private fun ExperienceNavigation(
         tonalElevation = 0.dp,
     ) {
         LazyRow(
-            modifier = Modifier.padding(start = 5.dp, end = 5.dp, top = if (isTelevision) 5.dp else 7.dp, bottom = 5.dp).fillMaxWidth(),
+            // Phone (measured against the static ref, 719 px wide): content 2 device px higher and 1.5 px further left than before.
+            modifier = Modifier.padding(start = if (isTelevision) 5.dp else 4.2.dp, end = 5.dp, top = if (isTelevision) 5.dp else 5.9.dp, bottom = if (isTelevision) 5.dp else 6.1.dp).fillMaxWidth(),
             // A short list (a household-limited profile) is centred in the bar; a long one scrolls from the start.
             horizontalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterHorizontally),
             contentPadding = PaddingValues(0.dp),
