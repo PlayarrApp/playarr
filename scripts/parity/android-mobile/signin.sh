@@ -15,7 +15,8 @@ for m in re.finditer(r'class=\"android.widget.EditText\"[^>]*?bounds=\"\[(\d+),(
 "; }
 n=0
 for v in "$PARITY_SERVER_URL" "$PARITY_ACCOUNT_NAME" "$PW"; do
-  xy=$(fields | sed -n "$((n + 1))p"); [ -n "$xy" ] || { echo "sign-in field $((n + 1)) not found" >&2; exit 1; }
+  xy=""; for _ in 1 2 3 4 5; do xy=$(fields | sed -n "$((n + 1))p"); [ -n "$xy" ] && break; sleep 5; done
+  [ -n "$xy" ] || { echo "sign-in field $((n + 1)) not found" >&2; exit 1; }
   adb shell input tap $xy; sleep 1
   adb shell input keyevent KEYCODE_MOVE_END; adb shell input keyevent --longpress $(printf 'KEYCODE_DEL %.0s' $(seq 40)); sleep 0.5
   adb shell input text "$v"; sleep 1; adb shell input keyevent KEYCODE_BACK; sleep 1
