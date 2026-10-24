@@ -159,6 +159,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
                 inset: [0.0, 0.0, width * (1.0 - p.clamp(0.0, 1.0) as f32), 0.0],
                 height: Some(3.0),
                 bg: Some([0.8118, 0.1922, 0.3412]),
+                art: false,
             })
             .apply(&bar);
         overlay.add_overlay(&bar);

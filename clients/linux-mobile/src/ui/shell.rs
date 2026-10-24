@@ -91,6 +91,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
                             inset: [0.0, 72.0, 0.0, 0.0],
                             height: None,
                             bg: None,
+                            art: false,
                         })
                         .apply(page);
                 } else if !label.is_empty() {

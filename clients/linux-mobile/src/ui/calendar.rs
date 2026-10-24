@@ -747,12 +747,20 @@ impl Cal {
         self.selected.set(None);
         // The web names the agenda's page and its inner list alike.
         if let Some(scroller) = self.page.ancestor(gtk4::ScrolledWindow::static_type()) {
-            let name = if v == View::Agenda {
-                "Calendar|Calendar"
-            } else {
-                "Calendar"
-            };
-            crate::layout::tag(&scroller, "page", name, 0.0);
+            let mut t = crate::layout::Tag::new("page", if v == View::Agenda { "|" } else { "" }, 0.0);
+            if v == View::Agenda {
+                // The web's agenda also draws the faded key art as its own image.
+                t = t.extra(crate::layout::Extra {
+                    role: "image",
+                    label: "",
+                    radius: 0.0,
+                    inset: [0.0, -7.4, -14.4, 295.45],
+                    height: None,
+                    bg: None,
+                    art: true,
+                });
+            }
+            t.apply(&scroller);
         }
         let week = v == View::Week;
         self.days_view.set_max_content_height(if week { WEEK_CLIP } else { -1 });

@@ -175,6 +175,8 @@ pub struct Extra {
     pub height: Option<f32>,
     /// The element's own background colour (it is painted opaque on top of what lies behind).
     pub bg: Option<[f32; 3]>,
+    /// The web's key-art opacity (0.72 dark, 0.42 light) applies.
+    pub art: bool,
 }
 
 /// Layout metadata a widget carries for the export: role, accessible label, corner radius, and where the web's box for
@@ -474,13 +476,16 @@ impl Walk<'_> {
             for e in &t.extras {
                 let [l, tp, r, bt] = e.inset;
                 let mut copy = el.clone();
+                if e.art {
+                    copy["opacity"] = json!(if self.light { 0.42 } else { 0.72 });
+                }
                 if let Some(c) = e.bg {
                     copy["background"] = json!(hex([c[0], c[1], c[2], 1.0], false));
                 }
                 copy["role"] = json!(e.role);
                 copy["text"] = json!(e.label);
-                copy["rect"] =
-                    json!({"x": b.x() + l, "y": b.y() + tp, "w": b.width() - l - r, "h": b.height() - tp - bt});
+                let h = e.height.unwrap_or(b.height() - tp - bt);
+                copy["rect"] = json!({"x": b.x() + l, "y": b.y() + tp, "w": b.width() - l - r, "h": h});
                 if e.radius > 0.0 {
                     copy["radius"] = json!(e.radius);
                 } else if let Some(o) = copy.as_object_mut() {
@@ -503,14 +508,21 @@ impl Walk<'_> {
             // One line: the web's text box is the primary font's ascent plus descent around the baseline, so a glyph
             // that falls back to another font (arrows, symbols) does not change the height.
             let (mut y, mut h) = (logical.y() as f32 / s, logical.height() as f32 / s);
-            if layout.line_count() == 1 {
+            if layout.line_count() >= 1 {
                 let m = l
                     .pango_context()
                     .metrics(l.pango_context().font_description().as_ref(), None);
                 // Chromium rounds the primary font's ascent and descent to whole pixels.
                 let (asc, desc) = ((m.ascent() as f32 / s).round(), (m.descent() as f32 / s).round());
-                y = layout.baseline() as f32 / s - asc;
-                h = asc + desc;
+                // Several lines: the union of the per-line content boxes, one line pitch apart.
+                let first = layout.baseline() as f32 / s;
+                let mut last = first;
+                let mut it = layout.iter();
+                while it.next_line() {
+                    last = it.baseline() as f32 / s;
+                }
+                y = first - asc;
+                h = (last - first) + asc + desc;
             }
             // The web reports the whole text's run, not the part an ellipsis leaves visible.
             let full = if l.ellipsize() == pango::EllipsizeMode::None || l.wraps() {

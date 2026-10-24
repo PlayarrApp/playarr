@@ -191,7 +191,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
 /// A web action pill: fixed 44 px tall, icon then label.
 fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) -> gtk4::Button {
     let row = gtk4::Box::builder()
-        .spacing(8)
+        .spacing(if primary { 10 } else { 8 })
         .halign(gtk4::Align::Center)
         .valign(gtk4::Align::Center)
         .build();
@@ -208,6 +208,13 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
             &gtk4::Label::builder()
                 .label("\u{2637}")
                 .css_classes(["pa-glyph"])
+                .build(),
+        ),
+        ("add", false) => row.append(&gtk4::Label::builder().label("+").css_classes(["pa-glyph", "s"]).build()),
+        ("play", true) => row.append(
+            &gtk4::Label::builder()
+                .label("\u{25B6}")
+                .css_classes(["pa-glyph", "play"])
                 .build(),
         ),
         _ => row.append(&icons::image(icon, if small { 9 } else { 12 }, tone)),
@@ -235,48 +242,60 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     b
 }
 
-fn meta_row(parts: &[(String, bool)]) -> gtk4::FlowBox {
-    let f = gtk4::FlowBox::builder()
-        .selection_mode(gtk4::SelectionMode::None)
-        .column_spacing(10)
-        .row_spacing(6)
-        .css_classes(["pa-meta-flow"])
-        .homogeneous(false)
-        // Start-aligned so the cells keep the web's 10 px gap instead of sharing the row's spare width.
-        .halign(gtk4::Align::Start)
-        .max_children_per_line(10)
-        .build();
-    for (t, strong) in parts {
-        f.append(
-            &gtk4::Label::builder()
+/// "S01 · E02" as the web's text nodes read ("S 01 · E 02"): its numbers sit in their own spans, drawn without a gap.
+fn spaced_code(t: &str) -> String {
+    let mut out = String::new();
+    for (i, c) in t.chars().enumerate() {
+        if i > 0 && c.is_ascii_digit() && t.chars().nth(i - 1).is_some_and(|p| p == 'S' || p == 'E') {
+            out.push(' ');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// The web's meta row: texts 10 px apart on fractional positions, wrapping at the content width. A `Fixed` keeps the
+/// fractional positions (a FlowBox sizes every cell to whole pixels, which drifts by a pixel per cell).
+fn meta_row(parts: &[(String, bool)]) -> gtk4::Fixed {
+    let f = gtk4::Fixed::new();
+    f.set_halign(gtk4::Align::Start);
+    let labels: Vec<gtk4::Label> = parts
+        .iter()
+        .map(|(t, strong)| {
+            let l = gtk4::Label::builder()
                 .label(t)
                 .css_classes(if *strong {
                     vec!["pa-meta", "strong"]
                 } else {
                     vec!["pa-meta"]
                 })
-                .build(),
-        );
-    }
-    // GTK sizes each cell to whole pixels, the web to fractions: once the fonts resolve, trim each cell's margin so the
-    // running position follows the fractional one (at most half a pixel apart) instead of drifting by a pixel per cell.
-    f.connect_map(|f| {
-        let mut exact = 0.0_f64;
-        let mut placed = 0.0_f64;
-        let mut child = f.first_child();
-        while let Some(c) = child {
-            child = c.next_sibling();
-            let Some(label) = c.first_child().and_then(|w| w.downcast::<gtk4::Label>().ok()) else {
-                continue;
-            };
-            let frac = f64::from(label.layout().size().0) / f64::from(gtk4::pango::SCALE);
-            let whole = frac.ceil();
-            exact += frac + 10.0;
-            let trim = ((exact - placed - whole - 10.0).round() as i32).min(0);
-            label.set_margin_end(trim);
-            placed += whole + 10.0 + f64::from(trim);
+                .build();
+            if t.starts_with('S') && t.contains('·') {
+                crate::layout::tag(&l, "text", &spaced_code(t), 0.0);
+            }
+            f.put(&l, 0.0, 0.0);
+            l
+        })
+        .collect();
+    let row_h = 14.0_f64;
+    let place = {
+        let f = f.clone();
+        move || {
+            let (mut x, mut y) = (0.0_f64, 0.0_f64);
+            for l in &labels {
+                let w = f64::from(l.layout().size().0) / f64::from(gtk4::pango::SCALE);
+                if x > 0.0 && x + w > 328.0 {
+                    x = 0.0;
+                    y += row_h + 6.0;
+                }
+                f.move_(l, x, y);
+                x += w + 10.0;
+            }
+            f.set_size_request(328, (y + row_h) as i32);
         }
-    });
+    };
+    place();
+    f.connect_map(move |_| place());
     f
 }
 
@@ -297,6 +316,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             inset: [0.0, 0.0, 0.0, 0.0],
             height: Some(484.55),
             bg: None,
+            art: false,
         })
         .apply(page);
     let gap = |b: &gtk4::Box, px: i32| b.append(&gtk4::Box::builder().height_request(px).build());
@@ -315,13 +335,13 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         _ => String::new(),
     };
     if !kicker.is_empty() {
-        body.append(
-            &gtk4::Label::builder()
-                .label(kicker)
-                .css_classes(["pa-kicker"])
-                .xalign(0.0)
-                .build(),
-        );
+        let k = gtk4::Label::builder()
+            .label(&kicker)
+            .css_classes(["pa-kicker"])
+            .xalign(0.0)
+            .build();
+        crate::layout::tag(&k, "text", &spaced_code(&kicker), 0.0);
+        body.append(&k);
     }
     // A film's title block sits 6 and 7 px (css) closer than the episode view's, as the web phone's.
     let film = focus_ep.is_none();
@@ -346,6 +366,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     );
     title_label.set_label(&wrapped);
     if two {
+        title_label.add_css_class("two");
         // The web sets the title at line-height 0.94; GTK's CSS line-height does not reach wrapped Pango lines.
         let attrs = gtk4::pango::AttrList::new();
         attrs.insert(gtk4::pango::AttrFloat::new_line_height(0.70));
@@ -357,7 +378,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         if film {
             4
         } else if two {
-            9
+            7
         } else {
             11
         },
@@ -370,7 +391,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                 .xalign(0.0)
                 .build(),
         );
-        gap(&body, 8);
+        gap(&body, 10);
     }
     let mut meta: Vec<(String, bool)> = Vec::new();
     if let Some((s, e)) = &focus_ep {
@@ -417,10 +438,8 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     let meta_flow = meta_row(&meta);
     if focus_ep.is_some() {
         // The episode meta row starts 2 px left of where the flow puts it, so the genre fits on the first line as on the web.
-        meta_flow.set_margin_start(-1);
-        meta_flow.set_margin_end(-4);
-        // The web's episode synopsis sits 14 px closer to the meta row than the film's.
-        meta_flow.set_margin_bottom(-6);
+
+        // The web's episode synopsis sits 14 px closer to the meta row than the film's (set on the synopsis below).
     }
     body.append(&meta_flow);
     gap(&body, if film { 11 } else { 0 });
@@ -441,6 +460,9 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             .build();
         l.set_height_request(if film { 34 } else { 50 });
         l.set_valign(gtk4::Align::Start);
+        if !film {
+            l.set_margin_top(-5);
+        }
         body.append(&l);
     }
     gap(&body, if series { 28 } else { 14 });
@@ -924,7 +946,7 @@ fn chapters_rail(
 ) -> gtk4::Box {
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     // The film band starts 29 px under the buttons, the heading 24 px further down.
-    col.set_margin_top(24);
+    col.set_margin_top(25);
     let target = runtime_ms as f64 / 10.0;
     let step = [5, 10, 15, 20, 30]
         .iter()
@@ -982,6 +1004,9 @@ fn chapters_rail(
             .css_classes(["pa-card"])
             .valign(gtk4::Align::Start)
             .build();
+        crate::layout::Tag::new("link", &format!("Play {title} from Chapter {}", i + 1), 0.0)
+            .height(135.52)
+            .apply(&b);
         let (file, play, t) = (file.to_string(), play.clone(), title.to_string());
         b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
         row.append(&b);
