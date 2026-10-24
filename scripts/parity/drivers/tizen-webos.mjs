@@ -172,7 +172,7 @@ export async function createDriver() {
     }
   }
   // Player chrome for the refs (web driver playerControls): the clip paused on its 2 s frame, controls revealed, focus dropped.
-  // Chromium 94 presents the frame before an exact 2.000 s seek target (burned-in 1.933), so the pin aims one frame later (2.04 s) to show the 2.000 s frame.
+  // Chromium 94 presents the frame before an exact 2.000 s seek target (burned-in 1.933), so the pin aims one frame later (2.02 s) to show the 2.000 s frame.
   async function pinPlayerFrame() {
     const pin = (t) => ev(`(async () => {
       const v = document.querySelector("video");
@@ -187,7 +187,7 @@ export async function createDriver() {
     if (!(await until(`!!document.querySelector(".player-controls") && !document.querySelector(".player-controls").classList.contains("is-hidden")`, 10000))) throw new Error("player controls did not show");
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
     let held = 0;
-    for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.04)) ? held + 1 : 0; await sleep(700); }
+    for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.02)) ? held + 1 : 0; await sleep(700); }
     if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
     await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
     await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
@@ -567,6 +567,8 @@ export async function createDriver() {
       }
       if (device === "webos" && (await keyboardVisible())) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
       if (await ev(BAD)) throw new Error("signed out or error page");
+      // Search is reached through the Filters button on the device (the system keyboard is dismissed by selecting it), which leaves Filters focused; the web ref shows it unfocused.
+      if (await ev(`location.hash === "#/search" && document.activeElement?.getAttribute("aria-label") === "Filters"`)) await ev(`(document.activeElement.blur(), true)`);
       if (device === "webos" && (await ev(`/^#\\/player\\//.test(location.hash)`))) await pinPlayerFrame();
       // Detail refs are taken at page top (the web driver does the same): the focus-scroll to the first episode card must not show in the capture.
       if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);

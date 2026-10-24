@@ -57,7 +57,8 @@ export function installLineBoxFix(win) {
       const box = cs.boxSizing === "border-box"
         ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)
         : 0;
-      return { el, target: lines * lh + box };
+      // The block's own minimum (a clamp() height on a button) must keep winning over the line-box minimum.
+      return { el, target: Math.max(lines * lh + box, parseFloat(cs.minBlockSize) || 0) };
     });
     for (const s of sized) {
       if (!s) continue;

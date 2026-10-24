@@ -41,8 +41,8 @@ html[data-platform="tv-webos"] textarea {
 /*
  * webOS 23's Chromium 94 truncates fractional line boxes to whole pixels, so
  * every grid caption (1.5 x 11.9px = 17.86px) is 0.86px short and the Library
- * rows drift by up to 3px. Restore the reference line heights; the details
- * overview keeps its clamp but uses the nearest whole pixel to 21.84px.
+ * rows drift by up to 3px. Restore the reference line heights; multi-line
+ * blocks (the details overview) are restored at runtime by webosLineBoxes.mjs.
  */
 html[data-platform="tv-webos"] .tv-title-card-copy strong,
 html[data-platform="tv-webos"] .tv-episode-copy strong,
@@ -57,9 +57,6 @@ html[data-platform="tv-webos"] .details-panel-title {
   min-block-size: 0.9em;
 }
 
-html[data-platform="tv-webos"] .details-panel .tv-preview-overview {
-  line-height: 22px;
-}
 
 /*
  * The same engine truncation hits every fractional line box (1.5 x 8.832px = 13.25px becomes 13px), and the
