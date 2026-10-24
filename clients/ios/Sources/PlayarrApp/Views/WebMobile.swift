@@ -738,6 +738,7 @@ struct WMHeaderCircleButton: View {
                 .frame(width: width, height: height)
                 .background(WM.chip.opacity(0.66), in: Ellipse())
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
+                .overlay { Color.clear.frame(width: 44, height: 44).parityBox("link", name: glyph == "\u{2190}" ? "Back" : nil, background: WM.chip.opacity(0.66), radius: 50) }
         }
         .buttonStyle(.plain)
     }
