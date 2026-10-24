@@ -215,25 +215,43 @@ struct WorkDetailView: View {
     private func tabletDetail(_ detail: WorkDetail, proxy: GeometryProxy) -> some View {
         ScrollViewReader { scrollProxy in
             ZStack(alignment: .topLeading) {
+                if detail.work.kind == .movie || detail.work.kind == .series {
+                    // Web `.tv-key-art`: starts at the nav clearance, 52vw wide minus it, 106% tall, grey, faded to the right,
+                    // 1.04 scale from the left edge, page-colour fades at the left and the top and bottom edges.
+                    let k = proxy.size.width / 1366
+                    let clearance = 108.5 * k
+                    ZStack(alignment: .topLeading) {
+                        PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
+                            .grayscale(1)
+                            .contrast(scheme == .dark ? 0.82 : 0.88)
+                            .brightness(scheme == .dark ? -0.4 : 0.1)
+                            .frame(width: 0.52 * proxy.size.width - clearance, height: 1.06 * proxy.size.height)
+                            .scaleEffect(1.04, anchor: UnitPoint(x: 0, y: 0.5))
+                            .opacity(scheme == .dark ? 0.72 : 0.24)
+                            .mask(LinearGradient(stops: [.init(color: .black, location: 0.72), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+                        LinearGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22)], startPoint: .leading, endPoint: .trailing)
+                        LinearGradient(stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.22), .init(color: .clear, location: 0.82), .init(color: PlayarrStyle.surface, location: 1)], startPoint: .bottom, endPoint: .top)
+                    }
+                    .frame(width: proxy.size.width - clearance, height: proxy.size.height, alignment: .topLeading)
+                    .clipped()
+                    .offset(x: clearance)
+                    LinearGradient(
+                        stops: [.init(color: PlayarrStyle.surface.opacity(0.94), location: 0), .init(color: PlayarrStyle.surface.opacity(0.9), location: 0.36), .init(color: .clear, location: 0.52)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                } else {
                 PlayarrArtwork(work: detail.work, kind: .backdrop, apiClient: apiClient)
                     .frame(width: proxy.size.width, height: proxy.size.height)
-                    .opacity(scheme == .dark ? (detail.work.kind == .movie || detail.work.kind == .series ? 0.06 : 0.3) : 0.07)
+                    .opacity(scheme == .dark ? 0.3 : 0.07)
                     .overlay {
-                        if detail.work.kind == .movie || detail.work.kind == .series {
-                            // Web: the page colour fades out over the left 40 %, the art tints only the copy side.
-                            LinearGradient(
-                                stops: [.init(color: PlayarrStyle.surface, location: 0), .init(color: .clear, location: 0.4)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        } else {
-                            LinearGradient(
-                                colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        }
+                        LinearGradient(
+                            colors: [PlayarrStyle.surface.opacity(0.48), .clear, PlayarrStyle.surface.opacity(0.18)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     }
+                }
 
                 detailCopy(
                     detail,
