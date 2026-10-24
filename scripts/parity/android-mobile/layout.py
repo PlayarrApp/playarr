@@ -22,7 +22,9 @@ r2 = lambda v: round(v, 2)
 for e in doc["elements"]:
     e["rect"] = {k: r2(v / dpr) for k, v in e["rect"].items()}
     if e.get("fontSize") is not None: e["fontSize"] = r2(e["fontSize"] / dpr)
-    if e.get("radius") is not None: e["radius"] = r2(e["radius"] / dpr)
+    # A fully rounded shape (tag 50 and above) stays as tagged; any other radius is the drawn one in CSS px.
+    px = e.pop("radiusPx", None)
+    if e.get("radius") is not None and px is not None and e["radius"] < 50: e["radius"] = r2(px / dpr)
 # Chromium rounds a run's ascent and descent to whole CSS px (Nunito Sans 1.011 / 0.353 em): a single-line content area is
 # round(asc) + round(desc) tall around the same baseline.
 for e in doc["elements"]:

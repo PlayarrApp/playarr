@@ -163,8 +163,9 @@ internal object PlayarrLayoutExport {
                             .put("color", box.style?.let { hex(it.third.toArgb(), true) } ?: JSONObject.NULL)
                             .put("background", if (box.background != androidx.compose.ui.graphics.Color.Unspecified) hex(box.background.toArgb()) else insideColour(bmp, x.toInt(), y.toInt(), w.toInt(), h.toInt()) ?: JSONObject.NULL)
                             .put("fontSize", box.style?.first?.toDouble() ?: JSONObject.NULL).put("fontWeight", box.style?.second ?: JSONObject.NULL)
-                        // The radius is written in dp of the composable's own density; the driver divides device px by the window scale, so scaled stages report CSS px.
-                        if (box.radius > 0f) e.put("radius", (box.radius * box.density).toDouble())
+                        // Radii are written as the web's CSS px (the dp value the composable was tagged with); the driver does not scale them.
+                        // Tagged radius (CSS px; 50 and above mean a fully rounded shape) and the same radius as drawn, in device px.
+                        if (box.radius > 0f) { e.put("radius", box.radius.toDouble()); e.put("radiusPx", (box.radius * box.density).toDouble()) }
                         if (box.opacity < 1f) e.put("opacity", box.opacity.toDouble())
                         elements.put(e)
                     }
@@ -252,7 +253,7 @@ internal object PlayarrLayoutExport {
                     val rh = if (lineBox && declared != null) declared * sy else (bottom - top) * sy
                     val bgOverride = config.getOrNull(io.playarr.shared.designsystem.page.ParityBgKey)?.let { androidx.compose.ui.graphics.Color(it.toULong()) }
                     out.put(
-                        JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", (it * density.density).toDouble()) } }
+                        JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()); put("radiusPx", (it * density.density).toDouble()) } }
                             .put("text", config.getOrNull(io.playarr.shared.designsystem.page.ParityTextKey) ?: text).put("role", config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey) ?: if (heading) "heading" else "text")
                             .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
                             .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)
