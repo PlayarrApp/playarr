@@ -6,7 +6,7 @@
 //   --layout-only publishes only those layout files (no PNG, no backup, no build.json): the pixel refs stay as they are.
 //   --dry prints the plan (groups, viewports, dirs, Downloads hidden or not, live screens) and the web build sha check, then exits without capturing.
 //   The web build served at PLAYARR_WEB_URL must contain origin/main's web client (no clients/tv-web change between its sha and origin/main), else the run stops (--allow-stale-web overrides).
-//   A group with "noFocusRing": true gets its Home focus dropped before the shot.
+//   A group with "noFocusRing": true gets focus dropped before every shot.
 // Needs PARITY_CHROME=<chromium path> (or Playwright's own), PARITY_CLIENT, PARITY_LOCK_DIR, and credentials resolved by capture-state.mjs.
 // Steps: snapshot account state, reset watch progress of the pinned files, capture each selected supported screen x dark/light once per viewport group
 // (fresh sign-in, sessionStorage cleared on every document, fixed fixture clock, deterministic animation policy, readiness checks), verify, then back up
@@ -145,7 +145,7 @@ for (const name of groups) {
             await driver.waitReady({ screen: s.id, phase: "capture" });
             await sleep(600); // posters swap to their final source shortly after the first load
             await driver.waitReady({ screen: s.id, phase: "capture" });
-            if (s.id === "home" && g.noFocusRing) await driver.blurFocus(); // touch layouts rest with no On deck focus ring (TV groups keep the first-card focus)
+            if (g.noFocusRing) await driver.blurFocus(); // touch layouts rest with no focus ring: the web focuses the first card (and the "#" index) on mount; TV groups keep it
             const imagePath = join(work, name, theme, `${s.id}.png`);
             await driver.screenshot(imagePath);
             const layout = await driver.layoutDump({ screen: s.id, theme });

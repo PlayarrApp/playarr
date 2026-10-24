@@ -1,0 +1,1 @@
+- Android phone: agenda entry lines sit at the web's pitch, and the agenda panel reaches the top of the screen.

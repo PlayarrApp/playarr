@@ -49,6 +49,7 @@ namespace Playarr.Xbox.Views
         {
             InitializeComponent();
             Background = Theme.PageStage();
+            EdgeFade.AttachVertical(Root, RailsScroll, 833, true);
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
@@ -659,13 +660,29 @@ namespace Playarr.Xbox.Views
             var art = new Grid
             {
                 Width = 268,
-                Height = 151,
+                Height = 150,
                 CornerRadius = new CornerRadius(12),
                 Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
             var frame = new Image { Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
             art.Children.Add(frame);
             _ = LoadFrameAsync(frame, file, chapter.StartMs);
+            // The web still is dimmed (black 30 % at the top to 39 % at the foot) with a 4.7 % white lift (measured on the ref).
+            art.Children.Add(new Windows.UI.Xaml.Shapes.Rectangle
+            {
+                IsHitTestVisible = false,
+                Fill = new Windows.UI.Xaml.Media.LinearGradientBrush
+                {
+                    StartPoint = new Windows.Foundation.Point(0, 0),
+                    EndPoint = new Windows.Foundation.Point(0, 1),
+                    GradientStops =
+                    {
+                        new Windows.UI.Xaml.Media.GradientStop { Color = Windows.UI.Color.FromArgb(0x4D, 0, 0, 0), Offset = 0 },
+                        new Windows.UI.Xaml.Media.GradientStop { Color = Windows.UI.Color.FromArgb(0x63, 0, 0, 0), Offset = 1 },
+                    },
+                },
+            });
+            art.Children.Add(new Windows.UI.Xaml.Shapes.Rectangle { IsHitTestVisible = false, Fill = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0x0C, 255, 255, 255)) });
             art.Children.Add(new TextBlock
             {
                 Text = (chapter.Index + 1).ToString("00", System.Globalization.CultureInfo.InvariantCulture),

@@ -314,8 +314,6 @@ struct CalendarView: View {
                         .frame(width: 74, height: 44)
                         .background(WM.page, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
-                        // The web draws a 3 px focus ring 2 px outside the button.
-                        .overlay(Capsule().stroke(WM.ink, lineWidth: 3).padding(-3.7))
                 }
                 .buttonStyle(.plain)
                 roundButton("\u{2192}", label: "Next period") { Task { await viewModel.step(1) } }
@@ -509,7 +507,7 @@ struct CalendarView: View {
             }
             .scrollIndicators(.hidden)
             .frame(width: 713)
-            .padding(.top, -10)
+            .padding(.top, -6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -524,7 +522,7 @@ struct CalendarView: View {
                     family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName,
                     size: 49.2, weight: 560, fixedAxes: DesignFont.nunitoAxes
                 )?.lineHeight ?? 49.2 * 1.36,
-                lineHeight: 49.2 * 0.9, width: 330
+                lineHeight: 49.2 * 0.9, width: 247
             )
             .padding(.top, 20)
             HStack(spacing: 16) {
@@ -547,7 +545,7 @@ struct CalendarView: View {
         let entry = item.entries.first
         let subtitle = entry.map { [$0.episodeCode, $0.subtitle].compactMap { $0 }.joined(separator: " \u{00B7} ") } ?? ""
         // The web card has no subtitle row for a film release: it is 76.6 pt tall instead of 91.
-        let height: CGFloat = subtitle.isEmpty ? 76.6 : 91
+        let height: CGFloat = subtitle.isEmpty ? 76.6 : (tablet ? 88 : 91)
         return Button {
             viewModel.select(item)
         } label: {
@@ -570,13 +568,13 @@ struct CalendarView: View {
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .offset(x: 16, y: (height - 60) / 2)
-                WMText(item.title, 16, 640, lh: 24).frame(width: 220, alignment: .leading).offset(x: 70, y: subtitle.isEmpty ? 13 : 7.7)
+                WMText(item.title, 16, 640, lh: 24).frame(width: tablet ? 400 : 220, alignment: .leading).offset(x: 70, y: subtitle.isEmpty ? 13 : (tablet ? 7 : 7.7))
                 if let entry {
                     if !subtitle.isEmpty {
                         WMText(subtitle, 16, 400, color: WM.inkSoft, lh: 24)
                             .fixedSize() // the web agenda subtitle never truncates
-                            .frame(width: 220, alignment: .leading)
-                            .offset(x: 70, y: 33.7)
+                            .frame(width: tablet ? 400 : 220, alignment: .leading)
+                            .offset(x: 70, y: tablet ? 31 : 33.7)
                     }
                     HStack(alignment: .top, spacing: 12) {
                         let time = calendarTimeLabel24(entry)
@@ -585,10 +583,10 @@ struct CalendarView: View {
                         WMText(kindLabel(entry.mediaKind), 12.8, 400, color: WM.inkSoft, lh: 19).fixedSize()
                         agendaBadge(entry)
                     }
-                    .offset(x: 70, y: subtitle.isEmpty ? 38.5 : 60.6)
+                    .offset(x: 70, y: subtitle.isEmpty ? 38.5 : (tablet ? 56.5 : 60.6))
                 }
             }
-            .frame(width: screenWidth - 32, height: height, alignment: .topLeading)
+            .frame(width: tablet ? 713 : screenWidth - 32, height: height, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -928,7 +926,7 @@ struct CalendarView: View {
                             Text(weekdayHeading(day))
                                 .font(.custom("Avenir Next", fixedSize: 12))
                                 .tracking(0.96)
-                                .foregroundStyle(PlayarrStyle.muted)
+                                .foregroundStyle(WM.inkSoft) // web weekday heading reads ink-soft
                                 .frame(width: gridWidth / 7, height: 32)
                         }
                     }
@@ -950,8 +948,9 @@ struct CalendarView: View {
     private func phoneMonthCell(day: String, items: [CalendarItem], height: CGFloat) -> some View {
         let dayNumber = Int(day.suffix(2)) ?? 0
         let inMonth = String(day.prefix(7)) == String(viewModel.anchor.prefix(7))
-        let shownCount = max(0, min(items.count, Int((height - 48) / 22.6)))
+        let shownCount = max(0, min(items.count, Int((height - 60) / 22.6)))
         return VStack(alignment: .leading, spacing: 0) {
+            Color.clear.frame(height: 11.9) // web rows start 12 pt below the cell top
             ForEach(items.prefix(shownCount)) { item in
                 Button {
                     viewModel.select(item)
@@ -987,7 +986,7 @@ struct CalendarView: View {
                         Text("+\(hidden) more").font(.custom("Avenir Next", fixedSize: 12)).foregroundStyle(PlayarrStyle.muted)
                     }
                 }
-                .padding(.leading, 0.9).padding(.trailing, -2.9) // web footer: number at 12.3 pt, "+N more" ends 13 pt from the edge
+                .padding(.leading, -2.1).padding(.trailing, -2.9) // web footer: number at 12.3 pt, "+N more" ends 13 pt from the edge
                 .frame(maxWidth: .infinity, minHeight: 49, alignment: .leading)
                 .contentShape(Rectangle())
             }
@@ -996,10 +995,12 @@ struct CalendarView: View {
         .padding(.horizontal, 10.9)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(inMonth ? Color.clear : WM.adaptive(light: (239, 238, 237), dark: (36, 31, 35)))
-        .overlay(Rectangle().stroke(WM.line.opacity(0.23), lineWidth: 1))
+        .overlay(alignment: .leading) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(width: 1) } // web cell borders: 1 pt each side, 1 pt on top
+        .overlay(alignment: .trailing) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(width: 1) }
+        .overlay(alignment: .top) { Rectangle().fill(PlayarrStyle.ink.opacity(0.125)).frame(height: 1) }
         .overlay {
             if day == viewModel.today {
-                Rectangle().stroke(PlayarrStyle.ink, lineWidth: 3).padding(1.5) // web focus ring on today
+                Rectangle().stroke(WM.inkSoft, lineWidth: 2).padding(1) // web today cell: 2 pt ink-soft border
             }
         }
         .accessibilityElement(children: .contain)

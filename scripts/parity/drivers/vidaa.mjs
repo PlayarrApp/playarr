@@ -50,11 +50,20 @@ function readSecret(name, env, file = join(homedir(), ".secrets")) {
   throw new Error(`${name} is missing`);
 }
 
+/** One-line failure text for a vidaa CLI call: its command word and its own stderr (or exit status), never the full command line. */
+export function cliFailure(args, error) {
+  const said = String(error?.stderr ?? "").trim().split("\n").filter(Boolean).pop() ?? "";
+  return `vidaa ${args[0] ?? ""} failed${said ? `: ${said}` : ` (${error?.signal ?? `exit ${error?.status ?? "?"}`})`}`;
+}
+
 export async function createDriver({
   env = process.env,
   cli = env.PLAYARR_VIDAA_CLI,
   base = env.PLAYARR_VIDAA_MIRROR ?? "http://127.0.0.1:18742",
-  runCli = (args) => execFileSync(cli, args, { encoding: "utf8", timeout: 90000, stdio: ["ignore", "pipe", "pipe"] }),
+  runCli = (args) => {
+    try { return execFileSync(cli, args, { encoding: "utf8", timeout: 90000, stdio: ["ignore", "pipe", "pipe"] }); }
+    catch (error) { throw new Error(cliFailure(args, error)); } // the suite logs only the first line of an error: keep the CLI's own message there
+  },
   getJson, getBuffer, delay = sleep, now = () => Date.now() / 1000, secrets,
   keyMs = Number(env.PLAYARR_VIDAA_KEY_MS ?? 1500), settleTimeoutMs = 45000,
 } = {}) {
