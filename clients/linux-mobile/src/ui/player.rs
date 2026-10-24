@@ -317,6 +317,7 @@ fn start_pipeline(
             height: Some(6.0),
             bg: Some([0.8118, 0.1922, 0.3412]),
             art: false,
+            font: None,
         })
         .apply(&scale);
     let pos_label = gtk4::Label::builder()
@@ -639,7 +640,8 @@ fn start_pipeline(
                     height: Some(6.0),
                     bg: Some([0.8118, 0.1922, 0.3412]),
                     art: false,
-                })
+ font: None,
+ })
                 .apply(&scale);
             updating.set(false);
             // The web's buffered stretch: the range playbin has fetched. A parity capture pins it to the web's 79 %

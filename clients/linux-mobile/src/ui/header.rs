@@ -19,7 +19,7 @@ pub struct Header {
 pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
     let row = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
-        .spacing(10)
+        .spacing(8)
         .margin_top(14)
         .margin_start(16)
         .margin_end(16)

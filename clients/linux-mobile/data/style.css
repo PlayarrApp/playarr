@@ -198,7 +198,7 @@ button.pa-pill, .pa-pill { background: @pa_surface; font-size: 11.52px; font-wei
 .pa-entry-title { font-size: 16px; font-weight: 640; }
 .pa-entry-sub { font-size: 16px; font-weight: 400; color: @pa_ink_soft; }
 .pa-entry-meta { font-size: 12.8px; font-weight: 400; color: @pa_muted; }
-.pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 2px 11px 0 13px; min-height: 19px; color: @pa_ink; }
+.pa-chip-status { font-size: 10.24px; font-weight: 750; padding: 2px 11px 0 14px; min-height: 19px; color: @pa_ink; }
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; padding: 16px; border-radius: 12px; min-height: 93px; }
 /* Agenda rows as the web phone: a strong-surface card with the web's strong hairline above and below (its right edge runs off the page), a 4 px availability bar on the left; unavailable is the muted ink */
 button.pa-entry, button.pa-entry:hover { background: @pa_surface_strong; border-radius: 12px; border-width: 1px 1px 1px 4px; border-style: solid; border-color: @pa_line_strong; padding: 9px 13px; min-height: 0; }
@@ -340,9 +340,9 @@ button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 .pa-glyph.play { font-size: 9.52px; color: @pa_body; }
 .pa-display.two { letter-spacing: -2.85px; }
 .pa-cal-arrow { margin-left: 2px; }
-.pa-mline .pa-dot { margin-top: 2px; }
 .pa-seg-tile { font-kerning: none; }
 .pa-pref-arrow { margin-bottom: 3px; }
 button.pa-entry:not(.week).nosub { padding-bottom: 3.5px; }
 .pa-cal-controls .pa-pill-label { margin-left: 1px; }
 button.pa-entry:not(.week).nosub .pa-entry-metarow { margin-top: 3px; }
+button.pa-pill.small.pa-clients-link { padding: 0 15px 0 17px; }

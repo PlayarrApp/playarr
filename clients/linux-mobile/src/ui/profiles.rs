@@ -246,6 +246,7 @@ fn tile(
             height: None,
             bg: None,
             art: false,
+            font: None,
         })
         .apply(&av);
     col.append(&av);

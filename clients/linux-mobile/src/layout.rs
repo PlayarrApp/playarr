@@ -177,6 +177,8 @@ pub struct Extra {
     pub bg: Option<[f32; 3]>,
     /// The web's key-art opacity (0.72 dark, 0.42 light) applies.
     pub art: bool,
+    /// Text size and weight, when the element is a text run in the page's ink colour.
+    pub font: Option<(f32, i32)>,
 }
 
 /// Layout metadata a widget carries for the export: role, accessible label, corner radius, and where the web's box for
@@ -260,7 +262,10 @@ pub fn key_art(w: &impl IsA<gtk4::Widget>, detail: bool) {
     } else {
         [0.0, -7.4, 374.4, 384.95]
     };
-    Tag::new("image", "", 0.0).web_art(rect).apply(w);
+    Tag::new("image", "", 0.0)
+        .web_art(rect)
+        .bg([0.1059, 0.0941, 0.1059], [0.9843, 0.9804, 0.9765])
+        .apply(w);
 }
 
 /// Like [`tag`], with the web's box height when the widget allocates extra room (Home cards keep room for the halo).
@@ -268,6 +273,17 @@ pub fn tag_h(w: &impl IsA<gtk4::Widget>, role: &'static str, label: &str, radius
     let mut t = Tag::new(role, label, radius);
     t.height = Some(height);
     t.apply(w);
+}
+
+trait DialogCheck {
+    fn is_none_or_dialog(&self) -> bool;
+}
+
+impl DialogCheck for Option<&Tag> {
+    /// A box as large as the viewport is only claimed by the dialog that paints it (the pages below paint nothing there).
+    fn is_none_or_dialog(&self) -> bool {
+        !self.is_some_and(|t| t.role == "dialog")
+    }
 }
 
 fn tag_of(w: &gtk4::Widget) -> Option<&Tag> {
@@ -385,7 +401,11 @@ impl Walk<'_> {
                 b.height()
             ));
         }
-        let own = if w.is::<gtk4::Label>() || w.is::<gtk4::Image>() || w.is::<gtk4::Picture>() {
+        let own = if w.is::<gtk4::Label>()
+            || w.is::<gtk4::Image>()
+            || w.is::<gtk4::Picture>()
+            || (b.width() >= vw && b.height() >= vh && tag_of(w).is_none_or_dialog())
+        {
             None
         } else {
             claim(&self.paints, &mut self.claimed, &b)
@@ -481,6 +501,11 @@ impl Walk<'_> {
             for e in &t.extras {
                 let [l, tp, r, bt] = e.inset;
                 let mut copy = el.clone();
+                if let Some((size, weight)) = e.font {
+                    copy["fontSize"] = json!(size);
+                    copy["fontWeight"] = json!(weight);
+                    copy["color"] = json!(if self.light { "#382621" } else { "#f4f0f1" });
+                }
                 if e.art {
                     copy["opacity"] = json!(if self.light { 0.42 } else { 0.72 });
                 }

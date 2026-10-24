@@ -202,6 +202,7 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
             &gtk4::Label::builder()
                 .label("\u{21E9}")
                 .css_classes(["pa-glyph", "s"])
+                .margin_start(3)
                 .build(),
         ),
         ("list", false) => row.append(
@@ -308,7 +309,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     page.append(&body);
     // The web's page box runs 73 px past the content (the navigation clearance), over a header block 485 px high.
     crate::layout::Tag::new("page", "", 0.0)
-        .adjust([0.0, 0.0, 0.0, 73.0])
+        .adjust([0.0, 0.0, 0.0, 72.0])
         .extra(crate::layout::Extra {
             role: "container",
             label: String::new(),
@@ -317,6 +318,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             height: Some(484.55),
             bg: None,
             art: false,
+            font: None,
         })
         .apply(page);
     let gap = |b: &gtk4::Box, px: i32| b.append(&gtk4::Box::builder().height_request(px).build());
@@ -621,7 +623,9 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         if runtime > 0 {
             let outer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
             outer.add_css_class("pa-rail-band");
-            crate::layout::tag(&outer, "page", "", 0.0);
+            crate::layout::Tag::new("page", "", 0.0)
+                .adjust([0.0, 0.0, 0.0, -10.2])
+                .apply(&outer);
             let b = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
             b.set_margin_start(16);
             b.append(&chapters_rail(imgs, file, runtime, &title, play.clone()));

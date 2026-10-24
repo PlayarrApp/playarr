@@ -572,7 +572,7 @@ impl Cal {
             // The web's week columns are 295 px wide and sit side by side.
             sec.set_size_request(295, -1);
             sec.set_valign(gtk4::Align::Start);
-            sec.set_spacing(8);
+            sec.set_spacing(if dt == today() { 5 } else { 7 });
             head.set_height_request(22);
             head.set_margin_top(5);
         }
@@ -782,6 +782,7 @@ impl Cal {
                 height: Some(22.0),
                 bg: None,
                 art: false,
+                font: Some((16.0, 400)),
             });
             if v == View::Agenda {
                 // The web's agenda also draws the faded key art as its own image.
@@ -793,6 +794,7 @@ impl Cal {
                     height: None,
                     bg: None,
                     art: true,
+                    font: None,
                 });
             }
             t.apply(&scroller);

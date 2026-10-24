@@ -501,6 +501,7 @@ impl Lib {
                     height: None,
                     bg: None,
                     art: false,
+                    font: None,
                 })
                 .apply(&dd);
             if let Some(inner) = dd
@@ -856,6 +857,7 @@ fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
             height: Some(h),
             bg: None,
             art: false,
+            font: None,
         });
     }
     t.apply(tile);
