@@ -883,7 +883,7 @@ struct TVFloatingNavLayout {
         let bottom = min(max(viewportUnit * 0.032, 22), 46) - 14
         return TVFloatingNavLayout(
             topInset: header + 44 + controlGap,
-            bottomInset: max(0, bottom)
+            bottomInset: max(0, bottom) + 10.58 // web: the profile tile ends 48.1 pt above the screen edge
         )
     }
 

@@ -297,6 +297,7 @@ private struct TVParityBoxModifier: ViewModifier {
                         .onChange(of: scheme) { _, _ in report(frame) }
                         .onChange(of: text) { _, _ in report(frame) }
                 }
+                .ignoresSafeArea() // a full-bleed box reports the whole screen, not the TV safe area
             )
             .environment(\.parityBackdrop, fill ?? backdrop)
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
