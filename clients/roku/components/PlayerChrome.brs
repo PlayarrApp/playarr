@@ -99,7 +99,10 @@ sub playerChromeBuild()
 
     ' Control semantics (web order); a control without a drawn box gets a transparent Rectangle at its box.
     pgBare(g, "container", "", 0, 561.6, 1920, 518.4, 0)
-    pgMark(g, "slider", "Seek", 70, 914, 1780, 44, 0)
+    ' The slider box holds the track, so it is named before the track is drawn over it.
+    seekBox = pgBare(g, "slider", "Seek", 70, 914, 1780, 44, 0)
+    g.removeChild(seekBox)
+    g.insertChild(seekBox, 0)
     m.pcPlayBg.id = "a11y|button|50|Play"
     A11yStamp(m.pcPlayBg, true)
     m.pcTimeMark = pgMark(g, "container", "0:00 / 0:00", 302.8, 981.8, 58.4, 16.3, 0)

@@ -6607,6 +6607,8 @@ sub updatePlayerProgress()
     end if
     m.playerProgressFill.width = m.playerProgressTrack.width * fraction
     m.playerBufferedFill.width = m.playerProgressTrack.width * bufferedFraction
+    ' The buffered bar shows only past the played part; where it ends with it there is nothing extra to draw.
+    m.playerBufferedFill.visible = bufferedFraction > fraction + 0.001
     m.playerTimeLabel.text = formatPlaybackTime(position) + " / " + formatPlaybackTime(duration)
     playerChromeUpdate(position, duration, fraction)
 end sub
