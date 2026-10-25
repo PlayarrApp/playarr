@@ -121,6 +121,15 @@ impl Player {
 
 pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
     let root = gtk4::Overlay::builder().css_classes(["pa-player"]).build();
+    // The web's player replaces the page body and app container with black: the window layer follows while it shows.
+    {
+        let layer = app.layer.clone();
+        root.connect_map({
+            let layer = layer.clone();
+            move |_| layer.add_css_class("playing")
+        });
+        root.connect_unmap(move |_| layer.remove_css_class("playing"));
+    }
     let status = gtk4::Label::builder()
         .label("Starting…")
         .css_classes(["pa-muted"])
