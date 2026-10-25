@@ -125,7 +125,7 @@ export async function createDriver({ out } = {}) {
   }
   // The layout document (cmd=layout): the app logs it in numbered chunks; wait until every chunk of this request has been read.
   async function layoutDocument() {
-    const n = await send({ cmd: "layout", debug: process.env.PARITY_LAYOUT_DEBUG ? "1" : "0" });
+    const n = await send({ cmd: "layout", debug: process.env.PARITY_LAYOUT_DEBUG || "0" });
     const t0 = Date.now();
     let lastAsk = 0;
     while (Date.now() - t0 < 90000) {

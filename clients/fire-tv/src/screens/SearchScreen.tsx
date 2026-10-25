@@ -458,7 +458,7 @@ function ResultCard(props: {
       accessibilityLabel={work.title}
       onFocus={props.onFocus}
       onPress={props.onPress}
-      style={{position: 'absolute', left: u(props.x), top: u(props.y), width: u(ART_W), borderRadius: u(12)}}
+      style={{position: 'absolute', left: u(props.x), top: u(props.y), width: u(ART_W)}}
     >
       <MediaFocus variant="search" focused={props.selected} width={ART_W} height={ART_H} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceStrong}}>

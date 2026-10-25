@@ -4,8 +4,7 @@
  * its resolved style and window rect. `cmd=layout` logs the document in chunks the driver reassembles.
  */
 import React from 'react';
-import fontMetrics from './fontMetrics.json';
-import {Dimensions, StyleSheet} from 'react-native';
+import {Dimensions, StyleSheet, Text} from 'react-native';
 
 const textLines = new WeakMap<object, Array<{x: number; y: number; width: number; height: number}>>();
 
@@ -13,12 +12,58 @@ export function registerLines(instance: object | null, lines: Array<{x: number; 
   if (instance) textLines.set(instance, lines);
 }
 
-export class LayoutProbe extends React.Component {
-  render(): null {
-    return null;
+export interface FontExtent {
+  ascender: number;
+  descender: number;
+}
+
+/**
+ * Hosts invisible probe Texts. The renderer reports the font's real ascender and descender (device px) for a Text without a line
+ * height; the exporter asks for one per font file and size, so text bounds are measured and not computed from a metrics table.
+ */
+export class LayoutProbe extends React.Component<unknown, {wanted: string[]}> {
+  state = {wanted: [] as string[]};
+  private extents = new Map<string, FontExtent>();
+  private waiting = new Map<string, Array<(e: FontExtent) => void>>();
+  render(): React.ReactNode {
+    return this.state.wanted.map((key) => {
+      const [family, size] = key.split('|');
+      return (
+        <Text
+          key={key}
+          allowFontScaling={false}
+          style={{position: 'absolute', left: -4000, top: 0, opacity: 0, fontFamily: family, fontSize: Number(size), includeFontPadding: false}}
+          onTextLayout={(event) => {
+            const line = event.nativeEvent.lines[0] as {ascender?: number; descender?: number} | undefined;
+            if (!line || typeof line.ascender !== 'number' || typeof line.descender !== 'number') return;
+            // RN reports the descender as a positive distance below the baseline on some renderers and negative on others.
+            const extent = {ascender: Math.abs(line.ascender), descender: Math.abs(line.descender)};
+            this.extents.set(key, extent);
+            this.waiting.get(key)?.forEach((done) => done(extent));
+            this.waiting.delete(key);
+          }}
+        >
+          Hxg
+        </Text>
+      );
+    });
   }
   fiber(): any {
     return (this as any)._reactInternals;
+  }
+  /** The renderer's ascender and descender of a font file at a size (device px). */
+  extent(family: string, size: number): Promise<FontExtent | null> {
+    const key = `${family}|${size}`;
+    const known = this.extents.get(key);
+    if (known) return Promise.resolve(known);
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 3000);
+      this.waiting.set(key, [...(this.waiting.get(key) ?? []), (e) => {
+        clearTimeout(timer);
+        resolve(e);
+      }]);
+      if (!this.state.wanted.includes(key)) this.setState((s) => ({wanted: [...s.wanted, key]}));
+    });
   }
 }
 
@@ -63,6 +108,9 @@ function over(top: string, under: string): string {
   return `#${[0, 1, 2].map((i) => h(t[i]! * a + u[i]! * (1 - a))).join('')}`;
 }
 
+const hasBorder = (style: Record<string, unknown>): boolean =>
+  ['borderWidth', 'borderTopWidth', 'borderBottomWidth', 'borderLeftWidth', 'borderRightWidth'].some((key) => typeof style[key] === 'number' && (style[key] as number) > 0);
+
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 export interface LayoutElement {
@@ -93,32 +141,46 @@ function textOf(fiber: Fiber): string {
 }
 
 /** Walks the fiber tree from the root and returns the document's elements in tree order. */
-export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolean): Promise<LayoutElement[]> {
+export async function exportLayout(probe: LayoutProbe, bg: string, level: string): Promise<LayoutElement[]> {
+  const debug = level !== '0';
   let root: Fiber = probe.fiber();
   while (root.return) root = root.return;
-  const hosts: Array<{fiber: Fiber; bg: string; opacity: number; path: string[]}> = [];
-  const visit = (fiber: Fiber, under: string, opacity: number): void => {
+  const hosts: Array<{fiber: Fiber; bg: string; opacity: number; owner: number}> = [];
+  const visit = (fiber: Fiber, under: string, opacity: number, owner: number): void => {
     for (let f = fiber.child; f; f = f.sibling) {
       // A navigator keeps the screens under the focused one mounted: they are not on screen.
       const nav = f.memoizedProps?.navigation;
+      if (f.stateNode === probe) continue;
       if (f.tag !== 5 && f.memoizedProps?.route && nav && typeof nav.isFocused === 'function' && !nav.isFocused()) continue;
       let nextBg = under;
       let nextOpacity = opacity;
+      let nextOwner = owner;
       if (f.tag === 5) {
         const style = StyleSheet.flatten(f.memoizedProps?.style) ?? {};
         const own = hex(style.backgroundColor);
         if (own) nextBg = over(own, under);
         if (typeof style.opacity === 'number') nextOpacity *= style.opacity;
-        hosts.push({fiber: f, bg: nextBg, opacity: nextOpacity, path: []});
+        hosts.push({fiber: f, bg: nextBg, opacity: nextOpacity, owner});
+        if (f.memoizedProps?.accessibilityRole) nextOwner = hosts.length - 1;
       }
-      visit(f, nextBg, nextOpacity);
+      visit(f, nextBg, nextOpacity, nextOwner);
     }
   };
-  visit(root, bg, 1);
+  visit(root, bg, 1, -1);
   const scale = Dimensions.get('window').width / 1920;
   const out: LayoutElement[] = [];
   const rects = await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber))));
+  const extents = new Map<string, FontExtent | null>();
+  const wanted = new Map<string, [string, number]>();
+  for (const h of hosts) {
+    if (String(h.fiber.type) !== 'RCTText') continue;
+    const st = StyleSheet.flatten(h.fiber.memoizedProps?.style) ?? {};
+    if (st.fontFamily && st.fontSize) wanted.set(`${st.fontFamily}|${st.fontSize}`, [String(st.fontFamily), st.fontSize]);
+  }
+  await Promise.all([...wanted].map(async ([key, [family, size]]) => extents.set(key, await probe.extent(family, size))));
+  const spans: Array<[number, number]> = [];
   hosts.forEach((h, i) => {
+    spans[i] = [out.length, out.length];
     const r = rects[i];
     if (!r || r[2] < 0.5 || r[3] < 0.5) return;
     if (r[0] > 1920 * scale || r[1] > 1080 * scale || r[0] + r[2] < 0 || r[1] + r[3] < 0) return;
@@ -127,7 +189,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
     const props = f.memoizedProps ?? {};
     const style = StyleSheet.flatten(props.style) ?? {};
     const rect = {x: round2(r[0] / scale), y: round2(r[1] / scale), w: round2(r[2] / scale), h: round2(r[3] / scale)};
-    const radius = typeof style.borderRadius === 'number' ? round2(style.borderRadius / scale) : 0;
+    // A radius larger than half the box is drawn as half the box.
+    const radius = typeof style.borderRadius === 'number' ? round2(Math.min(style.borderRadius / scale, rect.w / 2, rect.h / 2)) : 0;
     const base: Partial<LayoutElement> = {
       background: h.bg,
       ...(radius ? {radius} : {}),
@@ -142,35 +205,42 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       const lines = textLines.get(inst);
       const text = textOf(f);
       if (!text) return;
-      // One export entry per laid-out line. Everything is read from the view: the font file (family name) gives the weight and the
-      // vertical metrics (hhea ascender and descender of that file, rounded as a browser does for its text range), the style gives the
-      // size, colour and line height, and onTextLayout gives each line's x, width and y. Vega draws a line's glyphs from the top of
-      // its line box (checked against screenshot ink, scripts/parity/vega calibration), so the glyph run starts at the line top.
+      // One export entry per laid-out line, everything read from the renderer: the font file (family name) gives the weight, a probe
+      // Text of that file and size gives the real ascender and descender (the glyph run's height), the style gives size and colour,
+      // measureInWindow gives the view box and onTextLayout gives each line's x, width and height. Vega draws the first line's glyphs
+      // from the top of the view (the app keeps every line height at or above the content area, checked against screenshot ink),
+      // and each further line one laid-out line height lower.
       const family = String(style.fontFamily ?? '');
-      const metrics = (fontMetrics as Record<string, {ascender: number; descender: number}>)[family];
+      const extent = extents.get(`${family}|${style.fontSize}`);
       const size = round2((style.fontSize ?? 0) / scale);
       const m = /-w(\d+)$/.exec(family);
-      const runH = metrics ? Math.round(metrics.ascender * size) + Math.round(metrics.descender * size) : round2((style.lineHeight ?? style.fontSize ?? 0) / scale);
-      // A view moved by a relative `top` is measured where it is drawn; the line box starts at its layout position, and the browser's
-      // text range sits centred in the line box (the content area is shorter than the line height).
-      const lineTop = rect.y - (style.position === 'relative' && typeof style.top === 'number' ? style.top / scale : 0);
-      const upper = style.textTransform === 'uppercase';
+      // Glyph runs sit on whole device pixels: the ascent and descent each count in whole pixels.
+      const runH = extent ? Math.round(extent.ascender / scale) + Math.round(extent.descender / scale) : round2((style.lineHeight ?? style.fontSize ?? 0) / scale);
+      // The renderer draws the transformed text; onTextLayout reports the source text.
+      const transform = (value: string): string =>
+        style.textTransform === 'uppercase'
+          ? value.toUpperCase()
+          : style.textTransform === 'lowercase'
+            ? value.toLowerCase()
+            : style.textTransform === 'capitalize'
+              ? value.replace(/(^|\s)(\S)/g, (_m, space: string, letter: string) => `${space}${letter.toUpperCase()}`)
+              : value;
       const native = lines && lines.length ? lines : [{x: 0, y: 0, width: r[2], height: r[3], text}];
+      let above = 0;
       native.forEach((line, index) => {
-        // The line box the renderer laid out (its own height when the style sets no line height); lines stack by their heights.
-        const lh = style.lineHeight ? style.lineHeight / scale : line.height / scale;
-        const above = native.slice(0, index).reduce((sum, l) => sum + l.height, 0) / scale;
+        const lineTop = above;
+        above += line.height / scale;
         const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
         if (!lineText) return;
         out.push({
           ...(base as LayoutElement),
-          text: upper ? lineText.toUpperCase() : lineText,
+          text: transform(lineText),
           role: webRole === 'heading' ? 'heading' : 'text',
-          rect: {x: round2(rect.x + line.x / scale), y: round2(lineTop + above + (lh - runH) / 2), w: round2(line.width / scale), h: runH},
+          rect: {x: round2(rect.x + line.x / scale), y: round2(rect.y + lineTop), w: round2(line.width / scale), h: runH},
           color: hex(style.color),
           fontSize: size,
           fontWeight: m ? Number(m[1]) : 400,
-          ...(debug && index === 0 ? {src: JSON.stringify({view: rect, size, lines, top: style.top})} : null),
+          ...(debug && index === 0 ? {src: JSON.stringify({view: rect, size, lines, top: style.top, probe: extent, family})} : null),
         });
       });
       return;
@@ -179,8 +249,13 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       out.push({...(base as LayoutElement), text: label ?? '', role: webRole ?? 'image', rect, color: null, fontSize: null, fontWeight: null, src});
       return;
     }
-    const painted = hex(style.backgroundColor) !== null || (style.borderWidth ?? 0) > 0;
-    if (!role && !painted) return;
+    // A gradient view paints its box without a background colour.
+    const painted = hex(style.backgroundColor) !== null || hasBorder(style) || /LinearGradient/.test(type);
+    if (!role && !painted) {
+      // Debug builds list the unexported views too (role `debug-view`), to see how the renderer placed a wrapper.
+      if (level === '2') out.push({...(base as LayoutElement), text: '', role: 'debug-view', rect, color: null, fontSize: null, fontWeight: null, src: `${type} ${JSON.stringify({l: style.left, t: style.top, w: style.width, h: style.height, m: [style.marginLeft, style.marginTop], tr: style.transform, pos: style.position})}`});
+      return;
+    }
     out.push({
       ...(base as LayoutElement),
       text: role ? label ?? '' : '',
@@ -192,5 +267,27 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       src,
     });
   });
-  return out;
+  spans.forEach((span, i) => {
+    span[1] = spans[i + 1]?.[0] ?? out.length;
+  });
+  // A control whose only exported content is one line of text equal to its accessible name is one element in a browser's tree (a
+  // button with a text child): the glyph run takes the control's role. A control with an icon or other content stays a box.
+  const dropped = new Set<number>();
+  const norm = (value: string): string => value.replace(/\s+/g, ' ').trim().toLowerCase();
+  hosts.forEach((h, i) => {
+    const props = h.fiber.memoizedProps ?? {};
+    const role = props.accessibilityRole as string | undefined;
+    const label = props.accessibilityLabel;
+    if (!role || typeof label !== 'string' || spans[i]![1] - spans[i]![0] === 0) return;
+    const owned = hosts.map((_, j) => j).filter((j) => hosts[j]!.owner === i && spans[j]![1] > spans[j]![0]);
+    const only = owned.length === 1 ? owned[0]! : -1;
+    if (only < 0 || String(hosts[only]!.fiber.type) !== 'RCTText' || spans[only]![1] - spans[only]![0] !== 1) return;
+    const run = out[spans[only]![0]!]!;
+    const own = StyleSheet.flatten(props.style) ?? {};
+    // A filled control is a box with a text child of its own, as the browser's tree has it.
+    if (norm(run.text) !== norm(label) || hex(own.backgroundColor) !== null || hasBorder(own)) return;
+    out[spans[only]![0]!] = {...run, role: role === 'header' ? 'heading' : role === 'adjustable' ? 'slider' : role};
+    dropped.add(spans[i]![0]!);
+  });
+  return out.filter((_, index) => !dropped.has(index));
 }

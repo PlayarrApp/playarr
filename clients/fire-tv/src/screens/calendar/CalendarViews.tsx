@@ -154,7 +154,7 @@ function DayColumn({group, x, height, shared, onColumnFocus, onOpen}: {group: Da
       <Box x={x - 6} y={-6} w={COLUMN_W + 12} h={height + 12} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{position: 'absolute', left: u(6), top: Animated.add(new Animated.Value(u(6)), scroll.offset), width: u(COLUMN_W)}} pointerEvents="box-none" onLayout={(event) => setContentH(event.nativeEvent.layout.height)}>
           <View style={{marginBottom: u(HEADING_GAP)}}>
-            <DayHeading day={group.day} today={shared.today} locale={shared.locale} />
+            <DayHeading day={group.day} today={shared.today} locale={shared.locale} background="transparent" />
           </View>
           {items.length === 0 ? (
             <T size={19.2} weight={400} lh={28.8} color={colour.inkMuted}>

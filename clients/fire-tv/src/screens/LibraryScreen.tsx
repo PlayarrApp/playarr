@@ -696,7 +696,7 @@ function LibraryCard(props: CardProps & {x: number; card: GridLayout}): React.Re
       }}
       onPress={onPress}
       onLongPress={props.onLongPress}
-      style={{position: 'absolute', left: u(x), top: u(y), width: u(card.cardW), borderRadius: u(12)}}
+      style={{position: 'absolute', left: u(x), top: u(y), width: u(card.cardW)}}
     >
       <MediaFocus variant="library" focused={selected} width={card.cardW} height={card.cardH} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft}}>

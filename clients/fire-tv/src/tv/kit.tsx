@@ -6,7 +6,7 @@
 import React, {useState} from 'react';
 import {StyleSheet, Text, View, type NativeSyntheticEvent, type StyleProp, type TextLayoutEventData, type TextStyle, type ViewStyle} from 'react-native';
 import {Dimensions} from 'react-native';
-import {textRun} from '../theme/fonts';
+import {contentHeight, textRun} from '../theme/fonts';
 import {useTheme} from '../theme/ThemeProvider';
 import {PARITY_CONTROL} from '../debug/parityControl';
 import {registerLines} from '../debug/layoutExport';
@@ -82,19 +82,17 @@ export interface TProps {
 }
 
 /**
- * Where a browser puts the glyphs inside a line box: the extra line height splits evenly above and below the font's
- * content area (Nunito Sans: 1.364 em). Vega places the first line at the top of the box, so text is moved down by that
- * half-leading. When the line height is smaller than the content area (the big titles) the correction is smaller.
- * Calibrated on the device against the web's text positions (the big titles: 0.274, measured 2026-10-24 on the 69.12 px hero).
+ * Where a browser puts the glyphs inside a line box: the extra line height splits evenly above and below the font's content area.
+ * Vega draws the first line's glyphs from the top of the view, so a run taller than its content area is moved down by that
+ * half-leading. A single line is instead given a view exactly as tall as its content area, with the half-leading as margins
+ * above and below: the view box is then the glyph run. A run with a line height under its content area (squashed) always
+ * takes that form, because Vega does not centre such a run in its box.
  */
-export function halfLeading(size: number, lh: number | undefined): number {
-  if (lh === undefined) return 0;
-  const content = 1.364 * size;
-  return lh >= content ? (lh - content) / 2 : (content - lh) * 0.274;
-}
-
 export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, group, style, onTextLayout, children}: TProps): React.ReactElement {
-  const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(lh), mono});
+  const content = contentHeight(size, mono);
+  const single = lh !== undefined && (lines === 1 || lh < content);
+  const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(single ? content : lh), mono});
+  const lead = lh === undefined ? 0 : (lh - content) / 2;
   // Parity builds record the CSS size, weight and laid-out lines of every run for the layout exporter.
   const node = React.useRef<object | null>(null);
   const parity = PARITY_CONTROL
@@ -114,7 +112,7 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
       {...(heading ? {accessibilityRole: 'header' as const} : null)}
       {...parity}
       allowFontScaling={false}
-      style={[run, {color, includeFontPadding: false, position: 'relative', top: u(halfLeading(size, lh) + dy), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}
+      style={[run, {color, includeFontPadding: false, position: 'relative', top: u((single ? 0 : Math.max(lead, 0)) + dy), ...(single ? {marginTop: uf(lead), marginBottom: uf(lead)} : null), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}
     >
       {children}
     </Text>

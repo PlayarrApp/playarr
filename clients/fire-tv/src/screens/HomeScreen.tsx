@@ -76,11 +76,12 @@ export function homeLayout(view: 'thumbnail' | 'cover', size: ArtworkSize): Home
   return {railPitch: cardH + 138.7, firstHeadingY: LIBRARY_RAIL_TOP, centredHeadingY: 402 - (cardH - 227.2) / 2, cardPitch: cardW + HOME_CARD_GAP, cardW, artH, cardH, cover: view === 'cover'};
 }
 /**
- * The web snaps each card to a whole pixel from its fractional position (x = 783.36 + n * pitch); the device's row layout
- * rounds every card's width and margin separately and drifts by a pixel per card, so cards are placed one by one instead.
+ * The web snaps each card to a whole pixel from its fractional position (x = 783.36 + n * pitch). The device rounds every view's
+ * offset from its parent separately, so a card sits at the (rounded) rail origin plus a whole-pixel offset: the offset is the
+ * card's target pixel less that origin.
  */
 function cardLeft(index: number, pitch: number): number {
-  return Math.round(RAIL_X + index * pitch) - RAIL_X;
+  return Math.round(RAIL_X + index * pitch) - (Math.round(729.6) + Math.round(RAIL_X - 729.6));
 }
 const RAIL_X = 729.6 + RAIL_GUTTER;
 
@@ -542,7 +543,7 @@ const HomeCard = memo(function HomeCard(props: {
       onPress={onPress}
       onLongPress={onLongPress}
       // The web link ends under the title line; the meta line below it hangs out of the box.
-      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW), height: u(layout.artH + 11.25 + 17.9), borderRadius: u(12)}}
+      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW), height: u(layout.artH + 11.25 + 17.9)}}
     >
       <MediaFocus variant="home" focused={selected} width={layout.cardW} height={layout.artH} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft}}>

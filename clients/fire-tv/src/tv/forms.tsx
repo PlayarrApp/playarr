@@ -154,6 +154,12 @@ function SegmentButton({label, active, gap, onPress}: {label: string; active: bo
   );
 }
 
+/** A settings section below a hairline: the web's `section` with a top border, whose box runs from the line to its last control. */
+export function Section({children}: {children: React.ReactNode}): React.ReactElement {
+  const {colour} = useTheme();
+  return <View style={{borderTopWidth: 1, borderColor: colour.line, paddingTop: u(30.2)}}>{children}</View>;
+}
+
 export function Divider({w = 995}: {w?: number}): React.ReactElement {
   const {colour} = useTheme();
   return <View style={{width: u(w), height: 1, backgroundColor: colour.line}} />;

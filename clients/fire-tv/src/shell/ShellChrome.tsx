@@ -13,6 +13,7 @@ import {mix} from '../theme/color';
 import {textRun} from '../theme/fonts';
 import {sw} from '../theme/scale';
 import {useTheme} from '../theme/ThemeProvider';
+import {T} from '../tv/kit';
 import {appNow, formatClockDate, formatClockTime, onParityClockChange} from './clock';
 import {Icon, type IconName} from './icons';
 import {PlayarrLogo} from './Logo';
@@ -145,15 +146,11 @@ function RailLink({
       }}
     >
       <Icon name={item.icon} size={sw(20)} color={ink} />
-      <Text
-        {...lf()}
-        style={[
-          textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
-          {color: ink, marginTop: sw(4.8), fontSize: sw(8.832)},
-        ]}
-      >
-        {item.label}
-      </Text>
+      <View style={{marginTop: sw(4.8)}}>
+        <T size={8.832} weight={680} ls={0.309} lh={8.832} color={ink} lines={1}>
+          {item.label}
+        </T>
+      </View>
     </Pressable>
   );
 }
@@ -329,16 +326,11 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
           <View {...lx('container', '', 50)} style={{width: sw(20), height: sw(20)}}>
             {profileId ? <ProfileAvatar profileId={profileId} size={sw(20)} /> : null}
           </View>
-          <Text
-            numberOfLines={1}
-            {...lf()}
-            style={[
-              textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
-              {color: ink, marginTop: sw(4.8), maxWidth: sw(58), fontSize: sw(8.832)},
-            ]}
-          >
-            {shortName}
-          </Text>
+          <View style={{marginTop: sw(4.8), maxWidth: sw(58)}}>
+            <T size={8.832} weight={680} ls={0.309} lh={8.832} color={ink} lines={1}>
+              {shortName}
+            </T>
+          </View>
         </Pressable>
       </View>
       <Text
