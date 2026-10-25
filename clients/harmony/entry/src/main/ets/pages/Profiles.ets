@@ -357,7 +357,7 @@ struct Profiles {
       // web: a pill whose link text and arrow are two elements ("Clients", "→")
       Row({ space: 8.8 }) {
         Text('Clients').fontFamily(nunitoAt(720, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().inkSoft)).id('px:link:Clients')
+          .fontColor(toResourceColor(activeColors().inkSoft)).accessibilityText('Clients').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
         Text('→').fontFamily(arrowFont(720)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -377,7 +377,7 @@ struct Profiles {
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(tv(TV_ACTION_HEIGHT))
         .padding({ left: tv(17), right: tv(17) })
-        .id('px:button:' + label)
+        .accessibilityText(label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .borderRadius(tv(TV_ACTION_HEIGHT / 2))
         .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -406,7 +406,7 @@ struct Profiles {
     .constraintSize({ minWidth: tv(TV_ACTION_HEIGHT) })
     .justifyContent(FlexAlign.Center)
     .padding({ left: label.length > 0 ? tv(isTvMetrics() ? 15 : 17) : 0, right: label.length > 0 ? tv(isTvMetrics() ? 15 : 17) : 0 })
-    .id('px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
+    .accessibilityText((label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .borderRadius(tv(TV_ACTION_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -492,7 +492,7 @@ struct Profiles {
         .margin({ top: this.pick(160.6, PHONE_KICKER_TOP), left: isTvMetrics() ? 3 : 142.3 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunitoAt(500, this.pick(80.64, PHONE_HEADING_SIZE)))
-        .id('px:heading:' + t('pages.profiles.heading', 'Who’s watching?'))
+        
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE)).lineHeight(webLineHeight(this.pick(80.64, PHONE_HEADING_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .letterSpacing(this.pick(-5.15, -2.77))
@@ -546,7 +546,7 @@ struct Profiles {
           }
           .width(this.pick(254.98, 150.48))
           .padding({ top: this.pick(5.49, 3.25), bottom: this.pick(8.8, 6.5) })
-          .id('px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
+          .accessibilityText(profile.display_name + (profile.is_current ? ', current profile' : '')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
         // Web on TV: the tile opens the QR sign-in (/login/qr); a successful link returns to the picker.
@@ -593,7 +593,7 @@ struct Profiles {
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
         .margin({ top: this.pick(14.79, 12.33), right: this.pick(5.49, 0) })
-        .id('px:button:+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase())
+        .accessibilityText('+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .focusable(true)
         .onClick(() => {
           pushRoute(getNavStack(), ROUTES.Pairing);

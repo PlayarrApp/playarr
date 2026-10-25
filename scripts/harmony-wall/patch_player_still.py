@@ -13,6 +13,6 @@ pat = re.compile(r"        Column\(\)\.width\('100%'\)\.height\('100%'\)\n")
 m = pat.search(s)
 assert m, p + ": the patched player surface placeholder is not found"
 still = ("\n        Image($rawfile('parity-player-still.png'))\n          .width('100%')\n          .height('100%')\n"
-         "          .id('px:video:')\n          .objectFit(ImageFit.Fill)\n          .interpolation(ImageInterpolation.High)\n          .hitTestBehavior(HitTestMode.None)\n")
+         "          .accessibilityRole(AccessibilityRoleType.VIDEO)\n          .objectFit(ImageFit.Fill)\n          .interpolation(ImageInterpolation.High)\n          .hitTestBehavior(HitTestMode.None)\n")
 s = s[:m.end()] + still + s[m.end():]
 open(p, "w").write(s)

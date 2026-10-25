@@ -111,7 +111,8 @@ export struct SelectField {
         }
       }
       .width(tv(this.selectWidth))
-      .id(this.controlName.length > 0 ? 'px:button:' + this.controlPrefix + this.labelOf(this.value) : '')
+      .accessibilityText(this.controlName.length > 0 ? this.controlPrefix + this.labelOf(this.value) : '')
+      .accessibilityRole(this.controlName.length > 0 ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.ROLE_NONE)
       .constraintSize({ minHeight: tv(this.minHeight) })
       .padding({ left: tv(PADDING_H) + (this.lead.length > 0 ? 3.86 : 0), right: tv(PADDING_H) + (this.lead.length > 0 ? 3.05 : 0), top: tv(PADDING_V), bottom: tv(PADDING_V) })
       .borderRadius(tv(this.radius))

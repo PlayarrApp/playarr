@@ -192,6 +192,9 @@ struct NavTile {
         .margin({ top: -1.4 }) // web's label run sits 1.4 higher than ArkUI's half-leading line puts it
     }
     .id(`${this.item.id}-nav-tile`)
+    .accessibilityText(this.item.label)
+    .accessibilityRole(AccessibilityRoleType.HYPERLINK)
+    .accessibilityGroup(true)
     .padding({ top: tv(15.2) }) // web: the icon sits 15.2 below the tile top, the label 2.75 under it
     .width(tv(TvGeometry.navTileSize))
     .height(tv(TvGeometry.navTileSize))
@@ -313,7 +316,7 @@ export struct NavRail {
           .width(tv(TvGeometry.navTileSize - 8))
           .textAlign(TextAlign.Center)
       }
-      .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
+      .accessibilityText('Signed in as ' + this.profileName + '. Open profiles.').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
       .width(tv(TvGeometry.navTileSize))
       .height(tv(TvGeometry.navTileSize))
       .justifyContent(FlexAlign.Center)

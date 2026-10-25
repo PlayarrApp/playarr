@@ -434,7 +434,7 @@ export struct PosterCard {
           }
           .width('100%')
           .height(PROGRESS_BAR_HEIGHT)
-          .id('px:img:') // web: the track is an image-role box with the fill inside
+          .accessibilityRole(AccessibilityRoleType.IMAGE) // web: the track is an image-role box with the fill inside
           .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().line) : 'rgba(255, 255, 255, 0.2)') // web phone: a white 20% track in both themes
           .justifyContent(FlexAlign.Start)
         }
@@ -444,7 +444,7 @@ export struct PosterCard {
             .width(this.dotSize())
             .height(this.dotSize())
             .borderRadius(this.dotSize() / 2)
-            .id('px:img:')
+            .accessibilityRole(AccessibilityRoleType.IMAGE)
             .backgroundColor(toResourceColor(BRAND_PINK))
             .border({ width: 2, color: 'rgba(255, 255, 255, 0.94)' })
             .shadow({ radius: tv(9), color: 'rgba(31, 14, 20, 0.45)', offsetY: tv(2) })
@@ -540,6 +540,8 @@ export struct PosterCard {
     .scale({ x: this.cardScale(), y: this.cardScale() })
     .translate({ y: this.cardTranslateY() })
     .accessibilityText(this.linkName())
+    .accessibilityRole(AccessibilityRoleType.HYPERLINK)
+    .accessibilityGroup(true)
     .focusable(true)
     .onFocus(() => {
       this.setFocused(true);

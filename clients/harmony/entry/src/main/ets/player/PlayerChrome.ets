@@ -307,8 +307,8 @@ struct PlayPauseGlyph {
 @Component
 struct ChromeButton {
   label: string = '';
-  /** The layout export's node id (`px:button:<accessible name>`), empty for none. */
-  nodeId: string = '';
+  /** The control's accessible name (it is a button), empty for none. */
+  nodeName: string = '';
   buttonWidth: number = 44;
   buttonHeight: number = 44;
   fontSize: number = BUTTON_LABEL_FONT_SIZE;
@@ -364,7 +364,7 @@ struct ChromeButton {
           .maxLines(1)
       }
     }
-    .id(this.nodeId)
+    .accessibilityText(this.nodeName).accessibilityRole(this.nodeName.length > 0 ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.ROLE_NONE)
     .width(this.buttonWidth)
     .height(this.buttonHeight)
     .borderRadius(this.circle ? Math.min(this.buttonWidth, this.buttonHeight) / 2 : 0)
@@ -576,7 +576,7 @@ export struct PlayerChrome {
       label: '',
       icon: icon,
       iconSize: tv(20),
-      nodeId: isTvMetrics() ? 'px:button:' + name : '',
+      nodeName: isTvMetrics() ? name : '',
       circle: true,
       fillAlpha: 0,
       ringAlpha: 0,
@@ -598,7 +598,7 @@ export struct PlayerChrome {
     }
     .width(tv(TV_SEEK_SIZE))
     .height(tv(TV_SEEK_SIZE))
-    .id('px:button:' + (previous ? 'Previous episode' : 'Next episode'))
+    .accessibilityText((previous ? 'Previous episode' : 'Next episode')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .borderRadius(tv(TV_SEEK_SIZE / 2))
     .opacity(active ? 1 : 0.28)
     .focusable(active)
@@ -629,7 +629,7 @@ export struct PlayerChrome {
         }
         .width(tv(124))
         .height(tv(TV_CLOSE_SIZE))
-        .id('px:button:Minimise player')
+        .accessibilityText('Minimise player').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .justifyContent(FlexAlign.Center)
         .alignItems(VerticalAlign.Center)
         .borderRadius(tv(TV_CLOSE_SIZE / 2))
@@ -650,7 +650,7 @@ export struct PlayerChrome {
           buttonWidth: tv(TV_CLOSE_SIZE),
           buttonHeight: tv(TV_CLOSE_SIZE),
           fontSize: tv(22),
-          nodeId: 'px:button:Close player',
+          nodeName: 'Close player',
           onActivate: this.onBack,
           notifyFocusChanged: ((focused: boolean): void => {
             this.setChildFocused(focused);
@@ -671,7 +671,7 @@ export struct PlayerChrome {
           .width('100%')
           .height(tv(44))
           .justifyContent(FlexAlign.Center)
-          .id('px:slider:Seek')
+          .accessibilityText('Seek').accessibilityRole(AccessibilityRoleType.SLIDER)
         }
         Row({ space: tv(TV_ROW_GAP) }) {
           this.tvSkip(true, this.canPrevious, this.onPrevious)
@@ -682,7 +682,7 @@ export struct PlayerChrome {
             ringAlpha: 0,
             isPlaying: this.isPlaying,
             glyphSize: tv(20), // web: the 20 px icon
-            nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
+            nodeName: (this.isPlaying ? 'Pause' : 'Play'),
             buttonWidth: tv(TV_PLAY_SIZE),
             buttonHeight: tv(TV_PLAY_SIZE),
             onActivate: this.onTogglePlayPause,
@@ -696,7 +696,7 @@ export struct PlayerChrome {
           } else {
             Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
               .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
-              .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+              
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           Blank()
@@ -712,7 +712,7 @@ export struct PlayerChrome {
             .width(tv(160.45))
             .height(tv(56))
             .borderRadius(tv(28))
-            .id('px:button:Quality: ' + this.qualityLabel)
+            .accessibilityText('Quality: ' + this.qualityLabel).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
             .padding({ left: tv(10) })
             .justifyContent(FlexAlign.Center)
             .onClick(() => {
@@ -748,7 +748,7 @@ export struct PlayerChrome {
       fillAlpha: circle ? 0.04 : 0,
       ringAlpha: circle ? 0.3 : 0,
       active: !faded,
-      nodeId: 'px:button:' + name,
+      nodeName: name,
       buttonWidth: 44,
       buttonHeight: 44,
       onActivate: onTap,
@@ -767,7 +767,7 @@ export struct PlayerChrome {
     }
     .width(44)
     .height(44)
-    .id('px:button:' + (previous ? 'Previous episode' : 'Next episode'))
+    .accessibilityText((previous ? 'Previous episode' : 'Next episode')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .borderRadius(22)
     .opacity(active ? 1 : 0.28)
     .focusable(active)
@@ -794,7 +794,7 @@ export struct PlayerChrome {
         .width(336)
         .height(44)
         .justifyContent(FlexAlign.Center)
-        .id('px:slider:Seek')
+        .accessibilityText('Seek').accessibilityRole(AccessibilityRoleType.SLIDER)
         .position({ x: 12, y: 615.13 })
         Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
           .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
@@ -802,7 +802,7 @@ export struct PlayerChrome {
           .textAlign(TextAlign.Center)
           .width(336)
           .height(16.88)
-          .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+          
           .position({ x: 12, y: 653.13 })
       }
       this.phoneSkip(true, this.canPrevious, this.onPrevious, 20, 674)
@@ -814,7 +814,7 @@ export struct PlayerChrome {
         ringWidth: 0,
         isPlaying: this.isPlaying,
         glyphSize: 20, // web: the 20 px icon
-        nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
+        nodeName: (this.isPlaying ? 'Pause' : 'Play'),
         buttonWidth: PHONE_PLAY_SIZE,
         buttonHeight: PHONE_PLAY_SIZE,
         onActivate: this.onTogglePlayPause,
@@ -835,7 +835,7 @@ export struct PlayerChrome {
       }
       .width(44)
       .height(44)
-      .id('px:button:Quality: ' + this.qualityLabel)
+      .accessibilityText('Quality: ' + this.qualityLabel).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
       .borderRadius(22)
       .justifyContent(FlexAlign.Center)
       .position({ x: 89, y: 722 })

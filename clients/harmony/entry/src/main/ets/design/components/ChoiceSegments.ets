@@ -114,7 +114,7 @@ export struct ChoiceSegments {
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
-          .id('px:heading:' + this.heading)
+          
           .margin({ top: -4.5, bottom: this.description === '' ? tv(5) + 0.3 : -1.3 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
@@ -129,7 +129,7 @@ export struct ChoiceSegments {
           .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02))
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(activeColors().inkMuted))
-          .id('px:heading:' + this.heading.toUpperCase())
+          
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
@@ -143,7 +143,7 @@ export struct ChoiceSegments {
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
-          .id('px:button:' + choice.label)
+          .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .width(tv(this.choiceWidth()))
           .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
           .justifyContent(FlexAlign.Center)
@@ -166,7 +166,7 @@ export struct ChoiceSegments {
               .letterSpacing(isTvMetrics() ? 0.43 : 0) // web's run is about 3 wider than ArkUI lays it out
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
-          .id('px:button:' + choice.label)
+          .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .width(tv(this.choiceWidth()))
           .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
           .justifyContent(FlexAlign.Center)
@@ -181,7 +181,7 @@ export struct ChoiceSegments {
           })
          } else {
           Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + capitalWords(choice.label)).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
-            .id('px:button:' + choice.label)
+            .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)

@@ -384,7 +384,7 @@ export struct MediaRail {
     .width('100%')
     .height('100%')
     .blendMode(BlendMode.DST_IN)
-    .id('px:mask:edge') // a blend layer: the layout export skips it, it draws nothing of its own
+     // a blend layer: the layout export skips it, it draws nothing of its own
     .hitTestBehavior(HitTestMode.None)
   }
 
@@ -412,7 +412,7 @@ export struct MediaRail {
     Column({ space: this.headingGap }) {
       if (this.heading.length > 0) {
         Text(this.heading).fontFamily(nunitoAt(this.headingWeight, this.headingSize))
-          .id('px:heading:' + this.heading)
+          
           .fontSize(this.headingSize).lineHeight(webLineHeight(this.headingSize)).halfLeading(true)
           .fontWeight(this.headingWeight)
           .fontColor(toResourceColor(activeColors().ink))

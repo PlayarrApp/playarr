@@ -40,8 +40,18 @@ def get(path, **q):
             time.sleep(4)
 
 
+# The Previewer window is larger than the app's stage so no box is clamped by the window: the stage starts at STAGE_ORIGIN px inside it.
+# TV: 1920 x 1740 px, stage 1920 x 1080 at (0, 60). Phone: 2520 x 4320 px (dpr 3), stage 1080 x 2340 at (180, 180).
+STAGE = {"tv": ((0, 60), (1920, 1740), (1920, 1080)), "phone": ((180, 180), (2520, 4320), (1080, 2340))}
+STAGE_DEVICE = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in STAGE else "tv"
+STAGE_ORIGIN, WINDOW_SIZE, STAGE_SIZE = STAGE[STAGE_DEVICE]
+
+
 def png() -> Image.Image:
-    return Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    img = Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    if img.size == WINDOW_SIZE:  # the legend frame is the stage
+        img = img.crop((STAGE_ORIGIN[0], STAGE_ORIGIN[1], STAGE_ORIGIN[0] + STAGE_SIZE[0], STAGE_ORIGIN[1] + STAGE_SIZE[1]))
+    return img
 
 
 def key(*names):
@@ -253,7 +263,7 @@ def player_held_at_2s(folder):
     if not os.path.exists(raw):
         raise SystemExit("player did not report its state: no layout tree")
     tree = open(raw, encoding="utf-8").read()
-    if not re.search(r"0:02\s+/\s+1:00", tree) or "px:button:Play" not in tree:
+    if not re.search(r"0:02\s+/\s+1:00", tree) or not re.search(r'"accessibilityText":\s*"Play"', tree):
         raise SystemExit("player is not held paused at 2.000 s")
 
 
@@ -286,7 +296,7 @@ def export_layout(name, image=None, theme=None):
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
         count = layout_export.write(raw, name, theme, viewport, os.path.join(out, "layout"),
-                                    clock_pinned=True)  # patch_clock.py pins the preview clock to the fixture instant
+                                    clock_pinned=True, origin=STAGE_ORIGIN)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
     except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)
@@ -984,6 +994,7 @@ manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get
             "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
 if PLAYER_FIXTURE_SOURCE is not None:
     manifest["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
+manifest["stage_origin"] = list(STAGE_ORIGIN)  # px: the raw layout trees hold window coordinates, the stage starts here
 if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
     suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
     requested = TV_SELECTION if TV_SELECTION is not None else [

@@ -177,7 +177,6 @@ export struct FeatureCopy {
         Column() {
           ForEach(this.balancedTitle().split('\n'), (line: string, index: number) => {
             Text(line).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
-              .id('px:' + this.titleRole + ':' + line)
               .fontSize(tv(HERO_TITLE_FONT_SIZE))
               .fontWeight(HERO_TITLE_FONT_WEIGHT)
               .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
@@ -199,7 +198,7 @@ export struct FeatureCopy {
           .lineHeight(webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
-          .id('px:heading:' + this.subtitle)
+          
           .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) + (tv(EPISODE_TITLE_LINE_HEIGHT) - webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))) / 2, bottom: (tv(EPISODE_TITLE_LINE_HEIGHT) - webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))) / 2 })
       }
 

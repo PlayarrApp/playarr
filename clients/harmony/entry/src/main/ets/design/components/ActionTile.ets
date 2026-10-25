@@ -50,7 +50,7 @@ export struct ActionTile {
         .maxLines(1)
         .translate({ y: -1.2 }) // web's label box sits 1.2 higher
     }
-    .id('px:button:' + this.label)
+    .accessibilityText(this.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .width(tv(TILE_WIDTH))
     .height(tv(TILE_HEIGHT))
     .justifyContent(FlexAlign.Center)

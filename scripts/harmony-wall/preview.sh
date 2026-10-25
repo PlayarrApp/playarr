@@ -42,6 +42,7 @@ build() {
   python3 "$HERE/patch_artwork.py" entry/src/main/ets/data/ArtworkRepository.ets "$CTL"
   python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets
   python3 "$HERE/patch_text.py" entry/src/main/ets # last: the other patches match the Text calls as written
+  python3 "$HERE/patch_role.py" entry/src/main/ets # mirror each declared accessibilityRole into the hint the inspector reports
   sed -i "s/PREVIEW_PORT: number = 40017/PREVIEW_PORT: number = $CTL/" entry/src/main/ets/util/PreviewState.ets
   python3 -c "import json;p='entry/src/main/resources/base/profile/main_pages.json';d=json.load(open(p));d['src'].append('pages/PreviewBoot');json.dump(d,open(p,'w'),indent=2)"
   ohpm install --all

@@ -37,7 +37,7 @@ class LayoutExportTest(unittest.TestCase):
 
     def test_the_inspector_box_already_holds_the_scale_so_only_the_text_is_scaled(self):
         inner = text("[10.00, 10.00],[31.50, 10.50]", "Movies", [run(0, 6, 0.0, 0.0, 30.0, 10.0)])
-        tile = {"$type": "Column", "$rect": "[0.00, 0.00],[67.20, 67.20]", "$attrs": {"id": "px:link:Movies", "backgroundColor": "#17F4F0F1", "scale": {"x": "1.050000", "y": "1.050000"}}, "$children": [inner]}
+        tile = {"$type": "Column", "$rect": "[0.00, 0.00],[67.20, 67.20]", "$attrs": {"accessibilityText": "Movies", "accessibilityTextHint": "pvrole:39", "backgroundColor": "#17F4F0F1", "scale": {"x": "1.050000", "y": "1.050000"}}, "$children": [inner]}
         doc = export(column([tile], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
         link = [e for e in doc["elements"] if e["role"] == "link"][0]
         self.assertEqual((link["rect"]["w"], link["rect"]["h"]), (67.2, 67.2))
@@ -54,32 +54,32 @@ class LayoutExportTest(unittest.TestCase):
         self.assertEqual([e["role"] for e in doc["elements"]], ["container"])
 
     def test_controls_use_the_apps_accessible_name_and_box(self):
-        tree = column([{"$type": "Row", "$rect": "[100.00, 100.00],[64.00, 64.00]", "$attrs": {"id": "px:button:Play", "backgroundColor": "#33FFFFFF", "borderRadius": "32.00vp"}, "$children": []}],
+        tree = column([{"$type": "Row", "$rect": "[100.00, 100.00],[64.00, 64.00]", "$attrs": {"accessibilityText": "Play", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#33FFFFFF", "borderRadius": "32.00vp"}, "$children": []}],
                       rect="[0.00, 0.00],[1920.00, 1080.00]")
         b = [e for e in export(tree, "x", "dark", (1920, 1080, 1))["elements"] if e["role"] == "button"][0]
         self.assertEqual((b["text"], b["rect"]["w"], b["radius"]), ("Play", 64.0, 32.0))
 
     def test_a_text_that_is_the_control_exports_its_lines_with_the_apps_role_and_radius(self):
-        t = text("[100.00, 100.00],[130.00, 56.00]", "Title", [run(0, 5, 10.0, 10.0, 33.0, 25.0)], id="px:button:Title", backgroundColor="#FFF4F0F1", borderRadius="12.00vp")
+        t = text("[100.00, 100.00],[130.00, 56.00]", "Title", [run(0, 5, 10.0, 10.0, 33.0, 25.0)], accessibilityTextHint="pvrole:5", backgroundColor="#FFF4F0F1", borderRadius="12.00vp")
         els = export(column([t], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))["elements"]
         self.assertEqual([(e["role"], e["text"], e.get("radius")) for e in els if e["role"] != "container"], [("button", "Title", 12.0)])
 
     def test_a_control_fully_behind_a_later_drawer_is_dropped(self):
-        btn = {"$type": "Row", "$rect": "[1846.00, 151.00],[62.00, 72.00]", "$attrs": {"id": "px:button:Filters", "backgroundColor": "#33FFFFFF"}, "$children": []}
-        drawer = {"$type": "Column", "$rect": "[1560.00, 0.00],[360.00, 1080.00]", "$attrs": {"id": "px:dialog:Filters", "backgroundColor": "#F0211D21"}, "$children": []}
+        btn = {"$type": "Row", "$rect": "[1846.00, 151.00],[62.00, 72.00]", "$attrs": {"accessibilityText": "Filters", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#33FFFFFF"}, "$children": []}
+        drawer = {"$type": "Column", "$rect": "[1560.00, 0.00],[360.00, 1080.00]", "$attrs": {"accessibilityTextHint": "pvrole:24", "backgroundColor": "#F0211D21"}, "$children": []}
         doc = export(column([btn, drawer], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
         self.assertEqual([e["role"] for e in doc["elements"]], ["container", "dialog"])
         self.assertEqual(doc["occluded"], 1)
 
     def test_a_partly_covered_control_stays(self):
-        btn = {"$type": "Row", "$rect": "[1500.00, 151.00],[100.00, 72.00]", "$attrs": {"id": "px:button:Filters", "backgroundColor": "#33FFFFFF"}, "$children": []}
+        btn = {"$type": "Row", "$rect": "[1500.00, 151.00],[100.00, 72.00]", "$attrs": {"accessibilityText": "Filters", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#33FFFFFF"}, "$children": []}
         drawer = {"$type": "Column", "$rect": "[1560.00, 0.00],[360.00, 1080.00]", "$attrs": {"backgroundColor": "#F0211D21"}, "$children": []}
         doc = export(column([btn, drawer], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
         self.assertIn("button", [e["role"] for e in doc["elements"]])
 
     def test_a_mask_layer_neither_exports_nor_hides_what_is_under_it(self):
         label = text("[100.00, 100.00],[200.00, 30.00]", "Hi", [run(0, 2, 0.0, 0.0, 20.0, 20.0)])
-        mask = {"$type": "Column", "$rect": "[0.00, 0.00],[1920.00, 1080.00]", "$attrs": {"id": "px:mask:edge", "backgroundColor": "#FF000000"}, "$children": []}
+        mask = {"$type": "Column", "$rect": "[0.00, 0.00],[1920.00, 1080.00]", "$attrs": {"blendMode": 7, "backgroundColor": "#FF000000"}, "$children": []}
         doc = export(column([label, mask], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
         self.assertEqual([e["role"] for e in doc["elements"]], ["container", "text"])
 
