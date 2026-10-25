@@ -300,7 +300,7 @@ export struct NavRail {
   private profileGroup(top: number): void {
     Stack({ alignContent: Alignment.TopStart }) {
       Column({ space: NAV_TILE_ICON_LABEL_GAP }) {
-        ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
+        ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE), illustrationRatio: 1 })
           .focusable(false)
         Text(this.firstName()).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
           .fontSize(tv(TvGeometry.navTileLabelSize))
@@ -337,13 +337,17 @@ export struct NavRail {
 
   @Builder
   private versionText(): void {
-    Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
-      .fontSize(tv(8))
-      .letterSpacing(1.36) // web's run is 30.73 wide
-      .fontColor(toResourceColor(activeColors().ink))
-      .width(NAV_GROUP_WIDTH)
-      .position({ x: 0, y: 1038.45 })
-      .textAlign(TextAlign.Center)
+    Column() {
+      Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
+        .fontSize(tv(8))
+        .letterSpacing(1.36) // web's run is 30.73 wide
+        .lineHeight(tv(8)) // web: a line-height-1 box, 8 high
+        .fontColor(toResourceColor(activeColors().ink))
+        .id('pxb:text:version')
+    }
+    .width(NAV_GROUP_WIDTH)
+    .alignItems(HorizontalAlign.Center)
+    .position({ x: 0, y: 1037.45 })
   }
 
   build() {

@@ -48,6 +48,7 @@ export struct ActionTile {
         .letterSpacing(tv(LABEL_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().inkMuted))
         .maxLines(1)
+        .translate({ y: -1.2 }) // web's label box sits 1.2 higher
     }
     .id('px:button:' + this.label)
     .width(tv(TILE_WIDTH))
