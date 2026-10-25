@@ -147,3 +147,8 @@ test("a volatile element exports its glyph run, not its box", { skip }, async ()
   assert.equal(d.elements[0].volatile, "header-clock");
   assert.ok(d.elements[0].rect.w < 100 && d.elements[0].rect.h < 30);
 });
+
+test("adjacent text nodes are joined as rendered, with no inserted separator", { skip }, async () => {
+  const d = await dump(`<p id="c"></p><script>const c = document.getElementById("c"); for (const s of ["S", "01", " · E", "01"]) c.append(document.createTextNode(s));</script>`);
+  assert.deepEqual(texts(d), ["S01 · E01"]);
+});

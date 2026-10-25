@@ -69,7 +69,6 @@ export function layoutPageFn(volatile) {
     var lines = [], cur = null, range = document.createRange();
     for (var a = 0; a < nodes.length; a++) {
       var data = nodes[a].data;
-      if (cur) cur.text += " ";
       for (var i = 0; i < data.length; i++) {
         range.setStart(nodes[a], i);
         range.setEnd(nodes[a], i + 1);
@@ -173,7 +172,7 @@ export function layoutPageFn(volatile) {
     if (srOnly(el)) continue;
     var texts = [];
     for (var k = 0; k < el.childNodes.length; k++) if (el.childNodes[k].nodeType === 3 && norm(el.childNodes[k].textContent)) texts.push(el.childNodes[k]);
-    var own = shown(norm(texts.map(function (n) { return n.textContent; }).join(" ")), cs);
+    var own = shown(norm(texts.map(function (n) { return n.textContent; }).join("")), cs);
     var fill = parse(cs.webkitTextFillColor || cs.color);
     var gradient = null;
     if (own && fill[3] === 0) {
