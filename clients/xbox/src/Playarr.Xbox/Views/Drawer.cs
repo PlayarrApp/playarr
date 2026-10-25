@@ -212,12 +212,6 @@ namespace Playarr.Xbox.Views
                 }
 
                 LayoutExport.Tag(button, "button", options[i]);
-                if (!drawer || icons != null)
-                {
-                    // Web: the button holds a separate lower-case text run that CSS capitalises.
-                    LayoutExport.SetText(labelText, options[i].ToLowerInvariant());
-                }
-
                 if (!string.IsNullOrWhiteSpace(automationIdPrefix))
                 {
                     AutomationProperties.SetAutomationId(button, $"{automationIdPrefix}.{i}");
@@ -267,7 +261,6 @@ namespace Playarr.Xbox.Views
             content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             content.Children.Add(Ui.Text(current, 11.84, new FontWeight { Weight = 680 }, "PlayarrInk"));
             var chevron = new TextBlock { Text = "\uE70D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 11.84, LineHeight = 16, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInkMuted") };
-            LayoutExport.SetText(chevron, "\u2304");
             Grid.SetColumn(chevron, 1);
             content.Children.Add(chevron);
             var button = new Button
@@ -370,7 +363,6 @@ namespace Playarr.Xbox.Views
             var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
             var icon = new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 19.52, LineHeight = 27, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrBrand"), VerticalAlignment = VerticalAlignment.Center };
             // The web draws these as text glyphs; the export names them as the web does.
-            LayoutExport.SetText(icon, glyph switch { "\uF5B0" => "\u25B6", "\uE896" => "\u21E9", "\uE710" => "\uFF0B", "\uE73E" => "\u2713", "\uE711" => "\u25CB", _ => glyph });
             content.Children.Add(icon);
             var text = Ui.Text(label, 19.2, new FontWeight { Weight = 700 }, "PlayarrInk");
             text.LineHeight = 26;
@@ -392,7 +384,7 @@ namespace Playarr.Xbox.Views
                 FocusVisualSecondaryThickness = new Thickness(0),
             };
             button.Click += (s, e) => onClick();
-            LayoutExport.Tag(button, "button", (string?)icon.GetValue(LayoutExport.TextProperty) + " " + label);
+            LayoutExport.Tag(button, "button", glyph + " " + label);
             LayoutExport.SetSplit(button, true);
             return button;
         }

@@ -21,32 +21,8 @@ namespace Playarr.Xbox.Views
         /// <summary>The web role (heading, link, button, tab, textbox, search, img, status ...) an element exports as; unset elements derive one from their type.</summary>
         public static readonly DependencyProperty RoleProperty = DependencyProperty.RegisterAttached("Role", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
 
-        /// <summary>Layout box to export for an element whose drawn box differs from its layout box (the scaled key-art backdrop): x, y, w, h.</summary>
-        public static readonly DependencyProperty BoxProperty = DependencyProperty.RegisterAttached("Box", typeof(object), typeof(LayoutExport), new PropertyMetadata(null));
-
         /// <summary>Marks the shell chrome (rail, clock): it sits on the page background, everything else on the page surface.</summary>
         public static readonly DependencyProperty ShellProperty = DependencyProperty.RegisterAttached("Shell", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
-
-        /// <summary>Text to export instead of the displayed text (the web's DOM holds "system" and capitalises it with CSS).</summary>
-        public static readonly DependencyProperty TextProperty = DependencyProperty.RegisterAttached("Text", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
-
-        public static void SetText(DependencyObject element, string text) => element.SetValue(TextProperty, text);
-
-        /// <summary>Grows the exported box of an element by this inset (the web's title box includes the line-height half-leading above and below the glyphs).</summary>
-        public static readonly DependencyProperty PadProperty = DependencyProperty.RegisterAttached("Pad", typeof(Thickness), typeof(LayoutExport), new PropertyMetadata(default(Thickness)));
-
-        public static void SetPad(DependencyObject element, Thickness pad) => element.SetValue(PadProperty, pad);
-
-        /// <summary>The text's web box is its CSS line box (own line-height), not Chrome's content area.</summary>
-        public static readonly DependencyProperty LineBoxProperty = DependencyProperty.RegisterAttached("LineBox", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
-
-        public static void SetLineBox(DependencyObject element, bool value) => element.SetValue(LineBoxProperty, value);
-
-        public static T SetLineBoxed<T>(T element, bool value = true) where T : DependencyObject
-        {
-            element.SetValue(LineBoxProperty, value);
-            return element;
-        }
 
         /// <summary>A button the web exports as the box plus a separate text element (round letter and arrow buttons).</summary>
         public static readonly DependencyProperty SplitProperty = DependencyProperty.RegisterAttached("Split", typeof(bool), typeof(LayoutExport), new PropertyMetadata(false));
@@ -57,8 +33,6 @@ namespace Playarr.Xbox.Views
         public static readonly DependencyProperty SplitOnProperty = DependencyProperty.RegisterAttached("SplitOn", typeof(string), typeof(LayoutExport), new PropertyMetadata(null));
 
         public static void SetSplitOn(DependencyObject element, string separator) => element.SetValue(SplitOnProperty, separator);
-
-        public static void SetBox(DependencyObject element, Rect box) => element.SetValue(BoxProperty, box);
 
         public static void SetShell(DependencyObject element, bool shell) => element.SetValue(ShellProperty, shell);
 
@@ -90,7 +64,7 @@ namespace Playarr.Xbox.Views
                 theme,
                 viewport = new { w = 1920, h = 1080, dpr = 1 },
                 probe = Probe(),
-                clockPinned = true,
+                clockPinned = ParityClock.IsPinned && ParityClock.Today == new DateTime(2026, 10, 7),
                 elements,
             });
         }
@@ -154,16 +128,6 @@ namespace Playarr.Xbox.Views
             double? fontSize = null;
             int? fontWeight = null;
             var rect = Bounds(element, root, scale);
-            if (element.GetValue(PadProperty) is Thickness pad && pad != default)
-            {
-                rect = new Rect(rect.X - pad.Left, rect.Y + pad.Top, rect.Width + pad.Left + pad.Right, rect.Height - pad.Top + pad.Bottom);
-            }
-
-            if (element.GetValue(BoxProperty) is Rect box)
-            {
-                rect = box;
-            }
-
             var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(element);
             if (element is TextBlock split && split.GetValue(SplitOnProperty) is string separator && split.Text.Contains(separator))
             {
@@ -173,7 +137,7 @@ namespace Playarr.Xbox.Views
 
             if (element is TextBlock block)
             {
-                text = (string?)block.GetValue(TextProperty) ?? block.Text;
+                text = block.Text;
                 if (string.IsNullOrWhiteSpace(text))
                 {
                     return;
@@ -183,12 +147,14 @@ namespace Playarr.Xbox.Views
                 color = Hex(block.Foreground);
                 fontSize = Math.Round(block.FontSize, 2);
                 fontWeight = WebFont.WeightOf(block);
-                rect = TextRun(block, root, scale) ?? rect;
+                color = Hex(block.Foreground);
+                AddLines(block, 0, text.Length, role, root, scale, output);
+                return;
             }
             else if (element is Button { Content: TextBlock drawerLabel } && element.GetValue(SplitProperty) is not true && !string.IsNullOrWhiteSpace(drawerLabel.Text) && (role == null || role == "button"))
             {
                 role = "button";
-                text = (string?)drawerLabel.GetValue(TextProperty) ?? (string.IsNullOrEmpty(name) ? drawerLabel.Text : name);
+                text = string.IsNullOrEmpty(name) ? drawerLabel.Text : name;
                 color = Hex(drawerLabel.Foreground);
                 fontSize = Math.Round(drawerLabel.FontSize, 2);
                 fontWeight = WebFont.WeightOf(drawerLabel);
@@ -241,14 +207,6 @@ namespace Playarr.Xbox.Views
             }
 
             var radius = element is Border b ? b.CornerRadius.TopLeft : element is Grid g ? g.CornerRadius.TopLeft : element is Control c ? c.CornerRadius.TopLeft : 0;
-            var pill = element is TextBlock && VisualTreeHelper.GetParent(element) is Border { CornerRadius.TopLeft: > 0, Padding.Left: >= 7 } pillBorder ? pillBorder : null;
-            if (pill != null)
-            {
-                // A status pill: the web puts box, radius and text on one element and keeps the page colour behind it.
-                radius = pill.CornerRadius.TopLeft;
-                rect = Bounds(pill, root, scale);
-            }
-
             if (radius > 0 && radius * 2 >= Math.Min(element.ActualWidth, element.ActualHeight) - 0.5)
             {
                 // The web reports a circle as 50 and any other fully rounded pill as 999.
@@ -261,7 +219,7 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                background = pill != null ? BackgroundBehind(pill) : role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element, includeSelf: Own(element) != null)),
+                background = role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element, includeSelf: Own(element) != null)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
@@ -271,82 +229,89 @@ namespace Playarr.Xbox.Views
 
         private static void AddRuns(TextBlock block, string separator, FrameworkElement root, double scale, List<object> output)
         {
-            var text = block.Text;
             var start = 0;
-            foreach (var part in text.Split(new[] { separator }, StringSplitOptions.None))
+            foreach (var part in block.Text.Split(new[] { separator }, StringSplitOptions.None))
             {
                 var begin = start;
                 start += part.Length + separator.Length;
-                if (part.Length == 0)
+                if (part.Length > 0)
                 {
-                    continue;
+                    AddLines(block, begin, part.Length, "text", root, scale, output);
+                }
+            }
+        }
+
+        /// <summary>Axis-aligned bounds of the element's layout box after every ancestor transform (scales, translations), in 1920x1080 pixels.</summary>
+        private static Rect Bounds(FrameworkElement element, FrameworkElement root, double scale)
+        {
+            var r = element.TransformToVisual(root).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+            return new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale);
+        }
+
+        /// <summary>One element per laid-out line of <paramref name="length"/> characters from <paramref name="offset"/>: the union of the native character rectangles of that line (the glyph run and the platform's own line box height), transformed to the root.</summary>
+        private static void AddLines(TextBlock block, int offset, int length, string role, FrameworkElement root, double scale, List<object> output)
+        {
+            try
+            {
+                var transform = block.TransformToVisual(root);
+                var lines = new List<(Rect Box, int From, int To)>();
+                for (var i = offset; i < offset + length; i++)
+                {
+                    var rect = block.ContentStart.GetPositionAtOffset(i + 1, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Backward) ?? Rect.Empty;
+                    if (rect.IsEmpty || rect.Width <= 0 && block.Text[i] == ' ')
+                    {
+                        continue;
+                    }
+
+                    var at = lines.FindIndex(l => Math.Abs(l.Box.Y - rect.Y) < 1);
+                    if (at < 0)
+                    {
+                        lines.Add((rect, i, i + 1));
+                    }
+                    else
+                    {
+                        var l = lines[at];
+                        var union = new Rect(Math.Min(l.Box.X, rect.X), l.Box.Y, Math.Max(l.Box.Right, rect.Right) - Math.Min(l.Box.X, rect.X), Math.Max(l.Box.Height, rect.Height));
+                        lines[at] = (union, l.From, i + 1);
+                    }
                 }
 
-                try
+                foreach (var (box, from, to) in lines)
                 {
-                    var first = block.ContentStart.GetPositionAtOffset(begin + 1, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Backward) ?? block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
-                    var lastPos = block.ContentStart.GetPositionAtOffset(begin + 1 + part.Length, LogicalDirection.Backward);
-                    var last = lastPos?.GetCharacterRect(LogicalDirection.Backward) ?? first;
-                    var transform = block.TransformToVisual(root);
-                    var a = transform.TransformPoint(new Point(first.X, 0));
-                    var z = transform.TransformPoint(new Point(last.X, 0));
-                    var box = Bounds(block, root, scale);
-                    var size = block.FontSize * scale;
-                    var ascent = Math.Round(1.011 * size, MidpointRounding.AwayFromZero);
-                    var height = ascent + Math.Round(0.353 * size, MidpointRounding.AwayFromZero);
-                    var baseline = box.Y + block.BaselineOffset * scale;
+                    var r = transform.TransformBounds(box);
+                    var text = block.Text.Substring(from, to - from).Trim();
+                    if (text.Length == 0 || r.Right * scale <= 0 || r.Bottom * scale <= 0 || r.X * scale >= 1920 || r.Y * scale >= 1080)
+                    {
+                        continue;
+                    }
+
                     output.Add(new
                     {
-                        text = part,
-                        role = "text",
-                        rect = new { x = Math.Round(a.X * scale, 1), y = Math.Round(baseline - ascent, 1), w = Math.Round(Math.Max(0, (z.X - a.X) * scale), 1), h = height },
+                        text,
+                        role,
+                        rect = new { x = Math.Round(r.X * scale, 1), y = Math.Round(r.Y * scale, 1), w = Math.Round(r.Width * scale, 1), h = Math.Round(r.Height * scale, 1) },
                         color = Hex(block.Foreground),
                         background = BackgroundBehind(block),
                         fontSize = Math.Round(block.FontSize, 2),
                         fontWeight = WebFont.WeightOf(block),
                     });
                 }
-                catch (Exception)
-                {
-                    // A run whose position cannot be read is left out rather than guessed.
-                }
+            }
+            catch (Exception)
+            {
+                // A block whose character rectangles cannot be read is left out rather than guessed.
             }
         }
 
-        private static Rect Bounds(FrameworkElement element, FrameworkElement root, double scale)
-        {
-            var origin = element.TransformToVisual(root).TransformPoint(new Point(0, 0));
-            return new Rect(origin.X * scale, origin.Y * scale, element.ActualWidth * scale, element.ActualHeight * scale);
-        }
-
-        /// <summary>Single line: the glyph run's horizontal extent on the element's line box (the web reports the line box height); wrapped text keeps the element box.</summary>
+        /// <summary>The glyph run of a single-line label inside a button: first to last character rectangle, native line box height, transformed.</summary>
         private static Rect? TextRun(TextBlock block, FrameworkElement root, double scale)
         {
             try
             {
-                var box = Bounds(block, root, scale);
                 var first = block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
                 var last = block.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
-                if (last.Y > first.Y + 1)
-                {
-                    return box;
-                }
-
-                var transform = block.TransformToVisual(root);
-                var a = transform.TransformPoint(new Point(first.X, 0));
-                var z = transform.TransformPoint(new Point(last.X + last.Width, 0));
-                if (block.GetValue(LineBoxProperty) is true)
-                {
-                    // CSS line box (the clock and the date set their own line-height): the element's own box.
-                    return new Rect(a.X * scale, box.Y, Math.Max(0, (z.X - a.X) * scale), box.Height);
-                }
-
-                // Chrome's content area for Nunito Sans: ascent round(1.011 em) above the baseline, round(0.353 em) below.
-                var size = block.FontSize * scale;
-                var ascent = Math.Round(1.011 * size, MidpointRounding.AwayFromZero);
-                var height = ascent + Math.Round(0.353 * size, MidpointRounding.AwayFromZero);
-                var baseline = box.Y + block.BaselineOffset * scale * (box.Height / Math.Max(1, block.ActualHeight));
-                return new Rect(a.X * scale, baseline - ascent, Math.Max(0, (z.X - a.X) * scale), height);
+                var r = block.TransformToVisual(root).TransformBounds(new Rect(first.X, first.Y, Math.Max(0, last.Right - first.X), Math.Max(first.Height, last.Height)));
+                return new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale);
             }
             catch (Exception)
             {

@@ -51,7 +51,6 @@ namespace Playarr.Xbox.Views
             Background = Theme.PageStage();
             EdgeFade.AttachVertical(Root, RailsScroll, 833, true);
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
-            LayoutExport.SetBox(BackdropImage, new Windows.Foundation.Rect(133.03, -22.9, 899.97, 1190.59));
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
             BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();

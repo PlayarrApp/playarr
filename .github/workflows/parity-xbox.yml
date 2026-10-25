@@ -48,10 +48,16 @@ jobs:
     name: Build the unsigned UWP package
     runs-on: windows-2022 # the UWP workload (MSBuild, Windows 10 SDK, .NET Native) ships on this image
     timeout-minutes: 60
+    outputs:
+      sha: ${{ steps.pin.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+      # One immutable commit for the package and every capture part (a branch can move while the matrix runs).
+      - id: pin
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: microsoft/setup-msbuild@v2
       - name: Build the unsigned x64 MSIX
         shell: pwsh
@@ -95,7 +101,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.build.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -167,8 +173,8 @@ jobs:
               # Filters List view and language flyout (suite crops, paired with the web crops in out/web-home).
               mkdir -p "$OUT/dev/crops/$T"; cp "$OUT"/run/"$T"/crops/*.png "$OUT/dev/crops/$T/" || true ;;
             dpad)
-              node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --out "$OUT/web"
-              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"
+              # The committed static-server expectations (all 24 checks); --player runs the player checks on the paused direct-play fixture.
+              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --player --via keys --out "$OUT/run" --expected expected.static.json
               mkdir -p "$OUT/dev"; cp "$OUT/run/dpad.json" "$OUT/dev/" ;;
             playback)
               echo '{"suite":1,"dpad":{},"playback":{"a":{"state":"playing"},"b":{"state":"playing"},"c":{"state":"playing"}}}' > "$OUT/exp.json"

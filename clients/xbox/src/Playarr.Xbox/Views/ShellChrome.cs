@@ -52,8 +52,6 @@ namespace Playarr.Xbox.Views
             Root.Children.Add(_chrome);
             Build();
             _frame.Navigated += (s, e) => Sync(e);
-            LayoutExport.SetLineBox(_time, true);
-            LayoutExport.SetLineBox(_date, true);
             _clockTimer.Tick += (s, e) => UpdateClock();
             _clockTimer.Start();
             UpdateClock();
@@ -178,7 +176,7 @@ namespace Playarr.Xbox.Views
             profileGroup.Margin = new Thickness(RailLeft, 952, 0, 0);
             _chrome.Children.Add(profileGroup);
 
-            _chrome.Children.Add(LayoutExport.SetLineBoxed(new TextBlock
+            _chrome.Children.Add((new TextBlock
             {
                 Text = "v" + typeof(App).Assembly.GetName().Version.ToString(3),
                 FontFamily = (FontFamily)Application.Current.Resources["PlayarrMonoFont"],

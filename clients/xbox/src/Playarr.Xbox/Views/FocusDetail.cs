@@ -61,7 +61,6 @@ namespace Playarr.Xbox.Views
             _meta.Foreground = soft;
             _overview.Foreground = soft;
             _backdropLayer.Opacity = Theme.KeyArtGroupOpacity;
-            LayoutExport.SetBox(_backdrop, new Windows.Foundation.Rect(133.03, -22.9, 899.97, 1190.59));
             _backdropLayer.Children.Add(_backdrop);
             Children.Add(_backdropLayer);
             _imageMaskWash.Fill = Theme.KeyArtImageMaskWash();
@@ -80,7 +79,6 @@ namespace Playarr.Xbox.Views
                 VerticalAlignment = VerticalAlignment.Top,
             };
             LayoutExport.SetRole(_title, "heading");
-            LayoutExport.SetPad(_title, new Thickness(0, -23.5, 0, 8.7));
             _panel.Children.Add(_eyebrow);
             _panel.Children.Add(_title);
             _metaRow.Children.Add(_meta);
