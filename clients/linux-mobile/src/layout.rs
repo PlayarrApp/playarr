@@ -282,6 +282,7 @@ fn role_of(w: &gtk4::Widget) -> &'static str {
         R::ProgressBar => "progressbar",
         R::List => "list",
         R::Search => "search",
+        R::Group => "group",
         _ => "container",
     }
 }
@@ -552,13 +553,20 @@ impl Walk<'_> {
             || w.is::<gtk4::Switch>()
         {
             text = a11y_name(w)
+                .filter(|_| w.accessible_role() != gtk4::AccessibleRole::Group)
                 .or_else(|| {
                     w.downcast_ref::<gtk4::Entry>()
                         .and_then(|e| e.placeholder_text())
                         .map(|t| t.to_string())
                 })
                 .or_else(|| w.tooltip_text().map(|t| t.to_string()))
-                .unwrap_or_else(|| child_text(w));
+                .unwrap_or_else(|| {
+                    if w.accessible_role() == gtk4::AccessibleRole::Group {
+                        String::new()
+                    } else {
+                        child_text(w)
+                    }
+                });
             emit = true;
         } else if own.is_some() || bordered {
             emit = true;
