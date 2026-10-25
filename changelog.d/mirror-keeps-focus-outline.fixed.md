@@ -1,0 +1,1 @@
+- Debug mirror no longer removes the focus outline from the rendered frame.
