@@ -225,6 +225,16 @@ function toneColor(tone: EntryPillTone): RgbaColor {
   return tone === 'missing' ? activeColors().danger : activeColors().inkSoft;
 }
 
+/** The entry card's accessible name (web: the button's text content): title, subtitle, time, release type, kind and status, in reading order. */
+function entryButtonName(item: CalendarItem, today: string): string {
+  const parts: string[] = [item.title, itemSubtitle(item), entryTimeLabel(item.entries[0]), releaseTypeLabel(item.entries[0].release_type)];
+  if (!item.grouped) {
+    parts.push(mediaKindLabel(item.entries[0].media_kind));
+  }
+  parts.push(pillLabel(itemPillTone(item, today)));
+  return parts.filter((part: string): boolean => part.length > 0).join(' ');
+}
+
 @Component
 export struct ReleaseCalendar {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
@@ -411,16 +421,18 @@ export struct ReleaseCalendar {
   }
 
   @Builder
-  private statusPill(tone: EntryPillTone): void {
+  private statusPill(tone: EntryPillTone, offset: number = 0): void {
     Text(pillLabel(tone)).fontFamily(nunitoAt(750, isTvMetrics() ? tv(PILL_SIZE) : 10.24))
+      .id('pxt:text:' + pillLabel(tone)) // web: the pill owns its text; its Range sits inside the padding
       .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
       .padding({ left: tv(PILL_PADDING_H), right: tv(PILL_PADDING_H) })
-      .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
+      .borderRadius(999)
       .backgroundColor(toResourceColorWithAlpha(toneColor(tone), 0.112))
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
+      .margin({ top: offset })
   }
 
   @Builder
@@ -439,12 +451,14 @@ export struct ReleaseCalendar {
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's title box sits 1.4 higher
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .translate({ y: isTvMetrics() ? -1.3 : 0 })
             .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
@@ -453,7 +467,7 @@ export struct ReleaseCalendar {
           if (!item.grouped) {
             Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           }
-          this.statusPill(itemPillTone(item, this.today))
+          this.statusPill(itemPillTone(item, this.today), isTvMetrics() ? 6.4 : 0)
         }
         .alignItems(VerticalAlign.Center)
       }
@@ -467,7 +481,7 @@ export struct ReleaseCalendar {
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
-    .id('pcal')
+    .id('px:button:' + entryButtonName(item, this.today))
     .border({
       width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
       color: {
@@ -505,6 +519,7 @@ export struct ReleaseCalendar {
         .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColorWithAlpha(activeColors().ink, day === this.today ? 0.9 : 1))
+        .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
       if (day === this.today) {
         Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, tv(TODAY_TAG_SIZE)))
           .fontSize(tv(TODAY_TAG_SIZE))
@@ -513,7 +528,8 @@ export struct ReleaseCalendar {
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
           .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
-          .borderRadius(tv(11))
+          .borderRadius(999)
+          .id('pxt:text:Today')
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
       }
     }
@@ -576,6 +592,7 @@ export struct ReleaseCalendar {
                 .fontSize(tv(DAY_HEADING_SIZE))
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().ink))
+                .translate({ y: -1.4 }) // web's heading box sits 1.4 higher
               if (cell.isToday) {
                 Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(500, tv(TODAY_TAG_SIZE)))
                   .fontSize(tv(TODAY_TAG_SIZE))
@@ -584,7 +601,8 @@ export struct ReleaseCalendar {
                   .textCase(TextCase.UpperCase)
                   .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
                   .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
-                  .borderRadius(tv(11))
+                  .borderRadius(999)
+          .id('pxt:text:Today')
                   .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
               }
             }
@@ -1176,7 +1194,7 @@ export struct ReleaseCalendar {
     .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 8 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
-    .id('pcal')
+    .id('px:button:' + entryButtonName(item, this.today))
     .border({
       width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
       color: {

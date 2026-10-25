@@ -377,7 +377,8 @@ struct Profiles {
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(tv(TV_ACTION_HEIGHT))
         .padding({ left: tv(17), right: tv(17) })
-        .borderRadius(tv(TV_ACTION_HEIGHT / 2))
+        .id('pxt:button:' + label)
+        .borderRadius(999)
         .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
         .position({ x: tv(x), y: tv(y) })
@@ -406,7 +407,7 @@ struct Profiles {
     .justifyContent(FlexAlign.Center)
     .padding({ left: label.length > 0 ? tv(17) : 0, right: label.length > 0 ? tv(17) : 0 })
     .id('px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
-    .borderRadius(tv(TV_ACTION_HEIGHT / 2))
+    .borderRadius(999)
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
     .focusable(true)
@@ -484,22 +485,22 @@ struct Profiles {
       Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunitoAt(isTvMetrics() ? 900 : 820, isTvMetrics() ? tv(10.368) : 7.36))
         .fontSize(isTvMetrics() ? tv(10.368) : 7.36)
         .fontWeight(FontWeight.Bolder)
-        .letterSpacing(isTvMetrics() ? tv(1.348) : tv(1.348) * 0.705)
+        .letterSpacing(isTvMetrics() ? tv(1.72) : tv(1.348) * 0.705)
         .textCase(TextCase.UpperCase)
         .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : BRAND_INK_LIGHT))
         .height(tv(16))
-        .margin({ top: this.pick(162, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 142.3 })
+        .margin({ top: this.pick(160.6, PHONE_KICKER_TOP), left: isTvMetrics() ? 0 : 142.3 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunitoAt(500, this.pick(80.64, PHONE_HEADING_SIZE)))
         .id('px:heading:' + t('pages.profiles.heading', 'Who’s watching?'))
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE))
         .fontWeight(FontWeight.Medium)
-        .letterSpacing(this.pick(-5.806, -2.77))
+        .letterSpacing(this.pick(-5.15, -2.77))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
-        .margin({ top: this.pick(6.25, 5.7), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
+        .margin({ top: this.pick(-5.07, 5.7), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
-      Row({ space: this.pick(TV_CHOICE_GAP, PHONE_CHOICE_GAP) }) {
+      Row({ space: this.pick(36.74, PHONE_CHOICE_GAP) }) { // TV: the profile tile is 5.49 wider each side than its avatar
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
           Column() {
             ProfileAvatar({
@@ -522,14 +523,14 @@ struct Profiles {
               .fontSize(this.pick(17.28, 13.12))
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
-              .margin({ top: this.pick(6, profile.is_current ? 5.5 : 10.8) })  // web phone: the lifted current avatar pulls its name up
+              .margin({ top: this.pick(16.78, profile.is_current ? 5.5 : 10.8) })  // web phone: the lifted current avatar pulls its name up
             Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
               .fontSize(this.pick(9.408, 6.72))
               .fontWeight(FontWeight.Bold)
-              .letterSpacing(this.pick(0.423, 0.33))
+              .letterSpacing(this.pick(0.92, 0.33))
               .textCase(TextCase.UpperCase)
-              .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
-              .margin({ top: this.pick(9, profile.is_current ? 14 : 12) })
+              .fontColor(toResourceColor(activeColors().inkMuted))
+              .margin({ top: this.pick(12.5, profile.is_current ? 14 : 12) })
             if (profile.is_current) {
               Row({ space: tv(9) }) {
                 this.tvActionButton($r('app.media.nav_settings'), '', BRAND_PINK, () => {
@@ -539,10 +540,11 @@ struct Profiles {
                   this.handleSignOut();
                 })
               }
-              .margin({ top: tv(21) + (isTvMetrics() ? 0 : 3.8) })
+              .margin(isTvMetrics() ? { top: 22.4, bottom: -66.4 } : { top: tv(21) + 3.8 }) // web: the actions sit under the profile button, outside its box
             }
           }
-          .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
+          .width(this.pick(254.98, PHONE_CHOICE_WIDTH))
+          .padding({ top: this.pick(5.49, 0) })
           .id('px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
@@ -577,25 +579,26 @@ struct Profiles {
             .fontSize(this.pick(17.28, 13.12))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
-            .margin({ top: this.pick(9, 10.8) })
+            .margin({ top: this.pick(10.85, 10.8) })
           Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
             .fontSize(this.pick(9.408, 6.72))
             .fontWeight(FontWeight.Bold)
-            .letterSpacing(this.pick(0.423, 0.33))
+            .letterSpacing(this.pick(0.92, 0.33))
             .textCase(TextCase.UpperCase)
             .textAlign(TextAlign.Center)
-            .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
-            .margin({ top: this.pick(9, 12) })
+            .fontColor(toResourceColor(activeColors().inkMuted))
+            .margin({ top: this.pick(13.72, 12), bottom: this.pick(-3.4, 0) })
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
-        .id(isTvMetrics() ? '' : 'px:button:+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase())
+        .margin({ top: this.pick(14.79, 0), right: this.pick(5.49, 0) })
+        .id('px:button:+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase())
         .focusable(true)
         .onClick(() => {
           pushRoute(getNavStack(), ROUTES.Pairing);
         })
       }
       .alignItems(VerticalAlign.Top)
-      .margin({ top: this.pick(TV_CHOICES_TOP - 242 - 19.25, PHONE_CHOICES_TOP), left: isTvMetrics() ? 0 : PHONE_CHOICES_LEFT })
+      .margin({ top: this.pick(TV_CHOICES_TOP - 242 - 19.25 - 0.68, PHONE_CHOICES_TOP), left: isTvMetrics() ? 0 : PHONE_CHOICES_LEFT })
       .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       }
       .width('100%')

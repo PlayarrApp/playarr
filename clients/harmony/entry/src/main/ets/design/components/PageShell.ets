@@ -256,6 +256,7 @@ export struct PageShell {
             .textAlign(TextAlign.Center)
             .width(44)
             .height(44)
+            .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
             .borderRadius('50%')
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
@@ -271,6 +272,7 @@ export struct PageShell {
               .letterSpacing(-0.972) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
+              .translate({ y: -1.3 }) // web's title box sits 1.3 higher
           }
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)

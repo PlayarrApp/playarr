@@ -111,7 +111,7 @@ const NUMBER_TOP: number = 28.3;
 const NUMBER_SIZE: number = 9.92;
 const TITLE_LEFT: number = 92;
 const TITLE_SIZE: number = 29.6;
-const TITLE_LETTER_SPACING: number = -1.036;
+const TITLE_LETTER_SPACING: number = -1.23; // web -1.036; ArkUI lays the run out 2 wider
 const ARROW_LEFT: number = 422.6; // the unselected rows sit 5 px further left
 const ARROW_SIZE: number = 20.8;
 // Web `.settings-section-content`: the panel copy starts at (774, 210), 1042 wide.

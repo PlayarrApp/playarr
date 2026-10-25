@@ -163,6 +163,7 @@ export struct ChoiceSegments {
             .textAlign(TextAlign.Center)
             .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
             .fontWeight(FontWeight.Bold)
+            .letterSpacing(this.large && isTvMetrics() ? 0.43 : 0) // web's run is about 3 wider than ArkUI lays it out
             .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : (isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted)))
             .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
               toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
