@@ -34,7 +34,7 @@ import { balanceTitle } from '../../core/TitleBalance';
 const KICKER_FONT_SIZE: number = 12.288;
 // ArkUI takes weights in steps of 100 (other values fall back to 400); web uses 860 and 560.
 const KICKER_FONT_WEIGHT: number = 900;
-const KICKER_LETTER_SPACING: number = KICKER_FONT_SIZE * 0.08;
+const KICKER_LETTER_SPACING: number = KICKER_FONT_SIZE * 0.08 + 0.46; // web 0.08em; ArkUI lays the run out about 4 narrower
 // Dark theme kicker pink on web; light theme keeps the brand pink.
 // Web `--brand-ink` in the light theme (#821e36).
 const KICKER_COLOR_LIGHT: RgbaColor = { r: 130, g: 30, b: 54, a: 1 };
@@ -76,9 +76,9 @@ const LIBRARY_SYNOPSIS_LINE_HEIGHT: number = 21.7;
 const LIBRARY_SYNOPSIS_MAX_WIDTH: number = 345;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
-const GAP_KICKER_TITLE: number = 25; // web title content box starts 6.4 higher (line box 62 inside a 94 content area)
-const GAP_TITLE_META: number = 32.42;
-const GAP_META_SYNOPSIS: number = 19.58;
+const GAP_KICKER_TITLE: number = 26.3; // web title content box starts 6.4 higher (line box 62 inside a 94 content area)
+const GAP_TITLE_META: number = 31.0;
+const GAP_META_SYNOPSIS: number = 18.8;
 
 @Component
 export struct FeatureCopy {

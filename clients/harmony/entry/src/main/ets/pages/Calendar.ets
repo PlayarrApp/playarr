@@ -896,8 +896,8 @@ export struct ReleaseCalendar {
       .height(tv(HEADER_CONTROL_SIZE))
       .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
       .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(0.2) : 0 })
-      .id('px:button:' + (label === '←' ? 'Previous' : (label === '→' ? 'Next' : label)))
-      .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
+      .id(round ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : 'pxt:button:' + label) // web: Today owns its text, the arrows hold a glyph
+      .borderRadius(round ? 50 : 999) // web: 50% on the round arrows, a 999 px pill on the labelled controls
       .backgroundColor(toResourceColor(activeColors().surface))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       .focusable(true)
@@ -979,13 +979,13 @@ export struct ReleaseCalendar {
   private pageControls(): void {
     Row({ space: tv(HEADER_CONTROL_GAP) }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(700, tv(HEADER_CONTROL_FONT)))
-        .id('px:button:' + rangeLabel(this.view, this.anchor))
+        .id('pxt:button:' + rangeLabel(this.view, this.anchor))
         .fontSize(tv(HEADER_CONTROL_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(tv(HEADER_CONTROL_SIZE))
         .padding({ left: tv(20), right: tv(20) })
-        .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
+        .borderRadius(999)
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
         .focusable(true)
@@ -1027,13 +1027,13 @@ export struct ReleaseCalendar {
   private touchControls(): void {
     Row({ space: PHONE_CONTROL_GAP }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(720, 11.52))
-        .id('px:button:' + rangeLabel(this.view, this.anchor))
+        .id('pxt:button:' + rangeLabel(this.view, this.anchor))
         .fontSize(11.52)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(44)
         .padding({ left: 18.8, right: 18.8 })
-        .borderRadius(22)
+        .borderRadius(999)
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
         .onClick(() => {
@@ -1061,14 +1061,14 @@ export struct ReleaseCalendar {
     Stack() {
       // web: the arrows are thin, smaller glyphs than the bold labels
       Text(label).fontFamily(label.length === 1 ? arrowFont(720) : nunitoAt(720, 11.52))
-        .id(label.length === 1 ? '' : 'px:button:' + label)
+        .id(label.length === 1 ? '' : 'pxt:button:' + label)
         .fontSize(11.52)
         .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .textAlign(TextAlign.Center)
         .width(width)
         .height(44)
-        .borderRadius(22)
+        .borderRadius(label.length === 1 ? 22 : 999)
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       if (label === t('pages.calendar.today', 'Today')) {
@@ -1082,6 +1082,7 @@ export struct ReleaseCalendar {
       }
     }
     .id(label.length === 1 ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : '')
+    .borderRadius(50)
     .width(width)
     .height(44)
     .onClick(() => {

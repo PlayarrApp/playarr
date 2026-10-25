@@ -356,7 +356,7 @@ export const TvGeometry: TvGeometryTokens = {
   titlePanelLeft: 154,
   titlePanelWidth: 455,
   // Web TV Home `.tv-home-feature` top edge (live DOM, 1920x1080).
-  titlePanelTop: 262,
+  titlePanelTop: 260.7, // web: the kicker box ends 1.3 higher than ArkUI lays it out at 262
 
   primaryActionTopPct: 47,
   primaryActionLeftPct: 47.5,
@@ -411,7 +411,7 @@ export const TvGeometry: TvGeometryTokens = {
   libraryGridCardWidth: 327,
   libraryGridCardHeight: 184,
   // Web row pitch is 240.5; its caption box sits 12 below the art where PosterCard's sits 5 below.
-  libraryGridRowGap: 30.4, // web row pitch 240 (the caption sits 1.45 higher now)
+  libraryGridRowGap: 27, // web row pitch 240.4 = the 213.4 link plus this
   libraryGridColumnGap: 26.5,
   libraryGridCardRadius: 12.48,
   azIndexRailRight: 22,

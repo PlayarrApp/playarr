@@ -28,7 +28,9 @@ class ExportError(Exception):
 
 
 def font_metrics(family):
-    """(ascent, descent) in em from the bundled font file's hhea table, or None for a system font."""
+    """(ascent, descent) in em from the bundled font file's hhea table, or None for a system font. A family list uses its first family,
+    the primary font a browser takes a text's line metrics from; later families only supply glyphs the first lacks."""
+    family = str(family).split(",")[0].strip()
     m = re.fullmatch(r"NunitoSansW(\d+)", family)
     name = f"NunitoSans-W{m.group(1)}.ttf" if m else (family + ".ttf" if family.startswith("PlayarrArrows") else None)
     if name is None:
@@ -172,7 +174,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         cx0, cy0, cx1, cy1 = clip
         return x < cx1 and y < cy1 and x + w > cx0 and y + h > cy0
 
-    def text_lines(node, a, box, under, opacity, chain, clip):
+    def text_lines(node, a, box, under, opacity, chain, clip, radius=0.0):
         measured = node.get("$measured")
         content = str(a.get("content") if a.get("content") is not None else a.get("text") or "")
         if not content.strip():
@@ -203,7 +205,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         if runs:
             x0, y0 = min(r[0][0] for r in runs), min(r[0][1] for r in runs)
             x1, y1 = max(r[0][0] + r[0][2] for r in runs), max(r[0][1] + r[0][3] for r in runs)
-            emit("text", " ".join(" ".join(r[1] for r in runs).split()), (x0, y0, x1 - x0, y1 - y0), under, 0.0, colour, size, weight, opacity)
+            emit("text", " ".join(" ".join(r[1] for r in runs).split()), (x0, y0, x1 - x0, y1 - y0), under, radius, colour, size, weight, opacity)
 
     def walk(node, under, opacity, chain, clip):
         a = attrs_of(node)
@@ -224,7 +226,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         if raw is not None and k != 1.0:
             mychain = chain + [((raw[0] + raw[2] / 2), (raw[1] + raw[3] / 2), k)]
         nid = str(a.get("id", ""))
-        pxid = nid.split(":", 2) if nid.startswith("px:") and nid.count(":") >= 2 else None
+        pxid = nid.split(":", 2) if nid.startswith(("px:", "pxt:")) and nid.count(":") >= 2 else None
+        own_text = nid.startswith("pxt:")  # a control that owns its text (web's button with a text node): one element, the text's Range
         box = raw
         if box is not None and (box[2] < 0.5 or box[3] < 0.5) and kind != "Text":
             box = None
@@ -234,13 +237,14 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
             fills = fill is not None and fill[3] > 0.01
             if pxid is not None:
                 _, role, name = pxid
-                if kind == "Text" and role in ("heading", "text", "container"):
+                if kind == "Text" and (own_text or role in ("heading", "text", "container")):
                     pass  # the Text's own lines carry this role below
                 else:
                     emit(role, name, box, here, radius_of(a), opacity=opacity)
             elif nid == "pcard":
                 texts = all_texts(node)
-                emit("link", " ".join(texts) if len(texts) >= 2 else "Open " + (texts[0] if texts else ""), box, here, radius_of(a), opacity=opacity)
+                name = str(a.get("accessibilityText") or "").strip()  # the card's own accessible name, when the inspector reports one
+                emit("link", name or (" ".join(texts) if len(texts) >= 2 else "Open " + (texts[0] if texts else "")), box, here, radius_of(a), opacity=opacity)
             elif nid.endswith("-nav-tile"):
                 texts = all_texts(node)
                 label = texts[0] if texts else ""
@@ -251,9 +255,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
             elif kind != "Text" and (fills or has_gradient(a) or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01):
                 emit("container", "", box, here, radius_of(a), opacity=opacity)
             if kind == "Text":
-                lines_role = pxid[1] if pxid is not None and pxid[1] in ("heading", "text", "container") else None
+                lines_role = pxid[1] if pxid is not None and (own_text or pxid[1] in ("heading", "text", "container")) else None
                 start = len(out)
-                text_lines(node, a, tuple(raw), here, opacity, mychain, clip)
+                text_lines(node, a, tuple(raw), here, opacity, mychain, clip, radius_of(a) if own_text else 0.0)
                 if lines_role is not None:
                     for el in out[start:]:
                         el["role"] = lines_role

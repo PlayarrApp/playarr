@@ -65,6 +65,7 @@ export struct AlphabetRail {
               .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
               .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().ink) : Color.Transparent)
               .borderRadius(TOUCH_DISC / 2)
+              .translate({ y: -1.2 }) // web's letter sits 1.2 higher
           }
           .width(TOUCH_DISC)
           .height(TOUCH_DISC)

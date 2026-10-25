@@ -200,6 +200,12 @@ export struct PosterCard {
    * default) hides the progress-bar overlay entirely. */
   @Prop progress: number = -1;
 
+  /** The card link's accessible name (web `aria-label`); empty uses the caption's own words. */
+  @Prop accessibleName: string = '';
+
+  /** The card link's own corner radius: web's Library and Detail cards carry 12, Home's none. */
+  @Prop linkRadius: number = 0;
+
   /** Web `.tv-watch-unseen`: a 13 px brand dot with a white ring, 10.56 px in from the top right. */
   @Prop unseen: boolean = false;
   /** Phone Library caption: medium weight, the muted ink (web phone grid). */
@@ -244,6 +250,13 @@ export struct PosterCard {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
 
+  private linkName(): string {
+    if (this.accessibleName.length > 0) {
+      return this.accessibleName;
+    }
+    return [this.episodeCaption, this.title, this.subtitle].filter((part: string): boolean => part.length > 0).join(' ');
+  }
+
   /** The unseen dot: web's 13 px on the TV; 9 vp, 7 in, on the phone grid. */
   private dotSize(): number {
     return this.softCaption || !isTvMetrics() ? 9 : tv(UNSEEN_DOT_SIZE);
@@ -268,7 +281,8 @@ export struct PosterCard {
 
   private focusDelta(): FocusLiftDelta {
     if (this.variant === 'grid') {
-      return { translateY: FOCUS_LIFT.gridCard.translateY, scale: FOCUS_LIFT.titleEpisodeCard.scale * FOCUS_LIFT.gridCard.scale };
+      // the art alone takes the title/episode scale; the whole card (art and caption) takes the grid's, as web's link does
+      return { translateY: FOCUS_LIFT.gridCard.translateY, scale: FOCUS_LIFT.titleEpisodeCard.scale };
     }
     return this.isTitleEpisode() ? FOCUS_LIFT.titleEpisodeCard : FOCUS_LIFT.homeCard;
   }
@@ -303,6 +317,11 @@ export struct PosterCard {
   private cardTranslateY(): number {
     const dy = this.focusDelta().translateY ?? 0;
     return dy * this.effective();
+  }
+
+  /** Web `.tv-title-grid` link scale: the grid card scales as a whole around the art's own scale. */
+  private cardScale(): number {
+    return this.variant === 'grid' ? 1 + (FOCUS_LIFT.gridCard.scale - 1) * this.effective() : 1;
   }
 
   private artworkScale(): number {
@@ -500,12 +519,13 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.titleFontSize * -0.0154) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
+          .letterSpacing(this.titleFontSize * -0.0154 + 0.06) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
-          .padding(this.softCaption ? { top: 8.5, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
+          .padding(this.softCaption ? { top: 7.3, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
+          .margin({ bottom: this.subtitle.length > 0 ? 0 : (this.softCaption ? 3.3 : (this.variant === 'grid' ? 3.4 : 0)) }) // web: the link box ends 3.3 (phone) or 3.4 (TV grid) under a title-only caption
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
@@ -518,12 +538,15 @@ export struct PosterCard {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .letterSpacing(0)
           .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 2.9 })
+          .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -12.6 : -10.5) : 0 }) // web Home: the card link ends above the subtitle line
       }
     }
     .width(this.cardWidth)
     .alignItems(HorizontalAlign.Start)
-    .borderRadius(12) // web: the card link's own radius (no clip; the art keeps its own)
+    .borderRadius(this.linkRadius) // web: the card link's own radius (no clip; the art keeps its own)
+    .scale({ x: this.cardScale(), y: this.cardScale() })
     .translate({ y: this.cardTranslateY() })
+    .accessibilityText(this.linkName())
     .focusable(true)
     .onFocus(() => {
       this.setFocused(true);

@@ -68,7 +68,7 @@ export struct Drawer {
           Text(this.kicker).fontFamily(nunitoAt(700, isTvMetrics() ? tv(KICKER_SIZE) : 7.2))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
-            .letterSpacing(tv(KICKER_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.27))
+            .letterSpacing(tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05))
             .textCase(TextCase.UpperCase)
             .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
           Text(this.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE))
@@ -149,6 +149,7 @@ export struct Drawer {
       right: isTvMetrics() ? tv(PADDING_H - RING_ROOM) : atLeast(TOUCH_PADDING_H, this.safeRight),
       bottom: isTvMetrics() ? 0 : 24 + this.safeBottom,
     })
+    .id('px:dialog:')
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, isTvMetrics() ? DRAWER_BG_ALPHA : 1))
     .backdropBlur(DRAWER_BACKDROP_BLUR)
     .shadow({ radius: tv(90), offsetX: -tv(32), offsetY: 0, color: SHADOW_COLOR })

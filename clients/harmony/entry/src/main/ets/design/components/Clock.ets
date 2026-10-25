@@ -14,10 +14,10 @@ import { currentLanguage } from '../../core/Language';
 // ArkUI takes weights in steps of 100; web uses 760 (time) and 640 (date).
 const TIME_FONT_SIZE: number = 17.28;
 const TIME_FONT_WEIGHT: number = 760;
-const TIME_LETTER_SPACING: number = -0.518;
+const TIME_LETTER_SPACING: number = -0.27; // web -0.518; ArkUI lays the run out 1.25 narrower
 const DATE_FONT_SIZE: number = 11.136;
 const DATE_FONT_WEIGHT: number = 640;
-const DATE_LETTER_SPACING: number = 0.445;
+const DATE_LETTER_SPACING: number = 0.72; // web 0.445; ArkUI lays the run out 3.6 narrower
 const TIME_DATE_GAP: number = 11.19;
 const MINUTE_MS: number = 60000;
 

@@ -44,7 +44,8 @@ export function nunito(weight: number): string {
 
 /** Web draws the arrow glyphs (U+2190, U+2192) with Chromium's fallback, Liberation Sans (bold from weight 600 up); the subsets bundled here carry the same glyphs. */
 export function arrowFont(weight: number): string {
-  return weight >= 600 ? 'PlayarrArrows' : 'PlayarrArrowsRegular';
+  // Nunito first: its metrics set the line, as a browser's primary font does; it has no arrow glyphs, so those come from the subset.
+  return nunito(weight) + ',' + (weight >= 600 ? 'PlayarrArrows' : 'PlayarrArrowsRegular');
 }
 
 /** The family for a call site that asks for `weight` at font size `size`: the web weight nearest to it among those web CSS uses

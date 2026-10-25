@@ -31,7 +31,7 @@ const TITLE_LETTER_SPACING: number = -1.512;
 const HEADER_GAP: number = 23;
 // Web `.page-header-detail`: 0.58vw (11.136 px), weight 680, tracking .045em.
 const DETAIL_SIZE: number = 11.136;
-const DETAIL_LETTER_SPACING: number = 0.501;
+const DETAIL_LETTER_SPACING: number = 0.79; // web 0.501; ArkUI lays the run out about 3 narrower
 const DETAIL_WEIGHT: number = 680; // web .page-header-title-block > span
 const CLOCK_STOP: number = 478;
 const WRAP_GAP: number = 5.6;
@@ -316,5 +316,6 @@ export struct PageShell {
     }
     .width('100%')
     .height('100%')
+    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().surface) : Color.Transparent) // the phone's bottom bar blends over the page
   }
 }

@@ -392,6 +392,8 @@ struct DetailRowArtworkCard {
   private posterCard(): void {
     PosterCard({
       variant: this.variant,
+      linkRadius: 12,
+      accessibleName: this.variant === 'titleEpisode' && this.episodeCaption.length === 0 ? 'Open ' + this.title : '',
       title: this.title,
       subtitle: this.subtitle,
       artwork: this.artworkStore.getArtwork(this.rowId),
