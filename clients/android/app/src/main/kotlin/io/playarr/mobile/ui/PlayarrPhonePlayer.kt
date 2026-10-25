@@ -14,6 +14,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import io.playarr.shared.designsystem.page.parityBox
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -112,6 +114,7 @@ private fun PhonePlayerButton(
     enabled: Boolean = true,
     primary: Boolean = false,
     dimWhenDisabled: Boolean = false,
+    exportLabel: String? = null,
     onClick: () -> Unit,
 ) {
     Box(
@@ -119,13 +122,14 @@ private fun PhonePlayerButton(
             .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
             // Web `.player-btn:disabled { opacity: 0.28 }`: a single-item queue dims Previous and Next (the other buttons are never disabled on web).
             .alpha(if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
+            .parityBox("button", exportLabel ?: description, 50f, if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f, background = if (primary) Color(0xFF242424) else Color.Black)
             .clip(CircleShape)
             .then(if (primary) Modifier.background(Color.White.copy(alpha = 0.14f)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f, background = if (primary) Color(0xFF242424) else Color.Black))
     }
 }
 
@@ -135,6 +139,7 @@ private fun PhonePlayerCorner(icon: ImageVector, description: String, onClick: (
     Box(
         Modifier
             .size(44.dp)
+            .parityBox("button", description, 999f, background = Color(0xFF0A0809))
             .clip(CircleShape)
             .background(Color(0xFF0C0A0B).copy(alpha = 0.58f))
             .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape)
@@ -142,7 +147,7 @@ private fun PhonePlayerCorner(icon: ImageVector, description: String, onClick: (
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image", background = Color(0xFF0A0809)))
     }
 }
 
@@ -174,6 +179,8 @@ internal fun BoxScope.PhonePlayerOverlay(
     onCast: (() -> Unit)?,
     castConnected: Boolean,
     onActivity: () -> Unit,
+    playlistCount: Int = 1,
+    playlistOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     val topInset = webPhoneInsets().asPaddingValues().calculateTopPadding()
@@ -207,38 +214,41 @@ internal fun BoxScope.PhonePlayerOverlay(
                 "position" to formatPlayarrPlayerTime(displayedMs),
                 "duration" to formatPlayarrPlayerTime(durationMs),
             )
-            // `.player-seek-track`: 6 px, the buffered range and the played range over a 20% white track.
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .background(Color.White.copy(alpha = 0.2f))
-                    .semantics { contentDescription = seekDescription }
-                    .pointerInput(durationMs, controls.switching) {
-                        if (durationMs <= 0L || controls.switching) return@pointerInput
-                        awaitEachGesture {
-                            val down = awaitFirstDown()
-                            fun at(x: Float) = (x / size.width).coerceIn(0f, 1f) * durationMs
-                            onScrub(at(down.position.x).toLong())
-                            horizontalDrag(down.id) { change ->
-                                onScrub(at(change.position.x).toLong())
-                                change.consume()
-                            }
-                            onScrubFinished()
-                        }
-                    },
-            ) {
+            // `.player-seek-track`: 6 px, the buffered range and the played range over a 20% white track; the touch target is a 44 dp box
+            // centred on it (as the web slider), which overflows the 6 dp track without changing the layout.
+            Box(Modifier.fillMaxWidth().height(6.dp).background(Color.White.copy(alpha = 0.2f))) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(bufferedFraction).background(Color.White.copy(alpha = 0.34f)))
-                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).background(PlayerAccent))
+                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBox("container", background = PlayerAccent).background(PlayerAccent))
+                Box(
+                    Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth()
+                        .requiredHeight(44.dp)
+                        .parityBox("slider", "Seek", background = Color.Black)
+                        .semantics { contentDescription = seekDescription }
+                        .pointerInput(durationMs, controls.switching) {
+                            if (durationMs <= 0L || controls.switching) return@pointerInput
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                fun at(x: Float) = (x / size.width).coerceIn(0f, 1f) * durationMs
+                                onScrub(at(down.position.x).toLong())
+                                horizontalDrag(down.id) { change ->
+                                    onScrub(at(change.position.x).toLong())
+                                    change.consume()
+                                }
+                                onScrubFinished()
+                            }
+                        },
+                )
             }
             FlowRow(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = if (LocalStageScale.current == 1f) CentredFractionalFlowArrangement else Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current == 1f) 3.4.dp else 2.dp),
             ) {
                 // `.player-time` leads the first line (order -1, full width) with 2 px of padding below.
                 Row(
-                    Modifier.fillMaxWidth().padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
+                    Modifier.fillMaxWidth().parityBox("container", formatPlayarrPlayerTime(displayedMs) + " / " + formatPlayarrPlayerTime(durationMs), background = Color.Black).padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -263,17 +273,18 @@ internal fun BoxScope.PhonePlayerOverlay(
                     audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_TOGGLE_MUTE, 0)
                     muted = audio.isStreamMute(AudioManager.STREAM_MUSIC)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerAudio, playarrString(PlayarrString.PlayerAudioTrackMenuLabel), enabled = controls.audioTracks.isNotEmpty() && !controls.switching) {
+                PhonePlayerButton(PlayarrWebIcons.PlayerAudio, playerAudioButtonName(controls), enabled = controls.audioTracks.isNotEmpty() && !controls.switching) {
                     onMenu(if (openMenu == PlayarrPlayerMenu.Audio) null else PlayarrPlayerMenu.Audio)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerSubtitles, playarrString(PlayarrString.PlayerSubtitleTrackMenuLabel), enabled = !controls.switching) {
+                PhonePlayerButton(PlayarrWebIcons.PlayerSubtitles, playerSubtitlesButtonName(controls), enabled = !controls.switching) {
                     onMenu(if (openMenu == PlayarrPlayerMenu.Subtitles) null else PlayarrPlayerMenu.Subtitles)
                 }
-                PhonePlayerButton(PlayarrWebIcons.PlayerPlaylist, playarrString(PlayarrString.PlayerClosePlaylist), enabled = !controls.switching) { onTogglePlaylist() }
+                PhonePlayerButton(PlayarrWebIcons.PlayerPlaylist, playerPlaylistButtonName(playlistCount, playlistOpen), enabled = !controls.switching) { onTogglePlaylist() }
                 // `.player-quality-button`: a 42 px box whose HD glyph and wrapped label overflow it on both sides.
                 Box(
                     Modifier
-                        .size(42.dp)
+                        .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
+                        .parityBox("button", playerQualityButtonName(controls), 999f, background = Color.Black)
                         .then(if (controls.qualityOptions.isEmpty() || controls.switching) Modifier.alpha(0.76f) else Modifier)
                         // `.player-quality-button[aria-expanded="true"]`: a 15% white disc and 1.08x while its menu is open.
                         .then(
@@ -562,5 +573,19 @@ private fun PhoneMatrixChoice(
             detail?.let { Text(it, color = PlayerMuted, fontSize = 7.04.sp, lineHeight = 10.56.sp, style = WebTextStyle, maxLines = 1) }
         }
         if (check) Text(if (selected) "✓" else "", color = PlayerAccent, fontSize = 11.84.sp, lineHeight = 17.76.sp, textAlign = TextAlign.Center, style = WebTextStyle, modifier = Modifier.width(16.dp))
+    }
+}
+
+
+/**
+ * The web centres each line of 44 css px buttons with a 2 px gap at fractional device pixels; whole-pixel buttons and gaps drift
+ * 0.2 px per button on a 2.6 density phone. Positions come from the running dp pitch, rounded once per button.
+ */
+private object CentredFractionalFlowArrangement : Arrangement.Horizontal {
+    override fun androidx.compose.ui.unit.Density.arrange(totalSize: Int, sizes: IntArray, layoutDirection: androidx.compose.ui.unit.LayoutDirection, outPositions: IntArray) {
+        val pitch = 46.dp.toPx()
+        val width = sizes.size * 44.dp.toPx() + (sizes.size - 1) * 2.dp.toPx()
+        val start = (totalSize - width) / 2f
+        for (i in sizes.indices) outPositions[i] = Math.round(start + i * pitch)
     }
 }

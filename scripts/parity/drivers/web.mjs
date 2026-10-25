@@ -734,6 +734,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       return `${info.sha}@${info.builtAt}`;
     },
     waitReady,
+    get page() { return page; }, // for DOM dumps (android-mobile/domdump.mjs)
     async start() { browser = await playwright.launch(env.PARITY_CHROME ? { executablePath: env.PARITY_CHROME } : {}); await open(); await guard(); },
     async stop() { await browser?.close(); await localWeb?.close(); },
     async setTheme(t) { await guard(); if (t !== theme) { theme = t; await open(); } },

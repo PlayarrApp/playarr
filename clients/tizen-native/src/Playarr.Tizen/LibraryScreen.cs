@@ -135,7 +135,7 @@ internal sealed class LibraryScreen : IPage
         if (l == _activeLetter) return;
         if (_letterDots.TryGetValue(_activeLetter, out var old)) { old.Show(false); _letterLabels[_activeLetter].TextColor = Ui.C(_t.InkMuted); }
         _activeLetter = l;
-        if (_letterDots.TryGetValue(l, out var dot)) { dot.Show(true); _letterLabels[l].TextColor = Ui.C(_t.OnAccent); }
+        if (_letterDots.TryGetValue(l, out var dot)) { dot.Show(true); _letterLabels[l].TextColor = Ui.C(_t.Bg); }
     }
 
     private async Task LoadAsync(int offset)
@@ -263,7 +263,7 @@ internal sealed class LibraryScreen : IPage
     {
         if (_focus < 0) return;
         // web: with the drawer open the card behind it loses its focus look
-        if (_views.TryGetValue(_focus, out var behind)) behind.SetFocused(false);
+        if (_views.TryGetValue(_focus, out var behind)) behind.SetFocused(false, keepInk: true);
         _drawer = new ActionsDrawer(_env, _items[_focus], () => { _root.Remove(_drawer!.Root); _drawer.Root.Dispose(); _drawer = null; if (_focus >= 0 && _views.TryGetValue(_focus, out var again)) again.SetFocused(true); }, msg => Toast(msg));
         _root.Add(_drawer.Root);
     }
@@ -302,7 +302,7 @@ internal sealed class LibraryScreen : IPage
     {
         var cy = FocusCentreY; var best = 0;
         for (var i = 1; i < _side.Count; i++) if (Math.Abs(_side[i].Rect().CentreY - cy) < Math.Abs(_side[best].Rect().CentreY - cy)) best = i;
-        if (_focus >= 0 && _views.TryGetValue(_focus, out var v)) v.SetFocused(false);
+        if (_focus >= 0 && _views.TryGetValue(_focus, out var v)) v.SetFocused(false, keepInk: true);
         _sideFocus = best; _side[best].Style(true);
     }
 

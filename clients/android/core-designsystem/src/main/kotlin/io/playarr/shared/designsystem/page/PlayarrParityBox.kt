@@ -11,7 +11,7 @@ import androidx.compose.ui.semantics.semantics
 /** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
 var parityLayoutEnabled = false
 
-class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var style: Triple<Float, Int, androidx.compose.ui.graphics.Color>?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero)
+class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var style: Triple<Float, Int, androidx.compose.ui.graphics.Color>?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero, var density: Float = 1f)
 
 val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
@@ -23,7 +23,7 @@ fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opa
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
         val box = remember { ParityBox(view, role, label, radius, opacity, background, fit, style) }
-        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit; box.style = style
+        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit; box.style = style
         DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
         onGloballyPositioned {
             // Corners through the layers, unclipped: the web exports boxes that run past the viewport edge.

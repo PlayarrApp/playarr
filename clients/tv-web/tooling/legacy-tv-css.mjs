@@ -407,8 +407,9 @@ function withExtraId(selector) {
 }
 
 const WEIGHT_IN_FONT = /^\s*(?:(?:italic|oblique|normal|small-caps)\s+)*(\d{3}|bold|bolder|lighter)\b/i;
-// Elements whose weight comes from the user-agent stylesheet.
-const BOLD_BY_DEFAULT = "h1,h2,h3,h4,h5,h6,b,strong,th,optgroup";
+// Elements whose weight comes from the user-agent stylesheet: bold, and bolder for b and strong (a strong inside a 680 button resolves to 900).
+const BOLD_BY_DEFAULT = "h1,h2,h3,h4,h5,h6,th,optgroup";
+const BOLDER_BY_DEFAULT = "b,strong";
 
 /**
  * The webOS TV Simulator injects `* { font-weight: 400 !important }`, which flattens every weight. An
@@ -445,7 +446,8 @@ export function pinFontWeights(css, from = undefined) {
   }
   root.prepend(
     postcss.rule({ selector: `*:not(#_)`, nodes: [postcss.decl({ prop: "font-weight", value: "inherit", important: true })] }),
-    postcss.rule({ selectors: BOLD_BY_DEFAULT.split(",").map((tag) => `${tag}:not(#_)`), nodes: [postcss.decl({ prop: "font-weight", value: "bold", important: true })] })
+    postcss.rule({ selectors: BOLD_BY_DEFAULT.split(",").map((tag) => `${tag}:not(#_)`), nodes: [postcss.decl({ prop: "font-weight", value: "bold", important: true })] }),
+    postcss.rule({ selectors: BOLDER_BY_DEFAULT.split(",").map((tag) => `${tag}:not(#_)`), nodes: [postcss.decl({ prop: "font-weight", value: "bolder", important: true })] })
   );
   return root.toString();
 }

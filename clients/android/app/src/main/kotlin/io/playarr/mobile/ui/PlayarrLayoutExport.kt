@@ -122,8 +122,14 @@ internal object PlayarrLayoutExport {
                     .put("rect", JSONObject().put("x", 0).put("y", 0).put("w", mainView.width).put("h", mainView.height))
                     .put("color", JSONObject.NULL).put("background", hex(c.toArgb())).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
                 // The web page's landmark boxes: the shell, the page (named by its aria-label), and the right-hand panel.
-                if (screen == "player-controls") repeat(4) { elements.put(fill(androidx.compose.ui.graphics.Color.Black)) } else elements.put(fill(PlayarrWebTheme.palette.background))
-                val names = PAGE_LANDMARKS[screen]
+                // Phone and tablet: the wrapper containers are read from the running app (the shell, page layout and panel layers tag
+                // themselves). Only the TV keeps its synthetic landmark boxes.
+                val phoneWindow = mainView.width <= 800
+                val tabletWindow = mainView.width in 2000..2800
+                if (!phoneWindow && !tabletWindow) {
+                    if (screen == "player-controls") repeat(4) { elements.put(fill(androidx.compose.ui.graphics.Color.Black)) } else elements.put(fill(PlayarrWebTheme.palette.background))
+                }
+                val names = if (phoneWindow || tabletWindow) null else PAGE_LANDMARKS[screen]
                 if (names != null) {
                     fun named(label: String, x: Double, w: Double) = JSONObject().put("text", label).put("role", "container")
                         .put("rect", JSONObject().put("x", x).put("y", 0).put("w", w).put("h", mainView.height))
@@ -149,7 +155,9 @@ internal object PlayarrLayoutExport {
                             .put("color", box.style?.let { hex(it.third.toArgb(), true) } ?: JSONObject.NULL)
                             .put("background", if (box.background != androidx.compose.ui.graphics.Color.Unspecified) hex(box.background.toArgb()) else insideColour(bmp, x.toInt(), y.toInt(), w.toInt(), h.toInt()) ?: JSONObject.NULL)
                             .put("fontSize", box.style?.first?.toDouble() ?: JSONObject.NULL).put("fontWeight", box.style?.second ?: JSONObject.NULL)
-                        if (box.radius > 0f) e.put("radius", box.radius.toDouble())
+                        // Radii are written as the web's CSS px (the dp value the composable was tagged with); the driver does not scale them.
+                        // Tagged radius (CSS px; 50 and above mean a fully rounded shape) and the same radius as drawn, in device px.
+                        if (box.radius > 0f) { e.put("radius", box.radius.toDouble()); e.put("radiusPx", (box.radius * box.density).toDouble()) }
                         if (box.opacity < 1f) e.put("opacity", box.opacity.toDouble())
                         elements.put(e)
                     }
@@ -188,7 +196,7 @@ internal object PlayarrLayoutExport {
         val cx = x + w / 2; val cy = y + h / 2
         val inner = synchronized(parityBoxes) { parityBoxes.toList() }.filter { it.background != androidx.compose.ui.graphics.Color.Unspecified && it.role != "image" && it.role != "img" }
             .filter { b -> val loc = IntArray(2).also { b.view.getLocationOnScreen(it) }; val bx = b.bounds.left + loc[0] - mainOrigin[0]; val by = b.bounds.top + loc[1] - mainOrigin[1]; cx in bx..(bx + b.bounds.width) && cy in by..(by + b.bounds.height) }
-            .let { c -> val top = c.filter { it.view.rootView !== mainRoot }; (if (top.isNotEmpty()) top else c).minByOrNull { it.bounds.width * it.bounds.height } }
+            .let { c -> val top = c.filter { it.view.rootView !== mainRoot }; (if (top.isNotEmpty()) top else c).asReversed().minByOrNull { it.bounds.width * it.bounds.height } }
         return hex((inner?.background ?: pageBackground).toArgb())
     }
 
@@ -224,6 +232,14 @@ internal object PlayarrLayoutExport {
                     l = minOf(l, layout.getLineLeft(i)); r = maxOf(r, layout.getLineRight(i))
                     top = minOf(top, layout.getLineBaseline(i) - ascent); bottom = maxOf(bottom, layout.getLineBaseline(i) + descent)
                 }
+                // An ellipsised run: the web's Range rect spans the whole untruncated string, so measure it once without the limit.
+                if (layout.didOverflowWidth && layout.layoutInput.overflow == androidx.compose.ui.text.style.TextOverflow.Ellipsis && r > l) {
+                    val full = androidx.compose.ui.text.TextMeasurer(layout.layoutInput.fontFamilyResolver, layout.layoutInput.density, layout.layoutInput.layoutDirection)
+                        .measure(layout.layoutInput.text, layout.layoutInput.style, softWrap = false, maxLines = 1, constraints = androidx.compose.ui.unit.Constraints())
+                    r = l + full.size.width
+                }
+                // A node tighter than its layout (a centred run in an unbounded box) is placed by the node, not by the line offset inside the layout.
+                if (r > l && (bounds.right - bounds.left) < layout.size.width - 1f) { r -= l; l = 0f }
                 if (r > l) {
                     // An ancestor's graphicsLayer scale (the selected nav tile's 1.05) shows in the node's bounds but not in the text layout.
                     // Only a real transform counts (the 1.05 nav tile); a text node narrower than its layout (centred or wrapped) is not scaled.
@@ -240,7 +256,7 @@ internal object PlayarrLayoutExport {
                     val rh = if (lineBox && declared != null) declared * sy else (bottom - top) * sy
                     val bgOverride = config.getOrNull(io.playarr.shared.designsystem.page.ParityBgKey)?.let { androidx.compose.ui.graphics.Color(it.toULong()) }
                     out.put(
-                        JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()) } }
+                        JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()); put("radiusPx", (it * density.density).toDouble()) } }
                             .put("text", config.getOrNull(io.playarr.shared.designsystem.page.ParityTextKey) ?: text).put("role", config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey) ?: if (heading) "heading" else "text")
                             .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
                             .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)

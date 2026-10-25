@@ -1,0 +1,1 @@
+- webOS: drawers and menus portalled to the body keep the design font instead of the simulator face.

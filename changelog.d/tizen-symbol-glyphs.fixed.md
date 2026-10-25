@@ -1,0 +1,1 @@
+- Samsung Tizen: arrows, circle and play, check and menu marks use the glyphs the web draws (small bundled Liberation Sans and DejaVu Sans subsets); strong and b are bolder than their parent as on the web.
