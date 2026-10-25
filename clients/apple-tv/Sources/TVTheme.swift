@@ -1002,22 +1002,26 @@ struct TVFloatingNav: View {
     private func profileGroup(_ profile: TVNavProfile) -> some View {
         VStack(spacing: 6) {
             Button(action: profile.open) {
-                VStack(spacing: 5) {
-                    TVProfileAvatar(userID: profile.userID, size: 26, presetName: profile.preset, customImage: profile.image)
+                VStack(spacing: 2.75) { // the nav item layout: the avatar where a tab has its icon
+                    TVProfileAvatar(userID: profile.userID, size: 20, presetName: profile.preset, customImage: profile.image)
+                        .parityBox("container", radius: 50)
+                        .parityBox("image")
                     Text(profile.name.split(separator: " ").first.map(String.init) ?? profile.name)
-                        .font(TVTheme.font(size: 9, weight: .semibold))
-                        .tracking(0.3)
+                        .font(TVTheme.font(size: 8.832, css: 680))
+                        .tracking(0.31)
                         .lineLimit(1)
                         .foregroundStyle(DesignTokens.Color.textDisabled)
-                        .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 9, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textDisabled, tracking: 0.3)
+                        .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 8.832, weight: 680, color: DesignTokens.Color.textDisabled, tracking: 0.31)
                 }
                 .frame(width: DesignTokens.Shell.navItemSize, height: DesignTokens.Shell.navItemSize)
+                .parityBox("link", text: "Signed in as \(profile.name). Open profiles.", radius: 16, fill: DesignTokens.Stage.navPanel)
                 .modifier(TVNavItemFocusFill())
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
             .padding(DesignTokens.Shell.navGroupPadding)
+            .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.navPanel)
             .modifier(TVNavPanelShadow())
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
@@ -1030,7 +1034,8 @@ struct TVFloatingNav: View {
             Text(profile.version)
                 .font(TVTheme.mono(size: 8, css: 700))
                 .tracking(0.32)
-                .foregroundStyle(DesignTokens.Color.textDisabled)
+                .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: profile.version, size: 8, weight: 700, color: DesignTokens.Color.textPrimary, tracking: 0.32, onPage: true)
         }
     }
 
@@ -1342,14 +1347,17 @@ struct TVHeaderPill: View {
         VStack(spacing: 5.6) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .regular))
+                .frame(width: 24, height: 24)
+                .parityBox("image")
             Text(label)
                 .font(TVTheme.font(size: 8.256, css: 700))
                 .tracking(0.165)
                 .lineLimit(1)
-                .parityLayout(text: label, size: 8.256, weight: Int(700), tracking: 0.165)
+                .parityLayout(text: label, size: 8.256, weight: 700, color: DesignTokens.Stage.inkMuted, tracking: 0.165)
         }
         .foregroundStyle(DesignTokens.Stage.inkMuted)
         .frame(width: width, height: Self.height)
+        .parityBox("button", text: label, radius: 14, fill: DesignTokens.Stage.headerTile)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(DesignTokens.Color.backgroundInputDisabled.opacity(0.78))

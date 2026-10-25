@@ -36,6 +36,7 @@ enum DesignTokens {
         static let controlFill = adaptive(light: 0xdfdcdd, dark: 0x2b252a)
         static let calendarOutside = adaptive(light: 0xf0eeee, dark: 0x241f23)
         static let calendarDot = adaptive(light: 0xf1a4a8, dark: 0xf1a4a8)
+        static let headerTile = adaptive(light: 0xfdfcfc, dark: 0x1e1b1e)
         static let drawer = adaptive(light: 0xffffff, dark: 0x211d21)
 
         static let bg = adaptive(light: 0xf5f3f2, dark: 0x151315)
