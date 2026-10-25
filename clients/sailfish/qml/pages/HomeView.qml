@@ -107,7 +107,7 @@ SilicaFlickable {
                 title: modelData.title
                 items: modelData.items
                 showUnwatched: !modelData.onDeck
-                restRing: index === 0   // web focuses the first Home card at rest
+                firstInk: index === 0
                 onOpened: root.opened(work)
                 onHeld: root.held(work)
             }
