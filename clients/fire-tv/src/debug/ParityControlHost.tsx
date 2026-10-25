@@ -61,7 +61,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         }
         if (route.name.startsWith('Settings')) return '/settings';
         const web = ROUTE_TO_WEB[route.name] ?? `/${route.name.toLowerCase()}`;
-        return web + currentQuery(web === '/calendar' ? ['view'] : web === '/movies' || web === '/series' || web === '/music' ? ['panel'] : []);
+        return web + currentQuery(web === '/calendar' ? ['view', 'panel'] : web === '/movies' || web === '/series' || web === '/music' ? ['panel'] : []);
       },
       route: (path) => {
         const base = path.split('?')[0] ?? '/';

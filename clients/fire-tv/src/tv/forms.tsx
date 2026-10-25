@@ -98,7 +98,7 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
         transform: [{scale: focused ? 1.03 : 1}],
       }}
     >
-      <T wrole="button" size={primary ? 14.72 : 11.52} weight={720} color={primary ? colour.onAccent : colour.inkSoft}>
+      <T size={primary ? 14.72 : 11.52} weight={720} color={primary ? colour.onAccent : colour.inkSoft}>
         {label}
       </T>
     </Pressable>

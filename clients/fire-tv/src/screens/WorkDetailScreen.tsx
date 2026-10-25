@@ -23,7 +23,7 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {yearRangeLabel} from '../lib/workYear';
 import {BalancedT, Box, T, u} from '../tv/kit';
-import {lt, lx} from '../debug/layoutMarks';
+import {lx} from '../debug/layoutMarks';
 import {FocusRing} from '../tv/FocusRing';
 import {PageHeader} from '../tv/PageHeader';
 import {PlaylistSheet} from '../tv/PlaylistSheet';
@@ -559,7 +559,7 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
       {glyph ? (
         <View style={{marginRight: u(primary ? 10.4 : 8.8)}}>
           {glyph === 'play' ? (
-            <View {...lt('▶', 10.12, 400, glyphColour)}>
+            <View>
               <Icon name="play" size={u(10.1184)} color={glyphColour} />
             </View>
           ) : (

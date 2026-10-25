@@ -57,7 +57,13 @@ export function CalendarScreen(): React.ReactElement {
     reportQuery('view', view);
   }, [view]);
   const [anchor, setAnchor] = useState<Day>(today);
-  const [panel, setPanelState] = useState<'filters' | 'link' | null>(null);
+  const [panel, setPanelState] = useState<'filters' | 'link' | null>(() => {
+    const routed = takePendingQuery('panel');
+    return routed === 'link' || routed === 'filters' ? routed : null;
+  });
+  useEffect(() => {
+    reportQuery('panel', panel);
+  }, [panel]);
   // The action column stays out of the D-pad's reach once a drawer holds focus.
   const [drawerFocused, setDrawerFocused] = useState(false);
   const setPanel = (next: 'filters' | 'link' | null): void => {
@@ -238,7 +244,7 @@ function TodayPill({label, onPress, settled}: {label: string; onPress: () => voi
       onPress={onPress}
       style={{position: 'absolute', left: u(1694.7), top: u(56.2), width: u(83.2), height: u(50), borderRadius: 999, backgroundColor: colour.surface, borderWidth: 1, borderColor: colour.line, alignItems: 'center', justifyContent: 'center'}}
     >
-      <T wrole="button" size={14.72} weight={720} color={colour.inkSoft}>
+      <T size={14.72} weight={720} color={colour.inkSoft}>
         {label}
       </T>
       {focused ? <FocusRing /> : null}

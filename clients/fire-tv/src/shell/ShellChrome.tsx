@@ -146,7 +146,7 @@ function RailLink({
     >
       <Icon name={item.icon} size={sw(20)} color={ink} />
       <Text
-        {...lf(8.832, 680, 8.832)}
+        {...lf()}
         style={[
           textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
           {color: ink, marginTop: sw(4.8), fontSize: sw(8.832)},
@@ -253,9 +253,9 @@ export function ShellClock({right}: {right: number}): React.ReactElement {
   }, []);
   return (
     <View style={{position: 'absolute', top: sw(60.2), right: sw(1920 - right), height: sw(42), flexDirection: 'row', alignItems: 'center'}}>
-      <Text {...lf(17.28, 760, 25.92, true)} style={[textRun(17.28, 760, {letterSpacing: -0.5184}), {color: colour.ink, fontSize: sw(17.28)}]}>{formatClockTime(now)}</Text>
+      <Text {...lf()} style={[textRun(17.28, 760, {letterSpacing: -0.5184}), {color: colour.ink, fontSize: sw(17.28)}]}>{formatClockTime(now)}</Text>
       <Text
-        {...lf(11.136, 640, 12.25, true)}
+        {...lf()}
         style={[
           textRun(11.136, 640, {letterSpacing: 0.4454}),
           {color: colour.ink, marginLeft: sw(11.2), textTransform: 'uppercase', fontSize: sw(11.136)},
@@ -331,7 +331,7 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
           </View>
           <Text
             numberOfLines={1}
-            {...lf(8.832, 680, 8.832)}
+            {...lf()}
             style={[
               textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
               {color: ink, marginTop: sw(4.8), maxWidth: sw(58), fontSize: sw(8.832)},
@@ -342,7 +342,7 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
         </Pressable>
       </View>
       <Text
-        {...lf(8, 700)}
+        {...lf()}
         style={[
           textRun(8, 700, {letterSpacing: 0.32, mono: true}),
           {position: 'absolute', left: sw(GROUP_X), width: sw(78), textAlign: 'center', top: sw(1038), color: colour.ink, fontSize: sw(8)},

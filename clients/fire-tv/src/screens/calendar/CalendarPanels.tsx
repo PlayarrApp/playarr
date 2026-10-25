@@ -320,7 +320,7 @@ export function PeriodPicker({label, anchor, locale, onChange}: {label: string; 
         // The web's range button: a secondary pill in the header group, left of Previous / Today / Next (right edge 1613.9).
         style={{position: 'absolute', right: u(1920 - 1613.9), top: u(56.2), height: u(50), paddingHorizontal: u(21), borderRadius: 999, borderWidth: 1, borderColor: colour.line, flexDirection: 'row', alignItems: 'center', backgroundColor: colour.surface}}
       >
-        <T wrole="button" wradius={999} size={14.72} weight={720} color={colour.inkSoft}>
+        <T size={14.72} weight={720} color={colour.inkSoft}>
           {label}
         </T>
         {focused ? <FocusRing /> : null}

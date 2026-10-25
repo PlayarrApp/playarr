@@ -13,7 +13,7 @@ import {FilterDrawer} from './FilterDrawer';
 import {FocusRing} from './FocusRing';
 import {T, u} from './kit';
 import {reportFocus} from '../debug/parityControl';
-import {lt, lx} from '../debug/layoutMarks';
+import {lx} from '../debug/layoutMarks';
 
 export interface Leaf {
   mediaFileId: string;
@@ -135,7 +135,7 @@ function ActionRow({glyph, label, y, first, onPress, onReveal}: {glyph: string; 
       <View style={{width: u(42)}}>
         {glyph === '▶' ? (
           // Vega draws U+25B6 as a colour emoji; a drawn triangle keeps web's pink text glyph.
-          <View {...lt('▶', 19.52, 400, '#cf3157')} style={{width: u(15.02), height: u(27), justifyContent: 'center'}}>
+          <View style={{width: u(15.02), height: u(27), justifyContent: 'center'}}>
             <View style={{width: 0, height: 0, marginLeft: u(1), borderTopWidth: u(8), borderBottomWidth: u(8), borderLeftWidth: u(13), borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#cf3157'}} />
           </View>
         ) : (

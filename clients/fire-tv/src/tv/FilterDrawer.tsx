@@ -297,7 +297,7 @@ function Chip({chip, x, y, w, onReveal, focusOwner}: {chip: DrawerChip; x: numbe
         </View>
       ) : null}
       <View style={chip.icon ? undefined : {flexShrink: 1}}>
-        <T wrole={chip.icon ? undefined : 'button'} size={10.56} weight={chip.icon ? 900 : 680} lh={chip.icon ? 11.6 : 15.84} color={ink} style={chip.icon ? undefined : {textAlign: 'center'}}>
+        <T size={10.56} weight={chip.icon ? 900 : 680} lh={chip.icon ? 11.6 : 15.84} color={ink} style={chip.icon ? undefined : {textAlign: 'center'}}>
           {capitalise(chip.label)}
         </T>
       </View>

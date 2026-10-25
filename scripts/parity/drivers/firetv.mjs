@@ -69,6 +69,17 @@ async function settled(maxMs = 8000) {
 export async function createDriver({ out } = {}) {
   let seq = 0;
   let pinnedClock = null;
+  let wantedTheme = null;
+  // Precondition of every capture: the app reports the theme the run asked for (a relaunch or a player route must not drop it).
+  async function checkTheme() {
+    if (!wantedTheme) return;
+    for (let i = 0; i < 3; i++) {
+      const reported = (await state(20000).catch(() => ({}))).theme;
+      if (reported === wantedTheme) return;
+      await command({ cmd: "theme", name: wantedTheme }, 6000);
+    }
+    throw new Error(`the app does not report the ${wantedTheme} theme`);
+  }
   const answers = new Map();
   const chunks = new Map();
 
@@ -196,6 +207,8 @@ export async function createDriver({ out } = {}) {
       // Always sent: the state's theme is the resolved one, so a system preference that happens to resolve to the wanted theme would
       // otherwise stay "System" and the Appearance panel would not show the chosen theme as web's does.
       await command({ cmd: "theme", name: theme }, 6000);
+      wantedTheme = theme;
+      await checkTheme();
     },
     async home() {
       // A relaunch: Home is only drawn with its first card focused when it is the first page after the profile is chosen
@@ -296,6 +309,7 @@ export async function createDriver({ out } = {}) {
     async screenshot(file) {
       const s = await state();
       if (!s.route || s.route === "/profiles" && !file.includes("profiles")) throw new Error(`not a content screen: ${s.route}`);
+      await checkTheme();
       await sleep(1500);
       // The layout document of the same screen state goes next to the capture: <out>/layout/<theme>/<screen>.json.
       const theme = basename(dirname(file));

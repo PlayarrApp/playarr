@@ -127,7 +127,7 @@ export function StatusPill({tone, label, size = 13.44}: {tone: EntryPillTone | '
         alignSelf: 'flex-start',
       }}
     >
-      <T wradius={999} size={size} weight={750} lh={18.8} color={colour.ink} lines={1}>
+      <T size={size} weight={750} lh={18.8} color={colour.ink} lines={1}>
         {label}
       </T>
     </View>
