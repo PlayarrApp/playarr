@@ -202,7 +202,7 @@ function RoundNav({x, glyph, label, onPress}: {x: number; glyph: string; label: 
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      style={{position: 'absolute', left: u(x), top: u(56.2), width: u(50), height: u(50), borderRadius: 999, backgroundColor: focused ? colour.ink : colour.surface, borderWidth: 1, borderColor: colour.line, alignItems: 'center', justifyContent: 'center'}}
+      style={{position: 'absolute', left: u(x), top: u(56.2), width: u(50), height: u(50), borderRadius: 50, backgroundColor: focused ? colour.ink : colour.surface, borderWidth: 1, borderColor: colour.line, alignItems: 'center', justifyContent: 'center'}}
     >
       <T size={14.72} weight={720} dy={3} color={focused ? colour.bg : colour.inkSoft}>
         {glyph}

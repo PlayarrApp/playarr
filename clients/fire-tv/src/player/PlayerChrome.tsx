@@ -132,7 +132,7 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
         ...(props.inline ? {marginHorizontal: u(15.5)} : {position: 'absolute', left: u(props.x ?? 0), top: u(props.y ?? 0)}),
         width: u(props.size),
         height: u(props.size),
-        borderRadius: 999,
+        borderRadius: 50,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: props.filled ? 'rgba(255,255,255,0.14)' : props.inline ? 'transparent' : mix('#000000', 0.42),
@@ -218,7 +218,7 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
 /** A drawn-only transport button (previous, next episode) at the web's 64 px box, dimmed like a disabled control. */
 function Decor({icon, label, x, y}: {icon: IconName; label: string; x: number; y: number}): React.ReactElement {
   return (
-    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
+    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: 50, alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
       <Icon name={icon} size={u(20)} color="#ffffff" strokeWidth={2} />
     </View>
   );
@@ -226,7 +226,7 @@ function Decor({icon, label, x, y}: {icon: IconName; label: string; x: number; y
 
 function InlineIcon({icon, label, x, bright}: {icon: IconName; label: string; x: number; bright?: boolean}): React.ReactElement {
   return (
-    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(958), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center'}}>
+    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(958), width: u(64), height: u(64), borderRadius: 50, alignItems: 'center', justifyContent: 'center'}}>
       <Icon name={icon} size={u(20)} color={bright ? '#ffffff' : 'rgba(255,255,255,0.34)'} strokeWidth={2} />
     </View>
   );

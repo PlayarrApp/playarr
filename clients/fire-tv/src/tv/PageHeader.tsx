@@ -35,7 +35,7 @@ export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibili
         top: u(y),
         width: u(size),
         height: u(size),
-        borderRadius: 999,
+        borderRadius: 50,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: mix(colour.surfaceStrong, 0.7),

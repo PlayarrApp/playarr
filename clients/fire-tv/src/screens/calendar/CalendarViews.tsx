@@ -354,7 +354,7 @@ const Line = React.memo(function Line({day, item, x, y, w, h, today, onSelect}: 
       onPress={() => onSelect(item)}
       style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(h), borderRadius: u(4), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(5.6)}}
     >
-      <View {...lx('container', '', 50)} style={{width: u(8.8), height: u(8.8), borderRadius: u(4.4), backgroundColor: dot}} />
+      <View {...lx('container', '', 50)} style={{width: u(8.8), height: u(8.8), borderRadius: 50, backgroundColor: dot}} />
       <View style={{marginLeft: u(7.2), flex: 1}}>
         <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} dy={-1.3} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
           {label}

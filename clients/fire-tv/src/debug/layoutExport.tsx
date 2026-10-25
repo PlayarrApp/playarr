@@ -151,6 +151,10 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       const size = round2((style.fontSize ?? 0) / scale);
       const m = /-w(\d+)$/.exec(family);
       const runH = metrics ? Math.round(metrics.ascender * size) + Math.round(metrics.descender * size) : round2((style.lineHeight ?? style.fontSize ?? 0) / scale);
+      // A view moved by a relative `top` is measured where it is drawn; the line box starts at its layout position, and the browser's
+      // text range sits centred in the line box (the content area is shorter than the line height).
+      const lineTop = rect.y - (style.position === 'relative' && typeof style.top === 'number' ? style.top / scale : 0);
+      const lh = style.lineHeight ? style.lineHeight / scale : runH;
       const upper = style.textTransform === 'uppercase';
       const native = lines && lines.length ? lines : [{x: 0, y: 0, width: r[2], height: r[3], text}];
       native.forEach((line, index) => {
@@ -160,7 +164,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
           ...(base as LayoutElement),
           text: upper ? lineText.toUpperCase() : lineText,
           role: webRole === 'heading' ? 'heading' : 'text',
-          rect: {x: round2(rect.x + line.x / scale), y: round2(rect.y + (line.y - native[0]!.y) / scale), w: round2(line.width / scale), h: runH},
+          rect: {x: round2(rect.x + line.x / scale), y: round2(lineTop + (line.y - native[0]!.y) / scale + (lh - runH) / 2), w: round2(line.width / scale), h: runH},
           color: hex(style.color),
           fontSize: size,
           fontWeight: m ? Number(m[1]) : 400,
