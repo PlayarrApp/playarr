@@ -179,7 +179,10 @@ function lineRuns(item, metrics, log) {
         var t = texts[i].replace(/\s+$/, "").replace(/^\s+/, "")
         var last = i === texts.length - 1
         var room = widthOf(i)
-        if (item.elide !== undefined && item.elide !== 3 && last && m.advance(t) > room + 0.01) t = m.elide(t, textElideMode(item.elide), room)
+        // A single line cut short with an ellipsis keeps its whole text and natural width here, as the web's layout export does (its glyph
+        // run covers the clipped text too). A last line cut by a line limit is exported as drawn, with Qt's own elision.
+        var clamped = (item.maximumLineCount || 0) > 0 && texts.length >= item.maximumLineCount
+        if (item.elide !== undefined && item.elide !== 3 && last && clamped && m.advance(t) > room + 0.01) t = m.elide(t, textElideMode(item.elide), room)
         var wdt = m.advance(t)
         var lx = recorded ? rec[i].x : (item.leftPadding || 0)
         var x = ha === 4 ? lx + (room - wdt) / 2 : ha === 2 ? lx + room - wdt : lx

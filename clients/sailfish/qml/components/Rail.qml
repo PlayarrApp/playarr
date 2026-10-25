@@ -25,7 +25,7 @@ Column {
         color: Tokens.ink
         property string parityRole: "heading"
         font.family: Tokens.family580
-        font.pixelSize: Tokens.fs(16); font.letterSpacing: -0.6 * Tokens.u; height: 21.33 * Tokens.u
+        font.pixelSize: Tokens.fsFit(16); font.letterSpacing: -0.33 * Tokens.u; height: 21.33 * Tokens.u
     }
     Item {
         width: parent.width

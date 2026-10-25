@@ -156,7 +156,7 @@ PlayarrPage {
     SilicaFlickable {
         id: flick
         anchors.fill: parent
-        contentHeight: col.height + (epMode ? 145.3 : 115.6) * Tokens.u
+        contentHeight: col.height + (epMode ? 105.5 : 75.8) * Tokens.u
         Rectangle { width: parent.width; height: flick.contentHeight; color: Tokens.bg }   // the page surface behind everything that scrolls
         Column {
             id: col
@@ -286,8 +286,8 @@ PlayarrPage {
                 visible: !!page.detail && !epMode
                 PillButton {
                     lift: true
-                    icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fsFit(9.2) - (page.inWatchlist ? 0 : 1); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
-                    a11yName: (page.inWatchlist ? "\u2713 " : "+ ") + text; labelSpacing: -0.22
+                    icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
+                    a11yName: (page.inWatchlist ? "\u2713 " : "+ ") + text; labelSpacing: -0.13
                     text: page.inWatchlist ? qsTr("Remove from watchlist") : qsTr("Add to watchlist")
                     parityRail: 0; parityIndex: 3; navigationActivate: function() { page.toggleWatchlist() }
                     fontSize: Tokens.fs(8)
@@ -295,7 +295,7 @@ PlayarrPage {
                 }
                 PillButton {
                     lift: true
-                    icon: "+"; iconSize: Tokens.fsFit(9.2) - 1; labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
+                    icon: "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
                     a11yName: "+ " + qsTr("Add to Playlist"); labelSpacing: -0.2; padCss: 17
                     text: qsTr("Add to Playlist")
                     parityRail: 0; parityIndex: 4; navigationActivate: function() { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work }) }
@@ -393,7 +393,7 @@ PlayarrPage {
                             lift: true
                             id: wlBtn
                             
-                            icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fsFit(9.2) - (page.inWatchlist ? 0 : 1); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; labelSpacing: -0.22
+                            icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; iconDy: -0.8; labelSpacing: -0.22
                             a11yName: (page.inWatchlist ? "\u2713 " : "+ ") + text
                             fontSize: Tokens.fs(8)
                             implicitHeight: 44 * Tokens.u
@@ -405,7 +405,7 @@ PlayarrPage {
                             lift: true
                             id: plBtn
                             
-                            icon: "+"; iconSize: Tokens.fsFit(9.2) - 1; labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; labelSpacing: -0.22; padCss: 17
+                            icon: "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; iconDy: -0.8; labelSpacing: -0.22; padCss: 17
                             a11yName: "+ " + qsTr("Add to Playlist")
                             fontSize: Tokens.fs(8)
                             implicitHeight: 44 * Tokens.u
@@ -578,7 +578,7 @@ PlayarrPage {
                 y: -50 * Tokens.u + 1.5
                 width: parent.width
                 spacing: 18 * Tokens.u
-                bottomPadding: 28 * Tokens.u
+                bottomPadding: 68.2 * Tokens.u   // the web band runs 40 px further below the last row
                 Column {
                     width: parent.width; visible: chapters.length > 0; spacing: 6 * Tokens.u
                     topPadding: 26.1 * Tokens.u

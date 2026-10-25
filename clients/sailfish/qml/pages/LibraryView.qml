@@ -95,7 +95,7 @@ Item {
     }
     MouseArea {
         id: filterBtn
-        anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
+        anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter; verticalCenterOffset: -1.25 * Tokens.u }
         width: 44 * Tokens.u; height: width
         property string a11yName: qsTr("Filters")
         property real focusRadius: 14 * Tokens.u

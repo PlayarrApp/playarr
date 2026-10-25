@@ -320,7 +320,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
-                        PLabel { renderType: Text.NativeRendering; id: todayLbl; property var radiusSource: todayChip; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fs(11.2) }
+                        PLabel { renderType: Text.NativeRendering; id: todayLbl; property var radiusSource: todayChip; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fsFit(11.2) }
                     }
                     }
                     Repeater {
@@ -360,7 +360,7 @@ Item {
                                 PLabel { renderType: Text.NativeRendering; bottomPadding: subLbl.visible ? 0 : 2.2; width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.fam(640); font.letterSpacing: -0.2; font.pixelSize: Tokens.fs(16) }
                                 PLabel { renderType: Text.NativeRendering;
                                     width: parent.width
-                                    id: subLbl; visible: text !== ""; topPadding: -3; bottomPadding: 3
+                                    id: subLbl; visible: text !== ""; topPadding: dayCol.wk ? -0.4 : -3; bottomPadding: dayCol.wk ? 0.4 : 3
                                     text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
                                     elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.family400; font.letterSpacing: -0.22; font.pixelSize: Tokens.fs(16)
                                 }

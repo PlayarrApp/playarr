@@ -201,13 +201,19 @@ test("exports one run per rendered line from the recorded line boxes", () => {
   assert.deepEqual(runs.map((run) => run.rect), [{ x: 0, y: 0, w: 45, h: 10 }, { x: 0, y: 12, w: 10, h: 10 }]);
 });
 
-test("elides the last line to the width Qt gave it and centres a run by its own width", () => {
+test("keeps the whole text of a single elided line and elides a line cut by the line limit", () => {
   const root = makeItem("root", 100, 100);
   attach(root, makeItem("clipped", 40, 10, textItem({ text: "abcdefghijkl", elide: 1, contentWidth: 40 })));
-  attach(root, makeItem("centred", 40, 10, textItem({ text: "abcd", horizontalAlignment: 4, y: 20 })));
-  const [clipped, centred] = dump(root);
-  assert.equal(clipped.text, "abcdefg…");
-  assert.deepEqual(centred.rect, { x: 10, y: 20, w: 20, h: 10 });
+  attach(root, makeItem("limited", 40, 30, textItem({
+    text: "aa bb cc dd ee ff gg", elide: 1, wrapMode: 1, maximumLineCount: 2, lineCount: 2, y: 20,
+    laidLines: [{ x: 0, y: 0, w: 40, h: 10 }, { x: 0, y: 12, w: 40, h: 10 }],
+  })));
+  attach(root, makeItem("centred", 40, 10, textItem({ text: "abcd", horizontalAlignment: 4, y: 60 })));
+  const runs = dump(root);
+  assert.equal(runs[0].text, "abcdefghijkl");
+  assert.deepEqual(runs[0].rect, { x: 0, y: 0, w: 60, h: 10 });
+  assert.deepEqual(runs.slice(1, 3).map((run) => run.text), ["aa bb cc", "dd ee f…"]);
+  assert.deepEqual(runs[3].rect, { x: 10, y: 60, w: 20, h: 10 });
 });
 
 test("clips overflowing local content by the item's own clip and its parent clip", () => {

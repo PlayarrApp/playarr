@@ -94,7 +94,7 @@ PlayarrPage {
                 color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.115; font.pixelSize: Tokens.fs(10)
             }
             Item {
-                visible: page.url !== ""; width: parent.width; height: 43 * Tokens.u
+                visible: page.url !== ""; width: parent.width; height: 44 * Tokens.u
                 Rectangle { anchors.fill: parent; radius: 8 * Tokens.u; color: Tokens.bg; border.width: 1; border.color: Tokens.lineStrong; property string parityRole: "textbox" }
                 PLabel { renderType: Text.NativeRendering;
                     x: 13 * Tokens.u; width: parent.width - 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter
