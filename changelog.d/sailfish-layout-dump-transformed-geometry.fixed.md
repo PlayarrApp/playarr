@@ -1,0 +1,1 @@
+- Sailfish: layout diagnostics now map transformed item rectangles into root coordinates and intersect viewport, ancestor and self clips as polygons. Offscreen unclipped parents no longer suppress visible children. Text remains estimated and layout export remains NOT CLEAN pending Qt 5.6 native ranges and target validation.
