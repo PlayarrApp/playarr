@@ -154,6 +154,9 @@ final class ParityLayoutRegistry {
         return try? JSONSerialization.data(withJSONObject: document, options: [.sortedKeys])
     }
 
+    /// Layout floats to 0.01 px: removes sub-0.0001 noise between identical runs, far below the 1 px tolerance.
+    private func q(_ value: CGFloat) -> Double { (Double(value) * 100).rounded() / 100 }
+
     private func write(_ data: Data?) {
         guard let data else { return }
         let url = ParityLaunch.acceptanceStateURL.deletingLastPathComponent().appendingPathComponent("parity-layout.json")
