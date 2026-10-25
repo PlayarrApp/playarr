@@ -1057,7 +1057,7 @@ struct TVFloatingNav: View {
                 if case .nav(tab) = externalFocus.wrappedValue { externalFocus.wrappedValue = .stage }
             }
         } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: 2.75) { // web: the label's top sits 22.75 pt below the icon's
                 TVNavVectorIcon(tab: tab)
                 Text(tab.title)
                     .font(TVTheme.font(size: 8.832, css: 680))
@@ -1084,7 +1084,6 @@ struct TVFloatingNav: View {
                     )
             )
             // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content).
-            .parityTransformScope(scale: isActive || isFocused ? 1.05 : 1)
             .scaleEffect(isActive || isFocused ? 1.05 : 1)
             // Web TV nav: focus looks like the active tab (filled tile, ink text); no ring, no scale.
         }

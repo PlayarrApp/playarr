@@ -1049,7 +1049,6 @@ struct TVWebHomeCard: View {
                     .shadow(color: Self.shadow.opacity(focused ? 0.22 : 0.10), radius: focused ? 11 : 4.5, y: focused ? 11 : 3)
             )
             .modifier(TVCardFocusGlow(focused: focused, cornerRadius: 12.48))
-            .parityTransformScope(scale: focused ? 1.025 : 1, lift: focused ? -6 : 0)
             .scaleEffect(focused ? 1.025 : 1)
             Text(work.title)
                 .font(TVTheme.font(size: 11.904, css: 610))
@@ -1072,7 +1071,6 @@ struct TVWebHomeCard: View {
                 .padding(.top, 3.6)
         }
         .background(alignment: .top) { Color.clear.frame(width: artWidth, height: artHeight + 29.36).parityBox("link", text: Self.accessibleName(work), radius: 0, fill: DesignTokens.Stage.surface) }
-        .parityTransformScope(scale: 1, lift: focused ? -6 : 0)
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
@@ -2183,7 +2181,6 @@ struct TVLibraryKindView: View {
             }
             .frame(width: width, alignment: .leading)
             .parityBox("link", text: "Open \(work.title)", radius: 12, fill: DesignTokens.Stage.surface)
-            .parityTransformScope(scale: isSelected ? 1.025 : 1, lift: isSelected ? -7 : 0)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
             .scaleEffect(isSelected ? 1.025 : 1)
             .offset(y: isSelected ? -7 : 0)

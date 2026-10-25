@@ -184,23 +184,6 @@ final class TVParityLayoutRegistry {
     }
 }
 
-/// A card's visual transform (focus scale and lift). SwiftUI frames do not include `scaleEffect`, so views inside a scaled card
-/// report layout frames; the scope publishes the card's own frame and transform, and the reporting modifiers apply it, so the
-/// export holds what is drawn.
-struct TVParityTransform: Equatable {
-    var frame: CGRect = .zero
-    var scale: CGFloat = 1
-    var anchor = CGPoint(x: 0.5, y: 0.5)
-    var lift: CGFloat = 0
-
-    func apply(_ rect: CGRect) -> CGRect {
-        guard scale != 1 || lift != 0, frame.width > 0 else { return rect }
-        let ax = frame.minX + frame.width * anchor.x, ay = frame.minY + frame.height * anchor.y
-        return CGRect(x: ax + (rect.minX - ax) * scale, y: ay + (rect.minY - ay) * scale + lift,
-                      width: rect.width * scale, height: rect.height * scale)
-    }
-}
-
 /// The presentation layer of a view: 0 for the shell, +1 for each full-screen presentation (Who's watching, the player).
 /// Only the topmost layer is exported, as only it is visible.
 private struct TVParityLayerKey: EnvironmentKey { static let defaultValue = 0 }
@@ -225,29 +208,6 @@ extension EnvironmentValues {
     }
 }
 
-private struct TVParityTransformKey: EnvironmentKey { static let defaultValue = TVParityTransform() }
-extension EnvironmentValues {
-    var parityTransform: TVParityTransform {
-        get { self[TVParityTransformKey.self] }
-        set { self[TVParityTransformKey.self] = newValue }
-    }
-}
-
-private struct TVParityTransformScope: ViewModifier {
-    let scale: CGFloat
-    let anchor: CGPoint
-    let lift: CGFloat
-    @State private var frame: CGRect = .zero
-
-    func body(content: Content) -> some View {
-        content
-            .background(GeometryReader { proxy in
-                let f = proxy.frame(in: tvScreenSpace)
-                Color.clear.onAppear { frame = f }.onChange(of: f) { _, new in frame = new }
-            })
-            .environment(\.parityTransform, TVParityTransform(frame: frame, scale: scale, anchor: anchor, lift: lift))
-    }
-}
 
 private struct TVParityLayoutModifier: ViewModifier {
     let text: String?
@@ -261,7 +221,6 @@ private struct TVParityLayoutModifier: ViewModifier {
     var pitch: CGFloat = 0
     var onPage = false
     @Environment(\.self) private var environment
-    @Environment(\.parityTransform) private var transform
     @Environment(\.parityLayer) private var layer
     @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
@@ -282,7 +241,6 @@ private struct TVParityLayoutModifier: ViewModifier {
                     Color.clear
                         .onAppear { report(frame) }
                         .onChange(of: frame) { _, new in report(new) }
-                        .onChange(of: transform) { _, _ in report(frame) }
                         .onChange(of: scheme) { _, _ in report(frame) }
                         .onChange(of: text) { _, _ in report(frame) }
                 }
@@ -291,7 +249,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: transform.apply(frame), tracking: tracking,
+        TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: frame, tracking: tracking,
                                                  background: hex(backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)),
                                                  lineHeight: lineHeight, lines: lines, pitch: pitch, layer: layer)) // web: header on the page, content on the surface
     }
@@ -306,7 +264,6 @@ private struct TVParityBoxModifier: ViewModifier {
     @Environment(\.self) private var environment
     @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.parityTransform) private var transform
     @Environment(\.parityLayer) private var layer
     @State private var id = UUID()
 
@@ -318,7 +275,6 @@ private struct TVParityBoxModifier: ViewModifier {
                     Color.clear
                         .onAppear { report(frame) }
                         .onChange(of: frame) { _, new in report(new) }
-                        .onChange(of: transform) { _, _ in report(frame) }
                         .onChange(of: scheme) { _, _ in report(frame) }
                         .onChange(of: text) { _, _ in report(frame) }
                 }
@@ -328,7 +284,7 @@ private struct TVParityBoxModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: transform.apply(frame))
+        var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: frame)
         if let fill = fill ?? backdrop {
             let r = fill.resolve(in: environment)
             func byte(_ v: Float) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
@@ -360,16 +316,6 @@ extension View {
     func parityBackdrop(_ color: Color) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
         environment(\.parityBackdrop, color)
-        #else
-        self
-        #endif
-    }
-
-    /// Marks a card's focus transform for the layout export (debug builds only).
-    @ViewBuilder
-    func parityTransformScope(scale: CGFloat, anchor: CGPoint = CGPoint(x: 0.5, y: 0.5), lift: CGFloat = 0) -> some View {
-        #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityTransformScope(scale: scale, anchor: anchor, lift: lift))
         #else
         self
         #endif
