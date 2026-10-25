@@ -66,7 +66,7 @@ PlayarrPage {
             }
         }
     }
-    Label { renderType: Text.NativeRendering;
+    Label { renderType: Text.QtRendering;
         x: -16 * Tokens.u; width: parent.width; y: 71.5 * Tokens.u
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("PROFILES")
@@ -74,7 +74,7 @@ PlayarrPage {
        
         font.family: Tokens.fam(820); font.letterSpacing: 2.19; font.pixelSize: Tokens.fs(7.36)
     }
-    Label { renderType: Text.NativeRendering;
+    Label { renderType: Text.QtRendering;
         x: -16 * Tokens.u; width: parent.width; y: 82 * Tokens.u
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("Who’s watching?")

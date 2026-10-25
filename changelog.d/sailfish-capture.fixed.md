@@ -1,0 +1,4 @@
+- Clip the watched-progress bar to the Sailfish artwork's rounded corners.
+- Hold parity player captures until the paused engine and source positions both acknowledge exactly 2,000 ms, then export the settled layout.
+- Report the calendar-link page using its corresponding web route and preserve the normal player start flow.
+- Include calendar-link in the single-command 16-screen Sailfish capture and support an explicit SSH config file.

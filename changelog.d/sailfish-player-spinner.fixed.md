@@ -1,0 +1,1 @@
+- Keep the Sailfish player loading indicator visible for loading states, and wait for its fade to finish before capturing a paused frame.

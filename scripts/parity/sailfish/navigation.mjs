@@ -6,8 +6,13 @@ export function keyCommand(name) {
   return key;
 }
 
+export function playerCaptureReady(player, acknowledgement) {
+  return player?.state === 2 && player.engineMs === 2000 && player.sourceMs === 2000 && player.controls
+    && acknowledgement?.engineMs === 2000 && acknowledgement.sourceMs === 2000;
+}
+
 export function parseParityEvents(log) {
-  const events = { screen: null, focus: null, keyAcks: [], keyCompletions: [], player: null };
+  const events = { screen: null, focus: null, keyAcks: [], keyCompletions: [], player: null, playerCaptureAcknowledgement: null, playerCaptureFailure: null };
   for (const line of String(log).split(/\r?\n/)) {
     const marker = line.indexOf("PARITY|");
     if (marker < 0) continue;
@@ -21,8 +26,14 @@ export function parseParityEvents(log) {
       events.keyCompletions.push(Number(values[0]));
     }
     if (type === "player" && values.length >= 4 && values.slice(0, 4).every((value) => /^\d+$/.test(value))) {
-      events.player = { state: Number(values[0]), positionSeconds: Number(values[1]), menuOpen: values[2] === "1", controls: values[3] === "1" };
+      events.player = { state: Number(values[0]), positionSeconds: Number(values[1]), menuOpen: values[2] === "1", controls: values[3] === "1",
+        engineMs: values.length >= 5 && /^\d+$/.test(values[4]) ? Number(values[4]) : null,
+        sourceMs: values.length >= 6 && /^\d+$/.test(values[5]) ? Number(values[5]) : null };
     }
+    if (type === "player-capture-ack" && values.length >= 2 && values.every((value) => /^\d+$/.test(value))) {
+      events.playerCaptureAcknowledgement = { sourceMs: Number(values[0]), engineMs: Number(values[1]) };
+    }
+    if (type === "player-capture-failed" && values.length) events.playerCaptureFailure = values.join("|");
   }
   return events;
 }

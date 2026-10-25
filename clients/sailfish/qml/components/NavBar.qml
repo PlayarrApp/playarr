@@ -8,30 +8,19 @@ import QtGraphicalEffects 1.0
 Rectangle {
     id: root
     property string section: "home"
-    property Item blurSource: null   // the page content under the bar; the web blurs it behind the pill (backdrop-filter)
     signal selected(string target)
     signal profileClicked()
     readonly property var tabs: ["downloads", "search", "home", "series", "movies", "music", "playlists"]
     height: 58 * Tokens.u
     radius: 20 * Tokens.u
     color: Qt.rgba(Tokens.surfaceStrong.r, Tokens.surfaceStrong.g, Tokens.surfaceStrong.b, 0.88)
-    border.width: 1
-    border.color: Tokens.line
+    border.width: 0
 
     RectangularGlow {   // web: box-shadow 0 14px 40px rgba(31, 14, 20, .2)
-        anchors.fill: parent; anchors.topMargin: 14 * Tokens.u
+        x: 0; y: 14 * Tokens.u; width: parent.width; height: parent.height
         z: -2; glowRadius: 20 * Tokens.u; spread: 0; cornerRadius: root.radius + glowRadius
         color: Qt.rgba(31 / 255, 14 / 255, 20 / 255, Tokens.dark ? 0.2 : 0.2)
     }
-    ShaderEffectSource {
-        id: snap
-        visible: false
-        sourceItem: root.blurSource
-        sourceRect: root.blurSource ? Qt.rect(root.blurSource.mapFromItem(root, 0, 0).x, root.blurSource.mapFromItem(root, 0, 0).y, root.width, root.height) : Qt.rect(0, 0, 0, 0)
-    }
-    FastBlur { id: blurred; visible: false; anchors.fill: parent; source: snap; radius: 48 * Tokens.u / 2 }
-    Rectangle { id: pill; anchors.fill: parent; radius: root.radius; visible: false }
-    OpacityMask { z: -1; anchors.fill: parent; source: blurred; maskSource: pill; visible: root.blurSource !== null }
     Row {
         x: 5 * Tokens.u   // web: 44 x 46 links on a 46 px pitch, the row starts a little in and runs past the bar's right edge
         y: 6 * Tokens.u; height: 46 * Tokens.u; width: 8 * 46 * Tokens.u

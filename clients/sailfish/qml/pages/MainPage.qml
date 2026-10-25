@@ -75,7 +75,6 @@ PlayarrPage {
     }
 
     NavBar {
-        blurSource: loader
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 10 * Tokens.u; rightMargin: 10 * Tokens.u; bottomMargin: 7 * Tokens.u }
         section: page.section
         onSelected: page.section = target

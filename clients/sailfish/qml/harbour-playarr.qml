@@ -30,6 +30,12 @@ ApplicationWindow {
         }, function (line) { console.log(line) })
     }
 
+    Connections {
+        target: pageStack.currentPage
+        ignoreUnknownSignals: true
+        onParityCaptureLayoutDumpRequested: app.layoutDump()
+    }
+
     function showStart() {
         pageStack.replaceAbove(null, startPage(Api.signedIn, Api.profiles.length))
     }

@@ -1,21 +1,20 @@
 # Sailfish layout measurement audit
 
-Task 61.10082 remains blocked on the shared reference and measurement contract. The audit of capture commit `6ff18fc194fe24c26d6f25b6d7e2a3f3dbbb20cf` does not accept the existing 100% layout claim. [PR #510](https://github.com/PlayarrApp/playarr/pull/510) remains open.
+Task 61.10082 remains blocked on a clean native measurement exporter and verification of the remaining parity target. [PR #510](https://github.com/PlayarrApp/playarr/pull/510) is merged. App and capture fixes are in the draft [PR #552](https://github.com/PlayarrApp/playarr/pull/552); they improve visible clipping, player capture readiness, navigation styling and repeatable profile headings, but do not make the layout exporter acceptable.
 
-The 15 standard screens repeat byte for byte across two consecutive runs, including both themes, screenshots and layout JSON. Calendar-link also repeats byte for byte in a separate pair covering both themes, but its export matches only 17 of 34 scored elements in each theme. These are separate capture pairs, not two unified 16-screen runs. Repeatability alone does not establish measurement correctness.
+Full runs C and D each captured 32 screens across both themes. Their PNGs, decoded RGBA data, diagnostic layout JSON and scores matched byte for byte. The 149 inventoried capture inputs were unchanged across that pair, and guest QML plus native executable hashes were stable. This proves repeatability for C/D against the same refreshed references; it does not prove visual parity or layout acceptance. The earlier A run's whole-pair freeze failed because shared layout references changed during capture, so A is excluded from this comparison.
 
 ## Measurement failures
 
-- `MainPage.qml` declares three full-viewport `layoutEls` records with hard-coded dimensions and colours. `PlayarrPage.qml` draws one page background. `LayoutDump.js` emits these declarations without requiring corresponding rendered rectangles.
-- The home and calendar-link web references also contain three full-viewport background records at `/elements/0`, `/elements/1` and `/elements/2`, including two identical fills. The shared visible-element contract must resolve the occluded duplicates. Adding invisible native layers or synthetic export entries is not a repair.
-- `LayoutDump.js` estimates text bounds from Chromium ascent and descent constants, permits replacement text and dimensions, and emits wrapped paragraphs as one element. It must measure the actual laid-out native lines and style runs.
-- Circle radii are exported as `50` to match a CSS percentage value. A resolved radius in viewport pixels needs a consistent reference definition.
-- The player web dump marks a full-viewport video rectangle as `maskOnly`. Applying that rectangle to the composed screenshot erases the controls too. The resulting 100% pixel score has zero unmasked pixels and cannot validate the player. The existing configured regions, compared without volatile masks, give 99.19% dark and 99.20% light in the audited pair. Those regions also assume a different viewport height, so this diagnostic is not a replacement acceptance score.
+- Commit `f53df3ee6` removed fabricated full-screen wrapper exports. The exporter remains NOT CLEAN: it does not consistently apply ancestor clipping and transforms, or fully represent final effect composition and occlusion.
+- QML can expose `Text.lineLaidOut` line boxes and values from the `Accessible.*` attached properties. The current exporter still does not measure actual glyph and style-run bounds or final paint/effect semantics, and it does not consistently report real accessibility names and roles. Item metadata alone is not sufficient for acceptance.
+- No current web-reference defect has been established. The duplicate/offscreen and circle-radius observations from the older reference set were superseded by the refresh; they are not established visibility blockers.
+- A native exporter replacement has not been built or independently audited. The available Sailfish VM has a hard 6 GiB memory limit, while bounded `memory.high` and swap controls are not available to this session. The user scope bus is unavailable, so the required bounded build setup cannot currently be applied. Host Qt 5.15 is not the Sailfish Qt 5.6 target.
+
+## Verified app and capture changes
+
+The home progress artwork is clipped to its rounded corners. Player capture seeks while paused, waits for engine and source positions to equal exactly 2,000 ms, and waits for the busy indicator to stop and fade before requesting a fresh layout export. Calendar-link reports its matching route. The navigation bar no longer paints the border and blur removed by the web cascade, and its shadow uses a full-height shape translated down. The two profile headings use Qt text rendering; focused repeated captures produced identical PNGs and layout JSON in both themes. Focused app captures passed for these changes. They do not establish full pixel parity.
 
 ## Work required before acceptance
 
-The coordinator must withdraw Sailfish's layout validation, resolve reference visibility and radius units, and prevent the video mask from erasing controls. Preserve the web application's appearance and the original audit evidence.
-
-Native work must replace metadata substitutes with measured elements, correct calendar-link roles and styling, clip the home progress card to its rounded corners, and resolve the navigation outline difference. The player capture must wait for the engine to report exactly 2.000 seconds after seeking and pausing. The current fixed delay does not prove that condition.
-
-No font-rasteriser or platform exception is accepted. Aligned crops show card-corner and navigation-outline differences that are not glyph-edge differences. After these repairs, provide one command covering all 16 screens in both themes, run it twice and retain the per-screen scores, hashes and aligned difference evidence.
+Keep Sailfish layout validation withdrawn. The exporter must report actual visible geometry after clipping and transforms, rendered colours and effect semantics, actual per-line and per-style-run glyph bounds, and real accessible names and roles. Preserve the web application's appearance; do not change references to accommodate the exporter. Run a fresh independent read-only audit after exporter changes and only then consider layout scores. C/D repeatability is useful evidence, but it does not satisfy the layout gate or the 100 percent parity goal.

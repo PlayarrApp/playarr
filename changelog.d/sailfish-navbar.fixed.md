@@ -1,0 +1,1 @@
+- Remove the Sailfish navigation pill border and backdrop blur to match the web styling while retaining its translucent fill and shadow.
