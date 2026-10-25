@@ -53,12 +53,15 @@ namespace Playarr.Xbox.Views
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
-            BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
+            BackdropFade.Fill = Theme.KeyArtStageHorizontalWash(0.22);
+            BackdropRightWash.Fill = Theme.KeyArtStageWashRight();
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
             LayoutExport.SetSplit(PlaybackButton, true);
             PlaybackButton.Height = 64;
+            WebFont.Apply(EpisodeTitleText, 570);
+            LayoutExport.SetRole(EpisodeTitleText, "heading");
             // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
             PlayButton.GotFocus += (s, e) => PaintPlay(true);
             PlayButton.LostFocus += (s, e) => PaintPlay(false);
@@ -67,8 +70,10 @@ namespace Playarr.Xbox.Views
         private void PaintPlay(bool focused)
         {
             var resources = Application.Current.Resources;
-            PlayButton.Background = (Windows.UI.Xaml.Media.Brush)resources[focused ? "PlayarrBrand" : "PlayarrInk"];
-            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrSurfaceStrong"];
+            // The focused primary action turns brand red (#a52745, both themes) with white ink and grows 6 %.
+            PlayButton.Background = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xA5, 0x27, 0x45)) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrInk"];
+            PlayScale.ScaleX = PlayScale.ScaleY = focused ? 1.06 : 1;
+            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrBg"];
             PlayLabel.Foreground = ink;
             PlayIcon.Foreground = ink;
         }
@@ -107,7 +112,7 @@ namespace Playarr.Xbox.Views
 
             var work = _viewModel.Work;
             // A short number stays with the next word, so "2 Fast 2 Furious" wraps as the web draws it: "2 Fast" / "2 Furious".
-            TitleText.Text = System.Text.RegularExpressions.Regex.Replace(_viewModel.Title, @"(?<=^|\s)(\d{1,2}) (?=\S)", "$1\u00a0");
+            TitleLayout.Build(TitleLines, System.Text.RegularExpressions.Regex.Replace(_viewModel.Title, @"(?<=^|\s)(\d{1,2}) (?=\S)", "$1\u00a0"), _titleTemplate);
             _header.Title.Text = work?.Kind switch
             {
                 WorkKind.Movie => "Movies",
@@ -120,6 +125,7 @@ namespace Playarr.Xbox.Views
             // The web header: the title beside the subtitle after a divider (not pink), as every other page.
             Ui.LayoutHeader(_header.Titles, _header.Title, _header.Subtitle);
             EyebrowText.Text = work != null && work.Genres.Count > 0 ? work.Genres[0].ToUpperInvariant() : string.Empty;
+            WebFont.Apply(EyebrowText, 820);
             // Web meta row: kind, year, then genres, spaced (runtime and release date need fields this client lacks).
             var meta = new System.Collections.Generic.List<string>();
             if (work != null)
@@ -144,9 +150,9 @@ namespace Playarr.Xbox.Views
                 meta.AddRange(work.Genres);
             }
 
-            MetaText.Text = string.Join("      ", meta);
-            LayoutExport.SetSplitOn(MetaText, "      ");
+            SetMeta(meta);
             OverviewText.Text = _viewModel.Overview;
+            OverviewText.Height = _viewModel.IsSeries ? 17.5 : 60.93; // the web reserves the synopsis lines before the actions
 
             if (work != null && !ReferenceEquals(_backdropWork, work))
             {
@@ -173,7 +179,7 @@ namespace Playarr.Xbox.Views
                 }
             }
 
-            PrimaryRow.Margin = new Thickness(0, _viewModel.IsSeries ? 9 : 32, 0, 0);
+            PrimaryRow.Margin = new Thickness(0, _viewModel.IsSeries ? 13.81 : 16.49, 0, 0);
             if (_viewModel.IsSeries && !ReferenceEquals(ActionRow.Parent, PrimaryRow))
             {
                 // The web's series page keeps Start, Add to watchlist and Add to Playlist on one row.
@@ -730,6 +736,7 @@ namespace Playarr.Xbox.Views
                 // A card without its frame still plays from its chapter.
             }
         }
+        private static readonly TextBlock _titleTemplate = new TextBlock { FontSize = 69.12, FontFamily = WebFont.Face(560), FontWeight = WebFont.Weight(560), CharacterSpacing = -72, TextWrapping = TextWrapping.NoWrap };
         private bool? _actionsInWatchlist;
         private Button? _downloadPill;
         private Button PlaybackButton { get; }
@@ -1160,11 +1167,21 @@ namespace Playarr.Xbox.Views
             }
 
             meta.AddRange(work.Genres);
-            MetaText.Text = string.Join("      ", meta);
-            LayoutExport.SetSplitOn(MetaText, "      ");
+            SetMeta(meta);
             if (!string.IsNullOrEmpty(episode.Overview))
             {
                 OverviewText.Text = episode.Overview;
+            }
+        }
+
+        /// <summary>The web's meta row: one run per part 13.6 px apart; the lead part (kind or season) is bolder and lighter ink, the rest muted.</summary>
+        private void SetMeta(System.Collections.Generic.IList<string> parts)
+        {
+            MetaRow.Children.Clear();
+            for (var i = 0; i < parts.Count; i++)
+            {
+                var block = Ui.Text(parts[i], 10.56, new FontWeight { Weight = i == 0 ? 680 : 400 }, i == 0 ? "PlayarrInkSoft" : "PlayarrInkMuted");
+                MetaRow.Children.Add(block);
             }
         }
 

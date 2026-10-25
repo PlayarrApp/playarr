@@ -96,14 +96,14 @@ namespace Playarr.Xbox.Views
         public static Brush FocusRing => (Brush)Application.Current.Resources["PlayarrFocusRing"];
 
         /// <summary>The web stage's left wash, mapped to the art layer's 960-unit width.</summary>
-        public static LinearGradientBrush KeyArtStageHorizontalWash() => new LinearGradientBrush
+        public static LinearGradientBrush KeyArtStageHorizontalWash(double fadeEnd = 0.44) => new LinearGradientBrush
         {
             StartPoint = new Windows.Foundation.Point(0, 0),
             EndPoint = new Windows.Foundation.Point(1, 0),
             GradientStops =
             {
                 new GradientStop { Color = SurfaceWithAlpha(0xFF), Offset = 0 },
-                new GradientStop { Color = SurfaceWithAlpha(0), Offset = 0.44 },
+                new GradientStop { Color = SurfaceWithAlpha(0), Offset = fadeEnd },
                 new GradientStop { Color = SurfaceWithAlpha(0), Offset = 1 },
             },
         };

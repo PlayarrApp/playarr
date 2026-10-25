@@ -247,7 +247,7 @@ namespace Playarr.Xbox.Views
             var label = (TextBlock)pill.Content;
             label.FontSize = 11.14;
             WebFont.Apply(label, 700);
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8.8 };
             row.Children.Add(Text(glyph, 12.81, FontWeights.Normal, brushKey));
             row.Children.Add(label);
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(pill, accessibleName ?? label.Text);
