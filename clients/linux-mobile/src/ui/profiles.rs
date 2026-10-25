@@ -83,8 +83,13 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         }
     };
     theme_pick.set_size_request(width(&theme_pick), 48);
+    crate::layout::name(
+        &theme_pick,
+        &format!("Theme: {}", THEMES[theme_pick.selected() as usize].1),
+    );
     theme_pick.connect_selected_notify(move |d| {
         d.set_size_request(width(d), 48);
+        crate::layout::name(d, &format!("Theme: {}", THEMES[d.selected() as usize].1));
         let name = THEMES[d.selected() as usize].0;
         store::update_settings(|s| s.theme = name.into());
         theme::apply(name);
@@ -97,6 +102,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     lang.set_size_request(112, 48);
     lang.set_tooltip_text(Some("The app follows this device's language."));
     decorate_dropdown(&lang, "globe");
+    crate::layout::name(&lang, "Auto");
     top.append(&lang);
     root.append(&top);
 
@@ -147,6 +153,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
         .build();
     let settings = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
     settings.set_child(Some(&icons::image("settings", 18, Tone::Brand)));
+    crate::layout::name(&settings, "Device Test settings");
     {
         let (app, client) = (app.clone(), client.clone());
         settings.connect_clicked(move |_| app.push_settings(client.clone()));
@@ -158,6 +165,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     out_row.append(&icons::image("logout", 18, Tone::Ink));
     out_row.append(&gtk4::Label::new(Some("Sign out")));
     sign_out.set_child(Some(&out_row));
+    crate::layout::name(&sign_out, "Sign out Device Test");
     {
         let app = app.clone();
         sign_out.connect_clicked(move |_| app.sign_out());
@@ -259,6 +267,14 @@ fn tile(
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
+    crate::layout::name(
+        &b,
+        &if p.is_current {
+            format!("{}, current profile", p.display_name)
+        } else {
+            p.display_name.clone()
+        },
+    );
     // The web's avatar link starts 1.8 px in and 2.7 px down, and ends 3 px short of the label block; its round
     // box and the avatar drawing inside it are separate elements.
     let (app, client, current, user_id) = (app.clone(), client.clone(), p.is_current, p.id.clone());
@@ -426,6 +442,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
+    crate::layout::name(&b, "+ Sign in ADD ANOTHER PROFILE");
     let app = app.clone();
     b.connect_clicked(move |_| {
         if !app.is_signing_out() {

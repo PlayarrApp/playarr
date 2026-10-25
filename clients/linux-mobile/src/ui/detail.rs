@@ -231,6 +231,12 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     );
     let b = gtk4::Button::builder()
         .child(&row)
+        // The film's Play is a link on the web; Resume and Start are buttons.
+        .accessible_role(if primary && label == "Play" {
+            gtk4::AccessibleRole::Link
+        } else {
+            gtk4::AccessibleRole::Button
+        })
         .css_classes(if primary {
             vec!["pa-action", "primary"]
         } else {
@@ -468,6 +474,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     };
     let row1 = gtk4::Box::builder().spacing(8).build();
     let download = action_pill("downloads", "Download", 104, false, true);
+    crate::layout::name(&download, &format!("Download {title}"));
     match l.detail.media_file_id.clone().filter(|_| !series) {
         Some(file) => {
             let (app, work) = (app.clone(), w.clone());
@@ -491,6 +498,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         let started = l.resume.as_ref().map(|(_, pos, _)| *pos > 0).unwrap_or(false);
         if let Some((file, pos, label)) = l.resume.as_ref().filter(|_| started) {
             let b = action_pill("play", "Resume", 32, true, false);
+            crate::layout::name(&b, &format!("Resume {title}"));
             let (file, pos, play, t) = (file.clone(), *pos, play.clone(), format!("{title} {label}"));
             b.connect_clicked(move |_| play(file.clone(), pos, t.clone()));
             row1.append(&b);
@@ -498,6 +506,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             if let Some(file) = e.media_file_id.clone() {
                 // Nothing watched yet: the web says Start and has no Ask again.
                 let b = action_pill("play", "Start", 100, true, false);
+                crate::layout::name(&b, &format!("Start {title}"));
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), 0, t.clone()));
                 row1.append(&b);
@@ -512,6 +521,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         row1.append(&download);
         let playback = action_pill("list", "Playback", 104, false, false);
         playback.set_tooltip_text(Some("Playback options are not available yet."));
+        crate::layout::name(&playback, &format!("Playback settings for {title}"));
         row1.append(&playback);
         if w.kind == "movie" {
             if let Some(file) = l.detail.media_file_id.clone() {
@@ -520,6 +530,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                     None => ("Play".to_string(), 0),
                 };
                 let b = action_pill("play", &label, if start == 0 { 104 } else { 110 }, true, false);
+                crate::layout::name(&b, &format!("Play {title}"));
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
                 row1.append(&b);
@@ -528,6 +539,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     }
     let row2 = gtk4::Box::builder().spacing(8).margin_top(12).build();
     let watch = action_pill("add", "Add to watchlist", 108, false, true);
+    crate::layout::name(&watch, "+ Add to watchlist");
     {
         let (app, work) = (app.clone(), w.clone());
         watch.connect_clicked(move |b| {
@@ -549,6 +561,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         });
     }
     let playlist = action_pill("add", "Add to Playlist", 104, false, true);
+    crate::layout::name(&playlist, "+ Add to Playlist");
     {
         let (app, work) = (app.clone(), w.clone());
         playlist.connect_clicked(move |_| super::actions::show(&app, &work));

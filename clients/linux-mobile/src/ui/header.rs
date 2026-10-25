@@ -79,6 +79,8 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .visible(false)
         .build();
     extra.set_child(Some(&icons::image("bell", 18, Tone::Soft)));
+    crate::layout::name(&action, "Filters");
+    crate::layout::name(&extra, "Calendar link");
     // The web's names for the header controls (a link on list pages, a button on detail and settings pages).
     let name = match title {
         "" => "Back to Movies",

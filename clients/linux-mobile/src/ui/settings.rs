@@ -56,7 +56,11 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
     arrow.set_margin_end(if n == 1 { -10 } else { 0 });
     row.append(&arrow);
 
-    gtk4::Button::builder().child(&row).css_classes(["pa-pref"]).build()
+    gtk4::Button::builder()
+        .child(&row)
+        .accessible_role(gtk4::AccessibleRole::Link)
+        .css_classes(["pa-pref"])
+        .build()
 }
 
 pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {

@@ -56,6 +56,8 @@ struct Paints {
     textures: Vec<Tex>,
     /// Rounded clips (a widget with `overflow: hidden` and a border radius): box and corner radius.
     clips: Vec<(Rect, f32)>,
+    /// Opacity nodes (a disabled control's dimming, `opacity` in CSS): box and factor.
+    opacities: Vec<(Rect, f32)>,
 }
 
 fn rect_of(r: &graphene::Rect) -> Rect {
@@ -145,17 +147,18 @@ fn collect(
         }
         T::OpacityNode => {
             let n = node.downcast_ref::<gsk::OpacityNode>().unwrap();
+            out.opacities.push((to_root(m, &node.bounds()), n.opacity()));
             collect(&n.child(), m, opacity * n.opacity(), rclip, clip, out);
         }
         T::RoundedClipNode => {
             let n = node.downcast_ref::<gsk::RoundedClipNode>().unwrap();
             let r = n.clip().corner()[0].width();
-            out.clips.push((to_root(m, &n.clip().bounds()), r));
+            out.clips.push((to_root(m, n.clip().bounds()), r));
             collect(
                 &n.child(),
                 m,
                 opacity,
-                Some((to_root(m, &n.clip().bounds()), r)),
+                Some((to_root(m, n.clip().bounds()), r)),
                 clip,
                 out,
             );
@@ -296,6 +299,7 @@ struct Walk<'a> {
     paints: Paints,
     claimed: Vec<bool>,
     clip_claimed: Vec<bool>,
+    opacity_claimed: Vec<bool>,
     viewport: Rect,
     items: Vec<Item>,
 }
@@ -337,7 +341,15 @@ impl Walk<'_> {
             return;
         };
         let b = rect_of(&rb);
-        let opacity = widget_opacity * w.opacity();
+        let mut opacity = widget_opacity * w.opacity();
+        // The dimming GTK paints for this widget (an opacity node over its own box).
+        for i in 0..self.paints.opacities.len() {
+            let (ob, f) = self.paints.opacities[i];
+            if !self.opacity_claimed[i] && near(ob, b, 0.6) && (f - 1.0).abs() > 0.004 {
+                self.opacity_claimed[i] = true;
+                opacity *= f64::from(f);
+            }
+        }
         let mut clip = clip;
         if w.overflow() == gtk4::Overflow::Hidden || w.is::<gtk4::ScrolledWindow>() {
             clip = clip_rect(clip, b);
@@ -629,6 +641,7 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         root,
         claimed: vec![false; paints.fills.len()],
         clip_claimed: vec![false; paints.clips.len()],
+        opacity_claimed: vec![false; paints.opacities.len()],
         paints,
         viewport,
         items: Vec::new(),

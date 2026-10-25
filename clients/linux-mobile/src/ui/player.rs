@@ -146,6 +146,8 @@ pub fn build(app: Rc<App>, client: Client, req: PlayRequest) -> gtk4::Widget {
         .css_classes(["pa-round"])
         .halign(gtk4::Align::End)
         .build();
+    crate::layout::name(&minimise, "Minimise player");
+    crate::layout::name(&back, "Close player");
     minimise.set_child(Some(&crate::icons::image(
         "p-fullscreen-exit",
         20,
@@ -296,6 +298,7 @@ fn start_pipeline(
         b
     };
     let scale = gtk4::Scale::with_range(gtk4::Orientation::Horizontal, 0.0, 1.0, 0.001);
+    crate::layout::name(&scale, "Seek");
     scale.set_hexpand(true);
     scale.set_show_fill_level(true);
     scale.set_restrict_to_fill_level(false);
@@ -342,6 +345,10 @@ fn start_pipeline(
     // The web's quality button: an "HD" glyph left of the 44 px button and the wrapped label centred over it.
     let quality = gtk4::Button::builder().css_classes(["pa-ctl"]).build();
     quality.set_size_request(44, 44);
+    crate::layout::name(
+        &quality,
+        &format!("Quality: {}", quality_text(direct, info.original_bps)),
+    );
     let quality_label = gtk4::Label::builder()
         .label(quality_text(direct, info.original_bps))
         .css_classes(["pa-quality"])
