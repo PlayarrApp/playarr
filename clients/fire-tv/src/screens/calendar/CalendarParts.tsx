@@ -119,7 +119,7 @@ export function StatusPill({tone, label, size = 13.44}: {tone: EntryPillTone | '
       style={{
         height: u(26.6),
         paddingHorizontal: u(10.4),
-        borderRadius: 999,
+        borderRadius: u(13.3),
         borderWidth: 1,
         borderColor: mix(tint, 0.6),
         backgroundColor: blend(tint, colour.surface, 0.14),
@@ -391,7 +391,7 @@ function WatchlistPill({listed, onPress}: {listed: boolean | null; onPress: () =
       style={{
         height: u(58),
         paddingHorizontal: u(21),
-        borderRadius: 999,
+        borderRadius: u(29),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

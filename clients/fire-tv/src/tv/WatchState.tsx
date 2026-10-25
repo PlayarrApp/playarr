@@ -48,7 +48,7 @@ export function WatchState({progress, showUnwatched = false, dot = 13, inset = 1
           top: u(inset),
           width: u(dot),
           height: u(dot),
-          borderRadius: 50,
+          borderRadius: u(dot / 2),
           backgroundColor: '#cf3157',
           borderWidth: u(2),
           borderColor: mix('#ffffff', 0.94),

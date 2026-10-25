@@ -546,7 +546,7 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
         height: u(64),
         marginRight: u(16),
         paddingHorizontal: u(primary ? 21.6 : 16),
-        borderRadius: 999,
+        borderRadius: u(32),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

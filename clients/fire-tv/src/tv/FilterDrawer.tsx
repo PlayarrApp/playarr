@@ -219,7 +219,7 @@ export function CloseButton({label, onPress, onFocused, x = 1826 - DRAWER_X, tak
         top: u(54),
         width: u(48),
         height: u(50),
-        borderRadius: 50,
+        borderRadius: u(24),
         borderWidth: 1,
         borderColor: mix(colour.line, 0.76),
         alignItems: 'center',

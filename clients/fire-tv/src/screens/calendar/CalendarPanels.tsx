@@ -284,7 +284,7 @@ function GhostButton({label, onPress, disabled}: {label: string; onPress: () => 
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      style={{height: u(58), paddingHorizontal: u(21), borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? colour.surfaceSoft : 'transparent', opacity: disabled ? 0.55 : 1}}
+      style={{height: u(58), paddingHorizontal: u(21), borderRadius: u(29), alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? colour.surfaceSoft : 'transparent', opacity: disabled ? 0.55 : 1}}
     >
       <T size={14.72} weight={720} color={colour.ink}>
         {label}
@@ -318,7 +318,7 @@ export function PeriodPicker({label, anchor, locale, onChange}: {label: string; 
           setOpen(true);
         }}
         // The web's range button: a secondary pill in the header group, left of Previous / Today / Next (right edge 1613.9).
-        style={{position: 'absolute', right: u(1920 - 1613.9), top: u(56.2), height: u(50), paddingHorizontal: u(21), borderRadius: 999, borderWidth: 1, borderColor: colour.line, flexDirection: 'row', alignItems: 'center', backgroundColor: colour.surface}}
+        style={{position: 'absolute', right: u(1920 - 1613.9), top: u(56.2), height: u(50), paddingHorizontal: u(21), borderRadius: u(25), borderWidth: 1, borderColor: colour.line, flexDirection: 'row', alignItems: 'center', backgroundColor: colour.surface}}
       >
         <T size={14.72} weight={720} color={colour.inkSoft}>
           {label}

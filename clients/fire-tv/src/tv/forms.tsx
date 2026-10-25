@@ -90,7 +90,7 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: u(primary ? 24 : 16),
-        borderRadius: 999,
+        borderRadius: u(height / 2),
         borderWidth: primary ? 0 : 1,
         borderColor: colour.lineStrong,
         backgroundColor: primary ? (focused ? colour.ink : colour.accent) : focused ? colour.surfaceSoft : colour.surface,

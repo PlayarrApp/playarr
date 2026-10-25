@@ -154,10 +154,11 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       // A view moved by a relative `top` is measured where it is drawn; the line box starts at its layout position, and the browser's
       // text range sits centred in the line box (the content area is shorter than the line height).
       const lineTop = rect.y - (style.position === 'relative' && typeof style.top === 'number' ? style.top / scale : 0);
-      const lh = style.lineHeight ? style.lineHeight / scale : runH;
       const upper = style.textTransform === 'uppercase';
       const native = lines && lines.length ? lines : [{x: 0, y: 0, width: r[2], height: r[3], text}];
       native.forEach((line, index) => {
+        // The line box the renderer laid out (its own height when the style sets no line height).
+        const lh = style.lineHeight ? style.lineHeight / scale : line.height / scale;
         const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
         if (!lineText) return;
         out.push({

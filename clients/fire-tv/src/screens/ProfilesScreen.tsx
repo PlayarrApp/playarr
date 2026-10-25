@@ -187,7 +187,7 @@ function ProfileChoice({
         style={{
           width: u(244),
           height: u(244),
-          borderRadius: 999,
+          borderRadius: u(122),
           transform: selected ? [{scale: 1.035}] : [],
           borderWidth: selected ? u(4) : 0,
           borderColor: selectedRing(colour.accent),
@@ -226,7 +226,7 @@ function AddProfileTile({selected, onFocus, onPress}: {selected: boolean; onFocu
         style={{
           width: u(244),
           height: u(244),
-          borderRadius: 999,
+          borderRadius: u(122),
           borderWidth: selected ? u(4) : 1,
           borderStyle: selected ? 'solid' : 'dashed',
           borderColor: selected ? selectedRing(colour.accent) : mix(colour.lineStrong, 0.66),
