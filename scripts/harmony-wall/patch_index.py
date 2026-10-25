@@ -59,8 +59,21 @@ s = s.replace("    .hideTitleBar(true)\n  }\n}", "    .hideTitleBar(true)\n    .
 assert '.navDestination(this.previewRoutes)' in s
 open(p, 'w').write(s)
 
-if os.environ.get('DEVICE', 'tv') == 'tv':  # the TV window is taller than the 1080 stage and the stage starts 60 down, so no box is clamped by the window
-    s = open(p).read()
-    if '.height(1080)' not in s:
-        s = s.replace('.mode(NavigationMode.Stack)', '.mode(NavigationMode.Stack)\n    .height(1080)\n    .margin({ top: 60 })\n    .clip(false)', 1)
-        open(p, 'w').write(s)
+# The Previewer window is larger than the stage (TV 1920 x 1740 px, stage at (0, 60); phone 2520 x 4320 px, stage 360 x 780 vp at (60, 60) vp)
+# so no box is clamped by the window; the stage keeps its fixed size and offset, the capture crops it out and the exporter subtracts the offset.
+s = open(p).read()
+if '.clip(false)' not in s:
+    if os.environ.get('DEVICE', 'tv') == 'tv':
+        fixed = '.height(1080)\n    .margin({ top: 60 })'
+    else:
+        fixed = '.width(360)\n    .height(780)\n    .margin({ left: 60, top: 60 })'
+    s = s.replace('.mode(NavigationMode.Stack)', '.mode(NavigationMode.Stack)\n    ' + fixed + '\n    .clip(false)', 1)
+    open(p, 'w').write(s)
+
+# The device profile is read from the stage, not the larger window.
+svc = os.path.join(os.path.dirname(pages_dir), 'device', 'DeviceProfileService.ets')
+t = open(svc).read()
+stage_w, stage_h = ('1920', '1080') if os.environ.get('DEVICE', 'tv') == 'tv' else ('360', '780')
+old = "    widthVp: rect.width / densityPixels,\n    heightVp: rect.height / densityPixels,"
+if old in t:
+    open(svc, 'w').write(t.replace(old, "    widthVp: %s + rect.width * 0,\n    heightVp: %s + rect.height * 0," % (stage_w, stage_h), 1))
