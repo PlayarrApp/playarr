@@ -272,6 +272,7 @@ fn start_pipeline(
 
     let picture = gtk4::Picture::builder()
         .paintable(&paintable)
+        .css_classes(["pa-video"])
         .content_fit(gtk4::ContentFit::Contain)
         .hexpand(true)
         .vexpand(true)
@@ -303,33 +304,19 @@ fn start_pipeline(
     scale.set_show_fill_level(true);
     scale.set_restrict_to_fill_level(false);
     // The web's slider box is 44 px high around the 6 px track.
-    let pos_label = gtk4::Label::builder()
-        .label("0:00")
-        .css_classes(["pa-player-time"])
-        .build();
-    let dur_label = gtk4::Label::builder()
-        .label("0:00")
-        .css_classes(["pa-player-time"])
-        .build();
     // The web's gaps: 13 px under the scrubber, 6 px above the first control row.
     // The web's time row is the full 336 px wide, 16.88 px high, overlapping the scrubber's 44 px hit area by 6 px.
     let times = gtk4::Box::builder().margin_bottom(4).height_request(17).build();
     times.set_margin_top(-6);
-    let times_inner = gtk4::Box::builder()
-        .spacing(6)
+    // One label draws "pos / duration"; the separator is its own span.
+    let times_inner = gtk4::Label::builder()
+        .accessible_role(gtk4::AccessibleRole::Generic)
+        .use_markup(true)
+        .css_classes(["pa-player-time"])
         .halign(gtk4::Align::Center)
         .hexpand(true)
         .build();
-    times_inner.append(&pos_label);
-    times_inner.append(
-        &gtk4::Label::builder()
-            .label("/")
-            .css_classes(["pa-player-time", "sep"])
-            .build(),
-    );
-    times_inner.append(&dur_label);
     times.append(&times_inner);
-    let times_inner_tick = times_inner.clone();
     let row1 = gtk4::Box::builder().spacing(2).halign(gtk4::Align::Center).build();
     for b in [&skip_back, &toggle, &skip_fwd, &mute] {
         row1.append(b);
@@ -590,12 +577,11 @@ fn start_pipeline(
             set_icon(&toggle, "p-play");
         }
         let pos = player.position_ms();
-        crate::layout::name(
-            &times_inner_tick,
-            &format!("{} / {}", super::detail::fmt_clock(pos), super::detail::fmt_clock(dur)),
-        );
-        pos_label.set_label(&super::detail::fmt_clock(pos));
-        dur_label.set_label(&super::detail::fmt_clock(dur));
+        times_inner.set_markup(&format!(
+            "{}<span foreground=\"#a5969e\" letter_spacing=\"2048\"> / </span>{}",
+            super::detail::fmt_clock(pos),
+            super::detail::fmt_clock(dur)
+        ));
         if dur > 0 {
             updating.set(true);
             scale.set_value((pos as f64 / dur as f64).clamp(0.0, 1.0));
