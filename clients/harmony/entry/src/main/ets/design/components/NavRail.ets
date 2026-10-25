@@ -100,7 +100,7 @@ const NAV_TILE_SELECTED_BG_ALPHA: number = 0.09;
 // Web `.app-nav-group` shadow: 0 14px 42px rgba(56, 38, 33, 0.10), the same warm ink in both themes.
 const NAV_GROUP_SHADOW_COLOR: string = 'rgba(56, 38, 33, 0.1)';
 // Web `.app-nav-label` letter spacing (0.035em of 8.832px).
-const NAV_TILE_LABEL_LETTER_SPACING: number = 0.31;
+const NAV_TILE_LABEL_LETTER_SPACING: number = 0.40; // fitted to the web run widths of the rail labels
 
 
 /** Vertical gap between a tile's icon and its label. Not in the brief at
@@ -189,6 +189,7 @@ struct NavTile {
         .textAlign(TextAlign.Center)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .margin({ top: -1.4 }) // web's label run sits 1.4 higher than ArkUI's half-leading line puts it
     }
     .id(`${this.item.id}-nav-tile`)
     .padding({ top: tv(15.2) }) // web: the icon sits 15.2 below the tile top, the label 2.75 under it
