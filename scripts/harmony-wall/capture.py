@@ -61,11 +61,11 @@ def key(*names):
 
 
 def click(x, y):
-    get("/click", x=x, y=y)
+    get("/click", x=x + STAGE_ORIGIN[0], y=y + STAGE_ORIGIN[1])
 
 
 def longclick(x, y):
-    get("/longclick", x=x, y=y)
+    get("/longclick", x=x + STAGE_ORIGIN[0], y=y + STAGE_ORIGIN[1])
 
 
 def route(name, wait=12):
@@ -439,7 +439,7 @@ def motion_walk(folder):
     """Round 3 motion: Home scrolled down through the rails and back up, then along a rail, then Filters scrolled, by pointer swipes
     (the Previewer drops keys). Frames to capture/motion/<theme>/."""
     def swipe(x1, y1, x2, y2):
-        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2); time.sleep(0.7)
+        get("/swipe", x1=x1 + STAGE_ORIGIN[0], y1=y1 + STAGE_ORIGIN[1], x2=x2 + STAGE_ORIGIN[0], y2=y2 + STAGE_ORIGIN[1]); time.sleep(0.7)
 
     route("home", 30); focus_first_card(); burst(folder, "home-00-top")
     for i in range(1, 5):
@@ -843,7 +843,7 @@ else:
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
                 # the web refs are taken at page top; the app scrolls to the next-up episode, so drag back up before the frame
                 for _ in range(3):
-                    get("/swipe", x1=540, y1=500, x2=540, y2=2200, steps=12, ms=300); time.sleep(1.5)
+                    get("/swipe", x1=540 + STAGE_ORIGIN[0], y1=500 + STAGE_ORIGIN[1], x2=540 + STAGE_ORIGIN[0], y2=2200 + STAGE_ORIGIN[1], steps=12, ms=300); time.sleep(1.5)
                 time.sleep(2)
                 snap(name, folder, 100000)
                 if kind == "series":  # the saved frame itself must show art (the page may have moved since the last check)
@@ -944,7 +944,7 @@ else:
             debug("motion-%s-%d" % (name, i), png()); time.sleep(gap)
 
     def swipe(x1, y1, x2, y2):
-        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2, steps=12, ms=300)
+        get("/swipe", x1=x1 + STAGE_ORIGIN[0], y1=y1 + STAGE_ORIGIN[1], x2=x2 + STAGE_ORIGIN[0], y2=y2 + STAGE_ORIGIN[1], steps=12, ms=300)
 
     def motion_home():
         route("home", 40); burst("home-00-top")
