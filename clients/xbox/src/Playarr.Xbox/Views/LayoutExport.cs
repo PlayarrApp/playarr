@@ -257,7 +257,7 @@ namespace Playarr.Xbox.Views
                 var lines = new List<(Rect Box, int From, int To)>();
                 for (var i = offset; i < offset + length; i++)
                 {
-                    var rect = block.ContentStart.GetPositionAtOffset(i + 1, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
+                    var rect = block.ContentStart.GetPositionAtOffset(i, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
                     if (rect.IsEmpty || rect.Width <= 0 && block.Text[i] == ' ')
                     {
                         continue;
