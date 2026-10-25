@@ -240,11 +240,33 @@ namespace Playarr.Xbox.Views
 
         }
 
+        private sealed class InkHolder
+        {
+            public Brush? Brush;
+        }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<TextBlock, InkHolder> RestingInk = new System.Runtime.CompilerServices.ConditionalWeakTable<TextBlock, InkHolder>();
+
         private static void Apply(object source, bool focused, bool halo, double ringOutset, double lift)
         {
             if (!(source is SelectorItem { ContentTemplateRoot: Panel card }))
             {
                 return;
+            }
+
+            // The web turns the caption lines to the pure focus ink (white in dark, black in light) while the card has focus.
+            foreach (var child in card.Children)
+            {
+                if (child is TextBlock caption)
+                {
+                    if (!RestingInk.TryGetValue(caption, out var resting))
+                    {
+                        resting = new InkHolder { Brush = caption.Foreground };
+                        RestingInk.Add(caption, resting);
+                    }
+
+                    caption.Foreground = focused ? (Brush)Application.Current.Resources["PlayarrFocusInk"] : resting.Brush;
+                }
             }
 
             // The art is the first Grid; a resting-shadow canvas may sit before it.

@@ -24,15 +24,15 @@ namespace Playarr.Xbox.Views
         /// <summary>Left edge of page content (the web page header starts here).</summary>
         public const double ContentLeft = 154;
 
-        private const double RailLeft = 42;
-        private const double RailWidth = 78;
+        private const double RailLeft = 42.23;
+        private const double RailWidth = 77.5;
         private const double ItemHeight = 72;
 
         private readonly Frame _frame;
         private readonly Grid _chrome = new Grid { IsHitTestVisible = true };
         private readonly List<(Button Button, Type Page, WorkKind? Kind)> _items = new List<(Button, Type, WorkKind?)>();
-        private readonly TextBlock _time = new TextBlock { FontSize = 17.28, FontFamily = WebFont.Face(760), FontWeight = WebFont.Weight(760), CharacterSpacing = -30, LineHeight = 25.92, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        private readonly TextBlock _date = new TextBlock { FontSize = 11.14, FontFamily = WebFont.Face(640), FontWeight = WebFont.Weight(640), CharacterSpacing = 40, LineHeight = 12.25, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _time = new TextBlock { FontSize = 17.28, FontFamily = WebFont.Face(760), FontWeight = WebFont.Weight(760), CharacterSpacing = -30, LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+        private readonly TextBlock _date = new TextBlock { FontSize = 11.14, FontFamily = WebFont.Face(640), FontWeight = WebFont.Weight(640), CharacterSpacing = 40, LineHeight = 15, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _profileName = new TextBlock { FontSize = 8.83, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), CharacterSpacing = 34, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
         private readonly List<(TextBlock Label, string Key)> _labels = new List<(TextBlock, string)>();
         private Border _avatar = null!;
@@ -46,7 +46,8 @@ namespace Playarr.Xbox.Views
             Instance = this;
             // The remote's D-pad is a gamepad on Xbox, but a keyboard (and the device-wall tests) must move focus the
             // same way: arrow keys move focus spatially across the nav rail, rails and grids, not only inside a list.
-            Root = new Grid { XYFocusKeyboardNavigation = Windows.UI.Xaml.Input.XYFocusKeyboardNavigationMode.Enabled };
+            // Fractional layout, as the web: whole-pixel snapping would move every 73.59 px rail pitch and 240.5 px grid row.
+            Root = new Grid { XYFocusKeyboardNavigation = Windows.UI.Xaml.Input.XYFocusKeyboardNavigationMode.Enabled, UseLayoutRounding = false };
             Root.PreviewKeyDown += EnterRailLevel;
             Root.Children.Add(frame);
             LayoutExport.SetShell(_chrome, true);
@@ -138,11 +139,11 @@ namespace Playarr.Xbox.Views
 
             var groups = new StackPanel
             {
-                Spacing = 13,
+                Spacing = 13.6,
                 Width = RailWidth,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(RailLeft, 119, 0, 0),
+                Margin = new Thickness(RailLeft, 119.11, 0, 0),
             };
             groups.Children.Add(Group(Item("Downloads", typeof(DownloadsPage), null), Item("Search", typeof(SearchPage), null)));
             groups.Children.Add(Group(
@@ -166,7 +167,7 @@ namespace Playarr.Xbox.Views
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
             var avatar = _avatar;
-            var profileContent = new StackPanel { Spacing = 3.5, Margin = new Thickness(0, 0.7, 0, 0) };
+            var profileContent = new StackPanel { Spacing = 2.75, Margin = new Thickness(0, 0.7, 0, 0) };
             profileContent.Children.Add(avatar);
             profileContent.Children.Add(_profileName);
             var profile = RailButton(profileContent, typeof(SettingsPage), null);
@@ -175,7 +176,7 @@ namespace Playarr.Xbox.Views
             var profileGroup = Group(profile);
             profileGroup.VerticalAlignment = VerticalAlignment.Top;
             profileGroup.HorizontalAlignment = HorizontalAlignment.Left;
-            profileGroup.Margin = new Thickness(RailLeft, 952, 0, 0);
+            profileGroup.Margin = new Thickness(RailLeft, 952.42, 0, 0);
             _chrome.Children.Add(profileGroup);
 
             _chrome.Children.Add((new TextBlock
@@ -191,7 +192,7 @@ namespace Playarr.Xbox.Views
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(RailLeft, 1037.8, 0, 0),
+                Margin = new Thickness(RailLeft, 1036.65, 0, 0),
             }));
 
             var clock = new StackPanel
@@ -200,7 +201,7 @@ namespace Playarr.Xbox.Views
                 Spacing = 11.2,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(480.97, 68.19, 0, 0),
+                Margin = new Thickness(480.97, 69.19, 0, 0),
                 IsHitTestVisible = false,
             };
             clock.Children.Add(_time);
@@ -220,7 +221,7 @@ namespace Playarr.Xbox.Views
             {
                 Child = stack,
                 Width = RailWidth,
-                Padding = new Thickness(6, 2.1, 6, 0.9),
+                Padding = new Thickness(5.75, 1.925, 5.75, 1.925),
                 CornerRadius = new CornerRadius(22),
                 // Measured on the web rail: a lifted fill and a hairline (light: near-white with a soft shadow, dark: 30 26 30 over 27 23 26).
                 Background = (Brush)Application.Current.Resources["PlayarrRailFill"],
@@ -231,7 +232,7 @@ namespace Playarr.Xbox.Views
 
         private Button Item(string label, Type? page, WorkKind? kind)
         {
-            var content = new StackPanel { Spacing = 3.5, Margin = new Thickness(0, 0.7, 0, 0) };
+            var content = new StackPanel { Spacing = 2.75, Margin = new Thickness(0, 0.7, 0, 0) };
             content.Children.Add(NavIcons.Create(label, (Brush)Application.Current.Resources["PlayarrInkMuted"]));
             var text = new TextBlock { Text = Lang.T("shell.nav." + label.ToLowerInvariant()), FontSize = 8.83, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), CharacterSpacing = 34, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
             _labels.Add((text, label));
@@ -266,7 +267,7 @@ namespace Playarr.Xbox.Views
                 Content = content,
                 Width = 64, // the web's --tv-nav-item-size
                 Height = 64,
-                Margin = new Thickness(0, 5, 0, 5),
+                Margin = new Thickness(0, 4.795, 0, 4.795),
                 Padding = new Thickness(0),
                 CornerRadius = new CornerRadius(16),
                 HorizontalContentAlignment = HorizontalAlignment.Center,
@@ -303,7 +304,7 @@ namespace Playarr.Xbox.Views
                 ? new SolidColorBrush(Color.FromArgb(36, ink.R, ink.G, ink.B))
                 : current ? new SolidColorBrush(Color.FromArgb(23, ink.R, ink.G, ink.B)) : new SolidColorBrush(Colors.Transparent);
             var scale = (ScaleTransform)button.RenderTransform;
-            scale.ScaleX = scale.ScaleY = focused ? 1.1 : current ? 1.04 : 1;
+            scale.ScaleX = scale.ScaleY = focused ? 1.1 : current ? 1.05 : 1;
         }
 
         private void Sync(NavigationEventArgs e)

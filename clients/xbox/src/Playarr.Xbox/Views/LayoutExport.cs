@@ -81,8 +81,24 @@ namespace Playarr.Xbox.Views
                 return Math.Round(block.DesiredSize.Width, 2);
             }
 
+            // How each line stacking strategy reports a line's character rectangle (y, height) for a two-line block at 20 px with LineHeight 30.
+            object Strategy(LineStackingStrategy strategy)
+            {
+                var block = new TextBlock { Text = "Hello world\nsecond line", FontSize = 20, LineHeight = 30, LineStackingStrategy = strategy };
+                WebFont.Apply(block, 400);
+                var host = new Grid { Width = 400, Height = 200 };
+                host.Children.Add(block);
+                host.Measure(new Size(400, 200));
+                host.Arrange(new Rect(0, 0, 400, 200));
+                host.UpdateLayout();
+                var first = block.ContentStart.GetPositionAtOffset(2, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
+                var second = block.ContentStart.GetPositionAtOffset(15, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
+                return new { strategy = strategy.ToString(), desired = Math.Round(block.DesiredSize.Height, 2), first = new[] { Math.Round(first.Y, 2), Math.Round(first.Height, 2) }, second = new[] { Math.Round(second.Y, 2), Math.Round(second.Height, 2) } };
+            }
+
             return new
             {
+                strategies = new[] { Strategy(LineStackingStrategy.MaxHeight), Strategy(LineStackingStrategy.BlockLineHeight), Strategy(LineStackingStrategy.BaselineToBaseline) },
                 w400 = Width(400, 0), w600 = Width(600, 0), w680 = Width(680, 0), w700 = Width(700, 0), w720 = Width(720, 0), w760 = Width(760, 0), w800 = Width(800, 0), w900 = Width(900, 0),
                 s0 = Width(400, 0), s100 = Width(400, 100), s_100 = Width(400, -100),
             };
@@ -224,7 +240,7 @@ namespace Playarr.Xbox.Views
             {
                 role = "container";
             }
-            else if (element is Windows.UI.Xaml.Shapes.Shape shape && (Hex(shape.Fill) is not null || shape.Fill is GradientBrush))
+            else if (element is Windows.UI.Xaml.Shapes.Shape shape && (Hex(shape.Fill) is not null || shape.Fill is GradientBrush || (shape.StrokeThickness > 0 && Hex(shape.Stroke) is not null)))
             {
                 role = "container";
             }
@@ -240,7 +256,10 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            var radius = element is Border b ? b.CornerRadius.TopLeft : element is Grid g ? g.CornerRadius.TopLeft : element is Control c ? c.CornerRadius.TopLeft : 0;
+            var radius = element is Border b ? b.CornerRadius.TopLeft : element is Grid g ? g.CornerRadius.TopLeft : element is Control c ? c.CornerRadius.TopLeft : element is Windows.UI.Xaml.Shapes.Ellipse ? Math.Min(element.ActualWidth, element.ActualHeight) / 2 : 0;
+            // A radius is drawn in the element's own units: carry it through the same transforms as the box.
+            var drawn = Bounds(element, root, scale);
+            var radiusScale = element.ActualWidth > 0 ? drawn.Width / (element.ActualWidth * scale) : 1.0;
             output.Add(new
             {
                 text,
@@ -250,7 +269,7 @@ namespace Playarr.Xbox.Views
                 background = role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element, includeSelf: Own(element) != null)),
                 fontSize,
                 fontWeight,
-                radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
+                radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 1) : null,
                 opacity = EffectiveOpacity(element) is var opacity && opacity < 0.995 ? (double?)Math.Round(opacity, 2) : null,
             });
         }

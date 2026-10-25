@@ -47,16 +47,18 @@ namespace Playarr.Xbox.Views
         };
         private readonly Rectangle _stageWashLeft = new Rectangle { IsHitTestVisible = false };
         private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12.29, FontFamily = WebFont.Face(860), FontWeight = WebFont.Weight(860), CharacterSpacing = 100, LineHeight = 16, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69.12, FontFamily = WebFont.Face(560), FontWeight = WebFont.Weight(560), CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 36.4, 0, 0) };
-        private readonly StackPanel _metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12.9, Margin = new Thickness(0, 16.6, 0, 0) };
+        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69.12, FontFamily = WebFont.Face(560), FontWeight = WebFont.Weight(560), CharacterSpacing = -72, TextWrapping = TextWrapping.NoWrap };
+        // One block per title line at the font's own line height, stacked 62.2 px apart: the glyph rectangle is the platform's, the pitch the web's.
+        private readonly StackPanel _titleLines = new StackPanel { Margin = new Thickness(0, 11.33, 0, 0) };
+        private readonly StackPanel _metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12.8, Margin = new Thickness(0, 11.2, 0, 0) };
         private readonly TextBlock _meta = new TextBlock { FontSize = 13.06, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 18, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 20, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 26.2, 0, 0) };
+        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 20, LineStackingStrategy = LineStackingStrategy.BaselineToBaseline, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 26.2, 0, 0) };
         private readonly StackPanel _panel;
 
         public FocusDetail()
         {
             IsHitTestVisible = false;
-            var soft = (Brush)Application.Current.Resources["PlayarrInkSoft"];
+            var soft = (Brush)Application.Current.Resources["PlayarrInkHero"];
             _eyebrow.Foreground = (Brush)Application.Current.Resources["PlayarrBrandInk"];
             _meta.Foreground = soft;
             _overview.Foreground = soft;
@@ -78,9 +80,8 @@ namespace Playarr.Xbox.Views
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
             };
-            LayoutExport.SetRole(_title, "heading");
             _panel.Children.Add(_eyebrow);
-            _panel.Children.Add(_title);
+            _panel.Children.Add(_titleLines);
             _metaRow.Children.Add(_meta);
             _panel.Children.Add(_metaRow);
             _panel.Children.Add(_overview);
@@ -161,8 +162,28 @@ namespace Playarr.Xbox.Views
                 Search(0, new List<string>(), 0);
             }
 
-            _title.Text = string.Join("\n", bestLines);
+            _titleLines.Children.Clear();
+            foreach (var line in bestLines)
+            {
+                var block = new TextBlock
+                {
+                    Text = line,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    FontSize = _title.FontSize,
+                    FontFamily = _title.FontFamily,
+                    FontWeight = _title.FontWeight,
+                    CharacterSpacing = _title.CharacterSpacing,
+                    TextWrapping = TextWrapping.NoWrap,
+                    Foreground = _title.Foreground,
+                };
+                LayoutExport.SetRole(block, "heading");
+                block.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+                block.Margin = new Thickness(0, _titleLines.Children.Count == 0 ? 0 : TitlePitch - block.DesiredSize.Height, 0, 0);
+                _titleLines.Children.Add(block);
+            }
         }
+
+        private const double TitlePitch = 62.2;
 
         private double Width(string text)
         {
@@ -201,6 +222,12 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
+            // Home's hero sets its meta and synopsis a little smaller and tighter than the library's.
+            _meta.FontSize = withKind ? 12.86 : 13.06;
+            _overview.FontSize = withKind ? 12.86 : 13.82;
+            _overview.LineHeight = withKind ? 20.31 : 21.84;
+            _metaRow.Margin = new Thickness(0, withKind ? 6.8 : 11.2, 0, 0);
+            _overview.Margin = new Thickness(0, withKind ? 23.9 : 24.19, 0, 0);
             _backdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             Artwork.Load(_backdrop, work, 999, new[] { ImageKind.Backdrop }, requestWidth: withKind ? 1920 : 780, applyKeyArtFilter: true);
             var eyebrow = new List<string>();
