@@ -283,9 +283,23 @@ namespace Playarr.Xbox.Views
             {
                 var transform = block.TransformToVisual(root);
                 var lines = new List<(Rect Box, int From, int To)>();
+                // Text pointer offsets count the structure tokens before the first character: the first offset that resolves to a
+                // character rectangle is character 0.
+                var shift = -1;
+                for (var o = 0; o < 8 && shift < 0; o++)
+                {
+                    var probe = block.ContentStart.GetPositionAtOffset(o, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
+                    shift = probe.IsEmpty ? -1 : o;
+                }
+
+                if (shift < 0)
+                {
+                    return;
+                }
+
                 for (var i = offset; i < offset + length; i++)
                 {
-                    var rect = block.ContentStart.GetPositionAtOffset(i, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
+                    var rect = block.ContentStart.GetPositionAtOffset(i + shift, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
                     if (rect.IsEmpty || rect.Width <= 0 && block.Text[i] == ' ')
                     {
                         continue;

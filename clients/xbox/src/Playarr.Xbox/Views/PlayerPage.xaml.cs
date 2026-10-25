@@ -111,7 +111,7 @@ namespace Playarr.Xbox.Views
             {
                 _chromeShown = false;
                 // Focus returns to the video surface as the controls leave (web: the video takes focus when the controls hide).
-                if (FocusManager.GetFocusedElement() is DependencyObject focused && IsInChrome(focused))
+                if (Windows.UI.Xaml.Input.FocusManager.GetFocusedElement() is DependencyObject focused && IsInChrome(focused))
                 {
                     VideoSurface.Focus(FocusState.Programmatic);
                 }
@@ -165,7 +165,7 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
-            var focused = FocusManager.GetFocusedElement();
+            var focused = Windows.UI.Xaml.Input.FocusManager.GetFocusedElement();
             if (ReferenceEquals(focused, VideoSurface) || !_chromeShown)
             {
                 ShowChrome();

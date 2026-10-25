@@ -36,6 +36,7 @@ namespace Playarr.Xbox.Views
         private readonly TextBlock _profileName = new TextBlock { FontSize = 8.83, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), CharacterSpacing = 34, LineHeight = 12, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"], HorizontalAlignment = HorizontalAlignment.Center };
         private readonly List<(TextBlock Label, string Key)> _labels = new List<(TextBlock, string)>();
         private Border _avatar = null!;
+        private Button? _profileLink;
         private bool _avatarLoaded;
         private readonly DispatcherTimer _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
 
@@ -169,6 +170,7 @@ namespace Playarr.Xbox.Views
             profileContent.Children.Add(avatar);
             profileContent.Children.Add(_profileName);
             var profile = RailButton(profileContent, typeof(SettingsPage), null);
+            _profileLink = profile;
             LayoutExport.Tag(profile, "link", "Signed in as " + (string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName) + ". Open profiles.");
             var profileGroup = Group(profile);
             profileGroup.VerticalAlignment = VerticalAlignment.Top;
@@ -323,6 +325,10 @@ namespace Playarr.Xbox.Views
             }
             // The web shows the first word of the profile name under the avatar.
             _profileName.Text = string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName.Split(' ')[0];
+            if (_profileLink != null)
+            {
+                Windows.UI.Xaml.Automation.AutomationProperties.SetName(_profileLink, "Signed in as " + (string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName) + ". Open profiles.");
+            }
 
             var kind = e.Parameter as WorkKind?;
             foreach (var (button, page, itemKind) in _items)
