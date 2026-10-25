@@ -87,7 +87,7 @@ internal sealed class Shell : View
         BuildRail();
         _chrome.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
         _clockTime = Ui.Text("", 481f, 68.2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f, block: true);
-        _clockDate = Ui.Text("", 535.4f, 75f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f, block: true);
+        _clockDate = Ui.Text("", 535.4f, 72.5f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f, block: true);
         Sem.Tag(_clockTime, "text", null); Sem.Tag(_clockDate, "text", null);
         _chrome.Add(_clockTime); _chrome.Add(_clockDate);
         UpdateClock();
@@ -130,7 +130,7 @@ internal sealed class Shell : View
         chip.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
-        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
+        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1035f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
     }
 
     private View AddGroup(float y, float h)

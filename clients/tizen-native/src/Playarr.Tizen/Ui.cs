@@ -138,6 +138,7 @@ internal static class Ui
         if (block) { multiline = true; exactLines = true; maxLines = 1; }
         // fallback-font glyphs: the label is a box of the web's advance and the letter spacing makes the layout advance of the glyph that wide, so what follows starts where it does on web
         if (GlyphAdvance(text) is { } adv && !multiline) { if (text is not ("←" or "→")) { w = adv * size; align = HorizontalAlignment.Center; } spacing += adv * size - TextWidth(text, size, weight, spacing, family); }
+        if (!multiline && w <= 0) w = TextWidth(upper ? text.ToUpperInvariant() : text, size, weight, spacing, family); // an inline run is as wide as its text
         (family, weight) = Face(family, weight, size);
         var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
         var cssY = y;

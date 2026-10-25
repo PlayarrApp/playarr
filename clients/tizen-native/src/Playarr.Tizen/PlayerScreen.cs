@@ -27,6 +27,7 @@ internal sealed class PlayerScreen : IPage
     private readonly View _root = new();
     private readonly View _controls = new();
     private readonly View _progress;
+    private readonly View _seek;
     private readonly TextLabel _now, _total;
     private readonly TextLabel _qualityBadge, _qualityLabel;
     private readonly View _qualityRing;
@@ -63,11 +64,12 @@ internal sealed class PlayerScreen : IPage
         var white = new Rgba(1, 1, 1);
         // web: the control bar sits on a bottom scrim, black at 92 % along the last 520 px
         _controls.Add(Sem.Tag(Ui.Gradient(0, 561.6f, 1920, 518.4f, false, (0f, new Rgba(0, 0, 0, 0)), (1f, new Rgba(0, 0, 0, 0.92f))), "container"));
-        _controls.Add(Sem.Tag(new View { PositionX = TrackX, PositionY = TrackY - 19, Size = new Size(TrackW, 44) }, "slider", "Seek"));
-        // seek track
-        _controls.Add(Ui.Box(TrackX, TrackY, TrackW, 6, new Rgba(1, 1, 1, 0.18f), 3));
-        _progress = Ui.Box(TrackX, TrackY, 0, 6, _t.Brand, 0);
-        _controls.Add(_progress);
+        // seek: a 44 px high target holding the 6 px track and its fill (web's slider)
+        _seek = Sem.Tag(new View { PositionX = TrackX, PositionY = TrackY - 19, Size = new Size(TrackW, 44) }, "slider", "Seek");
+        _controls.Add(_seek);
+        _seek.Add(Ui.Box(0, 19, TrackW, 6, new Rgba(1, 1, 1, 0.18f), 3));
+        _progress = Ui.Box(0, 19, 0, 6, _t.Brand, 0);
+        _seek.Add(_progress);
 
         // top-right: minimise, close
         AddTopButton(1678, 124, "minimise", "Minimise", "minimise", () => CloseSelf());
@@ -84,7 +86,7 @@ internal sealed class PlayerScreen : IPage
         _playRing = playRing;
         _focus.Items.Add(PlayFocusable("pause"));
         // web: Up from the transport row lands on the seek bar
-        _focus.Items.Add(new Focusable { Rect = () => new Box(TrackX, TrackY - 14, TrackW, 34), Label = "seek", Select = () => { }, Style = f => _progress.Size = new Size(_progress.Size.Width, f ? 10 : 6) });
+        _focus.Items.Add(new Focusable { Rect = () => new Box(TrackX, TrackY - 19, TrackW, 44), Label = "seek", Select = () => { }, Style = f => _progress.Size = new Size(_progress.Size.Width, f ? 10 : 6) });
         AddIcon("next", 247.2f, 980, "next", dim: true);
         _now = Ui.Text("0:00", 302.8f, 981.8f, 10.88f, 400, white, 60, 16.32f);
         _controls.Add(_now);
@@ -127,17 +129,17 @@ internal sealed class PlayerScreen : IPage
     private void AddIcon(string icon, float x, float y, string label, bool dim, Action? select = null)
     {
         var disabledLook = dim || label == "audio"; // web: a disabled control (no previous, no next, no audio track) draws at 28 %
-        var iconView = Ui.Icon(icon, x, y, 20, new Rgba(1, 1, 1, disabledLook ? 1f : 0.8f));
-        if (disabledLook) iconView.Opacity = 0.28f;
-        Sem.Tag(iconView, "none");
-        _controls.Add(iconView);
+        // web: each tool is a 64 px round button holding its 20 px icon; a disabled one (no previous, no next, no audio track) draws at 28 %
+        var host = Ui.Box(x - 22, y - 22, 64, 64, null, 32);
+        host.Opacity = disabledLook ? 0.28f : 1f;
         var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", _ => "Play on another device" };
-        var tagged = Sem.Tag(new View { PositionX = x - 22, PositionY = y - 22, Size = new Size(64, 64), Opacity = disabledLook ? 0.28f : 1f }, "button", buttonName);
-        _controls.Add(tagged);
+        Sem.Tag(host, "button", buttonName);
+        host.Add(Ui.Icon(icon, 22, 22, 20, new Rgba(1, 1, 1, disabledLook ? 1f : 0.8f)));
+        _controls.Add(host);
         if (dim) return; // web: previous and next are disabled (not focusable) when nothing precedes or follows
         var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
         _controls.Add(ring);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(x - 8, y - 8, 36, 36), Label = label, Select = select ?? (() => { }), Style = f => ring.Show(f) });
+        _focus.Items.Add(new Focusable { Rect = () => new Box(x - 22, y - 22, 64, 64), Label = label, Select = select ?? (() => { }), Style = f => ring.Show(f) });
     }
 
     private async Task StartAsync()
@@ -451,7 +453,7 @@ internal sealed class PlayerScreen : IPage
         var frame = new ImageView(path) { Size = _root.Size };
         _root.Add(frame); frame.LowerToBottom();
         // the web capture shows the clip buffered to about 16 s: a lighter segment on the seek track, under the played part
-        _controls.Add(Ui.Box(TrackX, TrackY, 475, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
+        _seek.Add(Ui.Box(0, 19, 475, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
     }
 
     public (bool Playing, long PositionMs) Status
