@@ -1,0 +1,1 @@
+- Android phone and tablet: shell, header, nav, action pills and logo follow the web layout in css px on a tablet; controls carry their real accessible names; the layout export driver no longer asserts the pinned clock or keeps radius sentinels.
