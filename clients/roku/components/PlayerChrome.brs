@@ -152,7 +152,8 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     m.pcTimeMark.width = sepX + 8.7 + m.pcTimeEnd.boundingRect().width - 302.8
     m.pcPlay.uri = "pkg:/images/player-pause.png"
     m.pcPlayBg.id = "a11y|button|50|Pause"
-    if m.video.state = "paused"
+    ' A held pause shows Play even while the pipeline re-buffers on the held frame.
+    if m.video.state = "paused" or m.paritySeekHold = true
         m.pcPlay.uri = "pkg:/images/player-play.png"
         m.pcPlayBg.id = "a11y|button|50|Play"
     end if

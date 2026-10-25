@@ -208,6 +208,20 @@ sub pgRename(node as Object, name as String)
     node.id = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + name
 end sub
 
+' A flat wash: a solid bitmap tinted with a theme role (the web's gradient overlays, which are no background colour).
+function pgTint(parent as Object, x as Float, y as Float, w as Float, h as Float, role as String) as Object
+    poster = CreateObject("roSGNode", "Poster")
+    poster.uri = "pkg:/images/solid.png"
+    poster.loadDisplayMode = "scaleToFill"
+    poster.translation = [x, y]
+    poster.width = w
+    poster.height = h
+    poster.blendColor = ThemeColor(role)
+    ThemeSetRole(poster, role)
+    parent.AppendChild(poster)
+    return poster
+end function
+
 function pgIcon(parent as Object, x as Float, y as Float, size as Integer, file as String, role as String, alpha = -1 as Integer) as Object
     poster = CreateObject("roSGNode", "Poster")
     poster.uri = "pkg:/images/" + file
@@ -2007,7 +2021,9 @@ end sub
 
 sub renderCalendarBody()
     calendarEnsureRange()
-    pageBegin("Calendar", 0)
+    panelX = 0
+    if m.calendarView = "agenda" then panelX = 729.6
+    pageBegin("Calendar", panelX)
     if m.artTelemetryEnabled = true
         m.calendarArtPosters = []
         m.calendarArtPosterIndex = 0
@@ -2152,6 +2168,10 @@ sub renderCalendarAgenda(entries as Object)
     cover.color = ThemeColor("surface")
     ThemeSetRole(cover, "surface")
     m.pageHead.InsertChild(cover, 0)
+    ' The panel's wash over the cover, so the cover does not show as a darker box.
+    wash = pgTint(m.pageHead, cover.translation[0], cover.translation[1], cover.width, cover.height, "panel")
+    m.pageHead.RemoveChild(wash)
+    m.pageHead.InsertChild(wash, 1)
     for each entry in entries
         edt = calendarEntryDate(entry)
         day = entry.date
@@ -2163,7 +2183,9 @@ sub renderCalendarAgenda(entries as Object)
             ' The heading is pinned (web: sticky), so it lives in pageHead and calendarAgendaPin() moves it while the list scrolls.
             hg = CreateObject("roSGNode", "Group")
             m.pageHead.AppendChild(hg)
-            pgRect(hg, 775, ay, 1060, 58, "surface")
+            ' The pinned heading is the web's bg-coloured box; the panel's lighter wash is laid over it as a bitmap.
+            pgRect(hg, 775, ay, 1060, 58, "bg")
+            pgTint(hg, 775, ay, 1060, 58, "panel")
             pgMark(hg, "heading", "", 783.4, ay, 1033.4, 44, 0)
             headRole = "ink"
             if day = today then headRole = "accent"
@@ -2355,6 +2377,10 @@ sub renderCalendarWeek(entries as Object)
     cover.color = ThemeColor("surface")
     ThemeSetRole(cover, "surface")
     m.pageHead.InsertChild(cover, 0)
+    ' The panel's wash over the cover, so the cover does not show as a darker box.
+    wash = pgTint(m.pageHead, cover.translation[0], cover.translation[1], cover.width, cover.height, "panel")
+    m.pageHead.RemoveChild(wash)
+    m.pageHead.InsertChild(wash, 1)
     byDay = {}
     for each entry in entries
         if entry.date <> invalid
@@ -2408,7 +2434,7 @@ function calendarBadge(parent as Object, x as Float, y as Float, text as String,
         tone = "danger"
     end if
     w = PlayarrTextWidth(text, 13.44, 750, 0)
-    pgTag(pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 36), "fill", 13)
+    pgTag(pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 29), "fill", 13)
     pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 153, true)
     l = pgLabel(parent, x, y, w + 4, 19, text, 13.44, 750, "ink", { radius: 13.28 })
     return w + 2 * padX

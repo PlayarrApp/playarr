@@ -255,6 +255,10 @@ sub onFocusChanged()
     linkScale = 1.0
     if not m.homeCardFocusStyle and m.cardScaleValue > 1 then linkScale = 1 + 0.015 * effective
     m.cardLink.scale = [linkScale, linkScale]
+    ' The card's link box lifts with its art and caption (the same 5 px).
+    linkLift = 0
+    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then linkLift = -5 * effective
+    m.cardLink.translation = [0, linkLift]
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]

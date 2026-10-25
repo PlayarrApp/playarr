@@ -11,11 +11,6 @@ sub onFont()
     end if
 end sub
 
-sub onColor()
-    m.colorSet = true
-    refresh()
-end sub
-
 sub refresh()
     t = m.top
     if t.size <= 0 or t.text = invalid then return
@@ -24,8 +19,8 @@ sub refresh()
     ' fitWidth is the web's own measured width of this text: the letter-spacing that gives it follows from the font advances.
     if t.fitWidth > 0 and Len(text) > 0 then tracking = (t.fitWidth - PlayarrTextWidth(text, t.size, t.weight, 0)) / Len(text)
     spec = { text: text, size: t.size, weight: t.weight, tracking: tracking, role: "ink", maxLines: 1, aria: t.aria, rectH: t.rectH, symbol: t.symbol, radius: t.radius }
-    ' -1 is also opaque white (0xFFFFFFFF), so whether the owner set a colour is tracked apart from its value.
-    if m.colorSet = true then spec.color = t.color
+    ' 0 (fully transparent black) means "not set": -1 is opaque white and must stay a colour the owner can choose.
+    if t.color <> 0 then spec.color = t.color
     lineHeight = t.lineHeight
     if lineHeight <= 0 then lineHeight = t.size * 1.364 + t.lineSpacing
     spec.lineHeight = lineHeight

@@ -163,7 +163,8 @@ sub init()
     m.searchTitle = m.top.findNode("searchTitle")
     searchChromeInit()
     m.searchFieldLabel = m.top.findNode("searchFieldLabel")
-    ThemeSetRole(m.top.findNode("searchFieldBg"), "surface")
+    ThemeSetRole(m.top.findNode("searchFieldBg"), "surfaceStrong", 217)
+    m.top.findNode("searchFieldBg").blendColor = ThemeColor("surfaceStrong", 217)
     ThemeSetRole(m.top.findNode("searchFieldRing"), "focusRing")
     m.searchEmptyState = m.top.findNode("searchEmptyState")
     searchA11y()
@@ -411,7 +412,6 @@ sub init()
     m.userLinkMark.id = "a11y|link|16|Signed in as " + m.session.profileName + ". Open profiles."
     ' The build label under the tile reads like web's (major.minor.0).
     ai = CreateObject("roAppInfo")
-    m.top.findNode("userVersion").rectH = 8.95
     m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
     m.profileId = m.session.profileId
     if m.profileId = invalid then m.profileId = ""

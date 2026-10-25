@@ -1044,7 +1044,7 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         pages = (ROOT / "components" / "Pages.brs").read_text(encoding="utf-8")
         for name in ("renderCalendarMonth", "renderCalendarWeek", "renderCalendarAgenda", "calendarViewRange", "calendarStatusText"):
             self.assertIn(name, pages)
-        self.assertIn('pageBegin("Calendar", 0)', pages)
+        self.assertIn('pageBegin("Calendar", panelX)', pages)
         self.assertIn('dialog.buttons = ["Month", "Week", "Agenda"]', pages)
 
     def test_series_page_shows_no_lag_line_without_samples(self) -> None:

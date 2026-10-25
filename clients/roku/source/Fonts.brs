@@ -106,10 +106,10 @@ function PlayarrTypeFor(scope as String, id as String) as Dynamic
     g = GetGlobalAA()
     if g.typeTable = invalid
         g.typeTable = {
-            clockTime: { size: 17.28, weight: 760, tracking: -0.526, boxH: 25.92 }
-            clockDate: { size: 11.14, weight: 640, tracking: 0.435, boxH: 12.25 }
+            clockTime: { size: 17.28, weight: 760, tracking: -0.526 }
+            clockDate: { size: 11.14, weight: 640, tracking: 0.435 }
             profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
-            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink", boxH: 8 }
+            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink", boxH: 8.95 }
             "TvStage.stageMetaLabel": { size: 12.86, weight: 600, tracking: 0, role: "heroSoft" }
             "ProfileAvatar.name": { size: 17.28, weight: 680, tracking: 0 }
             "ProfileAvatar.status": { size: 9.41, weight: 690, tracking: 0.413, role: "inkMuted" }
