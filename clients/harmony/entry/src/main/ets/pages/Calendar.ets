@@ -423,7 +423,7 @@ export struct ReleaseCalendar {
   @Builder
   private statusPill(tone: EntryPillTone, offset: number = 0): void {
     Text(pillLabel(tone)).fontFamily(nunitoAt(750, isTvMetrics() ? tv(PILL_SIZE) : 10.24))
-      .id('pxt:text:' + pillLabel(tone)) // web: the pill owns its text; its Range sits inside the padding
+      .id('px:text:' + pillLabel(tone)) // web: the pill owns its text; its Range sits inside the padding
       .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
@@ -530,7 +530,7 @@ export struct ReleaseCalendar {
           .translate({ y: -2.2 })
           .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
           .borderRadius(tv(11))
-          .id('pxt:text:Today')
+          .id('px:text:Today')
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
       }
     }
@@ -605,7 +605,7 @@ export struct ReleaseCalendar {
                   .translate({ y: -2.2 })
                   .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
                   .borderRadius(tv(11))
-          .id('pxt:text:Today')
+          .id('px:text:Today')
                   .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
               }
             }
@@ -839,7 +839,7 @@ export struct ReleaseCalendar {
       .fontSize(tv(PANEL_BUTTON_FONT))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
-      .id('pxt:button:' + label) // web: the button owns its text
+      .id('px:button:' + label) // web: the button owns its text
       .height(tv(PANEL_BUTTON_HEIGHT))
       .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
       .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
@@ -928,7 +928,7 @@ export struct ReleaseCalendar {
       .height(tv(HEADER_CONTROL_SIZE))
       .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
       .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(0.2) : 0 })
-      .id(round ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : 'pxt:button:' + label) // web: Today owns its text, the arrows hold a glyph
+      .id(round ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : 'px:button:' + label) // web: Today owns its text, the arrows hold a glyph
       .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
       .backgroundColor(toResourceColor(activeColors().surface))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -1012,7 +1012,7 @@ export struct ReleaseCalendar {
   private pageControls(): void {
     Row({ space: tv(HEADER_CONTROL_GAP) }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(700, tv(HEADER_CONTROL_FONT)))
-        .id('pxt:button:' + rangeLabel(this.view, this.anchor))
+        .id('px:button:' + rangeLabel(this.view, this.anchor))
         .fontSize(tv(HEADER_CONTROL_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1060,7 +1060,7 @@ export struct ReleaseCalendar {
   private touchControls(): void {
     Row({ space: PHONE_CONTROL_GAP }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(720, 11.52))
-        .id('pxt:button:' + rangeLabel(this.view, this.anchor))
+        .id('px:button:' + rangeLabel(this.view, this.anchor))
         .fontSize(11.52)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1094,7 +1094,7 @@ export struct ReleaseCalendar {
     Stack() {
       // web: the arrows are thin, smaller glyphs than the bold labels
       Text(label).fontFamily(label.length === 1 ? arrowFont(720) : nunitoAt(720, 11.52))
-        .id(label.length === 1 ? '' : 'pxt:button:' + label)
+        .id(label.length === 1 ? '' : 'px:button:' + label)
         .fontSize(11.52)
         .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))

@@ -158,7 +158,7 @@ export struct ChoiceSegments {
           })
          } else {
           Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + capitalWords(choice.label)).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
-            .id((this.large ? 'px:button:' : 'pxt:button:') + choice.label) // web: a Filters choice is a button that owns its text; Settings' wraps a span
+            .id('px:button:' + choice.label)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)

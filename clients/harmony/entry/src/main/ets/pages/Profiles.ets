@@ -377,7 +377,7 @@ struct Profiles {
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(tv(TV_ACTION_HEIGHT))
         .padding({ left: tv(17), right: tv(17) })
-        .id('pxt:button:' + label)
+        .id('px:button:' + label)
         .borderRadius(tv(TV_ACTION_HEIGHT / 2))
         .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
