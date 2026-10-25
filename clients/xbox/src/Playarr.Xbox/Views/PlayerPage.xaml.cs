@@ -549,6 +549,18 @@ namespace Playarr.Xbox.Views
             return true;
         }
 
+        /// <summary>D-pad checks: play on, controls up and unpinned, focus on play/pause (the state the web checks start from).</summary>
+        internal void ResumeForTest()
+        {
+            _chromePinnedForTest = false;
+            _viewModel?.Player.Play();
+            ShowChrome();
+            PlayPauseButton.Focus(FocusState.Programmatic);
+            UpdateChrome();
+        }
+
+        private DateTime _lastBack = DateTime.MinValue;
+
         /// <summary>Playback state and position for the parity trace: "error", "playing", "paused" or "loading".</summary>
         internal (string State, double Seconds) Probe()
         {
@@ -879,6 +891,13 @@ namespace Playarr.Xbox.Views
         /// </summary>
         public bool TryHandleBack()
         {
+            // One press can arrive twice (key and system back request): the second must not exit what the first only hid.
+            if ((DateTime.UtcNow - _lastBack).TotalMilliseconds < 400)
+            {
+                return true;
+            }
+
+            _lastBack = DateTime.UtcNow;
             var panelOpen = _openPanel != null;
             if (PlayerStagePolicy.BackAction(panelOpen) != PlayerBackAction.ClosePanel)
             {

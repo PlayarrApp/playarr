@@ -72,6 +72,7 @@ namespace Playarr.Xbox.Views
                         ResizeRequested(folder);
                         LayoutRequested(folder);
                         await PauseRequestedAsync(frame, folder);
+                        ResumeRequested(frame, folder);
                     }
                 }
 
@@ -136,6 +137,23 @@ namespace Playarr.Xbox.Views
                         else if (library == "series") App.Navigation.Navigate(typeof(LibraryPage), WorkKind.Series);
                         App.Navigation.Navigate(typeof(WorkDetailPage), workId);
                     }
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        /// <summary>A <c>parity.resume</c> file puts the player in the state the web's D-pad checks start from: playing, controls up, focus on play/pause.</summary>
+        private static void ResumeRequested(Frame frame, string folder)
+        {
+            var file = System.IO.Path.Combine(folder, "parity.resume");
+            try
+            {
+                if (System.IO.File.Exists(file) && frame.Content is PlayerPage player)
+                {
+                    System.IO.File.Delete(file);
+                    player.ResumeForTest();
                 }
             }
             catch (Exception)

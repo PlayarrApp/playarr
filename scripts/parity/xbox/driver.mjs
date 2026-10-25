@@ -263,6 +263,13 @@ export async function createDriver() {
       await sleep(name === "select" && !long ? 9000 : 1200);
     },
     async clickAt(x, y, wait = 4) { await click(x, y, wait); },
+    // The web's D-pad checks start with the video playing, controls up and focus on play/pause.
+    async playerReady() {
+      await requireTestAccount();
+      run("write", "parity.resume", "1");
+      await until((t) => t.screen === "playback" && t.play === "playing" && /play|pause/.test(t.focus ?? ""), 30, "the player playing with focus on play/pause");
+    },
+    async playhead() { return trace().pos ?? 0; },
     async panelOpen() { return trace().playerPanel === true; },
     async location() { return location(); },
     async focused() { const t = trace(); return t.focus && t.position ? { label: t.focus, position: t.position } : (t.focus ?? null); },
