@@ -1868,20 +1868,7 @@ internal fun PlayarrExperience(
                     modifier = Modifier.align(Alignment.BottomStart),
                 )
                 if (isTelevision) {
-                    if (LocalStageScale.current == 1f) PlayarrLogo(
-                        modifier = Modifier.align(Alignment.TopStart).padding(start = 60.6.dp, top = 60.2.dp),
-                    ) else {
-                        // Web `.tv-stage-chrome-logo` (global.css): size clamp(30, 2.35 vw, 42), centred on the nav tile column, vertically centred in the 44 px control row.
-                        val st = LocalStageScale.current
-                        val widthCss = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * st
-                        val logoCss = (2.35f * widthCss / 100f).coerceIn(30f, 42f)
-                        val navEdgeCss = (2.2f * widthCss / 100f).coerceIn(18f, 44f)
-                        val topCss = (5.2f * (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * st) / 100f).coerceIn(34f, 66f)
-                        PlayarrLogo(
-                            modifier = Modifier.align(Alignment.TopStart).padding(start = ((navEdgeCss + 6.4f + 32f + 1f - logoCss / 2f) / st).dp, top = ((topCss + (44f - logoCss) / 2f) / st).dp),
-                            iconSize = (logoCss / st).dp,
-                        )
-                    }
+                    ShellLogo(Modifier.align(Alignment.TopStart))
                     // Web `.app-clock` is right-aligned to x = 710.4 (its left edge moves with the text width).
                     if (LocalStageScale.current == 1f) Box(Modifier.align(Alignment.TopStart).padding(top = 68.2.dp).width(634.dp), contentAlignment = Alignment.TopEnd) { ExperienceClock() }
                     // Web `.app-clock` (page-layout.css): top `--page-header-top`, as tall as the 44 px page controls, its grid centred in that height, gap 0.7 rem.
@@ -1891,7 +1878,7 @@ internal fun PlayarrExperience(
         }
         if (isTelevision) {
             // Keep the TV layout tree and its focus order unchanged.
-            Box(modifier = Modifier.fillMaxSize().parityBox("container", "", background = WebBackground).background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().parityBox("container", "", background = if (isPlayer) Color.Black else WebBackground).background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 backgroundContent()
                 if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
                     PlayarrMiniPlayer(
@@ -1907,7 +1894,7 @@ internal fun PlayarrExperience(
                 }
             }
         } else {
-            Box(modifier = Modifier.fillMaxSize().parityBox("container", "", background = WebBackground).background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().parityBox("container", "", background = if (isPlayer) Color.Black else WebBackground).background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 Box(
                     Modifier.fillMaxSize()
                         .graphicsLayer {
@@ -2571,6 +2558,22 @@ private fun ProfileControl(
 }
 
 internal fun profileVersionLabel(versionName: String): String = "v$versionName"
+
+/** Web `.tv-stage-chrome-logo` (global.css): 60.6 / 60.2 dp on the 1920 television; on a tablet size clamp(30, 2.35 vw, 42), centred on the nav tile column and in the 44 px control row, in css px. */
+@Composable
+internal fun ShellLogo(modifier: Modifier = Modifier) {
+    val st = LocalStageScale.current
+    if (st == 1f) { PlayarrLogo(modifier.padding(start = 60.6.dp, top = 60.2.dp)); return }
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val widthCss = config.screenWidthDp * st
+    val logoCss = (2.35f * widthCss / 100f).coerceIn(30f, 42f)
+    val navEdgeCss = (2.2f * widthCss / 100f).coerceIn(18f, 44f)
+    val topCss = (5.2f * (config.screenHeightDp * st) / 100f).coerceIn(34f, 66f)
+    PlayarrLogo(
+        modifier = modifier.padding(start = ((navEdgeCss + 6.4f + 32f + 1f - logoCss / 2f) / st).dp, top = ((topCss + (44f - logoCss) / 2f) / st).dp),
+        iconSize = (logoCss / st).dp,
+    )
+}
 
 @Composable
 internal fun PlayarrLogo(modifier: Modifier = Modifier, iconSize: Dp = 42.dp) {
