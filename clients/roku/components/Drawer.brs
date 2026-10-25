@@ -7,7 +7,7 @@ sub drawerChrome(g as Object, kicker as String, title as String, closeName as St
     pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
     pgMark(g, "dialog", "", 1560, 0, 360, 1080, 0)
     pgLabel(g, 1606, 54, 190, 13, UCase(kicker), 9.6, 720, "inkMuted", { tracking: 0.669 })
-    tt = pgTrackedText(g, 1606, 73.6, 214, title, 38.4, 590, -2.113, "ink", false, "left", 2, 57.6)
+    tt = pgTrackedText(g, 1606, 73.6, 214, title, 38.4, 590, -2.113, "ink", false, "left", 2, 57.6, "heading")
     pgRound(g, 1826, 54, 48, 50, 25, "surfaceSoft")
     pgRound(g, 1826, 54, 48, 50, 25, "line", -1, true)
     pgGlyph(g, "×", 1841.9, 60.84, 26.88, 720, "ink", false)

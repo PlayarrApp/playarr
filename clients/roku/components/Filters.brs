@@ -84,7 +84,7 @@ sub filtersRender()
     end for
     filtersHeading(g, 276.1, "SORT BY")
     filtersChoice(g, 1605.5, 302, 131, "Title", 22.8, m.browseSort = "title", 1, 0)
-    filtersChoice(g, 1744, 302, 130, "Date added", 58.7, m.browseSort = "date_added", 1, 1)
+    filtersChoice(g, 1744, 302, 130, "Date Added", 58.7, m.browseSort = "date_added", 1, 1)
     filtersHeading(g, 388.7, "ORDER")
     ascText = "A-Z"
     descText = "Z-A"
@@ -247,7 +247,7 @@ sub filtersEmitFocus()
         parityEmit("focus", "language " + m.filtersPickerIndex.ToStr())
         return
     end if
-    labels = [["List", "Screen", "Cover"], ["Title", "Date added"], ["A-Z", "Z-A"], ["Audio language"], ["Subtitle language"], ["Clear languages"]]
+    labels = [["List", "Screen", "Cover"], ["Title", "Date Added"], ["A-Z", "Z-A"], ["Audio language"], ["Subtitle language"], ["Clear languages"]]
     parityEmit("focus", labels[m.filtersRow][m.filtersCol])
 end sub
 
