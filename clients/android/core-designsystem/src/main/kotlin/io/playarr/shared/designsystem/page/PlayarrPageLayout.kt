@@ -83,9 +83,8 @@ fun PlayarrPageLayout(
     Box(
         Modifier
             .fillMaxSize()
-            .parityBox("container", "", background = PlayarrWebTheme.palette.surface)
+            .parityBox("container")
             .background(PlayarrWebTheme.palette.surface)
-            .parityBox("container", background = PlayarrWebTheme.palette.surface)
             .then(if (tv || !panel) Modifier else Modifier.windowInsetsPadding(phoneInsets))
             .semantics { pageIdTag = pageId },
     ) {
@@ -186,12 +185,12 @@ private fun PlayarrNavButton(item: PlayarrNavItem, exitRight: Boolean = false) {
                 .then(if (item.primary && !tv) Modifier.graphicsLayer { scaleX = 1.055f; scaleY = 1.055f } else Modifier)
                 // The ring is the focus state (white in dark, ink in light), never alongside another ring and never a fill.
                 .then(if (focused) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
-                .then(if (glyph != null) Modifier.parityBox("button", item.label, 50f, background = palette.surface) else Modifier)
+                .then(if (glyph != null) Modifier.parityShape(999f) else Modifier)
                 .semantics { contentDescription = item.label },
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (glyph != null) Text(glyph, fontSize = if (tv) 14.72.sp else 13.sp, fontWeight = FontWeight(720))
-                else Text(item.label, fontSize = if (tv) 14.72.sp else 14.4.sp, fontWeight = FontWeight(720), maxLines = 1, modifier = (if (tv) Modifier.padding(horizontal = 20.dp) else Modifier).parityRole("button", 999f))
+                else Text(item.label, fontSize = if (tv) 14.72.sp else 14.4.sp, fontWeight = FontWeight(720), maxLines = 1, modifier = (if (tv) Modifier.padding(horizontal = 20.dp) else Modifier))
             }
         }
     }

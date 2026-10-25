@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.icons.PlayarrWebIcons
 import android.app.Activity
 import android.content.Context
@@ -122,14 +123,14 @@ private fun PhonePlayerButton(
             .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
             // Web `.player-btn:disabled { opacity: 0.28 }`: a single-item queue dims Previous and Next (the other buttons are never disabled on web).
             .alpha(if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
-            .parityBox("button", exportLabel ?: description, 50f, if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f, background = if (primary) Color(0xFF242424) else Color.Black)
+            .parityShape(999f)
             .clip(CircleShape)
             .then(if (primary) Modifier.background(Color.White.copy(alpha = 0.14f)) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f, background = if (primary) Color(0xFF242424) else Color.Black))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f))
     }
 }
 
@@ -139,7 +140,7 @@ private fun PhonePlayerCorner(icon: ImageVector, description: String, onClick: (
     Box(
         Modifier
             .size(44.dp)
-            .parityBox("button", description, 999f, background = Color(0xFF0A0809))
+            .parityShape(999f)
             .clip(CircleShape)
             .background(Color(0xFF0C0A0B).copy(alpha = 0.58f))
             .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape)
@@ -147,7 +148,7 @@ private fun PhonePlayerCorner(icon: ImageVector, description: String, onClick: (
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image", background = Color(0xFF0A0809)))
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).parityBox("image"))
     }
 }
 
@@ -218,13 +219,13 @@ internal fun BoxScope.PhonePlayerOverlay(
             // centred on it (as the web slider), which overflows the 6 dp track without changing the layout.
             Box(Modifier.fillMaxWidth().height(6.dp).background(Color.White.copy(alpha = 0.2f))) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(bufferedFraction).background(Color.White.copy(alpha = 0.34f)))
-                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBox("container", background = PlayerAccent).background(PlayerAccent))
+                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBox("container").background(PlayerAccent))
                 Box(
                     Modifier
                         .align(Alignment.Center)
                         .fillMaxWidth()
                         .requiredHeight(44.dp)
-                        .parityBox("slider", "Seek", background = Color.Black)
+                        
                         .semantics { contentDescription = seekDescription }
                         .pointerInput(durationMs, controls.switching) {
                             if (durationMs <= 0L || controls.switching) return@pointerInput
@@ -248,7 +249,7 @@ internal fun BoxScope.PhonePlayerOverlay(
             ) {
                 // `.player-time` leads the first line (order -1, full width) with 2 px of padding below.
                 Row(
-                    Modifier.fillMaxWidth().parityBox("container", formatPlayarrPlayerTime(displayedMs) + " / " + formatPlayarrPlayerTime(durationMs), background = Color.Black).padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
+                    Modifier.fillMaxWidth().padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -284,7 +285,7 @@ internal fun BoxScope.PhonePlayerOverlay(
                 Box(
                     Modifier
                         .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
-                        .parityBox("button", playerQualityButtonName(controls), 999f, background = Color.Black)
+                        .parityShape(999f)
                         .then(if (controls.qualityOptions.isEmpty() || controls.switching) Modifier.alpha(0.76f) else Modifier)
                         // `.player-quality-button[aria-expanded="true"]`: a 15% white disc and 1.08x while its menu is open.
                         .then(

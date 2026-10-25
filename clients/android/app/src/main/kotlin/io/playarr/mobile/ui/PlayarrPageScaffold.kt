@@ -1,7 +1,7 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
-import io.playarr.shared.designsystem.page.parityText
 import io.playarr.shared.designsystem.page.PlayarrBack
 import io.playarr.shared.designsystem.page.PlayarrEmptySpec
 import io.playarr.shared.designsystem.page.PlayarrErrorSpec
@@ -329,8 +329,8 @@ private fun PhoneDrawerPanel(
     Box(
         Modifier.fillMaxSize()
             .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
+            .parityBox("container", fillAlpha = if (blurUnderlay) 0.94f else 0.985f)
             .background(WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f))
-            .parityBox("dialog", background = WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f).compositeOver(WebSurface)),
     ) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
@@ -338,7 +338,7 @@ private fun PhoneDrawerPanel(
             Row(verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
                     if (kicker != null) {
-                        Text(kicker.uppercase(), color = WebInkMuted, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)), fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
+                        Text(kicker.uppercase(), color = WebInkMuted, modifier = Modifier, fontSize = 7.04.sp, lineHeight = 10.56.sp, fontWeight = FontWeight(720), letterSpacing = 0.493.sp)
                     }
                     Box(Modifier.padding(top = if (kicker != null) 3.2.dp else 0.dp)) { titleContent?.invoke() }
                 }
@@ -350,11 +350,11 @@ private fun PhoneDrawerPanel(
                         modifier = Modifier
                             .focusRequester(focus)
                             .border(1.dp, LocalPlayarrWebPalette.current.pillBorder, CircleShape)
-                            .parityBox("button", closeLabel, 50f, background = WebSurfaceSoft),
+                            .parityShape(999f),
                         variant = PlayarrButtonVariant.Secondary,
                         containerColor = WebSurfaceSoft,
                     ) {
-                        Text("\u00D7", fontSize = 16.sp, fontWeight = FontWeight(720), modifier = Modifier.parityText(background = WebSurfaceSoft))
+                        Text("\u00D7", fontSize = 16.sp, fontWeight = FontWeight(720), modifier = Modifier)
                     }
                 }
             }
@@ -413,7 +413,7 @@ private fun PlayarrTvDrawer(
     ) {
         (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setDimAmount(0f)
         val tablet = LocalStageScale.current != 1f
-        androidx.compose.runtime.CompositionLocalProvider(LocalTabletDrawerCssPx provides tablet, io.playarr.shared.designsystem.page.LocalParityUnder provides WebSurfaceStrong) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalTabletDrawerCssPx provides tablet) {
         UnstagedForWebCssPx(densityIsReal = true) {
         // Web `.tv-filter-drawer`: width min(360, 27 vw), padding clamp(38, 5 vu, 62) x clamp(26, 2.5 vw, 46), title clamp(22.4, 2 vw, 38.4), gap clamp(22, 2.8 vu, 34).
         val drawerWidth = if (tablet) minOf(360.dp, webVw(0f, 27f, 10000f)) else 360.dp
@@ -426,7 +426,7 @@ private fun PlayarrTvDrawer(
             Box(
                 Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(drawerWidth)
                     .parityCaptureSurface(captureToken, captureSurface)
-                    .parityBox("dialog", "", background = WebSurfaceStrong)
+                    
                     .drawBehind {
                         drawRect(
                             androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, shadow), startX = -122.dp.toPx(), endX = 0f),
@@ -434,6 +434,7 @@ private fun PlayarrTvDrawer(
                             size = androidx.compose.ui.geometry.Size(122.dp.toPx(), size.height),
                         )
                     }
+                    .parityBox("container", fillAlpha = 0.94f)
                     .background(WebSurfaceStrong.copy(alpha = 0.94f))
                     .clickable(interactionSource = null, indication = null, enabled = false) {},
             ) {
@@ -461,10 +462,10 @@ private fun PlayarrTvDrawer(
                                 contentColor = WebInk,
                                 border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder),
                                 modifier = (if (tablet) Modifier.size(webVw(44f, 2.7f, 48f)) else Modifier.size(48.dp, 50.dp)).focusRequester(focus).webFocusRing(focused, offset = 2.dp)
-                                    .parityBox("button", closeLabel, 50f, background = WebSurfaceSoft)
+                                    .parityShape(999f)
                                     .semantics { contentDescription = closeLabel },
                             ) {
-                                Box(contentAlignment = Alignment.Center) { Text("\u00D7", fontSize = 26.88.sp, fontWeight = FontWeight(720), modifier = Modifier.parityText(background = WebSurfaceSoft)) }
+                                Box(contentAlignment = Alignment.Center) { Text("\u00D7", fontSize = 26.88.sp, fontWeight = FontWeight(720), modifier = Modifier) }
                             }
                         }
                     }
@@ -486,7 +487,7 @@ internal fun PlayarrFilterSection(title: String, content: @Composable () -> Unit
     val tv = playarrTvDrawer()
     Column(verticalArrangement = Arrangement.spacedBy(if (tv) 13.dp else 10.dp)) {
         if (tv) PlayarrTvDrawerHeading(title)
-        else Text(title.uppercase(), color = WebInkMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.semantics { heading() }.parityText(background = WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)))
+        else Text(title.uppercase(), color = WebInkMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.semantics { heading() })
         content()
     }
 }
@@ -498,8 +499,6 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
     if (playarrTvDrawer()) {
         // Layout export: web draws icon choices and the settings segments as a button around a lower-case run; plain sort and order choices are the run itself.
         val boxed = icon != null || weight == 900
-        val under = io.playarr.shared.designsystem.page.LocalParityUnder.current.takeIf { it != Color.Unspecified } ?: WebSurface
-        val fillFlat = if (selected) WebInk else io.playarr.shared.designsystem.page.parityOver(WebSurfaceSoft, 0.64f, under)
         // Web drawer segment: 56 dp, 12 dp radius, hairline border, `--surface-soft` at 64%; the active one is ink.
         Surface(
             onClick = onClick,
@@ -510,7 +509,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
             border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
             // Web `.tv-filter-choice-grid button`: min-height clamp(44, 3.6 vw, 56) and font clamp(7.68, 0.55 vw, 10.88) css px (56 / 10.56 at 1920).
             modifier = modifier.height(webVw(44f, 3.6f, 56f)).graphicsLayer { scaleX = if (selected) activeScale else 1f; scaleY = scaleX }
-                .then(if (boxed) Modifier.parityBox("button", label.replaceFirstChar { it.titlecase() }, 12f, background = fillFlat) else Modifier)
+                .then(if (boxed) Modifier.parityShape(12f) else Modifier)
                 .webFocusRing(focused, radius = 12.dp, offset = 2.dp),
         ) {
             Column(
@@ -519,7 +518,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
                 verticalArrangement = Arrangement.spacedBy(if (icon == null) 0.dp else 6.4.dp, Alignment.CenterVertically),
             ) {
                 icon?.invoke(if (selected) WebBackground else WebInkSoft)
-                Text(if (LocalTabletDrawerCssPx.current) label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } } else label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(if (icon != null) 900 else weight), maxLines = 1, modifier = if (boxed) Modifier.parityText(background = fillFlat) else Modifier.parityText(role = "button", radius = 12f, background = fillFlat))
+                Text(if (LocalTabletDrawerCssPx.current) label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } } else label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(if (icon != null) 900 else weight), maxLines = 1, modifier = if (boxed) Modifier else Modifier)
             }
         }
         return
@@ -529,8 +528,6 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
     val content = if (selected) WebBackground else WebInkMuted
     // Layout export: icon choices and the settings segments are a button around a lower-case run; plain choices are the run itself.
     val boxed = icon != null || weight == 900
-    val under = io.playarr.shared.designsystem.page.LocalParityUnder.current.takeIf { it != Color.Unspecified } ?: WebSurfaceStrong.copy(alpha = 0.985f).compositeOver(WebSurface)
-    val fillFlat = if (selected) WebInk else io.playarr.shared.designsystem.page.parityOver(WebSurfaceSoft, 0.64f, under)
     Surface(
         onClick = onClick,
         interactionSource = source,
@@ -539,12 +536,12 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
         shape = shape,
         border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
         modifier = modifier.height(48.dp).graphicsLayer { scaleX = if (selected) 1.025f else 1f; scaleY = scaleX }
-            .then(if (boxed) Modifier.parityBox("button", label.replaceFirstChar { it.titlecase() }, 12f, background = fillFlat) else Modifier)
+            .then(if (boxed) Modifier.parityShape(12f) else Modifier)
             .webFocusRing(focused, radius = 12.dp, offset = 0.dp),
     ) {
         Column(Modifier.fillMaxHeight().padding(horizontal = 9.6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.8.dp, Alignment.CenterVertically)) {
             icon?.invoke(content)
-            Text(label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1, modifier = if (boxed) Modifier.parityText(background = fillFlat) else Modifier.parityText(role = "button", radius = 12f, background = fillFlat))
+            Text(label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1, modifier = if (boxed) Modifier else Modifier)
         }
     }
 }
