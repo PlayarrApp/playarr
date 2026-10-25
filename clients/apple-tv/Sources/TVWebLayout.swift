@@ -546,13 +546,19 @@ struct TVDrawer<Content: View>: View {
                         .foregroundStyle(DesignTokens.Color.textDisabled)
                         .parityLayout(text: kicker.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                         .frame(height: 14.4)
-                    Text(title)
-                        .font(TVTheme.font(size: 38.4, css: 590))
-                        .tracking(-2.1)
-                        .foregroundStyle(DesignTokens.Color.textPrimary)
-                        .lineLimit(2)
-                        .parityLayout(text: title, size: 38.4, weight: Int(590), color: DesignTokens.Color.textPrimary, tracking: -2.1)
-                        .frame(width: 204, alignment: .leading)
+                    // Web: the title wraps in 204 pt and each line is its own heading, 57.6 pt apart.
+                    VStack(alignment: .leading, spacing: 5.2) {
+                        ForEach(Array(TVTextWrap.lines(title, weight: 590, size: 38.4, kern: -2.1, width: 204).prefix(2).enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(TVTheme.font(size: 38.4, css: 590))
+                                .tracking(-2.1)
+                                .foregroundStyle(DesignTokens.Color.textPrimary)
+                                .lineLimit(1)
+                                .fixedSize()
+                                .parityLayout(text: line, role: "heading", size: 38.4, weight: 590, color: DesignTokens.Color.textPrimary, tracking: -2.1)
+                        }
+                    }
+                    .frame(width: 204, alignment: .leading)
                 }
                 Spacer(minLength: 0)
                 Button(action: onClose) {
@@ -561,6 +567,7 @@ struct TVDrawer<Content: View>: View {
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .parityLayout(text: "\u{00D7}", size: 26.88, weight: Int(720), color: DesignTokens.Color.textPrimary)
                         .frame(width: 48, height: 50)
+                        .parityBox("button", text: title == "Filters" ? "Close filters" : "Close", radius: Self.closeRadius, fill: DesignTokens.Stage.surfaceSoft)
                         .background(RoundedRectangle(cornerRadius: Self.closeRadius, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
                         #if os(macOS)
                         // Web `.drawer-close`: a round button with the shared dark focus ring; the frozen capture draws the ring of
@@ -590,6 +597,7 @@ struct TVDrawer<Content: View>: View {
         .padding(.leading, 46)
         .padding(.trailing, 46)
         .frame(width: 360, height: 1080, alignment: .topLeading)
+        .parityBox("dialog", fill: DesignTokens.Stage.drawer)
         .background {
             ZStack {
                 #if os(tvOS)
@@ -644,9 +652,10 @@ struct TVChoiceSection<Value: Hashable>: View {
                     let active = option.value == selection
                     Button { selection = option.value } label: {
                         choiceLabel(option, active: active)
-                            .font(TVTheme.font(size: 10.56, css: 680))
+                            .font(TVTheme.font(size: 10.56, css: title == "View" ? 900 : 680))
                             .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                             .frame(width: (268 - 8 * CGFloat(options.count - 1)) / CGFloat(options.count), height: 56)
+                            .parityBox("button", text: option.label, radius: 12, fill: active ? DesignTokens.Stage.ink : DesignTokens.Stage.controlFill)
                             .background(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(active ? DesignTokens.Color.textPrimary : DesignTokens.Stage.surfaceSoft.opacity(0.64))
@@ -671,9 +680,11 @@ struct TVChoiceSection<Value: Hashable>: View {
             VStack(spacing: 7) {
                 TVViewGlyph(kind: key)
                 Text(option.label)
+                    .parityLayout(text: option.label, size: 10.56, weight: 900, color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
             }
         } else {
             Text(option.label)
+                .parityLayout(text: option.label, size: 10.56, weight: 680, color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
         }
     }
 }
@@ -686,12 +697,12 @@ struct TVViewGlyph: View {
         Group {
             if kind == "list" {
                 VStack(spacing: 1.5) {
-                    ForEach(0..<3, id: \.self) { _ in RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: 20, height: 3.6) }
+                    ForEach(0..<3, id: \.self) { _ in RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: 20, height: 3.6).parityBox("container", radius: 1) }
                 }
             } else {
                 HStack(spacing: kind == "cover" ? 1.5 : 2) {
                     ForEach(0..<3, id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: kind == "cover" ? 4.5 : 6, height: 13)
+                        RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: kind == "cover" ? 4.5 : 6, height: 13).parityBox("container", radius: 1)
                     }
                 }
             }
@@ -886,10 +897,12 @@ struct TVActionRow: View {
             }
             .padding(.leading, 18)
             .frame(width: 268, height: 68)
+            .parityBox("button", text: "\(glyph) \(label)", radius: 14, fill: DesignTokens.Stage.surfaceSoft)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
         .focusEffectDisabled()
+        .accessibilityLabel("\(glyph) \(label)")
         .focused($focused)
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focused) { _, now in TVParityState.setFocus(label, now) }
@@ -942,6 +955,7 @@ struct TVMultiSelectSection: View {
                     }
                     .padding(.horizontal, 19.4)
                     .frame(width: 268, height: 58.8)
+                    .parityBox("group", radius: 12, fill: DesignTokens.Stage.controlFill)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceSoft.opacity(0.64)))
                 }
                 .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
