@@ -67,6 +67,11 @@ sub init()
     m.profileActionsGroup = m.top.findNode("profileActionsGroup")
     m.profilesSettingsBtn = m.top.findNode("profilesSettingsBtn")
     m.profilesSignOutBtn = m.top.findNode("profilesSignOutBtn")
+    m.profilesSettingsIcon = m.top.findNode("profilesSettingsIcon")
+    m.profilesSettingsRing = m.top.findNode("profilesSettingsRing")
+    m.profilesSignOutRing = m.top.findNode("profilesSignOutRing")
+    m.profilesSignOutIcon = m.top.findNode("profilesSignOutIcon")
+    m.profilesSignOutLabel = m.top.findNode("profilesSignOutLabel")
     m.profilesSettingsHit = m.top.findNode("profilesSettingsHit")
     m.profilesSignOutHit = m.top.findNode("profilesSignOutHit")
     m.profilesClientsBtn = m.top.findNode("profilesClientsBtn")
@@ -1746,20 +1751,39 @@ sub applyProfilesChromeFocus()
     ' Gear and Sign out images have a light-theme twin (theme tokens, brand red kept).
     suffix = ""
     if ResolvePairingTheme(m.themePreference) = "light" then suffix = "-light"
-    if m.profilesSettingsBtn <> invalid
-        if settingsF
-            m.profilesSettingsBtn.uri = "pkg:/images/profiles-gear-focus" + suffix + ".png"
-        else
-            m.profilesSettingsBtn.uri = "pkg:/images/profiles-gear" + suffix + ".png"
-        end if
+    ' Gear and Sign out are tinted pills (surface fill, line outline, glyph bitmaps); focus turns the pill ink, or brand for Sign out.
+    pillRole = "surfaceStrong"
+    pillAlpha = 171
+    gearRole = "brand"
+    if settingsF
+        pillRole = "ink"
+        pillAlpha = 255
     end if
-    if m.profilesSignOutBtn <> invalid
-        if signOutF
-            m.profilesSignOutBtn.uri = "pkg:/images/profiles-signout-focus" + suffix + ".png"
-        else
-            m.profilesSignOutBtn.uri = "pkg:/images/profiles-signout" + suffix + ".png"
-        end if
+    m.profilesSettingsBtn.blendColor = ThemeColor(pillRole, pillAlpha)
+    ThemeSetRole(m.profilesSettingsBtn, pillRole, pillAlpha)
+    m.profilesSettingsIcon.blendColor = ThemeColor(gearRole)
+    ThemeSetRole(m.profilesSettingsIcon, gearRole)
+    outRole = "line"
+    m.profilesSettingsRing.blendColor = ThemeColor(outRole)
+    ThemeSetRole(m.profilesSettingsRing, outRole)
+    signRole = "surfaceStrong"
+    signAlpha = 171
+    signInk = "inkSoft"
+    if signOutF
+        signRole = "brand"
+        signAlpha = 255
+        signInk = "playerInk"
     end if
+    m.profilesSignOutBtn.blendColor = ThemeColor(signRole, signAlpha)
+    ThemeSetRole(m.profilesSignOutBtn, signRole, signAlpha)
+    m.profilesSignOutRing.blendColor = ThemeColor(outRole)
+    ThemeSetRole(m.profilesSignOutRing, outRole)
+    m.profilesSignOutIcon.blendColor = ThemeColor(signInk)
+    ThemeSetRole(m.profilesSignOutIcon, signInk)
+    m.profilesSignOutLabel.color = ThemeColor(signInk)
+    ThemeSetRole(m.profilesSignOutLabel, signInk)
+    A11yStamp(m.profilesSettingsBtn, true)
+    A11yStamp(m.profilesSignOutBtn, true)
     if m.profilesClientsFocus <> invalid
         m.profilesClientsFocus.visible = clientsF
         m.profilesClientsFocus.blendColor = ThemeColor("focusRing")
@@ -1832,6 +1856,8 @@ sub updateProfileActionsLayout()
     if m.profiles[targetIndex] <> invalid and m.profiles[targetIndex].display_name <> invalid then who = m.profiles[targetIndex].display_name
     m.profilesSettingsBtn.id = "a11y|button|999|" + who + " settings"
     m.profilesSignOutBtn.id = "a11y|button|999|Sign out " + who
+    A11yStamp(m.profilesSettingsBtn, true)
+    A11yStamp(m.profilesSignOutBtn, true)
 end sub
 
 sub onProfilesRowFocused(event as Object)

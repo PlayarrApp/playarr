@@ -131,9 +131,15 @@
 
       <!-- .profile-actions under focused/current avatar: gear + Sign out (always above row). -->
       <Group id="profileActionsGroup" translation="[852,655]" visible="true">
-        <Poster id="profilesSettingsBtn" translation="[0,0]" width="44" height="44" uri="pkg:/images/profiles-gear.png" loadDisplayMode="scaleToFit" />
+        <!-- Gear and Sign out: a tinted pill, its outline, a glyph bitmap and (for Sign out) the label as text, as the web builds them. -->
+        <Poster id="profilesSettingsBtn" translation="[0,0]" width="44" height="44" uri="pkg:/images/round-r25.9.png" />
+        <Poster id="profilesSettingsRing" translation="[0,0]" width="44" height="44" uri="pkg:/images/round-outline-r25.9.png" />
+        <Poster id="profilesSettingsIcon" translation="[13,13]" width="18" height="18" uri="pkg:/images/profiles-gear-glyph.png" />
         <Rectangle id="profilesSettingsHit" translation="[0,0]" width="44" height="44" color="0x00000000" focusable="true" />
-        <Poster id="profilesSignOutBtn" translation="[52.8,0]" width="101.2" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFill" />
+        <Poster id="profilesSignOutBtn" translation="[52.8,0]" width="101.2" height="44" uri="pkg:/images/round-r25.9.png" />
+        <Poster id="profilesSignOutRing" translation="[52.8,0]" width="101.2" height="44" uri="pkg:/images/round-outline-r25.9.png" />
+        <Poster id="profilesSignOutIcon" translation="[69.8,13]" width="18" height="18" uri="pkg:/images/profiles-exit-glyph.png" />
+        <WebLabel id="profilesSignOutLabel" translation="[95,14]" text="Sign out" size="10.75" weight="720" />
         <Rectangle id="profilesSignOutHit" translation="[52.8,0]" width="101.2" height="44" color="0x00000000" focusable="true" />
       </Group>
       <!-- Web .profile-clients-link: independent footer action, not part of avatar actions. -->
