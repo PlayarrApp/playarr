@@ -274,6 +274,7 @@ impl App {
         let filters = kicker == "Library controls" && title == "Filters";
         let close_primary = close_primary && !filters;
         let panel = gtk4::Box::builder()
+            .accessible_role(gtk4::AccessibleRole::Dialog)
             .orientation(gtk4::Orientation::Vertical)
             .css_classes(if filters {
                 vec!["pa-panel", "filters"]
@@ -330,7 +331,8 @@ impl App {
             ("Library controls", "Filters") => "Movies display filters".to_string(),
             (_, t) => t.to_string(),
         };
-        let _ = dialog;
+        crate::layout::name(&panel, &dialog);
+        crate::layout::name(&close, if filters { "Close filters" } else { "Close" });
 
         let me = self.clone();
         close.connect_clicked(move |_| me.close_panel());

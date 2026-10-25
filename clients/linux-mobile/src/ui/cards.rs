@@ -207,7 +207,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         .child(&col)
         .accessible_role(gtk4::AccessibleRole::Link)
         // Library cards clip to their 12 px corners; Home cards let the caption hang below the box.
-        .overflow(if o.home_art {
+        .overflow(if o.meta.is_some() {
             gtk4::Overflow::Visible
         } else {
             gtk4::Overflow::Hidden

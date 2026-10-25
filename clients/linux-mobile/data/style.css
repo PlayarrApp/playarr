@@ -369,3 +369,12 @@ button.pa-entry:not(.week).nosub { padding-bottom: 6.8px; }
 progressbar.pa-progress { background: #5a5559; border-radius: 0; min-height: 3px; padding: 0; }
 progressbar.pa-progress trough { min-height: 3px; background: transparent; border: none; border-radius: 0; padding: 0; }
 progressbar.pa-progress progress { background: @pa_brand; min-height: 3px; border: none; border-radius: 0; }
+
+/* View glyph boxes: a 1 px ink border (the tile's checked colour when on), as the web's bordered boxes. */
+.pa-vg { border: 1px solid @pa_ink; border-radius: 1px; min-width: 0; min-height: 0; }
+.pa-seg-tile:checked .pa-vg { border-color: @pa_body; }
+
+/* The web's select: a 320 x 58.8 group (soft fill, 12 px corners) around a 44 px button inset 7 px. */
+dropdown.pa-dropdown.pa-filter { background: alpha(@pa_soft, 0.64); border-radius: 12px; padding: 7px 7px 7px 7px; }
+dropdown.pa-dropdown.pa-filter > button { min-height: 44px; border-radius: 10px; padding: 0 12px; background: alpha(@pa_soft, 0.64); }
+.pa-seg-tile.view { padding: 0; min-height: 48px; }
