@@ -136,14 +136,14 @@ final class ParityLayoutRegistry {
             var element: [String: Any] = [
                 "text": item.text ?? "",
                 "role": item.role,
-                "rect": ["x": Double(item.rect.minX), "y": Double(item.rect.minY), "w": Double(item.rect.width), "h": Double(item.rect.height)],
+                "rect": ["x": q(item.rect.minX), "y": q(item.rect.minY), "w": q(item.rect.width), "h": q(item.rect.height)],
                 "color": item.color as Any? ?? NSNull(),
                 "background": item.background as Any? ?? NSNull(),
-                "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
+                "fontSize": item.size.map { q($0) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
             ]
             if item.color == nil { element["color"] = NSNull() }
-            if item.radius > 0 { element["radius"] = Double(item.radius) }
+            if item.radius > 0 { element["radius"] = q(item.radius) }
             return element
         }
         let document: [String: Any] = [
