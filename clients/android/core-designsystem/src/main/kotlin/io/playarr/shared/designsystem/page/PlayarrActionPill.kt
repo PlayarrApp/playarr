@@ -98,7 +98,7 @@ fun PlayarrActionPill(
                     },
                 )
                 .then(if (focused && !(tv && active && suppressFocusRingWhenActive)) Modifier.playarrFocusRing(PlayarrRingShape.Rounded(metrics.pillRadius)) else Modifier)
-                .parityBox("button", label, 14f, background = parityPillGlass())
+                .parityShape(14f)
                 .semantics { contentDescription = label },
             shape = tile,
             // Focus draws the ring only; the open state (panel shown) keeps the ink fill.
@@ -113,7 +113,7 @@ fun PlayarrActionPill(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterVertically),
                 ) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp).parityBox("image", background = parityPillGlass()))
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp).parityBox("image"))
                     Text(label, fontSize = 8.256.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1, modifier = Modifier.offset(y = (-1).dp))
                     if (count > 0) {
                         Surface(color = palette.accent, shape = CircleShape) {
@@ -129,7 +129,7 @@ fun PlayarrActionPill(
                 }
             } else {
                 Box(contentAlignment = Alignment.Center) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityBox("image", background = parityPillGlass()))
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityBox("image"))
                 }
             }
         }

@@ -74,7 +74,7 @@ internal fun PhoneKeyArt(
                         scaleY = 1.04f
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
-                    .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f, background = surface)
+                    .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f)
                     .drawWithContent {
                         drawContent()
                         // mask-image: linear-gradient(90deg, #000 0%, #000 72%, transparent 100%)
@@ -103,7 +103,7 @@ internal fun PhoneKeyArt(
 internal fun PhoneStageWash(modifier: Modifier = Modifier) {
     val surface = WebSurface
     val clear = surface.copy(alpha = 0f)
-    Box(modifier.parityBox("container", background = surface).background(Brush.verticalGradient(0f to clear, 0.32f to clear, 0.66f to surface, 1f to surface)))
+    Box(modifier.parityBox("container").background(Brush.verticalGradient(0f to clear, 0.32f to clear, 0.66f to surface, 1f to surface)))
 }
 
 /** Home's `.tv-rail-surface`: transparent at its top edge, solid surface from 8% down. */
@@ -263,7 +263,7 @@ internal fun PhonePill(
         shadows = listOf(shadow),
         shape = androidx.compose.foundation.shape.CircleShape,
         modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp)
-            .parityBox(exportRole, exportLabel.orEmpty(), 999f, background = container.compositeOver(WebSurface))
+            
             .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier),
         innerModifier = Modifier.background(container),
         innerFill = false,
@@ -296,11 +296,11 @@ internal fun PhoneEpisodeArt(
     WebShadowedBox(
         shadows = webCardRestShadows,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        modifier = modifier.fillMaxWidth().androidx_aspect16x9().parityBox("container", radius = 8f, background = WebSurfaceSoft),
+        modifier = modifier.fillMaxWidth().androidx_aspect16x9().parityBox("container", radius = 8f),
         innerModifier = Modifier.background(WebSurfaceSoft),
     ) {
         Box(
-            Modifier.fillMaxSize().parityBox("image", background = WebSurfaceSoft).graphicsLayer {
+            Modifier.fillMaxSize().parityBox("image").graphicsLayer {
                 compositingStrategy = CompositingStrategy.Offscreen
                 colorFilter = EpisodeArtGrayscale
             },

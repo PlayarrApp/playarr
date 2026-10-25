@@ -11,62 +11,44 @@ import androidx.compose.ui.semantics.semantics
 /** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
 var parityLayoutEnabled = false
 
-class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var style: Triple<Float, Int, androidx.compose.ui.graphics.Color>?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero, var density: Float = 1f) {
+/**
+ * A painted box the layout export reads: only its measured bounds (through every layer transform), its kind (container, image or img)
+ * and the alpha and corner radius the composable itself draws with. Colours are never declared here: the driver reads them from the screenshot.
+ */
+class ParityBox(val view: View, var kind: String, var radius: Float, var opacity: Float, var fillAlpha: Float = 1f) {
     var coordinates: androidx.compose.ui.layout.LayoutCoordinates? = null
+    var density: Float = 1f
 
-    /** Window bounds through the layers right now: a graphicsLayer animation does not call onGloballyPositioned, so the recorded bounds can be stale. */
-    fun refresh() {
-        val it = coordinates?.takeIf { c -> c.isAttached } ?: return
-        val a = it.localToWindow(androidx.compose.ui.geometry.Offset.Zero); val b = it.localToWindow(androidx.compose.ui.geometry.Offset(it.size.width.toFloat(), it.size.height.toFloat()))
-        bounds = androidx.compose.ui.geometry.Rect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
+    /** The box's four corners through the layers right now (a graphicsLayer animation does not call onGloballyPositioned), or null once detached. */
+    fun bounds(): androidx.compose.ui.geometry.Rect? {
+        val c = coordinates?.takeIf { it.isAttached } ?: return null
+        val a = c.localToWindow(androidx.compose.ui.geometry.Offset.Zero); val b = c.localToWindow(androidx.compose.ui.geometry.Offset(c.size.width.toFloat(), c.size.height.toFloat()))
+        return androidx.compose.ui.geometry.Rect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
     }
 }
 
 val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
 /**
- * Records this node's window bounds for the layout export (docs/parity/LAYOUT.md): a painted container, an image, a control
- * (cards are `link` with their accessible name, as the web's `Open <title>` links). A no-op unless the debug build enabled it.
+ * Records this node's bounds for the layout export (docs/parity/LAYOUT.md). Only for something the composable paints itself: a filled or
+ * clipped container (`container`), an image or icon (`image`) or a status dot (`img`). Controls, headings and text are read from the semantics tree.
+ * [fillAlpha] is the alpha of the fill the box paints; a box painted at 0.5 or more covers what lies under it in lower windows.
+ * [radius] is the dp corner radius the shape really uses (999 for a CircleShape); the export clamps it to half the measured short side.
  */
-fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opacity: Float = 1f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)? = null, style: Triple<Float, Int, androidx.compose.ui.graphics.Color>? = null): Modifier =
+fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fillAlpha: Float = 1f): Modifier =
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
-        val box = remember { ParityBox(view, role, label, radius, opacity, background, fit, style) }
-        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit; box.style = style
-        DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
-        onGloballyPositioned {
-            box.coordinates = it
-            // Corners through the layers, unclipped: the web exports boxes that run past the viewport edge.
-            val a = it.localToWindow(androidx.compose.ui.geometry.Offset.Zero); val b = it.localToWindow(androidx.compose.ui.geometry.Offset(it.size.width.toFloat(), it.size.height.toFloat()))
-            box.bounds = androidx.compose.ui.geometry.Rect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
-        }
+        val box = remember { ParityBox(view, kind, radius, opacity, fillAlpha) }
+        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = fillAlpha
+        DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
+        onGloballyPositioned { box.coordinates = it }
     }
 
-
-/** Debug layout export: the web role of a text node whose element is itself the control (a label pill exports as a `button` run). */
-val ParityRoleKey = androidx.compose.ui.semantics.SemanticsPropertyKey<String>("ParityRole")
-private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRoleProp by ParityRoleKey
-
+/** The corner radius (dp) of the shape a control draws (999 for a CircleShape), read by the layout export from the control's semantics node. */
 val ParityRadiusKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("ParityRadius")
 private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRadiusProp by ParityRadiusKey
 
-val ParityLineBoxKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Boolean>("ParityLineBox")
-private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityLineBoxProp by ParityLineBoxKey
-
-val ParityBgKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Long>("ParityBg")
-private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityBgProp by ParityBgKey
-
-fun Modifier.parityRole(role: String, radius: Float = 0f): Modifier = semantics { parityRoleProp = role; if (radius > 0f) parityRadiusProp = radius }
-
-/** Layout export for a text run: its web role and radius, the raw DOM text where the web shows a CSS-transformed string, and the flat colour behind it. */
-fun Modifier.parityText(role: String? = null, radius: Float = 0f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified): Modifier = semantics {
-    if (role != null) parityRoleProp = role
-    if (radius > 0f) parityRadiusProp = radius
-    if (background != androidx.compose.ui.graphics.Color.Unspecified) parityBgProp = background.value.toLong()
-}
-
-/** Layout export: this text's web run box is its CSS line box (the element's own line-height), not the font's content area. */
-fun Modifier.parityLineBox(): Modifier = semantics { parityLineBoxProp = true }
+fun Modifier.parityShape(radius: Float): Modifier = if (!parityLayoutEnabled) this else semantics { parityRadiusProp = radius }
 
 /**
  * `Arrangement.spacedBy` rounds every gap to whole pixels, so a CSS gap of 13.6 px drifts 0.4 px per item. This arrangement keeps the
@@ -104,16 +86,3 @@ class FractionalSpacedVertical(private val gap: androidx.compose.ui.unit.Dp) : a
         }
     }
 }
-
-private fun over(top: androidx.compose.ui.graphics.Color, alpha: Float, under: androidx.compose.ui.graphics.Color) =
-    androidx.compose.ui.graphics.Color(top.red * alpha + under.red * (1 - alpha), top.green * alpha + under.green * (1 - alpha), top.blue * alpha + under.blue * (1 - alpha))
-
-/** Layout export: the web composites translucent fills over the page, so these are the flat colours the DOM dump reports. */
-fun parityNavGlass(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.surfaceStrong, 0.56f, it.background) }
-fun parityNavSelected(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.ink, 0.09f, parityNavGlass()) }
-fun parityPillGlass(): androidx.compose.ui.graphics.Color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.let { over(it.surfaceStrong, 0.78f, it.background) }
-
-/** Layout export: the flat colour under the current panel (a drawer is `--surface-strong`, a page `--surface`); translucent fills are composited over it. */
-val LocalParityUnder = androidx.compose.runtime.compositionLocalOf { androidx.compose.ui.graphics.Color.Unspecified }
-
-fun parityOver(top: androidx.compose.ui.graphics.Color, alpha: Float, under: androidx.compose.ui.graphics.Color) = over(top, alpha, under)
