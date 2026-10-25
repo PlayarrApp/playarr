@@ -102,7 +102,7 @@ internal fun PhoneProfilesHeading(kicker: String, title: String) {
                 title,
                 color = WebInk, fontSize = 42.9.sp, lineHeight = 40.755.sp, fontWeight = FontWeight.Medium,
                 letterSpacing = (-3.0888).sp, textAlign = TextAlign.Center, style = WebTextStyle, maxLines = 1, softWrap = false,
-                modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true).offset(y = (-10).dp).semantics { heading() }.parityText(role = "heading", background = WebBackground),
+                modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true).offset(y = (-10).dp).semantics { heading() }.parityText(background = WebBackground),
             )
         }
     }
@@ -315,7 +315,7 @@ internal fun BoxScope.PhoneProfilesClientsLink(onClick: () -> Unit) = androidx.c
         modifier = Modifier.align(Alignment.BottomEnd).padding(end = 22.dp, bottom = 25.3.dp).height(44.dp).parityBox("link", "Clients", 999f, background = parityOver(WebSurfaceStrong, 0.72f, WebBackground)),
     ) {
         Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.8.dp)) {
-            Text(playarrString(PlayarrString.ProfilesClients), color = WebInkSoft, fontSize = 7.68.sp, lineHeight = 11.52.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(role = "link", radius = 999f, background = parityOver(WebSurfaceStrong, 0.72f, WebBackground)))
+            Text(playarrString(PlayarrString.ProfilesClients), color = WebInkSoft, fontSize = 7.68.sp, lineHeight = 11.52.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(radius = 999f, background = parityOver(WebSurfaceStrong, 0.72f, WebBackground)))
             Text("→", color = WebInkSoft, fontSize = 7.68.sp, lineHeight = 11.52.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = parityOver(WebSurfaceStrong, 0.72f, WebBackground)))
         }
     }

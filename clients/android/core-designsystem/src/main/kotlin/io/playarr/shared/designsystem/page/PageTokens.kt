@@ -65,7 +65,13 @@ data class PlayarrPageMetrics(
     val shellColumnGap: Dp,
     /** `.page-header-detail` font size in sp: clamp(9.92, 0.58 vw, 11.52) css px, 11.136 at 1920. */
     val subtitleSize: Float = 11.136f,
+    /** css px per dp (a tablet draws web's canvas at a fraction); 1 on the 1920 television. */
+    val stage: Float = 1f,
+    /** One web `vw` in css px (19.2 at 1920). */
+    val vw: Float = 19.2f,
 ) {
+    /** css px to the dp or sp this layout draws it at. */
+    fun css(px: Float): Float = px / stage
     /** `--page-header-height`: the row grows to the tile (owner ruling Q9). */
     val headerHeight: Dp get() = if (pillHeight > control) pillHeight else control
 }
@@ -174,8 +180,10 @@ object PlayarrPageTokens {
             controlWidth = dp((2.8f * vw).coerceIn(44f, 50f)),
             pillWidth = dp((3.6f * vw).coerceIn(48f, 62f)),
             pillHeight = dp((5.2f * vw).coerceIn(52f, 72f)),
+            pillRadius = dp(14f),
             headerGap = dp((1.2f * vw).coerceIn(14f, 24f)),
             subtitleSize = (0.58f * vw).coerceIn(9.92f, 11.52f) / scale,
+            stage = scale, vw = vw,
             start = dp(maxOf((8f * vw).coerceIn(102f, 160f), navClearance)),
             headerEnd = dp((4f * vw).coerceIn(24f, 96f)),
             shellColumnTop = dp((14f * vu).coerceIn(116f, 164f)),

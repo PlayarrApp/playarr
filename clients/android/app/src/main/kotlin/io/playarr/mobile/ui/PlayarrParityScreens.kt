@@ -2080,13 +2080,14 @@ private fun TelevisionProfilesStage(
                 ProfilesGlassPill(
                     onClick = updateControl.check,
                     enabled = !busy,
+                    modifier = Modifier.parityBox("button", label, 999f, background = io.playarr.shared.designsystem.page.parityPillGlass()),
                 ) {
                     Text(
                         label,
                         color = WebInkSoft,
                         fontSize = if (tabletUpdate) 8.sp else 10.752.sp,
                         fontWeight = if (tabletUpdate) FontWeight.Bold else FontWeight(720),
-                        modifier = Modifier.parityText(role = "button", radius = 999f, background = io.playarr.shared.designsystem.page.parityPillGlass()),
+                        modifier = Modifier.parityText(radius = 999f, background = io.playarr.shared.designsystem.page.parityPillGlass()),
                     )
                 }
                 if (event is AndroidUpdateEvent.Error) {

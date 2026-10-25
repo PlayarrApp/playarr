@@ -98,7 +98,7 @@ fun PlayarrActionPill(
                     },
                 )
                 .then(if (focused && !(tv && active && suppressFocusRingWhenActive)) Modifier.playarrFocusRing(PlayarrRingShape.Rounded(metrics.pillRadius)) else Modifier)
-                .parityBox("button", label, 14f, background = parityPillGlass())
+                .parityBox("button", label, metrics.pillRadius.value, background = parityPillGlass())
                 .semantics { contentDescription = label },
             shape = tile,
             // Focus draws the ring only; the open state (panel shown) keeps the ink fill.
@@ -108,13 +108,16 @@ fun PlayarrActionPill(
         ) {
             val vector = icon.vector
             if (tv) {
+                // Web `.ui-btn.action-pill`: padding .45rem .25rem, gap .35rem, label clamp(6.08, .43 vw, 8.32), icon clamp(18, 1.4 vw, 24), all css px.
+                val labelCss = (0.43f * metrics.vw).coerceIn(6.08f, 8.32f)
+                val iconCss = (1.4f * metrics.vw).coerceIn(18f, 24f)
                 Column(
-                    Modifier.padding(horizontal = 4.dp, vertical = 7.2.dp),
+                    Modifier.padding(horizontal = metrics.css(4f).dp, vertical = metrics.css(7.2f).dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterVertically),
+                    verticalArrangement = Arrangement.spacedBy(metrics.css(5.6f).dp, Alignment.CenterVertically),
                 ) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp).parityBox("image", background = parityPillGlass()))
-                    Text(label, fontSize = 8.256.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1, modifier = Modifier.offset(y = (-1).dp))
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(metrics.css(iconCss).dp).parityBox("image", background = parityPillGlass()))
+                    Text(label, fontSize = metrics.css(labelCss).sp, lineHeight = metrics.css(labelCss * 11f / 8.256f).sp, fontWeight = FontWeight.Bold, letterSpacing = metrics.css(0.02f * labelCss).sp, maxLines = 1, modifier = Modifier.offset(y = metrics.css(-1f).dp))
                     if (count > 0) {
                         Surface(color = palette.accent, shape = CircleShape) {
                             Text(

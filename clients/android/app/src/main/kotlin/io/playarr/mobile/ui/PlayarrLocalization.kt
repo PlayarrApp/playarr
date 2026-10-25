@@ -766,6 +766,7 @@ internal enum class PlayarrString(
     DetailNoPlayableMedia("No playable media", "ไม่มีสื่อที่เล่นได้", "再生可能なメディアがありません"),
     DetailPlay("Play", "เล่น", "再生"),
     DetailPlayTitle("Play {{title}}", "เล่น {{title}}", "{{title}}を再生"),
+    DetailPlayTitleFrom("Play {{title}} from {{position}}", "เล่น {{title}} จาก {{position}}", "{{title}}を{{position}}から再生"),
     DetailPlayback("Playback", "การเล่น", "再生"),
     DetailDownloadTitle("Download {{title}}", "ดาวน์โหลด {{title}}", "{{title}} をダウンロード"),
     DetailPlaybackSettingsTitle("Playback settings", "การตั้งค่าการเล่น", "再生設定"),

@@ -387,7 +387,7 @@ private fun PhoneCalendarToolbarPill(label: String, onClick: () -> Unit, modifie
         border = BorderStroke(1.dp, WebPillBorder),
     ) {
         Box(Modifier.padding(horizontal = 21.dp), contentAlignment = Alignment.Center) {
-            Text(label, fontSize = 11.52.sp, lineHeight = 17.28.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(role = "button", radius = 999f, background = WebSurface))
+            Text(label, fontSize = 11.52.sp, lineHeight = 17.28.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(radius = 999f, background = WebSurface))
         }
     }
     }
@@ -564,7 +564,7 @@ private fun PhoneCalendarPill(label: String, glyph: String? = null, enabled: Boo
         Row(Modifier.padding(horizontal = m.pillPad.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (m === TvCalendarMetrics) 9.6.dp else 8.dp)) {
             if (glyph != null) Text(glyph, color = WebInkSoft, fontSize = m.pill.sp, lineHeight = m.pillLine.sp, fontWeight = FontWeight(720), style = WebTextStyle, modifier = Modifier.parityText(background = WebSurface))
             Text(label, fontSize = m.pill.sp, lineHeight = m.pillLine.sp, fontWeight = FontWeight(if (glyph != null) 900 else 720), style = WebTextStyle, maxLines = 1,
-                modifier = if (primary) Modifier.parityText(role = "button", radius = 999f, background = fill) else Modifier.parityText(background = WebSurface))
+                modifier = if (primary) Modifier.parityText(radius = 999f, background = fill) else Modifier.parityText(background = WebSurface))
         }
     }
 }
@@ -1182,8 +1182,8 @@ private fun CalendarWeekBody(
                         if (true) {
                             Row(Modifier.then(if (isTelevision) Modifier.offset(y = 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    phoneCalendarDayHeading(group.date, locale), color = if (isTelevision && LocalStageScale.current == 1f) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.4.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
-                                    style = WebTextStyle, modifier = if (isTelevision && LocalStageScale.current == 1f) Modifier else Modifier.semantics { heading() },
+                                    phoneCalendarDayHeading(group.date, locale), color = if ((isTelevision && LocalStageScale.current == 1f) || (!isTelevision && group.date == today)) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.4.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
+                                    style = WebTextStyle, modifier = if (isTelevision) (if (LocalStageScale.current == 1f) Modifier else Modifier.semantics { heading() }) else Modifier,
                                 )
                                 if (group.date == today) CalendarTodayBadge(tv = isTelevision && LocalStageScale.current == 1f)
                             }
@@ -2083,7 +2083,7 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
             .padding(horizontal = 10.4.dp, vertical = 2.88.dp),
     ) {
         Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1,
-            modifier = Modifier.parityText(role = "text", radius = 999f, background = androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f)))
+            modifier = Modifier.parityText(radius = 999f, background = androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f)))
     }
 }
 
@@ -2093,7 +2093,7 @@ private fun CalendarTodayBadge(tv: Boolean = false) {
     val ink = if (tv) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk.copy(alpha = 0.9f)
     Box(Modifier.border(1.dp, ink.copy(alpha = 0.6f), CircleShape).padding(horizontal = 8.dp, vertical = 1.6.dp)) {
         Text(playarrString(PlayarrString.CalendarToday).uppercase(), color = ink, fontSize = 11.2.sp, lineHeight = 16.8.sp, fontWeight = FontWeight(640), letterSpacing = 0.896.sp, style = WebTextStyle,
-            modifier = if (tv) Modifier.offset(y = (-1.4).dp).parityText(role = "text", radius = 999f) else Modifier.parityText(radius = 999f))
+            modifier = if (tv) Modifier.offset(y = (-1.4).dp).parityText(radius = 999f) else Modifier.parityText(radius = 999f))
     }
 }
 

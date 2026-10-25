@@ -519,7 +519,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
                 verticalArrangement = Arrangement.spacedBy(if (icon == null) 0.dp else 6.4.dp, Alignment.CenterVertically),
             ) {
                 icon?.invoke(if (selected) WebBackground else WebInkSoft)
-                Text(if (LocalTabletDrawerCssPx.current) label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } } else label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(if (icon != null) 900 else weight), maxLines = 1, modifier = if (boxed) Modifier.parityText(background = fillFlat) else Modifier.parityText(role = "button", radius = 12f, background = fillFlat))
+                Text(if (LocalTabletDrawerCssPx.current) label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } } else label.replaceFirstChar { it.titlecase() }, fontSize = webVw(7.68f, 0.55f, 10.88f).value.sp, lineHeight = (webVw(7.68f, 0.55f, 10.88f).value * 1.5f).sp, fontWeight = FontWeight(if (icon != null) 900 else weight), maxLines = 1, modifier = if (boxed) Modifier.parityText(background = fillFlat) else Modifier.parityText(radius = 12f, background = fillFlat))
             }
         }
         return
@@ -544,7 +544,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
     ) {
         Column(Modifier.fillMaxHeight().padding(horizontal = 9.6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.8.dp, Alignment.CenterVertically)) {
             icon?.invoke(content)
-            Text(label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1, modifier = if (boxed) Modifier.parityText(background = fillFlat) else Modifier.parityText(role = "button", radius = 12f, background = fillFlat))
+            Text(label.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } }, fontSize = 11.52.sp, lineHeight = if (icon != null) 12.7.sp else 17.28.sp, fontWeight = FontWeight(if (icon != null) 900 else 680), maxLines = 1, modifier = if (boxed) Modifier.parityText(background = fillFlat) else Modifier.parityText(radius = 12f, background = fillFlat))
         }
     }
 }
