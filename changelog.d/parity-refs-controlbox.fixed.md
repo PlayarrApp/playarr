@@ -1,0 +1,1 @@
+- Parity web refs: controls keep their border box with the label as a separate text element, refs are captured with each platform's user agent, and the player audio button's opacity is volatile.

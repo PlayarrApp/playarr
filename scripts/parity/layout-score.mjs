@@ -84,7 +84,7 @@ function compare(w, d, { scoreText, edge = TOL.edge }) {
   if (w.painted !== false && ((w.radius ?? 0) > 0 || (d.radius ?? 0) > 0)) {
     if (Math.abs((w.radius ?? 0) - (d.radius ?? 0)) > TOL.radius) diff("radius", w.radius ?? 0, d.radius ?? 0, (d.radius ?? 0) - (w.radius ?? 0));
   }
-  if (Math.abs((w.opacity ?? 1) - (d.opacity ?? 1)) > TOL.opacity) diff("opacity", w.opacity ?? 1, d.opacity ?? 1, (d.opacity ?? 1) - (w.opacity ?? 1));
+  if (!w.opacityVolatile && Math.abs((w.opacity ?? 1) - (d.opacity ?? 1)) > TOL.opacity) diff("opacity", w.opacity ?? 1, d.opacity ?? 1, (d.opacity ?? 1) - (w.opacity ?? 1));
   return out;
 }
 

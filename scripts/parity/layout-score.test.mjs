@@ -155,3 +155,11 @@ test("a radius on a web element that draws nothing is not scored; a painted one 
   assert.equal(radiusFails(el(14, false), el(0)), 0);
   assert.equal(radiusFails(el(14), el(0)), 1);
 });
+
+test("an opacity marked volatile on the web element is not scored", () => {
+  const el = (op, vol) => ({ text: "", role: "button", rect: { x: 0, y: 0, w: 40, h: 40 }, color: null, background: "#ffffff", fontSize: null, fontWeight: null, ...(op ? { opacity: op } : {}), ...(vol ? { opacityVolatile: true } : {}) });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  const fails = (w, d) => scoreLayout(doc(w), doc(d)).failures.flatMap((f) => f.problems).filter((x) => x.field === "opacity").length;
+  assert.equal(fails(el(0.5, true), el()), 0);
+  assert.equal(fails(el(0.5), el()), 1);
+});

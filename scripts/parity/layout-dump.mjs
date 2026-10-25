@@ -183,12 +183,13 @@ export function layoutPageFn(volatile) {
     var vol = matchVolatile(el, own);
     if (vol && vol.host !== el) continue;
     if (vol && vol.entry.omit) continue;
+    var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var r = el.getBoundingClientRect();
     if (vol && (own || vol.entry.selector && norm(el.innerText))) {
       var range = document.createRange();
       range.selectNodeContents(el);
       var rr = range.getBoundingClientRect();
-      if (rr.width >= 1 && rr.height >= 1) r = rr;
+      if (rr.width >= 1 && rr.height >= 1 && !control) r = rr; /* a control keeps its own box */
     } else if (own) {
       var rg = document.createRange();
       rg.setStartBefore(texts[0]);
@@ -200,7 +201,6 @@ export function layoutPageFn(volatile) {
     if (clipped(el, r)) continue;
     var op = effOpacity(el);
     if (op <= 0) continue;
-    var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var media = tag === "img" || tag === "svg" || tag === "canvas" || tag === "video";
     var painted = visibleFill(cs, el);
     if (!vol && !own && !control && !media && !painted) continue;
@@ -214,9 +214,25 @@ export function layoutPageFn(volatile) {
     /* a percentage resolves against the box (min side for round/pill); any radius is capped at half the short side */
     if (/%$/.test(rawRadius)) radius = parseFloat(rawRadius) / 100 * Math.min(box.width, box.height);
     radius = Math.min(radius, Math.min(box.width, box.height) / 2);
+    /* A control with its own text keeps its CSS border box as the control element; the text is a separate text element with glyph-run bounds. */
+    var split = control && !!own && !vol;
+    if (split && box.width >= 1 && box.height >= 1 && !clipped(el, box) && !occluded(el, box)) {
+      var crow = {
+        text: norm(label) || own,
+        role: roleOf(el, false),
+        rect: { x: round(box.left), y: round(box.top), w: round(box.width), h: round(box.height) },
+        color: null,
+        background: toHex(backdrop(el)),
+        fontSize: null,
+        fontWeight: null
+      };
+      if (radius > 0) { crow.radius = round(radius); if (!painted) crow.painted = false; }
+      if (op < 1) crow.opacity = round(op);
+      rows.push(crow);
+    }
     var row = {
       text: vol && !vol.entry.selector ? own : vol ? norm(el.innerText) : text,
-      role: roleOf(el, !!own),
+      role: split ? "text" : roleOf(el, !!own),
       rect: { x: round(r.left), y: round(r.top), w: round(r.width), h: round(r.height) },
       color: own ? toHex(gradient || fill) : null,
       background: toHex(backdrop(el)),
@@ -224,8 +240,9 @@ export function layoutPageFn(volatile) {
       fontWeight: own ? Number(cs.fontWeight) || 400 : null
     };
     if (gradient) row.colorGradient = true;
-    if (radius > 0) { row.radius = round(radius); if (!painted) row.painted = false; }
-    if (op < 1) row.opacity = round(op);
+    if (radius > 0 && !split) { row.radius = round(radius); if (!painted) row.painted = false; }
+    if (op < 1 && !(vol && vol.entry.opacityVolatile)) row.opacity = round(op);
+    if (vol && vol.entry.opacityVolatile) row.opacityVolatile = true;
     if (vol) {
       row.volatile = vol.entry.name;
       if (vol.entry.clock) row.clock = true;
