@@ -1,5 +1,5 @@
 {
-  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. player-controls is taken by the web driver (playerControls) on the static server: clip paused at 2 s, video visible, focus dropped. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces. noDownloads: Downloads hidden in the web client (device cannot store downloads; Roku). extraScreens: ref-only screens that are not in suite.json (the device suites do not run them); each has an id and a route and is captured like a route screen.",
+  "$comment": "Web reference sets: one capture per viewport, copied to every client dir listed. player-controls is taken by the web driver (playerControls) on the static server: clip paused at 2 s, video visible, focus dropped. pixels = expected PNG size (viewport x scale). mobile: phone layout (touch, mobile UA); otherwise the TV layout at that size. actionsTitle: the card the suite's long-press keys open on key-driven layouts (the second library card); touch layouts open the first card. crop: drop the extra pixel row the fractional scale produces. noDownloads: Downloads hidden in the web client (device cannot store downloads; Roku). extraScreens: ref-only screens that are not in suite.json (the device suites do not run them); each has an id and a route and is captured like a route screen. userAgent: the platform UA the web app keys on (android-tv shows Check for updates on profiles, android-mobile (phone only: the tablet layout opens a drawer on Calendar week with it) and xbox drop the hosted Clients link); a group with userAgents is captured once per UA, each for its own dirs (named <group>+<ua>). Unset = the driver default (Android TV on TV layouts, iPhone on phone layouts). Packaged webOS/Tizen builds are compile-time platforms the hosted build cannot select; they use the xbox UA.",
   "date": "20261018-static",
   "groups": {
     "tv": {
@@ -24,7 +24,22 @@
         "vidaa",
         "xbox"
       ],
-      "actionsTitle": "Amber Cathedral 18"
+      "actionsTitle": "Amber Cathedral 18",
+      "userAgents": {
+        "android-tv": [
+          "android"
+        ],
+        "xbox": [
+          "firetv",
+          "apple",
+          "tizen-native",
+          "tizen-webos",
+          "harmony",
+          "macos",
+          "vidaa",
+          "xbox"
+        ]
+      }
     },
     "tv-nodl": {
       "viewport": [
@@ -41,7 +56,8 @@
         "roku"
       ],
       "actionsTitle": "Amber Cathedral 18",
-      "noDownloads": true
+      "noDownloads": true,
+      "userAgent": "xbox"
     },
     "ipad": {
       "viewport": [
@@ -107,7 +123,8 @@
       ],
       "dirs": [
         "android-phone"
-      ]
+      ],
+      "userAgent": "android-mobile"
     },
     "harmony-phone": {
       "viewport": [
@@ -180,7 +197,9 @@
     "calendar-link",
     "player-controls"
   ],
-  "themeless": ["player-controls"],
+  "themeless": [
+    "player-controls"
+  ],
   "titles": {
     "film-detail": "Silent Meridian 1",
     "series-detail": "Golden Cathedral 1",
