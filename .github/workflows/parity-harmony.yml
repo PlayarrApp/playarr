@@ -39,6 +39,10 @@ on:
         description: Pull request number recorded in build.json
         type: string
         default: ''
+      tv_dpr:
+        description: TV Previewer pixel ratio (1 = 1920x1080 px; 2 = 3840x2160 px at the same 1920x1080 vp, frames downscaled to 1920x1080)
+        type: string
+        default: '1'
       skip_player:
         description: Skip the player-controls route while retaining the other full-set captures
         type: boolean
@@ -142,6 +146,7 @@ jobs:
       DEVICE: ${{ inputs.device || 'tv' }}
       TV_SCREENS: ${{ inputs.tv_screens || 'all' }}
       PARITY_PR: ${{ inputs.pr }}
+      TV_DPR: ${{ inputs.tv_dpr || '1' }}
       SKIP_PLAYER: ${{ inputs.skip_player == true && 'true' || 'false' }}
       PHONE_CORE_ONLY: ${{ inputs.phone_core_only == true && 'true' || 'false' }}
       MOTION: ${{ inputs.motion == true && 'true' || 'false' }}
@@ -201,7 +206,7 @@ jobs:
         run: |
           W=$(cygpath -m "$GITHUB_WORKSPACE"); I="$W/harmony-wall-work/app/entry/.preview/default/intermediates"
           if [ "$DEVICE" = phone ]; then CTL=40117; WS=40107; DBG=40127; else CTL=40017; WS=40007; DBG=40027; fi
-          if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait); else D=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape); fi
+          if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait); elif [ "$TV_DPR" = 2 ]; then D=(-device tv -sd 320 -or 3840 2160 -cr 3840 2160 -o landscape); else D=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape); fi
           if [ "$THEME" = light ]; then CM=light; else CM=dark; fi
           cp scripts/sim-vnc/sim_vnc.py scripts/harmony-wall/
           python scripts/harmony-wall/backend_preflight.py --output backend-preflight.json
