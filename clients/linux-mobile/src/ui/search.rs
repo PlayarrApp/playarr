@@ -25,6 +25,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     entry.set_size_request(-1, 44);
     // The web's field is a 328 x 60 pill holding the 18 px icon and the input.
     let field = gtk4::Box::builder()
+        .accessible_role(gtk4::AccessibleRole::Search)
         .css_classes(["pa-search"])
         .margin_start(16)
         .margin_end(16)
