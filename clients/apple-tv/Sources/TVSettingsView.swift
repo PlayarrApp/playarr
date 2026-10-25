@@ -32,7 +32,7 @@ struct TVSettingsView: View {
     }
 
     /// Web lists Request latency (08) for admins only; the device profile is not one. tvOS keeps the row.
-    private var visibleSections: [Int] { sections.indices.filter { mac($0 != 7, $0 != 10) } }
+    private var visibleSections: [Int] { sections.indices.filter { $0 != 7 } } // web: Request latency is admin-only
 
     var body: some View {
         @Bindable var environment = environment
@@ -134,6 +134,8 @@ struct TVSettingsView: View {
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
                     .frame(width: 1046, height: 1)
                     .offset(y: 352.5)
+                Color.clear.parityBox("container", fill: DesignTokens.Stage.surface)
+                    .placed(x: 0, y: 352.03, w: 1042.25, h: 168.97)
                 Text("Home screen artwork")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
@@ -152,6 +154,8 @@ struct TVSettingsView: View {
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
                     .frame(width: 1046, height: 1)
                     .offset(y: 552.5)
+                Color.clear.parityBox("container", fill: DesignTokens.Stage.surface)
+                    .placed(x: 0, y: 551.03, w: 1042.25, h: 168.97)
                 // Web Appearance > Artwork size: one size for all artwork (Home, Library, Search and more).
                 Text("Artwork size")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
@@ -216,13 +220,15 @@ struct TVSettingsView: View {
             ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
                 Button { onSelect?(index) } label: {
                     Text(label)
-                        .font(TVTheme.font(size: 11.52, weight: .bold))
+                        .font(TVTheme.font(size: 10.56, css: 900))
                         .foregroundStyle(index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                        .parityLayout(text: label, size: 11.52, weight: Int(TVTheme.cssWeight(.bold)), color: index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
+                        .parityLayout(text: label, size: 10.56, weight: 900, color: index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                         .frame(width: widths[index], height: 56.5)
+                        .parityBox("button", text: label, radius: 12, fill: index == selected ? DesignTokens.Stage.ink : DesignTokens.Stage.settingsChoice)
                         .background(index == selected ? DesignTokens.Color.textPrimary : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
+                        .scaleEffect(index == selected ? 1.025 : 1) // web: the chosen option grows
                 }
                 .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
                 .focusEffectDisabled()

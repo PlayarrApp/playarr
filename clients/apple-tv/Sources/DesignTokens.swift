@@ -41,6 +41,7 @@ enum DesignTokens {
         static let emptyBadge = adaptive(light: 0xfdfdfc, dark: 0x1e1b1e)
         static let actionPill = adaptive(light: 0xfefefd, dark: 0x1f1c1f)
         static let entryCard = adaptive(light: 0xffffff, dark: 0x211d21)
+        static let settingsChoice = adaptive(light: 0xe9e7e7, dark: 0x292428)
         static let drawer = adaptive(light: 0xffffff, dark: 0x211d21)
 
         static let bg = adaptive(light: 0xf5f3f2, dark: 0x151315)
