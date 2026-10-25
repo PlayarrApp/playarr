@@ -286,6 +286,7 @@ struct TVCalendarView: View {
             posterView(entry)
                 .frame(width: 40, height: 60)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .parityBox("image", radius: 6, fill: DesignTokens.Stage.surfaceSoft)
             VStack(alignment: .leading, spacing: 2.4) {
                 Text(Self.title(of: item))
                     .font(TVTheme.font(size: 19.2, css: 640))
@@ -301,8 +302,11 @@ struct TVCalendarView: View {
                     .frame(height: 28.8)
                 HStack(spacing: 12) {
                     Text(entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day")
+                        .parityLayout(text: entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", size: 12.8, weight: 400, color: DesignTokens.Color.textDisabled)
                     Text(entry.map { Self.releaseLabel($0) } ?? "")
+                        .parityLayout(text: entry.map { Self.releaseLabel($0) } ?? "", size: 12.8, weight: 400, color: DesignTokens.Color.textDisabled)
                     Text(entry.map { Self.kindLabel($0) } ?? "")
+                        .parityLayout(text: entry.map { Self.kindLabel($0) } ?? "", size: 12.8, weight: 400, color: DesignTokens.Color.textDisabled)
                     TVStatusPill(tone: Self.tone(of: item, today: today))
                 }
                 .font(TVTheme.font(size: 12.8, css: 400))
@@ -314,6 +318,7 @@ struct TVCalendarView: View {
         .padding(.leading, 16)
         .padding(.trailing, 12)
         .frame(width: width, height: 106.9)
+        .parityBox("button", text: [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " "), radius: 12, fill: DesignTokens.Stage.entryCard)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceStrong))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Stage.line.opacity(0.3), lineWidth: 1))
         // The left border shows availability: we have it (playable) or not (owner rule).

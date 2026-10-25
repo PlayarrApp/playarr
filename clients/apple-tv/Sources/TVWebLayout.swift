@@ -1020,17 +1020,20 @@ struct TVStatusPill: View {
     var body: some View {
         let colour = TVCalendarView.toneColour(tone)
         Text(label)
-            .font(TVTheme.font(size: 13.44, css: 750))
+            .font(TVTheme.font(size: 13.28, css: 750))
             .foregroundStyle(DesignTokens.Color.textPrimary)
-            .parityLayout(text: label, size: 13.44, weight: Int(750), color: DesignTokens.Color.textPrimary)
+            .parityLayout(text: label, size: 13.28, weight: 750, color: DesignTokens.Color.textPrimary)
             .padding(.horizontal, 10.4)
             .frame(height: 26.6)
+            .parityBox("container", radius: 13.44, fill: Color.tvMix(DesignTokens.Stage.entryCard, colour, amount: 0.14))
             .background(Capsule().fill(colour.opacity(0.14)).background(Capsule().fill(DesignTokens.Stage.surface)))
             .overlay(Capsule().stroke(colour.opacity(0.6), lineWidth: 1))
             .fixedSize()
     }
 
-    private var label: String {
+    private var label: String { Self.label(tone) }
+
+    static func label(_ tone: Tone) -> String {
         switch tone {
         case .available: return "Available"
         case .upcoming: return "Upcoming"
