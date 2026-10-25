@@ -243,7 +243,7 @@ Item {
         Row {
             Repeater {
                 model: [qsTr("MON"), qsTr("TUE"), qsTr("WED"), qsTr("THU"), qsTr("FRI"), qsTr("SAT"), qsTr("SUN")]
-                Label { renderType: Text.NativeRendering; topPadding: 6; width: month.cellW; height: 34 * Tokens.u; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 1.5 * Tokens.u; font.pixelSize: Tokens.fs(12) }
+                PLabel { renderType: Text.NativeRendering; topPadding: 6; width: month.cellW; height: 34 * Tokens.u; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 1.5 * Tokens.u; font.pixelSize: Tokens.fs(12) }
             }
         }
         Column {
@@ -284,10 +284,10 @@ Item {
                                          : cell.es[0].has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a")
                                          : root.tone(cell.es[0]) === "missing" ? (Tokens.dark ? "#f1a4a8" : "#722f34") : String(Tokens.brandPink)
                                 }
-                                Label { renderType: Text.NativeRendering; x: 21.58 * Tokens.u; y: 6.4 * Tokens.u; width: month.cellW - 40 * Tokens.u; text: cell.es.length ? cell.es[0].title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
+                                PLabel { renderType: Text.NativeRendering; x: 21.58 * Tokens.u; y: 6.4 * Tokens.u; width: month.cellW - 40 * Tokens.u; text: cell.es.length ? cell.es[0].title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
                             }
-                            Label { renderType: Text.NativeRendering; x: 8.8 * Tokens.u; y: 49.1 * Tokens.u; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.fam(640); font.pixelSize: Tokens.fs(12.8) }
-                            Label { renderType: Text.NativeRendering; visible: cell.es.length > 1; x: 43 * Tokens.u; y: 49.5 * Tokens.u; text: qsTr("+%1 more").arg(cell.es.length - 1); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(12.5) }
+                            PLabel { renderType: Text.NativeRendering; x: 8.8 * Tokens.u; y: 49.1 * Tokens.u; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.fam(640); font.pixelSize: Tokens.fs(12.8) }
+                            PLabel { renderType: Text.NativeRendering; visible: cell.es.length > 1; x: 43 * Tokens.u; y: 49.5 * Tokens.u; text: qsTr("+%1 more").arg(cell.es.length - 1); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(12.5) }
                         }
                     }
                 }
@@ -307,7 +307,7 @@ Item {
                         x: dayCol.wk ? 0 : Tokens.pad
                         height: (dayCol.wk ? 6 : 40) * Tokens.u
                         spacing: 9.8 * Tokens.u
-                    Label { renderType: Text.NativeRendering;
+                    PLabel { renderType: Text.NativeRendering;
                         text: Calendar.dayHeading(day.date)
                         color: day.date === Calendar.todayIso() ? (Tokens.dark ? "#dfdcdd" : Tokens.inkSoft) : Tokens.ink
                         anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -1 * Tokens.u
@@ -319,7 +319,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
-                        Label { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fs(11.2) }
+                        PLabel { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fs(11.2) }
                     }
                     }
                     Repeater {
@@ -355,8 +355,8 @@ Item {
                                 id: info
                                 anchors { left: poster.right; leftMargin: 14.7 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                                 spacing: 4.4 * Tokens.u
-                                Label { renderType: Text.NativeRendering; bottomPadding: subLbl.visible ? 0 : 2.2; width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.fam(640); font.letterSpacing: -0.2; font.pixelSize: Tokens.fs(16) }
-                                Label { renderType: Text.NativeRendering;
+                                PLabel { renderType: Text.NativeRendering; bottomPadding: subLbl.visible ? 0 : 2.2; width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.fam(640); font.letterSpacing: -0.2; font.pixelSize: Tokens.fs(16) }
+                                PLabel { renderType: Text.NativeRendering;
                                     width: parent.width
                                     id: subLbl; visible: text !== ""; topPadding: -3; bottomPadding: 3
                                     text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
@@ -368,13 +368,13 @@ Item {
                                     id: metaRow
                                     y: -2.5 * Tokens.u
                                     spacing: 12 * Tokens.u
-                                    Label { renderType: Text.NativeRendering; id: timeLbl; text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
-                                    Label { renderType: Text.NativeRendering; id: relLbl; text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
-                                    Label { renderType: Text.NativeRendering; id: kindLbl; text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: modelData.media_kind === "episode" ? 0 : -0.25; font.pixelSize: Tokens.fs(12.8) }
+                                    PLabel { renderType: Text.NativeRendering; id: timeLbl; text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
+                                    PLabel { renderType: Text.NativeRendering; id: relLbl; text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
+                                    PLabel { renderType: Text.NativeRendering; id: kindLbl; text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: modelData.media_kind === "episode" ? 0 : -0.25; font.pixelSize: Tokens.fs(12.8) }
                                     Rectangle {
                                                                                 width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
                                         color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#392c2f" : "#e8dedd") : (Tokens.dark ? "#341c23" : "#f5dee2"); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#996a6e" : "#aa8285") : Tokens.brandPink
-                                        Label { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
+                                        PLabel { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
                                     }
                                 }
                                 }
@@ -493,8 +493,8 @@ Item {
             x: 8 * Tokens.u; y: 7 * Tokens.u
             width: parent.width - 16 * Tokens.u
             height: 28 * Tokens.u
-            Label { renderType: Text.NativeRendering; width: parent.width / 2; height: parent.height; text: qsTr("Month"); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: Tokens.fs(13) }
-            Label { renderType: Text.NativeRendering; width: parent.width / 2; height: parent.height; text: qsTr("Year"); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: Tokens.fs(13) }
+            PLabel { renderType: Text.NativeRendering; width: parent.width / 2; height: parent.height; text: qsTr("Month"); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: Tokens.fs(13) }
+            PLabel { renderType: Text.NativeRendering; width: parent.width / 2; height: parent.height; text: qsTr("Year"); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.inkSoft; font.family: Tokens.family610; font.pixelSize: Tokens.fs(13) }
         }
         SilicaListView {
             id: monthList
@@ -528,7 +528,7 @@ Item {
                     border.width: monthChoice.activeFocus ? 2 * Tokens.u : 0
                     border.color: Tokens.brandInk
                 }
-                Label { renderType: Text.NativeRendering; anchors.fill: parent; text: model.name; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(14) }
+                PLabel { renderType: Text.NativeRendering; anchors.fill: parent; text: model.name; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(14) }
             }
         }
         SilicaListView {
@@ -562,7 +562,7 @@ Item {
                     border.width: yearChoice.activeFocus ? 2 * Tokens.u : 0
                     border.color: Tokens.brandInk
                 }
-                Label { renderType: Text.NativeRendering; anchors.fill: parent; text: String(model.year); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(14) }
+                PLabel { renderType: Text.NativeRendering; anchors.fill: parent; text: String(model.year); horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(14) }
             }
         }
         Timer {

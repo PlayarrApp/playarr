@@ -35,14 +35,14 @@ Item {
             border.width: 1; border.color: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.66)
         }
         Rectangle { visible: btn.parent.navigationActive ? btn.activeFocus : btn.parent.restRing; anchors { fill: parent; margins: -4.75 * Tokens.u } radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary }
-        Label { renderType: Text.NativeRendering   // the web's arrow is a system-font glyph (Nunito has none)
+        PLabel { renderType: Text.NativeRendering   // the web's arrow is a system-font glyph (Nunito has none)
             anchors.centerIn: parent
             text: "\u2190"; color: Tokens.dark ? "#cdc1c6" : "#443a40"
             anchors.verticalCenterOffset: -2.2 * Tokens.u
             font.family: "Liberation Sans"; font.weight: Font.Bold; font.pixelSize: Tokens.fs(12.8)
         }
     }
-    Label { renderType: Text.NativeRendering;
+    PLabel { renderType: Text.NativeRendering;
         id: label
         anchors { left: parent.back ? btn.right : parent.left; leftMargin: parent.back ? 10 * Tokens.u : Tokens.pad; right: parent.right; verticalCenter: parent.verticalCenter }
         elide: Text.ElideRight

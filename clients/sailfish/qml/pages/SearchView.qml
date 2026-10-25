@@ -67,7 +67,7 @@ Item {
             EnterKey.iconSource: "image://theme/icon-m-enter-close"
             EnterKey.onClicked: focus = false
             onTextChanged: debounce.restart()
-            Label { renderType: Text.NativeRendering; visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
+            PLabel { renderType: Text.NativeRendering; visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
         }
     }
     MouseArea {   // web: the Filters button at the end of the header row, as on the library pages
@@ -105,7 +105,7 @@ Item {
                 }
             }
         }
-        Label { renderType: Text.NativeRendering
+        PLabel { renderType: Text.NativeRendering
             anchors { left: plate.right; leftMargin: 22.3 * Tokens.u; verticalCenter: plate.verticalCenter }
             text: qsTr("Start typing to search."); color: Tokens.ink
             font.family: Tokens.family610; font.pixelSize: Tokens.fs(11.52); font.letterSpacing: -0.23 * Tokens.u

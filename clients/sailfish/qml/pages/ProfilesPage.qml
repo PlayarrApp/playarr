@@ -59,14 +59,14 @@ PlayarrPage {
                     anchors.centerIn: parent
                     spacing: 9.59 * Tokens.u
                     Image { property string parityRole: "image"; anchors.verticalCenter: parent.verticalCenter; width: 16 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url(index === 0 ? "sun" : "globe", Tokens.inkSoft) }
-                    Label { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
+                    PLabel { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
                             color: Tokens.ink; font.family: Tokens.fam(720); font.letterSpacing: -0.15; font.pixelSize: Tokens.fs(11.52);}
                     Image { anchors.verticalCenter: parent.verticalCenter; width: 12 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("chevron", Tokens.inkSoft) }
                 }
             }
         }
     }
-    Label { renderType: Text.QtRendering;
+    PLabel { renderType: Text.QtRendering;
         x: -16 * Tokens.u; width: parent.width; y: 71.5 * Tokens.u
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("PROFILES")
@@ -74,7 +74,7 @@ PlayarrPage {
        
         font.family: Tokens.fam(820); font.letterSpacing: 2.19; font.pixelSize: Tokens.fs(7.36)
     }
-    Label { renderType: Text.QtRendering;
+    PLabel { renderType: Text.QtRendering;
         x: -16 * Tokens.u; width: parent.width; y: 82 * Tokens.u
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("Who’s watching?")
@@ -123,10 +123,10 @@ PlayarrPage {
                     // The active ring sits outside the plate, as on web.
                     Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: ringColor }   // alpha in the colour: item opacity drew a pink square behind the plate
                 }
-                Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 5.4 * Tokens.u; left: parent.left; right: parent.right }
+                PLabel { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 5.4 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink;
                         font.family: Tokens.fam(680); font.letterSpacing: 0.38; font.pixelSize: Tokens.fs(13.12) }
-                Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 35.9 * Tokens.u; left: parent.left; right: parent.right }
+                PLabel { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 35.9 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.dark ? "#c2b5bb" : "#4d4248";
                         font.family: Tokens.fam(680); font.letterSpacing: 1.13; font.pixelSize: Tokens.fs(6.72) }
             }
@@ -175,12 +175,12 @@ PlayarrPage {
                         GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0) }
                     }
                 }
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "+"; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(300); font.pixelSize: Tokens.fs(38.4) }
+                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "+"; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(300); font.pixelSize: Tokens.fs(38.4) }
             }
-            Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 8.8 * Tokens.u; left: parent.left; right: parent.right }
+            PLabel { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 8.8 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("Sign in"); color: Tokens.dark ? "#cdc1c6" : "#443a40";
                     font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(13.12) }
-            Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
+            PLabel { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.dark ? "#c2b5bb" : "#4d4248";
                     font.family: Tokens.fam(680); font.letterSpacing: 0.76; font.pixelSize: Tokens.fs(6.72) }
         }
@@ -221,10 +221,10 @@ PlayarrPage {
         onClicked: Qt.openUrlExternally("https://playarr.app/clients")
         RectangularGlow { y: 14 * Tokens.u; width: parent.width; height: parent.height; glowRadius: 19 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius; color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12) }
         Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.dark ? "#1e1a1e" : "#fcfcfb"; border.width: 1; border.color: Tokens.line }
-        Label { id: clientsLbl; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
+        PLabel { id: clientsLbl; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
                 property string parityRole: "link";
                 color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(7.68) }
-        Label { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"
+        PLabel { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"
                
                 color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: "Liberation Sans"; font.weight: Font.Bold; font.pixelSize: Tokens.fs(7.68) }
     }

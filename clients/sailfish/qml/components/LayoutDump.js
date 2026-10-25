@@ -98,6 +98,22 @@ function uniformRadiusScale(item, root) {
     if (Math.abs(sx - sy) > 0.0001 || Math.abs(dot) > 0.0001) return null
     return (sx + sy) / 2
 }
+// A Rectangle that never set a border still reports width 1 and a black colour in Qt 5.6, but draws none. shortcut: a deliberate 1 px pure
+// black border reads as no border; the app has none, revisit if it gains one.
+function drawnBorder(border) {
+    if (!(border.width > 0) || border.color.a <= 0) return false
+    return border.width !== 1 || border.color.r !== 0 || border.color.g !== 0 || border.color.b !== 0
+}
+// A vertical gradient (the only kind Qt 5.6 draws) as stops; null when none of its stops is visible. Colours interpolate premultiplied, as Qt does.
+function gradientStops(gradient) {
+    var list = gradient && gradient.stops, stops = [], visible = false
+    for (var i = 0; list && i < list.length; ++i) {
+        var c = list[i].color
+        stops.push({ p: list[i].position, r: c.r, g: c.g, b: c.b, a: c.a })
+        if (c.a > 0) visible = true
+    }
+    return visible ? stops : null
+}
 function weightOf(item, weights) {
     var w = weights[item.font.family]
     if (w !== undefined) return w
@@ -105,7 +121,67 @@ function weightOf(item, weights) {
     return f >= 75 ? 700 : f >= 63 ? 600 : f <= 25 ? 300 : 400
 }
 
-// metrics(font, text) -> { ascent, descent } in device pixels, from Qt's FontMetrics.
+// Text as laid out: one run per rendered line, in item coordinates. Qt 5.6 reports each line's box through Text.lineLaidOut (kept by PLabel
+// and PText in `laidLines`) but not its characters, so the characters of a wrapped line are found by fitting the words into the width Qt gave
+// that line, and the result is checked against Qt's own line count and widest line.
+function textElideMode(e) { return e === 1 ? 0 : e === 3 ? 1 : 2 }
+function breakParagraph(para, widthOf, advance, wrapMode, startLine, room) {
+    var tokens = para.match(/\S+\s*/g) || [""], lines = [], cur = ""
+    function fits(s) { return advance(s.replace(/\s+$/, "")) <= widthOf(startLine + lines.length) + 0.01 }
+    for (var i = 0; i < tokens.length; ++i) {
+        var token = tokens[i]
+        if (cur === "" || fits(cur + token)) { cur += token; continue }
+        lines.push(cur); cur = token
+        if (room !== undefined && lines.length >= room) break
+    }
+    if (room === undefined || lines.length < room) lines.push(cur)
+    else {
+        // the room ran out: the rest of the paragraph is what an elided last line stands for
+        lines.rest = tokens.slice(i).join("")
+    }
+    return lines
+}
+function lineRuns(item, metrics, log) {
+    var shown = item.font.capitalization === 1 ? item.text.toUpperCase() : item.text
+    shown = shown.replace(/\r/g, "")
+    var m = metrics(item.font), rec = item.laidLines, count = Math.max(1, item.lineCount || 1)
+    var ha = item.horizontalAlignment, avail = item.width - (item.leftPadding || 0) - (item.rightPadding || 0)
+    var wrap = item.wrapMode !== undefined && item.wrapMode !== 0
+    var recorded = rec && rec.length === count
+    function widthOf(i) { return recorded ? rec[Math.min(i, rec.length - 1)].w : avail }
+    var texts = []
+    if (!wrap || count === 1) {
+        var paras = wrap ? [shown] : shown.split("\n")
+        for (var pi = 0; pi < paras.length; ++pi) texts.push(paras[pi])
+        if (!wrap && texts.length !== count) { log("LAYOUTWARN|line-count|" + texts.length + "|" + count); texts = [shown] }
+    } else {
+        var split = shown.split("\n")
+        for (var si = 0; si < split.length; ++si) {
+            var left = count - texts.length
+            if (left <= 0) break
+            var got = breakParagraph(split[si], widthOf, m.advance, item.wrapMode, texts.length, si === split.length - 1 ? left : undefined)
+            for (var gi = 0; gi < got.length; ++gi) texts.push(got[gi])
+            if (got.rest !== undefined && got.rest !== "") { if (item.elide) texts[texts.length - 1] += got.rest; break }
+        }
+    }
+    if (texts.length !== count) log("LAYOUTWARN|wrapped-lines|" + texts.length + "|" + count + "|" + shown.slice(0, 40))
+    var out = [], base0 = item.baselineOffset
+    for (var i = 0; i < texts.length; ++i) {
+        var t = texts[i].replace(/\s+$/, "").replace(/^\s+/, "")
+        var last = i === texts.length - 1
+        var room = widthOf(i)
+        if (item.elide !== undefined && item.elide !== 0 && last && m.advance(t) > room + 0.01) t = m.elide(t, textElideMode(item.elide), room)
+        var wdt = m.advance(t)
+        var lx = recorded ? rec[i].x : (item.leftPadding || 0)
+        var x = ha === 4 ? lx + (room - wdt) / 2 : ha === 2 ? lx + room - wdt : lx
+        // Qt places a line's glyphs at its recorded y (already shifted by a proportional line height) plus the ascent, below the top padding.
+        var baseline = recorded ? (item.topPadding || 0) + rec[i].y + m.ascent : base0
+        out.push({ text: t.replace(/\s+/g, " "), x: x, y: baseline - m.ascent, w: wdt, h: m.ascent + m.descent, asc: m.ascent })
+    }
+    return out
+}
+
+// metrics(font) -> { ascent, descent, advance(text), elide(text, mode, width) } in device pixels, from Qt's FontMetrics.
 function dump(root, u, weights, metrics, log) {
     var fills = [], out = [], radiusLimitations = 0
     // Backdrop at a point: the fills painted before `limit` (ancestors and earlier siblings), plus, from `limit` on, only the plates that
@@ -115,9 +191,10 @@ function dump(root, u, weights, metrics, log) {
         var bg = [255, 255, 255], end = limit === undefined ? fills.length : fills.length
         for (var i = 0; i < end; ++i) {
             var f = fills[i]
-            if (limit !== undefined && i >= limit && !polygonContainsPolygon(f.polygon, cover)) continue
-            if (polygonContainsPoint(f.polygon, { x: cx, y: cy }))
-                for (var k = 0; k < 3; ++k) bg[k] = bg[k] * (1 - f.a) + f.c[k] * f.a
+            if (limit !== undefined && i >= limit && !polygonContainsPolygon(f.full, cover)) continue
+            if (!polygonContainsPoint(f.polygon, { x: cx, y: cy })) continue
+            var fc = { c: f.c, a: f.a }, fa = fc.a
+            for (var k = 0; k < 3; ++k) bg[k] = bg[k] * (1 - fa) + fc.c[k] * fa
         }
         function h(v) { var s = Math.round(v).toString(16); return s.length < 2 ? "0" + s : s }
         return "#" + h(bg[0]) + h(bg[1]) + h(bg[2])
@@ -128,43 +205,46 @@ function dump(root, u, weights, metrics, log) {
         var r = Math.min(item.radius, Math.min(item.width, item.height) / 2) * scale / u
         return r > 0.005 ? r2(r) : 0
     }
-    function walk(item, opAcc) {
-        if (!item || !item.visible || item.layoutSkipTree === true) return
+    // `shown` is set for the offscreen source of an effect: it is not visible itself, but the effect draws it.
+    function walk(item, opAcc, shown) {
+        if (!item || (!item.visible && shown !== true) || item.layoutSkipTree === true) return
         var op = opAcc * item.opacity
         if (op <= 0.001) return
         var w = item.width, h = item.height
-        var polygon = clippedItemPolygon(item, root, 0, 0, w, h), box = polygonBounds(polygon)
+        // An element counts when some of it is visible after the viewport and the clipping ancestors; its box is the whole transformed border box.
+        var polygon = clippedItemPolygon(item, root, 0, 0, w, h), clippedBox = polygonBounds(polygon)
+        var box = clippedBox ? polygonBounds(mappedRect(item, root, 0, 0, w, h)) : null
         var mark = out.length, fmark = fills.length
         if (box && item.layoutSkip !== true) {
             var x = box.x, y = box.y
             if (typeof item.text === "string" && item.contentWidth !== undefined && item.font !== undefined && item.color !== undefined && item.text.length > 0) {
-                var lines = Math.max(1, item.lineCount || 1), pitch = item.contentHeight / lines
-                var shown = item.font.capitalization === 1 ? item.text.toUpperCase() : item.text
-                var cw = (item.elide !== undefined && item.elide !== 0 && lines === 1 && item.implicitWidth > item.contentWidth) ? item.implicitWidth : item.contentWidth
-                var ha = item.horizontalAlignment
-                var localX0 = ha === 4 ? (w - cw) / 2 : ha === 2 ? w - cw : 0
-                // Legacy diagnostic paragraph estimate. This is not a rendered per-line range and cannot satisfy the layout gate.
-                var m = metrics(item.font, shown)
-                var gh = (lines - 1) * pitch + m.ascent + m.descent
-                var textPoly = clippedItemPolygon(item, root, localX0, item.baselineOffset - m.ascent, cw, gh)
-                var textBox = polygonBounds(textPoly)
-                var textSample = textPoly.length ? polygonCenter(textPoly) : { x: 0, y: 0 }
-                var el = { text: shown.replace(/\s+/g, " ").trim(), role: item.parityRole || "text", rect: textBox ? rect(textBox.x, textBox.y, textBox.w, textBox.h) : null,
-                    color: hex(item.color), background: bgAt(textSample.x, textSample.y), fontSize: r2(item.font.pixelSize / u), fontWeight: weightOf(item, weights) }
-                if (!textBox) el = null
-                if (el && item.focusRadius) {
-                    var textRadiusScale = uniformRadiusScale(item, root)
-                    if (textRadiusScale !== null) el.radius = r2(Math.min(item.focusRadius, Math.min(w, h) / 2) * textRadiusScale / u)
-                    else radiusLimitations += 1
+                var textRadiusScale = item.focusRadius ? uniformRadiusScale(item, root) : null
+                var runs = lineRuns(item, metrics, log)
+                for (var li = 0; li < runs.length; ++li) {
+                    var run = runs[li]
+                    var textPoly = clippedItemPolygon(item, root, run.x, run.y, run.w, run.h)
+                    if (!textPoly.length || run.text === "") continue
+                    var textBox = polygonBounds(mappedRect(item, root, run.x, run.y, run.w, run.h))
+                    var textSample = polygonCenter(textPoly)
+                    var el = { text: run.text, role: item.parityRole || "text", rect: rect(textBox.x, textBox.y, textBox.w, textBox.h),
+                        color: hex(item.color), background: bgAt(textSample.x, textSample.y), fontSize: r2(item.font.pixelSize / u), fontWeight: weightOf(item, weights) }
+                    if (item.focusRadius) {
+                        if (textRadiusScale !== null) el.radius = r2(Math.min(item.focusRadius, Math.min(w, h) / 2) * textRadiusScale / u)
+                        else radiusLimitations += 1
+                    }
+                    if (op < 0.999) el.opacity = r2(op)
+                    el._dbg = { bo: item.baselineOffset, ll: item.laidLines, lh: item.lineHeight, lhm: item.lineHeightMode, tp: item.topPadding, h: item.height, ch: item.contentHeight, asc: run.asc }
+                    out.push(el)
                 }
-                if (el && op < 0.999) el.opacity = r2(op)
-                if (el && el.text !== "") out.push(el)
             } else if (item.border !== undefined && item.radius !== undefined && item.color !== undefined && w > 0 && h > 0) {
+                var stops = item.gradient ? gradientStops(item.gradient) : null
                 var filled = item.color.a > 0 && !item.gradient
-                if (filled) fills.push({ polygon: polygon, c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
-                if ((filled || item.border.width > 0) && item.layoutNoEmit !== true) {
+                if (filled) fills.push({ polygon: polygon, full: mappedRect(item, root, 0, 0, w, h), c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
+                else if (stops) filled = true   // a gradient is a visible fill, but like the web's background-image it is not a backdrop colour
+                var bordered = drawnBorder(item.border)
+                if ((filled || bordered) && item.layoutNoEmit !== true) {
                     var center = polygonCenter(polygon)
-                    var rc = { text: "", role: item.parityRole || "container", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(center.x, center.y), fontSize: null, fontWeight: null, _at: [center.x, center.y], _box: polygon }
+                    var rc = { text: "", role: item.parityRole || "container", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(center.x, center.y), fontSize: null, fontWeight: null, _at: [center.x, center.y], _box: mappedRect(item, root, 0, 0, w, h) }
                     var rectangleRadiusScale = uniformRadiusScale(item, root)
                     var rr = radiusOf(item, rectangleRadiusScale)
                     if (item.radius > 0 && rectangleRadiusScale === null) radiusLimitations += 1
@@ -192,7 +272,7 @@ function dump(root, u, weights, metrics, log) {
             } else if ((item.navigationFocusable === true || item.a11yName !== undefined) && w > 0 && h > 0) {
                 var focusCenter = polygonCenter(polygon)
                 var fr = { text: String(item.a11yName !== undefined ? item.a11yName : item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, box.w, box.h),
-                    color: null, background: bgAt(focusCenter.x, focusCenter.y), fontSize: null, fontWeight: null, _at: [focusCenter.x, focusCenter.y], _box: polygon }
+                    color: null, background: bgAt(focusCenter.x, focusCenter.y), fontSize: null, fontWeight: null, _at: [focusCenter.x, focusCenter.y], _box: mappedRect(item, root, 0, 0, w, h) }
                 if (item.focusRadius) {
                     var frScale = uniformRadiusScale(item, root)
                     if (frScale !== null) fr.radius = r2(Math.min(item.focusRadius, Math.min(w, h) / 2) * frScale / u)
@@ -203,8 +283,11 @@ function dump(root, u, weights, metrics, log) {
             }
         }
         var kids = item.children
-        for (var i = 0; i < kids.length; ++i) walk(kids[i], op)
+        for (var i = 0; i < kids.length; ++i) walk(kids[i], op, shown)
+        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true)
         // an element's background includes its own fill and its children's: settle it once the subtree has been painted
+        // development aid: the QML type of each element (the suite driver drops it unless asked to keep it)
+        for (var k = mark; k < out.length; ++k) if (out[k]._src === undefined) out[k]._src = String(item).replace(/\(0x.*$/, "")
         for (var j = mark; j < out.length; ++j) if (out[j]._at) { out[j].background = bgAt(out[j]._at[0], out[j]._at[1], fmark, out[j]._box); delete out[j]._at; delete out[j]._box }
     }
     walk(root, 1)

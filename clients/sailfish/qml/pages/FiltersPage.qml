@@ -34,10 +34,10 @@ PlayarrPage {
         // Section caption.
         Repeater {
             model: page.calendar ? [ { t: qsTr("VIEW"), y: 97.5 } ] : [ { t: qsTr("VIEW"), y: 97.5 }, { t: qsTr("SORT BY"), y: 190 }, { t: qsTr("ORDER"), y: 283.4 }, { t: qsTr("AUDIO LANGUAGE"), y: 375 }, { t: qsTr("SUBTITLE LANGUAGE"), y: 479.3 + (page.openSelect === "audio" ? page.languages.length * 40 : 0) } ]
-            Label { renderType: Text.NativeRendering; x: page.gut; y: (modelData.y - 5) * Tokens.u; text: modelData.t; color: Tokens.inkMuted; property string parityRole: "heading"; font.family: Tokens.fam(720); font.letterSpacing: 1.4; font.pixelSize: Tokens.fsDown(7.04) }
+            PLabel { renderType: Text.NativeRendering; x: page.gut; y: (modelData.y - 5) * Tokens.u; text: modelData.t; color: Tokens.inkMuted; property string parityRole: "heading"; font.family: Tokens.fam(720); font.letterSpacing: 1.4; font.pixelSize: Tokens.fsDown(7.04) }
         }
-        Label { renderType: Text.NativeRendering; x: page.gut; y: 19 * Tokens.u; text: page.calendar ? qsTr("CALENDAR CONTROLS") : qsTr("LIBRARY CONTROLS"); color: Tokens.inkMuted; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.5 }
-        Label { renderType: Text.NativeRendering; x: page.gut; y: 34 * Tokens.u; text: qsTr("Filters"); color: Tokens.ink; property string parityRole: "heading"; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22.4); font.letterSpacing: -1.25 * Tokens.u }
+        PLabel { renderType: Text.NativeRendering; x: page.gut; y: 19 * Tokens.u; text: page.calendar ? qsTr("CALENDAR CONTROLS") : qsTr("LIBRARY CONTROLS"); color: Tokens.inkMuted; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.5 }
+        PLabel { renderType: Text.NativeRendering; x: page.gut; y: 34 * Tokens.u; text: qsTr("Filters"); color: Tokens.ink; property string parityRole: "heading"; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22.4); font.letterSpacing: -1.25 * Tokens.u }
         MouseArea {
             objectName: "parity-filters-close"
             property bool navigationFocusable: true
@@ -56,7 +56,7 @@ PlayarrPage {
                 anchors { fill: parent; margins: -4 * Tokens.u }
                 radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.dark ? "#ffffff" : Tokens.ink
             }
-            Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u00D7"; color: Tokens.ink; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(16) }
+            PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u00D7"; color: Tokens.ink; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(16) }
         }
         // View: icon over label.
         Row {
@@ -101,7 +101,7 @@ PlayarrPage {
                                 }
                             }
                         }
-                        Label { renderType: Text.NativeRendering; anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label.toLowerCase(); color: parent.parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(900); font.letterSpacing: 0.6; font.pixelSize: Tokens.fs(11.52)
+                        PLabel { renderType: Text.NativeRendering; anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: parent.parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(900); font.letterSpacing: 0.6; font.pixelSize: Tokens.fs(11.52)
                             transform: Translate { y: (modelData.id === "list" || modelData.id === "agenda" ? 2.8 : modelData.id === "cover" || modelData.id === "week" ? 3.3 : 2.4) * Tokens.u } }
                     }
                 }
@@ -110,7 +110,7 @@ PlayarrPage {
         // Sort and order: two wide pills each.
         Repeater {
             model: page.calendar ? [] : [
-                { row: 0, y: 207.7, id: "title", label: qsTr("Title") }, { row: 0, y: 207.7, id: "date_added", label: qsTr("Date added") },
+                { row: 0, y: 207.7, id: "title", label: qsTr("Title") }, { row: 0, y: 207.7, id: "date_added", label: qsTr("Date Added") },
                 { row: 1, y: 300.6, id: "asc", label: page.sort === "title" ? qsTr("A-Z") : qsTr("Oldest") }, { row: 1, y: 300.6, id: "desc", label: page.sort === "title" ? qsTr("Z-A") : qsTr("Newest") } ]
             MouseArea {
                 property bool navigationFocusable: true
@@ -132,7 +132,7 @@ PlayarrPage {
                 width: (isLeft ? 174.7 : 170.1) * Tokens.u; height: 47.7 * Tokens.u
                 onClicked: navigationActivate()
                 Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label; property string parityRole: "button"; property real focusRadius: 12 * Tokens.u; color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
+                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label; property string parityRole: "button"; property real focusRadius: 12 * Tokens.u; color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
             }
         }
         // Language selects.
@@ -159,13 +159,13 @@ PlayarrPage {
                     property string a11yName: curLbl.text + " " + chevLbl.text
                     property real focusRadius: 10 * Tokens.u
                     onClicked: navigationActivate()
-                    Label { renderType: Text.NativeRendering; id: curLbl
+                    PLabel { renderType: Text.NativeRendering; id: curLbl
                         x: 12 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -2
                         text: { for (var i = 0; i < page.languages.length; ++i) if (page.languages[i].id === parent.parent.cur) return page.languages[i].label; return "" }
-                        color: Tokens.ink; font.family: Tokens.fam(680); font.letterSpacing: -0.3; font.pixelSize: Tokens.fs(8.96)
+                        color: Tokens.ink; font.family: Tokens.fam(680); font.letterSpacing: 0.23; font.pixelSize: Tokens.fs(8.8)
                     }
-                    Label { renderType: Text.NativeRendering; id: chevLbl; anchors { right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter; verticalCenterOffset: -2 }
-                        text: "\u2304"; color: Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(8.96) }
+                    PLabel { renderType: Text.NativeRendering; id: chevLbl; anchors { right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter; verticalCenterOffset: -2 }
+                        text: "\u2304"; color: Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(8.8) }
                 }
                 Column {
                     y: 57.4 * Tokens.u; width: parent.width; visible: parent.opened
@@ -183,7 +183,7 @@ PlayarrPage {
                             }
                             width: parent.width; height: 40 * Tokens.u
                             onClicked: navigationActivate()
-                            Label { renderType: Text.NativeRendering; x: 19.8 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: modelData.label; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(9.5) }
+                            PLabel { renderType: Text.NativeRendering; x: 19.8 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; text: modelData.label; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(9.5) }
                         }
                     }
                 }

@@ -112,7 +112,7 @@ Item {
         title: root.title
         onBackClicked: root.goHome()
     }
-    Label { renderType: Text.NativeRendering;
+    PLabel { renderType: Text.NativeRendering;
         id: count
         anchors { top: heading.bottom; topMargin: -4 * Tokens.u; left: parent.left; leftMargin: 70 * Tokens.u }
         visible: false   // web phone hides the header subtitle (#1299); the label keeps the grid's anchor
@@ -181,7 +181,7 @@ Item {
                 }
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.primary }   // web: the ink plate of the active letter
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.96);
+                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.8);
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft }
             }
         }

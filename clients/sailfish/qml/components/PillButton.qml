@@ -58,7 +58,7 @@ MouseArea {
         anchors { fill: parent; margins: -4 * Tokens.u }
         radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary
     }
-    Label { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.letterSpacing: root.labelSpacing; font.pixelSize: root.fontSize; }
+    PLabel { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.letterSpacing: root.labelSpacing; font.pixelSize: root.fontSize; }
     Row {
         id: content
         visible: root.icon !== "" || root.iconImage !== ""
@@ -70,7 +70,7 @@ MouseArea {
             width: root.iconSize; height: width; sourceSize: Qt.size(48, 48)
             source: root.iconImage
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             id: iconLbl
             visible: root.iconImage === ""
             anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: root.iconDy * Tokens.u
@@ -79,7 +79,7 @@ MouseArea {
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             id: label2
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 2 * root.padCss * Tokens.u - root.iconW - root.contentGap * Tokens.u)
@@ -92,7 +92,7 @@ MouseArea {
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
         }
     }
-    Label { renderType: Text.NativeRendering;
+    PLabel { renderType: Text.NativeRendering;
         id: label
         visible: root.icon === "" && root.iconImage === ""
         anchors.centerIn: parent

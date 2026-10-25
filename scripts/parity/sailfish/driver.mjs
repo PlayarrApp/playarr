@@ -243,6 +243,9 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     const log = readOwnedRouteLog(ssh, ownedProcess);
     const lines = log.split(/\r?\n/).filter((l) => l.includes("LAYOUTEL|"));
     const elements = lines.flatMap((l) => JSON.parse(l.slice(l.indexOf("LAYOUTEL|") + 9)));
+    // LAYOUTWARN lines are kept beside the layout for review; the QML type of each element only when asked for.
+    const warnings = log.split(/\r?\n/).filter((l) => l.includes("LAYOUTWARN|")).map((l) => l.slice(l.indexOf("LAYOUTWARN|") + 11));
+    if (!env.PLAYARR_SF_LAYOUT_DEBUG) for (const e of elements) { delete e._src; delete e._dbg; }
     const end = log.match(/LAYOUTEND\|([\d.]+)\|([\d.]+)/);
     if (!elements.length || !end) throw new Error("layout export produced no elements");
     const dir = join(dirname(dirname(file)), "layout", theme);
@@ -251,6 +254,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     const expectedClockDate = screens.determinism.clock.slice(0, 10);
     const doc = { screen: basename(file, ".png"), theme, viewport: { w: Math.round(Number(end[1])), h: Math.round(Number(end[2])), dpr: 768 / 390 }, clockPinned: clockDate === expectedClockDate, elements };
     writeFileSync(join(dir, `${doc.screen}.json`), `${JSON.stringify(doc)}\n`);
+    if (warnings.length) writeFileSync(join(dir, `${doc.screen}.warnings.txt`), `${warnings.join("\n")}\n`);
   }
 
   return {

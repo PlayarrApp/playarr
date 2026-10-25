@@ -20,5 +20,12 @@ Page {
     }
     Keys.onReleased: navigation.handleReleased(event)
     Item { id: safeArea; anchors { fill: parent; topMargin: Tokens.safeTop; bottomMargin: Tokens.safeBottom } }
-    background: Component { Rectangle { color: Tokens.bg } }
+    // The web paints the shell, the app frame and the page one over another; each is a full-window surface here too.
+    background: Component {
+        Item {
+            Rectangle { anchors.fill: parent; color: Tokens.shell }
+            Rectangle { anchors.fill: parent; color: Tokens.bg }
+            Rectangle { anchors.fill: parent; color: Tokens.bg }
+        }
+    }
 }

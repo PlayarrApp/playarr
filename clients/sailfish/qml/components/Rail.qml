@@ -19,7 +19,7 @@ Column {
     // Static-seed web refs (2026-10-19): two cards and a peek, (viewport - 16 gutter - 16 gutter - 12 gap) / 2 = 170 px at 384.
     readonly property real cardW: Math.round((width - Tokens.px(16 + 16 + 12)) / 2)
 
-    Label { renderType: Text.NativeRendering;
+    PLabel { renderType: Text.NativeRendering;
         x: Tokens.pad
         text: root.title
         color: Tokens.ink

@@ -19,14 +19,14 @@ PlayarrPage {
         anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 56 * Tokens.u }
         spacing: 18 * Tokens.u
 
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             text: page.adding ? qsTr("Add a profile") : qsTr("Sign in")
             color: Tokens.ink
             font.family: Tokens.family
             font.pixelSize: Tokens.fs(34)
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             width: parent.width - 2 * Tokens.pad
             anchors.horizontalCenter: parent.horizontalCenter
             horizontalAlignment: Text.AlignHCenter
@@ -56,7 +56,7 @@ PlayarrPage {
                 running: Api.linkQr === "" || Api.linkState === "requesting"
             }
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             text: Api.linkCode
             color: Tokens.ink
@@ -64,21 +64,21 @@ PlayarrPage {
             font.letterSpacing: 6 * Tokens.u
             font.pixelSize: Tokens.fs(36)
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             text: "playarr.app/link"
             color: Tokens.inkMuted
             font.family: Tokens.family
             font.pixelSize: Tokens.fs(15)
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             visible: Api.linkState === "approved"
             text: qsTr("Approved, signing in...")
             color: Tokens.inkSoft
             font.family: Tokens.family
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             visible: Api.linkState === "denied"
             text: qsTr("The request was declined.")

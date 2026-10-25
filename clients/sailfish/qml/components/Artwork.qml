@@ -29,7 +29,7 @@ Item {
                 GradientStop { position: 0; color: Qt.hsla(hue(work ? work.title : ""), 0.45, Tokens.dark ? 0.32 : 0.62, 1) }
                 GradientStop { position: 1; color: Qt.hsla(hue(work ? work.title : ""), 0.5, Tokens.dark ? 0.08 : 0.3, 1) }
             }
-            Text {
+            PText {
                 visible: img.status !== Image.Ready
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 * Tokens.u }
                 text: work ? work.title.toUpperCase() : ""
