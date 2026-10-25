@@ -16,7 +16,7 @@ internal sealed class PeopleRail
     public PeopleRail(AppEnv env, View stack, IReadOnlyList<CastMember> cast, float headingY, FocusSet focus, Func<float> stackY, Action<PeopleRail>? focused = null)
     {
         var t = env.Theme; HeadingY = headingY; Count = cast.Count;
-        stack.Add(Ui.Text("Cast", RailX, headingY, 17.664f, 610, t.Ink, 400, 26.496f, spacing: -0.53f));
+        stack.Add(Ui.Heading("Cast", RailX, headingY, 17.664f, 610, t.Ink, 400, 26.496f, spacing: -0.53f));
         stack.Add(Ui.Text(cast.Count == 1 ? "1 person" : $"{cast.Count} people", RailX, headingY + 30.5f, 9.984f, 400, t.InkMuted, 400, 14.976f));
         Row.PositionY = headingY + 80.7f; Row.Size = new Size(9000, 200);
         stack.Add(Row);

@@ -86,9 +86,9 @@ internal sealed class Shell : View
         BackgroundColor = Ui.C(_theme.Bg);
         BuildRail();
         _chrome.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
-        _clockTime = Ui.Text("", 481f, 68.2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f);
-        _clockDate = Ui.Text("", 535.4f, 75f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f);
-        Sem.Tag(_clockTime, "text", null, blockified: true); Sem.Tag(_clockDate, "text", null, blockified: true);
+        _clockTime = Ui.Text("", 481f, 68.2f, 17.28f, 760, _theme.Ink, 60, 25.92f, spacing: -0.5184f, block: true);
+        _clockDate = Ui.Text("", 535.4f, 75f, 11.136f, 640, _theme.Ink, 160, 12.25f, upper: true, spacing: 0.44544f, block: true);
+        Sem.Tag(_clockTime, "text", null); Sem.Tag(_clockDate, "text", null);
         _chrome.Add(_clockTime); _chrome.Add(_clockDate);
         UpdateClock();
         var tick = new global::Tizen.NUI.Timer(15000);
@@ -99,52 +99,41 @@ internal sealed class Shell : View
 
     private void BuildRail()
     {
-        var perGroup = new int[3];
+        var perGroup = new int[3]; View group = null!; var groupY = 0f;
         foreach (var item in NavModel.Items)
         {
             var g = Groups[item.Group];
             var idx = perGroup[item.Group]++;
-            if (idx == 0) AddGroup(g.Y, g.H);
+            if (idx == 0) { group = AddGroup(g.Y, g.H); groupY = g.Y; }
             var top = g.Y + 6.2f + idx * Pitch;
             var nv = new NavView { Item = item, CentreY = top + 33.6f };
-            nv.Item64.Size = new Size(64, 64); nv.Item64.PositionX = Cx - 32; nv.Item64.PositionY = nv.CentreY - 32;
+            nv.Item64.Size = new Size(64, 64); nv.Item64.CornerRadius = 16; nv.Item64.PositionX = Cx - 32 - RailX; nv.Item64.PositionY = nv.CentreY - 32 - groupY;
             nv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
             nv.Icon = Ui.Icon(item.Icon, 22, 15.1f, 20, _theme.InkMuted);
             nv.Label = Ui.Text(item.Label, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
             nv.Item64.Add(nv.Tile); nv.Item64.Add(nv.Icon); nv.Item64.Add(nv.Label);
             var navIndex = _nav.Count; // this item's index once added just below
-            Sem.Tag(nv.Item64, "link", item.Label, radius: 16, backdropNow: () => NavBackdrop(navIndex));
-            _chrome.Add(nv.Item64);
+            Sem.Tag(nv.Item64, "link", item.Label);
+            group.Add(nv.Item64);
             _nav.Add(nv);
         }
-        AddGroup(952.4f, 79.4f); // profile chip
+        var chip = AddGroup(952.4f, 79.4f); // profile chip
         var pv = new NavView { Item = new NavItem("profile", "Profile", "/profiles", "", 3), CentreY = 992.1f };
-        pv.Item64.Size = new Size(64, 64); pv.Item64.PositionX = Cx - 32; pv.Item64.PositionY = pv.CentreY - 32;
+        pv.Item64.Size = new Size(64, 64); pv.Item64.CornerRadius = 16; pv.Item64.PositionX = Cx - 32 - RailX; pv.Item64.PositionY = pv.CentreY - 32 - 952.4f;
         pv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
-        _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 10 };
+        _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 50 };
         pv.Icon = null!;
-        Sem.Tag(_avatarIcon, "container", radius: 50);
+        Sem.Tag(_avatarIcon, "container");
         pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
-        Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.", radius: 16, backdropNow: () => NavBackdrop(_nav.Count - 1));
-        _chrome.Add(pv.Item64);
+        Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.");
+        chip.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
-        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono), "text", blockified: true));
+        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1037.5f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
     }
 
-    /// <summary>What a rail item sits on for the layout export: the group fill over the shell, plus the tile fill of the active or focused item.</summary>
-    private Rgba NavBackdrop(int i)
-    {
-        var dark = _theme.Name == "dark";
-        var ink = dark ? new Rgba(0.957f, 0.941f, 0.945f) : _theme.Ink;
-        var a = i == _navFocus ? 0.16f : i == _active ? 0.09f : 0f;
-        Rgba Over(Rgba top, float alpha, Rgba under) => new(top.R * alpha + under.R * (1 - alpha), top.G * alpha + under.G * (1 - alpha), top.B * alpha + under.B * (1 - alpha));
-        var group = dark ? Over(_theme.SurfaceStrong, 0.56f, _theme.Bg) : Over(_theme.SurfaceStrong, 0.56f, _theme.Surface);
-        return a > 0 ? Over(ink, a, group) : group;
-    }
-
-    private void AddGroup(float y, float h)
+    private View AddGroup(float y, float h)
     {
         // light: the fill is opaque (strong surface 56 % over the page surface) because the box shadow would show through a translucent fill; web clips it outside the border box
         var fill = _theme.Name == "dark" ? new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.56f)
@@ -155,6 +144,7 @@ internal sealed class Shell : View
         // light only: on the dark rail the web shadow (warm brown at 10 %) is not visible, and ours read as a pink halo
         if (_theme.Name != "dark") box.BoxShadow = new Shadow(42, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.1f), new Vector2(0, 14), new Vector2(0, 0));
         _chrome.Add(box);
+        return box;
     }
 
     private void StyleNav(int i)
@@ -165,14 +155,14 @@ internal sealed class Shell : View
         nv.Item64.Scale = new Vector3(scale, scale, 1);
         // web: the tile is the page ink at 9 % (16 % focused); in dark the ink is the pale 244,240,241
         var tileInk = _theme.Name == "dark" ? new Color(0.957f, 0.941f, 0.945f, 1) : Ui.C(_theme.Ink);
-        nv.Tile.BackgroundColor = focused ? new Color(tileInk.R, tileInk.G, tileInk.B, 0.16f) : active ? new Color(tileInk.R, tileInk.G, tileInk.B, 0.09f) : new Color(0, 0, 0, 0);
-        nv.Tile.BoxShadow = focused ? new Shadow(30, new Color(0.957f, 0.941f, 0.945f, 0.07f), new Vector2(0, 12), new Vector2(0, 0)) : null;
+        nv.Item64.BackgroundColor = focused ? new Color(tileInk.R, tileInk.G, tileInk.B, 0.16f) : active ? new Color(tileInk.R, tileInk.G, tileInk.B, 0.09f) : new Color(0, 0, 0, 0);
+        nv.Item64.BoxShadow = focused ? new Shadow(30, new Color(0.957f, 0.941f, 0.945f, 0.07f), new Vector2(0, 12), new Vector2(0, 0)) : null;
         var tint = focused || active ? Ui.C(_theme.Ink) : Ui.C(_theme.InkMuted);
         if (nv.Icon is not null) nv.Icon.Color = tint;
         nv.Label.TextColor = tint;
     }
 
-    public void SetProfileName(string name) { if (_profileLabel is not null) { _profileLabel.Text = name; if (_nav.Count > 0) Sem.Tag(_nav[^1].Item64, "link", $"Signed in as {(_env.ProfileFull.Length > 0 ? _env.ProfileFull : name)}. Open profiles.", radius: 16, backdropNow: () => NavBackdrop(_nav.Count - 1)); } }
+    public void SetProfileName(string name) { if (_profileLabel is not null) { _profileLabel.Text = name; if (_nav.Count > 0) Sem.Tag(_nav[^1].Item64, "link", $"Signed in as {(_env.ProfileFull.Length > 0 ? _env.ProfileFull : name)}. Open profiles."); } }
 
     // ---- routing ----
 

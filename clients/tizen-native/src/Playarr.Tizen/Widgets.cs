@@ -60,12 +60,12 @@ internal sealed class MediaCard
         W = artW; H = artH; if (focusHeight <= 0) focusHeight = artH;
         _t = t; _scale = scale; _lift = lift; _blur = blur; _shadowY = shadowY; _shadowAlpha = shadowAlpha;
         _boxScale = boxScale; _boxLift = boxLift; _boxY = y; _focusHeight = focusHeight;
-        Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(W, boxHeight);
+        Box.PositionX = x; Box.PositionY = y; Box.Size = new Size(W, H + CardLayout.CaptionH); // web: the link is the art and its caption row
         // Chromium snaps an image's rect to whole device pixels (left and right edges rounded); a fractional rect resamples and blurs the poster
         var snapX = (float)Math.Round(x); var snapY = (float)Math.Round(y); var snapW = (float)Math.Round(x + W) - snapX; var snapH = (float)Math.Round(y + H) - snapY;
         _artDy = snapY - y; Art.PositionX = snapX - x; Art.PositionY = _artDy;
         Art.Size = new Size(snapW, snapH);
-        { var cssBox = (-Art.PositionX, -_artDy, W, H); Sem.Tag(Art, "container", radius: 12.48f, box: cssBox, childImageBox: cssBox); } // the layout export reports the CSS box, not the pixel-snapped one
+        { var cssBox = (-Art.PositionX, -_artDy, W, H); Sem.Tag(Art, "container"); } // the layout export reports the CSS box, not the pixel-snapped one
         Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
         Art.ClippingMode = ClippingModeType.ClipChildren;
         env.Images.Apply(Art, card.ThumbUrl, snapW, snapH, 12.48f);
@@ -95,14 +95,14 @@ internal sealed class MediaCard
         {
             var dot = Ui.Box(W - 23.6f, 11.1f, 13, 13, t.Brand, 6.5f);
             dot.BorderlineWidth = 2; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
-            Sem.Tag(dot, "img", "Unwatched", radius: 50);
+            Sem.Tag(dot, "img");
             Art.Add(dot); // web: the dot lives inside the art, so it scales and lifts with the focused poster
         }
         var drop = card.StackOptions > 1 ? StackDrop : 0;
         Title = Ui.Text(card.Title, titleInset, H + 11.5f + drop, 11.904f, 610, t.Ink, W - titleInset * 2, 17.856f, spacing: -0.18f);
         Box.Add(Title);
         // web: the whole card is one link; Home names it "<title> <sub>", grids "Open <title>"
-        Sem.Tag(Box, "link", showSub ? $"{card.Title} {card.Sub}" : "Open " + card.Title, (0, 0, W, H + 29.4f), showSub ? 0 : 12, boxNow: () => _focused && (LinkFocusScale != 1f || LinkFocusLift != 0) ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
+        Sem.Tag(Box, "link", showSub ? $"{card.Title} {card.Sub}" : "Open " + card.Title);
         _titleY = Title.PositionY; _titleX = Title.PositionX; _subY = H + 31.9f + drop;
         if (showSub) { _sub = Ui.Text(card.Sub, titleInset, H + 31.9f + drop, 8.832f, 400, t.InkMuted, W - titleInset * 2, 13.248f); Box.Add(_sub); }
         if (restBlur > 0) SetFocused(false); // paints the resting shadows
@@ -140,7 +140,7 @@ internal sealed class MediaCard
     public float LinkFocusLift { get; init; }
 
     /// <summary>Renames the link for the layout export (detail rails name cards "Open <title>" and draw no radius on the link).</summary>
-    public void TagLink(string name, float radius) => Sem.Tag(Box, "link", name, (0, 0, W, H + 29.4f), radius, boxNow: () => _focused && (LinkFocusScale != 1f || LinkFocusLift != 0) ? (W * (1 - LinkFocusScale) / 2, (H + 29.4f) * (1 - LinkFocusScale) / 2 + LinkFocusLift, W * LinkFocusScale, (H + 29.4f) * LinkFocusScale) : (0, 0, W, H + 29.4f));
+    public void TagLink(string name, float radius) => Sem.Tag(Box, "link", name);
     /// <summary>Web Library: the selected card scales 1.015 about its centre, so the caption grows with it.</summary>
     public float FocusCaptionScale { get; init; } = 1f;
     private float _titleX;
@@ -179,19 +179,25 @@ internal sealed class MediaCard
     {
         _focused = focused;
         PaintStack(focused);
-        Box.Scale = focused ? new Vector3(_boxScale, _boxScale, 1) : new Vector3(1, 1, 1);
-        Box.PositionY = _boxY + (focused ? _boxLift : 0);
-        Art.Scale = focused ? new Vector3(_scale, _scale, 1) : new Vector3(1, 1, 1);
-        Art.PositionY = _artDy + (focused ? _lift : 0);
+        // web: the focused card's link scales and lifts as one (LinkFocusScale, LinkFocusLift); art and captions move relative to it so they land where web draws them
+        var linkMoves = LinkFocusScale != 1f || LinkFocusLift != 0;
+        var ls = linkMoves && focused ? LinkFocusScale : 1f; var ll = linkMoves && focused ? LinkFocusLift : 0f;
+        var hb = H + CardLayout.CaptionH;
+        float Local(float total, float centreRel) => (total - (ll + centreRel * (ls - 1))) / ls; // what a child adds on top of the link's own scale about its centre and lift
+        Box.Scale = linkMoves ? new Vector3(ls, ls, 1) : focused ? new Vector3(_boxScale, _boxScale, 1) : new Vector3(1, 1, 1);
+        Box.PositionY = _boxY + (linkMoves ? ll : focused ? _boxLift : 0);
+        Art.Scale = focused ? new Vector3(_scale / ls, _scale / ls, 1) : new Vector3(1, 1, 1);
+        Art.PositionY = _artDy + (focused ? Local(_lift, _artDy + H / 2 - hb / 2) : 0);
         if (FocusCaptionLift != 0)
         {
-            var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d + (focused ? FocusSubExtraLift : 0);
+            var d = focused ? FocusCaptionLift : 0; var th = Title.Size.Height / Ui.TextScale;
+            Title.PositionY = _titleY + (focused ? Local(d, _titleY + th / 2 - hb / 2) : 0);
+            if (_sub is not null) _sub.PositionY = _subY + (focused ? Local(d + FocusSubExtraLift, _subY + 6.6f - hb / 2) : 0);
             // web: the selected caption takes --ink-max (white in dark, black in light)
             var max = _t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1);
             Title.TextColor = focused || keepInk ? max : Ui.C(_t.Ink); if (_sub is not null) _sub.TextColor = focused || keepInk ? max : Ui.C(_t.InkMuted);
-            if (FocusCaptionScale != 1f)
+            if (!linkMoves && FocusCaptionScale != 1f)
             {
-                // the whole card scales about its centre in web, the caption with it
                 var k = focused ? FocusCaptionScale : 1f;
                 Title.Scale = new Vector3(k / Ui.TextScale, k / Ui.TextScale, 1);
                 Title.PositionX = _titleX + (focused ? (_titleX - W / 2) * (FocusCaptionScale - 1) : 0);
@@ -471,8 +477,10 @@ internal sealed class MediaCard
     public static MediaCard Library(AppEnv env, WorkCard card, float x, float y, CardLayout? layout = null)
     {
         var l = layout ?? CardLayout.Library(false, "medium");
-        return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f, FocusCaptionScale = 1.0148f, LinkFocusScale = 1.015f, LinkFocusLift = -5f };
+        var media = new MediaCard(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: false, titleInset: 1.9f, scale: 1.04f, lift: -5.1f, blur: 48, shadowY: 24, shadowAlpha: 0.30f, restBlur: 20,
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -3.5f, LinkFocusScale = 1.015f, LinkFocusLift = -5f };
+        media.Box.CornerRadius = 12; // web: the library card's link is 12 px rounded
+        return media;
     }
 
     /// <summary>Playlist directory card: web scales the whole title card 1.015 and lifts it 5 px, with 1.025 art focus.</summary>

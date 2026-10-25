@@ -37,7 +37,7 @@ internal sealed class SimilarRail
     {
         var t = env.Theme; HeadingY = headingY;
         var layout = CardLayout.From("thumbnail", "medium");
-        stack.Add(Ui.Text("Similar Titles", RailX, headingY, 17.664f, 610, t.Ink, 400, 26.496f, spacing: -0.53f));
+        stack.Add(Ui.Heading("Similar Titles", RailX, headingY, 17.664f, 610, t.Ink, 400, 26.496f, spacing: -0.53f));
         stack.Add(Ui.Text(works.Count == 1 ? "1 title" : $"{works.Count} titles", RailX, headingY + 30.5f, 9.984f, 400, t.InkMuted, 400, 14.976f));
         Row.PositionY = headingY + 80.7f; Row.Size = new Size(9000, layout.ArtHeight + 76);
         stack.Add(Row);

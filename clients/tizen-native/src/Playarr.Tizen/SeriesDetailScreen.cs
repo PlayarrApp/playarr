@@ -46,7 +46,7 @@ internal sealed class SeriesDetailScreen : IPage
         _root.BackgroundColor = Ui.C(_t.Surface);
         _keyArt = new KeyArt(env, armed: true); // web paints the key art as soon as focus lands on the first episode
         _root.Add(_keyArt.Root);
-        Sem.Tag(_root, "container");
+        
         _root.Add(Sem.Tag(Ui.PanelWash(_t), "container")); // web: the right rail panel frosts the key art (the page top is not a surface fade)
         _root.Add(_content);
         _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, _t.Surface, atLeft: false));
@@ -71,19 +71,18 @@ internal sealed class SeriesDetailScreen : IPage
         _progress = rows.ToDictionary(r => r.MediaFileId);
         var w = detail.Work;
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
-        Sem.Tag(_root, "container", w.Title);
+        
 
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "button", "Back to Series", radius: 50);
+        Sem.Tag(back, "button", "Back to Series");
         _content.Add(back);
-        _content.Add(Ui.Text("Series", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
+        _content.Add(Ui.Heading("Series", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         new PageSubtitle(_env, _content, "Series").Set(w.Title, wrapIfClockBlocks: true);
         _content.Add(_copy);
 
         var clip = new View { PositionX = ClipX, Size = new Size(TizenClient.DesignWidth - ClipX, TizenClient.DesignHeight), ClippingMode = ClippingModeType.ClipChildren };
-        clip.Add(Sem.Tag(new View { PositionX = ClipX, Size = new Size(1190.4f, 1080) }, "container", w.Title + " seasons and episodes"));
         clip.Add(_stack);
         _content.Add(clip);
 
@@ -109,7 +108,7 @@ internal sealed class SeriesDetailScreen : IPage
     {
         var rail = new Rail();
         var y = si * RailPitch;
-        _stack.Add(Ui.Text($"Season {season.Season.SeasonNumber}", RailX, y, 17.664f, 610, _t.Ink, 400, 26.496f, spacing: -0.53f));
+        _stack.Add(Ui.Heading($"Season {season.Season.SeasonNumber}", RailX, y, 17.664f, 610, _t.Ink, 400, 26.496f, spacing: -0.53f));
         _stack.Add(Ui.Text($"{season.Episodes.Count} episodes", RailX, y + 30.5f, 9.984f, 400, _t.InkMuted, 400, 14.976f));
         rail.Row.PositionY = y + 80.7f; rail.Row.Size = new Size(9000, 220);
         _stack.Add(rail.Row);
@@ -143,12 +142,12 @@ internal sealed class SeriesDetailScreen : IPage
             box.Add(glow); box.Add(art); box.Add(ring);
             if (unseen)
             {
-                var dot = Sem.Tag(Ui.Box(268 - 23.6f, 10.6f, 13, 13, _t.Brand, 6.5f), "img", "Unwatched", radius: 50);
+                var dot = Sem.Tag(Ui.Box(268 - 23.6f, 10.6f, 13, 13, _t.Brand, 6.5f), "img");
                 dot.BorderlineWidth = 3; dot.BorderlineOffset = -1; dot.BorderlineColor = new Color(1, 1, 1, 0.94f);
                 art.Add(dot);
             }
             var code = $"S{season.Season.SeasonNumber:00} · E{ep.Episode.EpisodeNumber:00}";
-            Sem.Tag(box, "link", $"{ep.Episode.EpisodeNumber:00} {code} {ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}"}", boxNow: () => epFocused ? (0, -7, 268, 179.5f) : (0, 0, 268, 179.5f));
+            Sem.Tag(box, "link", $"{ep.Episode.EpisodeNumber:00} {code} {ep.Episode.Title ?? $"Episode {ep.Episode.EpisodeNumber}"}");
             var maxInk = _t.Name == "dark" ? new Rgba(1, 1, 1) : new Rgba(0, 0, 0);
             var firstCard = si == 0 && ci == 0; // web: the first rail item reads as the selected one
             var codeLabel = Sem.Tag(Ui.Text(code, 0, 165.3f, 8.832f, 700, firstCard ? maxInk : _t.InkMuted, 46, 13.248f), "text", $"S {season.Season.SeasonNumber:00} · E {ep.Episode.EpisodeNumber:00}");
@@ -293,7 +292,7 @@ internal sealed class SeriesDetailScreen : IPage
         var g = Ui.Text(glyph, startX, glyph == "+" ? 23.5f : 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.Bg : _t.BrandInk, gw + 4, 19.2f);
         var tl = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, primary ? _t.Bg : _t.Ink, textW + 20, 16.7f);
         box.Add(g); box.Add(tl);
-        Sem.Tag(box, "button", name, radius: 999);
+        Sem.Tag(box, "button", name);
         var ring = Ring.Make(w, 64, 32, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
         parent.Add(box);
         var slot = _slots[slotIndex];

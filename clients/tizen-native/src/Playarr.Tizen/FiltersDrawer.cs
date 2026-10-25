@@ -50,11 +50,11 @@ internal sealed class FiltersDrawer
     private static void AddViewGlyph(View b, int i, float w, Rgba c)
     {
         // web: List is three 20x2.9 bars, Screen three 5.5x13.1 blocks, Cover three 4x13 slats
-        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Sem.Tag(Ui.Box(w / 2 - 10, 11.4f + k * 4.95f, 20, 2.9f, c, 1f), "container", ignoreOwnBg: true)); return; }
+        if (i == 0) { for (var k = 0; k < 3; k++) b.Add(Sem.Tag(Ui.Box(w / 2 - 10, 11.4f + k * 4.95f, 20, 2.9f, c, 1f), "container")); return; }
         for (var k = 0; k < 3; k++)
         {
             var bw = i == 1 ? 5.5f : 4f; var pitch = i == 1 ? 7.5f : 6f; var x0 = i == 1 ? w / 2 - 10.2f : w / 2 - 8f;
-            var r = Sem.Tag(Ui.Box(x0 + k * pitch, 11.3f, bw, 13.05f, i == 1 ? c : null, 1f), "container", ignoreOwnBg: true);
+            var r = Sem.Tag(Ui.Box(x0 + k * pitch, 11.3f, bw, 13.05f, i == 1 ? c : null, 1f), "container");
             if (i != 1) { r.BorderlineWidth = 1.5f; r.BorderlineColor = Ui.C(c); }
             b.Add(r);
         }
@@ -79,10 +79,10 @@ internal sealed class FiltersDrawer
         foreach (var c in Root.Children.ToArray()) { Root.Remove(c); c.Dispose(); }
         _focus.Items.Clear(); _listView = null;
         Root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
-        Sem.Tag(Root, "none", backdropNow: () => FiltersDrawer.DrawerBackdrop(t));
+        Sem.Tag(Root, "none");
         var panel = Ui.DrawerPanel(t);
         panel.BorderlineWidth = 1; panel.BorderlineColor = Ui.C(t.Line);
-        Sem.Tag(panel, "dialog", "", backdropNow: () => DrawerBackdrop(t));
+        Sem.Tag(panel, "dialog", "");
         Root.Add(panel);
         var clip = new View { PositionY = 130, Size = new Size(1920, 950), ClippingMode = ClippingModeType.ClipChildren };
         _c = new View { PositionY = -130 - _scroll };
@@ -90,7 +90,7 @@ internal sealed class FiltersDrawer
         Root.Add(Ui.Text(kicker, 1606, 54, 9.6f, 720, t.InkMuted, 250, 14.4f, upper: true, spacing: 0.67f));
         Root.Add(Sem.Tag(Ui.Text("Filters", 1606, 71.6f, 38.4f, 590, t.Ink, 200, 57.6f, spacing: -2.1f), "heading"));
         var x = Ui.Box(1826, 54, 48, 50, t.SurfaceSoft, 25);
-        Sem.Tag(x, "button", "Close filters", radius: 50);
+        Sem.Tag(x, "button", "Close filters");
         x.Add(Ui.Text("×", 0, 4.5f, 26.88f, 720, t.Ink, 48, 40, HorizontalAlignment.Center));
         var xr = Ring.Make(48, 50, 25, new Rgba(1, 1, 1)); xr.Show(false); x.Add(xr);
         Root.Add(x);
@@ -109,8 +109,8 @@ internal sealed class FiltersDrawer
                     : s.Picked.Count == 0 ? "Any language" : string.Join(", ", s.Picked.Select(c => LanguageNames.Display(c, s.Facets.FirstOrDefault(f => f.Code == c)?.Name)));
                 var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
-                Sem.Tag(box, "group", "", radius: 12);
-                box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", label + " ⌄", radius: 10));
+                Sem.Tag(box, "group", "");
+                box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", label + " ⌄"));
                 box.Add(Ui.Text(label, 19.4f, 20.5f, 11.84f, 680, t.Ink, 200, 17.76f));
                 box.Add(Ui.Text(_openMulti == si ? "\u2303" : "\u2304", 238.6f, 20.5f, 11.84f, 700, t.InkMuted, 12, 17.76f));
                 var ring = Ring.Make(268, 58.8f, 12, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
@@ -129,8 +129,8 @@ internal sealed class FiltersDrawer
             {
                 var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
-                Sem.Tag(box, "group", "", radius: 12);
-                box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", s.Options[s.Selected] + " ⌄", radius: 10));
+                Sem.Tag(box, "group", "");
+                box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", s.Options[s.Selected] + " ⌄"));
                 box.Add(Ui.Text(s.Options[s.Selected], 19.4f, 20.5f, 11.84f, 680, t.Ink, 200, 17.76f));
                 box.Add(Ui.Text("\u2304", 238.6f, 20.5f, 11.84f, 700, t.InkMuted, 12, 17.76f));
                 var ring = Ring.Make(268, 58.8f, 12, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
@@ -162,7 +162,7 @@ internal sealed class FiltersDrawer
                     var b = Ui.Box(bx, by, w, 56, active ? t.Ink : new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                     b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(t, 0.15f);
                     var label = Ui.Text(n == 3 ? s.Options[i] : System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(s.Options[i]), 0, n == 3 ? 33 : 22.2f, 10.56f, n == 3 ? 900 : 680, active ? t.Bg : t.InkMuted, w, 11.6f, HorizontalAlignment.Center);
-                    if (n == 3) { Sem.Tag(label, "text", s.Options[i].ToLowerInvariant()); Sem.Tag(b, "button", s.Options[i], radius: 12); } else Sem.Tag(label, "button", s.Options[i], radius: 12);
+                    if (n == 3) { Sem.Tag(label, "text", s.Options[i].ToLowerInvariant()); Sem.Tag(b, "button", s.Options[i]); } else Sem.Tag(label, "button", s.Options[i]);
                     b.Add(label);
                     if (active) b.Scale = new Vector3(1.025f, 1.025f, 1);
                     if (n == 3) AddViewGlyph(b, i, w, active ? t.OnAccent : t.InkMuted); // web: a small List / Screen / Cover glyph above the label

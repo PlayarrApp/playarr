@@ -57,14 +57,13 @@ internal sealed class PlayerScreen : IPage
         _env = env; _t = env.Theme; _file = file; _startMs = startMs; _local = local;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _controls.Size = _root.Size;
-        for (var layer = 0; layer < 4; layer++) _root.Add(Sem.Tag(new View { Size = _root.Size }, "container", backdrop: new Rgba(0, 0, 0))); // web: the black page layers behind the video
-        Sem.Tag(_controls, "none", backdrop: new Rgba(0, 0, 0));
+        Sem.Tag(_controls, "none");
         _root.Add(_controls);
 
         var white = new Rgba(1, 1, 1);
         // web: the control bar sits on a bottom scrim, black at 92 % along the last 520 px
-        _controls.Add(Sem.Tag(Ui.Gradient(0, 561.6f, 1920, 518.4f, false, (0f, new Rgba(0, 0, 0, 0)), (1f, new Rgba(0, 0, 0, 0.92f))), "container", backdrop: new Rgba(0, 0, 0)));
-        _controls.Add(Sem.Tag(new View { PositionX = TrackX, PositionY = TrackY - 19, Size = new Size(TrackW, 44) }, "slider", "Seek", backdrop: new Rgba(0, 0, 0)));
+        _controls.Add(Sem.Tag(Ui.Gradient(0, 561.6f, 1920, 518.4f, false, (0f, new Rgba(0, 0, 0, 0)), (1f, new Rgba(0, 0, 0, 0.92f))), "container"));
+        _controls.Add(Sem.Tag(new View { PositionX = TrackX, PositionY = TrackY - 19, Size = new Size(TrackW, 44) }, "slider", "Seek"));
         // seek track
         _controls.Add(Ui.Box(TrackX, TrackY, TrackW, 6, new Rgba(1, 1, 1, 0.18f), 3));
         _progress = Ui.Box(TrackX, TrackY, 0, 6, _t.Brand, 0);
@@ -77,7 +76,7 @@ internal sealed class PlayerScreen : IPage
         // transport row
         AddIcon("prev", 92, 980, "previous", dim: true);
         var play = Ui.Box(147.6f, 958, 64, 64, new Rgba(1, 1, 1, 0.14f), 32);
-        Sem.Tag(play, "button", "Play", radius: 50); _playButton = play;
+        Sem.Tag(play, "button", "Play"); _playButton = play;
         _playIcon = Sem.Tag(Ui.Icon("pause", 22, 22, 20, white), "none");
         play.Add(_playIcon);
         var playRing = Ring.Make(64, 64, 32, white, themed: false); playRing.Show(false); play.Add(playRing);
@@ -87,7 +86,6 @@ internal sealed class PlayerScreen : IPage
         // web: Up from the transport row lands on the seek bar
         _focus.Items.Add(new Focusable { Rect = () => new Box(TrackX, TrackY - 14, TrackW, 34), Label = "seek", Select = () => { }, Style = f => _progress.Size = new Size(_progress.Size.Width, f ? 10 : 6) });
         AddIcon("next", 247.2f, 980, "next", dim: true);
-        _controls.Add(Sem.Tag(new View { PositionX = 302.8f, PositionY = 981.8f, Size = new Size(58.4f, 16.3f) }, "container", "0:02 / 1:00", backdrop: new Rgba(0, 0, 0)));
         _now = Ui.Text("0:00", 302.8f, 981.8f, 10.88f, 400, white, 60, 16.32f);
         _controls.Add(_now);
         _controls.Add(Ui.Text("/", 331.4f, 981.8f, 10.88f, 400, new Rgba(0.647f, 0.588f, 0.62f), 10, 16.32f));
@@ -117,7 +115,7 @@ internal sealed class PlayerScreen : IPage
     private void AddTopButton(float x, float w, string icon, string? text, string label, Action select)
     {
         var box = Ui.Box(x, 37.8f, w, 48, new Rgba(0.047f, 0.039f, 0.043f, 0.7f), 24);
-        Sem.Tag(box, "button", text is null ? "Close player" : "Minimise player", radius: 999, ignoreOwnBg: true, backdrop: text is null ? new Rgba(0.027f, 0.024f, 0.024f) : new Rgba(0.039f, 0.031f, 0.035f));
+        Sem.Tag(box, "button", text is null ? "Close player" : "Minimise player");
         box.BorderlineWidth = 1; box.BorderlineColor = new Color(1, 1, 1, 0.28f);
         box.Add(text is null ? Ui.Icon(icon, 17, 13, 14, 22, new Rgba(1, 1, 1)) : Ui.Icon(icon, 23.6f, 14, 20, new Rgba(1, 1, 1)));
         if (text is not null) box.Add(Ui.Text(text, 52.4f, 13, 11.2f, 700, new Rgba(1, 1, 1), 70, 22, spacing: 0.22f));
@@ -131,10 +129,10 @@ internal sealed class PlayerScreen : IPage
         var disabledLook = dim || label == "audio"; // web: a disabled control (no previous, no next, no audio track) draws at 28 %
         var iconView = Ui.Icon(icon, x, y, 20, new Rgba(1, 1, 1, disabledLook ? 1f : 0.8f));
         if (disabledLook) iconView.Opacity = 0.28f;
-        Sem.Tag(iconView, "none", exportOpacity: disabledLook ? 0.28f : 1f);
+        Sem.Tag(iconView, "none");
         _controls.Add(iconView);
         var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", _ => "Play on another device" };
-        var tagged = Sem.Tag(new View { PositionX = x - 22, PositionY = y - 22, Size = new Size(64, 64), Opacity = disabledLook ? 0.28f : 1f }, "button", buttonName, radius: 50, backdrop: new Rgba(0, 0, 0));
+        var tagged = Sem.Tag(new View { PositionX = x - 22, PositionY = y - 22, Size = new Size(64, 64), Opacity = disabledLook ? 0.28f : 1f }, "button", buttonName);
         _controls.Add(tagged);
         if (dim) return; // web: previous and next are disabled (not focusable) when nothing precedes or follows
         var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
@@ -325,7 +323,7 @@ internal sealed class PlayerScreen : IPage
     {
         var i = _focus.Items.FindIndex(x => x.Label is "pause" or "play");
         if (i >= 0) _focus.Items[i] = PlayFocusable(label);
-        if (_playButton is not null) Sem.Tag(_playButton, "button", label == "play" ? "Play" : "Pause", radius: 50);
+        if (_playButton is not null) Sem.Tag(_playButton, "button", label == "play" ? "Play" : "Pause");
     }
 
     // ---- subtitles panel (web: a list over the player; Back closes it and focus returns to the subtitles button) ----
@@ -406,7 +404,7 @@ internal sealed class PlayerScreen : IPage
         _qualityRing.Size = new Size(_qualityButtonWidth + 10, 46);
         _qualityBadge.PositionX = _qualityButtonX + 22.1f;
         _qualityLabel.PositionX = _qualityButtonX + 51.1f;
-        Sem.Tag(_qualityHost, "button", "Quality: " + display.Label, radius: 999, backdrop: new Rgba(0, 0, 0)); _qualityHost.PositionX = _qualityButtonX; _qualityHost.Size = new Size(_qualityButtonWidth, 56);
+        Sem.Tag(_qualityHost, "button", "Quality: " + display.Label); _qualityHost.PositionX = _qualityButtonX; _qualityHost.Size = new Size(_qualityButtonWidth, 56);
         _qualityLabel.Size = new Size(Math.Max(138, measuredWidth), _qualityLabel.Size.Height);
         _qualityLabel.Text = display.Label;
         _qualityBadge.Text = display.Badge;

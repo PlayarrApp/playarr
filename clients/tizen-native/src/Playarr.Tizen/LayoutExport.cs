@@ -7,55 +7,67 @@ using Tizen.NUI.BaseComponents;
 namespace Playarr.Tizen;
 
 /// <summary>
-/// Parity layout document (docs/parity/LAYOUT.md): walks the NUI visual tree of the running page. Text rects are the laid-out glyph run (measured
-/// width, CSS line box height), not the label frame; fonts and colours are the CSS values the label was built from.
+/// The app's accessibility semantics of a view: the web role it exposes (link, button, heading, ...) and its accessible name (read back from
+/// the view's real <c>AccessibilityName</c>). Nothing else about the layout is declared here: bounds, colours, radii and text all come from the view.
 /// </summary>
-/// <summary>Accessible role and name of a native view, as web's DOM exposes it (link "Open <title>", heading, button "A"). <see cref="Box"/> overrides the view's own frame (a web link wraps art and caption).</summary>
-internal sealed record SemInfo(string Role, string? Name, (float DX, float DY, float W, float H)? Box = null, float? Radius = null, bool Blockified = false)
-{
-    /// <summary>Evaluated at export time (a focused card's link is scaled and lifted); overrides <see cref="Box"/>.</summary>
-    public Func<(float DX, float DY, float W, float H)>? BoxNow { get; init; }
-    /// <summary>Backdrop colour the element and its children sit on (overrides the composited ancestors): web places the action tiles on the shell, cards on their surface.</summary>
-    public Rgba? Backdrop { get; init; }
-    /// <summary>Evaluated at export time (the active nav tile changes its fill).</summary>
-    public Func<Rgba>? BackdropNow { get; init; }
-    /// <summary>The opacity web reports when the view draws a colour-alpha tint (an icon at 80 % white is opacity 1 on web).</summary>
-    public float? ExportOpacity { get; init; }
-    /// <summary>Radius web reports for image children of this view (a poster with rounded corners draws its img with the same radius).</summary>
-    public float? ChildImageRadius { get; init; }
-    /// <summary>Rect (relative to this view) web reports for its image children: the CSS box before whole-pixel snapping.</summary>
-    public (float DX, float DY, float W, float H)? ChildImageBox { get; init; }
-    /// <summary>The element's own fill is a color-mix on web, which the web refs carry no background for.</summary>
-    public bool IgnoreOwnBg { get; init; }
-    /// <summary>A text element with no drawn label (web exports visually hidden text such as the calendar period status).</summary>
-    public (float Size, int Weight, Rgba Color)? Style { get; init; }
-}
-
 internal static class Sem
 {
-    internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, SemInfo> Table = new();
+    internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, string> Roles = new();
 
-    public static T Tag<T>(T v, string role, string? name = null, (float DX, float DY, float W, float H)? box = null, float? radius = null, bool blockified = false, Func<(float DX, float DY, float W, float H)>? boxNow = null, Rgba? backdrop = null, bool ignoreOwnBg = false, (float Size, int Weight, Rgba Color)? style = null, Func<Rgba>? backdropNow = null, float? exportOpacity = null, float? childImageRadius = null, (float DX, float DY, float W, float H)? childImageBox = null) where T : View
+    public static T Tag<T>(T v, string role, string? name = null) where T : View
     {
-        Table.Remove(v); Table.Add(v, new SemInfo(role, name, box, radius, blockified) { ChildImageBox = childImageBox, ChildImageRadius = childImageRadius, ExportOpacity = exportOpacity, BoxNow = boxNow, Backdrop = backdrop, BackdropNow = backdropNow, IgnoreOwnBg = ignoreOwnBg, Style = style }); return v;
+        Roles.Remove(v); Roles.Add(v, role);
+        if (name is not null) v.AccessibilityName = name;
+        return v;
     }
 }
 
+/// <summary>
+/// Parity layout document (docs/parity/LAYOUT.md): reads the laid-out NUI tree of the running page and nothing else. Boxes are each view's
+/// position and size with the scale of itself and its ancestors; text elements are the per-line glyph runs the label's own text layout reports
+/// (<c>TextGeometry</c>); colours, radii, opacity and backgrounds are the view properties. Views that are invisible, outside the viewport or an
+/// ancestor's clip, or fully covered by a later opaque paint are left out, as the web export leaves them out. No web value is used.
+/// </summary>
 internal static class LayoutExport
 {
-    private sealed record Node(string Text, string Role, float X, float Y, float W, float H, string? Color, string Background, float? FontSize, int? FontWeight, float Radius, float Opacity, object? Group = null);
+    private sealed record Node(string Text, string Role, float X, float Y, float W, float H, string? Color, string Background, float? FontSize, int? FontWeight, float Radius, float Opacity,
+        int Order, int Id, int[] Chain, float PaintAlpha, (float R, float G, float B, float A)? Fill = null);
 
-    public static string Json(string screen, string theme, bool clockPinned, Container root)
+    private static bool _lines; // debugging: one element per laid-out line instead of one per wrapped block
+
+    private sealed class Ctx
     {
-        var nodes = new List<Node>();
-        Walk(root, 0, 0, 1, 1, (1f, 1f, 1f), 1f, nodes);
-        nodes = Merge(nodes);
-        // web: the page section and its stage are two full-viewport layers on the same surface
+        public readonly List<Node> Nodes = new();
+        public int Order;
+        public int NextId;
+        public float VW, VH;
+    }
+
+    public static string Json(string screen, string theme, bool clockPinned, Container root, bool lines = false)
+    {
+        _lines = lines;
+        var win = Window.Instance.WindowSize;
+        var ctx = new Ctx { VW = win.Width, VH = win.Height };
+        var bg = Window.Instance.BackgroundColor;
+        Walk(ctx, root, 0, 0, 1, 1, (bg.R, bg.G, bg.B), 1f, new RectF(0, 0, ctx.VW, ctx.VH), Array.Empty<int>());
+        var nodes = DropOccluded(ctx.Nodes);
+        // the background of an element is what is painted behind and including it at its centre: every earlier (or own) translucent fill over the window colour, in paint order
+        var fills = ctx.Nodes.Where(f => f.Fill is not null).ToList();
         for (var i = 0; i < nodes.Count; i++)
-            if (nodes[i] is { Role: "container", W: >= 1900, H: >= 1000 } full && full.Background != "#151315" && !(i + 1 < nodes.Count && nodes[i + 1] is { Role: "container", W: >= 1900, H: >= 1000 })) { nodes.Insert(i + 1, full); i++; }
+        {
+            var n = nodes[i]; var px = Math.Clamp(n.X + n.W / 2, 0, ctx.VW - 1); var py = Math.Clamp(n.Y + n.H / 2, 0, ctx.VH - 1); // the visible part's centre
+            (float R, float G, float B) c = (bg.R, bg.G, bg.B);
+            foreach (var f in fills)
+            {
+                if (f.Order > n.Order || f.Id == n.Id && n.Text.Length > 0 && n.FontSize is not null) continue;
+                if (px < f.X || px > f.X + f.W || py < f.Y || py > f.Y + f.H) continue;
+                var a = f.Fill!.Value.A; c = (c.R * (1 - a) + f.Fill.Value.R * a, c.G * (1 - a) + f.Fill.Value.G * a, c.B * (1 - a) + f.Fill.Value.B * a);
+            }
+            nodes[i] = n with { Background = Hex(c.R, c.G, c.B, 1) };
+        }
         var sb = new StringBuilder();
         string N(float v) => v.ToString("0.##", CultureInfo.InvariantCulture);
-        sb.Append("{\"screen\":").Append(Q(screen)).Append(",\"theme\":").Append(Q(theme)).Append(",\"viewport\":{\"w\":1920,\"h\":1080,\"dpr\":1},\"clockPinned\":").Append(clockPinned ? "true" : "false").Append(",\"elements\":[");
+        sb.Append("{\"screen\":").Append(Q(screen)).Append(",\"theme\":").Append(Q(theme)).Append(",\"viewport\":{\"w\":").Append(N(ctx.VW)).Append(",\"h\":").Append(N(ctx.VH)).Append(",\"dpr\":1},\"clockPinned\":").Append(clockPinned ? "true" : "false").Append(",\"elements\":[");
         for (var i = 0; i < nodes.Count; i++)
         {
             var n = nodes[i]; if (i > 0) sb.Append(',');
@@ -70,106 +82,114 @@ internal static class LayoutExport
         return sb.Append("]}").ToString();
     }
 
-    // lines of one wrapped paragraph (same group, consecutive) become one element: joined text, union of the line runs
-    private static List<Node> Merge(List<Node> nodes)
+    private readonly record struct RectF(float X, float Y, float W, float H)
     {
-        var merged = new List<Node>();
-        for (var i = 0; i < nodes.Count; i++)
-        {
-            var n = nodes[i];
-            if (n.Group is null || merged.Count == 0 || !ReferenceEquals(merged[^1].Group, n.Group)) { merged.Add(n); continue; }
-            var p = merged[^1]; var x0 = Math.Min(p.X, n.X); var y0 = Math.Min(p.Y, n.Y);
-            merged[^1] = p with { Text = p.Text + " " + n.Text, X = x0, Y = y0, W = Math.Max(p.X + p.W, n.X + n.W) - x0, H = Math.Max(p.Y + p.H, n.Y + n.H) - y0 };
-        }
-        return merged;
+        public float R => X + W; public float B => Y + H;
+        public RectF Intersect(RectF o) { var x = Math.Max(X, o.X); var y = Math.Max(Y, o.Y); return new RectF(x, y, Math.Max(0, Math.Min(R, o.R) - x), Math.Max(0, Math.Min(B, o.B) - y)); }
+        public bool Overlaps(RectF o) => X < o.R && o.X < R && Y < o.B && o.Y < B;
+        public bool Contains(float px, float py) => px >= X && px <= R && py >= Y && py <= B;
     }
-
-    // Median (web top minus exported top) per font size over the 15 suite screens (tools: scripts/parity/tizen-native/calibrate-run-top.py): NUI's
-    // label centring and Chromium's run placement differ by a fraction of a pixel that depends on the size.
-    private static readonly Dictionary<int, float> RunTopShifts = new()
-    {
-        [8256] = -0.69f, [8832] = -0.42f, [9216] = -0.49f, [9600] = -0.65f, [9984] = -0.52f, [11200] = -0.91f, [11520] = -0.64f, [11840] = -0.69f,
-        [11904] = -1.02f, [17664] = -0.28f, [18400] = -0.31f, [12290] = -0.23f, [12800] = -1.08f, [13440] = -1.05f, [20800] = -1.3f, [26400] = -0.8f,
-    };
-    private static float RunTopShift(float size) => RunTopShifts.TryGetValue((int)Math.Round(size * 1000), out var d) ? d : 0f;
-
-    // web writes a circle's radius as 50 (50%) and a pill's as 999 (999px)
-    private static float Radius(float r, float w, float h) => r >= Math.Min(w, h) / 2f - 0.6f && r > 1f ? (Math.Abs(w - h) < 1.5f ? 50f : 999f) : r;
 
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
 
-    // (vx, vy): visual top-left of the parent; s: accumulated scale; bg: composited background so far (over white); op: accumulated opacity
-    private static void Walk(Container parent, float vx, float vy, float sx, float sy, (float R, float G, float B) bg, float op, List<Node> outList, float parentRadius = 0, (float DX, float DY, float W, float H)? imageBox = null, float px = 0, float py = 0, float psx = 1, float psy = 1)
+    // web: an element is dropped when every one of 3x3 samples of its box lands on a later paint (an image, or a fill of alpha 0.5 or more) outside its own subtree
+    private static List<Node> DropOccluded(List<Node> all)
     {
-        var parentClips = parent is View pv && pv.ClippingMode == ClippingModeType.ClipChildren;
+        var painters = all.Where(p => p.PaintAlpha >= 0.5f).ToList();
+        var kept = new List<Node>();
+        foreach (var n in all)
+        {
+            var covered = true;
+            foreach (var fy in new[] { 0.2f, 0.5f, 0.8f })
+                foreach (var fx in new[] { 0.2f, 0.5f, 0.8f })
+                {
+                    var px = n.X + n.W * fx; var py = n.Y + n.H * fy;
+                    if (px < 0 || py < 0) { continue; }
+                    var hit = painters.Any(p => p.Order > n.Order && p.Id != n.Id && !p.Chain.Contains(n.Id) && !n.Chain.Contains(p.Id) && px >= p.X && px <= p.X + p.W && py >= p.Y && py <= p.Y + p.H);
+                    if (!hit) { covered = false; break; }
+                }
+            if (!covered) kept.Add(n);
+        }
+        return kept;
+    }
+
+    // vx, vy: screen top-left of the parent; sx, sy: its accumulated scale; bg: the real backgrounds composited so far (over the window colour); op: accumulated opacity; clip: the visible area left by ancestors that clip their children
+    private static void Walk(Ctx ctx, Container parent, float vx, float vy, float sx, float sy, (float R, float G, float B) bg, float op, RectF clip, int[] chain)
+    {
         foreach (var child in parent.Children.OfType<View>().ToArray())
         {
             if (!child.Visibility) continue;
             var cop = op * child.Opacity;
             if (cop <= 0.01f) continue;
             var scale = child.Scale; var size = child.Size;
-            float lx = child.PositionX, ly = child.PositionY;
             var offX = child.PositionUsesPivotPoint ? 0 : size.Width * (1 - scale.X) / 2;
             var offY = child.PositionUsesPivotPoint ? 0 : size.Height * (1 - scale.Y) / 2;
-            var cx = vx + sx * (lx + offX); var cy = vy + sy * (ly + offY);
+            var cx = vx + sx * (child.PositionX + offX); var cy = vy + sy * (child.PositionY + offY);
             var csx = sx * scale.X; var csy = sy * scale.Y;
             var w = size.Width * csx; var h = size.Height * csy;
-            Sem.Table.TryGetValue(child, out var sem);
-            var ebg = (sem?.BackdropNow?.Invoke() ?? sem?.Backdrop) is { } bd ? (bd.R, bd.G, bd.B) : bg; // what the element (and, unless it paints, its children) sit on
+            var id = ctx.NextId++; var myChain = chain.Append(id).ToArray();
+            Sem.Roles.TryGetValue(child, out var role);
+            var name = string.IsNullOrEmpty(child.AccessibilityName) ? null : child.AccessibilityName;
+            var box = new RectF(cx, cy, w, h);
+
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
-                var lines = m.Multiline ? Ui.WrapLines(label.Text, m.Size, m.Weight, m.Spacing, w, 9) : null;
-                var tw = lines is not null ? lines.Max(l => Ui.TextWidth(l, m.Size, m.Weight, m.Spacing, m.Family)) : label.Text is "←" or "→" ? m.Size : Ui.GlyphAdvance(label.Text) is { } ga ? label.Size.Width / Ui.TextScale : Ui.TextWidth(label.Text, m.Size, m.Weight, m.Spacing, m.Family); // the arrows come from a fallback font whose advance NUI reports differently; web advances one em; the check, download, chevron and play glyphs sit in a box of the web's advance (Ui.GlyphAdvance), whose measured width is exported
-                var k = child.Scale.X * Ui.TextScale; // a caption that scales with a focused card (1.045) draws its run bigger
-                tw *= k * sx; // a scaled ancestor (the focused Play button, 1.06) draws the run bigger too
-                var box = label.WidthResizePolicy == ResizePolicyType.Fixed ? w : tw;
-                var tx = cx + (m.Align == HorizontalAlignment.Center ? (box - tw) / 2 : m.Align == HorizontalAlignment.End ? box - tw : 0);
-                var c = label.TextColor;
-                // The drawn glyph run: Chromium's is the rounded ascent plus rounded descent, in the CSS line box with half-leading
-                var asc = (float)Math.Round(1.011 * m.Size); var content = asc + (float)Math.Round(0.353 * m.Size);
-                var th = lines is not null ? (lines.Count - 1) * m.LineHeight + content : sem is { Blockified: true } ? m.LineHeight : content;
-                var runTop = cy + sy * (m.Dy * k + (m.LineHeight * k - (lines is not null ? content : th) * k) / 2f + RunTopShift(m.Size) * k); th *= k * sy;
-                var role = sem?.Role ?? (Math.Abs(m.Size - 33.6f) < 0.01f || Math.Abs(m.Size - 17.664f) < 0.01f ? "heading" : "text"); // page title and rail headings are h1/h2 on web
-                var lbg = sem?.Backdrop is not null && sem.Role != "text" ? ebg : bg;
-                outList.Add(new Node(sem?.Name ?? label.Text, role, tx, runTop, tw, th, Hex(c.R, c.G, c.B, c.A * cop), Hex(lbg.Item1, lbg.Item2, lbg.Item3, 1), m.Size, m.Weight, sem?.Radius ?? 0, cop, m.Group));
+                var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + run.X * csx, cy + run.Y * csy, run.W * csx, run.H * csy))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
+                // a wrapped block is one element (as the web's is): its text and the union of its laid-out lines
+                if (m.Multiline && runs.Count > 1 && !_lines) { var x0 = runs.Min(r => r.R.X); var y0 = runs.Min(r => r.R.Y); runs = new() { (string.Join(" ", runs.Select(r => r.Text)), new RectF(x0, y0, runs.Max(r => r.R.R) - x0, runs.Max(r => r.R.B) - y0)) }; }
+                foreach (var (runText, r) in runs)
+                {
+                    if (!r.Overlaps(clip)) continue;
+                    var c = label.TextColor;
+                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * Math.Abs(csx), m.Weight, 0, cop, ctx.Order++, id, myChain, 0));
+                }
                 continue;
             }
+
             var bc = child.BackgroundColor;
-            var paints = child is not ImageView && bc.A > 0.02f && w > 1 && h > 1;
-            var mixed = paints && sem is { IgnoreOwnBg: true }; // an own fill that is only a border trick (a card's left border colour) or that web leaves unpainted
-            (float R, float G, float B) cbg = ebg;
-            if (paints && !mixed) { var a = bc.A * cop; cbg = (ebg.Item1 * (1 - a) + bc.R * a, ebg.Item2 * (1 - a) + bc.G * a, ebg.Item3 * (1 - a) + bc.B * a); }
-            if (sem is { Style: { } hs } && !string.IsNullOrEmpty(sem.Name))
+            var fills = child is not ImageView && bc.A > 0.02f;
+            var border = child is not ImageView && child.BorderlineWidth > 0 && child.BorderlineColor.A > 0.02f;
+            var shadow = child is not ImageView && child.BoxShadow is not null;
+            (float R, float G, float B) cbg = bg;
+            if (fills) { var a = bc.A; cbg = (bg.R * (1 - a) + bc.R * a, bg.G * (1 - a) + bc.G * a, bg.B * (1 - a) + bc.B * a); }
+            var visible = w > 1 && h > 1 && box.Overlaps(clip);
+            var radius = child.CornerRadius.X * csx;
+            if (visible)
             {
-                var hw = Ui.TextWidth(sem.Name, hs.Size, hs.Weight, 0); var ha = (float)Math.Round(1.011 * hs.Size); var hh = ha + (float)Math.Round(0.353 * hs.Size);
-                outList.Add(new Node(sem.Name, sem.Role, cx, cy, hw, hh, Hex(hs.Color.R, hs.Color.G, hs.Color.B, hs.Color.A), Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), hs.Size, hs.Weight, 0, cop));
+                var painted = fills || border || shadow;
+                var control = role is not null and not ("container" or "none" or "text" or "img");
+                if (child is ImageView)
+                    ctx.Nodes.Add(new Node("", role is null or "none" or "container" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, cop));
+                else if (control || (role == "img" && painted))
+                    ctx.Nodes.Add(new Node(name ?? "", role!, cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, fills ? bc.A * cop : 0, fills ? (bc.R, bc.G, bc.B, bc.A * cop) : null));
+                else if (painted)
+                    ctx.Nodes.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, fills ? bc.A * cop : 0, fills ? (bc.R, bc.G, bc.B, bc.A * cop) : null));
             }
-            else if (sem is not null && sem.Role != "none")
-            {
-                var (bx, by, bw, bh) = (sem.BoxNow?.Invoke() ?? sem.Box) is { } sb ? (cx + sb.DX * csx, cy + sb.DY * csy, sb.W * csx, sb.H * csy) : (cx, cy, w, h);
-                outList.Add(new Node(sem.Role is "img" or "container" ? "" : sem.Name ?? "", sem.Role, bx, by, bw, bh, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, sem.Radius ?? Radius(child.CornerRadius.X * csx, w, h), cop));
-            }
-            if (child is ImageView && w > 1 && h > 1)
-            {
-                if (imageBox is { } ib) outList.Add(new Node("", "image", px + ib.DX * psx, py + ib.DY * psy, ib.W * psx, ib.H * psy, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, parentRadius, sem?.ExportOpacity ?? cop));
-                else outList.Add(new Node("", "image", cx, cy, w, h, null, Hex(ebg.Item1, ebg.Item2, ebg.Item3, 1), null, null, parentRadius, sem?.ExportOpacity ?? cop));
-            }
-            else if (paints && sem is null)
-                outList.Add(new Node("", "container", cx, cy, w, h, null, Hex(cbg.Item1, cbg.Item2, cbg.Item3, 1), null, null, Radius(child.CornerRadius.X * csx, w, h), cop));
-            Walk(child, cx, cy, csx, csy, cbg, cop, outList, sem?.ChildImageRadius ?? 0, sem?.ChildImageBox, cx, cy, csx, csy);
+            var childClip = child.ClippingMode == ClippingModeType.ClipChildren ? clip.Intersect(box) : clip;
+            Walk(ctx, child, cx, cy, csx, csy, cbg, cop, childClip, myChain);
         }
     }
 
-    /// <summary>
-    /// Web draws these fills with color-mix (computed style color(srgb ...)); the web layout refs carry no background for them, so the
-    /// exporter does not composite them either (reported to the coordinator as a ref-side parse gap).
-    /// </summary>
-    private static bool IsMixedSurface(Color c)
+    /// <summary>One run per laid-out line of the label: the characters' own bounds from the text layout (TextGeometry), merged per line, in the label's local pixels.</summary>
+    private static IEnumerable<(string Text, float X, float Y, float W, float H)> TextRuns(TextLabel label, TextMetaInfo meta)
     {
-        if (c.A >= 0.995f) return false;
-        var t = Playarr.Tizen.Logic.PlayarrTheme.Current;
-        bool Near(Playarr.Tizen.Logic.Rgba r) => Math.Abs(r.R - c.R) < 0.004f && Math.Abs(r.G - c.G) < 0.004f && Math.Abs(r.B - c.B) < 0.004f;
-        return Near(t.SurfaceStrong) || Near(t.SurfaceSoft);
+        var text = label.Text; var lines = new List<(float Y, float Bottom, float L, float R, int First, int Last)>(); var spacing = label.CharacterSpacing; // the web's run ends after the last glyph's letter spacing; NUI's last glyph box does not carry it var lines = new List<(float Y, float Bottom, float L, float R, int First, int Last)>();
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (char.IsWhiteSpace(text[i])) continue;
+            var pos = TextGeometry.GetTextPosition(label, i, i); var sz = TextGeometry.GetTextSize(label, i, i);
+            if (pos.Count == 0 || sz.Count == 0) continue;
+            float y = pos[0].Y, x = pos[0].X, w = sz[0].Width, h = sz[0].Height;
+            var li = lines.FindIndex(l => Math.Abs(l.Y - y) < h * 0.5f);
+            if (li < 0) lines.Add((y, y + h, x, x + w, i, i));
+            else { var l = lines[li]; lines[li] = (l.Y, l.Bottom, Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }
+        }
+        foreach (var l in lines.OrderBy(l => l.Y))
+        {
+            // a wrapped label's line box carries the CSS leading after the line; the run is the font's own line (measured)
+            var box = l.Bottom - l.Y; var nat = Math.Min(box, Ui.TextHeight(meta.Size, meta.Weight, meta.Family) * Ui.TextScale);
+            yield return (text[l.First..(l.Last + 1)], l.L, meta.Block ? l.Y : l.Y + (box - nat) / 2f, l.R - l.L + spacing, meta.Block ? Math.Min(box, meta.LineHeight * Ui.TextScale) : nat);
+        }
     }
 
     private static string Hex(float r, float g, float b, float a)
