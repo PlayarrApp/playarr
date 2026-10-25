@@ -7,6 +7,7 @@ import QtQuick.Window 2.2
 Page {
     id: page
     property alias navigation: navigation
+    property real contentTop: 0      // where the web's scroll area starts (Home: below its 72 px header)
     property bool shellLayer: true   // false where the web draws no shell behind the page (the actions drawer)
     allowedOrientations: Orientation.Portrait
     showNavigationIndicator: false   // the web has no edge glow for the swipe back hint
@@ -27,6 +28,7 @@ Page {
             Rectangle { visible: page.shellLayer; anchors.fill: parent; color: Tokens.shell }
             Rectangle { anchors.fill: parent; color: Tokens.bg }
             Rectangle { anchors.fill: parent; color: Tokens.bg }
+            Rectangle { y: page.contentTop; width: parent.width; height: parent.height - y; color: Tokens.bg }
         }
     }
 }

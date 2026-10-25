@@ -176,10 +176,11 @@ Item {
                 Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
                     visible: root.activeLetter === modelData
                     x: (parent.width - 34 * Tokens.u) / 2; y: (index === 0 ? 2.4 : -8) * Tokens.u; width: 34 * Tokens.u; height: parent.height + (index === 0 ? 10.6 : 14) * Tokens.u; clip: true
-                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
-                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
+                    Rectangle { property bool layoutSkip: true; x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
+                    Rectangle { property bool layoutSkip: true; x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
                 }
-                Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
+                Rectangle { property bool layoutSkip: true   // the web draws this plate as a shadow ring, not a background
+                            anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.primary }   // web: the ink plate of the active letter
                 PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.8);
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft }
