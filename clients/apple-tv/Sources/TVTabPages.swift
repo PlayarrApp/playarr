@@ -53,7 +53,7 @@ private struct TVTabPage<Content: View>: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated.ignoresSafeArea()
-                .parityBox("container", fill: DesignTokens.Stage.surface)
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             TVStageWash()
             TVRailPanelGradient(width: 1190.4)
             TVPageHeader(title: title)

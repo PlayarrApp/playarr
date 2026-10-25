@@ -46,7 +46,7 @@ struct TVRailPanelGradient: View {
         LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
             .frame(width: width)
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface) }
+            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface, bleed: true) }
     }
 
     private var stops: [Gradient.Stop] {
@@ -435,7 +435,7 @@ struct TVKeyArt: View {
 struct TVStageWash: View {
     var body: some View {
         ZStack {
-            Color.clear.parityBox("container", fill: DesignTokens.Stage.surface)
+            Color.clear.parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             LinearGradient(
                 stops: [
                     // Web `.tv-stage-wash`: surface 94% at 0, 90% at 36%, clear at 52%.

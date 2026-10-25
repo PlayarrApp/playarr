@@ -280,6 +280,8 @@ private struct TVParityBoxModifier: ViewModifier {
     let radius: CGFloat
     let fill: Color?
     var opacity: Double = 1
+    /// A full-bleed box reports the whole screen, not the TV safe area.
+    var bleed = false
     @Environment(\.self) private var environment
     @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
@@ -297,7 +299,7 @@ private struct TVParityBoxModifier: ViewModifier {
                         .onChange(of: scheme) { _, _ in report(frame) }
                         .onChange(of: text) { _, _ in report(frame) }
                 }
-                .ignoresSafeArea() // a full-bleed box reports the whole screen, not the TV safe area
+                .ignoresSafeArea(edges: bleed ? .all : [])
             )
             .environment(\.parityBackdrop, fill ?? backdrop)
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
@@ -343,9 +345,9 @@ extension View {
 
     /// Reports a box (card link, image, container with a fill and radius) to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil, opacity: Double = 1) -> some View {
+    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil, opacity: Double = 1, bleed: Bool = false) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill, opacity: opacity))
+        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill, opacity: opacity, bleed: bleed))
         #else
         self
         #endif

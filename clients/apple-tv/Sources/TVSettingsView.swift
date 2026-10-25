@@ -39,7 +39,7 @@ struct TVSettingsView: View {
 
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated.ignoresSafeArea()
-                .parityBox("container", fill: DesignTokens.Stage.surface)
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             // Web `.tv-library-grid-panel`: 65% frosted panel on the right.
             TVRailPanelGradient(width: 1248)
 

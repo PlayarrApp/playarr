@@ -768,7 +768,7 @@ struct TVHomeView: View {
     private func liveHeroBackdrop(_ hero: Work?, wide: Bool = false) -> some View {
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated
-                .parityBox("container", fill: DesignTokens.Stage.surface)
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             if let hero {
                 TVKeyArt(url: imageURL(for: hero, prefer: .backdrop, width: wide ? 1920 : nil))
             }
@@ -1298,7 +1298,7 @@ struct TVSearchView: View {
         ZStack(alignment: .topLeading) {
             // `.tv-search` uses surface (#1b181b), not pure stage base.
             DesignTokens.Color.backgroundElevated.ignoresSafeArea()
-                .parityBox("container", fill: DesignTokens.Stage.surface)
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             if let viewModel, let work = selectedWork(viewModel) {
                 TVKeyArt(url: searchArtURL(work))
             }

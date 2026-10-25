@@ -79,7 +79,7 @@ struct TVRootView: View {
     var body: some View {
         ZStack {
             TVStageBackground()
-                .parityBox("container", fill: DesignTokens.Stage.bg)
+                .parityBox("container", fill: DesignTokens.Stage.bg, bleed: true)
 
             if let file = TVParityLaunch.playFile {
                 TVPlayerView(mediaFileID: file, title: "Parity playback", apiClient: environment.apiClient)
@@ -909,7 +909,7 @@ struct TVProfilesView: View {
 
             ZStack {
                 TVAuthStageBackground(palette: palette, style: .profiles)
-                    .parityBox("container", fill: palette.bg)
+                    .parityBox("container", fill: palette.bg, bleed: true)
 
                 VStack(spacing: 0) {
                     // Web `.profiles-heading` top: clamp(104px, 15vh, 164px) @ 1080 → 162.

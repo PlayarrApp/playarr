@@ -96,7 +96,7 @@ struct TVWorkDetailView: View {
         GeometryReader { _ in
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated
-                .parityBox("container", fill: DesignTokens.Stage.surface)
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             keyArt(detail.work)
             TVStageWash()
 
