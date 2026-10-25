@@ -313,6 +313,9 @@ namespace Playarr.Xbox.Views
             base.OnNavigatedFrom(e);
         }
 
+        /// <summary>Whether one of the audio, subtitle, queue or info panels is open (read by the parity trace).</summary>
+        internal bool PanelOpen => _openPanel != null;
+
         internal string PlaybackMode => _viewModel?.PlaybackInfo?.Mode.ToString().ToLowerInvariant() ?? string.Empty;
 
         private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e) => RunOnUi(Render);

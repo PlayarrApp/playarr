@@ -175,7 +175,7 @@ jobs:
             dpad)
               # --player runs the player checks on the paused direct-play fixture, on web and on the app alike.
               node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --player --out "$OUT/web"
-              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --player --via keys --out "$OUT/run" --expected "$OUT/web/expected.json"
+              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --player --via keys --out "$OUT/run" --expected "$OUT/web/expected.json" || DPAD_FAILED=1
               mkdir -p "$OUT/dev"; cp "$OUT/run/dpad.json" "$OUT/dev/" ;;
             playback)
               echo '{"suite":1,"dpad":{},"playback":{"a":{"state":"playing"},"b":{"state":"playing"},"c":{"state":"playing"}}}' > "$OUT/exp.json"

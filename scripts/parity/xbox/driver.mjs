@@ -263,6 +263,7 @@ export async function createDriver() {
       await sleep(name === "select" && !long ? 9000 : 1200);
     },
     async clickAt(x, y, wait = 4) { await click(x, y, wait); },
+    async panelOpen() { return trace().playerPanel === true; },
     async location() { return location(); },
     async focused() { const t = trace(); return t.focus && t.position ? { label: t.focus, position: t.position } : (t.focus ?? null); },
     async screenshot(file) {
