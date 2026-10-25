@@ -26,6 +26,7 @@ pub fn build(app: Rc<App>) -> gtk4::Widget {
         .build();
     let title = gtk4::Label::builder()
         .label("Link this phone")
+        .accessible_role(gtk4::AccessibleRole::Heading)
         .css_classes(["pa-title"])
         .xalign(0.5)
         .build();

@@ -27,7 +27,7 @@ fn row(icon: &str, label: &str, _tone: Tone) -> gtk4::Button {
             .build(),
     );
     content.append(&gtk4::Label::builder().label(label).xalign(0.0).hexpand(true).build());
-    
+
     gtk4::Button::builder().child(&content).css_classes(["pa-row"]).build()
 }
 

@@ -147,12 +147,14 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
         let bar = gtk4::ProgressBar::builder()
             .fraction(p.clamp(0.0, 1.0))
             .valign(gtk4::Align::End)
+            .accessible_role(gtk4::AccessibleRole::Img)
             .css_classes(["pa-progress"])
             .build();
         overlay.add_overlay(&bar);
     }
     if o.unseen {
         let dot = gtk4::Box::builder()
+            .accessible_role(gtk4::AccessibleRole::Img)
             .css_classes(["pa-unseen"])
             .halign(gtk4::Align::End)
             .valign(gtk4::Align::Start)
@@ -171,7 +173,7 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
     col.append(&frame);
     let caption = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .spacing(3)
+        .spacing(if o.meta.is_some() { 0 } else { 3 })
         .margin_top(11)
         .margin_bottom(0)
         .margin_start(2) // the web's caption sits 2 css px inside the art
@@ -203,6 +205,13 @@ pub fn card(imgs: &Images, work: &Work, o: CardOpts, on_open: impl Fn(&Work) + '
     }
     let b = gtk4::Button::builder()
         .child(&col)
+        .accessible_role(gtk4::AccessibleRole::Link)
+        // Library cards clip to their 12 px corners; Home cards let the caption hang below the box.
+        .overflow(if o.home_art {
+            gtk4::Overflow::Visible
+        } else {
+            gtk4::Overflow::Hidden
+        })
         .css_classes(["pa-card"])
         .halign(if o.width.is_some() {
             gtk4::Align::Start

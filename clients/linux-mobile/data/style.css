@@ -1,4 +1,4 @@
-window.background, .pa-page { background: @pa_bg; color: @pa_ink; }
+window.background, .pa-page, .pa-app { background: @pa_bg; color: @pa_ink; }
 * { font-family: "Nunito Sans", "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif; }
 .pa-title { font-size: 28px; font-weight: 300; color: @pa_ink; }
 .pa-h2 { font-size: 22px; font-weight: 400; color: @pa_ink; }
@@ -23,7 +23,7 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
 }
 .pa-art-title { font-size: 9.28px; color: @pa_muted; }
 .pa-cap-title { font-size: 8.8px; font-weight: 610; letter-spacing: -0.13px; color: @pa_ink; }
-.pa-cap-meta { font-weight: 400; font-size: 6.88px; color: @pa_muted; }
+.pa-cap-meta { font-weight: 400; font-size: 6.88px; color: @pa_muted; margin-top: 3px; margin-bottom: -12px; }
 .pa-unseen { min-width: 5px; min-height: 5px; border-radius: 999px; background: @pa_brand; border: 2px solid rgba(255, 255, 255, 0.94); box-shadow: 0 2px 9px rgba(31, 14, 20, 0.45), 0 0 0 1px alpha(@pa_brand, 0.35); }
 .pa-art.selected { box-shadow: 0 0 0 3px @pa_focus_glow, 0 0 20px 4px alpha(@pa_focus_glow, 0.45), 0 24px 48px rgba(56, 38, 33, 0.3), 0 10px 20px rgba(56, 38, 33, 0.2); }
 .pa-home-focus-halo.selected {
@@ -33,10 +33,8 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
 .pa-home-focus-halo { background: transparent; }
 .pa-card-title { font-size: 14px; font-weight: 600; color: @pa_ink; }
 .pa-card-meta { font-size: 12px; color: @pa_muted; }
-button.pa-card, button.pa-card:hover, button.pa-card:active { background: transparent; border: none; box-shadow: none; padding: 0; min-height: 0; min-width: 0; }
+button.pa-card, button.pa-card:hover, button.pa-card:active { background: transparent; border: none; border-radius: 12px; box-shadow: none; padding: 0; min-height: 0; min-width: 0; }
 button.pa-card:focus-visible .pa-rail-title { font-size: 22px; font-weight: 400; color: @pa_ink; }
-.pa-progress { min-height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.25); }
-.pa-progress progress { background: @pa_brand; min-height: 4px; border-radius: 2px; }
 
 /* Floating bottom navigation (web: 340 x 58, radius 20, 42 x 46 tiles) */
 .pa-nav { background: alpha(@pa_surface_strong, 0.88); border-radius: 20px; border: none; box-shadow: 0 10px 40px @pa_shadow; padding: 6px 0; }
@@ -359,3 +357,15 @@ button.pa-entry:not(.week).nosub { padding-bottom: 6.8px; }
 .pa-chip-status.gone { background: mix(@pa_missing, @pa_surface, 0.86); border-color: alpha(@pa_missing, 0.6); }
 /* Agenda range button: the web text starts 1.4 px right of the pill's padding (whole-pixel padding, the right side gives it back) */
 .pa-cal-controls box.pa-pill { padding: 0 19px 0 21px; }
+
+.pa-body { background: @pa_body; }
+
+/* Unfilled controls still clip to their corner radius, which is how a drawn box reports it. */
+
+/* The web's .tv-home-rails surface (dark 72/90/97 %, light 68/88/96 % of the frost colour at 12/34/62 %). */
+.pa-rail-frost { background: linear-gradient(to right, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.72) 12%, alpha(@pa_frost, 0.9) 34%, alpha(@pa_frost, 0.97) 62%, @pa_frost 100%); }
+
+/* The web's watch bar: a 3 px opaque track with the watched share as a square brand box. */
+progressbar.pa-progress { background: #5a5559; border-radius: 0; min-height: 3px; padding: 0; }
+progressbar.pa-progress trough { min-height: 3px; background: transparent; border: none; border-radius: 0; padding: 0; }
+progressbar.pa-progress progress { background: @pa_brand; min-height: 3px; border: none; border-radius: 0; }

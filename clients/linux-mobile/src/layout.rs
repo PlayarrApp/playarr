@@ -44,6 +44,8 @@ struct Run {
 
 struct Tex {
     b: Rect,
+    /// The innermost clip box the texture is drawn under (a Picture clips to its own box).
+    clip: Option<Rect>,
     opacity: f32,
 }
 
@@ -52,6 +54,8 @@ struct Paints {
     fills: Vec<Fill>,
     runs: Vec<Run>,
     textures: Vec<Tex>,
+    /// Rounded clips (a widget with `overflow: hidden` and a border radius): box and corner radius.
+    clips: Vec<(Rect, f32)>,
 }
 
 fn rect_of(r: &graphene::Rect) -> Rect {
@@ -68,15 +72,28 @@ fn clip_rect(a: Rect, b: Rect) -> Rect {
     [x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)]
 }
 
-fn collect(node: &gsk::RenderNode, m: &graphene::Matrix, opacity: f32, radius: f32, out: &mut Paints) {
+/// The corner radius of the rounded clip a fill is painted under, when the clip is the fill's own box.
+fn clip_radius(rclip: Option<(Rect, f32)>, b: Rect) -> f32 {
+    rclip.filter(|(cb, _)| near(*cb, b, 0.55)).map_or(0.0, |(_, r)| r)
+}
+
+fn collect(
+    node: &gsk::RenderNode,
+    m: &graphene::Matrix,
+    opacity: f32,
+    rclip: Option<(Rect, f32)>,
+    clip: Option<Rect>,
+    out: &mut Paints,
+) {
     use gsk::RenderNodeType as T;
     match node.node_type() {
         T::ColorNode => {
             let c = node.downcast_ref::<gsk::ColorNode>().unwrap().color();
+            let b = to_root(m, &node.bounds());
             out.fills.push(Fill {
-                b: to_root(m, &node.bounds()),
+                b,
                 rgba: rgba(&c),
-                radius,
+                radius: clip_radius(rclip, b),
                 gradient: None,
                 border: false,
                 opacity,
@@ -98,10 +115,11 @@ fn collect(node: &gsk::RenderNode, m: &graphene::Matrix, opacity: f32, radius: f
             let n = node.downcast_ref::<gsk::LinearGradientNode>().unwrap();
             let (s, e) = (m.transform_point(&n.start()), m.transform_point(&n.end()));
             let stops = n.color_stops().iter().map(|c| (c.offset(), rgba(c.color()))).collect();
+            let b = to_root(m, &node.bounds());
             out.fills.push(Fill {
-                b: to_root(m, &node.bounds()),
+                b,
                 rgba: [0.0; 4],
-                radius,
+                radius: clip_radius(rclip, b),
                 gradient: Some(([s.x(), s.y()], [e.x(), e.y()], stops)),
                 border: false,
                 opacity,
@@ -117,47 +135,55 @@ fn collect(node: &gsk::RenderNode, m: &graphene::Matrix, opacity: f32, radius: f
         }
         T::TextureNode | T::TextureScaleNode => out.textures.push(Tex {
             b: to_root(m, &node.bounds()),
+            clip,
             opacity,
         }),
         T::TransformNode => {
             let n = node.downcast_ref::<gsk::TransformNode>().unwrap();
             let nm = n.transform().to_matrix().multiply(m);
-            collect(&n.child(), &nm, opacity, radius, out);
+            collect(&n.child(), &nm, opacity, rclip, clip, out);
         }
         T::OpacityNode => {
             let n = node.downcast_ref::<gsk::OpacityNode>().unwrap();
-            collect(&n.child(), m, opacity * n.opacity(), radius, out);
+            collect(&n.child(), m, opacity * n.opacity(), rclip, clip, out);
         }
         T::RoundedClipNode => {
             let n = node.downcast_ref::<gsk::RoundedClipNode>().unwrap();
             let r = n.clip().corner()[0].width();
-            collect(&n.child(), m, opacity, if r > 0.0 { r } else { radius }, out);
+            out.clips.push((to_root(m, &n.clip().bounds()), r));
+            collect(
+                &n.child(),
+                m,
+                opacity,
+                Some((to_root(m, &n.clip().bounds()), r)),
+                clip,
+                out,
+            );
         }
         T::ContainerNode => {
             let n = node.downcast_ref::<gsk::ContainerNode>().unwrap();
             for i in 0..n.n_children() {
-                collect(&n.child(i), m, opacity, radius, out);
+                collect(&n.child(i), m, opacity, rclip, clip, out);
             }
         }
-        T::ClipNode => collect(
-            &node.downcast_ref::<gsk::ClipNode>().unwrap().child(),
-            m,
-            opacity,
-            radius,
-            out,
-        ),
+        T::ClipNode => {
+            let n = node.downcast_ref::<gsk::ClipNode>().unwrap();
+            collect(&n.child(), m, opacity, rclip, Some(to_root(m, &n.clip())), out);
+        }
         T::ColorMatrixNode => collect(
             &node.downcast_ref::<gsk::ColorMatrixNode>().unwrap().child(),
             m,
             opacity,
-            radius,
+            rclip,
+            clip,
             out,
         ),
         T::DebugNode => collect(
             &node.downcast_ref::<gsk::DebugNode>().unwrap().child(),
             m,
             opacity,
-            radius,
+            rclip,
+            clip,
             out,
         ),
         _ => {}
@@ -241,7 +267,7 @@ fn role_of(w: &gtk4::Widget) -> &'static str {
         R::Button | R::ToggleButton => "button",
         R::Link => "link",
         R::TextBox | R::SearchBox => "textbox",
-        R::Img => "image",
+        R::Img => "img",
         R::Label => "text",
         R::Heading => "heading",
         R::Switch => "switch",
@@ -269,23 +295,12 @@ struct Walk<'a> {
     root: &'a gtk4::Widget,
     paints: Paints,
     claimed: Vec<bool>,
+    clip_claimed: Vec<bool>,
     viewport: Rect,
     items: Vec<Item>,
 }
 
 impl Walk<'_> {
-    /// The colour behind and including `r`: every fill that contains the box, composited over white.
-    fn background(&self, r: Rect) -> [f32; 3] {
-        let (cx, cy) = (r[0] + r[2] / 2.0, r[1] + r[3] / 2.0);
-        let mut c = [1.0, 1.0, 1.0];
-        for f in &self.paints.fills {
-            if !f.border && contains(f.b, r, 0.6) {
-                c = over(f.at(cx, cy), c);
-            }
-        }
-        c
-    }
-
     /// The widget's own fill: the first unclaimed paint whose box is its border box.
     fn own_fill(&mut self, b: Rect) -> Option<usize> {
         let i = self.paints.fills.iter().enumerate().position(|(i, f)| {
@@ -314,7 +329,7 @@ impl Walk<'_> {
         c[2] > 0.0 && c[3] > 0.0
     }
 
-    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, widget_opacity: f64) {
+    fn visit(&mut self, w: &gtk4::Widget, clip: Rect, widget_opacity: f64, parent_bg: [f32; 3]) {
         if !w.is_mapped() || !w.is_visible() {
             return;
         }
@@ -328,10 +343,40 @@ impl Walk<'_> {
             clip = clip_rect(clip, b);
         }
         let start = self.items.len();
-        let emitted = self.visible(b, clip) && self.emit(w, b, opacity);
+        let (emitted, bg) = if self.visible(b, clip) {
+            self.emit(w, b, opacity, parent_bg)
+        } else {
+            (false, parent_bg)
+        };
+        // A trough and its progress are painted by the widget's own parts: each is a box of its own.
+        if emitted && (w.is::<gtk4::ProgressBar>() || w.is::<gtk4::Scale>()) {
+            for i in 0..self.paints.fills.len() {
+                let f = &self.paints.fills[i];
+                if !self.claimed[i] && !f.border && contains(b, f.b, 0.6) && f.rgba[3] * f.opacity > 0.004 {
+                    self.claimed[i] = true;
+                    let f = &self.paints.fills[i];
+                    let c = over(f.at(f.b[0] + f.b[2] / 2.0, f.b[1] + f.b[3] / 2.0), bg);
+                    let mut j = json!({
+                        "text": "", "role": "container",
+                        "rect": {"x": f.b[0], "y": f.b[1], "w": f.b[2], "h": f.b[3]},
+                        "color": Value::Null, "background": hex([c[0], c[1], c[2], 1.0], false),
+                        "fontSize": Value::Null, "fontWeight": Value::Null,
+                    });
+                    if f.radius > 0.0 {
+                        j["radius"] = json!(f.radius);
+                    }
+                    self.items.push(Item {
+                        json: j,
+                        rect: f.b,
+                        opaque: false,
+                        end: self.items.len() + 1,
+                    });
+                }
+            }
+        }
         let mut child = w.first_child();
         while let Some(c) = child {
-            self.visit(&c, clip, opacity);
+            self.visit(&c, clip, opacity, bg);
             child = c.next_sibling();
         }
         let end = self.items.len();
@@ -340,8 +385,14 @@ impl Walk<'_> {
         }
     }
 
-    fn emit(&mut self, w: &gtk4::Widget, b: Rect, widget_opacity: f64) -> bool {
+    /// Returns whether an element was emitted and the background the widget's children sit on.
+    fn emit(&mut self, w: &gtk4::Widget, b: Rect, widget_opacity: f64, parent_bg: [f32; 3]) -> (bool, [f32; 3]) {
         let own = self.own_fill(b);
+        let mut bg = parent_bg;
+        if let Some(i) = own {
+            let f = &self.paints.fills[i];
+            bg = over(f.at(b[0] + b[2] / 2.0, b[1] + b[3] / 2.0), parent_bg);
+        }
         let bordered = self.own_border(b);
         let mut el = json!({
             "text": "", "role": role_of(w),
@@ -387,7 +438,7 @@ impl Walk<'_> {
             }
             let text = l.text().to_string();
             if text.is_empty() {
-                return false;
+                return (false, bg);
             }
             let run = self
                 .paints
@@ -408,11 +459,15 @@ impl Walk<'_> {
             el["fontWeight"] = json!(weight);
             emit = true;
         } else if w.is::<gtk4::Image>() || w.is::<gtk4::Picture>() {
+            let pic = w.is::<gtk4::Picture>();
             let mut t: Option<(Rect, f32)> = None;
             for tx in &self.paints.textures {
-                if contains(b, tx.b, 0.6)
-                    || (w.is::<gtk4::Picture>() && clip_rect(tx.b, b)[2] > 0.0 && clip_rect(tx.b, b)[3] > 0.0)
-                {
+                let mine = if pic {
+                    tx.clip.is_some_and(|c| near(c, b, 0.6))
+                } else {
+                    contains(b, tx.b, 0.6)
+                };
+                if mine {
                     t = Some(match t {
                         None => (tx.b, tx.opacity),
                         Some((p, o)) => {
@@ -427,19 +482,21 @@ impl Walk<'_> {
                 }
             }
             if let Some((r, o)) = t {
-                rect = if w.is::<gtk4::Picture>() { b } else { r };
+                rect = if pic { b } else { r };
                 opacity *= o;
                 el["role"] = json!("image");
                 emit = true;
-                opaque = w.is::<gtk4::Picture>();
+                opaque = pic;
             }
+        } else if w.is::<gtk4::ProgressBar>() || w.is::<gtk4::Scale>() {
+            el["text"] = json!(a11y_name(w).unwrap_or_default());
+            emit = true;
         } else if w.is::<gtk4::Button>()
             || w.is::<gtk4::Entry>()
             || w.is::<gtk4::SearchEntry>()
             || w.is::<gtk4::Text>()
             || w.is::<gtk4::DropDown>()
             || w.is::<gtk4::Switch>()
-            || w.is::<gtk4::Scale>()
             || w.is::<gtk4::DrawingArea>()
         {
             let name = a11y_name(w).or_else(|| {
@@ -478,17 +535,24 @@ impl Walk<'_> {
                 }
             }
         }
+        // The outermost widget on a rounded clip owns its radius.
+        if let Some(i) = self
+            .paints
+            .clips
+            .iter()
+            .enumerate()
+            .position(|(i, (cb, r))| !self.clip_claimed[i] && *r > 0.0 && near(*cb, b, 0.55))
+        {
+            self.clip_claimed[i] = true;
+            if el.get("radius").is_none() {
+                el["radius"] = json!(self.paints.clips[i].1);
+            }
+        }
         if !emit {
-            return false;
+            return (false, bg);
         }
         el["rect"] = json!({"x": rect[0], "y": rect[1], "w": rect[2], "h": rect[3]});
-        el["background"] = json!(hex(
-            {
-                let c = self.background(rect);
-                [c[0], c[1], c[2], 1.0]
-            },
-            false
-        ));
+        el["background"] = json!(hex([bg[0], bg[1], bg[2], 1.0], false));
         if (opacity - 1.0).abs() > 0.004 {
             el["opacity"] = json!((opacity * 1000.0).round() / 1000.0);
         }
@@ -498,7 +562,7 @@ impl Walk<'_> {
             opaque,
             end: 0,
         });
-        true
+        (true, bg)
     }
 }
 
@@ -529,17 +593,47 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
     paintable.snapshot(&snapshot, root.width() as f64, root.height() as f64);
     let mut paints = Paints::default();
     if let Some(node) = snapshot.to_node() {
-        collect(&node, &graphene::Matrix::new_identity(), 1.0, 0.0, &mut paints);
+        collect(&node, &graphene::Matrix::new_identity(), 1.0, None, None, &mut paints);
+    }
+    if std::env::var_os("PLAYARR_LAYOUT_DEBUG").is_some() {
+        let lines: Vec<String> = paints
+            .fills
+            .iter()
+            .map(|f| {
+                format!(
+                    "{:.1},{:.1} {:.1}x{:.1} {} r{} g{} b{} o{:.2}",
+                    f.b[0],
+                    f.b[1],
+                    f.b[2],
+                    f.b[3],
+                    hex(f.rgba, true),
+                    f.radius,
+                    f.gradient.is_some(),
+                    f.border,
+                    f.opacity
+                )
+            })
+            .collect();
+        let clips: Vec<String> = paints
+            .clips
+            .iter()
+            .map(|(b, r)| format!("clip {:.1},{:.1} {:.1}x{:.1} r{}", b[0], b[1], b[2], b[3], r))
+            .collect();
+        let _ = std::fs::write(
+            format!("{path}.paints"),
+            lines.into_iter().chain(clips).collect::<Vec<_>>().join("\n"),
+        );
     }
     let viewport = [0.0, 0.0, root.width() as f32, root.height() as f32];
     let mut walk = Walk {
         root,
         claimed: vec![false; paints.fills.len()],
+        clip_claimed: vec![false; paints.clips.len()],
         paints,
         viewport,
         items: Vec::new(),
     };
-    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0);
+    walk.visit(root, [-1.0e6, -1.0e6, 2.0e6, 2.0e6], 1.0, [1.0, 1.0, 1.0]);
     // An element fully covered by a later opaque box that is not part of it is not visible.
     let n = walk.items.len();
     let mut keep = vec![true; n];

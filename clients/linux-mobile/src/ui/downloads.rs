@@ -898,6 +898,7 @@ fn build_list(
                 list.append(
                     &gtk4::Label::builder()
                         .label(name)
+                        .accessible_role(gtk4::AccessibleRole::Heading)
                         .css_classes(["pa-season-title"])
                         .xalign(0.0)
                         .margin_top(10)

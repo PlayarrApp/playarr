@@ -116,6 +116,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     heading.append(
         &gtk4::Label::builder()
             .label("Who’s watching?")
+            .accessible_role(gtk4::AccessibleRole::Heading)
             .css_classes(["pa-who"])
             .build(),
     );

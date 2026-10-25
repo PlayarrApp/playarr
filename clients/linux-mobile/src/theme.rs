@@ -66,7 +66,7 @@ pub fn css(dark: bool) -> String {
     let defs = format!(
         "@define-color pa_bg {}; @define-color pa_surface {}; @define-color pa_surface_strong {}; @define-color pa_soft {};\n\
          @define-color pa_ink {}; @define-color pa_ink_soft {}; @define-color pa_muted {}; @define-color pa_line {}; @define-color pa_line_strong {};\n\
-         @define-color pa_brand {}; @define-color pa_brand_ink {}; @define-color pa_focus_glow {}; @define-color pa_on_accent {}; @define-color pa_accent {}; @define-color pa_shadow {}; @define-color pa_wash {}; @define-color pa_ring {}; @define-color pa_body {}; @define-color pa_missing {}; @define-color pa_day {}; @define-color pa_lead {};\n",
+         @define-color pa_brand {}; @define-color pa_brand_ink {}; @define-color pa_focus_glow {}; @define-color pa_on_accent {}; @define-color pa_accent {}; @define-color pa_shadow {}; @define-color pa_wash {}; @define-color pa_ring {}; @define-color pa_body {}; @define-color pa_missing {}; @define-color pa_day {}; @define-color pa_lead {}; @define-color pa_frost {};\n",
         t.bg, t.surface, t.surface_strong, t.surface_soft, t.ink, t.ink_soft, t.ink_muted, t.line, t.line_strong, t.brand, t.brand_ink,
         t.focus_glow, t.on_accent, t.accent, t.shadow, t.wash,
         // The web's dark focus ring is pure white (page-layout.css); light keeps the ink.
@@ -78,7 +78,9 @@ pub fn css(dark: bool) -> String {
         // The calendar's day heading and Today chip.
         if dark { "#dfdcdd" } else { "#4d4248" },
         // The first card's focused caption: pure white on dark, pure black on light.
-        if dark { "#ffffff" } else { "#000000" }
+        if dark { "#ffffff" } else { "#000000" },
+        // The web's rail surface colour: the soft surface mixed into the strong one.
+        if dark { "#282328" } else { "#f0eeef" }
     );
     // The detail hero's opacity and filter come from the web references: dark .5 and darkened, light .16 and lightened.
     // Bottom of the art: a soft fade from about 150 px; once the page is scrolled over it, dark has the web's hard edge
@@ -100,7 +102,7 @@ pub fn css(dark: bool) -> String {
             ".pa-key-art.soft { opacity: 0.13; }\n.pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #151315; }\n"
         } else {
             // The light Profiles page is a flat #f5f3f2 (web), its top-bar dropdowns the same.
-            ".pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #f5f3f2; }\n.pa-topbar dropdown.pa-dropdown > button { background: #f5f3f2; }\n.pa-mcell.outside { background: #efeeed; }\n.pa-key-art.soft { opacity: 0.08; }\n.pa-avatar.current { box-shadow: 0 0 0 4px rgba(194, 47, 82, 0.42), 0 16px 44px rgba(56, 38, 33, 0.2); }\n.pa-khero-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0.6), alpha(@pa_bg, 0) 75%), linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }\n.pa-key-wash.pa-home-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0) 72px, @pa_bg 122px); }\n"
+            ".pa-page.pa-profiles-bg { background: radial-gradient(circle at 50% 48%, alpha(@pa_brand, 0.13), alpha(@pa_brand, 0) 34%), #f5f3f2; }\n.pa-topbar dropdown.pa-dropdown > button { background: #f5f3f2; }\n.pa-mcell.outside { background: #efeeed; }\n.pa-key-art.soft { opacity: 0.08; }\n.pa-avatar.current { box-shadow: 0 0 0 4px rgba(194, 47, 82, 0.42), 0 16px 44px rgba(56, 38, 33, 0.2); }\n.pa-khero-edge { background: linear-gradient(90deg, alpha(@pa_bg, 0.6), alpha(@pa_bg, 0) 75%), linear-gradient(90deg, alpha(@pa_bg, 0) 72%, @pa_bg 100%); }\n.pa-key-wash.pa-home-wash { background: linear-gradient(to bottom, alpha(@pa_bg, 0) 72px, @pa_bg 122px); }\nprogressbar.pa-progress { background: #e5e3e4; }\n.pa-rail-frost { background: linear-gradient(to right, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.68) 12%, alpha(@pa_frost, 0.88) 34%, alpha(@pa_frost, 0.96) 62%, @pa_frost 100%); }\n"
         };
     let hero = format!(
         ".pa-khero-fade {{ background: {edge}; }}\n{hard}.pa-key-art.pa-khero {{ opacity: {}; filter: {}; }}\n",

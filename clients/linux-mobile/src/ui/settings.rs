@@ -55,7 +55,7 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
     // The web nudges the first (hovered) row's arrow 5 px right.
     arrow.set_margin_end(if n == 1 { -10 } else { 0 });
     row.append(&arrow);
-    
+
     gtk4::Button::builder().child(&row).css_classes(["pa-pref"]).build()
 }
 

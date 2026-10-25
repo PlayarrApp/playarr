@@ -25,7 +25,13 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .margin_end(16)
         .margin_bottom(5)
         .build();
+    // A link on the list pages, a button on the detail and settings pages, as the web's back control.
     let back = gtk4::Button::builder()
+        .accessible_role(if title.is_empty() || title == "Preferences" {
+            gtk4::AccessibleRole::Button
+        } else {
+            gtk4::AccessibleRole::Link
+        })
         .css_classes(["pa-hbtn", "round"])
         .valign(gtk4::Align::Start)
         .build();
@@ -47,6 +53,7 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .build();
     let h1 = gtk4::Label::builder()
         .label(title)
+        .accessible_role(gtk4::AccessibleRole::Heading)
         .css_classes(["pa-h1"])
         .xalign(0.0)
         .ellipsize(gtk4::pango::EllipsizeMode::End)

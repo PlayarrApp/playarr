@@ -360,7 +360,6 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
 }
 
 fn pill(label: &str) -> gtk4::Button {
-    
     gtk4::Button::builder().label(label).css_classes(["pa-pill"]).build()
 }
 

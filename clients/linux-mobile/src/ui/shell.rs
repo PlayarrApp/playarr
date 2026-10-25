@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 /// Returns the tab pages and the floating navigation (added by the app above every page, so detail pages keep it).
 pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>) -> (gtk4::Widget, gtk4::Widget) {
-    let pages = gtk4::Stack::builder().vexpand(true).build();
+    let pages = gtk4::Stack::builder().vexpand(true).css_classes(["pa-page"]).build();
     let lib = |kind: &'static str, title: &str| library::build(app.clone(), client.clone(), imgs.clone(), kind, title);
     let tabs: Vec<(&str, gtk4::Widget)> = vec![
         ("downloads", super::downloads::page(&app, client.clone())),
@@ -34,6 +34,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
 
     // Profile avatar first.
     let me = gtk4::Button::builder()
+        .accessible_role(gtk4::AccessibleRole::Link)
+        .overflow(gtk4::Overflow::Hidden)
         .css_classes(["pa-navbtn"])
         .tooltip_text("Profile")
         .build();
@@ -86,6 +88,8 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
                 }
                 let icon = icons::image(name, 21, Tone::Soft);
                 let button = gtk4::Button::builder()
+                    .accessible_role(gtk4::AccessibleRole::Link)
+                    .overflow(gtk4::Overflow::Hidden)
                     .css_classes(["pa-navbtn"])
                     .tooltip_text(name.to_string())
                     .child(&icon)
@@ -93,6 +97,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, preset: Option<String>)
                 row.append(&button);
                 let mut label = name.to_string();
                 label[..1].make_ascii_uppercase();
+                crate::layout::name(&button, &label);
                 Item {
                     name: name.to_string(),
                     button,

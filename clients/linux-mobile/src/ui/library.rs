@@ -412,6 +412,7 @@ impl Lib {
             col.append(
                 &gtk4::Label::builder()
                     .label(text.to_uppercase())
+                    .accessible_role(gtk4::AccessibleRole::Heading)
                     .css_classes(["pa-section-label", "pa-heading"])
                     .xalign(0.0)
                     .build(),

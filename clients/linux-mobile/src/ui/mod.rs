@@ -304,6 +304,7 @@ impl App {
         block.append(
             &gtk4::Label::builder()
                 .label(title)
+                .accessible_role(gtk4::AccessibleRole::Heading)
                 .css_classes(["pa-panel-title"])
                 .xalign(0.0)
                 .ellipsize(gtk4::pango::EllipsizeMode::End)
@@ -578,8 +579,9 @@ pub fn clock_pinned() -> bool {
 }
 
 pub fn build_window(app: &adw::Application) {
-    let stack = gtk4::Stack::builder().build();
-    let layer = gtk4::Overlay::builder().child(&stack).build();
+    // The web draws the page body, the app container and the page as three nested fills; so do these widgets.
+    let stack = gtk4::Stack::builder().css_classes(["pa-app"]).build();
+    let layer = gtk4::Overlay::builder().child(&stack).css_classes(["pa-body"]).build();
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Playarr")

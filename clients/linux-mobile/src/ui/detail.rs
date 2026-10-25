@@ -331,6 +331,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     let film = focus_ep.is_none();
     let title_label = gtk4::Label::builder()
         .label(&w.title)
+        .accessible_role(gtk4::AccessibleRole::Heading)
         .css_classes(["pa-display"])
         .xalign(0.0)
         .build();
@@ -371,6 +372,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         body.append(
             &gtk4::Label::builder()
                 .label(e.episode.title.clone().unwrap_or_default())
+                .accessible_role(gtk4::AccessibleRole::Heading)
                 .css_classes(["pa-ep-heading"])
                 .xalign(0.0)
                 .build(),
@@ -677,6 +679,7 @@ fn season_rail(
             } else {
                 format!("Season {n}")
             })
+            .accessible_role(gtk4::AccessibleRole::Heading)
             .css_classes(["pa-season-title"])
             .xalign(0.0)
             .margin_start(FOCUS_ROOM)
@@ -879,6 +882,7 @@ fn rail_head(col: &gtk4::Box, title: &str, count: &str) {
     col.append(
         &gtk4::Label::builder()
             .label(title)
+            .accessible_role(gtk4::AccessibleRole::Heading)
             .css_classes(["pa-season-title"])
             .xalign(0.0)
             .margin_start(FOCUS_ROOM)
