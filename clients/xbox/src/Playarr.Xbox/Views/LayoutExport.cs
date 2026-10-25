@@ -64,6 +64,7 @@ namespace Playarr.Xbox.Views
                 theme,
                 viewport = new { w = 1920, h = 1080, dpr = 1 },
                 probe = Probe(),
+                textProbe = TextProbe(root),
                 clockPinned = ParityClock.IsPinned && ParityClock.Today == new DateTime(2026, 10, 7),
                 elements,
             });
@@ -85,6 +86,39 @@ namespace Playarr.Xbox.Views
                 w400 = Width(400, 0), w600 = Width(600, 0), w680 = Width(680, 0), w700 = Width(700, 0), w720 = Width(720, 0), w760 = Width(760, 0), w800 = Width(800, 0), w900 = Width(900, 0),
                 s0 = Width(400, 0), s100 = Width(400, 100), s_100 = Width(400, -100),
             };
+        }
+
+        /// <summary>Diagnosis only (not part of the schema): the platform's character rectangles and measured width for the first few visible text blocks.</summary>
+        private static List<object> TextProbe(FrameworkElement root)
+        {
+            var found = new List<object>();
+            void Visit(DependencyObject node)
+            {
+                if (found.Count >= 6 || node is UIElement { Visibility: not Visibility.Visible })
+                {
+                    return;
+                }
+
+                if (node is TextBlock { Text.Length: >= 4, ActualWidth: >= 1 } block)
+                {
+                    var chars = new List<double[]>();
+                    for (var i = 0; i < Math.Min(block.Text.Length + 2, 24); i++)
+                    {
+                        var rect = block.ContentStart.GetPositionAtOffset(i, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
+                        chars.Add(rect.IsEmpty ? new double[0] : new[] { Math.Round(rect.X, 1), Math.Round(rect.Y, 1), Math.Round(rect.Width, 1), Math.Round(rect.Height, 1) });
+                    }
+
+                    found.Add(new { block.Text, block.ActualWidth, block.ActualHeight, advance = Advance(block, block.Text.Trim()), chars });
+                }
+
+                for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+                {
+                    Visit(VisualTreeHelper.GetChild(node, i));
+                }
+            }
+
+            Visit(root);
+            return found;
         }
 
         private static void Walk(DependencyObject node, FrameworkElement root, double scale, List<object> output)
@@ -190,7 +224,7 @@ namespace Playarr.Xbox.Views
             {
                 role = "container";
             }
-            else if (element is Windows.UI.Xaml.Shapes.Shape shape && Hex(shape.Fill) is not null)
+            else if (element is Windows.UI.Xaml.Shapes.Shape shape && (Hex(shape.Fill) is not null || shape.Fill is GradientBrush))
             {
                 role = "container";
             }
@@ -217,7 +251,7 @@ namespace Playarr.Xbox.Views
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale, 1) : null,
-                opacity = element.Opacity < 1 ? (double?)Math.Round(element.Opacity, 2) : null,
+                opacity = EffectiveOpacity(element) is var opacity && opacity < 0.995 ? (double?)Math.Round(opacity, 2) : null,
             });
         }
 
@@ -270,11 +304,22 @@ namespace Playarr.Xbox.Views
                     }
                 }
 
-                foreach (var (box, from, to) in lines)
+                // Each line runs from its first character to where the next line starts (the last to the end of the run).
+                for (var k = 0; k < lines.Count; k++)
                 {
-                    var r = transform.TransformBounds(box);
+                    var from = k == 0 ? offset : lines[k].From;
+                    var to = k + 1 < lines.Count ? lines[k + 1].From : offset + length;
                     var text = block.Text.Substring(from, to - from).Trim();
-                    if (text.Length == 0 || r.Right * scale <= 0 || r.Bottom * scale <= 0 || r.X * scale >= 1920 || r.Y * scale >= 1080)
+                    if (text.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    // Left edge and line box height are the platform's character rectangles; the width is the platform's own advance
+                    // width of that line's text in the same face (the character rectangles do not report the full run).
+                    var first = lines[k].Box;
+                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Advance(block, text), first.Height));
+                    if (r.Right * scale <= 0 || r.Bottom * scale <= 0 || r.X * scale >= 1920 || r.Y * scale >= 1080)
                     {
                         continue;
                     }
@@ -297,20 +342,53 @@ namespace Playarr.Xbox.Views
             }
         }
 
-        /// <summary>The glyph run of a single-line label inside a button: first to last character rectangle, native line box height, transformed.</summary>
+        /// <summary>The platform's advance width of <paramref name="text"/> set in the block's face, size and spacing on one line.</summary>
+        private static double Advance(TextBlock block, string text)
+        {
+            var probe = new TextBlock
+            {
+                Text = text,
+                FontFamily = block.FontFamily,
+                FontSize = block.FontSize,
+                FontWeight = block.FontWeight,
+                FontStyle = block.FontStyle,
+                FontStretch = block.FontStretch,
+                CharacterSpacing = block.CharacterSpacing,
+                TextWrapping = TextWrapping.NoWrap,
+            };
+            probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            return probe.DesiredSize.Width;
+        }
+
+        /// <summary>The glyph run of a single-line label inside a button: first character left edge, the platform's advance width of the label, native line box height, transformed.</summary>
         private static Rect? TextRun(TextBlock block, FrameworkElement root, double scale)
         {
             try
             {
                 var first = block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
                 var last = block.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
-                var r = block.TransformToVisual(root).TransformBounds(new Rect(first.X, first.Y, Math.Max(0, last.Right - first.X), Math.Max(first.Height, last.Height)));
+                var r = block.TransformToVisual(root).TransformBounds(new Rect(first.X, first.Y, Advance(block, block.Text.Trim()), Math.Max(first.Height, last.Height)));
                 return new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale);
             }
             catch (Exception)
             {
                 return null;
             }
+        }
+
+        /// <summary>The element's opacity multiplied by every ancestor's (what the web reports as the product with the ancestors).</summary>
+        private static double EffectiveOpacity(DependencyObject node)
+        {
+            var product = 1.0;
+            for (var n = node; n != null; n = VisualTreeHelper.GetParent(n))
+            {
+                if (n is UIElement ui)
+                {
+                    product *= ui.Opacity;
+                }
+            }
+
+            return product;
         }
 
         private static string? Own(FrameworkElement element) => element switch
@@ -327,6 +405,7 @@ namespace Playarr.Xbox.Views
         {
             var layers = new List<Color>();
             var underPage = false;
+            Color? pageFill = null;
             for (var parent = includeSelf ? node : VisualTreeHelper.GetParent(node); parent != null; parent = VisualTreeHelper.GetParent(parent))
             {
                 if (parent.GetValue(ShellProperty) is true)
@@ -334,9 +413,14 @@ namespace Playarr.Xbox.Views
                     break; // shell chrome and the profile picker sit on the page background
                 }
 
-                if (parent is Page)
+                if (parent is Page page)
                 {
                     underPage = true; // the page stage (a gradient) is reported as the surface colour; nothing above it counts
+                    if (page.Background is SolidColorBrush { Color.A: 255 } pageBrush)
+                    {
+                        pageFill = pageBrush.Color; // a page that paints its own opaque background (the player's black stage)
+                    }
+
                     break;
                 }
 
@@ -354,7 +438,7 @@ namespace Playarr.Xbox.Views
             }
 
             // The page stage is the surface colour; the shell (rail, clock) sits on the page background.
-            var result = underPage ? Theme.Surface : Theme.Bg;
+            var result = pageFill ?? (underPage ? Theme.Surface : Theme.Bg);
             for (var i = layers.Count - 1; i >= 0; i--)
             {
                 var l = layers[i];
