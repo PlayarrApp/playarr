@@ -79,11 +79,11 @@ PlayarrPage {
             PLabel { renderType: Text.NativeRendering;
                 width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.0
                 text: qsTr("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.115; font.pixelSize: Tokens.fs(10); bottomPadding: 2.5 * Tokens.u - 3
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10); bottomPadding: 2.5 * Tokens.u - 3
             }
             PLabel { renderType: Text.NativeRendering;
                 visible: page.failure !== ""; width: parent.width; wrapMode: Text.Wrap
-                text: page.failure; color: Tokens.danger; font.family: Tokens.family; font.letterSpacing: 0.115; font.pixelSize: Tokens.fs(10)
+                text: page.failure; color: Tokens.danger; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10)
             }
             PillButton {
                 visible: page.failure !== ""; text: qsTr("Try again"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u
@@ -91,11 +91,11 @@ PlayarrPage {
             }
             PLabel { renderType: Text.NativeRendering;
                 visible: page.busy && page.url === ""; text: qsTr("Getting your link…")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.115; font.pixelSize: Tokens.fs(10)
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10)
             }
             Item {
-                visible: page.url !== ""; width: parent.width; height: 44 * Tokens.u
-                Rectangle { anchors.fill: parent; radius: 8 * Tokens.u; color: Tokens.bg; border.width: 1; border.color: Tokens.lineStrong; property string parityRole: "textbox" }
+                visible: page.url !== ""; width: parent.width; height: 43 * Tokens.u
+                Rectangle { width: parent.width; height: 44 * Tokens.u; radius: 8 * Tokens.u; color: Tokens.bg; border.width: 1; border.color: Tokens.lineStrong; property string parityRole: "textbox" }
                 PLabel { renderType: Text.NativeRendering;
                     x: 13 * Tokens.u; width: parent.width - 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter
                     text: page.url; clip: true; wrapMode: Text.NoWrap
@@ -134,8 +134,8 @@ PlayarrPage {
             }
             PLabel { renderType: Text.NativeRendering; visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Your link was created on another device and is not stored here. Reset it to get a new link to copy.")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.115; font.pixelSize: Tokens.fs(10) }
-            PLabel { renderType: Text.NativeRendering; text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; property string parityRole: "heading"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.4; topPadding: 0; bottomPadding: 2 * Tokens.u }
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10) }
+            PLabel { renderType: Text.NativeRendering; text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; property string parityRole: "heading"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.47; topPadding: 0; bottomPadding: 2 * Tokens.u }
             Column {
               spacing: 8.25 * Tokens.u
               Repeater {
@@ -145,14 +145,14 @@ PlayarrPage {
                 Row {
                     spacing: 11 * Tokens.u; x: 4 * Tokens.u; width: body.width - 4 * Tokens.u   // web list indent
                     PLabel { renderType: Text.NativeRendering; text: "•"; color: Tokens.ink; font.pixelSize: Tokens.fs(10) }
-                    PLabel { renderType: Text.NativeRendering; width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.letterSpacing: 0.115; font.pixelSize: Tokens.fs(10) }
+                    PLabel { renderType: Text.NativeRendering; width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10) }
                 }
               }
             }
             PLabel { renderType: Text.NativeRendering;
                 visible: page.confirming; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Resetting makes a new link and the current link stops working straight away. Calendars using it will need the new link.")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.115; font.pixelSize: Tokens.fs(10)
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10)
             }
             Row {
                 spacing: 8 * Tokens.u; visible: page.url !== "" || page.needsReset

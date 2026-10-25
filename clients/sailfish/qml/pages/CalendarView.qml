@@ -320,7 +320,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
-                        PLabel { renderType: Text.NativeRendering; id: todayLbl; property var radiusSource: todayChip; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fsFit(11.2) }
+                        PLabel { renderType: Text.NativeRendering; id: todayLbl; property var radiusSource: todayChip; anchors.centerIn: parent; anchors.verticalCenterOffset: dayCol.wk ? 0 : -1.2; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fsFit(11.2) }
                     }
                     }
                     Repeater {
