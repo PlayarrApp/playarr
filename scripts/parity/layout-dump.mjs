@@ -64,6 +64,28 @@ export function layoutPageFn(volatile) {
     }
     return out;
   };
+  /* One run per rendered line: the text on the line and the bounds of its non-blank glyphs. */
+  var lineRuns = function (nodes, cs) {
+    var lines = [], cur = null, range = document.createRange();
+    for (var a = 0; a < nodes.length; a++) {
+      var data = nodes[a].data;
+      if (cur) cur.text += " ";
+      for (var i = 0; i < data.length; i++) {
+        range.setStart(nodes[a], i);
+        range.setEnd(nodes[a], i + 1);
+        var cr = range.getBoundingClientRect();
+        if (cr.width <= 0 || cr.height <= 0) continue;
+        if (!cur || (cr.top + cr.bottom) / 2 > cur.bottom) { cur = { text: "", bottom: cr.bottom, l: null }; lines.push(cur); }
+        cur.bottom = Math.max(cur.bottom, cr.bottom);
+        cur.text += data.charAt(i);
+        if (!/\S/.test(data.charAt(i))) continue;
+        cur.l = cur.l ? { left: Math.min(cur.l.left, cr.left), top: Math.min(cur.l.top, cr.top), right: Math.max(cur.l.right, cr.right), bottom: Math.max(cur.l.bottom, cr.bottom) } : { left: cr.left, top: cr.top, right: cr.right, bottom: cr.bottom };
+      }
+    }
+    return lines.filter(function (x) { return x.l && norm(x.text); }).map(function (x) {
+      return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left, h: x.l.bottom - x.l.top };
+    });
+  };
   var clipped = function (el, r) {
     var left = r.left, top = r.top, right = r.right, bottom = r.bottom;
     for (var n = el.parentElement; n && n !== document.documentElement; n = n.parentElement) {
@@ -163,11 +185,11 @@ export function layoutPageFn(volatile) {
     if (vol && vol.host !== el) continue;
     if (vol && vol.entry.omit) continue;
     var r = el.getBoundingClientRect();
-    if (vol && own) {
+    if (vol && (own || vol.entry.selector && norm(el.innerText))) {
       var range = document.createRange();
       range.selectNodeContents(el);
       var rr = range.getBoundingClientRect();
-      if (rr.width >= 1 && rr.height >= 1 && !vol.entry.selector) r = rr;
+      if (rr.width >= 1 && rr.height >= 1) r = rr;
     } else if (own) {
       var rg = document.createRange();
       rg.setStartBefore(texts[0]);
@@ -210,7 +232,14 @@ export function layoutPageFn(volatile) {
       if (vol.entry.clock) row.clock = true;
       if (vol.entry.maskOnly) row.maskOnly = true;
     }
-    rows.push(row);
+    var runs = !vol && own ? lineRuns(texts, cs) : [];
+    if (runs.length > 1) {
+      for (var q = 0; q < runs.length; q++) {
+        var run = runs[q];
+        if (run.w < 1 || run.h < 1) continue;
+        rows.push(Object.assign({}, row, { text: run.text, rect: { x: round(run.left), y: round(run.top), w: round(run.w), h: round(run.h) } }));
+      }
+    } else rows.push(row);
   }
   return { viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio }, elements: rows, occluded: dropped };
 }
