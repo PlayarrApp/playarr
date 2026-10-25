@@ -55,7 +55,7 @@ const mapRect = (M, [x, y, w, h]) => ({ x: M.sx * x + M.tx, y: M.sy * y + M.ty, 
 /** Walks the tree and returns raw measured items in tree order (paint order). */
 export function measureTree(root) {
   const items = [];
-  const walk = (node, M, opacity, parent) => {
+  const walk = (node, M, opacity, parent, chain) => {
     const parentTag = parent?.tag ?? "";
     const a = node.attrs;
     if (a.visible === "false") return;
@@ -63,13 +63,14 @@ export function measureTree(root) {
     if (op <= 0.001) return;
     const bounds = nums(a.bounds);
     const rect = bounds && bounds[2] > 0 && bounds[3] > 0 ? mapRect(M, bounds) : null;
+    const base = { chain, parent };
     const sem = /^a11y\|(\w+)\|([\d.]+)(?:@([0-9a-f]{8})(?:~\d+)?)?\|(.*)$/s.exec(a.name ?? "");
-    if (sem && rect) items.push({ kind: "a11y", node, rect, op, role: sem[1], radius: Number(sem[2]), declared: sem[3], text: sem[4] });
-    else if (node.tag === "Label" && a.text && rect) items.push({ kind: "label", node, rect, op, parent });
-    else if (node.tag === "Poster" && a.uri && rect) items.push({ kind: "poster", node, rect, op });
-    else if (node.tag === "VideoBackground" && rect) items.push({ kind: "rect", node, rect, op });
-    else if (node.tag === "Video" && rect) items.push({ kind: "video", node, rect, op });
-    else if (node.tag === "Rectangle" && rect && alphaOf(a.color) * op > 0.01) items.push({ kind: "rect", node, rect, op });
+    if (sem && rect) items.push({ ...base, kind: "a11y", node, rect, op, role: sem[1], radius: Number(sem[2]), declared: sem[3], text: sem[4] });
+    else if (node.tag === "Label" && a.text && rect) items.push({ ...base, kind: "label", node, rect, op, parent });
+    else if (node.tag === "Poster" && a.uri && rect) items.push({ ...base, kind: "poster", node, rect, op });
+    else if (node.tag === "VideoBackground" && rect) items.push({ ...base, kind: "rect", node, rect, op });
+    else if (node.tag === "Video" && rect) items.push({ ...base, kind: "video", node, rect, op });
+    else if (node.tag === "Rectangle" && rect && alphaOf(a.color) * op > 0.01) items.push({ ...base, kind: "rect", node, rect, op });
     // Children live in this node's own frame: its translation, then scale about scaleRotateCenter. A list item sits where its bounds
     // start (the list does not report a translation for its items).
     let s = nums(a.scale)?.[0] ?? 1;
@@ -77,9 +78,10 @@ export function measureTree(root) {
     let tr = nums(a.translation) ?? [0, 0];
     if ((parentTag === "MarkupGrid" || parent?.attrs.extends === "MarkupGrid") && bounds) tr = [bounds[0], bounds[1]];
     const child = compose(M, s, [tr[0] + c[0] - s * c[0], tr[1] + c[1] - s * c[1]]);
-    for (const k of node.children) walk(k, child, op, node);
+    const below = [...chain, node];
+    for (const k of node.children) walk(k, child, op, node, below);
   };
-  walk(root, { sx: 1, sy: 1, tx: 0, ty: 0 }, 1, null);
+  walk(root, { sx: 1, sy: 1, tx: 0, ty: 0 }, 1, null, []);
   return items;
 }
 
@@ -120,13 +122,17 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
   // The colour behind an element: the painted Rectangles of the tree that lie under its centre, composited in paint order over white
   // (what the web calls the ancestors' backgrounds). `own` includes a Rectangle drawn at `order` itself.
   const fills = [];
-  const background = (rect, order, own) => {
+  const background = (rect, order, own, scope = null) => {
     // An element partly outside the screen is read at the point of it that is inside.
     const cx = Math.min(1919, Math.max(0, rect.x + rect.w / 2)), cy = Math.min(1079, Math.max(0, rect.y + rect.h / 2));
-    let out = [255, 255, 255];
+    // Behind a full-screen video the plane is black; otherwise the page sits on white, as the web's ancestors do.
+    let out = items[0]?.kind === "video" ? [0, 0, 0] : [255, 255, 255];
     for (const f of fills) {
       if (f.order > order || (f.order === order && !own)) break;
       if (cx < f.rect.x || cx > f.rect.x + f.rect.w || cy < f.rect.y || cy > f.rect.y + f.rect.h) continue;
+      // Like the web's ancestors' backgrounds: a fill counts for what lies in the group that holds it (a page surface paints the page's
+      // content, not the header, which sits in its own group).
+      if (scope && !scope.includes(f.parent)) continue;
       const col = f.fill ?? f.node.attrs.color, al = f.fill ? 1 : alphaOf(col) * f.op;
       const c = rgb(col);
       out = out.map((o, k) => c[k] * al + o * (1 - al));
@@ -140,7 +146,7 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
       if (it.role === "image" || it.role === "video") continue; // a picture, glyph or video frame: it paints no background of its own
       if (it.declared) {
         const c = [0, 2, 4].map((k) => parseInt(it.declared.slice(k, k + 2), 16)), al = parseInt(it.declared.slice(6, 8), 16) / 255;
-        const under = rgb(background(it.rect, it.order, false));
+        const under = rgb(background(it.rect, it.order, false, it.chain));
         it.fill = toHex(c.map((v, k) => v * al + under[k] * (1 - al)));
       } else {
         it.fill = drawn(it.rect);
@@ -160,22 +166,30 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
     const x1 = Math.max(...labels.map((l) => l.rect.x + l.rect.w)), y1 = Math.max(...labels.map((l) => l.rect.y + l.rect.h));
     const rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     push({
-      text: text.replace(/\s+/g, " ").trim(), role: font.role ?? "text", rect, color: hex(labels[0].node.attrs.color), background: background(rect, order, false),
+      text: text.replace(/\s+/g, " ").trim(), role: font.role ?? "text", rect, color: hex(labels[0].node.attrs.color), background: background(rect, order, false, labels[0].chain),
       fontSize: font.size, fontWeight: font.weight, ...(font.radius ? { radius: font.radius } : {}), ...opacityOf(labels[0].op),
     });
   };
   for (const g of groups) {
     if (g.labels) {
       const font = fontOf(g.labels[0].node.attrs.name);
-      // Words are set one Label each, so a gap wider than 0.06 em between neighbours on a line is a space.
-      let text = "";
-      let prev = null;
+      // The web reports one text element per line of a wrapped run. Labels on one line sit at the same top; words are set one Label
+      // each, so a gap wider than 0.06 em between neighbours is a space.
+      const lines = [];
       for (const l of g.labels) {
-        if (prev && (l.rect.y - prev.rect.y > font.size * 0.5 || l.rect.x - (prev.rect.x + prev.rect.w) > font.size * 0.06)) text += " ";
-        text += l.node.attrs.text;
-        prev = l;
+        const last = lines[lines.length - 1];
+        if (last && Math.abs(l.rect.y - last[0].rect.y) < font.size * 0.5) last.push(l); else lines.push([l]);
       }
-      textElement(g.labels, font, text, g.order);
+      for (const line of lines) {
+        let text = "";
+        let prev = null;
+        for (const l of line) {
+          if (prev && l.rect.x - (prev.rect.x + prev.rect.w) > font.size * 0.06) text += " ";
+          text += l.node.attrs.text;
+          prev = l;
+        }
+        textElement(line, font, text, g.order);
+      }
       continue;
     }
     const it = g.single;
@@ -187,13 +201,13 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
     } else if (it.kind === "a11y") {
       // The app declares a fully rounded shape (pill or circle) as 50 or 999: its radius in px is half the shorter side of the drawn box.
       const radius = it.radius === 50 || it.radius === 999 ? Math.min(it.rect.w, it.rect.h) / 2 : it.radius;
-      push({ text: it.text, role: it.role, rect: it.rect, color: null, background: background(it.rect, it.order, true), fontSize: null, fontWeight: null, ...(radius ? { radius: r2(radius) } : {}), ...opacityOf(it.op) });
+      push({ text: it.text, role: it.role, rect: it.rect, color: null, background: background(it.rect, it.order, true, it.chain), fontSize: null, fontWeight: null, ...(radius ? { radius: r2(radius) } : {}), ...opacityOf(it.op) });
     } else if (it.kind === "video") {
-      push({ text: "", role: "video", rect: it.rect, color: null, background: background(it.rect, it.order, false), fontSize: null, fontWeight: null });
+      push({ text: "", role: "video", rect: it.rect, color: null, background: background(it.rect, it.order, false, it.chain), fontSize: null, fontWeight: null });
     } else if (it.kind === "poster") {
-      push({ text: "", role: "image", rect: it.rect, color: null, background: background(it.rect, it.order, false), fontSize: null, fontWeight: null, ...opacityOf(it.op) });
+      push({ text: "", role: "image", rect: it.rect, color: null, background: background(it.rect, it.order, false, it.chain), fontSize: null, fontWeight: null, ...opacityOf(it.op) });
     } else {
-      push({ text: "", role: "container", rect: it.rect, color: null, background: background(it.rect, it.order, true), fontSize: null, fontWeight: null, ...opacityOf(it.op) });
+      push({ text: "", role: "container", rect: it.rect, color: null, background: background(it.rect, it.order, true, it.chain), fontSize: null, fontWeight: null, ...opacityOf(it.op) });
     }
   }
   return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements };

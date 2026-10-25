@@ -9,7 +9,7 @@
 <component name="WebLabel" extends="Group">
   <interface>
     <field id="text" type="string" onChange="refresh" />
-    <field id="color" type="integer" value="-1" onChange="refresh" />
+    <field id="color" type="integer" value="-1" onChange="onColor" />
     <field id="font" type="node" onChange="onFont" />
     <field id="size" type="float" value="0" onChange="refresh" />
     <field id="weight" type="integer" value="400" onChange="refresh" />

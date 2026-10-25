@@ -87,6 +87,9 @@ sub onContentChanged()
         m.cardContentInsetY = 15
     end if
     m.cardRoot.translation = [m.cardContentInsetX, m.padTop + m.cardContentInsetY]
+    ' Numbered cards (chapters, episodes) round their art a little more than the library cards (web 13.44 px against 12).
+    m.cornerR = 12.0
+    if content.overlayNumber <> invalid and content.overlayNumber <> "" then m.cornerR = 13.44
     layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
     m.titleY = m.cardTitleY
@@ -340,7 +343,7 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         artW = ovW
         artH = ovH
     end if
-    key = artW.ToStr() + ":" + artH.ToStr() + ":" + listMode.ToStr()
+    key = artW.ToStr() + ":" + artH.ToStr() + ":" + listMode.ToStr() + ":" + m.cornerR.ToStr()
     if m.laidOutScale = key then return
     m.laidOutScale = key
     m.cardListMode = listMode
@@ -351,10 +354,16 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
     m.top.findNode("chapterWash").width = artW
     m.top.findNode("chapterWash").height = artH
     m.artGroup.scaleRotateCenter = [artW / 2, artH / 2]
+    cr = m.cornerR
+    for each id in ["cornerTL", "cornerTR", "cornerBL", "cornerBR"]
+        corner = m.top.findNode(id)
+        corner.width = cr
+        corner.height = cr
+    end for
     m.top.findNode("cornerTL").translation = [0, 0]
-    m.top.findNode("cornerTR").translation = [artW - 12, 0]
-    m.top.findNode("cornerBL").translation = [0, artH - 12]
-    m.top.findNode("cornerBR").translation = [artW - 12, artH - 12]
+    m.top.findNode("cornerTR").translation = [artW - cr, 0]
+    m.top.findNode("cornerBL").translation = [0, artH - cr]
+    m.top.findNode("cornerBR").translation = [artW - cr, artH - cr]
     m.unwatchedBadge.translation = [artW - 23.5, 10.56]
     m.progressTrack.translation = [0, artH - 3]
     m.progressTrack.width = artW

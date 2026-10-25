@@ -265,6 +265,7 @@
       <Rectangle id="browseKeyArtVeil" translation="[133.03,-22.9]" width="900" height="1190.6" color="0x1B181B00" />
       <Poster id="browseKeyArtFade" translation="[781.03,-22.9]" width="252" height="1190.6" uri="pkg:/images/stage-key-art-fade.png" loadDisplayMode="scaleToFill" />
       <StageScrims id="browseScrims" />
+      <Rectangle id="washBrowse" width="1920" height="1080" color="0x00000000" />
       <Rectangle id="browsePanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
       <!-- Web .tv-library-heading: back is dock Home; h1 + "1,730 TITLES". -->
       <TrackedText id="browseTitle" translation="[226.6,58.2]" />
@@ -345,6 +346,7 @@
     -->
     <Group id="searchGroup" visible="false">
       <Rectangle id="searchSurface" width="1920" height="1080" color="0x1B181BFF" />
+      <Rectangle id="washSearch" width="1920" height="1080" color="0x00000000" />
       <Rectangle id="searchPanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
       <!-- Native Search shell only. No web-freeze crop Posters (those painted
            solid dark/blue panel slabs over the UI). -->
@@ -428,6 +430,7 @@
           focusBitmapBlendColor="0x00000000" vertFocusAnimationStyle="floatingFocus" visible="false" />
       </Group>
       <Group id="playlistDetailGroup" visible="false">
+        <Rectangle id="playlistDetailSurface" width="1920" height="1080" color="0x1B181BFF" />
         <TvStage id="playlistDetailStage" />
         <MarkupGrid id="playlistItemsGrid" translation="[0,0]" itemComponentName="PosterCard"
           numColumns="2" numRows="3" itemSize="[330,216]" itemSpacing="[27,27]"
@@ -474,6 +477,7 @@
       content panel (translation [983,259], ~864px wide).
     -->
     <Group id="detailGroup" visible="false">
+      <Rectangle id="detailSurface" width="1920" height="1080" color="0x1B181BFF" />
       <TvStage id="detailStage" />
       <!-- height=182 pre-scale * 0.81 scale = 147px visual bottom edge. detailEpisodes'
            own row label sits 30px ABOVE its row (rowLabelOffset), so at y=180 that label
@@ -580,6 +584,7 @@
     <!-- Web page shell screens (Watchlist, Requests, Calendar, Preferences): built in Pages.brs and Settings.brs. -->
     <Group id="pageGroup" visible="false">
       <Rectangle id="pageBg" width="1920" height="1080" color="0x1B181BFF" />
+      <Rectangle id="washPage" width="1920" height="1080" color="0x00000000" />
       <Poster id="clientsStageBg" width="1920" height="1080" uri="pkg:/images/profiles-bg.png" visible="false" />
       <!-- The web panel is a surface-coloured box (the Rectangle) with a lighter gradient laid over it (the bitmaps). -->
       <Rectangle id="pagePanel" translation="[730,0]" width="1190" height="1080" color="0x1B181BFF" visible="false" />

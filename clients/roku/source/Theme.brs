@@ -371,10 +371,21 @@ sub A11yStamp(node as Object, force = false as Boolean, baked = -1 as Integer)
     seg = parts[2]
     if baked < 0 and Instr(1, seg, "~") > 0 then baked = Val(seg.Split("~")[1], 10)
     radius = seg.Split("@")[0]
-    colour = node.blendColor
-    alpha = colour and 255
+    ' RRGGBBAA as bytes: a colour with the top bit set is a negative Integer, so split it into bytes before formatting.
+    c& = node.blendColor
+    if c& < 0 then c& = c& + 4294967296&
+    alpha = c& mod 256
     if baked >= 0 then alpha = Int(alpha * baked / 255 + 0.5)
-    hex = Right("00000000" + StrI((colour and &hFFFFFF00) or alpha, 16), 8)
+    hex = ""
+    for shift = 3 to 1 step -1
+        divisor& = 256&
+        for k = 2 to shift
+            divisor& = divisor& * 256&
+        end for
+        b = Int(c& / divisor&) mod 256
+        hex = hex + Right("0" + StrI(b, 16), 2)
+    end for
+    hex = hex + Right("0" + StrI(alpha, 16), 2)
     suffix = ""
     if baked >= 0 then suffix = "~" + baked.ToStr()
     name = parts[3]

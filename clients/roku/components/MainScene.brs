@@ -140,6 +140,9 @@ sub init()
     m.browseTitle = m.top.findNode("browseTitle")
     m.browseCountLabel = m.top.findNode("browseCountLabel")
     m.browseKeyArt = m.top.findNode("browseKeyArt")
+    for each wash in ["washBrowse", "washSearch", "washPage"]
+        m.top.findNode(wash).id = "a11y|container|0|"
+    end for
     m.browseKeyArtVeil = m.top.findNode("browseKeyArtVeil")
     m.browseKeyArtVeil.id = "a11y|fill|0|"
     if m.browseKeyArt <> invalid then m.browseKeyArt.ObserveField("loadStatus", "onBrowseKeyArtLoadStatus")
@@ -408,6 +411,7 @@ sub init()
     m.userLinkMark.id = "a11y|link|16|Signed in as " + m.session.profileName + ". Open profiles."
     ' The build label under the tile reads like web's (major.minor.0).
     ai = CreateObject("roAppInfo")
+    m.top.findNode("userVersion").rectH = 8.95
     m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
     m.profileId = m.session.profileId
     if m.profileId = invalid then m.profileId = ""
@@ -6638,6 +6642,7 @@ sub resetPlayerAutoHide()
 end sub
 
 sub hidePlayerControls()
+    if m.paritySeekHold = true then return
     ' Web (shouldAutoHidePlayerControls): the controls hide on their own only while playing; a paused player keeps them.
     if m.video.state = "paused" then return
     m.playerControls.visible = false
@@ -6694,6 +6699,10 @@ sub sendPlaybackEvent(body as Object)
 end sub
 
 sub finishPlayback(reason as String)
+    if m.paritySeekHold = true
+        m.paritySeekHold = false
+        m.video.UnobserveFieldScoped("state")
+    end if
     if m.playbackEnded then return
     m.playbackEnded = true
     m.heartbeatTimer.control = "stop"
@@ -7866,18 +7875,19 @@ sub onParitySeek()
     m.video.seek = m.paritySeekTarget
 end sub
 
-' Re-pause whenever the seek resumes playback; stop watching once paused on the target.
+' Re-pause whenever the seek resumes playback. Once the video sits paused on the target the seek is done (position is no longer watched), but
+' the hold stays: a stray resume is paused again and the controls stay up for the capture.
 sub onParitySeekStep()
-    if m.paritySeekTarget = invalid then return
+    if m.paritySeekTarget = invalid and m.paritySeekHold <> true then return
     if m.video.state = "playing"
         m.video.control = "pause"
-    else if m.video.state = "paused"
+    else if m.video.state = "paused" and m.paritySeekTarget <> invalid
         if Abs(m.video.position - m.paritySeekTarget) < 0.001
             m.video.control = "pause"
             print "PARITY|seekat|" + Str(Int(m.video.position * 1000 + 0.5)).Trim()
             m.video.UnobserveFieldScoped("position")
-            m.video.UnobserveFieldScoped("state")
             m.paritySeekTarget = invalid
+            m.paritySeekHold = true
         else
             m.video.seek = m.paritySeekTarget
         end if

@@ -110,6 +110,8 @@
       <StageScrims id="scrimLayer" />
     </Group>
 
+    <!-- The page wash layer: a box over the art with no fill of its own (its tint is the scrim bitmaps above). -->
+    <Rectangle id="stageWash" width="1920" height="1080" color="0x00000000" />
     <Rectangle id="stagePanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
 
     <!-- Home's .tv-home-rails frost sits above key art and below stage copy/rails. -->

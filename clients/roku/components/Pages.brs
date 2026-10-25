@@ -1931,13 +1931,13 @@ function calendarCard(parent as Object, x as Float, y as Float, w as Float, entr
     if selected then pgRound(parent, x, y, w, ch, 12, "ink", 56, true)
     artY = y + (ch - 60) / 2
     pgRound(parent, x + 16, artY, 40, 60, 6, "surfaceSoft")
-    pgArtwork(parent, x + 16, artY, 40, 60, calendarArtworkUrl(entry))
+    artPoster = pgArtwork(parent, x + 16, artY, 40, 60, calendarArtworkUrl(entry))
+    artPoster.id = "a11y|image|6|"
     status = calendarStatusText(entry)
     full = entry.title
     if hasSub then full = full + " " + calendarEntrySubtitle(entry)
     full = full + " " + calendarTimeText(entry) + " " + calendarReleaseLabel(entry) + " " + calendarKindLabel(entry) + " " + status
     pgBare(parent, "button", full, x, y, w, ch, 12)
-    pgMark(parent, "image", "", x + 16, artY, 40, 60, 6)
     pgLabel(parent, x + 70.4, y + titleY, w - 90, 26, entry.title, 19.2, 640, "ink", { maxLines: 1 })
     if hasSub then pgLabel(parent, x + 70.4, y + 41.2, w - 90, 26, calendarEntrySubtitle(entry), 19.2, 400, "inkSoft", { maxLines: 1 })
     endX = calendarMetaRow(parent, x + 70.4, y + metaY, entry)

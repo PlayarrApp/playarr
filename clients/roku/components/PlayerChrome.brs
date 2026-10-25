@@ -87,15 +87,18 @@ sub playerChromeBuild()
     ' mini player running behind the browse pages, so Minimise ends playback and returns to the title, as Back does.
     minPill = pcFullRound(g, 1678, 37.8, 124, 48, "playerPill", 209, false)
     minPill.id = "a11y|button|999|Minimise player"
+    A11yStamp(minPill, true)
     pcFullRound(g, 1678, 37.8, 124, 48, "playerInk", 71, true)
     pgIcon(g, 1702, 51.8, 20, "player-minimise.png", "playerInk")
     pgLabel(g, 1730, 53.8, 66, 16, "Minimise", 11.2, 700, "playerInk")
     closePill = pcFullRound(g, 1814, 37.8, 48, 48, "playerPill", -1, false)
     closePill.id = "a11y|button|999|Close player"
+    A11yStamp(closePill, true)
     pcFullRound(g, 1814, 37.8, 48, 48, "playerInk", 71, true)
     pgIcon(g, 1829, 52.8, 18, "player-close.png", "playerInk")
 
     ' Control semantics (web order); a control without a drawn box gets a transparent Rectangle at its box.
+    pgBare(g, "container", "", 0, 561.6, 1920, 518.4, 0)
     pgMark(g, "slider", "Seek", 70, 914, 1780, 44, 0)
     m.pcPlayBg.id = "a11y|button|50|Play"
     A11yStamp(m.pcPlayBg, true)

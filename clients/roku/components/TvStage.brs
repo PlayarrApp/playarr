@@ -15,6 +15,7 @@ sub init()
     m.global.observeField("themeMode", "onStageThemeChanged")
     m.keyArtLayer = m.top.findNode("keyArtLayer")
     m.keyArt = m.top.findNode("keyArt")
+    m.top.findNode("stageWash").id = "a11y|container|0|"
     m.keyArtVeil = m.top.findNode("keyArtVeil")
     m.keyArtVeil.id = "a11y|fill|0|"
     m.keyArtRetryTimer = m.top.findNode("keyArtRetryTimer")
