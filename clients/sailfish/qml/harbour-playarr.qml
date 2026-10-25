@@ -21,10 +21,13 @@ ApplicationWindow {
 
     Component.onCompleted: Tokens.u = Screen.width / 390
 
+    FontMetrics { id: layoutFontMetrics }
     // Parity layout export (docs/parity/LAYOUT.md); only a PLAYARR_STEPS `js:layoutDump()` step calls it.
     function layoutDump() {
-        var w = Tokens.weightOfFamily()
-        LayoutDump.dump(app.contentItem, Tokens.u, w, function (line) { console.log(line) })
+        LayoutDump.dump(app.contentItem, Tokens.u, Tokens.weightOfFamily(), function (font, text) {
+            layoutFontMetrics.font = font
+            return { ascent: layoutFontMetrics.ascent, descent: layoutFontMetrics.descent }
+        }, function (line) { console.log(line) })
     }
 
     function showStart() {

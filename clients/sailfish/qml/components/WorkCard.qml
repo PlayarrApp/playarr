@@ -17,16 +17,15 @@ MouseArea {
     property bool compact: false        // library grids: title only
     property bool showUnwatched: true
     property string parityRole: "link"
-    readonly property int layoutRadius: compact ? 12 : 0
-    readonly property string layoutLabel: compact && work ? qsTr("Open %1").arg(work.deckTitle || work.title) : work ? ((work.deckTitle || work.title) + " " + (work.deckSub ? work.deckSub : kindLabel(work.kind) + (work.release_date ? " \u00B7 " + work.release_date.substr(0, 4) : ""))) : ""
-    readonly property real layoutH: art.height + (compact ? 24.7 : 24.7) * Tokens.u
+    readonly property string a11yName: compact && work ? qsTr("Open %1").arg(titleLbl.text) : titleLbl.text + (subLbl.text !== "" ? " " + subLbl.text : "")
+    property real focusRadius: compact ? 12 * Tokens.u : 0
     property bool firstInk: false
     property bool ring: false           // web focuses the first library card at rest and draws its ring
     readonly property var prog: work ? Progress.byWork[work.id] : undefined
     signal opened(var work)
     signal held(var work)
     width: cardWidth
-    height: art.height + caption.height + (compact ? 12 : 8) * Tokens.u
+    height: art.height + 24.7 * Tokens.u   // the card link: the art and a fixed caption slot
     function navigationActivate() { opened(work) }
     function navigationLongPress() { held(work) }
     onClicked: opened(work)
@@ -120,7 +119,7 @@ MouseArea {
         id: caption
         anchors { top: art.bottom; topMargin: (compact ? 11 : 11.7) * Tokens.u; left: parent.left; right: parent.right; leftMargin: 1.7 * Tokens.u }
         spacing: 2.5 * Tokens.u
-        Label { renderType: Text.NativeRendering;
+        Label { renderType: Text.NativeRendering; id: titleLbl
             width: parent.width
             text: work ? (work.deckTitle || work.title) : ""
             elide: Text.ElideRight
@@ -129,7 +128,7 @@ MouseArea {
             font.letterSpacing: -0.0285 * 8.9 * Tokens.u - 0.1
             font.pixelSize: Tokens.fs(8.9)
         }
-        Label { renderType: Text.NativeRendering;
+        Label { renderType: Text.NativeRendering; id: subLbl
             visible: !root.compact
             width: parent.width
             text: work && work.deckSub ? work.deckSub : work ? kindLabel(work.kind) + (work.release_date ? " · " + work.release_date.substr(0, 4) : "") : ""

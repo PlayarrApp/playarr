@@ -18,22 +18,14 @@ MouseArea {
     property color fillInk: Tokens.ink
     property color textInk: Tokens.ink   // label colour of the standard look (calendar toolbar pills are softer on web)
     property bool outlineOnly: false
-    // Layout export: "" = the box is a button (default); "text" = the web exports only the label as the button; "icon" = a 44 px link box
-    // (radius 50 %) around a glyph label.
-    property string layoutMode: ""
     property real labelSpacing: 0
     property real contentGap: 9
     property real padCss: 16
     property real contentDy: 0
     property real iconDy: 0
-    property int layoutWeightV: 0
     property string parityRole: "button"
-    property string layoutBgS: primary ? String(Tokens.primary) : lift ? (Tokens.dark ? "#1f1c1f" : "#fefefd") : ""
-    property int layoutRadiusV: 0
-    property string layoutLabel: ""
-    property bool layoutSkip: layoutMode !== ""
-    property int layoutRadius: layoutRadiusV
-    property var layoutEls: layoutMode === "icon" ? [ { role: "button", text: layoutLabel, dx: (width / Tokens.u - 44) / 2, dy: (height / Tokens.u - 44) / 2, w: 44, h: 44, radius: 50 } ] : []
+    property string a11yName: text          // the accessible name; a page sets it where it differs from the visible label
+    property real focusRadius: height / 2
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -54,7 +46,6 @@ MouseArea {
         color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12)
     }
     Rectangle {
-        property bool layoutSkip: root.layoutMode !== ""
         anchors.fill: parent
         radius: height / 2
         color: root.outlineOnly ? Tokens.surface : root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
@@ -84,8 +75,6 @@ MouseArea {
             visible: root.iconImage === ""
             anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: root.iconDy * Tokens.u
             text: root.icon
-            property real cssSize: (root.iconSize + 0.5) / Tokens.u
-            property real layoutTextH: Math.round(1.011 * cssSize) + Math.round(0.353 * cssSize)
             font.family: Tokens.family400
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
@@ -109,14 +98,11 @@ MouseArea {
         anchors.centerIn: parent
         font.family: root.labelFamily
         font.pixelSize: root.fontSize
-        property int layoutWeight: root.layoutWeightV
         width: parent.width - 16 * Tokens.u
         wrapMode: Text.Wrap
         maximumLineCount: 2
         horizontalAlignment: Text.AlignHCenter
         font.weight: Font.DemiBold
-        property string parityRole: root.layoutMode === "text" ? "button" : "text"
-        property int layoutRadius: root.layoutMode === "text" ? 999 : 0
         color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
     }
 }

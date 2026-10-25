@@ -14,15 +14,6 @@ Item {
     property int page: 0
     property string anchorDate: ""
     property var range: rangeForPage(mode, 0, anchorDate)
-    // The web keeps a screen-reader status line with the full period under the header (a 16 px line at the page padding).
-    readonly property string statusText: {
-        if (mode === "month") return Qt.formatDate(new Date((anchorDate || Calendar.todayIso()) + "T00:00:00"), "MMMM yyyy")
-        if (mode === "week") return Qt.formatDate(new Date(range.start + "T00:00:00"), "d MMM") + " \u2013 " + Qt.formatDate(new Date(range.end + "T00:00:00"), "d MMM yyyy")
-        return ""
-    }
-    Label { id: statusMeasure; visible: false; text: root.statusText; font.family: Tokens.family400; font.letterSpacing: -0.25; font.pixelSize: Tokens.fs(16) }
-    property var layoutEls: [ { x: 0, y: 0, w: 390, h: 683, bg: Tokens.dark ? (mode === "agenda" ? "#1b181b" : "#151315") : "#f5f3f2" }, { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) },
-        statusText !== "" ? { role: "status", text: statusText, x: 16, y: 109, w: statusMeasure.implicitWidth / Tokens.u, h: 22, color: String(Tokens.ink), fontSize: 16, fontWeight: 400, bg: String(Tokens.bg) } : { x: 0, y: 0, w: 0, h: 0 } ]
     property bool periodPickerOpen: false
     property int draftYear: pickerYear
     readonly property var baseAnchor: parseDate(anchorDate)
@@ -201,39 +192,41 @@ Item {
         id: filterBtn
         property bool navigationFocusable: true
         property string parityLabel: qsTr("Filters")
-        property int layoutRadius: 14
+        property string a11yName: qsTr("Filters")
+        property real focusRadius: 14 * Tokens.u
         property int parityRail: 1
         property int parityIndex: 0
         function navigationActivate() { root.openFilters() }
         anchors { right: parent.right; rightMargin: Tokens.pad; top: parent.top; topMargin: 14 * Tokens.u }
         width: 44 * Tokens.u; height: width
         onClicked: navigationActivate()
-        Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
-        Image { property real layoutOpacity: 1; anchors.centerIn: parent; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("filter", Tokens.inkSoft) }
+        Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
+        Image { anchors.centerIn: parent; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("filter", Tokens.inkSoft) }
     }
     // The web's calendar-feed (subscription) button.
     MouseArea {
         id: bellBtn
         property bool navigationFocusable: true
         property string parityLabel: qsTr("Calendar link")
-        property int layoutRadius: 14
+        property string a11yName: qsTr("Calendar link")
+        property real focusRadius: 14 * Tokens.u
         property int parityRail: 1
         property int parityIndex: 1
         function navigationActivate() { pageStack.push(Qt.resolvedUrl("CalendarLinkPage.qml")) }
         anchors { right: filterBtn.left; rightMargin: 8 * Tokens.u; top: parent.top; topMargin: 14 * Tokens.u }
         width: 44 * Tokens.u; height: width
         onClicked: navigationActivate()
-        Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: bellBtn.pressed ? 0.5 : 1 }
+        Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: bellBtn.pressed ? 0.5 : 1 }
         Image { anchors.centerIn: parent; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("bell", Tokens.inkSoft) }
     }
     Row {
         id: nav
         anchors { top: head.bottom; topMargin: (root.mode === "agenda" ? -2 : 15.5) * Tokens.u; right: parent.right; rightMargin: Tokens.pad }
         spacing: 10 * Tokens.u
-        PillButton { id: rangePill; objectName: "calendar-range"; layoutMode: "text"; text: root.range.label; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 0; navigationActivate: function() { root.openPeriodPicker() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: (root.mode === "week" ? 93.0 : root.mode === "month" ? 88.4 : 110.4) * Tokens.u; onClicked: root.openPeriodPicker() }
-        PillButton { text: "←"; layoutMode: "icon"; layoutLabel: qsTr("Previous"); layoutWeightV: 720; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 1; navigationActivate: function() { root.page-- }; labelFamily: "Liberation Sans"; fontSize: 11.6 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page-- }
-        PillButton { text: qsTr("Today"); layoutMode: "text"; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 2; navigationInitialFocus: true; navigationActivate: function() { root.resetToday() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 70.2 * Tokens.u; onClicked: root.resetToday() }
-        PillButton { text: "→"; layoutMode: "icon"; layoutLabel: qsTr("Next"); layoutWeightV: 720; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 3; navigationActivate: function() { root.page++ }; labelFamily: "Liberation Sans"; fontSize: 11.6 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page++ }
+        PillButton { id: rangePill; objectName: "calendar-range"; text: root.range.label; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 0; navigationActivate: function() { root.openPeriodPicker() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: (root.mode === "week" ? 93.0 : root.mode === "month" ? 88.4 : 110.4) * Tokens.u; onClicked: root.openPeriodPicker() }
+        PillButton { text: "←"; a11yName: qsTr("Previous"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 1; navigationActivate: function() { root.page-- }; labelFamily: "Liberation Sans"; fontSize: 11.6 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page-- }
+        PillButton { text: qsTr("Today"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 2; navigationInitialFocus: true; navigationActivate: function() { root.resetToday() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 70.2 * Tokens.u; onClicked: root.resetToday() }
+        PillButton { text: "→"; a11yName: qsTr("Next"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 3; navigationActivate: function() { root.page++ }; labelFamily: "Liberation Sans"; fontSize: 11.6 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page++ }
     }
     // Month: wide cells (a chip for the first title, the day number and "+N more"), scrolled sideways, as on the web phone.
     SilicaFlickable {
@@ -278,18 +271,22 @@ Item {
                                 border.width: cell.isToday ? 2 * Tokens.u : 1 * Tokens.u
                                 border.color: cell.isToday ? (Tokens.dark ? "#dfdcdd" : "#4d4248") : (Tokens.dark ? "#332e32" : "#d8d3d3")
                             }
-                            property var layoutEls: cell.es.length > 0 ? [ { role: "button", text: cell.es[0].title + ", " + root.pill(cell.es[0]) + ", " + Qt.formatDate(new Date(modelData.date + "T00:00:00"), "dddd d MMMM"),
-                                dx: 5.8, dy: 1.8, w: 91.25, h: 34.05, radius: 4, bg: cell.past ? (Tokens.dark ? "#241f23" : "#f0eeee") : String(Tokens.bg) } ] : []
-                            Rectangle {
+                            MouseArea {   // the web's event chip inside the day cell
                                 visible: cell.es.length > 0
-                                x: 11.39 * Tokens.u; y: 14.42 * Tokens.u
-                                width: 8.8 * Tokens.u; height: width; radius: width / 2
-                                color: cell.es.length === 0 ? "transparent"
-                                     : cell.es[0].has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a")
-                                     : root.tone(cell.es[0]) === "missing" ? (Tokens.dark ? "#f1a4a8" : "#722f34") : String(Tokens.brandPink)
+                                x: 5.8 * Tokens.u; y: 1.8 * Tokens.u; width: 91.25 * Tokens.u; height: 34.05 * Tokens.u
+                                property string a11yName: cell.es.length ? cell.es[0].title + ", " + root.pill(cell.es[0]) + ", " + Qt.formatDate(new Date(modelData.date + "T00:00:00"), "dddd d MMMM") : ""
+                                property real focusRadius: 4 * Tokens.u
+                                onClicked: cell.navigationActivate()
+                                Rectangle {
+                                    x: 5.59 * Tokens.u; y: 12.62 * Tokens.u
+                                    width: 8.8 * Tokens.u; height: width; radius: width / 2
+                                    color: cell.es.length === 0 ? "transparent"
+                                         : cell.es[0].has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a")
+                                         : root.tone(cell.es[0]) === "missing" ? (Tokens.dark ? "#f1a4a8" : "#722f34") : String(Tokens.brandPink)
+                                }
+                                Label { renderType: Text.NativeRendering; x: 21.58 * Tokens.u; y: 6.4 * Tokens.u; width: month.cellW - 40 * Tokens.u; text: cell.es.length ? cell.es[0].title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
                             }
-                            Label { renderType: Text.NativeRendering; visible: cell.es.length > 0; x: 27.38 * Tokens.u; y: 8.2 * Tokens.u; width: month.cellW - 40 * Tokens.u; text: cell.es.length ? cell.es[0].title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15; property real cssSize: 12.48 }
-                            Label { renderType: Text.NativeRendering; x: 8.8 * Tokens.u; y: 49.1 * Tokens.u; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.fam(640); font.pixelSize: Tokens.fs(12.8); property real cssSize: 12.8 }
+                            Label { renderType: Text.NativeRendering; x: 8.8 * Tokens.u; y: 49.1 * Tokens.u; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.fam(640); font.pixelSize: Tokens.fs(12.8) }
                             Label { renderType: Text.NativeRendering; visible: cell.es.length > 1; x: 43 * Tokens.u; y: 49.5 * Tokens.u; text: qsTr("+%1 more").arg(cell.es.length - 1); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(12.5) }
                         }
                     }
@@ -315,15 +312,14 @@ Item {
                         color: day.date === Calendar.todayIso() ? (Tokens.dark ? "#dfdcdd" : Tokens.inkSoft) : Tokens.ink
                         anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -1 * Tokens.u
                         font.family: Tokens.fam(640); font.letterSpacing: 0.1
-                        font.pixelSize: Tokens.fs(14.4); property real cssSize: 14.4
+                        font.pixelSize: Tokens.fs(14.4)
                     }
                     Rectangle {
-                        property bool layoutNoEmit: true
-                        visible: day.date === Calendar.todayIso()
+                                                visible: day.date === Calendar.todayIso()
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
-                        Label { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; property int layoutRadius: 999; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fs(11.2) }
+                        Label { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fs(11.2) }
                     }
                     }
                     Repeater {
@@ -334,25 +330,22 @@ Item {
                             property string parityLabel: modelData.title
                             property int parityRail: 0
                             property int parityIndex: index
-                            property string layoutLabel: [modelData.title, modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · "),
-                                root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"), releaseText(modelData), kindText(modelData), root.pill(modelData)].filter(function (x) { return !!x }).join(" ")
-                            property int layoutRadius: 12
-                            property string layoutBgS: Tokens.dark ? "#211d21" : "#ffffff"
+                            property string a11yName: [modelData.title, subLbl.text, timeLbl.text, relLbl.text, kindLbl.text, badge.text].filter(function (x) { return !!x }).join(" ")
+                            property real focusRadius: 12 * Tokens.u
                             function navigationActivate() { root.openEntry(modelData) }
                             x: dayCol.wk ? 0 : Tokens.pad
                             width: dayCol.cw - (dayCol.wk ? 0 : 2 * Tokens.pad)   // static-seed refs: the agenda card ends at the page padding
                             height: Math.max(75.7 * Tokens.u, info.height + 17.25 * Tokens.u) + (dayCol.wk ? 4.1 : 2.84)   // refs: week cards run one pixel taller, agenda cards two   // web: the 60 px poster plus the padding is the floor
                             onClicked: navigationActivate()
                             // Left border: we have it (playable, green) or not, never which library; the card sits over it so it curves with the corners.
-                            Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: (card.pressed ? 0.6 : 1) * (dayCol.wk && modelData.has_file ? 0.32 : 1) }   // week refs: an available card's accent is a third strong, a missing one is full
-                            Rectangle { property bool layoutNoEmit: true; x: 4 * Tokens.u; width: parent.width - 4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: dayCol.wk ? (Tokens.dark ? "#363136" : "#e3dfdf") : (Tokens.dark ? "#4d494c" : "#c7c2c1"); opacity: card.pressed ? 0.6 : 1 }
+                            Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: modelData.has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a") : Tokens.inkMuted; opacity: (card.pressed ? 0.6 : 1) * (dayCol.wk && modelData.has_file ? 0.32 : 1) }   // week refs: an available card's accent is a third strong, a missing one is full
+                            Rectangle { x: 4 * Tokens.u; width: parent.width - 4 * Tokens.u; height: parent.height; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: dayCol.wk ? (Tokens.dark ? "#363136" : "#e3dfdf") : (Tokens.dark ? "#4d494c" : "#c7c2c1"); opacity: card.pressed ? 0.6 : 1 }
                             Artwork {
                                 id: poster
                                 x: Math.round(15.7 * Tokens.u)   // whole pixels, as web snaps image rects
                                 y: Math.round((parent.height - height) / 2)
                                 width: 40 * Tokens.u; height: 60 * Tokens.u; radius: 6 * Tokens.u
                                 work: null
-                                property var layoutEls: [ { role: "image", radius: 6, bg: String(Tokens.surfaceSoft) } ]
                                 emptyColor: Tokens.surfaceSoft
                                 // Match the web's 40 by 60 sized poster with a true rounded crop.
                                 override: modelData.poster_url && !/^https?:\/\/(127\.0\.0\.1|localhost)[:\/]/.test(modelData.poster_url) ? String(modelData.poster_url).replace(/^(https:\/\/image\.tmdb\.org\/t\/p\/)original\//, "$1w185/")
@@ -375,14 +368,13 @@ Item {
                                     id: metaRow
                                     y: -2.5 * Tokens.u
                                     spacing: 12 * Tokens.u
-                                    Label { renderType: Text.NativeRendering; text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8); property real cssSize: 12.8 }
-                                    Label { renderType: Text.NativeRendering; text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8); property real cssSize: 12.8 }
-                                    Label { renderType: Text.NativeRendering; text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: modelData.media_kind === "episode" ? 0 : -0.25; font.pixelSize: Tokens.fs(12.8); property real cssSize: 12.8 }
+                                    Label { renderType: Text.NativeRendering; id: timeLbl; text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
+                                    Label { renderType: Text.NativeRendering; id: relLbl; text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
+                                    Label { renderType: Text.NativeRendering; id: kindLbl; text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: modelData.media_kind === "episode" ? 0 : -0.25; font.pixelSize: Tokens.fs(12.8) }
                                     Rectangle {
-                                        property bool layoutNoEmit: true
-                                        width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
+                                                                                width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
                                         color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#392c2f" : "#e8dedd") : (Tokens.dark ? "#341c23" : "#f5dee2"); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#996a6e" : "#aa8285") : Tokens.brandPink
-                                        Label { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; property int layoutRadius: 999; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
+                                        Label { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
                                     }
                                 }
                                 }

@@ -13,12 +13,11 @@ MouseArea {
     property string glyph
     property alias text: label.text
     property bool primary: false
-    property bool layoutSkip: true
-    property var layoutEls: [ { role: "button", text: glyph + " " + label.text, dx: 0, w: 350, h: 68, radius: 14, bg: String(Tokens.surfaceSoft) },
-        { role: "text", text: glyph, dx: 18, dy: 20.36, w: 19.52, h: 27, fontSize: 19.52, fontWeight: 400, color: String(Tokens.brandPink), bg: String(Tokens.surfaceSoft) } ]
+    property string a11yName: glyph + " " + label.text
+    property real focusRadius: 14 * Tokens.u
     width: parent ? parent.width - 40 * Tokens.u : 0
     x: 20 * Tokens.u
-    height: 68.5 * Tokens.u
+    height: 68 * Tokens.u
     Rectangle {
         anchors.fill: parent
         radius: 14 * Tokens.u

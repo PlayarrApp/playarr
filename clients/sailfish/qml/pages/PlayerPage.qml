@@ -285,23 +285,21 @@ Page {
         opacity: page.controls || page.error ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { FadeAnimation {} }
-        property var layoutEls: [ { role: "container", x: 0, y: 355.17, w: 390, h: 327.83, bg: "#000000" } ]
         property color plate: "#000000"
 
         Rectangle {
-            property bool layoutNoEmit: true
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: parent.height - 355.17 * Tokens.u
             gradient: Gradient { GradientStop { position: 0; color: "transparent" } GradientStop { position: 0.55; color: "#99000000" } GradientStop { position: 1; color: "#e6000000" } }
         }
         PlayerButton {
-            x: 278 * Tokens.u; y: 14 * Tokens.u; icon: "pMin"; label: qsTr("Minimise player"); plate: "#0a0809"; radiusCss: 999; parityIndex: 0
+            x: 278 * Tokens.u; y: 14 * Tokens.u; icon: "pMin"; label: qsTr("Minimise player"); plate: "#0a0809"; parityIndex: 0
             objectName: "parity-player-back"
             navigationActivate: function() { page.menuOpen ? page.menuOpen = false : page.close(false) }
             onClicked: page.menuOpen ? page.menuOpen = false : page.close(false)
         }
         PlayerButton {
-            x: 330 * Tokens.u; y: 14 * Tokens.u; icon: "pClose"; iconCss: 22; label: qsTr("Close player"); plate: "#070606"; radiusCss: 999; parityIndex: 1
+            x: 330 * Tokens.u; y: 14 * Tokens.u; icon: "pClose"; iconCss: 22; label: qsTr("Close player"); plate: "#070606"; parityIndex: 1
             objectName: "parity-player-menu"
             navigationActivate: function() { page.menuOpen = !page.menuOpen }
             onClicked: page.close(false)
@@ -310,10 +308,10 @@ Page {
         Item {
             id: seekArea
             x: 12 * Tokens.u; y: 518.13 * Tokens.u; width: 366 * Tokens.u; height: 44 * Tokens.u
-            property bool layoutSkip: true
-            property var layoutEls: [ { role: "slider", text: qsTr("Seek"), dx: 0, dy: 0, w: 366, h: 44, bg: "#000000" } ]
-            Rectangle { property bool layoutNoEmit: true; y: 19 * Tokens.u; width: parent.width; height: 6 * Tokens.u; color: "#2b2b2b" }
-            Rectangle { property bool layoutNoEmit: true; y: 19 * Tokens.u; width: 0.8 * parent.width; height: 6 * Tokens.u; color: "#6e6e6e" }
+            property string a11yName: qsTr("Seek")
+            property string parityRole: "slider"
+            Rectangle { y: 19 * Tokens.u; width: parent.width; height: 6 * Tokens.u; color: "#2b2b2b" }
+            Rectangle { y: 19 * Tokens.u; width: 0.8 * parent.width; height: 6 * Tokens.u; color: "#6e6e6e" }
             Rectangle { y: 19 * Tokens.u; width: Math.max(1, parent.width * Math.min(1, page.positionMs / Math.max(1, page.durationMs))); height: 6 * Tokens.u; color: Tokens.brandPink }
             MouseArea {
                 id: seek
@@ -331,9 +329,9 @@ Page {
         }
         Item {
             x: 12 * Tokens.u; y: 556.13 * Tokens.u; width: 366 * Tokens.u; height: 16.88 * Tokens.u
-            property bool layoutSkip: true
-            property var layoutEls: [ { role: "container", text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs), dx: 0, dy: 0, w: 366, h: 16.88, bg: "#000000" } ]
-            Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: page.mmss(page.positionMs) + "  /  " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.8) }
+            property string a11yName: timeLbl.text
+            property string parityRole: "container"
+            Label { renderType: Text.NativeRendering; id: timeLbl; anchors.centerIn: parent; text: page.mmss(page.positionMs) + "  /  " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.8) }
         }
         PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }
         PlayerButton {
@@ -360,14 +358,14 @@ Page {
             x: 288 * Tokens.u; y: 577 * Tokens.u; icon: "pList"; label: qsTr("Playlist: 1 item"); parityIndex: 8
         }
         PlayerButton {
-            x: 334 * Tokens.u; y: 577 * Tokens.u; radiusCss: 999; label: qsTr("Quality: Original · 0.3 Mbps"); parityIndex: 9
+            x: 334 * Tokens.u; y: 577 * Tokens.u; label: qsTr("Quality: Original · 0.3 Mbps"); parityIndex: 9
             navigationActivate: function() { page.menuOpen = !page.menuOpen }
             onClicked: page.menuOpen = !page.menuOpen
         }
         // The quality control's own labels: a small HD badge and the current quality, which the web lets run over the right edge.
-        Label { renderType: Text.NativeRendering; x: 325.25 * Tokens.u; y: 593.23 * Tokens.u - 2; text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68); property real cssSize: 7.68 }
+        Label { renderType: Text.NativeRendering; x: 325.25 * Tokens.u; y: 593.23 * Tokens.u - 2; text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68) }
         Label { renderType: Text.NativeRendering; x: 351.25 * Tokens.u; y: 575.23 * Tokens.u; width: 40.31 * Tokens.u; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
-                text: qsTr("Original · 0.3 Mbps"); color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(10.56); property real cssSize: 10.56; property real layoutTextH: 46.69 }
+                text: qsTr("Original · 0.3 Mbps"); color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(10.56) }
         PlayerButton { x: 127 * Tokens.u; y: 625 * Tokens.u; icon: "pHealth"; label: qsTr("Info and playback health"); parityIndex: 10 }
         PlayerButton { x: 173 * Tokens.u; y: 625 * Tokens.u; icon: "pCast"; label: qsTr("Play on another device"); parityIndex: 11 }
         PlayerButton { x: 219 * Tokens.u; y: 625 * Tokens.u; icon: "pFull"; label: qsTr("Enter fullscreen"); parityIndex: 12 }

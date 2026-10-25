@@ -96,15 +96,15 @@ Item {
     MouseArea {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter }
-        width: 43.7 * Tokens.u; height: width
-        property bool layoutSkip: true
-        property var layoutEls: [ { role: "button", text: qsTr("Filters"), dx: 0, dy: -1.4, w: 44, h: 44, radius: 14 }, { role: "image", dx: 13, dy: 11.6, w: 18, h: 18 } ]
+        width: 44 * Tokens.u; height: width
+        property string a11yName: qsTr("Filters")
+        property real focusRadius: 14 * Tokens.u
         onClicked: {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
         }
-        Rectangle { anchors.fill: parent; radius: 11 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
-        Image { anchors.centerIn: parent; property bool layoutSkip: true; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); opacity: 0.8; source: NavIcons.url("filter", Tokens.ink) }
+        Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
+        Image { anchors.centerIn: parent; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("filter", Qt.rgba(Tokens.ink.r * 0.8 + Tokens.bg.r * 0.2, Tokens.ink.g * 0.8 + Tokens.bg.g * 0.2, Tokens.ink.b * 0.8 + Tokens.bg.b * 0.2, 1)) }
     }
     PageTitle {
         id: heading
@@ -164,23 +164,24 @@ Item {
     }
     Column {
         visible: root.railOn
-        anchors { right: parent.right; rightMargin: 13 * Tokens.u; top: parent.top; topMargin: 87.5 * Tokens.u }
+        anchors { right: parent.right; rightMargin: 4 * Tokens.u; top: parent.top; topMargin: 87.5 * Tokens.u }
         Repeater {
             model: root.alphabet
             MouseArea {
-                width: 26 * Tokens.u; height: 19 * Tokens.u
-                property bool layoutSkip: true
-                property var layoutEls: [ { role: "button", text: modelData === "#" ? qsTr("Numbers and symbols") : modelData, dx: -9, w: 44, h: 19, radius: 50 } ]
+                width: 44 * Tokens.u; height: 19 * Tokens.u
+                property string a11yName: modelData === "#" ? qsTr("Numbers and symbols") : modelData
+                property string parityRole: "button"
+                property real focusRadius: height / 2
                 onClicked: root.jumpTo(modelData)
                 Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
                     visible: root.activeLetter === modelData
-                    x: -4 * Tokens.u; y: (index === 0 ? 2.4 : -8) * Tokens.u; width: parent.width + 8 * Tokens.u; height: parent.height + (index === 0 ? 10.6 : 14) * Tokens.u; clip: true
+                    x: (parent.width - 34 * Tokens.u) / 2; y: (index === 0 ? 2.4 : -8) * Tokens.u; width: 34 * Tokens.u; height: parent.height + (index === 0 ? 10.6 : 14) * Tokens.u; clip: true
                     Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
                     Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
                 }
                 Rectangle { anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.primary }   // web: the ink plate of the active letter
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.96); property color layoutBg: Tokens.bg
+                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.96);
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft }
             }
         }

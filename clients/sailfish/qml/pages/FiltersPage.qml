@@ -21,7 +21,8 @@ PlayarrPage {
 
     readonly property real gut: 20 * Tokens.u
     readonly property color chip: Tokens.dark ? Tokens.surfaceStrong : "#e6e4e5"   // web light controls are grey, not white
-    property var layoutEls: [ { x: 0, y: 0, w: 390, h: 683, bg: Tokens.dark ? "#151315" : "#f5f3f2" }, { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) }, { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) }, { role: "dialog", x: 0, y: 0, w: 390, h: 683, bg: Tokens.dark ? "#201c20" : "#ffffff" } ]
+    // The web drawer: a full-screen dialog surface over the page.
+    Rectangle { parent: page; z: -1; anchors.fill: parent; color: Tokens.dark ? "#201c20" : "#ffffff"; property string parityRole: "dialog" }
     readonly property color pill: Tokens.dark ? "#2b252a" : "#eae8e9"   // web chip fill
     property string openSelect: ""     // "audio" or "subs": the language list that is expanded
 
@@ -44,12 +45,12 @@ PlayarrPage {
             property int parityRail: 1
             property int parityIndex: 0
             function navigationActivate() { pageStack.pop() }
-            property bool layoutSkip: true
-            property var layoutEls: [ { role: "button", text: qsTr("Close filters"), dx: 0, w: 44, h: 44, radius: 50, bg: String(Tokens.surfaceSoft) } ]
+            property string a11yName: qsTr("Close filters")
+            property real focusRadius: width / 2
             x: parent.width - page.gut - width; y: 20 * Tokens.u
             width: 44 * Tokens.u; height: width
             onClicked: pageStack.pop()
-            Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: width / 2; color: Tokens.surfaceSoft; border.width: 1; border.color: Tokens.lineStrong }
+            Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.surfaceSoft; border.width: 1; border.color: Tokens.lineStrong }
             Rectangle {   // web: the drawer's close button takes the focus on open, so it holds the ring (2 px, 3 css px off)
                 visible: false
                 anchors { fill: parent; margins: -4 * Tokens.u }
@@ -75,27 +76,16 @@ PlayarrPage {
                     }
                     readonly property bool active: (page.calendar ? page.calMode : page.view) === modelData.id
                     readonly property int slot: index
-                    property bool layoutSkip: true
-                    property var layoutEls: {
-                        var k = modelData.id === "list" || modelData.id === "agenda" ? "list" : modelData.id === "cover" || modelData.id === "week" ? "tall" : "wide"
-                        var sx = active ? 1.025 : 1, ox = 0, oy = 0, bg = active ? String(Tokens.primary) : String(page.pill)
-                        var out = [ { role: "button", text: modelData.label, dx: ox, dy: oy, w: 111.33 * sx, h: 48 * sx, radius: 12, bg: bg } ]
-                        var xs = k === "list" ? [45.66, 45.66, 45.66] : k === "wide" ? [46.79, 54.31, 61.82] : [47.67, 53.67, 59.67]
-                        for (var i = 0; i < 3; ++i)
-                            out.push(k === "list" ? { role: "container", dx: xs[i], dy: 8.28 + 4 * i, w: 20, h: 2, radius: 1, bg: bg }
-                                   : k === "wide" ? { role: "container", dx: xs[i], dy: 11.68, w: i === 2 ? 5.48 : 5.46, h: 3.86, radius: 1, bg: bg }
-                                   : { role: "container", dx: xs[i], dy: 6.78, w: 4, h: 13, radius: 1, bg: bg })
-                        return out
-                    }
+                    property string a11yName: modelData.label
+                    property real focusRadius: 12 * Tokens.u
                     scale: active ? 1.025 : 1
                     width: 111.33 * Tokens.u; height: 48 * Tokens.u
                     onClicked: navigationActivate()
-                    Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: 12 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
+                    Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
                     Column {
                         anchors.centerIn: parent
                         spacing: 2 * Tokens.u
                         Item {
-                            property bool layoutSkipTree: true
                             anchors.horizontalCenter: parent.horizontalCenter
                             readonly property string kind: modelData.id === "list" || modelData.id === "agenda" ? "list" : modelData.id === "cover" || modelData.id === "week" ? "tall" : "wide"
                             width: 18 * Tokens.u; height: kind === "tall" ? 13 * Tokens.u : kind === "list" ? 11 * Tokens.u : 6 * Tokens.u
@@ -137,13 +127,12 @@ PlayarrPage {
                 }
                 readonly property bool isLeft: modelData.id === "title" || modelData.id === "asc"
                 readonly property bool active: modelData.row === 0 ? page.sort === modelData.id : page.order === modelData.id
-                property bool layoutSkip: true
                 x: isLeft ? 18.3 * Tokens.u : 199.6 * Tokens.u
                 y: modelData.y * Tokens.u
                 width: (isLeft ? 174.7 : 170.1) * Tokens.u; height: 47.7 * Tokens.u
                 onClicked: navigationActivate()
-                Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: 14 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label; property string parityRole: "button"; property int layoutRadius: 12; property color layoutBg: parent.active ? Tokens.primary : page.pill; color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
+                Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
+                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label; property string parityRole: "button"; property real focusRadius: 12 * Tokens.u; color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
             }
         }
         // Language selects.
@@ -155,26 +144,28 @@ PlayarrPage {
                 x: page.gut; width: flick.width - 2 * page.gut
                 y: (modelData.y + (modelData.key === "subs" && page.openSelect === "audio" ? page.languages.length * 40 : 0)) * Tokens.u
                 height: 58.78 * Tokens.u + (opened ? page.languages.length * 40 * Tokens.u : 0)
+                Rectangle {   // the web group around the select button
+                    width: parent.width; height: 58.78 * Tokens.u; radius: 12 * Tokens.u; color: page.pill; border.width: 1; border.color: Tokens.lineStrong
+                    property string parityRole: "group"
+                }
                 MouseArea {
+                    id: selBtn
                     property bool navigationFocusable: true
                     property string parityLabel: modelData.key === "audio" ? qsTr("Audio language") : qsTr("Subtitle language")
                     property int parityRail: 0
                     property int parityIndex: 7 + index
                     function navigationActivate() { page.openSelect = parent.opened ? "" : modelData.key }
-                    width: parent.width; height: 58.78 * Tokens.u
-                    property bool layoutSkip: true
-                    property string curLabel: { for (var i = 0; i < page.languages.length; ++i) if (page.languages[i].id === parent.cur) return page.languages[i].label; return "" }
-                    property var layoutEls: [ { role: "group", dx: 0, dy: 0, w: 350, h: 58.78, radius: 12, bg: String(page.pill) },
-                        { role: "button", text: curLabel + " \u2304", dx: 7.39, dy: 7.39, w: 335.22, h: 44, radius: 10, bg: String(page.pill) } ]
+                    x: 7.39 * Tokens.u; y: 7.39 * Tokens.u; width: parent.width - 14.78 * Tokens.u; height: 44 * Tokens.u
+                    property string a11yName: curLbl.text + " " + chevLbl.text
+                    property real focusRadius: 10 * Tokens.u
                     onClicked: navigationActivate()
-                    Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: 12 * Tokens.u; color: page.pill; border.width: 1; border.color: Tokens.lineStrong }
-                    Label { renderType: Text.NativeRendering;
-                        x: 19.8 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -2; property color layoutBg: page.pill
+                    Label { renderType: Text.NativeRendering; id: curLbl
+                        x: 12 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -2
                         text: { for (var i = 0; i < page.languages.length; ++i) if (page.languages[i].id === parent.parent.cur) return page.languages[i].label; return "" }
                         color: Tokens.ink; font.family: Tokens.fam(680); font.letterSpacing: -0.3; font.pixelSize: Tokens.fs(8.96)
                     }
-                    Label { renderType: Text.NativeRendering; anchors { right: parent.right; rightMargin: 19.4 * Tokens.u; verticalCenter: parent.verticalCenter; verticalCenterOffset: -2 }
-                        text: "\u2304"; color: Tokens.inkSoft; property color layoutBg: page.pill; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(8.96) }
+                    Label { renderType: Text.NativeRendering; id: chevLbl; anchors { right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter; verticalCenterOffset: -2 }
+                        text: "\u2304"; color: Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(8.96) }
                 }
                 Column {
                     y: 57.4 * Tokens.u; width: parent.width; visible: parent.opened

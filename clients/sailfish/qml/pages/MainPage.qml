@@ -8,9 +8,6 @@ PlayarrPage {
     id: page
     objectName: "main"
     property string section: "home"
-    // Layout export: the web's shell, page and content wrappers are visible full-viewport elements.
-    property var layoutEls: [ { x: 0, y: 0, w: 390, h: 683, bg: Tokens.dark ? "#151315" : "#f5f3f2" },
-        { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) }, { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) } ]
 
     Component.onCompleted: Progress.refresh()
     onStatusChanged: if (status === PageStatus.Active) Progress.refresh()

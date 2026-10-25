@@ -10,7 +10,6 @@ Item {
     property real radius: Tokens.radius
     property bool hero: false
     property string override: ""     // a specific picture (an episode's frame) instead of the work art
-    property var layoutEls: [ { role: "container", radius: root.radius / Tokens.u, bg: String(Tokens.surfaceSoft) }, { role: "image", bg: String(Tokens.surfaceSoft) } ]
     property color emptyColor: "transparent" // optional flat fill while a view has no artwork
     readonly property string src: override !== "" ? override : (work ? Api.artwork(work.id, work.images || [], kinds, hero) : "")
 
@@ -60,6 +59,7 @@ Item {
             mipmap: true
         }
     }
+    Rectangle { anchors.fill: parent; radius: root.radius; color: Tokens.surfaceSoft }   // the web's art container, under the picture
     Rectangle { id: mask; anchors.fill: parent; radius: root.radius; visible: false }
-    OpacityMask { anchors.fill: parent; source: art; maskSource: mask }
+    OpacityMask { anchors.fill: parent; source: art; maskSource: mask; property string parityRole: img.status === Image.Ready ? "image" : "" }
 }

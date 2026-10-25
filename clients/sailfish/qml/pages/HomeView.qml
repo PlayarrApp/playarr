@@ -11,7 +11,6 @@ SilicaFlickable {
     property var rails: []
     property bool busy: true
     property bool failed: false
-    property var layoutEls: [ { x: 0, y: 72, w: 390, h: 611, bg: String(Tokens.bg) } ]
     contentHeight: column.height + 120 * Tokens.u
 
     function load() {

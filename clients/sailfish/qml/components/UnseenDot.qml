@@ -17,7 +17,7 @@ Item {
     }
     Rectangle {
         anchors.fill: parent; radius: width / 2
-        property string parityRole: "img"; property string layoutLabel: ""
+        property string parityRole: "img"
         color: Tokens.brandPink; border.width: 2 * Tokens.u; border.color: Qt.rgba(1, 1, 1, 0.94)
     }
 }

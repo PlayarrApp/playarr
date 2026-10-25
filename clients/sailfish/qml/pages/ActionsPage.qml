@@ -15,7 +15,8 @@ PlayarrPage {
     readonly property bool playlistActionVisible: !!work && (work.kind === "movie" || work.kind === "series" || work.kind === "site" || work.kind === "artist")
     property bool showPlaylists: false
     property string note: ""
-    property var layoutEls: [ { x: 0, y: 0, w: 390, h: 683, bg: String(Tokens.bg) }, { role: "dialog", x: 0, y: 0, w: 390, h: 683, bg: Tokens.dark ? "#201c20" : "#fefefe" } ]
+    // The web drawer: a full-screen dialog surface over the page.
+    Rectangle { parent: page; z: -1; anchors.fill: parent; color: Tokens.dark ? "#201c20" : "#fefefe"; property string parityRole: "dialog" }
 
     // Every playable file under the title with its length.
     function leaves() {
@@ -94,13 +95,13 @@ PlayarrPage {
                     id: closeBtn
                     objectName: "parity-actions-close"
                     property bool navigationFocusable: true
-                    property bool layoutSkip: true
-                    property var layoutEls: [ { role: "button", text: qsTr("Close"), dx: 0, w: 44, h: 44, radius: 50, bg: String(Tokens.surfaceSoft) } ]
+                    property string a11yName: qsTr("Close")
+                    property real focusRadius: width / 2
                     function navigationActivate() { pageStack.pop() }
                     anchors { right: parent.right; rightMargin: 20 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u }
                     width: 44 * Tokens.u; height: width
                     onClicked: pageStack.pop()
-                    Rectangle { property bool layoutNoEmit: true; anchors.fill: parent; radius: width / 2; color: Tokens.surfaceSoft; border.width: 1; border.color: Tokens.lineStrong }
+                    Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.surfaceSoft; border.width: 1; border.color: Tokens.lineStrong }
                     Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u00D7"; color: Tokens.ink; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(16) }
                 }
             }

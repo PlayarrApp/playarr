@@ -20,13 +20,13 @@ Item {
         property bool navigationFocusable: true
         function navigationActivate() { parent.backClicked() }
         visible: parent.back
-        property bool layoutSkip: true
-        property var layoutEls: [ { role: parent.backRole, text: parent.backLabel, dx: 0, dy: (43.7 - 44) / 2 / Tokens.u * Tokens.u, w: 44, h: 44, radius: 50 },
-            { role: "text", text: "\u2190", dx: 15.59, dy: 12.41, w: 12.8, h: 18, color: Tokens.dark ? "#cdc1c6" : "#443a40", bg: String(Qt.rgba(Tokens.surfaceStrong.r, Tokens.surfaceStrong.g, Tokens.surfaceStrong.b, 1)), fontSize: 12.8, fontWeight: 720 } ]
+        property string a11yName: parent.backLabel
+        property string parityRole: parent.backRole
+        property real focusRadius: width / 2
         x: Tokens.pad
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: 1 * Tokens.u
-        width: 43.7 * Tokens.u; height: width
+        width: 44 * Tokens.u; height: width
         onClicked: parent.backClicked()
         // web .tv-page-back: surface-strong at 70 %, a 1 px border of line-strong at 66 %
         Rectangle {
@@ -35,16 +35,11 @@ Item {
             border.width: 1; border.color: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.66)
         }
         Rectangle { visible: btn.parent.navigationActive ? btn.activeFocus : btn.parent.restRing; anchors { fill: parent; margins: -4.75 * Tokens.u } radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary }
-        Canvas {   // web: the thin system arrow, 14 x 6 px with a small head (Nunito has no arrow glyph)
-            width: 16; height: 10   // device pixels
-            anchors.centerIn: parent; anchors.verticalCenterOffset: 2
-            property color ink: Tokens.dark ? "#cdc1c6" : "#443a40"
-            onInkChanged: requestPaint()
-            onPaint: {
-                var c = getContext("2d"); c.clearRect(0, 0, width, height)
-                c.strokeStyle = ink; c.lineWidth = 1.1; c.lineCap = "round"; c.lineJoin = "round"
-                c.beginPath(); c.moveTo(14.5, 5); c.lineTo(1.5, 5); c.moveTo(5, 2); c.lineTo(1.5, 5); c.lineTo(5, 8); c.stroke()
-            }
+        Label { renderType: Text.NativeRendering   // the web's arrow is a system-font glyph (Nunito has none)
+            anchors.centerIn: parent
+            text: "\u2190"; color: Tokens.dark ? "#cdc1c6" : "#443a40"
+            anchors.verticalCenterOffset: -2.2 * Tokens.u
+            font.family: "Liberation Sans"; font.weight: Font.Bold; font.pixelSize: Tokens.fs(12.8)
         }
     }
     Label { renderType: Text.NativeRendering;
