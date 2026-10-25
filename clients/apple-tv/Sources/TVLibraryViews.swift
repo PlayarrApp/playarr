@@ -768,6 +768,7 @@ struct TVHomeView: View {
     private func liveHeroBackdrop(_ hero: Work?, wide: Bool = false) -> some View {
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated
+                .parityBox("container", fill: DesignTokens.Stage.surface)
             if let hero {
                 TVKeyArt(url: imageURL(for: hero, prefer: .backdrop, width: wide ? 1920 : nil))
             }
@@ -1295,6 +1296,7 @@ struct TVSearchView: View {
         ZStack(alignment: .topLeading) {
             // `.tv-search` uses surface (#1b181b), not pure stage base.
             DesignTokens.Color.backgroundElevated.ignoresSafeArea()
+                .parityBox("container", fill: DesignTokens.Stage.surface)
             if let viewModel, let work = selectedWork(viewModel) {
                 TVKeyArt(url: searchArtURL(work))
             }
@@ -2275,9 +2277,11 @@ struct TVLibraryKindView: View {
                 Text(letter)
                     .font(TVTheme.font(size: 9.2, weight: .regular))
                     .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                    .parityLayout(text: letter, size: 9.2, weight: Int(TVTheme.cssWeight(.regular)), color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
+                    .parityLayout(text: letter, size: 9.22, weight: 400, color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(active ? DesignTokens.Color.textSecondary : Color.clear))
+                    .frame(width: 44, height: 44)
+                    .parityBox("button", text: letter == "#" ? "Numbers and symbols" : letter, radius: 22, fill: DesignTokens.Stage.surface)
                     .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 44)
             }
         }

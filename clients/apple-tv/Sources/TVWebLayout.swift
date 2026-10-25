@@ -364,6 +364,7 @@ struct TVWebProfileChip: View {
 /// plus its `::after` wash (surface from the left and bottom edges).
 struct TVKeyArt: View {
     var url: URL?
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -378,6 +379,7 @@ struct TVKeyArt: View {
                 }
                 .frame(width: 1038.3, height: 1190.6)
                 .clipped()
+                .parityBox("image", fill: DesignTokens.Stage.surface, opacity: scheme == .light ? 0.24 : DesignTokens.Shell.keyArtOpacity)
                 .modifier(TVKeyArtFilter())
                 .mask(
                     LinearGradient(
@@ -430,6 +432,7 @@ struct TVKeyArt: View {
 struct TVStageWash: View {
     var body: some View {
         ZStack {
+            Color.clear.parityBox("container", fill: DesignTokens.Stage.surface)
             LinearGradient(
                 stops: [
                     // Web `.tv-stage-wash`: surface 94% at 0, 90% at 36%, clear at 52%.

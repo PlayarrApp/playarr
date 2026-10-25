@@ -79,6 +79,7 @@ struct TVRootView: View {
     var body: some View {
         ZStack {
             TVStageBackground()
+                .parityBox("container", fill: DesignTokens.Stage.bg)
 
             if let file = TVParityLaunch.playFile {
                 TVPlayerView(mediaFileID: file, title: "Parity playback", apiClient: environment.apiClient)

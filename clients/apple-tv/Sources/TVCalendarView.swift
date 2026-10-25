@@ -17,6 +17,7 @@ struct TVCalendarView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated.ignoresSafeArea()
+                .parityBox("container", fill: DesignTokens.Stage.surface)
             if let viewModel {
                 content(viewModel)
             }

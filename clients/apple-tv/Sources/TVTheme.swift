@@ -91,7 +91,6 @@ struct PlayarrLogoMark: View {
 struct TVStageBackground: View {
     var body: some View {
         DesignTokens.Color.backgroundBase
-            .parityBox("container", fill: DesignTokens.Stage.bg)
             .ignoresSafeArea()
     }
 }
