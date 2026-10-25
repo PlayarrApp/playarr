@@ -169,3 +169,11 @@ test("a volatile opacity is flagged, not exported", { skip }, async () => {
   assert.equal(d.elements[0].opacityVolatile, true);
   assert.equal(d.elements[0].rect.w, 80);
 });
+
+test("a volatile host keeps the real text style of its content and a control's accessible name", { skip }, async () => {
+  const d = await dump(`<div class="app-clock-time" style="font:700 20px sans-serif;color:#ff0000"><span>12:00</span></div>
+    <button class="abs" style="top:100px;font:600 12px sans-serif;color:#00ff00" aria-label="Audio: English"><svg width="10" height="10"></svg><span>1:00</span></button>`,
+  [{ name: "header-clock", selector: ".app-clock-time" }, { name: "player-audio", selector: "button[aria-label^=Audio]" }]);
+  assert.deepEqual([d.elements[0].color, d.elements[0].fontSize, d.elements[0].fontWeight], ["#ff0000", 20, 700]);
+  assert.deepEqual([d.elements[1].role, d.elements[1].text, d.elements[1].color, d.elements[1].fontSize], ["button", "Audio: English", "#00ff00", 12]);
+});

@@ -163,3 +163,11 @@ test("an opacity marked volatile on the web element is not scored", () => {
   assert.equal(fails(el(0.5, true), el()), 0);
   assert.equal(fails(el(0.5), el()), 1);
 });
+
+test("a volatile element skips only its text: colour, font size and weight are still scored", () => {
+  const el = (text, color, fontSize) => ({ text, role: "text", rect: { x: 0, y: 0, w: 40, h: 20 }, color, background: "#ffffff", fontSize, fontWeight: 400, volatile: "player-time" });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  const fields = (w, d) => scoreLayout(doc(w), doc(d)).failures.flatMap((f) => f.problems).map((x) => x.field);
+  assert.deepEqual(fields(el("0:02", "#000000", 14), el("9:99", "#000000", 14)), []);
+  assert.deepEqual(fields(el("0:02", "#000000", 14), el("9:99", "#ff0000", 20)).sort(), ["color", "fontSize"]);
+});

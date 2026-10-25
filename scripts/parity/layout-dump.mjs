@@ -239,6 +239,18 @@ export function layoutPageFn(volatile) {
       fontSize: own ? round(parseFloat(cs.fontSize) * zoom) : null,
       fontWeight: own ? Number(cs.fontWeight) || 400 : null
     };
+    if (vol && !own) {
+      /* volatile only waives the text content: keep the real text style (first text descendant) and a control's accessible name */
+      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), tn = walker.nextNode();
+      while (tn && !norm(tn.textContent)) tn = walker.nextNode();
+      if (tn && tn.parentElement) {
+        var tcs = getComputedStyle(tn.parentElement);
+        row.color = toHex(parse(tcs.webkitTextFillColor || tcs.color));
+        row.fontSize = round(parseFloat(tcs.fontSize) * zoom);
+        row.fontWeight = Number(tcs.fontWeight) || 400;
+      }
+      if (control && norm(label)) row.text = norm(label);
+    }
     if (gradient) row.colorGradient = true;
     if (radius > 0 && !split) { row.radius = round(radius); if (!painted) row.painted = false; }
     if (op < 1 && !(vol && vol.entry.opacityVolatile)) row.opacity = round(op);
