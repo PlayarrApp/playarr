@@ -7,11 +7,17 @@ import QtQuick.Window 2.2
 // Fullscreen player: server-negotiated playback (direct or HLS) with resume and progress reporting.
 Page {
     id: page
+    signal parityCaptureLayoutDumpRequested()
     objectName: "player"
     property alias navigation: navigation
     property string mediaFileId
     property string title
     property int startMs: 0
+    property bool parityCaptureHold: false
+    property bool paritySeekRequested: false
+    property bool parityPositionAcknowledged: false
+    property string parityCaptureFailure: ""
+    property int paritySeekWaitTicks: 0
     property string workId: ""           // for the now-playing artwork
     property string localPath: ""         // offline copy: no negotiation, no server reporting
 
@@ -40,7 +46,29 @@ Page {
 
     function logParityPlayerState() {
         console.log("PARITY|player|" + player.playbackState + "|" + Math.floor(positionMs / 1000)
-                    + "|" + (menuOpen ? 1 : 0) + "|" + (controls ? 1 : 0))
+                    + "|" + (menuOpen ? 1 : 0) + "|" + (controls ? 1 : 0) + "|" + player.position + "|" + positionMs)
+    }
+
+    function prepareParityCaptureHold() {
+        if (!parityCaptureHold || paritySeekRequested || parityCaptureFailure !== "") return
+        if (!info || info.mode !== "direct" || offsetMs !== 0) {
+            parityCaptureFailure = "unsupported-mode:" + (info ? info.mode : "unknown") + ":offset=" + offsetMs
+            console.log("PARITY|player-capture-failed|" + parityCaptureFailure)
+            return
+        }
+        if (!player.seekable) {
+            if (!paritySeekablePoll.running) {
+                paritySeekWaitTicks = 0
+                paritySeekablePoll.restart()
+            }
+            return
+        }
+        paritySeekablePoll.stop()
+        paritySeekRequested = true
+        player.pause()
+        controls = true
+        player.seek(2000)
+        parityCapturePoll.restart()
     }
 
     onMenuOpenChanged: logParityPlayerState()
@@ -104,8 +132,10 @@ Page {
             offsetMs = data.mode === "hls" ? (data.source_offset_ms || 0) : 0
             pendingSeek = data.mode !== "hls" && fromMs > 0
             player.source = Api.playbackUrl(data.url, data.session_id)
-            player.play()
-            event({ kind: "start" })
+            if (!parityCaptureHold) {
+                player.play()
+                event({ kind: "start" })
+            }
             if (first) {
                 audioIndex = -1
                 chooseSubtitle(Playback.pickSubtitle(data.subtitle_tracks || [], Api.setting("subtitleMode", "off"), Api.setting("subtitleLanguage", "en")))
@@ -160,9 +190,6 @@ Page {
         open(at)
     }
 
-    // Parity captures: park the clip at a fixed frame with the controls up.
-    function parityHold(ms) { player.seek(ms); player.pause(); controls = true }
-
     function seekTo(ms) {
         ms = Math.max(0, Math.min(durationMs, ms))
         if (info && info.mode === "hls") {
@@ -198,10 +225,12 @@ Page {
 
     MediaPlayer {
         id: player
+        autoPlay: false
         onStatusChanged: {
             console.log("player status", status, "state", playbackState, "pos", position, "dur", duration, "err", errorString)
             if (status === MediaPlayer.Loaded || status === MediaPlayer.Buffered) {
-                if (pendingSeek) { pendingSeek = false; player.seek(startMs) }
+                if (page.parityCaptureHold) page.prepareParityCaptureHold()
+                else if (pendingSeek) { pendingSeek = false; player.seek(startMs) }
             } else if (status === MediaPlayer.EndOfMedia) {
                 page.close(true)
             }
@@ -209,9 +238,39 @@ Page {
         onError: page.error = errorString || qsTr("The player could not play this title.")
         onPlaybackStateChanged: {
             page.logParityPlayerState()
-            if (page.info) page.event(playbackState === MediaPlayer.PausedState
+            if (page.info && !page.parityCaptureHold) page.event(playbackState === MediaPlayer.PausedState
                                       ? { kind: "pause", position_ms: page.positionMs }
                                       : playbackState === MediaPlayer.PlayingState ? { kind: "resume", position_ms: page.positionMs } : null)
+        }
+    }
+    Timer {
+        id: paritySeekablePoll
+        interval: 100
+        repeat: true
+        onTriggered: {
+            if (player.seekable) {
+                page.prepareParityCaptureHold()
+            } else if (++page.paritySeekWaitTicks >= 100) {
+                page.parityCaptureFailure = "not-seekable:state=" + player.playbackState + ":engine=" + player.position + ":source=" + page.positionMs
+                console.log("PARITY|player-capture-failed|" + page.parityCaptureFailure)
+                stop()
+            }
+        }
+    }
+    Timer {
+        id: parityCapturePoll
+        interval: 50
+        repeat: true
+        onTriggered: {
+            if (player.playbackState !== MediaPlayer.PausedState) return
+            if (page.status !== PageStatus.Active || !page.controls) return
+            if (player.position === 2000 && page.positionMs === 2000) {
+                page.parityPositionAcknowledged = true
+                console.log("PARITY|player-capture-ack|" + page.positionMs + "|" + player.position)
+                page.logParityPlayerState()
+                page.parityCaptureLayoutDumpRequested()
+                stop()
+            }
         }
     }
     Timer {

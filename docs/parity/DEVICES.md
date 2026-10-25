@@ -187,14 +187,14 @@ The VM starts headless (`VBoxHeadless --startvm <vm> --vrde off`), so nothing li
 session (or whenever the static server has restarted) with `node scripts/parity/sailfish/sign-in.mjs`, which logs in as the
 static-server account (password from the secrets file, never printed) and writes a fresh app config over ssh. Then:
 
-`PLAYARR_SF_SSH_KEY=<key> PLAYARR_SF_SCRATCH=<scratch dir> PLAYARR_SF_VBOXMANAGE=<VBoxManage> PLAYARR_SF_OUT=<legend dir>/sailfish/dev PARITY_CLIENT=sailfish PARITY_LOCK_DIR=<scratch>/lock PLAYARR_SF_SKIP_SIGNIN=1 scripts/parity/sailfish/run.sh`
+`PLAYARR_SF_SSH_KEY=<key> PLAYARR_SF_SSH_CONFIG=<ssh config, optional> PLAYARR_SF_SCRATCH=<scratch dir> PLAYARR_SF_VBOXMANAGE=<VBoxManage> PLAYARR_SF_OUT=<legend dir>/sailfish/dev PARITY_CLIENT=sailfish PARITY_LOCK_DIR=<scratch>/lock PLAYARR_SF_SKIP_SIGNIN=1 scripts/parity/sailfish/run.sh`
 
 (`VBOX_USER_HOME` must point at the VirtualBox home of the VM; leave `PLAYARR_SF_SKIP_SIGNIN` unset to sign in first.) The
-script runs `vm-coldboot.sh`, then `suite-run.mjs --via route --only screens` for both themes with the pinned capture
-clock, and writes `<out>/<theme>/<screen>.png`. Extra arguments go to `suite-run.mjs` (for example `--screens home,movies`).
-Every capture also writes `<out>/layout/<theme>/<screen>.json` through `LayoutDump.js`, called by a `layoutDump()` step and scored with `scripts/parity/layout-score.mjs`. These exports currently fail the measurement audit: declared wrapper geometry and estimated text bounds can produce 100% without matching the native drawing. See [the Sailfish measurement audit](SAILFISH-AUDIT.md) before accepting a layout result. `scripts/parity/sailfish/build-fonts.sh` builds the static Nunito Sans weights the client embeds. There are no D-pad checks: the phone has no D-pad. Detail pages are scrolled to the top before the shot, like the web refs.
+script runs `vm-coldboot.sh`, then `suite-run.mjs --via route --only screens --extra-screens calendar-link` for both themes with the pinned capture
+clock, and writes `<out>/<theme>/<screen>.png` for all 16 screens. Set `PLAYARR_SF_OUT` to the desired capture directory, such as the device legend directory when publishing a run. Extra arguments go to `suite-run.mjs` (for example `--screens home,movies`). Set `PLAYARR_SF_SSH_CONFIG` when the host SSH configuration needs an explicit config file; the value is passed to both `ssh` and `scp` in the driver, sign-in helper and cold-boot helper.
+Every capture also writes `<out>/layout/<theme>/<screen>.json` through `LayoutDump.js`; player-controls exports only after the paused-position acknowledgement. The exports still fail the measurement audit: the exporter does not faithfully account for ancestor clipping and transforms, nor does it emit actual per-line text and accessibility semantics. See [the Sailfish measurement audit](SAILFISH-AUDIT.md) before accepting a layout result. `scripts/parity/sailfish/build-fonts.sh` builds the static Nunito Sans weights the client embeds. There are no D-pad checks: the phone has no D-pad. Detail pages are scrolled to the top before the shot, like the web refs.
 
-The standard run covers 15 screens. Capture the additional calendar-link screen in both themes with `node scripts/parity/sailfish/capture-extra.mjs <out>` using the same environment. A complete 16-screen acceptance run must include this extra capture and repeat it as well.
+The one-command run covers all 16 screens in both themes, including calendar-link. Focused player-controls captures passed in both themes with the exact paused-position gate, and focused calendar-link captures passed after its route telemetry fix. The full 16-screen command and two-run repeatability still need VM verification.
 
 ## Downloads: which platforms support them
 
