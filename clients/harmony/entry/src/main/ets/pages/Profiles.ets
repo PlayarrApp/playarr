@@ -481,6 +481,19 @@ struct Profiles {
         .position(isTvMetrics() ? { x: tv(THEME_SELECT_LEFT), y: 49.67 } : { x: '100%', y: PHONE_SELECT_TOP })
         .markAnchor(isTvMetrics() ? { x: 0, y: 0 } : { x: PHONE_SELECT_RIGHT + PHONE_SELECT_WIDTH * 2 + 8, y: 0 })
         .zIndex(2)
+      Column({ space: 6 }) {
+        Text('Hxg Whos 1').fontFamily('NunitoSansW480').fontSize(40).fontColor('#FFFFFF').id('pvp1')
+        Text('Hxg Whos 2').fontFamily('NunitoSansW480').fontSize(40).fontColor('#FFFFFF').lineHeight(54.56).id('pvp2')
+        Text('Hxg Whos 3').fontFamily('NunitoSansW480').fontSize(40).fontColor('#FFFFFF').lineHeight(54.56).halfLeading(true).id('pvp3')
+        Text('Hxg Whos 4').fontFamily('NunitoSansW480').fontSize(40).fontColor('#FFFFFF').lineHeight(40).id('pvp4')
+        Text('Hxg Whos 5').fontFamily('NunitoSansW480').fontSize(40).fontColor('#FFFFFF').lineHeight(70).id('pvp5')
+        Text('Hxg Whos 6').fontFamily('sans-serif').fontSize(40).fontColor('#FFFFFF').id('pvp6')
+        Text('Hxg Who’s 7').fontFamily('NunitoSansW480').fontSize(40).fontColor('#FFFFFF').id('pvp7')
+        Text('Hxg Whos 8').fontFamily('NunitoSansW480').fontSize(40).fontColor('#FFFFFF').lineHeight(70).halfLeading(true).id('pvp8')
+        Text('Hxg Whos 9').fontFamily('NunitoSansW480').fontSize(40).fontColor('#FFFFFF').height(90).id('pvp9')
+      }
+        .position({ x: 40, y: 300 })
+        .zIndex(9)
       Column() {
       Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunitoAt(isTvMetrics() ? 900 : 820, isTvMetrics() ? tv(10.368) : 7.36))
         .fontSize(isTvMetrics() ? tv(10.368) : 7.36)
