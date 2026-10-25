@@ -1877,7 +1877,7 @@ struct Detail {
     .height(tv(PILL_HEIGHT))
     .constraintSize({ minWidth: tv(primary ? PILL_PRIMARY_MIN_WIDTH : PILL_SECONDARY_MIN_WIDTH) })
     .padding({ left: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X), right: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X) })
-    .borderRadius(999)
+    .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
     .backgroundColor(primary ? (this.filmPlayFocused(primary) ? PLAY_FOCUS_FILL : toResourceColor(activeColors().ink)) : resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
@@ -2622,13 +2622,14 @@ struct Detail {
         })
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column() {
-            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunitoAt(900, 10.56))
+            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunitoAt(820, 10.56))
               .fontSize(10.56)
               .height(16)
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
               .fontColor(brandInk())
+              .translate({ y: -1.1 }) // web's kicker box sits 1.1 higher
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunitoAt(560, 36))
               .id('px:heading:' + (this.detail !== null ? this.detail.work.title : ''))
@@ -2639,6 +2640,7 @@ struct Detail {
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
               .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
+              .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -4.9 : -3.2 }) // web's title box sits higher than ArkUI lays it out
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
                 .fontSize(14.4)
@@ -2646,19 +2648,24 @@ struct Detail {
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .id('px:heading:' + planEpisodeTitle(this.detail, this.resumePlan))
                 .maxLines(1)
+                .translate({ y: -1.85 })
                 .margin({ top: 5.7 })
             }
             this.touchMetaChips()
-            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
-              .fontSize(11.52)
-              .fontColor(toResourceColor(activeColors().inkMuted))
-              .lineHeight(16.7)
-              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
-              .maxLines(3)
-              // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
-              .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })
-              .align(Alignment.TopStart) // the reserved lines sit below the text, which must not centre in them
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            Column() {
+              Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
+                .fontSize(11.52)
+                .fontColor(toResourceColor(activeColors().inkMuted))
+                .lineHeight(16.7)
+                .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
+                .maxLines(3)
+                // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .justifyContent(FlexAlign.Start)
+            .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 + (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 0 }) // the reserved lines (and the margin above them) sit below the text
             Column() {
               this.touchActionRows()
             }

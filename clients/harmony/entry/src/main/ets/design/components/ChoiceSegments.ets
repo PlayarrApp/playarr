@@ -31,7 +31,7 @@ const SECTION_GAP: number = 30;
 // Web phone drawer choices: 46.7 high, 11.5 type, sections 8 vp closer than the TV's.
 const TOUCH_CHOICE_HEIGHT: number = 48; // web: 144 px inactive; the selected choice is 1.025 scaled
 const TOUCH_CHOICE_LABEL_SIZE: number = 11.52;
-const TOUCH_SECTION_GAP: number = 23.7;
+const TOUCH_SECTION_GAP: number = 23.2;
 const LARGE_HEADING_SIZE: number = 26.4;
 const LARGE_HEADING_LETTER_SPACING: number = -0.924;
 const LARGE_HEADING_GAP: number = 16;
@@ -137,7 +137,7 @@ export struct ChoiceSegments {
           // phone View buttons: web draws three outlined bars (list, screen, cover) over a lower-case 900-weight word
           Column({ space: isTvMetrics() ? 7.4 : 6.85 }) {
             this.viewShapes(choice.value)
-            Text(choice.label.toLowerCase()).fontFamily(nunito(900))
+            Text(capitalWords(choice.label)).fontFamily(nunito(900))
               .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
@@ -156,7 +156,7 @@ export struct ChoiceSegments {
             this.onChoose(choice.value);
           })
          } else {
-          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? (this.lowerLabels ? choice.label.toLowerCase() : choice.label) : capitalWords(choice.label))).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
+          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + capitalWords(choice.label)).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
             .id((this.large ? 'px:button:' : 'pxt:button:') + choice.label) // web: a Filters choice is a button that owns its text; Settings' wraps a span
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)

@@ -117,12 +117,12 @@ const BRAND_INK_LIGHT: RgbaColor = { r: 130, g: 30, b: 54, a: 1 };
 const TOUCH_AVATAR_DIAMETER: number = 104;
 // Web phone profile picker (360 vp reference): 144 vp avatars 23 apart from x=25, the heading block from x=32.5, the selects at the top right.
 const PHONE_CHOICE_WIDTH: number = 144;
-const PHONE_CHOICE_GAP: number = 23;
-const PHONE_CHOICES_LEFT: number = 25;
+const PHONE_CHOICE_GAP: number = 18.76;
+const PHONE_CHOICES_LEFT: number = 21.76;
 const PHONE_HEADING_LEFT: number = 32.2;
 const PHONE_HEADING_SIZE: number = 39.6; // web dump
 const PHONE_KICKER_TOP: number = 68;
-const PHONE_CHOICES_TOP: number = 55.6; // 64.3 less the 8.7 the heading moved down
+const PHONE_CHOICES_TOP: number = 49.75; // 64.3 less the 8.7 the heading moved down
 const PHONE_SELECT_HEIGHT: number = 48;
 const PHONE_SELECT_FONT: number = 11.7;
 const PHONE_SELECT_RADIUS: number = 0;
@@ -378,7 +378,7 @@ struct Profiles {
         .height(tv(TV_ACTION_HEIGHT))
         .padding({ left: tv(17), right: tv(17) })
         .id('pxt:button:' + label)
-        .borderRadius(999)
+        .borderRadius(tv(TV_ACTION_HEIGHT / 2))
         .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
         .position({ x: tv(x), y: tv(y) })
@@ -407,7 +407,7 @@ struct Profiles {
     .justifyContent(FlexAlign.Center)
     .padding({ left: label.length > 0 ? tv(isTvMetrics() ? 15 : 17) : 0, right: label.length > 0 ? tv(isTvMetrics() ? 15 : 17) : 0 })
     .id('px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
-    .borderRadius(999)
+    .borderRadius(tv(TV_ACTION_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
     .focusable(true)
@@ -498,7 +498,7 @@ struct Profiles {
         .letterSpacing(this.pick(-5.15, -2.77))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
-        .margin({ top: this.pick(-3.79, 5.7), left: isTvMetrics() ? 9.1 : PHONE_HEADING_LEFT })
+        .margin({ top: this.pick(-3.79, -0.75), left: isTvMetrics() ? 9.1 : PHONE_HEADING_LEFT })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Row({ space: this.pick(36.74, PHONE_CHOICE_GAP) }) { // TV: the profile tile is 5.49 wider each side than its avatar
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
@@ -522,13 +522,13 @@ struct Profiles {
             Text(profile.display_name).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
               .fontSize(this.pick(17.28, 13.12))
               .fontWeight(FontWeight.Bold)
-              .letterSpacing(this.pick(0.35, 0))
+              .letterSpacing(this.pick(0.35, 0.28))
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: this.pick(16.78, profile.is_current ? 5.5 : 10.8) })  // web phone: the lifted current avatar pulls its name up
             Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
               .fontSize(this.pick(9.408, 6.72))
               .fontWeight(FontWeight.Bold)
-              .letterSpacing(this.pick(1.12, 0.33))
+              .letterSpacing(this.pick(1.12, 0.67))
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(activeColors().inkMuted))
               .margin({ top: this.pick(15.8, profile.is_current ? 14 : 12) })
@@ -541,11 +541,11 @@ struct Profiles {
                   this.handleSignOut();
                 })
               }
-              .margin(isTvMetrics() ? { top: 24.84, bottom: -68.84 } : { top: tv(21) + 3.8 }) // web: the actions sit under the profile button, outside its box
+              .margin(isTvMetrics() ? { top: 24.84, bottom: -68.84 } : { top: tv(21) + 3.8, bottom: -70.92 }) // web: the actions sit under the profile button, outside its box
             }
           }
-          .width(this.pick(254.98, PHONE_CHOICE_WIDTH))
-          .padding({ top: this.pick(5.49, 0), bottom: this.pick(8.8, 0) })
+          .width(this.pick(254.98, 150.48))
+          .padding({ top: this.pick(5.49, 3.25), bottom: this.pick(8.8, 0) })
           .id('px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)

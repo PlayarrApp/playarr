@@ -87,10 +87,11 @@ export struct Drawer {
             .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))
             .id('px:button:' + (this.title === 'Filters' ? 'Close filters' : 'Close'))
+            .padding({ bottom: isTvMetrics() ? 0 : 3.4 }) // web phone: the glyph box sits 1.7 higher than the centred one
             .textAlign(TextAlign.Center)
             .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
             .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
-            .borderRadius(50) // web: border-radius 50%
+            .borderRadius(isTvMetrics() ? tv(CLOSE_SIZE / 2) : TOUCH_CLOSE_SIZE / 2)
             .backgroundColor(toResourceColor(activeColors().surfaceSoft))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
             .focusable(true)

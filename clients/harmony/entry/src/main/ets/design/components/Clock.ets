@@ -53,7 +53,6 @@ export struct Clock {
         .fontWeight(TIME_FONT_WEIGHT)
         .letterSpacing(tv(TIME_LETTER_SPACING))
         .lineHeight(tv(TIME_FONT_SIZE * 1.5)) // web: a block with line-height 1.5, so its layout rect is the line box
-        .id('pxb:text:linebox') // web: the clock's host box, line height included
         .fontColor(toResourceColor(activeColors().ink))
       Text(clockDate(this.now, currentLanguage())).fontFamily(nunitoAt(DATE_FONT_WEIGHT, tv(DATE_FONT_SIZE)))
         .fontSize(tv(DATE_FONT_SIZE))
@@ -61,7 +60,6 @@ export struct Clock {
         .letterSpacing(tv(DATE_LETTER_SPACING))
         .textCase(TextCase.UpperCase)
         .lineHeight(tv(DATE_FONT_SIZE * 1.1)) // web: line-height 1.1
-        .id('pxb:text:linebox') // web: the clock's host box, line height included
         .fontColor(toResourceColor(activeColors().ink))
     }
     // Web centres the date on the time (measured: time 1 vp and date 4 vp lower than web with bottom alignment).

@@ -123,7 +123,7 @@ export struct PageShell {
       .textAlign(TextAlign.Center)
       .width(tv(HEADER_SIZE))
       .height(tv(HEADER_SIZE))
-      .borderRadius(50) // web: border-radius 50%
+      .borderRadius(tv(HEADER_SIZE / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
       .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
@@ -257,7 +257,7 @@ export struct PageShell {
             .width(44)
             .height(44)
             .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
-            .borderRadius('50%')
+            .borderRadius(22)
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
             .id('px:' + this.backRole + ':' + this.backLabel)

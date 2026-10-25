@@ -443,7 +443,7 @@ export struct PosterCard {
           Column()
             .width(this.dotSize())
             .height(this.dotSize())
-            .borderRadius(50) // web: border-radius 50%
+            .borderRadius(this.dotSize() / 2)
             .id('px:img:')
             .backgroundColor(toResourceColor(BRAND_PINK))
             .border({ width: 2, color: 'rgba(255, 255, 255, 0.94)' })

@@ -25,16 +25,13 @@ class LayoutExportTest(unittest.TestCase):
         self.assertEqual(t["color"], "#f4f0f1")
         self.assertEqual(t["background"], "#151315")
 
-    def test_a_wrapped_text_exports_the_union_of_its_measured_lines(self):
+    def test_a_wrapped_text_exports_one_element_per_measured_line(self):
         lines = [{"text": "one two", "w": 90.0, "h": 20.0, "lineH": 24.0}, {"text": "three", "w": 50.0, "h": 20.0, "lineH": 24.0}]
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "one two three", lines)], rect="[0.00, 0.00],[1920.00, 1080.00]")
         doc = export(tree, "x", "dark", (1920, 1080, 1))
         t = [e for e in doc["elements"] if e["role"] == "text"]
-        self.assertEqual([e["text"] for e in t], ["one two three"])  # one Range per Text node, as web reports a wrapped paragraph
-        one = export(column([text("[0.00, 0.00],[200.00, 24.00]", "one two", lines[:1])], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
-        first = [e for e in one["elements"] if e["role"] == "text"][0]["rect"]
-        self.assertEqual(t[0]["rect"]["w"], 90.0)  # the widest line
-        self.assertEqual(round(t[0]["rect"]["h"] - first["h"], 2), 24.0)  # one line pitch taller than a single line
+        self.assertEqual([e["text"] for e in t], ["one two", "three"])  # web's refs hold one element per rendered line
+        self.assertEqual([round(e["rect"]["y"] - t[0]["rect"]["y"], 2) for e in t], [0.0, 24.0])  # one line pitch apart
 
     def test_the_inspector_box_already_holds_the_scale_so_only_the_text_metrics_are_scaled(self):
         lines = [{"text": "Movies", "w": 30.0, "h": 10.0, "lineH": 10.0}]

@@ -429,7 +429,7 @@ export struct ReleaseCalendar {
       .fontColor(toResourceColor(activeColors().ink))
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
       .padding({ left: tv(PILL_PADDING_H), right: tv(PILL_PADDING_H) })
-      .borderRadius(999)
+      .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
       .backgroundColor(toResourceColorWithAlpha(toneColor(tone), 0.112))
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
       .margin({ top: offset })
@@ -528,7 +528,7 @@ export struct ReleaseCalendar {
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
           .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
-          .borderRadius(999)
+          .borderRadius(tv(11))
           .id('pxt:text:Today')
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
       }
@@ -601,7 +601,7 @@ export struct ReleaseCalendar {
                   .textCase(TextCase.UpperCase)
                   .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
                   .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
-                  .borderRadius(999)
+                  .borderRadius(tv(11))
           .id('pxt:text:Today')
                   .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
               }
@@ -650,7 +650,7 @@ export struct ReleaseCalendar {
             Column()
               .width(tv(MONTH_DOT_SIZE))
               .height(tv(MONTH_DOT_SIZE))
-              .borderRadius(50) // web: border-radius 50%
+              .borderRadius(tv(MONTH_DOT_SIZE / 2))
               .backgroundColor(toResourceColor(toneColor(itemPillTone(item, this.today))))
             Text(itemLineText(item)).fontFamily(nunitoAt(item.grouped ? 700 : 400, tv(MONTH_LINE_SIZE)))
               .fontSize(tv(MONTH_LINE_SIZE))
@@ -916,7 +916,7 @@ export struct ReleaseCalendar {
       .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
       .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(0.2) : 0 })
       .id(round ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : 'pxt:button:' + label) // web: Today owns its text, the arrows hold a glyph
-      .borderRadius(round ? 50 : 999) // web: 50% on the round arrows, a 999 px pill on the labelled controls
+      .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
       .backgroundColor(toResourceColor(activeColors().surface))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       .focusable(true)
@@ -1004,7 +1004,7 @@ export struct ReleaseCalendar {
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(tv(HEADER_CONTROL_SIZE))
         .padding({ left: tv(20), right: tv(20) })
-        .borderRadius(999)
+        .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
         .focusable(true)
@@ -1052,7 +1052,7 @@ export struct ReleaseCalendar {
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(44)
         .padding({ left: 18.8, right: 18.8 })
-        .borderRadius(999)
+        .borderRadius(22)
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
         .onClick(() => {
@@ -1087,7 +1087,7 @@ export struct ReleaseCalendar {
         .textAlign(TextAlign.Center)
         .width(width)
         .height(44)
-        .borderRadius(label.length === 1 ? 22 : 999)
+        .borderRadius(22)
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
       if (label === t('pages.calendar.today', 'Today')) {
@@ -1101,7 +1101,7 @@ export struct ReleaseCalendar {
       }
     }
     .id(label.length === 1 ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : '')
-    .borderRadius(50)
+    .borderRadius(22)
     .width(width)
     .height(44)
     .onClick(() => {

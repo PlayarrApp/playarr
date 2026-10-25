@@ -179,7 +179,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         cx0, cy0, cx1, cy1 = clip
         return x < cx1 and y < cy1 and x + w > cx0 and y + h > cy0
 
-    def text_lines(node, a, box, under, opacity, chain, clip, radius=0.0, boxed=False):
+    def text_lines(node, a, box, under, opacity, chain, clip, radius=0.0):
         measured = node.get("$measured")
         content = str(a.get("content") if a.get("content") is not None else a.get("text") or "")
         if not content.strip():
@@ -198,11 +198,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         top = y + (h - total) / 2 if total <= h else y  # ArkUI centres the laid-out lines in the Text box
         metrics = font_metrics(str(a.get("fontFamily", "")))
         size_px = size * dpr * k
-        if boxed:  # web's host-element boxes (clock, date, version): the Text node's own laid-out box, line height included
-            if visible((x, y, w, h), clip):
-                emit("text", " ".join(" ".join(shown(line["text"]) for line in measured).split()), (x, y, w, h), under, radius, colour, size, weight, opacity)
-            return
-        runs = []  # one Range per Text node, as web reports it: the union of the laid-out lines
+        runs = []  # one run per laid-out line, as web reports a wrapped paragraph: each line's text and glyph bounds
         for i, line in enumerate(measured):
             lw, nat, lh = line["w"] * k, line["h"] * k, line["lineH"] * k
             lx = x + (w - lw) / 2 if "center" in align else (x + w - lw if "end" in align or "right" in align else x)
@@ -211,10 +207,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
             rect = (lx, baseline - asc * size_px, lw, (asc + desc) * size_px)
             if visible(rect, clip):
                 runs.append((rect, str(line["text"])))
-        if runs:
-            x0, y0 = min(r[0][0] for r in runs), min(r[0][1] for r in runs)
-            x1, y1 = max(r[0][0] + r[0][2] for r in runs), max(r[0][1] + r[0][3] for r in runs)
-            emit("text", " ".join(" ".join(shown(r[1]) for r in runs).split()), (x0, y0, x1 - x0, y1 - y0), under, radius, colour, size, weight, opacity)
+        for rect, line_text in runs:
+            emit("text", " ".join(shown(line_text).split()), rect, under, radius, colour, size, weight, opacity)
 
     def walk(node, under, opacity, chain, clip):
         a = attrs_of(node)
@@ -235,9 +229,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         if raw is not None and k != 1.0:
             mychain = chain + [((raw[0] + raw[2] / 2), (raw[1] + raw[3] / 2), k)]
         nid = str(a.get("id", ""))
-        pxid = nid.split(":", 2) if nid.startswith(("px:", "pxt:", "pxb:")) and nid.count(":") >= 2 else None
+        pxid = nid.split(":", 2) if nid.startswith(("px:", "pxt:")) and nid.count(":") >= 2 else None
         own_text = nid.startswith("pxt:")  # a control that owns its text (web's button with a text node): one element, the text's Range
-        boxed_text = nid.startswith("pxb:")  # a text whose web element is its host box, not its glyph Range
         box = raw
         if box is not None and (box[2] < 0.5 or box[3] < 0.5) and kind != "Text":
             box = None
@@ -247,7 +240,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
             fills = fill is not None and fill[3] > 0.01
             if pxid is not None:
                 _, role, name = pxid
-                if kind == "Text" and (own_text or boxed_text or role in ("heading", "text", "container")):
+                if kind == "Text" and (own_text or role in ("heading", "text", "container")):
                     pass  # the Text's own lines carry this role below
                 else:
                     emit(role, name, box, here, radius_of(a), opacity=opacity)
@@ -265,9 +258,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
             elif kind != "Text" and (fills or has_gradient(a) or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01):
                 emit("container", "", box, here, radius_of(a), opacity=opacity)
             if kind == "Text":
-                lines_role = pxid[1] if pxid is not None and (own_text or boxed_text or pxid[1] in ("heading", "text", "container")) else None
+                lines_role = pxid[1] if pxid is not None and (own_text or pxid[1] in ("heading", "text", "container")) else None
                 start = len(out)
-                text_lines(node, a, tuple(raw), here, opacity, mychain, clip, radius_of(a) if own_text else 0.0, boxed_text)
+                text_lines(node, a, tuple(raw), here, opacity, mychain, clip, radius_of(a) if own_text else 0.0)
                 if lines_role is not None:
                     for el in out[start:]:
                         el["role"] = lines_role

@@ -79,7 +79,7 @@ export struct AlphabetRail {
         .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
         .width(TOUCH_LETTER_WIDTH)
         .layoutWeight(1)
-        .borderRadius(50) // web: border-radius 50%
+        .borderRadius(11.3) // web: half the short side of the letter's box
         .justifyContent(FlexAlign.Center)
         .onClick(() => {
           this.onJump(letter);
@@ -142,7 +142,7 @@ export struct AlphabetRail {
           .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
           .width(tv(BUTTON_SIZE))
           .height(tv(BUTTON_SIZE))
-          .borderRadius(50) // web: border-radius 50%
+          .borderRadius(tv(BUTTON_SIZE / 2))
           .justifyContent(FlexAlign.Center)
           .focusable(true)
           .onClick(() => {

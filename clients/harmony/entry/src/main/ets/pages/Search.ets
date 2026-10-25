@@ -369,7 +369,7 @@ export struct SearchScreen {
     .height(tv(FORM_HEIGHT))
     .id('px:search:')
     .padding({ left: tv(FORM_PADDING_LEFT), right: tv(FORM_PADDING_LEFT - 3.6) })
-    .borderRadius(999)
+    .borderRadius(tv(FORM_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
     .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(FORM_TOP) })
@@ -471,7 +471,7 @@ export struct SearchScreen {
       .height(60) // web phone field: 60 vp, 18 vp below the header
       .padding({ left: 16, right: 16 })
       .id('px:search:')
-      .borderRadius(999)
+      .borderRadius(30)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
       }
@@ -519,7 +519,7 @@ export struct SearchScreen {
           }
           .width(86)
           .height(86)
-          .borderRadius('50%')
+          .borderRadius(43)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
           Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunitoAt(650, 11.52))
