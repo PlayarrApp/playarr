@@ -1,0 +1,1 @@
+- Record a same-commit iPhone and iPad determinism pair for the iOS parity export.
