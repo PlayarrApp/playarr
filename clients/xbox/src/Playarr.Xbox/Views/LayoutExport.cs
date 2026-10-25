@@ -57,6 +57,8 @@ namespace Playarr.Xbox.Views
             var root = (FrameworkElement)Window.Current.Content;
             var scale = root.ActualWidth > 0 ? 1920.0 / root.ActualWidth : 1.0;
             var elements = new List<object>();
+            // A page that paints an opaque solid background (the player's black stage) hides the window ground behind it.
+            _rootCovered = FindPage(root) is { Background: SolidColorBrush { Color.A: 255 } };
             Walk(root, root, scale, elements);
             return Newtonsoft.Json.JsonConvert.SerializeObject(new
             {
@@ -137,6 +139,26 @@ namespace Playarr.Xbox.Views
             return found;
         }
 
+        private static bool _rootCovered;
+
+        private static Page? FindPage(DependencyObject node)
+        {
+            if (node is Frame { Content: Page page })
+            {
+                return page;
+            }
+
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+            {
+                if (FindPage(VisualTreeHelper.GetChild(node, i)) is { } found)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
         private static void Walk(DependencyObject node, FrameworkElement root, double scale, List<object> output)
         {
             if (node is UIElement ui && (ui.Visibility != Visibility.Visible || ui.Opacity <= 0.01))
@@ -149,9 +171,12 @@ namespace Playarr.Xbox.Views
                 return; // shadow and glow layers hang off a zero-size canvas
             }
 
-            if (node is FrameworkElement element && element.ActualWidth >= 1 && element.ActualHeight >= 1 && !(element is Page))
+            if (node is FrameworkElement element && element.ActualWidth >= 1 && element.ActualHeight >= 1 && (!(element is Page) || element is Page { Background: not null }))
             {
-                Add(element, root, scale, output);
+                if (!(_rootCovered && ReferenceEquals(element, root)))
+                {
+                    Add(element, root, scale, output);
+                }
                 if (GetRole(element) == "image")
                 {
                     return; // a drawn icon is one image, not its strokes
@@ -232,6 +257,10 @@ namespace Playarr.Xbox.Views
                 role = "button";
                 text = string.IsNullOrEmpty(name) ? null : name;
             }
+            else if (element is Page stage)
+            {
+                role = "container";
+            }
             else if (element is Border border && (Hex(border.Background) is not null || (border.BorderBrush != null && border.BorderThickness.Left > 0)))
             {
                 role = "container";
@@ -266,7 +295,7 @@ namespace Playarr.Xbox.Views
                 role,
                 rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
                 color,
-                background = role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element, includeSelf: Own(element) != null)),
+                background = element is Page && Own(element) is null ? $"#{Theme.Surface.R:x2}{Theme.Surface.G:x2}{Theme.Surface.B:x2}" : role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaque ? opaque : BackgroundBehind(element, includeSelf: Own(element) != null)),
                 fontSize,
                 fontWeight,
                 radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 1) : null,
@@ -302,13 +331,15 @@ namespace Playarr.Xbox.Views
             {
                 var transform = block.TransformToVisual(root);
                 var lines = new List<(Rect Box, int From, int To)>();
-                // Text pointer offsets count the structure tokens before the first character: the first offset that resolves to a
-                // character rectangle is character 0.
+                // Text pointer offsets count the structure tokens before the first character: offsets 0 and 1 resolve to the start
+                // of the run and of the first character, so character 0 is the first later offset whose rectangle starts where
+                // offset 0's does.
                 var shift = -1;
-                for (var o = 0; o < 8 && shift < 0; o++)
+                var origin = block.ContentStart.GetPositionAtOffset(0, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
+                for (var o = 1; o < 8 && shift < 0 && !origin.IsEmpty; o++)
                 {
                     var probe = block.ContentStart.GetPositionAtOffset(o, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
-                    shift = probe.IsEmpty ? -1 : o;
+                    shift = !probe.IsEmpty && Math.Abs(probe.X - origin.X) < 0.01 && Math.Abs(probe.Y - origin.Y) < 0.01 ? o : -1;
                 }
 
                 if (shift < 0)

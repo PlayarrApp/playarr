@@ -44,6 +44,7 @@ namespace Playarr.Xbox.Views
         public CalendarPage()
         {
             InitializeComponent();
+            Background = Theme.PageStage(); // the web's page wash, as every page
             _root = RootGrid;
             _root.Children.Add(_content);
             var header = Ui.PageHeader(_root, "Calendar", null, () => App.Navigation.GoBack());

@@ -22,6 +22,7 @@ namespace Playarr.Xbox.Views
         public WatchlistPage()
         {
             InitializeComponent();
+            Background = Theme.PageStage(); // the web's page wash, as every page
             Ui.PageHeader(RootGrid, "Watchlist", null, () => App.Navigation.GoBack());
             _list.Children.Add(new ScrollViewer { Content = _rows, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Height = 960, VerticalAlignment = VerticalAlignment.Top });
             RootGrid.Children.Add(_list);

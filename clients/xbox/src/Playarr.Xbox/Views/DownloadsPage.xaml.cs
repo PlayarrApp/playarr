@@ -26,6 +26,7 @@ namespace Playarr.Xbox.Views
         public DownloadsPage()
         {
             InitializeComponent();
+            Background = Theme.PageStage(); // the web's page wash, as every page
             Ui.PageHeader(RootGrid, "Downloads", null, () => App.Navigation.GoBack());
             _scroll = new ScrollViewer { Content = _rows, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Margin = new Thickness(228, 190, 58, 0), VerticalAlignment = VerticalAlignment.Top, Height = 850 };
             CardFocus.ReserveFocusRoom(_scroll, top: 0, bottom: 0);

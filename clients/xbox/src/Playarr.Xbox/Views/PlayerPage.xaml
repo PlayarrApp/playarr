@@ -126,7 +126,7 @@
                 LargeChange="10"
                 IsThumbToolTipEnabled="False"
                 Foreground="{StaticResource PlayarrBrand}"
-                Background="#4DFFFFFF"
+                Background="Transparent"
                 FocusVisualPrimaryBrush="White"
                 FocusVisualPrimaryThickness="2"
                 FocusVisualSecondaryThickness="0"
@@ -142,7 +142,7 @@
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Rectangle x:Name="HorizontalTrackRect" Grid.ColumnSpan="3" Height="6" VerticalAlignment="Center" Fill="{TemplateBinding Background}" />
+                                <Rectangle x:Name="HorizontalTrackRect" Grid.ColumnSpan="3" Height="6" VerticalAlignment="Center" Fill="#4DFFFFFF" />
                                 <Rectangle x:Name="HorizontalDecreaseRect" Grid.Column="0" Height="6" VerticalAlignment="Center" Fill="{TemplateBinding Foreground}" />
                                 <Thumb x:Name="HorizontalThumb" Grid.Column="1" Width="1" Height="44" Background="Transparent" />
                             </Grid>
@@ -185,8 +185,8 @@
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Quality" Click="InfoButton_Click">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="HD" FontSize="7.68" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
-                    <TextBlock x:Name="QualityText" Margin="16.59,0,0,0" FontSize="10.56" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
+                    <TextBlock Text="HD" FontSize="7.68" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" Margin="0,-2.4,0,0" />
+                    <TextBlock x:Name="QualityText" Margin="16.59,-2.4,0,0" FontSize="10.56" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
             <Button x:Name="InfoButton" Width="64" Height="64" Margin="1708.41,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"

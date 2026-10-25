@@ -34,6 +34,7 @@ namespace Playarr.Xbox.Views
         public HomePage()
         {
             InitializeComponent();
+            Background = Theme.PageStage(); // the web's page wash, as every page
             _viewModel = new HomeViewModel(App.Environment);
             // The rails' scroller would swallow Up/Down to scroll; D-pad Up/Down must move focus to the card above or below.
             RailsScroll.PreviewKeyDown += RailsScroll_PreviewKeyDown;
