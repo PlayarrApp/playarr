@@ -1943,17 +1943,17 @@ struct TVLibraryKindView: View {
             if !year.isEmpty {
                 Text(year)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
-                    .parityLayout(text: year, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
+                    .parityLayout(text: year, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
             }
             if !genreLine.isEmpty {
                 Text(genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .parityLayout(text: genreLine, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
+                    .parityLayout(text: genreLine, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
             }
             if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
                 Text(text)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .parityLayout(text: text, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
+                    .parityLayout(text: text, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
             }
         }
         .font(TVTheme.font(size: 13, weight: .medium))

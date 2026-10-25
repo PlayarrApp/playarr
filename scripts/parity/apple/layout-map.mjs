@@ -11,11 +11,14 @@ export function mapRaw(doc, screen, theme) {
   const plain = doc.raw.filter((e) => e.source === "ax" && !styled.some((s) => s.text === e.text && Math.abs(s.rect.x - e.rect.x) < 3 && Math.abs(s.rect.y - e.rect.y) < 12));
   const elements = [...styled, ...plain].map((e) => {
     const single = e.fontSize != null && e.text && !e.lines && e.width != null && e.width <= e.rect.w + 0.5;
-    // the text run's measured width; a wrapped heading spans first ascent to last descent of its lines, from the font's own metrics
-    let rect = { x: e.rect.x, y: e.rect.y, w: single ? e.width : e.rect.w, h: e.rect.h };
+    // the text run: its measured width by the font's own ascent plus descent (hhea, from the UIFont drawn), centred in the view's box;
+    // a wrapped heading spans first ascent to last descent of its lines
+    let rect = { x: e.rect.x, y: e.rect.y, w: e.rect.w, h: e.rect.h };
     if (e.lines?.length && e.content != null) {
       rect = { x: e.rect.x, y: e.rect.y + e.pitch / 2 - e.content / 2, w: e.width, h: e.pitch * (e.lines.length - 1) + e.content };
-    }
+    } else if (single && e.content != null) {
+      rect = { x: e.rect.x, y: e.rect.y + e.rect.h / 2 - e.content / 2, w: e.width, h: e.content };
+    } else if (single) rect.w = e.width;
     const out = {
       text: e.text ?? "",
       role: e.role,

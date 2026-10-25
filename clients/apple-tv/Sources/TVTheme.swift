@@ -311,7 +311,7 @@ struct TVProfileAddLabel: View {
                     // Web clamp(2.4rem, 4vw, 5.4rem) weight 300 → ~0.35× avatar.
                     .font(TVTheme.font(size: 76.8 * scale, css: 300))
                     .foregroundStyle(active ? palette.ink : palette.inkSoft)
-                    .parityLayout(text: "+", size: 76.8 * scale, weight: 300, color: active ? palette.ink : palette.inkSoft, lineHeight: 105)
+                    .parityLayout(text: "+", size: 76.8 * scale, weight: 300, color: active ? palette.ink : palette.inkSoft)
             }
             .frame(width: avatarSize, height: avatarSize)
             // Web focus avatar: scale 1.035 + 4px pink ring (box-shadow) + soft lift.
@@ -344,14 +344,14 @@ struct TVProfileAddLabel: View {
                 .font(TVTheme.font(size: 17.28 * scale, css: 680))
                 .foregroundStyle(active ? palette.ink : palette.inkSoft)
                 .lineLimit(1)
-                .parityLayout(text: "Sign in", size: 17.28 * scale, weight: 680, color: active ? palette.ink : palette.inkSoft, lineHeight: 23)
+                .parityLayout(text: "Sign in", size: 17.28 * scale, weight: 680, color: active ? palette.ink : palette.inkSoft)
 
             Text("Add another profile")
                 .font(TVTheme.font(size: 9.41 * scale, css: 690))
                 .tracking(0.42 * scale)
                 .textCase(.uppercase)
                 .foregroundStyle(palette.inkMuted)
-                .parityLayout(text: "ADD ANOTHER PROFILE", size: 9.41 * scale, weight: 690, color: palette.inkMuted, tracking: 0.42 * scale, lineHeight: 13)
+                .parityLayout(text: "ADD ANOTHER PROFILE", size: 9.41 * scale, weight: 690, color: palette.inkMuted, tracking: 0.42 * scale)
                 .frame(minHeight: 12 * scale)
         }
         .frame(width: avatarSize)
@@ -433,7 +433,7 @@ struct TVProfileActionLabel: View {
                         .parityBox("image", fill: palette.surface)
                     Text("Sign out")
                         .font(TVTheme.font(size: 10.75 * scale, css: 720))
-                        .parityLayout(text: "Sign out", size: 10.75 * scale, weight: 720, color: active ? Color.white : palette.inkSoft, lineHeight: 15)
+                        .parityLayout(text: "Sign out", size: 10.75 * scale, weight: 720, color: active ? Color.white : palette.inkSoft)
                 }
                 .foregroundStyle(active ? Color.white : palette.inkSoft)
                 .padding(.horizontal, 16 * scale)
@@ -1208,12 +1208,12 @@ struct TVShellHeader: View {
                     .font(TVTheme.font(size: 17.28, css: 760))
                     .tracking(-0.52)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: Self.timeString(frozen: frozenClock), role: "text", size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52, lineHeight: 25.92, onPage: true)
+                    .parityLayout(text: Self.timeString(frozen: frozenClock), role: "text", size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52, onPage: true)
                 Text(Self.dateString(frozen: frozenClock))
                     .font(TVTheme.font(size: 11.136, css: 640))
                     .tracking(0.45)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: Self.dateString(frozen: frozenClock), size: 11.136, weight: 640, color: DesignTokens.Color.textPrimary, tracking: 0.45, lineHeight: 12.25, onPage: true)
+                    .parityLayout(text: Self.dateString(frozen: frozenClock), size: 11.136, weight: 640, color: DesignTokens.Color.textPrimary, tracking: 0.45, onPage: true)
             }
             }
             .placed(x: clockLeading, y: 68.2, h: 25.9)
