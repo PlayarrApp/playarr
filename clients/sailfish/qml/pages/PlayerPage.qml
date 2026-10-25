@@ -2,6 +2,7 @@ import QtQuick 2.6
 import QtMultimedia 5.6
 import Sailfish.Silica 1.0
 import "../components"
+import "../components/playerBusy.js" as PlayerBusy
 import QtQuick.Window 2.2
 
 // Fullscreen player: server-negotiated playback (direct or HLS) with resume and progress reporting.
@@ -18,6 +19,7 @@ Page {
     property bool parityPositionAcknowledged: false
     property string parityCaptureFailure: ""
     property int paritySeekWaitTicks: 0
+    property int parityCaptureWaitTicks: 0
     property string workId: ""           // for the now-playing artwork
     property string localPath: ""         // offline copy: no negotiation, no server reporting
 
@@ -47,6 +49,14 @@ Page {
     function logParityPlayerState() {
         console.log("PARITY|player|" + player.playbackState + "|" + Math.floor(positionMs / 1000)
                     + "|" + (menuOpen ? 1 : 0) + "|" + (controls ? 1 : 0) + "|" + player.position + "|" + positionMs)
+    }
+
+    function playerBusyShouldRun() {
+        return PlayerBusy.shouldRun(page.error !== "", !!page.info,
+                                    player.status === MediaPlayer.Loading,
+                                    player.status === MediaPlayer.Stalled,
+                                    player.status === MediaPlayer.Buffering,
+                                    player.playbackState === MediaPlayer.PausedState)
     }
 
     function prepareParityCaptureHold() {
@@ -262,15 +272,22 @@ Page {
         interval: 50
         repeat: true
         onTriggered: {
-            if (player.playbackState !== MediaPlayer.PausedState) return
-            if (page.status !== PageStatus.Active || !page.controls) return
-            if (player.position === 2000 && page.positionMs === 2000) {
-                page.parityPositionAcknowledged = true
-                console.log("PARITY|player-capture-ack|" + page.positionMs + "|" + player.position)
-                page.logParityPlayerState()
-                page.parityCaptureLayoutDumpRequested()
+            if (++page.parityCaptureWaitTicks > 1000) {
+                page.parityCaptureFailure = "readiness-timeout:status=" + player.status + ":state=" + player.playbackState
+                        + ":engine=" + player.position + ":source=" + page.positionMs
+                        + ":busy=" + playerBusy.running + ":opacity=" + playerBusy.opacity
+                console.log("PARITY|player-capture-failed|" + page.parityCaptureFailure)
                 stop()
+                return
             }
+            if (!PlayerBusy.captureReady(player.playbackState, MediaPlayer.PausedState,
+                                         page.status === PageStatus.Active, page.controls,
+                                         player.position, page.positionMs, playerBusy.running, playerBusy.opacity)) return
+            page.parityPositionAcknowledged = true
+            console.log("PARITY|player-capture-ack|" + page.positionMs + "|" + player.position)
+            page.logParityPlayerState()
+            page.parityCaptureLayoutDumpRequested()
+            stop()
         }
     }
     Timer {
@@ -305,9 +322,10 @@ Page {
         onClicked: page.controls = !page.controls
     }
     BusyIndicator {
+        id: playerBusy
         anchors.centerIn: parent
         size: BusyIndicatorSize.Large
-        running: !page.error && (!page.info || player.status === MediaPlayer.Loading || player.status === MediaPlayer.Stalled || player.status === MediaPlayer.Buffering)
+        running: page.playerBusyShouldRun()
     }
     Label { renderType: Text.NativeRendering;
         anchors { centerIn: parent; margins: Theme.paddingLarge }
