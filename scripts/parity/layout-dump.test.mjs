@@ -185,3 +185,8 @@ test("color-mix fills resolve to the painted colour (opaque, translucent over th
     <div class="abs" style="top:60px;width:40px;height:20px;background:color-mix(in srgb, #ff0000 25%, #0000ff)"></div>`);
   assert.deepEqual(d.elements.map((e) => e.background), ["#ddc7cd", "#808080", "#4000bf"]);
 });
+
+test("text nodes split by an element keep a separator; adjacent ones do not", { skip }, async () => {
+  const d = await dump(`<div style="display:flex;gap:12px"><span id="k"></span></div><script>const k = document.getElementById("k").parentElement; k.replaceChildren(document.createTextNode("Released"), document.createElement("i"), document.createTextNode("1 Jun 1998"));</script>`);
+  assert.deepEqual(texts(d), ["Released 1 Jun 1998"]);
+});
