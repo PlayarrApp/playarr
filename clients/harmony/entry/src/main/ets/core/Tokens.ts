@@ -382,7 +382,7 @@ export const TvGeometry: TvGeometryTokens = {
   homeRailsBottomPad: 405,
   // Web rail pitch is 366 (heading 26, gap 30, card 213, 97 to the next heading); the list height
   // includes room for the focus lift and caption, so the gap between rails is smaller here.
-  homeRailsHeadingGap: 38, // web: heading 49 above the cards (was 41); the caption's 10 vp joined the row
+  homeRailsHeadingGap: 34.8, // web: heading 49 above the cards (was 41); the caption's 10 vp joined the row
   homeRailsListHeight: 250,
   homeRailsRowGap: 81,
 

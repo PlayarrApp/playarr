@@ -116,22 +116,26 @@ export struct PageShell {
 
   @Builder
   private headerBack(): void {
-    Text('←').fontFamily(arrowFont(720))
-      .fontSize(17.28).lineHeight(webLineHeight(17.28)).halfLeading(true) // web dump: 17.28, Liberation Sans bold
-      .fontWeight(FontWeight.Normal)
-      .fontColor(toResourceColor(activeColors().inkSoft))
-      .textAlign(TextAlign.Center)
-      .width(tv(HEADER_SIZE))
-      .height(tv(HEADER_SIZE))
-      .borderRadius(tv(HEADER_SIZE / 2))
-      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-      // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
-      .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
-      .id('px:' + this.backRole + ':' + this.backLabel)
-      .focusable(true)
-      .onClick(() => {
-        popRoute(getNavStack());
-      })
+    // web: the link (ring, fill) holds the arrow glyph as its own text
+    Row() {
+      Text('←').fontFamily(arrowFont(720))
+        .fontSize(17.28).lineHeight(webLineHeight(17.28)).halfLeading(true) // web dump: 17.28, Liberation Sans bold
+        .fontWeight(FontWeight.Normal)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .textAlign(TextAlign.Center)
+    }
+    .justifyContent(FlexAlign.Center)
+    .width(tv(HEADER_SIZE))
+    .height(tv(HEADER_SIZE))
+    .borderRadius(tv(HEADER_SIZE / 2))
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
+    .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
+    .id('px:' + this.backRole + ':' + this.backLabel)
+    .focusable(true)
+    .onClick(() => {
+      popRoute(getNavStack());
+    })
   }
 
   @Builder
@@ -143,7 +147,7 @@ export struct PageShell {
       .letterSpacing(tv(TITLE_LETTER_SPACING))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(HEADER_SIZE))
-      .translate({ y: -1.3 }) // web's title box sits 1.3 higher
+      .translate({ y: 0.2 }) // web's title box sits level with the web header's
   }
 
   @Builder

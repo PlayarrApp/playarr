@@ -512,13 +512,13 @@ export struct PosterCard {
           .width(this.cardWidth)
           .fontSize(this.titleFontSize).lineHeight(webLineHeight(this.titleFontSize)).halfLeading(true)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.titleFontSize * -0.0154 + 0.06) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
+          .letterSpacing(this.titleFontSize * -0.0154 + (isTvMetrics() ? -0.12 : 0.06)) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
           .padding(this.softCaption ? { top: 7.3, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
-          .margin({ bottom: this.subtitle.length > 0 ? 0 : (this.softCaption ? 3.3 : (this.variant === 'grid' ? 3.4 : 0)) }) // web: the link box ends 3.3 (phone) or 3.4 (TV grid) under a title-only caption
+          .margin({ bottom: this.subtitle.length > 0 ? 0 : (this.softCaption ? 3.3 : (this.variant === 'grid' ? 1.8 : 0)) }) // web: the link box ends 3.3 (phone) or 3.4 (TV grid) under a title-only caption
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
