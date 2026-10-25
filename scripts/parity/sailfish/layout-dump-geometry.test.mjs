@@ -176,7 +176,7 @@ test("does not composite rotated flat fills into empty AABB corners", () => {
   attach(root, makeItem("corner-text", 2, 2, {
     x: 27, y: 42, text: "x", contentWidth: 2, contentHeight: 10,
     font: { family: "Sans", pixelSize: 10, weight: 50 }, color: { r: 0, g: 0, b: 0, a: 1 },
-    lineCount: 1, baselineOffset: 1, horizontalAlignment: 0, implicitWidth: 2, elide: 0,
+    lineCount: 1, baselineOffset: 1, horizontalAlignment: 0, implicitWidth: 2, elide: 3,
   }));
   const text = dump(root).find((item) => item.text === "x");
   assert.equal(text.background, "#ffffff");
@@ -185,7 +185,7 @@ test("does not composite rotated flat fills into empty AABB corners", () => {
 function textItem(props) {
   return {
     text: "", contentWidth: 10, contentHeight: 10, font: { family: "Sans", pixelSize: 10, weight: 50, letterSpacing: 0 }, color: { r: 0, g: 0, b: 0, a: 1 },
-    lineCount: 1, baselineOffset: 8, horizontalAlignment: 1, wrapMode: 0, elide: 0, leftPadding: 0, rightPadding: 0, ...props,
+    lineCount: 1, baselineOffset: 8, horizontalAlignment: 1, wrapMode: 0, elide: 3, leftPadding: 0, rightPadding: 0, ...props,
   };
 }
 
@@ -203,7 +203,7 @@ test("exports one run per rendered line from the recorded line boxes", () => {
 
 test("elides the last line to the width Qt gave it and centres a run by its own width", () => {
   const root = makeItem("root", 100, 100);
-  attach(root, makeItem("clipped", 40, 10, textItem({ text: "abcdefghijkl", elide: 3, contentWidth: 40 })));
+  attach(root, makeItem("clipped", 40, 10, textItem({ text: "abcdefghijkl", elide: 1, contentWidth: 40 })));
   attach(root, makeItem("centred", 40, 10, textItem({ text: "abcd", horizontalAlignment: 4, y: 20 })));
   const [clipped, centred] = dump(root);
   assert.equal(clipped.text, "abcdefg…");

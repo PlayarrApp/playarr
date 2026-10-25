@@ -220,8 +220,8 @@ PlayarrPage {
         width: 75.5 * Tokens.u; height: 43.7 * Tokens.u
         onClicked: Qt.openUrlExternally("https://playarr.app/clients")
         RectangularGlow { y: 14 * Tokens.u; width: parent.width; height: parent.height; glowRadius: 19 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius; color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12) }
-        Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.dark ? "#1e1a1e" : "#fcfcfb"; border.width: 1; border.color: Tokens.line }
-        PLabel { id: clientsLbl; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
+        Rectangle { id: clientsBg; anchors.fill: parent; radius: height / 2; color: Tokens.dark ? "#1e1a1e" : "#fcfcfb"; border.width: 1; border.color: Tokens.line }
+        PLabel { id: clientsLbl; property var radiusSource: clientsBg; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
                 property string parityRole: "link";
                 color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(7.68) }
         PLabel { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"

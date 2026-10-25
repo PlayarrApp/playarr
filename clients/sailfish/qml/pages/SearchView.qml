@@ -108,7 +108,7 @@ Item {
         PLabel { renderType: Text.NativeRendering
             anchors { left: plate.right; leftMargin: 22.3 * Tokens.u; verticalCenter: plate.verticalCenter }
             text: qsTr("Start typing to search."); color: Tokens.ink
-            font.family: Tokens.family610; font.pixelSize: Tokens.fs(11.52); font.letterSpacing: -0.23 * Tokens.u
+            font.family: Tokens.family610; font.pixelSize: Tokens.fsFit(11.52); font.letterSpacing: -0.07 * Tokens.u
         }
     }
     WorkGrid {

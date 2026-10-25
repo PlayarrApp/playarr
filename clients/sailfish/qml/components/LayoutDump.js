@@ -131,7 +131,8 @@ function weightOf(item, weights) {
 // Text as laid out: one run per rendered line, in item coordinates. Qt 5.6 reports each line's box through Text.lineLaidOut (kept by PLabel
 // and PText in `laidLines`) but not its characters, so the characters of a wrapped line are found by fitting the words into the width Qt gave
 // that line, and the result is checked against Qt's own line count and widest line.
-function textElideMode(e) { return e === 1 ? 0 : e === 3 ? 1 : 2 }
+// Text.ElideLeft 0, ElideRight 1, ElideMiddle 2 and ElideNone 3 match Qt::TextElideMode, with None added.
+function textElideMode(e) { return e }
 function breakParagraph(para, widthOf, advance, wrapMode, startLine, room) {
     var tokens = para.match(/\S+\s*/g) || [""], lines = [], cur = ""
     function fits(s) { return advance(s.replace(/\s+$/, "")) <= widthOf(startLine + lines.length) + 0.01 }
@@ -155,7 +156,8 @@ function lineRuns(item, metrics, log) {
     var ha = item.horizontalAlignment, avail = item.width - (item.leftPadding || 0) - (item.rightPadding || 0)
     var wrap = item.wrapMode !== undefined && item.wrapMode !== 0
     var recorded = rec && rec.length === count
-    function widthOf(i) { return recorded ? rec[Math.min(i, rec.length - 1)].w : avail }
+    // Qt reports the width a wrapping line may use; an unwrapped line has no limit of its own (its width is the item's).
+    function widthOf(i) { return recorded && wrap ? rec[Math.min(i, rec.length - 1)].w : avail }
     var texts = []
     if (!wrap || count === 1) {
         var paras = wrap ? [shown] : shown.split("\n")
@@ -168,7 +170,7 @@ function lineRuns(item, metrics, log) {
             if (left <= 0) break
             var got = breakParagraph(split[si], widthOf, m.advance, item.wrapMode, texts.length, si === split.length - 1 ? left : undefined)
             for (var gi = 0; gi < got.length; ++gi) texts.push(got[gi])
-            if (got.rest !== undefined && got.rest !== "") { if (item.elide) texts[texts.length - 1] += got.rest; break }
+            if (got.rest !== undefined && got.rest !== "") { if (item.elide !== undefined && item.elide !== 3) texts[texts.length - 1] += got.rest; break }
         }
     }
     if (texts.length !== count) log("LAYOUTWARN|wrapped-lines|" + texts.length + "|" + count + "|" + shown.slice(0, 40))
@@ -177,7 +179,7 @@ function lineRuns(item, metrics, log) {
         var t = texts[i].replace(/\s+$/, "").replace(/^\s+/, "")
         var last = i === texts.length - 1
         var room = widthOf(i)
-        if (item.elide !== undefined && item.elide !== 0 && last && m.advance(t) > room + 0.01) t = m.elide(t, textElideMode(item.elide), room)
+        if (item.elide !== undefined && item.elide !== 3 && last && m.advance(t) > room + 0.01) t = m.elide(t, textElideMode(item.elide), room)
         var wdt = m.advance(t)
         var lx = recorded ? rec[i].x : (item.leftPadding || 0)
         var x = ha === 4 ? lx + (room - wdt) / 2 : ha === 2 ? lx + room - wdt : lx
@@ -227,6 +229,7 @@ function dump(root, u, weights, metrics, log) {
             if (typeof item.text === "string" && item.contentWidth !== undefined && item.font !== undefined && item.color !== undefined && item.text.length > 0) {
                 var textRadiusScale = item.focusRadius ? uniformRadiusScale(item, root) : null
                 var runs = lineRuns(item, metrics, log)
+                if (!runs.length) log("LAYOUTWARN|text-without-runs|" + item.text.slice(0, 30))
                 for (var li = 0; li < runs.length; ++li) {
                     var run = runs[li]
                     var textPoly = clippedItemPolygon(item, root, run.x, run.y, run.w, run.h)
