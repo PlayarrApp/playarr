@@ -78,6 +78,8 @@ sub onSpecChange()
                 x = advanceOf(Left(line, j)) - advanceOf(piece) + tracking * (i - 1)
                 glyph = nextGlyph()
                 glyph.font = font
+                ' The font actually set on this Label, readable through ECP query/app-ui (node names are printed; fonts are not).
+                glyph.id = "f" + Str(weight).Trim() + "s" + Str(size).Trim()
                 glyph.text = piece
                 if spec.color <> invalid
                     glyph.color = spec.color

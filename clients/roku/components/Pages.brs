@@ -140,25 +140,6 @@ function pgRound(parent as Object, x as Float, y as Float, w as Float, h as Floa
     return poster
 end function
 
-' Layout-score annotation: an invisible box carrying what the web exports for this element (docs/parity/LAYOUT.md): role, accessible
-' name, radius and the colour behind it. Costs nothing on screen; source/LayoutDump.brs prints it with the box's scene position.
-function pgMark(parent as Object, role as String, name as String, x as Float, y as Float, w as Float, h as Float, radius = 0 as Float, bg = "surface" as String) as Object
-    mark = CreateObject("roSGNode", "Rectangle")
-    mark.translation = [x, y]
-    mark.width = w
-    mark.height = h
-    mark.color = "0x00000000"
-    mark.addFields({ parityRole: role, parityName: name, parityRadius: radius, parityBg: bg })
-    parent.AppendChild(mark)
-    return mark
-end function
-
-' A synthetic text element (a glyph the device draws as an image): reported as the text the web draws.
-sub pgMarkText(parent as Object, text as String, x as Float, y as Float, w as Float, h as Float, size as Float, weight as Integer, role as String, bg = "surface" as String, aria = "text" as String, radius = 0 as Float)
-    mark = pgMark(parent, aria, "", x, y, w, h, radius, bg)
-    mark.addFields({ parityText: text, paritySize: size, parityWeight: weight, parityColor: role })
-end sub
-
 function pgIcon(parent as Object, x as Float, y as Float, size as Integer, file as String, role as String, alpha = -1 as Integer) as Object
     poster = CreateObject("roSGNode", "Poster")
     poster.uri = "pkg:/images/" + file
@@ -380,16 +361,11 @@ end function
 ' tiny label. Used for every header action (Calendar link, Filters).
 ' Shared page header pieces (web PageHeader): the round Back button, the title spec and the right-hand action tile. Every page
 ' (Pages, Library, Detail, Search) draws these here and nowhere else; clients/roku/tests/test_page_anatomy.py enforces it.
-function pgBackButton(parent as Object, x as Float, name = "Back to Home" as String, role = "link" as String) as Object
+sub pgBackButton(parent as Object, x as Float)
     pgRound(parent, x, 56.3, 50, 50, 25, "surface", 179)
     pgRound(parent, x, 56.3, 50, 50, 25, "line", -1, true)
     pgIcon(parent, x + 16.4, 73, 17, "arrow-left.png", "inkSoft")
-    back = pgMark(parent, role, name, x, 56.2, 50, 50, 50, "c:1f1b1f:fefefd")
-    ' The web draws the arrow as a text glyph: the same box, reported as the text it is.
-    arrow = pgMark(parent, "text", "←", x + 16.4, 69.2, 17.3, 23, 0, "c:1f1b1f:fefefd")
-    arrow.addFields({ parityText: "←", paritySize: 17.28, parityWeight: 720, parityColor: "inkSoft" })
-    return back
-end function
+end sub
 
 function PageTitleSpec(text as String) as Object
     return { text: text, size: 33.6, weight: 580, tracking: -1.523, role: "ink" }
@@ -401,8 +377,6 @@ sub pgShellTile(parent as Object, x as Float, y as Float, label as String, icon 
     pgRound(parent, x, y, 62, 72, 14, "line", -1, true)
     pgIcon(parent, x + 19, y + 15, 24, icon, "inkMuted")
     pgLabel(parent, x, y + 44.6, 62, 14, label, 8.26, 700, "inkMuted", { horizAlign: "center", tracking: 0.163 })
-    pgMark(parent, "button", label, x, y, 62, 72, 14, "c:1e1b1e:fdfcfc")
-    pgMark(parent, "image", "", x + 19, y + 15, 24, 24, 0, "c:1e1b1e:fdfcfc")
 end sub
 
 sub pgTile(parent as Object, x as Float, y as Float, label as String, icon as String, action as String, data = invalid as Dynamic)
@@ -433,12 +407,7 @@ sub pageBegin(title as String, panelX as Float)
     if m.clientsStageChrome <> invalid then m.clientsStageChrome.visible = clientsPage
     backX = 153.6
     if clientsPage then backX = 0
-    backName = "Back to Home"
-    if m.pageKind = "calendar" then backName = "Back to home"
-    if m.pageKind = "settings" then backName = "Settings"
-    backRole = "link"
-    if m.pageKind = "settings" then backRole = "button"
-    pgBackButton(m.pageHead, backX, backName, backRole)
+    pgBackButton(m.pageHead, backX)
     pgFocusable(backX, 56.3, 50, 50, 25, "back")
     if clientsPage
         pgFocusable(1552, 50, 144, 48, 24, "clientsTheme")
@@ -1886,8 +1855,6 @@ function calendarCard(parent as Object, x as Float, y as Float, w as Float, entr
     full = entry.title
     if hasSub then full = full + " " + calendarEntrySubtitle(entry)
     full = full + " " + calendarTimeText(entry) + " " + calendarReleaseLabel(entry) + " " + calendarKindLabel(entry) + " " + status
-    pgMark(parent, "button", full, x, y, w, ch, 12, "surfaceStrong")
-    pgMark(parent, "image", "", x + 16, artY, 40, 60, 6, "surfaceSoft")
     pgLabel(parent, x + 70.4, y + titleY, w - 90, 26, entry.title, 19.2, 640, "ink", { maxLines: 1 })
     if hasSub then pgLabel(parent, x + 70.4, y + 41.2, w - 90, 26, calendarEntrySubtitle(entry), 19.2, 400, "inkSoft", { maxLines: 1 })
     endX = calendarMetaRow(parent, x + 70.4, y + metaY, entry)
@@ -2011,10 +1978,8 @@ sub pgCalendarCircle(x as Float, name as String, icon as String, glyphX as Float
     pgRound(m.pageHead, x, 56.2, 50, 50, 25, "line", -1, true)
     pgIcon(m.pageHead, glyphX - 0.3, 73, 15, icon, "inkSoft")
     pgFocusable(x, 56.2, 50, 50, 25, action)
-    pgMark(m.pageHead, "button", name, x, 56.2, 50, 50, 50, "sample")
     glyph = "←"
     if name = "Next" then glyph = "→"
-    pgMarkText(m.pageHead, glyph, glyphX, 71.1, 14.7, 20, 14.72, 720, "inkSoft", "sample")
 end sub
 
 sub pgCalendarPill(x as Float, text as String, action as String)
@@ -2023,7 +1988,6 @@ sub pgCalendarPill(x as Float, text as String, action as String)
     pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "line", -1, true)
     pgLabel(m.pageHead, x + 20.6, 71.1, w - 41.2, 20, text, 14.72, 720, "inkSoft", { horizAlign: "center" })
     pgFocusable(x, 54.8, w, 52.8, 26.4, action)
-    pgMarkText(m.pageHead, text, x + 20.6, 71.1, w - 41.2, 20, 14.72, 720, "inkSoft", "sample", "button", 999)
 end sub
 
 sub renderCalendarAgenda(entries as Object)
@@ -2045,8 +2009,6 @@ sub renderCalendarAgenda(entries as Object)
 
     r = calendarViewRange()
     agendaStatus = calendarWeekStatus(r)
-    am = pgMark(m.pageHead, "status", agendaStatus, 0, 1, 168.3, 26, 0, "surface")
-    am.addFields({ parityText: agendaStatus, paritySize: 19.2, parityWeight: 400, parityColor: "ink" })
     ' Left: the selected entry's sheet (web agenda stage: kicker, 69 px title, meta line, status pill, overview, buttons).
     dt = calendarEntryDate(selected)
     pgTrackedText(m.pageHead, 153.6, 264.2, 0, UCase(calendarKindLabel(selected) + " · " + calendarReleaseLabel(selected)), 12.29, 860, 0.97, "brandInk", true)
@@ -2118,7 +2080,6 @@ sub renderCalendarAgenda(entries as Object)
             hg = CreateObject("roSGNode", "Group")
             m.pageHead.AppendChild(hg)
             pgRect(hg, 775, ay, 1060, 58, "surface")
-            pgMark(hg, "heading", "", 783.4, ay, 1033.4, 44, 0, "c:151315:fbfaf9")
             headRole = "ink"
             if day = today then headRole = "accent"
             headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole)
@@ -2126,8 +2087,6 @@ sub renderCalendarAgenda(entries as Object)
                 hx = 783.4 + headLabel.textWidth + 18.5
                 pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
                 tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
-                tl.addFields({ parityHidden: true })
-                pgMarkText(hg, "TODAY", hx, ay + 13.6, 42.3, 15, 11.2, 640, "accent", "c:151315:fbfaf9", "text", 999)
             end if
             m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
@@ -2165,17 +2124,14 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
         wt = 720
         if i = 1 then wt = 900
         pw = PlayarrTextWidth(parts[i], size, wt, 0)
-        pgLabel(m.pageHead, tx, y + 19, pw + 4, 20, parts[i], size, wt, textRole).addFields({ parityHidden: true })
+        pgLabel(m.pageHead, tx, y + 19, pw + 4, 20, parts[i], size, wt, textRole)
         if parts.Count() > 1
-            pgMarkText(m.pageHead, parts[i], tx, y + 19, pw, 20, size, wt, textRole, "surface", "text", 0)
         else
             bgTok = "surface"
             if style = "primary" then bgTok = "accent"
-            pgMarkText(m.pageHead, parts[i], tx, y + 19, pw, 20, size, wt, textRole, bgTok, "button", 999)
         end if
         tx = tx + pw + gap
     end for
-    if parts.Count() > 1 then pgMark(m.pageHead, "button", text, x, y, w, 58, 999, "surface")
     pgFocusable(x, y, w, 58, 29, action, data)
     return w
 end function
@@ -2213,8 +2169,6 @@ sub renderCalendarMonth(entries as Object)
         end if
     end for
     ' The web names the grid for assistive tech with a hidden status line, then draws the weekday row.
-    statusMark = pgMark(m.pageBody, "status", calendarRangeLabelLong(r), 153.6, 163, 120.1, 26, 0, "sample")
-    statusMark.addFields({ parityText: calendarRangeLabelLong(r), paritySize: 19.2, parityWeight: 400, parityColor: "ink" })
     names = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
     for c = 0 to 6
         pgLabel(m.pageBody, gx + c * cw, 181.4, cw, 16, names[c], 12, 400, "inkMuted", { horizAlign: "center", tracking: 0.96 })
@@ -2232,7 +2186,6 @@ sub renderCalendarMonth(entries as Object)
         if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12)
         cellBg = "surface"
         if Mid(day, 6, 2) <> monthOf then cellBg = "c:241f23:f0eeee"
-        pgMark(m.pageBody, "container", "", x, y, cw, ch, 0, cellBg)
     end for
     for rr = 0 to rows
         pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
@@ -2270,9 +2223,7 @@ sub renderCalendarMonth(entries as Object)
             text = chips[k].title
             if chips[k].count > 1 then text = text + " · " + chips[k].count.ToStr() + "×"
             cy = y + 1.8 + k * 25.4
-            pgMark(m.pageBody, "button", chips[k].title + ", " + chips[k].status + ", " + calendarDayHeading(dt, false), x + 5.8, cy, 226, 44, 4, "sample")
             pgRound(m.pageBody, x + 11.4, cy + 17.6, 8.8, 8.8, 4.4, "ink")
-            pgMark(m.pageBody, "container", "", x + 11.4, cy + 17.6, 8.8, 8.8, 50, dot)
             pgLabel(m.pageBody, x + 27.4, cy + 12.5, cw - 38, 17, text, 12.48, 400, "ink", { maxLines: 1 })
         end for
         numRole = "ink"
@@ -2330,8 +2281,6 @@ sub renderCalendarWeek(entries as Object)
     today = calendarTodayString()
     todayIdx = -1
     statusLabel = calendarRangeLabelLong(r)
-    statusMark = pgMark(m.pageBody, "status", calendarWeekStatus(r), 153.6, 163, 175.5, 26, 0, "surface")
-    statusMark.addFields({ parityText: calendarWeekStatus(r), paritySize: 19.2, parityWeight: 400, parityColor: "ink" })
     for c = 0 to 6
         day = calAddDays(r.start, c)
         x = 153.6 + c * 460
@@ -2345,8 +2294,6 @@ sub renderCalendarWeek(entries as Object)
             hx = x + headLabel.textWidth + 18.5
             pgRound(m.pageBody, hx - 9.35, 175.5, 61, 22, 11, "lineStrong", -1, true)
             tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
-            tl.addFields({ parityHidden: true })
-            pgMarkText(m.pageBody, "TODAY", hx, 179.4, 42.3, 15, 11.2, 640, "accent", "surface", "text", 999)
         end if
         list = byDay[day]
         y = 208.0
@@ -2384,8 +2331,6 @@ function calendarBadge(parent as Object, x as Float, y as Float, text as String,
     pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 36)
     pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 153, true)
     l = pgLabel(parent, x, y, w + 4, 19, text, 13.44, 750, "ink")
-    l.addFields({ parityHidden: true })
-    pgMarkText(parent, text, x, y, w, 19, 13.44, 750, "ink", pillBg, "text", 999)
     return w + 2 * padX
 end function
 

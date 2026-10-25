@@ -73,8 +73,6 @@ sub renderSettings()
             arrowX = 576.2
         end if
         pgIcon(m.pageBody, arrowX, y + 35.3, 20, "arrow-right.png", arrowRole)
-        pgMark(m.pageBody, "link", numText + " " + sections[i].title + " →", 153.6, y, 470.4, 91.9, 0, rowBg)
-        pgMarkText(m.pageBody, "→", arrowX, y + 31.3, 20.8, 28, 20.8, 400, arrowRole, rowBg)
         pgFocusable(153.6, y, 480.4, 91.9, 12, "section", sections[i].id, true)
     end for
     id = m.settingsPanel
@@ -141,14 +139,12 @@ sub panelAppearance()
     pgHeading(211, "Colour theme")
     pgSegmentedWide(773.8, 265.8, 56, ["System", "Light", "Dark"], PairingThemeIndex(m.themePreference), "theme")
     pgRect(m.pageBody, 773.8, 352, 1042, 1, "line")
-    pgMark(m.pageBody, "container", "", 773.8, 352, 1042.2, 169, 0, "surface")
     pgHeading(384.3, "Home screen artwork")
     pgHint(429.5, "Show portrait covers instead of wide media thumbnails on the home screen.")
     coverIdx = 0
     if m.homeCover = true then coverIdx = 1
     pgSegmentedWide(773.8, 465, 56, ["Thumbnails", "Covers"], coverIdx, "artwork")
     pgRect(m.pageBody, 773.8, 551, 1042, 1, "line")
-    pgMark(m.pageBody, "container", "", 773.8, 551.2, 1042.2, 169, 0, "surface")
     pgHeading(583.5, "Artwork size")
     pgHint(628.7, "Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
     sizes = ["small", "medium", "large"]
@@ -191,7 +187,6 @@ sub pgSegmentedWide(x as Float, y as Float, h as Float, labels as Object, active
         if action = "theme" or action = "artSize" then shown = LCase(shown)
         fit = segmentedFit(LCase(labels[i]))
         pgLabel(m.pageBody, bx + (bw - fit) / 2, by + 20.2 * bh / h, fit + 4, 15, shown, 10.56, 900, role, { fitWidth: fit })
-        pgMark(m.pageBody, "button", labels[i], bx, by, bw, bh, 12, bgRole)
         pgFocusable(cx, y, w, h, 14, action, i, true)
     end for
 end sub

@@ -9,10 +9,10 @@ out=${1:?usage: run.sh <out-dir> [suite-run args]}; shift
 here=$(cd "$(dirname "$0")/.." && pwd)
 : "${ROKU_DEV_TARGET:?set ROKU_DEV_TARGET}" "${ROKU_DEV_PASSWORD:?set ROKU_DEV_PASSWORD}"
 eval "$(node "$here/parity-config.mjs" --shell)"
-export PARITY_STABLE=0
+export PARITY_STABLE=0 ROKU_PARITY_PLAYER_FRAME=1
 cd "$here"
 exec node suite-run.mjs --driver drivers/roku.mjs --out "$out" --via route \
   --only screens,dpad \
-  --screens home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,settings,filters,profiles,actions,film-detail,series-detail \
+  --screens player-controls,home,movies,series,music,calendar-month,calendar-week,calendar-agenda,search,settings,filters,profiles,actions,film-detail,series-detail \
   --checks home-right,home-down,home-down-right,home-left-nav,nav-down,movies-grid-right,movies-grid-down,movies-grid-left-nav,series-grid-down,long-press-actions,nav-right-stage,detail-back \
   "$@"
