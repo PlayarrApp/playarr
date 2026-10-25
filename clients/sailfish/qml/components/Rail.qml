@@ -9,6 +9,7 @@ Column {
     property var items: []
     property bool showUnwatched: true
     property bool restRing: false
+    property bool firstInk: false   // web: the first card of the first rail holds the default focus, its caption is pure black (white in dark)
     property int parityRail: -1
     signal opened(var work)
     signal held(var work)
@@ -22,8 +23,9 @@ Column {
         x: Tokens.pad
         text: root.title
         color: Tokens.ink
+        property string parityRole: "heading"
         font.family: Tokens.family580
-        font.pixelSize: 15.2 * Tokens.u
+        font.pixelSize: Tokens.fs(16); font.letterSpacing: -0.6 * Tokens.u; height: 21.33 * Tokens.u
     }
     Item {
         width: parent.width
@@ -46,6 +48,7 @@ Column {
                 navigationActive: !!(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive)
                 ring: activeFocus || (root.restRing && index === 0 && !(pageStack.currentPage && pageStack.currentPage.navigation && pageStack.currentPage.navigation.keyboardNavigationActive))
                 showUnwatched: root.showUnwatched
+                firstInk: root.firstInk && index === 0
                 onOpened: root.opened(work)
                 onHeld: root.held(work)
             }

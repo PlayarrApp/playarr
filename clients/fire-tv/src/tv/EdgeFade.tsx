@@ -13,6 +13,7 @@ import LinearGradient from '@amazon-devices/react-linear-gradient';
 import {blend, mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {u} from './kit';
+import {NATIVE_DRIVER} from '../debug/layoutMarks';
 
 export type EdgeSide = 'left' | 'right' | 'top' | 'bottom';
 
@@ -48,7 +49,7 @@ export function EdgeFade({side, active, x, y, w, h, size, kind = 'shade', tint, 
   const {colour, scheme} = useTheme();
   const opacity = useRef(new Animated.Value(active ? 1 : 0)).current;
   useEffect(() => {
-    Animated.timing(opacity, {toValue: active ? 1 : 0, duration: 0, easing: Easing.out(Easing.quad), useNativeDriver: true}).start();
+    Animated.timing(opacity, {toValue: active ? 1 : 0, duration: 0, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE_DRIVER}).start();
   }, [active, opacity]);
 
   const horizontal = side === 'left' || side === 'right';

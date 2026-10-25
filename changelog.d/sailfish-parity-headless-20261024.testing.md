@@ -1,0 +1,1 @@
+- Sailfish parity: the emulator runs headless (no VNC or RDP listener); screenshots and keys go through `VBoxManage controlvm`, and `scripts/parity/sailfish/run.sh` is the one-command run.

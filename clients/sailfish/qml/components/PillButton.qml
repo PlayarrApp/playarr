@@ -18,6 +18,14 @@ MouseArea {
     property color fillInk: Tokens.ink
     property color textInk: Tokens.ink   // label colour of the standard look (calendar toolbar pills are softer on web)
     property bool outlineOnly: false
+    property real labelSpacing: 0
+    property real contentGap: 9
+    property real padCss: 16
+    property real contentDy: 0
+    property real iconDy: 0
+    property string parityRole: "button"
+    property string a11yName: text          // the accessible name; a page sets it where it differs from the visible label
+    property real focusRadius: height / 2
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -28,7 +36,7 @@ MouseArea {
     property bool restRing: false   // web draws the focus ring on the first focusable control at rest (calendar Today)
     property bool lift: false   // web detail actions: box-shadow 0 14px 38px rgba(56,38,33,.12)
     property bool natural: icon !== "" || iconImage !== ""
-    readonly property real naturalWidth: Math.ceil(iconW + 9 * Tokens.u + tm.implicitWidth) + 32 * Tokens.u
+    readonly property real naturalWidth: Math.ceil(iconW + contentGap * Tokens.u + tm.implicitWidth) + 2 * padCss * Tokens.u
     implicitHeight: 40 * Tokens.u
     implicitWidth: natural ? naturalWidth : label.implicitWidth + 40 * Tokens.u
     RectangularGlow {
@@ -50,12 +58,12 @@ MouseArea {
         anchors { fill: parent; margins: -4 * Tokens.u }
         radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary
     }
-    Label { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.pixelSize: root.fontSize; }
+    Label { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.letterSpacing: root.labelSpacing; font.pixelSize: root.fontSize; }
     Row {
         id: content
         visible: root.icon !== "" || root.iconImage !== ""
-        anchors.centerIn: parent
-        spacing: 9 * Tokens.u
+        anchors.centerIn: parent; anchors.verticalCenterOffset: root.contentDy * Tokens.u
+        spacing: root.contentGap * Tokens.u
         Image {
             visible: root.iconImage !== ""
             anchors.verticalCenter: parent.verticalCenter
@@ -65,20 +73,22 @@ MouseArea {
         Label { renderType: Text.NativeRendering;
             id: iconLbl
             visible: root.iconImage === ""
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: root.iconDy * Tokens.u
             text: root.icon
+            font.family: Tokens.family400
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
         }
         Label { renderType: Text.NativeRendering;
             id: label2
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 32 * Tokens.u - root.iconW - 9 * Tokens.u)
+            width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 2 * root.padCss * Tokens.u - root.iconW - root.contentGap * Tokens.u)
             text: label.text
             wrapMode: Text.Wrap
             maximumLineCount: 2
             font.family: root.labelFamily
             font.pixelSize: root.fontSize
+            font.letterSpacing: root.labelSpacing
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
         }
     }

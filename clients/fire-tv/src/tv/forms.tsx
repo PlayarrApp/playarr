@@ -7,16 +7,17 @@ import {FocusRing} from './FocusRing';
 import {useTheme} from '../theme/ThemeProvider';
 import {Box, T, u} from './kit';
 import {reportFocus} from '../debug/parityControl';
+import {lx} from '../debug/layoutMarks';
 
 /** `h3` of a settings card: 26.4px/560, 39.6px line. */
 export function SectionTitle({children, small}: {children: React.ReactNode; small?: boolean}): React.ReactElement {
   const {colour} = useTheme();
   return small ? (
-    <T size={22.464} weight={700} lh={33.7} color={colour.ink}>
+    <T heading size={22.464} weight={700} lh={33.7} color={colour.ink}>
       {children}
     </T>
   ) : (
-    <T size={26.4} weight={560} ls={-0.924} lh={39.6} color={colour.ink}>
+    <T heading size={26.4} weight={560} ls={-0.924} lh={39.6} color={colour.ink}>
       {children}
     </T>
   );
@@ -73,6 +74,7 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('none')}
       disabled={disabled}
       hasTVPreferredFocus={hasTVPreferredFocus}
       onFocus={() => {
@@ -96,7 +98,7 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
         transform: [{scale: focused ? 1.03 : 1}],
       }}
     >
-      <T size={primary ? 14.72 : 11.52} weight={720} color={primary ? colour.onAccent : colour.inkSoft}>
+      <T wrole="button" size={primary ? 14.72 : 11.52} weight={720} color={primary ? colour.onAccent : colour.inkSoft}>
         {label}
       </T>
     </Pressable>
@@ -129,6 +131,7 @@ function SegmentButton({label, active, gap, onPress}: {label: string; active: bo
     <Pressable
       accessibilityRole="button"
       accessibilityState={{selected: active}}
+      {...lx('button', label.charAt(0).toUpperCase() + label.slice(1), 12)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
@@ -139,11 +142,11 @@ function SegmentButton({label, active, gap, onPress}: {label: string; active: bo
         borderRadius: u(12),
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: active ? colour.ink : colour.surfaceSoft,
+        backgroundColor: active ? colour.ink : mix(colour.surfaceSoft, 0.64),
         transform: [{scale: active || focused ? 1.025 : 1}],
       }}
     >
-      <T size={10.56} weight={900} color={active ? colour.bg : colour.inkMuted}>
+      <T size={10.56} weight={900} color={active ? colour.bg : colour.inkMuted} style={{textTransform: 'capitalize'}}>
         {label}
       </T>
       {focused ? <FocusRing radius={12} /> : null}

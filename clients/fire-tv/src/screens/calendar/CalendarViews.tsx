@@ -9,6 +9,7 @@ import type {CalendarEntry} from '@playarr-tv/api-client';
 import {useLanguage} from '../../i18n/LanguageProvider';
 import {type CalendarItem, type Day, type DayGroup, type MonthCell, buildMonthGrid, buildWeekDays, groupSeriesEpisodes, itemAvailability, itemPillTone, parseDay} from '../../lib/calendar';
 import {reportFocus} from '../../debug/parityControl';
+import {lx} from '../../debug/layoutMarks';
 import {mix} from '../../theme/color';
 import {useTheme} from '../../theme/ThemeProvider';
 import {EdgeFade} from '../../tv/EdgeFade';
@@ -53,7 +54,7 @@ function DayHeading({day, today, locale, height = HEADING_H, background}: {day: 
   const {colour} = useTheme();
   const {t} = useLanguage();
   return (
-    <View style={{flexDirection: 'row', alignItems: 'center', height: u(height), backgroundColor: background}}>
+    <View {...lx('heading', '')} style={{flexDirection: 'row', alignItems: 'center', height: u(height), backgroundColor: background ?? colour.bg}}>
       <T size={18.4} weight={640} lh={HEADING_H} color={day === today ? colour.accent : colour.ink}>
         {dayHeading(day, locale)}
       </T>
@@ -156,7 +157,7 @@ function DayColumn({group, x, height, shared, onColumnFocus, onOpen}: {group: Da
             <DayHeading day={group.day} today={shared.today} locale={shared.locale} />
           </View>
           {items.length === 0 ? (
-            <T size={12.8} weight={400} lh={19.2} color={colour.inkMuted}>
+            <T size={19.2} weight={400} lh={28.8} color={colour.inkMuted}>
               {t('pages.calendar.dayEmpty')}
             </T>
           ) : null}
@@ -286,7 +287,7 @@ const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, shared, 
   const innerW = CELL_W - 2 * (CELL_BORDER + CELL_PAD_X);
   const footY = y + h - CELL_BORDER - CELL_PAD_Y - MONTH_FOOT;
   const day = (
-    <T size={12.8} weight={640} lh={19.2} color={cell.inMonth ? colour.ink : colour.inkMuted}>
+    <T size={12.8} weight={640} lh={19.2} dy={-1.4} color={cell.inMonth ? colour.ink : colour.inkMuted}>
       {String(parseDay(cell.day).getUTCDate())}
     </T>
   );
@@ -307,7 +308,7 @@ const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, shared, 
       />
       {cell.isToday ? <View pointerEvents="none" style={{position: 'absolute', left: u(x), top: u(y), width: u(CELL_W), height: u(h), borderWidth: u(2), borderColor: colour.accent}} /> : null}
       {shown.map((item, index) => (
-        <Line key={item.key} item={item} x={left} y={linesTop + index * lineH} w={innerW} h={lineH} today={shared.today} onSelect={shared.onSelect} />
+        <Line key={item.key} day={cell.day} item={item} x={left} y={linesTop + index * lineH} w={innerW} h={lineH} today={shared.today} onSelect={shared.onSelect} />
       ))}
       {hidden > 0 ? (
         <MoreFoot label={t('pages.calendar.more', {count: hidden})} x={left} y={footY} w={innerW} onPress={() => onMore(cell.day)}>
@@ -324,6 +325,7 @@ const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, shared, 
 
 /** The web's --brand (global.css). */
 const BRAND = '#cf3157';
+const pillKey = (tone: 'available' | 'upcoming' | 'missing' | 'neutral') => ({available: 'pages.calendar.pillAvailable', upcoming: 'pages.calendar.statusUpcoming', missing: 'pages.calendar.statusMissing', neutral: 'pages.calendar.pillNotTracked'} as const)[tone];
 const TONE_NAMES = {available: 'success', upcoming: 'brand', missing: 'danger', neutral: 'soft'} as const;
 
 function useToneColour(tone: 'available' | 'upcoming' | 'missing' | 'neutral'): string {
@@ -333,8 +335,9 @@ function useToneColour(tone: 'available' | 'upcoming' | 'missing' | 'neutral'): 
 }
 
 /** An entry: a plain text line with a status dot; focus underlines it. */
-const Line = React.memo(function Line({item, x, y, w, h, today, onSelect}: {item: CalendarItem; x: number; y: number; w: number; h: number; today: Day; onSelect: (item: CalendarItem) => void}): React.ReactElement {
+const Line = React.memo(function Line({day, item, x, y, w, h, today, onSelect}: {day: Day; item: CalendarItem; x: number; y: number; w: number; h: number; today: Day; onSelect: (item: CalendarItem) => void}): React.ReactElement {
   const {colour} = useTheme();
+  const {t} = useLanguage();
   const [focused, setFocused] = useState(false);
   const dot = useToneColour(itemPillTone(item, today));
   const label = item.kind === 'series' ? `${item.title} · ${item.entries.length}×` : itemTitle(item);
@@ -342,6 +345,7 @@ const Line = React.memo(function Line({item, x, y, w, h, today, onSelect}: {item
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={itemTitle(item)}
+      {...lx('button', `${itemTitle(item)}, ${t(pillKey(itemPillTone(item, today)))}, ${new Intl.DateTimeFormat('en-GB', {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'}).format(parseDay(day)).replace(',', '')}`, 4)}
       onFocus={() => {
         reportFocus(label);
         setFocused(true);
@@ -350,9 +354,9 @@ const Line = React.memo(function Line({item, x, y, w, h, today, onSelect}: {item
       onPress={() => onSelect(item)}
       style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(h), borderRadius: u(4), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(5.6)}}
     >
-      <View style={{width: u(8.8), height: u(8.8), borderRadius: u(4.4), backgroundColor: dot}} />
+      <View {...lx('container', '', 50)} style={{width: u(8.8), height: u(8.8), borderRadius: u(4.4), backgroundColor: dot}} />
       <View style={{marginLeft: u(7.2), flex: 1}}>
-        <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
+        <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} dy={-1.3} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
           {label}
         </T>
       </View>

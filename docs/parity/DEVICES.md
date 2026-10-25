@@ -11,7 +11,7 @@ reference is web mobile at the device's own size. The legend dir is the client's
 | --- | --- | --- | --- | --- | --- |
 | Web TV (reference) | Chromium in Playwright, TV user agent | Keyboard arrows, Enter, Escape (`drivers/web.mjs`) | Playwright page screenshot | None: it is the source of truth | `web` |
 | Android TV | Android Emulator, TV image | `adb shell input keyevent` D-pad keys | `adb exec-out screencap` | No hardware video plane; software codecs | `android` |
-| Fire TV (Vega OS) | Vega virtual device | `drivers/firetv.mjs`: X key events to the emulator window; commands and state through the app's control channel (a build with `PLAYARR_PARITY_CONTROL=1`: `vmsgr send` in, the app's log out) | `import -window root` of the emulator display | Build must match the host architecture; `loggingctl` returns only what was logged so far, so state is polled; older Fire OS runs the Android TV app | `firetv` |
+| Fire TV (Vega OS) | Vega virtual device | `drivers/firetv.mjs`: X key events to the emulator window; commands and state through the app's control channel (a build with `PLAYARR_PARITY_CONTROL=1`: `vmsgr send` in, the app's log out) | `import -window root` of the emulator display | Build must match the host architecture; `loggingctl` returns only what was logged so far, so state is polled; older Fire OS runs the Android TV app; see "Fire TV (Vega OS): how the run works" below | `firetv` |
 | Apple TV | tvOS simulator | `xcrun simctl` and XCUITest remote presses | `xcrun simctl io screenshot` | Simulator video is not the device decoder | `apple` |
 | Samsung Tizen | Tizen TV emulator 10.0 under KVM with host GPU GL, signed with an owner-provided Samsung certificate profile | X key events to the emulator window; the debug build's `netlog.js` channel evaluates page code (`drivers/tizen-webos.mjs`, `DEVICE=tizen`) | Emulator screen grab (`xwd`) | No 4K, DRM or some Samsung APIs; the video plane is a native AVPlay overlay the screen grab cannot see | `tizen-webos` (cand `tizen`) |
 | Samsung Tizen (native) | The native Tizen .NET app (`clients/tizen-native`, debug build) on the Tizen TV emulator | `drivers/tizen-native.mjs`: debug mirror keys over `sdb forward` | `import -window root` of the emulator display | No 4K, DRM or some Samsung APIs; same emulator as the web package | `tizen-native` (cand `dev`) |
@@ -21,6 +21,22 @@ reference is web mobile at the device's own size. The legend dir is the client's
 | macOS (Apple TV app) | The Apple TV app on a Mac, inside its own simulator folder only | Keyboard arrows | Window capture, never the desktop | Muted; never stream or capture the desktop | `macos` |
 | Hisense VIDAA | Real TV: MQTT remote plus the debug mirror build | MQTT remote key messages | Debug mirror build screenshots | Hardware only, no emulator | `vidaa` (pending) |
 | Roku Streaming Stick 4K | Real device, developer mode | ECP key presses | `plugin_inspect` screenshots | No emulator; screenshot has no video plane | `roku` (pending) |
+
+### Fire TV (Vega OS): how the run works
+
+- One command reproduces the whole run (15 screens in dark and light, then the 12 non-player D-pad checks) against the static
+  parity server with the clock pinned to 2026-10-07T12:00:00Z: `scripts/parity/vega/run.sh <out-dir> [screens|dpad]`. It writes
+  `<out-dir>/{dark,light}/<screen>.png`, the layout documents `<out-dir>/layout/<theme>/<screen>.json` (the app's `cmd=layout` export, see LAYOUT.md), `readiness.json`, `dpad.json` and `build.json`.
+- The virtual device runs headless on an Xvfb display (no VNC) at 1920x1080 with the emulator window at 0,0 (`xdotool windowmove`),
+  so `import -window root -crop 1920x1080+0+0` is a 1:1 grab. Start it with the SDK's own command line plus `-fixed-scale`: the CLI's
+  default 0.5 window scale cannot be resized afterwards without losing the GL output.
+- The app must be a release build with `PLAYARR_PARITY_CONTROL=1` (the driver talks to it through `vmsgr` and the app's log). Install it
+  with `vega device install-app`, open it once and approve its link code as the parity account.
+- Screens are reached with `--via route`: the suite's key paths depend on every key arriving, and the virtual device drops one now and
+  then. The driver replays only the keys that matter after the route (the Filters tile, the title actions drawer). The D-pad checks reach their start screen by route too and then press the real keys under test.
+- `player-controls`: the driver arms a pause at 2 s (`cmd=armPause`), plays the pinned film and raises the controls; the app needs the Shaka build (`clients/fire-tv/scripts/setup-shaka.sh`).
+- Platform limits (not chased): the host's font rasteriser anti-aliases text differently from Chromium, which leaves roughly 0.5 to 1% of
+  every text-heavy screen differing; the Download pill and the Download action are not in the Vega app (no download storage, owner ruling 2026-10-08).
 
 ### HarmonyOS: reproduce command
 
@@ -153,7 +169,7 @@ D-pad column as n/a.
 | iPad | iOS simulator (iPad) | As iPhone | As iPhone | Own size; compared with web mobile at that size | `ios-tablet` |
 | Android phone | Android Emulator, phone image | `adb shell input` | `adb exec-out screencap` | Software codecs | `android-phone` |
 | HarmonyOS phone | DevEco Previewer | Previewer input | Previewer screenshot | UI only, no real playback | `harmony-phone` |
-| Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad | Display capture over VNC | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
+| Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad (touch phone) | `VBoxManage controlvm screenshotpng` (VM runs `VBoxHeadless --vrde off`, no VNC or RDP listener) | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
 | Nura (postmarketOS) | `pmbootstrap` qemu-amd64, headless (no VNC) | QEMU QMP tablet taps and the app's route control file; touch phone, so no D-pad checks (`dpadNA`) | QEMU `screendump` over QMP | Slow; software rendering. Reproduce: `scripts/parity/nura/run.sh <outdir>` (see `scripts/parity/nura/README.md`) | `postmarketos` |
 
 ## Sailfish emulator: cold boot
@@ -164,6 +180,21 @@ and loop. Once, with the VM powered off: `VBoxManage storagectl <vm> --name SATA
 `PLAYARR_SF_SSH_KEY=<key> scripts/parity/sailfish/vm-coldboot.sh` (raises the guest start timeouts, waits for the lock
 screen, unlocks). Boot takes 2 to 4 minutes. If `VBoxHeadless` ignores SIGTERM at the BIOS stage, kill that PID and let
 the service restart.
+
+### Sailfish: one-command parity run
+
+The VM starts headless (`VBoxHeadless --startvm <vm> --vrde off`), so nothing listens for VNC or RDP. Sign in once per
+session (or whenever the static server has restarted) with `node scripts/parity/sailfish/sign-in.mjs`, which logs in as the
+static-server account (password from the secrets file, never printed) and writes a fresh app config over ssh. Then:
+
+`PLAYARR_SF_SSH_KEY=<key> PLAYARR_SF_SCRATCH=<scratch dir> PLAYARR_SF_VBOXMANAGE=<VBoxManage> PLAYARR_SF_OUT=<legend dir>/sailfish/dev PARITY_CLIENT=sailfish PARITY_LOCK_DIR=<scratch>/lock PLAYARR_SF_SKIP_SIGNIN=1 scripts/parity/sailfish/run.sh`
+
+(`VBOX_USER_HOME` must point at the VirtualBox home of the VM; leave `PLAYARR_SF_SKIP_SIGNIN` unset to sign in first.) The
+script runs `vm-coldboot.sh`, then `suite-run.mjs --via route --only screens` for both themes with the pinned capture
+clock, and writes `<out>/<theme>/<screen>.png`. Extra arguments go to `suite-run.mjs` (for example `--screens home,movies`).
+Every capture also writes `<out>/layout/<theme>/<screen>.json` through `LayoutDump.js`, called by a `layoutDump()` step and scored with `scripts/parity/layout-score.mjs`. These exports currently fail the measurement audit: declared wrapper geometry and estimated text bounds can produce 100% without matching the native drawing. See [the Sailfish measurement audit](SAILFISH-AUDIT.md) before accepting a layout result. `scripts/parity/sailfish/build-fonts.sh` builds the static Nunito Sans weights the client embeds. There are no D-pad checks: the phone has no D-pad. Detail pages are scrolled to the top before the shot, like the web refs.
+
+The standard run covers 15 screens. Capture the additional calendar-link screen in both themes with `node scripts/parity/sailfish/capture-extra.mjs <out>` using the same environment. A complete 16-screen acceptance run must include this extra capture and repeat it as well.
 
 ## Downloads: which platforms support them
 

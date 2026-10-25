@@ -11,10 +11,11 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {T, u} from './kit';
 import {reportFocus} from '../debug/parityControl';
+import {lx} from '../debug/layoutMarks';
 
 export const ACTION_COLUMN_X = 1846;
 export const ACTION_COLUMN_Y = 152;
-export const ACTION_PITCH = 85;
+export const ACTION_PITCH = 84.95;
 
 export function ActionTile({icon, label, slot = 0, onPress, active, focusable = true, focusId, defaultFocus = false, focusRef}: {icon: IconName; label: string; slot?: number; onPress?: () => void; active?: boolean; focusable?: boolean; focusId?: string; defaultFocus?: boolean; focusRef?: React.RefObject<View>}): React.ReactElement {
   const {colour} = useTheme();
@@ -27,6 +28,7 @@ export function ActionTile({icon, label, slot = 0, onPress, active, focusable = 
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('button', label, 14)}
       focusable={focusable}
       onFocus={() => {
         reportFocus(focusId ?? label);
@@ -40,7 +42,7 @@ export function ActionTile({icon, label, slot = 0, onPress, active, focusable = 
         top: u(ACTION_COLUMN_Y - 0.8 + slot * ACTION_PITCH),
         width: u(62),
         height: u(72),
-        borderRadius: u(16),
+        borderRadius: u(14),
         borderWidth: 1,
         borderColor: colour.line,
         backgroundColor: focused || active ? colour.ink : mix(colour.surfaceStrong, 0.56),
@@ -49,8 +51,8 @@ export function ActionTile({icon, label, slot = 0, onPress, active, focusable = 
         transform: [{scale: focused ? 1.06 : 1}],
       }}
     >
-      <Icon name={icon} size={u(18)} color={focused || active ? colour.bg : colour.inkSoft} />
-      <View style={{marginTop: u(6)}}>
+      <Icon name={icon} size={u(24)} color={focused || active ? colour.bg : colour.inkSoft} />
+      <View style={{marginTop: u(5.6)}}>
         <T size={8.256} weight={700} ls={0.165} lh={12.4} color={focused || active ? colour.bg : colour.inkMuted}>
           {label}
         </T>
