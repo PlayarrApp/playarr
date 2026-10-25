@@ -40,14 +40,8 @@ def get(path, **q):
             time.sleep(4)
 
 
-TV_DPR = int(os.environ.get("TV_DPR", "1") or "1")
-
-
 def png() -> Image.Image:
-    img = Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
-    if TV_DPR > 1 and img.width == 1920 * TV_DPR:  # a TV Previewer at a higher pixel ratio: the legend frames stay 1920 x 1080
-        img = img.resize((1920, 1080), Image.LANCZOS)
-    return img
+    return Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
 
 
 def key(*names):
@@ -283,7 +277,7 @@ def export_layout(name, image=None):
         rawdir = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark")  # the unconverted tree: exporter fixes replay offline
         os.makedirs(rawdir, exist_ok=True)
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
-        viewport = (1920, 1080, TV_DPR) if device == "tv" else (360, 780, 3)
+        viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
         count = layout_export.write(raw, name, "light" if THEME == "light" else "dark", viewport, os.path.join(out, "layout"),
                                     clock_pinned=True, image=image)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
@@ -983,8 +977,6 @@ manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get
             "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
 if PLAYER_FIXTURE_SOURCE is not None:
     manifest["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
-if device == "tv":
-    manifest["dpr"] = TV_DPR  # the Previewer's pixel ratio the layout trees were exported at
 if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
     suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
     requested = TV_SELECTION if TV_SELECTION is not None else [
