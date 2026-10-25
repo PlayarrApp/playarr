@@ -83,7 +83,7 @@ export struct MultiSelect {
       Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
         .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
         .fontWeight(FontWeight.Bold)
-        .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.27))
+        .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02))
         .textCase(TextCase.UpperCase)
         .id('px:heading:' + this.heading.toUpperCase())
         .fontColor(toResourceColor(activeColors().inkMuted))
@@ -128,7 +128,7 @@ export struct MultiSelect {
           .flexGrow(1)
           .flexBasis(tv(TRIGGER_BASIS))
           .height(isTvMetrics() ? tv(CONTROL_HEIGHT) : TOUCH_CONTROL_HEIGHT)
-          .padding({ left: tv(CONTROL_PADDING), right: tv(CONTROL_PADDING) })
+          .padding({ left: isTvMetrics() ? tv(CONTROL_PADDING) : 12, right: isTvMetrics() ? tv(CONTROL_PADDING) : 12 })
           .borderRadius(tv(CONTROL_RADIUS))
           .focusable(true)
           .onClick(() => {

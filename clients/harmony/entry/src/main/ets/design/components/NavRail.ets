@@ -300,7 +300,7 @@ export struct NavRail {
   private profileGroup(top: number): void {
     Stack({ alignContent: Alignment.TopStart }) {
       Column({ space: NAV_TILE_ICON_LABEL_GAP }) {
-        ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE) })
+        ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE), illustrationRatio: 1 })
           .focusable(false)
         Text(this.firstName()).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
           .fontSize(tv(TvGeometry.navTileLabelSize))

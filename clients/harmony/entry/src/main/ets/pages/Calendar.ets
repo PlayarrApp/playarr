@@ -225,6 +225,16 @@ function toneColor(tone: EntryPillTone): RgbaColor {
   return tone === 'missing' ? activeColors().danger : activeColors().inkSoft;
 }
 
+/** The entry card's accessible name (web: the button's text content): title, subtitle, time, release type, kind and status, in reading order. */
+function entryButtonName(item: CalendarItem, today: string): string {
+  const parts: string[] = [item.title, itemSubtitle(item), entryTimeLabel(item.entries[0]), releaseTypeLabel(item.entries[0].release_type)];
+  if (!item.grouped) {
+    parts.push(mediaKindLabel(item.entries[0].media_kind));
+  }
+  parts.push(pillLabel(itemPillTone(item, today)));
+  return parts.filter((part: string): boolean => part.length > 0).join(' ');
+}
+
 @Component
 export struct ReleaseCalendar {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
@@ -411,8 +421,9 @@ export struct ReleaseCalendar {
   }
 
   @Builder
-  private statusPill(tone: EntryPillTone): void {
+  private statusPill(tone: EntryPillTone, offset: number = 0): void {
     Text(pillLabel(tone)).fontFamily(nunitoAt(750, isTvMetrics() ? tv(PILL_SIZE) : 10.24))
+      .id('pxt:text:' + pillLabel(tone)) // web: the pill owns its text; its Range sits inside the padding
       .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
@@ -421,6 +432,7 @@ export struct ReleaseCalendar {
       .borderRadius(isTvMetrics() ? tv(PILL_HEIGHT / 2) : PHONE_PILL_HEIGHT / 2)
       .backgroundColor(toResourceColorWithAlpha(toneColor(tone), 0.112))
       .border({ width: 1, color: toResourceColorWithAlpha(toneColor(tone), 0.6) })
+      .margin({ top: offset })
   }
 
   @Builder
@@ -439,12 +451,14 @@ export struct ReleaseCalendar {
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .translate({ y: isTvMetrics() ? 1.1 : 0 }) // web's title box sits 1.1 lower than ArkUI lays it out
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .translate({ y: isTvMetrics() ? 1.3 : 0 })
             .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
@@ -453,7 +467,7 @@ export struct ReleaseCalendar {
           if (!item.grouped) {
             Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           }
-          this.statusPill(itemPillTone(item, this.today))
+          this.statusPill(itemPillTone(item, this.today), isTvMetrics() ? 6.4 : 0)
         }
         .alignItems(VerticalAlign.Center)
       }
@@ -467,7 +481,7 @@ export struct ReleaseCalendar {
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
-    .id('pcal')
+    .id('px:button:' + entryButtonName(item, this.today))
     .border({
       width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
       color: {
@@ -504,21 +518,25 @@ export struct ReleaseCalendar {
       Text(dayHeading(day)).fontFamily(nunitoAt(640, isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE))
         .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)
         .fontWeight(FontWeight.Medium)
-        .fontColor(toResourceColorWithAlpha(activeColors().ink, day === this.today ? 0.9 : 1))
+        .fontColor(toResourceColor(day === this.today ? activeColors().accent : activeColors().ink))
+        .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
       if (day === this.today) {
         Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, tv(TODAY_TAG_SIZE)))
           .fontSize(tv(TODAY_TAG_SIZE))
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
           .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+          .fontColor(toResourceColor(activeColors().accent))
+          .translate({ y: -2.2 })
           .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
           .borderRadius(tv(11))
+          .id('pxt:text:Today')
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
       }
     }
     .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
+    .id(isTvMetrics() ? 'px:heading:' : '')
     .alignItems(VerticalAlign.Center)
     // The TV's agenda sits on an opaque list; the phone's headings sit straight on the page like web's.
     .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent)
@@ -575,16 +593,19 @@ export struct ReleaseCalendar {
               Text(dayHeading(cell.day)).fontFamily(nunitoAt(500, tv(DAY_HEADING_SIZE)))
                 .fontSize(tv(DAY_HEADING_SIZE))
                 .fontWeight(FontWeight.Medium)
-                .fontColor(toResourceColor(activeColors().ink))
+                .fontColor(toResourceColor(cell.isToday ? activeColors().accent : activeColors().ink))
+                .translate({ y: -1.4 }) // web's heading box sits 1.4 higher
               if (cell.isToday) {
                 Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(500, tv(TODAY_TAG_SIZE)))
                   .fontSize(tv(TODAY_TAG_SIZE))
                   .fontWeight(FontWeight.Medium)
                   .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
                   .textCase(TextCase.UpperCase)
-                  .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+                  .fontColor(toResourceColor(activeColors().accent))
+                  .translate({ y: -2.2 })
                   .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
                   .borderRadius(tv(11))
+          .id('pxt:text:Today')
                   .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
               }
             }
@@ -595,7 +616,8 @@ export struct ReleaseCalendar {
                 if (cell.entries.length === 0) {
                   Text(t('pages.calendar.dayEmpty', 'Nothing scheduled')).fontFamily(nunitoAt(400, tv(ENTRY_TITLE_SIZE)))
                     .fontSize(tv(ENTRY_TITLE_SIZE))
-                    .fontColor(toResourceColor(activeColors().inkSoft))
+                    .fontColor(toResourceColor(activeColors().inkMuted))
+                    .translate({ y: 1.1 })
                 }
                 ForEach(groupSeriesEpisodes(cell.entries), (item: CalendarItem) => {
                   this.entryCard(item, WEEK_COLUMN_WIDTH)
@@ -657,7 +679,7 @@ export struct ReleaseCalendar {
         Text(String(dayOfMonth(cell.day))).fontFamily(nunito(640))
           .fontSize(tv(MONTH_DAY_SIZE))
           .fontWeight(FontWeight.Medium)
-          .margin({ top: isTvMetrics() ? 1 : 3.84 })
+          .margin({ top: isTvMetrics() ? -4.2 : 3.84 })
           .fontColor(toResourceColor(cell.inMonth ? activeColors().ink : activeColors().inkMuted))
         if (groupSeriesEpisodes(cell.entries).length > this.monthLinesFor(cellHeight)) {
           Text(`+${groupSeriesEpisodes(cell.entries).length - this.monthLinesFor(cellHeight)} more`).fontFamily(nunitoAt(400, tv(MONTH_LINE_SIZE)))
@@ -697,7 +719,8 @@ export struct ReleaseCalendar {
             .fontSize(tv(MONTH_WEEKDAY_SIZE))
             .letterSpacing(tv(0.96))
             .textCase(TextCase.UpperCase)
-            .fontColor(toResourceColor(activeColors().inkSoft))
+            .fontColor(toResourceColor(activeColors().inkMuted))
+            .translate({ y: isTvMetrics() ? -0.4 : 0 })
             .textAlign(TextAlign.Center)
             .layoutWeight(1)
         }, (name: string): string => name)
@@ -816,6 +839,7 @@ export struct ReleaseCalendar {
       .fontSize(tv(PANEL_BUTTON_FONT))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
+      .id('pxt:button:' + label) // web: the button owns its text
       .height(tv(PANEL_BUTTON_HEIGHT))
       .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
       .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
@@ -844,22 +868,29 @@ export struct ReleaseCalendar {
             })
         }
         if (this.plan()!.watchlist !== null && this.plan()!.watchlist!.enabled && this.plan()!.snapshot !== null) {
-          Text(this.listed ? '✓  Remove from watchlist' : '+  Add to watchlist').fontFamily(nunitoAt(700, tv(PANEL_BUTTON_FONT)))
-            .fontSize(tv(PANEL_BUTTON_FONT))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().ink))
-            .height(tv(PANEL_BUTTON_HEIGHT))
-            .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
-            .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
-            .border({ width: 1, color: toResourceColor(activeColors().lineStrong) })
-            .opacity(this.watchlistBusy ? 0.6 : 1)
-            .focusable(true)
-            .onClick(() => {
-              this.toggleWatchlist();
-            })
+          Row({ space: tv(9.6) }) {
+            Text(this.listed ? '✓' : '+').fontFamily(nunitoAt(720, tv(PANEL_BUTTON_FONT)))
+              .fontSize(tv(PANEL_BUTTON_FONT))
+              .fontWeight(FontWeight.Bold)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+            Text(this.listed ? 'Remove from watchlist' : 'Add to watchlist').fontFamily(nunitoAt(900, tv(PANEL_BUTTON_FONT)))
+              .fontSize(tv(PANEL_BUTTON_FONT))
+              .fontWeight(FontWeight.Bold)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+          }
+          .id('px:button:' + (this.listed ? '✓ Remove from watchlist' : '+ Add to watchlist'))
+          .height(tv(PANEL_BUTTON_HEIGHT))
+          .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
+          .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
+          .border({ width: 1, color: toResourceColor(activeColors().lineStrong) })
+          .opacity(this.watchlistBusy ? 0.6 : 1)
+          .focusable(true)
+          .onClick(() => {
+            this.toggleWatchlist();
+          })
         }
       }
-      .margin({ top: tv(PANEL_GAP) })
+      .margin({ top: tv(PANEL_GAP) - 10.7 }) // web: the actions sit 10.7 nearer than the shifted copy above would leave them
     }
   }
 
@@ -867,7 +898,7 @@ export struct ReleaseCalendar {
   private panelExtras(): void {
     if (this.selected !== undefined) {
       Column({ space: tv(PANEL_GAP) }) {
-        this.statusPill(entryPillTone(this.selected, this.today))
+        this.statusPill(entryPillTone(this.selected, this.today), 2.42)
         if (this.selected.overview !== undefined && this.selected.overview !== null) {
           Text(this.selected.overview).fontFamily(nunito(600))
             .fontSize(13.82)
@@ -877,6 +908,7 @@ export struct ReleaseCalendar {
             .constraintSize({ maxWidth: tv(OVERVIEW_WIDTH) })
             .maxLines(OVERVIEW_MAX_LINES)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: 4.8 })
         }
         this.panelActions()
       }
@@ -896,7 +928,7 @@ export struct ReleaseCalendar {
       .height(tv(HEADER_CONTROL_SIZE))
       .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
       .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(0.2) : 0 })
-      .id('px:button:' + (label === '←' ? 'Previous' : (label === '→' ? 'Next' : label)))
+      .id(round ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : 'pxt:button:' + label) // web: Today owns its text, the arrows hold a glyph
       .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
       .backgroundColor(toResourceColor(activeColors().surface))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -915,6 +947,7 @@ export struct ReleaseCalendar {
     } else {
     Stage({
       titleRole: 'text',
+      panelTopAdjust: 3.6, // web's agenda hero sits 3.6 lower than the library's
       keyArt: '',
       kicker: this.selected !== undefined ?
         `${mediaKindLabel(this.selected.media_kind)} · ${releaseTypeLabel(this.selected.release_type)}` : '',
@@ -979,7 +1012,7 @@ export struct ReleaseCalendar {
   private pageControls(): void {
     Row({ space: tv(HEADER_CONTROL_GAP) }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(700, tv(HEADER_CONTROL_FONT)))
-        .id('px:button:' + rangeLabel(this.view, this.anchor))
+        .id('pxt:button:' + rangeLabel(this.view, this.anchor))
         .fontSize(tv(HEADER_CONTROL_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1027,7 +1060,7 @@ export struct ReleaseCalendar {
   private touchControls(): void {
     Row({ space: PHONE_CONTROL_GAP }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(720, 11.52))
-        .id('px:button:' + rangeLabel(this.view, this.anchor))
+        .id('pxt:button:' + rangeLabel(this.view, this.anchor))
         .fontSize(11.52)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1061,7 +1094,7 @@ export struct ReleaseCalendar {
     Stack() {
       // web: the arrows are thin, smaller glyphs than the bold labels
       Text(label).fontFamily(label.length === 1 ? arrowFont(720) : nunitoAt(720, 11.52))
-        .id(label.length === 1 ? '' : 'px:button:' + label)
+        .id(label.length === 1 ? '' : 'pxt:button:' + label)
         .fontSize(11.52)
         .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1082,6 +1115,7 @@ export struct ReleaseCalendar {
       }
     }
     .id(label.length === 1 ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : '')
+    .borderRadius(22)
     .width(width)
     .height(44)
     .onClick(() => {
@@ -1175,7 +1209,7 @@ export struct ReleaseCalendar {
     .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 8 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
-    .id('pcal')
+    .id('px:button:' + entryButtonName(item, this.today))
     .border({
       width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
       color: {

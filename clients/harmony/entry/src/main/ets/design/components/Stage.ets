@@ -144,6 +144,8 @@ export struct Stage {
   /** The export role of the hero title (see FeatureCopy). */
   @Prop titleRole: string = 'heading';
   @Prop libraryCopy: boolean = false;
+  /** Moves the whole title panel (vp), for a page whose copy sits off the library's. */
+  @Prop panelTopAdjust: number = 0;
 
   // Tracked purely to force a re-render on theme / TV-scale change; the
   // actual values always go through design/Theme.ets's resolvers and
@@ -349,7 +351,7 @@ export struct Stage {
     }
     .alignItems(HorizontalAlign.Start)
     .width(tv(TvGeometry.titlePanelWidth))
-    .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.titlePanelTop) })
+    .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(TvGeometry.titlePanelTop + this.panelTopAdjust) })
     .opacity(this.copyEntry)
     .translate({ x: -tv(COPY_ENTRY_TRANSLATE_X) * (1 - this.copyEntry) })
   }

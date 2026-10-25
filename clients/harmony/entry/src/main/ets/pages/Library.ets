@@ -173,7 +173,7 @@ const TOUCH_GUTTER: number = 16;
 const TOUCH_ALPHA_RAIL: number = 52;
 const TOUCH_CARD_GAP: number = 12;
 /** Web phone grid: 127.5 vp between card tops (79 vp card, caption, this gap); the first row starts 12 vp lower than ours did. */
-const TOUCH_ROW_GAP: number = 26.4;
+const TOUCH_ROW_GAP: number = 24.35; // web: 24 between the card links (103.45 high, caption included)
 const TOUCH_GRID_TOP: number = 12;
 /** Web phone card caption (the poster card's title size at 360 vp). */
 const TOUCH_LIBRARY_TITLE_SIZE: number = 8.8; // web dump
@@ -453,6 +453,8 @@ struct LibraryGridCell {
       cardHeight: this.cardHeight,
       artworkRadius: this.cardRadius,
       variant: isTvMetrics() ? 'grid' : 'home',
+      linkRadius: 12,
+      accessibleName: 'Open ' + this.work.title,
       title: this.work.title,
       // web's phone cards carry the title only, in Covers too; the TV's cover cards keep the year
       subtitle: this.landscape || !isTvMetrics() ? '' : releaseYearOf(this.work),

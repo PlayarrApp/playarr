@@ -111,7 +111,7 @@ const NUMBER_TOP: number = 28.3;
 const NUMBER_SIZE: number = 9.92;
 const TITLE_LEFT: number = 92;
 const TITLE_SIZE: number = 29.6;
-const TITLE_LETTER_SPACING: number = -1.036;
+const TITLE_LETTER_SPACING: number = -1.23; // web -1.036; ArkUI lays the run out 2 wider
 const ARROW_LEFT: number = 422.6; // the unselected rows sit 5 px further left
 const ARROW_SIZE: number = 20.8;
 // Web `.settings-section-content`: the panel copy starts at (774, 210), 1042 wide.
@@ -279,6 +279,15 @@ export struct SettingsScreen {
     return open !== undefined ? open.title : '';
   }
 
+  /** Web's rows are 91.89 high; the TV lays out in whole pixels, so each row takes the height that keeps its top on web's fractional one. */
+  private rowHeightOf(section: SettingsSection): number {
+    const at = buildSections().findIndex((s: SettingsSection): boolean => s.id === section.id);
+    if (!isTvMetrics() || at < 0) {
+      return tv(ROW_HEIGHT);
+    }
+    return Math.round(ROW_HEIGHT * (at + 1)) - Math.round(ROW_HEIGHT * at);
+  }
+
   @Builder
   private sectionRow(section: SettingsSection): void {
     Stack({ alignContent: Alignment.TopStart }) {
@@ -293,15 +302,15 @@ export struct SettingsScreen {
         .letterSpacing(tv(TITLE_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
-        .position({ x: tv(TITLE_LEFT), y: 0 })
+        .position({ x: tv(TITLE_LEFT), y: -1.5 }) // web's title box sits 1.5 higher
       Text('→').fontFamily(arrowFont(400))
         .fontSize(tv(ARROW_SIZE))
         .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
         .height(tv(ROW_HEIGHT))
-        .position({ x: tv(section.id === this.openSection ? ARROW_LEFT : ARROW_LEFT - 5), y: 0 })
+        .position({ x: tv(section.id === this.openSection ? ARROW_LEFT : ARROW_LEFT - 5), y: -1.5 })
     }
     .width(tv(ROW_WIDTH))
-    .height(tv(ROW_HEIGHT))
+    .height(this.rowHeightOf(section))
     .id('px:link:' + section.number + ' ' + section.title + ' →')
     .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
     .focusable(true)

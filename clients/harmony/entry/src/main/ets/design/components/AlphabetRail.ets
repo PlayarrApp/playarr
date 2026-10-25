@@ -56,6 +56,14 @@ export struct AlphabetRail {
                 .borderRadius((TOUCH_DISC + 2 * RING_GAP + 2 * RING_WIDTH) / 2)
                 .border({ width: RING_WIDTH, color: toResourceColor(BRAND_PINK) })
             }
+            if (letter === this.activeLetter) {
+              // the disc is its own layer: web reports the letter over the page, not over the disc
+              Column()
+                .width(TOUCH_DISC)
+                .height(TOUCH_DISC)
+                .borderRadius(TOUCH_DISC / 2)
+                .backgroundColor(toResourceColor(activeColors().ink))
+            }
             Text(letter).fontFamily(nunitoAt(700, TOUCH_LETTER_SIZE))
               .width(TOUCH_DISC)
               .height(TOUCH_DISC)
@@ -63,8 +71,7 @@ export struct AlphabetRail {
               .fontSize(TOUCH_LETTER_SIZE)
               .fontWeight(FontWeight.Medium)
               .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
-              .backgroundColor(letter === this.activeLetter ? toResourceColor(activeColors().ink) : Color.Transparent)
-              .borderRadius(TOUCH_DISC / 2)
+              .translate({ y: -1.2 }) // web's letter sits 1.2 higher
           }
           .width(TOUCH_DISC)
           .height(TOUCH_DISC)
@@ -72,7 +79,7 @@ export struct AlphabetRail {
         .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
         .width(TOUCH_LETTER_WIDTH)
         .layoutWeight(1)
-        .borderRadius(TOUCH_DISC)
+        .borderRadius(11.3) // web: half the short side of the letter's box
         .justifyContent(FlexAlign.Center)
         .onClick(() => {
           this.onJump(letter);
@@ -98,15 +105,23 @@ export struct AlphabetRail {
   @Builder
   private tvLetter(letter: string): void {
     Column() {
-      Text(letter).fontFamily(nunitoAt(400, tv(LETTER_SIZE)))
-        .width(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
-        .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
-        .textAlign(TextAlign.Center)
-        .fontSize(tv(LETTER_SIZE))
-        .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
-        .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.78) : Color.Transparent)
-        .borderRadius(tv(TV_DISC / 2))
-        .translate({ y: -tv(1.5) })
+      Stack() {
+        if (letter === this.activeLetter) {
+          // the disc is its own layer: web reports the letter over the page, not over the disc
+          Column()
+            .width(tv(TV_DISC))
+            .height(tv(TV_DISC))
+            .borderRadius(tv(TV_DISC / 2))
+            .backgroundColor(toResourceColorWithAlpha(activeColors().ink, 0.78))
+        }
+        Text(letter).fontFamily(nunitoAt(400, tv(LETTER_SIZE)))
+          .width(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
+          .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
+          .textAlign(TextAlign.Center)
+          .fontSize(tv(LETTER_SIZE))
+          .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
+      }
+      .translate({ y: -tv(1.5) })
     }
     .width(letter === this.activeLetter ? tv(TV_DISC + 2 * RING_GAP + 2 * RING_WIDTH) : tv(BUTTON_SIZE))
     .height(letter === this.activeLetter ? tv(TV_DISC + 2 * RING_GAP + 2 * RING_WIDTH) : tv(BUTTON_SIZE))
@@ -127,6 +142,7 @@ export struct AlphabetRail {
           .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
           .width(tv(BUTTON_SIZE))
           .height(tv(BUTTON_SIZE))
+          .borderRadius(tv(BUTTON_SIZE / 2))
           .justifyContent(FlexAlign.Center)
           .focusable(true)
           .onClick(() => {

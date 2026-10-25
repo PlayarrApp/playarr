@@ -200,6 +200,12 @@ export struct PosterCard {
    * default) hides the progress-bar overlay entirely. */
   @Prop progress: number = -1;
 
+  /** The card link's accessible name (web `aria-label`); empty uses the caption's own words. */
+  @Prop accessibleName: string = '';
+
+  /** The card link's own corner radius: web's Library and Detail cards carry 12, Home's none. */
+  @Prop linkRadius: number = 0;
+
   /** Web `.tv-watch-unseen`: a 13 px brand dot with a white ring, 10.56 px in from the top right. */
   @Prop unseen: boolean = false;
   /** Phone Library caption: medium weight, the muted ink (web phone grid). */
@@ -244,13 +250,20 @@ export struct PosterCard {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
 
-  /** The unseen dot: web's 13 px on the TV; 9 vp, 6 in, on the phone grid. */
+  private linkName(): string {
+    if (this.accessibleName.length > 0) {
+      return this.accessibleName;
+    }
+    return [this.episodeNumberOverlay, this.episodeCaption, this.title, this.subtitle].filter((part: string): boolean => part.length > 0).join(' ');
+  }
+
+  /** The unseen dot: web's 13 px on the TV; 9 vp, 7 in, on the phone grid. */
   private dotSize(): number {
     return this.softCaption || !isTvMetrics() ? 9 : tv(UNSEEN_DOT_SIZE);
   }
 
   private dotInset(): number {
-    return this.softCaption || !isTvMetrics() ? 6 : tv(UNSEEN_DOT_INSET);
+    return this.softCaption || !isTvMetrics() ? 7 : tv(UNSEEN_DOT_INSET);
   }
 
   @State private focusPercent: number = 0;
@@ -268,7 +281,8 @@ export struct PosterCard {
 
   private focusDelta(): FocusLiftDelta {
     if (this.variant === 'grid') {
-      return { translateY: FOCUS_LIFT.gridCard.translateY, scale: FOCUS_LIFT.titleEpisodeCard.scale * FOCUS_LIFT.gridCard.scale };
+      // the art alone takes the title/episode scale; the whole card (art and caption) takes the grid's, as web's link does
+      return { translateY: FOCUS_LIFT.gridCard.translateY, scale: FOCUS_LIFT.titleEpisodeCard.scale };
     }
     return this.isTitleEpisode() ? FOCUS_LIFT.titleEpisodeCard : FOCUS_LIFT.homeCard;
   }
@@ -303,6 +317,11 @@ export struct PosterCard {
   private cardTranslateY(): number {
     const dy = this.focusDelta().translateY ?? 0;
     return dy * this.effective();
+  }
+
+  /** Web `.tv-title-grid` link scale: the grid card scales as a whole around the art's own scale. */
+  private cardScale(): number {
+    return this.variant === 'grid' ? 1 + (FOCUS_LIFT.gridCard.scale - 1) * this.effective() : 1;
   }
 
   private artworkScale(): number {
@@ -352,16 +371,6 @@ export struct PosterCard {
 
   private clampedProgressPercent(): number {
     return Math.round(Math.max(0, Math.min(1, this.progress)) * 100);
-  }
-
-  private episodeCopySpacerLetterSpacing(): number {
-    const ui = this.getUIContext();
-    const spaceWidthVp = ui.px2vp(ui.getMeasureUtils().measureText({
-      textContent: ' ',
-      fontSize: this.subtitleFontSize,
-      fontWeight: FontWeight.Bold,
-    }));
-    return Math.max(0, tv(SERIES_EPISODE_CAPTION_TITLE_GAP) - spaceWidthVp);
   }
 
   private episodeOverlayX(): number {
@@ -425,6 +434,7 @@ export struct PosterCard {
           }
           .width('100%')
           .height(PROGRESS_BAR_HEIGHT)
+          .id('px:img:') // web: the track is an image-role box with the fill inside
           .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().line) : 'rgba(255, 255, 255, 0.2)') // web phone: a white 20% track in both themes
           .justifyContent(FlexAlign.Start)
         }
@@ -434,15 +444,16 @@ export struct PosterCard {
             .width(this.dotSize())
             .height(this.dotSize())
             .borderRadius(this.dotSize() / 2)
+            .id('px:img:')
             .backgroundColor(toResourceColor(BRAND_PINK))
             .border({ width: 2, color: 'rgba(255, 255, 255, 0.94)' })
             .shadow({ radius: tv(9), color: 'rgba(31, 14, 20, 0.45)', offsetY: tv(2) })
             .position({ x: this.cardWidth - this.dotSize() - this.dotInset(), y: this.dotInset() })
         }
         if (this.episodeNumberOverlay.length > 0) {
-          Text(this.episodeNumberOverlay).fontFamily(nunitoAt(600, isTvMetrics() ? tv(20) : 13))
+          Text(this.episodeNumberOverlay).fontFamily(nunitoAt(560, isTvMetrics() ? tv(19.2) : 13))
             .width(isTvMetrics() ? tv(24) : 16)
-            .fontSize(isTvMetrics() ? tv(20) : 13)
+            .fontSize(isTvMetrics() ? tv(19.2) : 13)
             .fontWeight(600)
             .fontColor('#ffffff')
             .textAlign(TextAlign.End)
@@ -455,6 +466,7 @@ export struct PosterCard {
       .height(this.cardHeight)
       .clip(true)
       .borderRadius(this.resolvedArtworkRadius())
+      .backgroundColor(toResourceColor(activeColors().surfaceSoft)) // web: the art frame paints the soft surface behind the image
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
       .outline({ width: tv(FOCUS_RING_WIDTH), color: this.focusRingColor(this.visualFocus()), radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
@@ -474,36 +486,39 @@ export struct PosterCard {
       .height(this.cardHeight)
 
       if (this.episodeCaption.length > 0) {
-        Text() {
-          Span(this.episodeCaption)
+        // two text elements as web has them (the caption, then the title on the same baseline)
+        Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) }) {
+          Text(this.episodeCaption).fontFamily(nunitoAt(700, this.subtitleFontSize))
             .fontSize(this.subtitleFontSize)
             .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().inkMuted))
-          Span(' ')
-            .fontSize(this.subtitleFontSize)
-            .letterSpacing(this.episodeCopySpacerLetterSpacing())
-          Span(this.title)
+            .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().inkMuted)))
+            .maxLines(1)
+            .translate({ y: -1 })
+          Text(this.title).fontFamily(nunitoAt(this.softCaption || !isTvMetrics() ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize)) // phone: web's episode title is not bold
             .fontSize(this.titleFontSize)
-            .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT) // phone: web's episode title is not bold
-            .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
+            .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+            .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink)))
             .letterSpacing(tv(this.titleFontSize * -0.015))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
         }
-        .fontFamily(nunitoAt(400, this.titleFontSize))
         .width(this.cardWidth)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
+        .alignItems(VerticalAlign.Bottom)
+        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? (this.artWash > 0 ? 2.6 : 0) : 2.4) })
+        .margin({ bottom: this.artWash > 0 && isTvMetrics() ? 2.65 : 0 })
       } else {
         Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
           .width(this.cardWidth)
           .fontSize(this.titleFontSize)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.titleFontSize * -0.0154) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
+          .letterSpacing(this.titleFontSize * -0.0154 + 0.06) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
-          .padding(this.softCaption ? { top: 8.5, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
+          .padding(this.softCaption ? { top: 7.3, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
+          .margin({ bottom: this.subtitle.length > 0 ? 0 : (this.softCaption ? 3.3 : (this.variant === 'grid' ? 3.4 : 0)) }) // web: the link box ends 3.3 (phone) or 3.4 (TV grid) under a title-only caption
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
@@ -514,13 +529,17 @@ export struct PosterCard {
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption || isTvMetrics() ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .letterSpacing(0)
+          .letterSpacing(isTvMetrics() ? -0.2 : -0.11) // web's subtitle run is narrower than ArkUI lays it out
           .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 2.9 })
+          .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -12.6 : -10.5) : 0 }) // web Home: the card link ends above the subtitle line
       }
     }
     .width(this.cardWidth)
     .alignItems(HorizontalAlign.Start)
+    .borderRadius(this.linkRadius) // web: the card link's own radius (no clip; the art keeps its own)
+    .scale({ x: this.cardScale(), y: this.cardScale() })
     .translate({ y: this.cardTranslateY() })
+    .accessibilityText(this.linkName())
     .focusable(true)
     .onFocus(() => {
       this.setFocused(true);
