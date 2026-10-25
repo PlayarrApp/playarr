@@ -167,7 +167,7 @@ const COVER_ASPECT_RATIO: number = 1.5;
 /** Web phone Screen view card: 16:9 art. */
 const TOUCH_LANDSCAPE_RATIO: number = 9 / 16;
 /** Web phone Screen view: 232 vp between card tops with a 185 vp card and its caption. */
-const TOUCH_LANDSCAPE_ROW_GAP: number = 34.96; // web row pitch 127.45 = 103.45 card + 24
+const TOUCH_LANDSCAPE_ROW_GAP: number = 33.36; // web row pitch 127.45 = 103.45 card + 24
 const TOUCH_GUTTER: number = 16;
 /** The letter rail's column: a 44 vp target with 4 vp of margin each side. */
 const TOUCH_ALPHA_RAIL: number = 52;

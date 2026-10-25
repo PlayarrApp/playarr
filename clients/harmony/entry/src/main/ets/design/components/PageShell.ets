@@ -253,21 +253,25 @@ export struct PageShell {
     Column() {
       Row({ space: 10 }) {
         if (this.showHeader) {
-          Text('←').fontFamily(arrowFont(720))
-            .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true) // web dump: 12.8 / 720
-            .fontWeight(FontWeight.Normal)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .textAlign(TextAlign.Center)
-            .width(44)
-            .height(44)
-            .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
-            .borderRadius(22)
-            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
-            .id('px:' + this.backRole + ':' + this.backLabel)
-            .onClick(() => {
-              popRoute(getNavStack());
-            })
+          // web: the link (ring, fill) holds the arrow glyph as its own text
+          Row() {
+            Text('←').fontFamily(arrowFont(720))
+              .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true) // web dump: 12.8 / 720
+              .fontWeight(FontWeight.Normal)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .textAlign(TextAlign.Center)
+          }
+          .justifyContent(FlexAlign.Center)
+          .width(44)
+          .height(44)
+          .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
+          .borderRadius(22)
+          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
+          .id('px:' + this.backRole + ':' + this.backLabel)
+          .onClick(() => {
+            popRoute(getNavStack());
+          })
           Column() {
             Text(this.title).fontFamily(nunitoAt(580, 21.6))
               .id('px:heading:' + this.title)
@@ -276,7 +280,7 @@ export struct PageShell {
               .letterSpacing(-0.972) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
-              .translate({ y: -1.3 }) // web's title box sits 1.3 higher
+              .translate({ y: 0 })
           }
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)
