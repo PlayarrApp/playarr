@@ -147,3 +147,11 @@ test("CLI --client reports the exclusions", () => {
   assert.match(out, /2 excluded/);
   assert.match(out, /excluded text "Download"/);
 });
+
+test("a radius on a web element that draws nothing is not scored; a painted one is", () => {
+  const el = (radius, painted) => ({ text: "", role: "container", rect: { x: 0, y: 0, w: 40, h: 40 }, color: null, background: "#ffffff", fontSize: null, fontWeight: null, radius, ...(painted === false ? { painted } : {}) });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  const radiusFails = (w, d) => scoreLayout(doc(w), doc(d)).failures.flatMap((f) => f.problems).filter((x) => x.field === "radius").length;
+  assert.equal(radiusFails(el(14, false), el(0)), 0);
+  assert.equal(radiusFails(el(14), el(0)), 1);
+});
