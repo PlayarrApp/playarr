@@ -116,6 +116,7 @@ namespace Playarr.Xbox.Views
                 _ => string.Empty,
             };
             _header.Subtitle.Text = _viewModel.Title;
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(PlaybackButton, "Playback settings for " + _viewModel.Title);
             // The web header: the title beside the subtitle after a divider (not pink), as every other page.
             Ui.LayoutHeader(_header.Titles, _header.Title, _header.Subtitle);
             EyebrowText.Text = work != null && work.Genres.Count > 0 ? work.Genres[0].ToUpperInvariant() : string.Empty;
@@ -805,7 +806,7 @@ namespace Playarr.Xbox.Views
                 ActionRow.Children.Add(ask);
             }
 
-            var download = Ui.WithIcon(Ui.Filled(Ui.Pill("Download", null)), "\u21e9");
+            var download = Ui.WithIcon(Ui.Filled(Ui.Pill("Download", null)), "\u21e9", "PlayarrBrandInk", "Download " + _viewModel.Title);
             download.Click += async (s, e) =>
             {
                 var template = _viewModel.DownloadTemplate();
@@ -846,7 +847,7 @@ namespace Playarr.Xbox.Views
                 _downloadPill = download;
                 PrimaryRow.Children.Insert(0, download);
             }
-            var watch = Ui.WithIcon(Ui.Filled(Ui.Pill(inWatchlist ? "Remove from watchlist" : "Add to watchlist", null)), inWatchlist ? "\u2713" : "+", "PlayarrInkSoft");
+            var watch = Ui.WithIcon(Ui.Filled(Ui.Pill(inWatchlist ? "Remove from watchlist" : "Add to watchlist", null)), inWatchlist ? "\u2713" : "+", "PlayarrBrandInk", (inWatchlist ? "\u2713 Remove from watchlist" : "+ Add to watchlist"));
             watch.Click += async (s, e) =>
             {
                 try
@@ -863,7 +864,7 @@ namespace Playarr.Xbox.Views
             watch.Height = 64;
             watch.MinWidth = 142;
             ActionRow.Children.Add(watch);
-            var playlist = Ui.WithIcon(Ui.Filled(Ui.Pill("Add to Playlist", OpenPlaylistDrawer)), "+", "PlayarrInkSoft");
+            var playlist = Ui.WithIcon(Ui.Filled(Ui.Pill("Add to Playlist", OpenPlaylistDrawer)), "+", "PlayarrBrandInk", "+ Add to Playlist");
             playlist.Height = 64;
             playlist.MinWidth = 142;
             ActionRow.Children.Add(playlist);

@@ -95,9 +95,9 @@ namespace Playarr.Xbox.Views
             }
             else
             {
-                subtitle.Margin = new Thickness(0, 6, 0, 0);
+                subtitle.Margin = new Thickness(0, 6.99, 0, 0);
                 titles.Children.Add(title);
-                titles.Children.Add(new Border { Height = 1, Background = Res("PlayarrLineStrong"), Margin = new Thickness(0, 6, 0, 0) });
+                titles.Children.Add(new Border { Height = 1, Background = Res("PlayarrLineStrong"), Margin = new Thickness(0, 6.99, 0, 0) });
                 titles.Children.Add(subtitle);
             }
         }
@@ -193,10 +193,10 @@ namespace Playarr.Xbox.Views
         {
             var tile = new StackPanel { Spacing = 5.6 };
             tile.Children.Add(icon);
-            tile.Children.Add(new TextBlock { Text = label, FontSize = 8.3, FontWeight = FontWeights.Bold, CharacterSpacing = 20, Foreground = Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Center });
+            tile.Children.Add(new TextBlock { Text = label, FontSize = 8.26, FontWeight = FontWeights.Bold, CharacterSpacing = 20, Foreground = Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Center });
             var button = new Button
             {
-                Width = 58, Height = 70, Margin = new Thickness(0, top, 14, 0), Padding = new Thickness(0), CornerRadius = new CornerRadius(14),
+                Width = 62, Height = 72, Margin = new Thickness(0, top, 12.47, 0), Padding = new Thickness(0), CornerRadius = new CornerRadius(14),
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
                 Background = Res("PlayarrSurfaceStrong"), BorderBrush = Res("PlayarrLine"), BorderThickness = new Thickness(1),
                 Content = tile,
@@ -228,25 +228,29 @@ namespace Playarr.Xbox.Views
                 button.Click += (s, e) => onClick();
             }
 
+            // The web's pills are fully round, whatever their height.
+            button.SizeChanged += (s, e) => button.CornerRadius = new CornerRadius(e.NewSize.Height / 2);
             return button;
         }
 
         /// <summary>The detail page's secondary pill: a faint ink-tinted fill and no outline, as the web draws it.</summary>
         public static Button Filled(Button pill)
         {
-            pill.Background = new SolidColorBrush(Theme.IsLight ? Windows.UI.Color.FromArgb(235, 255, 255, 255) : Windows.UI.Color.FromArgb(15, 255, 255, 255));
+            pill.Background = new SolidColorBrush(Theme.IsLight ? Windows.UI.Color.FromArgb(235, 255, 255, 255) : Windows.UI.Color.FromArgb(4, 255, 255, 255));
             pill.BorderThickness = new Thickness(0);
             return pill;
         }
 
         /// <summary>The web action pill's brand-pink leading glyph ahead of the label (the pill's text stays settable).</summary>
-        public static Button WithIcon(Button pill, string glyph, string brushKey = "PlayarrBrand")
+        public static Button WithIcon(Button pill, string glyph, string brushKey = "PlayarrBrandInk", string? accessibleName = null)
         {
             var label = (TextBlock)pill.Content;
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-            row.Children.Add(Text(glyph, 12, FontWeights.SemiBold, brushKey));
+            label.FontSize = 11.14;
+            WebFont.Apply(label, 700);
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            row.Children.Add(Text(glyph, 12.81, FontWeights.Normal, brushKey));
             row.Children.Add(label);
-            Windows.UI.Xaml.Automation.AutomationProperties.SetName(pill, label.Text);
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(pill, accessibleName ?? label.Text);
             pill.Content = row;
             return pill;
         }

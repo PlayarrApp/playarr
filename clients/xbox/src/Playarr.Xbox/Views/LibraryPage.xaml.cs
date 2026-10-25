@@ -55,7 +55,7 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             Background = Theme.PageStage();
             _header = Ui.PageHeader(Root, "Library", null, () => App.Navigation.GoBack());
-            Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 152, OpenFilters));
+            Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 151.19, OpenFilters));
             _viewModel = new LibraryViewModel(App.Environment);
             WorksGridView.ItemContainerStyle = Appearance.LibraryList ? CatalogTileFactory.ListCardContainerStyle : Appearance.LibraryCover ? CatalogTileFactory.CoverGridCardContainerStyle : CatalogTileFactory.GridCardContainerStyle;
             WorksGridView.GotFocus += WorksGridView_GotFocus;

@@ -17,27 +17,28 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal sealed class FocusDetail : Grid
     {
+        // The web's key-art box: the backdrop is laid out 899.97 x 1190.59 from (133.03, -22.9) and covers it.
         private readonly Grid _backdropLayer = new Grid
         {
-            Width = 998.4,
-            Height = 1144.8,
+            Width = 899.97,
+            Height = 1190.59,
+            Margin = new Thickness(133.03, -22.9, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
-            RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
-            RenderTransform = new ScaleTransform { ScaleX = 1.04, ScaleY = 1.04 },
         };
         private readonly Image _backdrop = new Image { Stretch = Stretch.UniformToFill };
         private readonly Rectangle _imageMaskWash = new Rectangle
         {
-            Width = 998.4,
-            Height = 1144.8,
+            Width = 899.97,
+            Height = 1190.59,
+            Margin = new Thickness(133.03, -22.9, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             IsHitTestVisible = false,
-            RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
-            RenderTransform = new ScaleTransform { ScaleX = 1.04, ScaleY = 1.04 },
         };
-        private readonly Rectangle _horizontalWash = new Rectangle { Width = 960, HorizontalAlignment = HorizontalAlignment.Left };
+        // The web's right-hand ground wash: the last 1190 px of the stage.
+        private readonly Rectangle _rightWash = new Rectangle { Width = 1190.39, Margin = new Thickness(729.61, 0, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false };
+        private readonly Rectangle _horizontalWash = new Rectangle { HorizontalAlignment = HorizontalAlignment.Stretch };
         private readonly Rectangle _verticalWash = new Rectangle
         {
             Width = 998.4, // the key-art box only: the web's right half is the plain tinted ground

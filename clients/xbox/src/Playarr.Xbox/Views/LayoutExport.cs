@@ -449,9 +449,9 @@ namespace Playarr.Xbox.Views
                 if (parent is Page page)
                 {
                     underPage = true; // the page stage (a gradient) is reported as the surface colour; nothing above it counts
-                    if (page.Background is SolidColorBrush { Color.A: 255 } pageBrush)
+                    if (page.Background is SolidColorBrush { Color: { A: 255, R: 0, G: 0, B: 0 } } pageBrush)
                     {
-                        pageFill = pageBrush.Color; // a page that paints its own opaque background (the player's black stage)
+                        pageFill = pageBrush.Color; // the player's page paints an opaque black stage, unlike the pages that sit on the surface wash
                     }
 
                     break;

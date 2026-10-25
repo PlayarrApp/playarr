@@ -74,10 +74,10 @@ namespace Playarr.Xbox.Views
             controls.Children.Add(ArrowButton("\u2192", () => { _anchor = CalendarRules.Step(_view, _anchor, 1); Load(); }));
             _root.Children.Add(controls);
 
-            var linkButton = Ui.ActionTile(BellIcon(), "Calendar link", 151, () => CalendarLinkPanel.Open(_root));
+            var linkButton = Ui.ActionTile(BellIcon(), "Calendar link", 151.19, () => CalendarLinkPanel.Open(_root));
             _root.Children.Add(linkButton);
 
-            var filtersButton = Ui.ActionTile(Ui.FiltersIcon(), "Filters", 237, OpenFilters);
+            var filtersButton = Ui.ActionTile(Ui.FiltersIcon(), "Filters", 236.14, OpenFilters);
             _root.Children.Add(filtersButton);
         }
 

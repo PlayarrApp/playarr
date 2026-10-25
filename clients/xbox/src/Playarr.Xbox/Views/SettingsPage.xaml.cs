@@ -29,6 +29,7 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             Background = Theme.PageStage();
             _header = Ui.PageHeader(Root, Lang.T("settings.index.title"), "APPEARANCE", () => App.Navigation.GoBack());
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(_header.Back, "Settings");
             _viewModel = new SettingsViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerConnection.ServerAddress;
             BuildSections();
@@ -104,6 +105,8 @@ namespace Playarr.Xbox.Views
             {
                 _sections[i].Tab!.Background = i == section ? Ui.Res("PlayarrSurfaceSoft") : none;
                 _sections[i].Arrow!.Foreground = Ui.Res(i == section ? "PlayarrInk" : "PlayarrInkMuted");
+                // Web: only the open row's arrow sits at the row's right padding; the others rest 5 px further in.
+                _sections[i].Arrow!.Margin = new Thickness(0, 0, i == section ? 0 : 5, 0);
             }
 
             _sections[section].Host!.Visibility = Visibility.Visible;
@@ -327,7 +330,7 @@ namespace Playarr.Xbox.Views
                 Services.DeviceCapsProvider.ForceDirectAudio, on => Services.DeviceCapsProvider.ForceDirectAudio = on));
         }
 
-        private StackPanel ForceToggle(string title, string description, bool isOn, System.Action<bool> set) =>
+        private Border ForceToggle(string title, string description, bool isOn, System.Action<bool> set) =>
             SettingGroup(title, description, new[] { "Off", "On" }, isOn ? 1 : 0, i => { set(i == 1); RenderPlayer(); });
 
         /// <summary>Colour theme as on the web (System, Light, Dark); the choice applies at once and is kept.</summary>
@@ -349,17 +352,24 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>The web's settings group: a heading, an optional note, the segmented choice, then a divider line.</summary>
-        private static StackPanel SettingGroup(string title, string? note, string[] options, int selected, System.Action<int> onSelect, bool first = false, bool divider = true, string? automationIdPrefix = null)
+        private static Border SettingGroup(string title, string? note, string[] options, int selected, System.Action<int> onSelect, bool first = false, bool divider = true, string? automationIdPrefix = null)
         {
-            var group = new StackPanel { Margin = new Thickness(0, first ? 10 : 31, 0, 0) };
+            var group = new StackPanel { Margin = new Thickness(0, first ? 11 : 0, 0, 0) };
+            var box = new Border { Margin = new Thickness(0, first ? 0 : 30.23, 0, 0), Child = group };
+            if (!first)
+            {
+                // The web's later groups are a box with a hairline on top: 1 px of line, then 31.2 px before the heading.
+                box.BorderBrush = Ui.Res("PlayarrLine");
+                box.BorderThickness = new Thickness(0, 1, 0, 0);
+                box.Padding = new Thickness(0, 31.24, 0, 0);
+                box.Height = 168.97;
+            }
             var heading = Ui.Text(title, 26.4, new Windows.UI.Text.FontWeight { Weight = 560 }, "PlayarrInk");
-            heading.LineHeight = 36;
-            heading.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
             LayoutExport.SetRole(heading, "heading");
             group.Children.Add(heading);
             if (note != null)
             {
-                var text = Ui.Text(note, 13.12, Windows.UI.Text.FontWeights.Normal, "PlayarrInkMuted", new Thickness(0, 9, 0, 0));
+                var text = Ui.Text(note, 13.12, Windows.UI.Text.FontWeights.Normal, "PlayarrInkMuted", new Thickness(0, 9.2, 0, 0));
                 text.LineHeight = 18;
                 text.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
                 text.TextWrapping = TextWrapping.WrapWholeWords;
@@ -367,14 +377,9 @@ namespace Playarr.Xbox.Views
             }
 
             var choice = Drawer.Segmented(string.Empty, options, selected, onSelect, automationIdPrefix);
-            choice.Margin = new Thickness(0, note != null ? 17 : 18.8, 0, 31);
+            choice.Margin = new Thickness(0, note != null ? 16.8 : 18.8, 0, 0);
             group.Children.Add(choice);
-            if (divider)
-            {
-                group.Children.Add(new Windows.UI.Xaml.Shapes.Rectangle { Height = 1, Fill = Ui.Res("PlayarrLine") });
-            }
-
-            return group;
+            return box;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
