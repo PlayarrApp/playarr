@@ -89,6 +89,7 @@ struct LibraryView: View {
         #if DEBUG
         .parityScreenLoad(parityLoadState)
         #endif
+        .parityCovered(showingFilters || actionsWork != nil)
         .overlay {
             // Phones: a full-page panel; iPad: the web tablet's 360 pt drawer on the right.
             HStack(spacing: 0) {

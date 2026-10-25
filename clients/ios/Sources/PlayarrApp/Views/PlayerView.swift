@@ -70,7 +70,7 @@ struct PlayerView: View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 Color.black
-                content(size: proxy.size)
+                content(size: proxy.size).parityFill(.black)
                 if let viewModel, viewModel.endOfPlayback.phase != .playing {
                     EndOfPlaybackView(
                         controller: viewModel.endOfPlayback,

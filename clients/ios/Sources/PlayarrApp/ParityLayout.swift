@@ -25,6 +25,10 @@ final class ParityLayoutRegistry {
     private var textRuns: [UUID: [Item]] = [:]
     private var order: [UUID] = []
     private var pending: Task<Void, Never>?
+    /// Views currently on screen: a text run reported after its view left (queued draw callback) is dropped.
+    private var alive: Set<UUID> = []
+
+    func markAlive(_ id: UUID) { alive.insert(id) }
 
     /// SwiftUI builds its accessibility tree only while an assistive client is attached; this switches that on in the
     /// debug build so the walk below sees buttons, links and images (the call UI test runners use).
@@ -45,13 +49,14 @@ final class ParityLayoutRegistry {
 
     func setTextRuns(_ id: UUID, _ runs: [Item]) {
         _ = Self.enableAccessibility
-        guard textRuns[id] != runs else { return }
+        guard alive.contains(id), textRuns[id] != runs else { return }
         if textRuns[id] == nil { order.append(id) }
         textRuns[id] = runs
         schedule()
     }
 
     func remove(_ id: UUID) {
+        alive.remove(id)
         guard items[id] != nil || textRuns[id] != nil else { return }
         items[id] = nil
         textRuns[id] = nil
@@ -164,12 +169,46 @@ final class ParityLayoutRegistry {
     }
 }
 
-private struct ParityBackgroundKey: EnvironmentKey { static let defaultValue: Color? = nil }
+/// A resolved opaque colour: what the pixels behind a view actually are once every painted fill above it is composited.
+struct ParityRGB: Equatable {
+    var r: Float, g: Float, b: Float
+
+    var hex: String {
+        func byte(_ v: Float) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
+        return String(format: "#%02x%02x%02x", byte(r), byte(g), byte(b))
+    }
+
+    /// `color` painted over `base` (the colour resolved in `environment`, opacity included).
+    static func over(_ color: Color, _ base: ParityRGB?, _ environment: EnvironmentValues) -> ParityRGB {
+        let top = color.resolve(in: environment), under = base ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))
+        let a = Float(top.opacity)
+        return ParityRGB(r: top.red * a + under.r * (1 - a), g: top.green * a + under.g * (1 - a), b: top.blue * a + under.b * (1 - a))
+    }
+
+    init(r: Float, g: Float, b: Float) { self.r = r; self.g = g; self.b = b }
+    init(_ resolved: Color.Resolved) { r = resolved.red; g = resolved.green; b = resolved.blue }
+}
+
+private struct ParityBackdropKey: EnvironmentKey { static let defaultValue: ParityRGB? = nil }
+private struct ParityHiddenKey: EnvironmentKey { static let defaultValue = false }
 extension EnvironmentValues {
-    /// The background a parity-exported container paints, inherited by the text drawn on it.
-    var parityBackground: Color? {
-        get { self[ParityBackgroundKey.self] }
-        set { self[ParityBackgroundKey.self] = newValue }
+    /// The composited colour behind this view, set by `parityFill` where a view really paints a background.
+    var parityBackdrop: ParityRGB? {
+        get { self[ParityBackdropKey.self] }
+        set { self[ParityBackdropKey.self] = newValue }
+    }
+    /// True under content that another layer covers: it is not visible, so it is not exported.
+    var parityCovered: Bool {
+        get { self[ParityHiddenKey.self] }
+        set { self[ParityHiddenKey.self] = newValue }
+    }
+}
+
+private struct ParityFillModifier: ViewModifier {
+    let color: Color
+    @Environment(\.self) private var environment
+    func body(content: Content) -> some View {
+        content.environment(\.parityBackdrop, ParityRGB.over(color, environment.parityBackdrop, environment))
     }
 }
 
@@ -186,7 +225,7 @@ private struct ParityLayoutModifier: ViewModifier {
     @State private var id = UUID()
 
     private var hex: String? { color.map { Self.hex($0, environment) } }
-    private var pageHex: String { Self.composited(environment.parityBackground ?? PlayarrStyle.surface, environment) }
+    private var pageHex: String { (environment.parityBackdrop ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))).hex }
 
     static func hex(_ color: Color, _ environment: EnvironmentValues) -> String {
         let r = color.resolve(in: environment)
@@ -195,17 +234,9 @@ private struct ParityLayoutModifier: ViewModifier {
         return r.opacity < 0.999 ? base + String(format: "%02x", byte(r.opacity)) : base
     }
 
-    /// A fill composited over the page colour (translucent chips read as the colour the eye sees, as in the web export).
-    static func composited(_ color: Color, _ environment: EnvironmentValues) -> String {
-        let top = color.resolve(in: environment), page = PlayarrStyle.surface.resolve(in: environment)
-        let a = Float(top.opacity)
-        func mix(_ t: Float, _ p: Float) -> Int { max(0, min(255, Int(((t * a + p * (1 - a)) * 255).rounded()))) }
-        return String(format: "#%02x%02x%02x", mix(top.red, page.red), mix(top.green, page.green), mix(top.blue, page.blue))
-    }
-
     func body(content: Content) -> some View {
         content
-            .environment(\.parityBackground, box ?? environment.parityBackground)
+            .environment(\.parityBackdrop, box.map { ParityRGB.over($0, environment.parityBackdrop, environment) } ?? environment.parityBackdrop)
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: .global)
@@ -218,7 +249,8 @@ private struct ParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { Self.composited($0, environment) } ?? pageHex, radius: radius))
+        guard !environment.parityCovered else { ParityLayoutRegistry.shared.remove(id); return }
+        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { ParityRGB.over($0, environment.parityBackdrop, environment).hex } ?? pageHex, radius: radius))
     }
 }
 
@@ -247,10 +279,11 @@ private struct ParityRenderedTextModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let colour = ParityLayoutModifier.hex(color, environment)
-        let background = environment.parityBackground.map { ParityLayoutModifier.composited($0, environment) }
+        let background = (environment.parityBackdrop ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))).hex
+        let covered = environment.parityCovered
         content
             .textRenderer(ParityTextRenderer { bounds in
-                guard frame.width > 0, frame.height > 0 else { return }
+                guard frame.width > 0, frame.height > 0, !covered else { return }
                 let runs = bounds.map { rect in
                     ParityLayoutRegistry.Item(text: text, role: role, size: size, weight: weight, color: colour,
                                               rect: rect.offsetBy(dx: frame.minX, dy: frame.minY), background: background)
@@ -259,7 +292,7 @@ private struct ParityRenderedTextModifier: ViewModifier {
             })
             .background(GeometryReader { proxy in
                 Color.clear
-                    .onAppear { frame = proxy.frame(in: .global) }
+                    .onAppear { ParityLayoutRegistry.shared.markAlive(id); frame = proxy.frame(in: .global) }
                     .onChange(of: proxy.frame(in: .global)) { _, value in frame = value }
             })
             .onDisappear { ParityLayoutRegistry.shared.remove(id) }
@@ -306,12 +339,21 @@ extension View {
 }
 
 extension View {
-    /// Text drawn on this fill reports it as its background in the layout export.
-    func parityBackground(_ color: Color) -> some View {
+    /// Marks the place where a view really paints `color`: text and controls inside report the composited colour behind them.
+    func parityFill(_ color: Color) -> some View {
         #if DEBUG
-        environment(\.parityBackground, color)
+        modifier(ParityFillModifier(color: color))
         #else
         self
+        #endif
+    }
+
+    /// Content that a drawer or panel covers: hidden from the layout export (and from accessibility).
+    func parityCovered(_ covered: Bool) -> some View {
+        #if DEBUG
+        environment(\.parityCovered, covered).accessibilityHidden(covered)
+        #else
+        accessibilityHidden(covered)
         #endif
     }
 }

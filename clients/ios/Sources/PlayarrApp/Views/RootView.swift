@@ -423,7 +423,9 @@ private struct AuthenticatedPlayarrShell: View {
             }
         }
         .background(PlayarrStyle.background.ignoresSafeArea().parityBox("container", background: PlayarrStyle.background))
-        .parityBackground(PlayarrStyle.background)
+        // The shell colour, then the page colour every screen paints over it (each page draws WM.page full-bleed).
+        .parityFill(PlayarrStyle.background)
+        .parityFill(PlayarrStyle.surface)
         .environment(visibleDetailRoutes)
         #if DEBUG
         .overlay(alignment: .topLeading) {
@@ -770,6 +772,7 @@ private struct AuthenticatedPlayarrShell: View {
                 .accessibilityAddTraits(.isLink)
             }
         }
+        .parityFill(PlayarrStyle.surfaceStrong)
         .padding(.vertical, 6)
         .padding(.horizontal, 6)
         // Web rail pills are solid surface-strong with a 1 px line border (the art never shows through).

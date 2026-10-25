@@ -88,7 +88,8 @@ private struct WMPanelFrame<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
-        .parityBackground(PlayarrStyle.surfaceStrong.opacity(0.94)) // the web drawer: surface-strong at 94% over the page
+        // What the panel really paints: opaque page colour on the phone, chip at 94% over a thin material on iPad.
+        .parityFill(isPad ? WM.chip.opacity(0.94) : WM.page)
     }
 }
 
