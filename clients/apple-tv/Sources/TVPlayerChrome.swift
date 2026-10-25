@@ -268,7 +268,7 @@ struct TVPlayerChrome: View {
                 .font(TVTheme.font(size: 8.64, weight: .heavy))
                 .tracking(1.3)
                 .foregroundStyle(Color.white.opacity(0.56))
-                .parityLayout(text: "QUALITY", size: 8.64, weight: Int(TVTheme.cssWeight(.heavy)), tracking: 1.3)
+                .parityLayout(text: "QUALITY", size: 8.64, weight: Int(TVTheme.cssWeight(.heavy)), color: Color.white.opacity(0.56), tracking: 1.3)
                 .placed(x: 1084.6, y: 549.8, w: 600, h: 28.9)
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(DesignTokens.Color.brandPrimary.opacity(0.22))
@@ -285,7 +285,7 @@ struct TVPlayerChrome: View {
             Text("Source quality")
                 .font(TVTheme.font(size: 9.28, weight: .regular))
                 .foregroundStyle(white54)
-                .parityLayout(text: "Source quality", size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
+                .parityLayout(text: "Source quality", size: 9.28, weight: Int(TVTheme.cssWeight(.regular)), color: white54)
                 .placed(x: 1095.5, y: 612, w: 300, h: 13.9)
             Text("\u{2713}")
                 .font(TVTheme.font(size: 11.84, weight: .regular))
@@ -297,7 +297,7 @@ struct TVPlayerChrome: View {
                     .font(TVTheme.font(size: 10.24, weight: .heavy))
                     .tracking(0.82)
                     .foregroundStyle(white54)
-                    .parityLayout(text: column.0.uppercased(), size: 10.24, weight: Int(TVTheme.cssWeight(.heavy)), tracking: 0.82)
+                    .parityLayout(text: column.0.uppercased(), size: 10.24, weight: Int(TVTheme.cssWeight(.heavy)), color: white54, tracking: 0.82)
                     .placed(x: column.1, y: 646.7, w: 156.6, h: 27.5, alignment: .center)
             }
             ForEach(Array(Self.tiers.enumerated()), id: \.offset) { row, tier in
@@ -310,7 +310,7 @@ struct TVPlayerChrome: View {
                 Text(tier.height)
                     .font(TVTheme.font(size: 9.28, weight: .regular))
                     .foregroundStyle(white54)
-                    .parityLayout(text: tier.height, size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
+                    .parityLayout(text: tier.height, size: 9.28, weight: Int(TVTheme.cssWeight(.regular)), color: white54)
                     .placed(x: 1088.6, y: top + 33.1, w: 104.7, h: 13.9)
                 ForEach(Array(columns.enumerated()), id: \.offset) { column, spec in
                     ZStack(alignment: .topLeading) {
@@ -329,7 +329,7 @@ struct TVPlayerChrome: View {
                         Text(spec.0)
                             .font(TVTheme.font(size: 9.28, weight: .regular))
                             .foregroundStyle(white54)
-                            .parityLayout(text: spec.0, size: 9.28, weight: Int(TVTheme.cssWeight(.regular)))
+                            .parityLayout(text: spec.0, size: 9.28, weight: Int(TVTheme.cssWeight(.regular)), color: white54)
                             .placed(x: 10.9, y: 33.3, w: 130, h: 13.9)
                     }
                     .frame(width: 156.6, height: 60, alignment: .topLeading)

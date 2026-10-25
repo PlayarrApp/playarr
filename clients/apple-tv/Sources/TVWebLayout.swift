@@ -149,7 +149,7 @@ struct TVPageHeader: View {
                         .foregroundStyle(DesignTokens.Color.textSecondary)
                         .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
                 )
-                .parityBox("link", text: "Back to Home", radius: 50, fill: Color(red: 0x1f / 255, green: 0x1b / 255, blue: 0x1f / 255))
+                .parityBox("link", text: "Back to Home", radius: 50, fill: DesignTokens.Stage.backLink)
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.

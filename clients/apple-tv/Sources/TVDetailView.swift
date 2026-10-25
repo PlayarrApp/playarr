@@ -172,7 +172,7 @@ struct TVWorkDetailView: View {
                     .font(TVTheme.font(size: 10.56, weight: part.1 ? .bold : .regular))
                     .foregroundStyle(part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
                     .lineLimit(1)
-                    .parityLayout(text: part.0, size: 10.56, weight: Int(TVTheme.cssWeight(part.1 ? .bold : .regular)))
+                    .parityLayout(text: part.0, size: 10.56, weight: Int(TVTheme.cssWeight(part.1 ? .bold : .regular)), color: part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
             }
         }
     }

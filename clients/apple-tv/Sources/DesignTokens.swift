@@ -29,6 +29,13 @@ enum DesignTokens {
             })
         }
 
+        /// Composited flat colours of translucent web fills (what the CSS ancestors paint), used as layout-export backdrops.
+        static let navPanel = adaptive(light: 0xfbfaf9, dark: 0x1c191c)
+        static let navActive = adaptive(light: 0xe9e7e6, dark: 0x2f2c2f)
+        static let backLink = adaptive(light: 0xfefefd, dark: 0x1f1b1f)
+        static let controlFill = adaptive(light: 0xdfdcdd, dark: 0x2b252a)
+        static let drawer = adaptive(light: 0xf1efee, dark: 0x211d21)
+
         static let bg = adaptive(light: 0xf5f3f2, dark: 0x151315)
         static let surface = adaptive(light: 0xfbfaf9, dark: 0x1b181b)
         static let surfaceStrong = adaptive(light: 0xffffff, dark: 0x211d21)

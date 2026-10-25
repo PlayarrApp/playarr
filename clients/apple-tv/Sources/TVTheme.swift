@@ -695,7 +695,7 @@ private struct TVNavVectorIcon: View {
             }
             .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
             .accessibilityHidden(true)
-            .parityBox("image", fill: DesignTokens.Stage.surface)
+            .parityBox("image")
         } else {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 20, weight: .medium))
@@ -984,7 +984,7 @@ struct TVFloatingNav: View {
         }
         .padding(.vertical, DesignTokens.Shell.navGroupPadding)
         .padding(.horizontal, DesignTokens.Shell.navGroupPadding)
-        .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface)
+        .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.navPanel)
         .modifier(TVNavPanelShadow())
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
@@ -1060,7 +1060,7 @@ struct TVFloatingNav: View {
             VStack(spacing: 5) {
                 TVNavVectorIcon(tab: tab)
                 Text(tab.title)
-                    .font(TVTheme.font(size: 8.832, css: 680)) // web .app-nav-label: .46vw / 680 / .035em
+                    .font(TVTheme.font(size: 8.832, css: 680))
                     .tracking(0.31)
                     .lineLimit(1)
                     .parityLayout(text: tab.title, size: 8.832, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31)
@@ -1074,7 +1074,7 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
-            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Stage.surfaceSoft : DesignTokens.Stage.surface)
+            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Stage.navActive : DesignTokens.Stage.navPanel)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
@@ -1083,10 +1083,9 @@ struct TVFloatingNav: View {
                             : Color.clear
                     )
             )
-            #if os(macOS)
             // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content).
+            .parityTransformScope(scale: isActive || isFocused ? 1.05 : 1)
             .scaleEffect(isActive || isFocused ? 1.05 : 1)
-            #endif
             // Web TV nav: focus looks like the active tab (filled tile, ink text); no ring, no scale.
         }
         // Card-like style stays focusable; .plain can drop remote hand-off.

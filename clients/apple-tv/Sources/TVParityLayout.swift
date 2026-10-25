@@ -213,6 +213,15 @@ private struct TVParityLayerScope: ViewModifier {
     func body(content: Content) -> some View { content.environment(\.parityLayer, layer + 1) }
 }
 
+/// The flat colour a view is drawn on (CSS ancestor background): set where an element really paints a fill, read by every item inside.
+private struct TVParityBackdropKey: EnvironmentKey { static let defaultValue: Color? = nil }
+extension EnvironmentValues {
+    var parityBackdrop: Color? {
+        get { self[TVParityBackdropKey.self] }
+        set { self[TVParityBackdropKey.self] = newValue }
+    }
+}
+
 private struct TVParityTransformKey: EnvironmentKey { static let defaultValue = TVParityTransform() }
 extension EnvironmentValues {
     var parityTransform: TVParityTransform {
@@ -251,6 +260,7 @@ private struct TVParityLayoutModifier: ViewModifier {
     @Environment(\.self) private var environment
     @Environment(\.parityTransform) private var transform
     @Environment(\.parityLayer) private var layer
+    @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
 
@@ -279,7 +289,7 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     private func report(_ frame: CGRect) {
         TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: transform.apply(frame), tracking: tracking,
-                                                 background: hex(onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface),
+                                                 background: hex(backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)),
                                                  lineHeight: lineHeight, lines: lines, pitch: pitch, layer: layer)) // web: header on the page, content on the surface
     }
 }
@@ -290,9 +300,10 @@ private struct TVParityBoxModifier: ViewModifier {
     let radius: CGFloat
     let fill: Color?
     @Environment(\.self) private var environment
+    @Environment(\.parityBackdrop) private var backdrop
+    @Environment(\.colorScheme) private var scheme
     @Environment(\.parityTransform) private var transform
     @Environment(\.parityLayer) private var layer
-    @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
 
     func body(content: Content) -> some View {
@@ -308,17 +319,18 @@ private struct TVParityBoxModifier: ViewModifier {
                         .onChange(of: text) { _, _ in report(frame) }
                 }
             )
+            .environment(\.parityBackdrop, fill ?? backdrop)
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
     }
 
     private func report(_ frame: CGRect) {
         var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: transform.apply(frame))
-        if let fill {
+        if let fill = fill ?? backdrop {
             let r = fill.resolve(in: environment)
             func byte(_ v: Float) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
             item.background = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
         } else {
-            item.background = "#000000"
+            item.background = nil
         }
         item.radius = radius
         item.layer = layer
@@ -333,6 +345,16 @@ extension View {
     func parityLayerScope() -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
         modifier(TVParityLayerScope())
+        #else
+        self
+        #endif
+    }
+
+    /// Declares the flat colour this view paints (web: the ancestor background), for every item inside it.
+    @ViewBuilder
+    func parityBackdrop(_ color: Color) -> some View {
+        #if DEBUG && (os(tvOS) || os(macOS))
+        environment(\.parityBackdrop, color)
         #else
         self
         #endif
