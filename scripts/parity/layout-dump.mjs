@@ -50,8 +50,13 @@ export function layoutPageFn(volatile) {
   };
   var norm = function (s) { return String(s || "").replace(/\s+/g, " ").trim(); };
   var shown = function (s, cs) {
+    // Chromium has no text-transform: full-width (computed value is none), so it is not handled
     var t = cs.textTransform;
-    return t === "uppercase" ? s.toUpperCase() : t === "lowercase" ? s.toLowerCase() : s;
+    if (/uppercase/.test(t)) return s.toUpperCase();
+    if (/lowercase/.test(t)) return s.toLowerCase();
+    // capitalize: first letter of each word (a letter not preceded by a letter, digit or apostrophe), as Chromium does
+    if (/capitalize/.test(t)) return s.replace(/(^|[^\p{L}\p{N}'\u2019])(\p{L})/gu, function (m, a, b) { return a + b.toUpperCase(); });
+    return s;
   };
   var clipped = function (el, r) {
     var left = r.left, top = r.top, right = r.right, bottom = r.bottom;

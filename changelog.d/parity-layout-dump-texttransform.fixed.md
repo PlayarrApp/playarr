@@ -1,0 +1,1 @@
+- Parity web layout dump: text with a CSS text-transform (uppercase, lowercase, capitalize) is exported as displayed.

@@ -118,3 +118,10 @@ test("an omit entry is left out of the export", { skip }, async () => {
     assert.deepEqual(d.elements.map((e) => e.text), ["keep"]);
   } finally { await browser.close(); }
 });
+
+test("text-transform: the exported text is the displayed text", { skip }, async () => {
+  const d = await dump(`<span style="text-transform:uppercase">up Case</span><span style="text-transform:lowercase">Low CASE</span>
+    <span style="text-transform:capitalize">cap the 3rd word-x o'neil</span><span style="text-transform:none">No Change</span>
+    <button style="text-transform:capitalize" aria-label="List View">list view</button>`);
+  assert.deepEqual(texts(d), ["UP CASE", "low case", "Cap The 3rd Word-X O'neil", "No Change", "List View"]);
+});
