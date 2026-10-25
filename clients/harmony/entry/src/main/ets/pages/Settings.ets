@@ -279,6 +279,15 @@ export struct SettingsScreen {
     return open !== undefined ? open.title : '';
   }
 
+  /** Web's rows are 91.89 high; the TV lays out in whole pixels, so each row takes the height that keeps its top on web's fractional one. */
+  private rowHeightOf(section: SettingsSection): number {
+    const at = buildSections().findIndex((s: SettingsSection): boolean => s.id === section.id);
+    if (!isTvMetrics() || at < 0) {
+      return tv(ROW_HEIGHT);
+    }
+    return Math.round(ROW_HEIGHT * (at + 1)) - Math.round(ROW_HEIGHT * at);
+  }
+
   @Builder
   private sectionRow(section: SettingsSection): void {
     Stack({ alignContent: Alignment.TopStart }) {
@@ -293,7 +302,7 @@ export struct SettingsScreen {
         .letterSpacing(tv(TITLE_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
-        .position({ x: tv(TITLE_LEFT), y: 0 })
+        .position({ x: tv(TITLE_LEFT), y: -1.5 }) // web's title box sits 1.5 higher
       Text('→').fontFamily(arrowFont(400))
         .fontSize(tv(ARROW_SIZE))
         .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
@@ -301,7 +310,7 @@ export struct SettingsScreen {
         .position({ x: tv(section.id === this.openSection ? ARROW_LEFT : ARROW_LEFT - 5), y: 0 })
     }
     .width(tv(ROW_WIDTH))
-    .height(tv(ROW_HEIGHT))
+    .height(this.rowHeightOf(section))
     .id('px:link:' + section.number + ' ' + section.title + ' →')
     .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
     .focusable(true)

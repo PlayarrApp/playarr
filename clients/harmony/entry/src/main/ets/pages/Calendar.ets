@@ -632,7 +632,7 @@ export struct ReleaseCalendar {
             Column()
               .width(tv(MONTH_DOT_SIZE))
               .height(tv(MONTH_DOT_SIZE))
-              .borderRadius(tv(MONTH_DOT_SIZE / 2))
+              .borderRadius(50) // web: border-radius 50%
               .backgroundColor(toResourceColor(toneColor(itemPillTone(item, this.today))))
             Text(itemLineText(item)).fontFamily(nunitoAt(item.grouped ? 700 : 400, tv(MONTH_LINE_SIZE)))
               .fontSize(tv(MONTH_LINE_SIZE))
@@ -657,7 +657,7 @@ export struct ReleaseCalendar {
         Text(String(dayOfMonth(cell.day))).fontFamily(nunito(640))
           .fontSize(tv(MONTH_DAY_SIZE))
           .fontWeight(FontWeight.Medium)
-          .margin({ top: isTvMetrics() ? 1 : 3.84 })
+          .margin({ top: isTvMetrics() ? -1.4 : 3.84 })
           .fontColor(toResourceColor(cell.inMonth ? activeColors().ink : activeColors().inkMuted))
         if (groupSeriesEpisodes(cell.entries).length > this.monthLinesFor(cellHeight)) {
           Text(`+${groupSeriesEpisodes(cell.entries).length - this.monthLinesFor(cellHeight)} more`).fontFamily(nunitoAt(400, tv(MONTH_LINE_SIZE)))

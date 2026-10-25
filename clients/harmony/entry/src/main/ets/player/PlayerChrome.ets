@@ -292,27 +292,9 @@ struct PlayPauseGlyph {
   @Prop glyphSize: number = 24;
 
   build() {
-
-    Stack({ alignContent: Alignment.Center }) {
-      if (this.isPlaying) {
-        Row({ space: (this.glyphSize * PAUSE_BAR_GAP_RATIO) }) {
-          Column().width((this.glyphSize * PAUSE_BAR_WIDTH_RATIO)).height((this.glyphSize * PAUSE_BAR_HEIGHT_RATIO)).backgroundColor(toResourceColor(CHROME_TEXT_PRIMARY))
-          Column().width((this.glyphSize * PAUSE_BAR_WIDTH_RATIO)).height((this.glyphSize * PAUSE_BAR_HEIGHT_RATIO)).backgroundColor(toResourceColor(CHROME_TEXT_PRIMARY))
-        }
-      } else {
-        Polygon()
-          .width(this.glyphSize)
-          .height(this.glyphSize)
-          .points([
-            [this.glyphSize * PLAY_TRIANGLE_INSET_X_RATIO, this.glyphSize * PLAY_TRIANGLE_TOP_Y_RATIO],
-            [this.glyphSize * PLAY_TRIANGLE_INSET_X_RATIO, this.glyphSize * PLAY_TRIANGLE_BOTTOM_Y_RATIO],
-            [this.glyphSize * PLAY_TRIANGLE_TIP_X_RATIO, this.glyphSize * PLAY_TRIANGLE_CENTER_Y_RATIO],
-          ])
-          .fill(toResourceColor(CHROME_TEXT_PRIMARY))
-      }
-    }
-    .width(this.glyphSize)
-    .height(this.glyphSize)
+    Image(this.isPlaying ? $r('app.media.player_pause') : $r('app.media.player_play'))
+      .width(this.glyphSize)
+      .height(this.glyphSize)
   }
 }
 
@@ -341,6 +323,8 @@ struct ChromeButton {
   /** False draws the button dimmed and takes it out of focus (web's disabled previous and next). */
   active: boolean = true;
   circle: boolean = false;
+  /** Web's 999 px pill radius on the top buttons; negative keeps the 50% circle. */
+  radius: number = -1;
   ringWidth: number = 1;
   /** Phone: web's lighter circle fill and ring, and an icon in place of a text label. */
   fillAlpha: number = CIRCLE_FILL_ALPHA;
@@ -385,7 +369,7 @@ struct ChromeButton {
     .id(this.nodeId)
     .width(this.buttonWidth)
     .height(this.buttonHeight)
-    .borderRadius(this.circle ? (this.buttonWidth === this.buttonHeight ? '50%' : this.buttonHeight / 2) : 0)
+    .borderRadius(this.radius >= 0 ? this.radius : (this.circle ? (this.buttonWidth === this.buttonHeight ? '50%' : this.buttonHeight / 2) : 0))
     .backgroundColor(this.glassAlpha > 0 ? toResourceColorWithAlpha(CHROME_GLASS, this.glassAlpha) : (this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.fillAlpha) : Color.Transparent))
     .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.ringAlpha) } : { width: 0 })
     .scale({ x: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)), y: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)) })
@@ -611,21 +595,14 @@ export struct PlayerChrome {
   /** Previous / next as web draws them: a bar and a triangle in the 64 px slot, dimmed while there is nothing to skip to. */
   @Builder
   private tvSkip(previous: boolean, active: boolean, onTap: () => void): void {
-    Row({ space: 1 }) {
-      if (!previous) {
-        Polygon({ width: tv(11), height: tv(13) }).points([[0, 0], [0, 13], [11, 6.5]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(tv(11)).height(tv(13))
-      }
-      Row().width(tv(2.6)).height(tv(13)).backgroundColor(toResourceColor(CHROME_TEXT_PRIMARY))
-      if (previous) {
-        Polygon({ width: tv(11), height: tv(13) }).points([[11, 0], [11, 13], [0, 6.5]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(tv(11)).height(tv(13))
-      }
+    Stack() {
+      Image(previous ? $r('app.media.player_previous') : $r('app.media.player_next')).width(tv(20)).height(tv(20))
     }
     .width(tv(TV_SEEK_SIZE))
     .height(tv(TV_SEEK_SIZE))
     .id('px:button:' + (previous ? 'Previous episode' : 'Next episode'))
-    .justifyContent(FlexAlign.Center)
-    .alignItems(VerticalAlign.Center)
-    .opacity(active ? 1 : 0.35)
+    .borderRadius(50)
+    .opacity(active ? 1 : 0.28)
     .focusable(active)
     .onClick(() => {
       if (active) {
@@ -637,6 +614,14 @@ export struct PlayerChrome {
   /** Web TV player: close at the top right; at the bottom a thin progress track over one row of transport controls and the time. */
   @Builder
   private tvBar(): void {
+    Stack({ alignContent: Alignment.TopStart }) {
+      // web .player-scrim: the bottom 48% fades to black (0.92) under the controls
+      Column()
+        .width('100%')
+        .height('48%')
+        .position({ x: 0, y: '52%' })
+        .linearGradient({ direction: GradientDirection.Bottom, colors: [['#00000000', 0.0], ['#EB000000', 1.0]] })
+        .hitTestBehavior(HitTestMode.None)
     Column() {
       Row({ space: tv(12) }) {
         // web: the Minimise pill (glass, hairline) beside the round close button
@@ -649,7 +634,7 @@ export struct PlayerChrome {
         .id('px:button:Minimise player')
         .justifyContent(FlexAlign.Center)
         .alignItems(VerticalAlign.Center)
-        .borderRadius(tv(TV_CLOSE_SIZE / 2))
+        .borderRadius(999)
         .backgroundColor(toResourceColorWithAlpha(CHROME_GLASS, 0.78))
         .border({ width: 1, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.2) })
         .shadow({ radius: tv(24), color: toResourceColorWithAlpha(CHROME_GLASS, 0.35), offsetY: tv(8) })
@@ -663,6 +648,7 @@ export struct PlayerChrome {
           iconSize: tv(20),
           circle: true,
           glassAlpha: 0.55,
+          radius: 999,
           ringAlpha: 0.2,
           buttonWidth: tv(TV_CLOSE_SIZE),
           buttonHeight: tv(TV_CLOSE_SIZE),
@@ -698,7 +684,7 @@ export struct PlayerChrome {
             fillAlpha: 0.14,
             ringAlpha: 0,
             isPlaying: this.isPlaying,
-            glyphSize: tv(TV_PLAY_SIZE / 2.4),
+            glyphSize: tv(20), // web: the 20 px icon
             nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
             buttonWidth: tv(TV_PLAY_SIZE),
             buttonHeight: tv(TV_PLAY_SIZE),
@@ -728,7 +714,7 @@ export struct PlayerChrome {
             }
             .width(tv(160.45))
             .height(tv(56))
-            .borderRadius(tv(28))
+            .borderRadius(999)
             .id('px:button:Quality: ' + this.qualityLabel)
             .padding({ left: tv(10) })
             .justifyContent(FlexAlign.Center)
@@ -747,8 +733,9 @@ export struct PlayerChrome {
     }
     .width('100%')
     .height('100%')
-    // web .player-scrim: the bottom 48% fades to black (0.92) under the controls
-    .linearGradient({ direction: GradientDirection.Bottom, colors: [['#00000000', 0.0], ['#00000000', 0.52], ['#EB000000', 1.0]] })
+    }
+    .width('100%')
+    .height('100%')
     .opacity(this.chromeOpacity)
     .hitTestBehavior(this.visible ? HitTestMode.Default : HitTestMode.Transparent)
   }
@@ -761,6 +748,7 @@ export struct PlayerChrome {
       icon: icon,
       iconSize: iconSize,
       circle: true,
+      radius: circle ? 999 : -1,
       fillAlpha: circle ? 0.04 : 0,
       ringAlpha: circle ? 0.3 : 0,
       active: !faded,
@@ -778,21 +766,13 @@ export struct PlayerChrome {
   /** Previous / next as web draws them: a bar and a triangle inside a 44 vp button, dimmed while there is nothing to skip to. */
   @Builder
   private phoneSkip(previous: boolean, active: boolean, onTap: () => void, x: number, y: number): void {
-    Row({ space: 1 }) {
-      if (!previous) {
-        Polygon({ width: 10, height: 12 }).points([[0, 0], [0, 12], [10, 6]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(10).height(12)
-      }
-      Row().width(2.5).height(12).backgroundColor(toResourceColor(CHROME_TEXT_PRIMARY))
-      if (previous) {
-        Polygon({ width: 10, height: 12 }).points([[10, 0], [10, 12], [0, 6]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(10).height(12)
-      }
+    Stack() {
+      Image(previous ? $r('app.media.player_previous') : $r('app.media.player_next')).width(20).height(20)
     }
     .width(44)
     .height(44)
     .id('px:button:' + (previous ? 'Previous episode' : 'Next episode'))
-    .borderRadius('50%')
-    .justifyContent(FlexAlign.Center)
-    .alignItems(VerticalAlign.Center)
+    .borderRadius(50)
     .opacity(active ? 1 : 0.28)
     .focusable(active)
     .position({ x: x, y: y })
@@ -820,14 +800,18 @@ export struct PlayerChrome {
         .justifyContent(FlexAlign.Center)
         .id('px:slider:Seek')
         .position({ x: 12, y: 615.13 })
-        Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
-          .fontSize(PHONE_TIME_FONT_SIZE)
-          .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-          .textAlign(TextAlign.Center)
-          .width(336)
-          .height(16.88)
-          .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
-          .position({ x: 12, y: 653.13 })
+        Column() {
+          Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
+            .fontSize(PHONE_TIME_FONT_SIZE)
+            .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+            .textAlign(TextAlign.Center)
+            .width(336)
+        }
+        .width(336)
+        .height(16.88)
+        .justifyContent(FlexAlign.Center)
+        .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+        .position({ x: 12, y: 653.13 })
       }
       this.phoneSkip(true, this.canPrevious, this.onPrevious, 20, 674)
       ChromeButton({
@@ -837,7 +821,7 @@ export struct PlayerChrome {
         ringAlpha: 0,
         ringWidth: 0,
         isPlaying: this.isPlaying,
-        glyphSize: PHONE_PLAY_SIZE / 2.6,
+        glyphSize: 20, // web: the 20 px icon
         nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
         buttonWidth: PHONE_PLAY_SIZE,
         buttonHeight: PHONE_PLAY_SIZE,
@@ -860,7 +844,7 @@ export struct PlayerChrome {
       .width(44)
       .height(44)
       .id('px:button:Quality: ' + this.qualityLabel)
-      .borderRadius(22)
+      .borderRadius(999)
       .justifyContent(FlexAlign.Center)
       .position({ x: 89, y: 722 })
       .onClick(() => {
