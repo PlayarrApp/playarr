@@ -104,7 +104,7 @@ export struct TouchNavBar {
               presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId),
               diameter: AVATAR_SIZE,
               ringWidth: 0,
-              illustrationRatio: 0.86,
+              illustrationRatio: 1,
             })
               .focusable(false)
               .margin({ bottom: 7 }) // web's avatar sits 9 px below the tile top, not centred

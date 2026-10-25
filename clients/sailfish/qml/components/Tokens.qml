@@ -33,7 +33,7 @@ QtObject {
     readonly property color brandInk: dark ? brandPinkSoft : "#821e36"
     // The web's primary "Play" button is the near-white ink on dark.
     readonly property color primary: dark ? "#f4f0f1" : "#382621"
-    readonly property color primaryInk: dark ? "#211d21" : "#ffffff"
+    readonly property color primaryInk: dark ? "#151315" : "#f5f3f2"
 
     readonly property string family: nunito.name
     property FontLoader nunito: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-wght-web.ttf") }
@@ -42,12 +42,29 @@ QtObject {
     property FontLoader nunito580: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-580.ttf") }
     property FontLoader nunito610: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-610.ttf") }
     property FontLoader nunito820: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-820.ttf") }
+    // Further static weights the web phone layout uses; `fam(w)` returns the family of weight w, `weightOfFamily` is the reverse map.
+    property FontLoader nunito300: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-300.ttf") }
+    property FontLoader nunito560: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-560.ttf") }
+    property FontLoader nunito480: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-480.ttf") }
+    property FontLoader nunito640: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-640.ttf") }
+    property FontLoader nunito680: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-680.ttf") }
+    property FontLoader nunito700: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-700.ttf") }
+    property FontLoader nunito720: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-720.ttf") }
+    property FontLoader nunito760: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-760.ttf") }
+    property FontLoader nunito900: FontLoader { source: Qt.resolvedUrl("../../fonts/NunitoSans-900.ttf") }
+    readonly property var loaders: ({ 300: nunito300, 400: nunito400, 480: nunito480, 560: nunito560, 580: nunito580, 610: nunito610, 640: nunito640, 680: nunito680,
+                                      700: nunito700, 720: nunito720, 760: nunito760, 820: nunito820, 900: nunito900 })
+    function fam(w) { return loaders[w].name }
+    function weightOfFamily() { var m = {}; for (var k in loaders) m[loaders[k].name] = Number(k); return m }
     readonly property string family400: nunito400.name
     readonly property string family580: nunito580.name
     readonly property string family610: nunito610.name
     readonly property string family820: nunito820.name
     // Device-pixel snapping like the browser: edges land on whole pixels so art is not resampled by a half pixel.
+    // A css font size as whole device pixels: Chromium lays text out at the fractional size, Qt 5.6 only takes an int.
+    function fs(css) { return Math.round(css * u) }
+    function fsDown(css) { return Math.floor(css * u) }
     function px(v) { return Math.round(v * u) }
-    readonly property real pad: Math.round(16 * u)
+    readonly property real pad: 16 * u
     readonly property real radius: 10 * u
 }

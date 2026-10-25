@@ -1,0 +1,1 @@
+- Round the parity layout export to 0.01 px so identical runs match.

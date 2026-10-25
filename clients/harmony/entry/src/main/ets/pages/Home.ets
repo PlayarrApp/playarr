@@ -1223,6 +1223,7 @@ export struct Home {
     }
     .width('100%')
     .height('100%')
+    .backgroundColor(toResourceColor(activeColors().surface)) // web: the page layer on `surface` over the base
   }
 
   build() {

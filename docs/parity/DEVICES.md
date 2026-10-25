@@ -55,6 +55,8 @@ the static parity server once, then run everything (15 screens in both themes pl
 
 `run.sh` reverses the static server's artwork port into the emulator, and recycles the emulator unit every 8 app launches
 (`recycle.sh`: the software-GL emulator leaks about 190 MiB of host memory per launch and wedges `adb` near its cgroup limit).
+The run also writes `<out>/layout/<theme>/<screen>.json` through the debug build's `PlayarrLayoutExport`: per laid-out text line (from the app's `TextLayoutResult`, through the node's real window transform), plus every tagged `parityBox` read from its measured bounds. The exporter holds no web coordinates, labels or fixed rectangles; when the app differs from the web, the app is changed. The parity player is paused at once, seeked to exactly 2.000 s and held there until the player reports that position.
+
 Publish with `scripts/parity/android-tv/publish.sh <out dir> <branch> <pr>`; it deletes the previous candidate captures, keeps
 every JSON result and writes `build.json`. Player D-pad checks need the web ref's exact Play/Pause state and a playback window,
 so they stay out of this run. Fire OS runs the same app and APK.
@@ -169,7 +171,7 @@ D-pad column as n/a.
 | iPad | iOS simulator (iPad) | As iPhone | As iPhone | Own size; compared with web mobile at that size | `ios-tablet` |
 | Android phone | Android Emulator, phone image | `adb shell input` | `adb exec-out screencap` | Software codecs | `android-phone` |
 | HarmonyOS phone | DevEco Previewer | Previewer input | Previewer screenshot | UI only, no real playback | `harmony-phone` |
-| Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad | Display capture over VNC | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
+| Sailfish OS | Sailfish SDK emulator (VirtualBox on KVM) | `scripts/parity/sailfish/driver.mjs`: app smoke-script hook over ssh, no D-pad (touch phone) | `VBoxManage controlvm screenshotpng` (VM runs `VBoxHeadless --vrde off`, no VNC or RDP listener) | Slow; software GL; touch phone, so the D-pad checks are not passed | `sailfish` |
 | Nura (postmarketOS) | `pmbootstrap` qemu-amd64, headless (no VNC) | QEMU QMP tablet taps and the app's route control file; touch phone, so no D-pad checks (`dpadNA`) | QEMU `screendump` over QMP | Slow; software rendering. Reproduce: `scripts/parity/nura/run.sh <outdir>` (see `scripts/parity/nura/README.md`) | `postmarketos` |
 
 ## Sailfish emulator: cold boot
@@ -180,6 +182,28 @@ and loop. Once, with the VM powered off: `VBoxManage storagectl <vm> --name SATA
 `PLAYARR_SF_SSH_KEY=<key> scripts/parity/sailfish/vm-coldboot.sh` (raises the guest start timeouts, waits for the lock
 screen, unlocks). Boot takes 2 to 4 minutes. If `VBoxHeadless` ignores SIGTERM at the BIOS stage, kill that PID and let
 the service restart.
+
+### Sailfish: one-command parity run
+
+The VM runs headless (`VBoxHeadless --startvm <vm> --vrde off`), so nothing listens for VNC or RDP. Use an already signed-in emulator session for the static parity server. The wrapper sets `PLAYARR_SF_SKIP_SIGNIN=1` and rejects any request to sign in during capture; sign in separately after a fresh install or static-server reset. (`VBOX_USER_HOME` must point at the VirtualBox home of the VM.) The VM must already be running. The wrapper prepares it for capture and waits for SSH; it does not boot or restart it.
+
+```sh
+PLAYARR_SF_SSH_KEY=<key> \
+PLAYARR_SF_SSH_CONFIG=<ssh-config-optional> \
+PLAYARR_SF_SCRATCH=<existing-archive-source-scratch> \
+PLAYARR_SF_VBOXMANAGE=<VBoxManage> \
+PLAYARR_SF_OUT=<legend-root>/sailfish/dev \
+PARITY_CLIENT=sailfish \
+PARITY_LOCK_DIR=<lane-scratch>/lock \
+PARITY_LEGEND_ROOT=<legend-root> \
+PLAYARR_PARITY_ARCHIVE_SCRIPT=<archive.py> \
+PLAYARR_PARITY_CLEANUP_SCRIPT=<cleanup-captures.py> \
+scripts/parity/sailfish/capture-legend.sh
+```
+
+Set `PLAYARR_SF_SCRATCH` to an existing canonical directory outside and disjoint from the legend root, within the archive script's configured source roots, and outside any image-cleanup roots. The wrapper prepares the already-running VM, captures all 16 screens in both themes with the pinned clock, validates the committed capture source and guest QML/native executable before and after, then publishes PNGs and capture metadata only. It validates all 32 PNGs, dimensions and image integrity before changing the legend candidate, preserves JSON history, refuses existing layout JSON, and does not publish diagnostic layouts while the exporter audit is NOT CLEAN. After a capture attempt, the wrapper archives first and runs cleanup only if archive succeeds. It removes only the 32 unchanged raw PNGs after publication and both maintenance steps succeed, retaining the run directory and all JSON. Failures retain raw captures and report whether publication happened. It records the guest native executable SHA separately; the capture-source commit does not identify the native binary build. `PLAYARR_SF_SSH_CONFIG` is passed to SSH-based helpers. Player-controls captures passed in both themes with the exact paused-position gate and completed busy-indicator fade. Calendar-link passed in both themes after its route telemetry fix. The focused NavBar home/movies run passed in both themes; its crop comparisons showed mixed pixel changes and do not establish parity.
+
+Full runs C and D captured 32 screens each. Their PNGs, RGBA data, diagnostic layout JSON and scores matched byte for byte; the 149 inventoried inputs were unchanged, and the guest QML/native executable hashes stayed stable. This establishes repeatability against the same references, not layout acceptance or visual parity. The earlier A run's whole-pair input freeze failed because shared layout references changed during capture; A is excluded from the C/D comparison. See [the Sailfish measurement audit](SAILFISH-AUDIT.md). `scripts/parity/sailfish/build-fonts.sh` builds the embedded Nunito Sans weights. There are no D-pad checks on this touch phone. Detail pages are scrolled to the top before capture.
 
 ## Downloads: which platforms support them
 

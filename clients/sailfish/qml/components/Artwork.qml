@@ -40,7 +40,7 @@ Item {
                 color: "#ffffff"
                 font.family: Tokens.family
                 font.weight: Font.Bold
-                font.pixelSize: 20 * Tokens.u
+                font.pixelSize: Tokens.fs(20)
             }
         }
         Rectangle {
@@ -59,6 +59,7 @@ Item {
             mipmap: true
         }
     }
+    Rectangle { anchors.fill: parent; radius: root.radius; color: Tokens.surfaceSoft }   // the web's art container, under the picture
     Rectangle { id: mask; anchors.fill: parent; radius: root.radius; visible: false }
-    OpacityMask { anchors.fill: parent; source: art; maskSource: mask }
+    OpacityMask { anchors.fill: parent; source: art; maskSource: mask; property string parityRole: img.status === Image.Ready ? "image" : "" }
 }

@@ -35,9 +35,14 @@ for t in $THEMES; do
     layout "$t" "$n"
   done
   # Player: its own start, paused at 2 s with the controls pinned, like the web ref. Colour bars trip the green guard.
-  PLAYARR_KEEP_CONTROLS=1 PLAYARR_PARITY_PAUSE_MS=2000 "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
-  PLAYARR_CAPTURE_GREEN_CHECK=true "$H/pmcap3.sh" "$O/$t" "theme:$t" player </dev/null
-  layout "$t" player-controls
+  # Captured only once the app's own tree shows the player up and paused at 2.000 s (its time label reads "0:02 / 1:00").
+  for try in 1 2 3; do
+    PLAYARR_KEEP_CONTROLS=1 PLAYARR_PARITY_PAUSE_MS=2000 "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
+    PLAYARR_CAPTURE_GREEN_CHECK=true "$H/pmcap3.sh" "$O/$t" "theme:$t" player </dev/null || continue
+    layout "$t" player-controls
+    grep -q '"text":"0:02 / 1:00"' "$O/$t/layout/player-controls.json" && break
+    [ "$try" = 3 ] && { echo "player never reached 0:02 / 1:00" >&2; exit 1; }
+  done
   for f in "$O/$t"/film_*.png; do mv -- "$f" "$O/$t/film.png"; done
   for f in "$O/$t"/series-detail_*.png; do mv -- "$f" "$O/$t/series-detail.png"; done
   (cd "$H/.." && PARITY_ROOT=$PARITY_ROOT node nura/score.mjs "$O/$t" "$t") | tee "$O/score-$t.txt"

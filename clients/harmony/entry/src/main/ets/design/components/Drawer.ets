@@ -68,15 +68,16 @@ export struct Drawer {
           Text(this.kicker).fontFamily(nunitoAt(700, isTvMetrics() ? tv(KICKER_SIZE) : 7.2))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
             .fontWeight(FontWeight.Bold)
-            .letterSpacing(tv(KICKER_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.27))
+            .letterSpacing(tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05))
             .textCase(TextCase.UpperCase)
-            .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
+            .fontColor(toResourceColor(activeColors().inkMuted))
           Text(this.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
             .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
             .lineHeight(isTvMetrics() ? tv(57) : 0) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
+            .translate({ y: isTvMetrics() ? -2 : 0 }) // web's heading box sits 2 higher on the TV
             .id('px:heading:' + this.title)
         }
         .alignItems(HorizontalAlign.Start)
@@ -87,6 +88,7 @@ export struct Drawer {
             .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))
             .id('px:button:' + (this.title === 'Filters' ? 'Close filters' : 'Close'))
+            .padding({ bottom: isTvMetrics() ? 0 : 3.4 }) // web phone: the glyph box sits 1.7 higher than the centred one
             .textAlign(TextAlign.Center)
             .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
             .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
@@ -149,6 +151,7 @@ export struct Drawer {
       right: isTvMetrics() ? tv(PADDING_H - RING_ROOM) : atLeast(TOUCH_PADDING_H, this.safeRight),
       bottom: isTvMetrics() ? 0 : 24 + this.safeBottom,
     })
+    .id('px:dialog:')
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, isTvMetrics() ? DRAWER_BG_ALPHA : 1))
     .backdropBlur(DRAWER_BACKDROP_BLUR)
     .shadow({ radius: tv(90), offsetX: -tv(32), offsetY: 0, color: SHADOW_COLOR })

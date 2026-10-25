@@ -8,6 +8,7 @@ tv=$here/../../../clients/tv-web
 stage=${WEBOS_STAGE:?set WEBOS_STAGE to the simulator app folder}
 (cd "$tv" && pnpm --filter @playarr-tv/app-webos... run build >/dev/null)
 rsync -a --delete "$tv/apps/tv-webos/dist/" "$stage/"
+"$here/write-build-info.sh" "$stage"
 systemctl --user restart "${WEBOS_UNIT:-playarr-slot6-webos.service}"
 for _ in $(seq 60); do curl -fs "http://127.0.0.1:${WEBOS_CDP:-9226}/json/list" | grep -q webos-stage && exit 0; sleep 1; done
 echo "simulator did not come up" >&2; exit 1

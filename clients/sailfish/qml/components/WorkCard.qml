@@ -16,12 +16,16 @@ MouseArea {
     property bool poster: false
     property bool compact: false        // library grids: title only
     property bool showUnwatched: true
+    property string parityRole: "link"
+    readonly property string a11yName: compact && work ? qsTr("Open %1").arg(titleLbl.text) : titleLbl.text + (subLbl.text !== "" ? " " + subLbl.text : "")
+    property real focusRadius: compact ? 12 * Tokens.u : 0
+    property bool firstInk: false
     property bool ring: false           // web focuses the first library card at rest and draws its ring
     readonly property var prog: work ? Progress.byWork[work.id] : undefined
     signal opened(var work)
     signal held(var work)
     width: cardWidth
-    height: art.height + caption.height + (compact ? 12 : 8) * Tokens.u
+    height: art.height + 24.7 * Tokens.u   // the card link: the art and a fixed caption slot
     function navigationActivate() { opened(work) }
     function navigationLongPress() { held(work) }
     onClicked: opened(work)
@@ -60,6 +64,7 @@ MouseArea {
         work: root.work
         override: work && work.deckFile ? Api.url("/api/v1/media/" + work.deckFile + "/thumbnail") : ""
         width: parent.width
+        radius: 8 * Tokens.u
         kinds: root.poster ? ["poster", "backdrop"] : ["backdrop", "thumb", "poster"]
         height: Math.round(width * (root.poster ? 3 / 2 : 9 / 16) + (root.poster ? 0 : 0.2))
         opacity: root.pressed ? 0.7 : 1
@@ -91,13 +96,34 @@ MouseArea {
         radius: Tokens.radius + 3 * Tokens.u; color: "transparent"
         border.width: 3 * Tokens.u; border.color: root.ringColor
     }
-    // Watch state: a progress bar for part-watched, a ringed dot for unseen (web WatchStateOverlay).
-    Rectangle {
+    // Keep the offscreen source and mask explicitly sized: Qt 5.6 does not
+    // resolve anchors on inline OpacityMask source objects to the art item.
+    Item {
+        id: progressSource
+        x: art.x; y: art.y; width: art.width; height: art.height
+        visible: false
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            height: 3 * Tokens.u
+            color: Tokens.dark ? "#5a5559" : "#e5e3e4"
+        }
+        Rectangle {
+            anchors { left: parent.left; bottom: parent.bottom }
+            height: 3 * Tokens.u
+            width: root.prog && root.prog.duration_ms > 0
+                ? parent.width * Math.max(0, Math.min(1, root.prog.position_ms / root.prog.duration_ms)) : 0
+            color: Tokens.brandPink
+        }
+    }
+    Rectangle { id: progressMask; x: art.x; y: art.y; width: art.width; height: art.height; radius: art.radius; visible: false; color: "white" }
+    // Watch state: mask both progress plates to the same rounded art silhouette.
+    // Without this, the three-pixel bar paints square pixels into the card's rounded bottom corners.
+    OpacityMask {
+        x: art.x; y: art.y; width: art.width; height: art.height
         visible: !!root.prog && root.prog.state === "part_watched" && root.prog.duration_ms > 0
-        anchors { left: art.left; bottom: art.bottom; leftMargin: 0 }
-        height: 3 * Tokens.u
-        width: visible ? art.width * Math.min(1, root.prog.position_ms / root.prog.duration_ms) : 0
-        color: Tokens.brandPink
+        source: progressSource
+        maskSource: progressMask
+        property string parityRole: "img"
     }
     UnseenDot {
         visible: root.showUnwatched && (!root.prog || root.prog.state === "unseen")
@@ -106,24 +132,24 @@ MouseArea {
     Column {
         id: caption
         anchors { top: art.bottom; topMargin: (compact ? 11 : 11.7) * Tokens.u; left: parent.left; right: parent.right; leftMargin: 1.7 * Tokens.u }
-        spacing: 3 * Tokens.u
-        Label { renderType: Text.NativeRendering;
+        spacing: 2.5 * Tokens.u
+        Label { renderType: Text.NativeRendering; id: titleLbl
             width: parent.width
             text: work ? (work.deckTitle || work.title) : ""
             elide: Text.ElideRight
-            color: Tokens.ink
+            color: root.firstInk ? (Tokens.dark ? "#ffffff" : "#000000") : Tokens.ink
             font.family: Tokens.family610   // web --card-title-weight: 610
-            font.letterSpacing: -0.015 * 8.9 * Tokens.u
-            font.pixelSize: 8.9 * Tokens.u
+            font.letterSpacing: -0.0285 * 8.9 * Tokens.u - 0.1
+            font.pixelSize: Tokens.fs(8.9)
         }
-        Label { renderType: Text.NativeRendering;
+        Label { renderType: Text.NativeRendering; id: subLbl
             visible: !root.compact
             width: parent.width
             text: work && work.deckSub ? work.deckSub : work ? kindLabel(work.kind) + (work.release_date ? " · " + work.release_date.substr(0, 4) : "") : ""
             elide: Text.ElideRight
-            color: Tokens.inkMuted
-            font.family: Tokens.family
-            font.pixelSize: 6.9 * Tokens.u
+            color: root.firstInk ? (Tokens.dark ? "#ffffff" : "#000000") : Tokens.inkMuted
+            font.family: Tokens.family400; font.letterSpacing: 0.2
+            font.pixelSize: Tokens.fsDown(6.88)
         }
     }
 }

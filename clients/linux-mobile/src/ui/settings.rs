@@ -37,12 +37,18 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .build(),
     );
     col.append(
-        &gtk4::Label::builder()
-            .label(desc)
-            .css_classes(["pa-pref-desc"])
-            .xalign(0.0)
-            .ellipsize(gtk4::pango::EllipsizeMode::End)
-            .max_width_chars(1)
+        // The web keeps the description on one line and clips it at the card edge; a scroller reports no minimum width.
+        &gtk4::ScrolledWindow::builder()
+            .child(
+                &gtk4::Label::builder()
+                    .label(desc)
+                    .css_classes(["pa-pref-desc"])
+                    .xalign(0.0)
+                    .build(),
+            )
+            .hscrollbar_policy(gtk4::PolicyType::External)
+            .vscrollbar_policy(gtk4::PolicyType::Never)
+            .propagate_natural_height(true)
             .hexpand(true)
             .build(),
     );
@@ -55,9 +61,12 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
     // The web nudges the first (hovered) row's arrow 5 px right.
     arrow.set_margin_end(if n == 1 { -10 } else { 0 });
     row.append(&arrow);
-    let b = gtk4::Button::builder().child(&row).css_classes(["pa-pref"]).build();
-    crate::layout::tag(&b, "link", &format!("{n:02} {title} {desc} \u{2192}"), 0.0);
-    b
+
+    gtk4::Button::builder()
+        .child(&row)
+        .accessible_role(gtk4::AccessibleRole::Link)
+        .css_classes(["pa-pref"])
+        .build()
 }
 
 pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
@@ -365,6 +374,5 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         .hscrollbar_policy(gtk4::PolicyType::Never)
         .css_classes(["pa-page"])
         .build();
-    crate::layout::tag(&scroller, "page", "|", 0.0);
     scroller.upcast()
 }

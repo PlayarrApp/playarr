@@ -15,11 +15,11 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
 ```
 
 - `rect`: CSS px of the layout viewport (device px divided by dpr), origin at the top left of the app viewport, excluding system bars.
-  For text elements it is the glyph-run bounds (the lines of drawn text, as `Range.getBoundingClientRect` reports them), never the
+  For text elements it is the glyph-run bounds (the drawn glyphs of one rendered line, from `Range.getBoundingClientRect` per character; a wrapped paragraph is one element per line, each with that line's text; volatile text elements use the glyph run too), never the
   widget or view box: exporters must emit the bounds of the laid-out text, not a stretched label frame. Other elements use the border box.
 - `color`: text colour, `#rrggbb` or `#rrggbbaa`; `null` for elements without text. `background`: the colour behind and including
   the element, every ancestor background composited over white. `fontSize` (CSS px, after any zoom) and `fontWeight` (100 to 900):
-  `null` without text. `radius` (top-left corner, px) and `opacity` (product with the ancestors) only when not 0 and not 1.
+  `null` without text. `radius` (top-left corner, px; web elements that draw no fill, border or shadow carry `painted: false` and their radius is not scored) and `opacity` (product with the ancestors) only when not 0 and not 1.
 - `text`: the text as displayed (after text-transform), whitespace collapsed. Controls without own text use their accessible label.
 - `role`: `text`, `heading`, `button`, `link`, `textbox`, `switch`, `select`, `image`, `video`, `container`, `tab`, `list`, or the ARIA
   role the web element carries. `system` marks OS chrome (status bar, home indicator): never matched, never reported.

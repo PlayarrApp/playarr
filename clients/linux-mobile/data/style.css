@@ -1,4 +1,4 @@
-window.background, .pa-page { background: @pa_bg; color: @pa_ink; }
+window.background, .pa-page, .pa-app { background: @pa_bg; color: @pa_ink; }
 * { font-family: "Nunito Sans", "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif; }
 .pa-title { font-size: 28px; font-weight: 300; color: @pa_ink; }
 .pa-h2 { font-size: 22px; font-weight: 400; color: @pa_ink; }
@@ -23,7 +23,7 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
 }
 .pa-art-title { font-size: 9.28px; color: @pa_muted; }
 .pa-cap-title { font-size: 8.8px; font-weight: 610; letter-spacing: -0.13px; color: @pa_ink; }
-.pa-cap-meta { font-weight: 400; font-size: 6.88px; color: @pa_muted; }
+.pa-cap-meta { font-weight: 400; font-size: 6.88px; color: @pa_muted; margin-top: 3px; margin-bottom: -12px; }
 .pa-unseen { min-width: 5px; min-height: 5px; border-radius: 999px; background: @pa_brand; border: 2px solid rgba(255, 255, 255, 0.94); box-shadow: 0 2px 9px rgba(31, 14, 20, 0.45), 0 0 0 1px alpha(@pa_brand, 0.35); }
 .pa-art.selected { box-shadow: 0 0 0 3px @pa_focus_glow, 0 0 20px 4px alpha(@pa_focus_glow, 0.45), 0 24px 48px rgba(56, 38, 33, 0.3), 0 10px 20px rgba(56, 38, 33, 0.2); }
 .pa-home-focus-halo.selected {
@@ -33,10 +33,8 @@ button.pa-profile:focus-visible .pa-avatar, button.pa-profile.selected .pa-avata
 .pa-home-focus-halo { background: transparent; }
 .pa-card-title { font-size: 14px; font-weight: 600; color: @pa_ink; }
 .pa-card-meta { font-size: 12px; color: @pa_muted; }
-button.pa-card, button.pa-card:hover, button.pa-card:active { background: transparent; border: none; box-shadow: none; padding: 0; min-height: 0; min-width: 0; }
+button.pa-card, button.pa-card:hover, button.pa-card:active { background: transparent; border: none; border-radius: 12px; box-shadow: none; padding: 0; min-height: 0; min-width: 0; }
 button.pa-card:focus-visible .pa-rail-title { font-size: 22px; font-weight: 400; color: @pa_ink; }
-.pa-progress { min-height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.25); }
-.pa-progress progress { background: @pa_brand; min-height: 4px; border-radius: 2px; }
 
 /* Floating bottom navigation (web: 340 x 58, radius 20, 42 x 46 tiles) */
 .pa-nav { background: alpha(@pa_surface_strong, 0.88); border-radius: 20px; border: none; box-shadow: 0 10px 40px @pa_shadow; padding: 6px 0; }
@@ -57,7 +55,7 @@ button.pa-episode:disabled { opacity: 0.5; }
 
 /* Player */
 .pa-player { background: #000000; }
-.pa-player-scrim { background: linear-gradient(to top, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0)); padding: 24px 12px 14px 12px; }
+.pa-player-scrim { background: linear-gradient(to top, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0)); padding: 158px 12px 14px 12px; }
 .pa-player-top { background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0)); padding: 14px 16px 28px 16px; }
 .pa-player-top { border-spacing: 8px; }
 .pa-player button.pa-round { background: rgba(12, 10, 11, 0.58); color: #ffffff; border-radius: 999px; min-width: 42px; min-height: 42px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.28); box-shadow: none; }
@@ -67,7 +65,7 @@ button.pa-episode:disabled { opacity: 0.5; }
 .pa-player label.pa-quality { font-size: 10.56px; font-weight: 700; letter-spacing: 0.1056px; line-height: 1.09; }
 .pa-player label.pa-quality-glyph { font-size: 7.68px; font-weight: 700; letter-spacing: 0.3072px; }
 .pa-player label { color: #ffffff; }
-.pa-player scale { padding: 0; margin: 0; min-height: 6px; }
+.pa-player scale { padding: 0; margin: 0; min-height: 44px; }
 .pa-player scale trough { background: rgba(255, 255, 255, 0.2); min-height: 6px; margin: 0; border-radius: 0; }
 .pa-player scale fill { background: rgba(255, 255, 255, 0.34); border-radius: 0; }
 .pa-player scale highlight { background: @pa_brand; border-radius: 0; }
@@ -161,7 +159,7 @@ button.pa-row.focus { outline: 2px solid @pa_ring; outline-offset: 3px; }
 /* Profiles */
 .pa-mark { background: @pa_brand; border-radius: 999px; min-width: 38px; min-height: 38px; padding: 10px; }
 .pa-add-circle { background: radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 27%), linear-gradient(145deg, mix(@pa_surface_strong, @pa_brand, 0.16), #a82655); border: 1px dashed alpha(@pa_ink, 0.12); border-radius: 999px; }
-.pa-avatar.current { border-radius: 999px; box-shadow: 0 0 0 4px rgba(194, 47, 82, 0.42), 0 18px 36px rgba(31, 14, 20, 0.18); }
+.pa-avatar-ring.current, .pa-avatar.current { border-radius: 999px; box-shadow: 0 0 0 4px rgba(194, 47, 82, 0.42), 0 18px 36px rgba(31, 14, 20, 0.18); }
 .pa-tiny { font-size: 8px; letter-spacing: 1px; font-weight: 700; color: @pa_muted; }
 dropdown.pa-dropdown > button { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 8px; min-height: 44px; box-shadow: none; color: @pa_ink; }
 
@@ -342,7 +340,7 @@ button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 .pa-cal-arrow { margin-left: 2px; }
 .pa-seg-tile { font-kerning: none; }
 .pa-seg-tile.wide { letter-spacing: 0.15px; }
-.pa-pref-arrow { margin-bottom: 3px; }
+.pa-pref-arrow { margin-bottom: 1px; margin-top: 1px; line-height: 1.04; }
 button.pa-entry:not(.week).nosub { padding-bottom: 3.5px; }
 .pa-cal-controls .pa-pill-label { margin-left: 1px; }
 button.pa-entry:not(.week).nosub .pa-entry-metarow { margin-top: 2px; }
@@ -359,3 +357,26 @@ button.pa-entry:not(.week).nosub { padding-bottom: 6.8px; }
 .pa-chip-status.gone { background: mix(@pa_missing, @pa_surface, 0.86); border-color: alpha(@pa_missing, 0.6); }
 /* Agenda range button: the web text starts 1.4 px right of the pill's padding (whole-pixel padding, the right side gives it back) */
 .pa-cal-controls box.pa-pill { padding: 0 19px 0 21px; }
+
+.pa-body { background: @pa_body; }
+
+/* Unfilled controls still clip to their corner radius, which is how a drawn box reports it. */
+
+/* The web's .tv-home-rails surface (dark 72/90/97 %, light 68/88/96 % of the frost colour at 12/34/62 %). */
+.pa-rail-frost { background: linear-gradient(to right, alpha(@pa_frost, 0) 0%, alpha(@pa_frost, 0.72) 12%, alpha(@pa_frost, 0.9) 34%, alpha(@pa_frost, 0.97) 62%, @pa_frost 100%); }
+
+/* The web's watch bar: a 3 px opaque track with the watched share as a square brand box. */
+progressbar.pa-progress { background: #5a5559; border-radius: 0; min-height: 3px; padding: 0; }
+progressbar.pa-progress trough { min-height: 3px; background: transparent; border: none; border-radius: 0; padding: 0; }
+progressbar.pa-progress progress { background: @pa_brand; min-height: 3px; border: none; border-radius: 0; }
+
+/* View glyph boxes: a 1 px ink border (the tile's checked colour when on), as the web's bordered boxes. */
+.pa-vg { border: 1px solid @pa_ink; border-radius: 1px; min-width: 0; min-height: 0; }
+.pa-seg-tile:checked .pa-vg { border-color: @pa_body; }
+
+/* The web's select: a 320 x 58.8 group (soft fill, 12 px corners) around a 44 px button inset 7 px. */
+dropdown.pa-dropdown.pa-filter { background: alpha(@pa_soft, 0.64); border-radius: 12px; padding: 7px 7px 7px 7px; }
+dropdown.pa-dropdown.pa-filter > button { min-height: 42px; border-radius: 10px; padding: 0 12px; background: alpha(@pa_soft, 0.64); }
+.pa-seg-tile.view { padding: 0; min-height: 48px; }
+
+.pa-avatar-ring { border-radius: 999px; }

@@ -58,7 +58,7 @@ const COLUMN_GAP: number = 26;
 const ROW_GAP: number = 38;
 const COLUMNS: number = 3;
 // Web empty state: a 132 px round art with the pink search glyph, then the message.
-const EMPTY_LEFT: number = 1163;
+const EMPTY_LEFT: number = 1124.6; // web: the 132 circle starts at 1124.59
 const EMPTY_TOP: number = 312;
 const EMPTY_ART_SIZE: number = 132;
 const EMPTY_GLYPH_SIZE: number = 54;
@@ -260,7 +260,8 @@ export struct SearchScreen {
       Stack() {
         Image($r('app.media.nav_search'))
           .width(tv(EMPTY_GLYPH_SIZE))
-          .height(tv(EMPTY_GLYPH_SIZE))
+          .height(tv(36)) // web: the glyph box is 54 x 36
+          .objectFit(ImageFit.Contain)
           .colorFilter(tintFilter(BRAND_PINK))
       }
       .width(tv(EMPTY_ART_SIZE))
@@ -270,6 +271,8 @@ export struct SearchScreen {
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
       Text(message).fontFamily(nunitoAt(500, tv(EMPTY_TEXT_SIZE)))
         .fontSize(tv(EMPTY_TEXT_SIZE))
+        .letterSpacing(-0.28) // web's run is 6 narrower
+        .translate({ y: -1.2 })
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
     }
@@ -365,7 +368,7 @@ export struct SearchScreen {
     .width(tv(FORM_WIDTH))
     .height(tv(FORM_HEIGHT))
     .id('px:search:')
-    .padding({ left: tv(FORM_PADDING_LEFT), right: tv(FORM_PADDING_LEFT) })
+    .padding({ left: tv(FORM_PADDING_LEFT), right: tv(FORM_PADDING_LEFT - 3.6) })
     .borderRadius(tv(FORM_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
@@ -417,7 +420,8 @@ export struct SearchScreen {
     } else {
       Text(t('pages.search.emptyPrompt', 'Find any available movie, series, artist or playlist.')).fontFamily(nunitoAt(400, tv(PROMPT_SIZE)))
         .fontSize(tv(PROMPT_SIZE))
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .fontColor(toResourceColor(activeColors().inkMuted))
+        .lineHeight(tv(21.6))
         .width(tv(PROMPT_WIDTH))
         .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PROMPT_TOP) })
     }
@@ -467,7 +471,7 @@ export struct SearchScreen {
       .height(60) // web phone field: 60 vp, 18 vp below the header
       .padding({ left: 16, right: 16 })
       .id('px:search:')
-      .borderRadius(999)
+      .borderRadius(30)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
       }
@@ -515,7 +519,7 @@ export struct SearchScreen {
           }
           .width(86)
           .height(86)
-          .borderRadius('50%')
+          .borderRadius(43)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
           Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunitoAt(650, 11.52))

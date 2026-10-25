@@ -99,7 +99,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
         .valign(gtk4::Align::Start)
         .build();
     art.set_size_request(-1, 223);
-    crate::layout::key_art(&art, true);
     let fade = |h: i32, class: &str| {
         let b = gtk4::Box::builder()
             .css_classes([class])
@@ -232,6 +231,12 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
     );
     let b = gtk4::Button::builder()
         .child(&row)
+        // The film's Play is a link on the web; Resume and Start are buttons.
+        .accessible_role(if primary && label == "Play" {
+            gtk4::AccessibleRole::Link
+        } else {
+            gtk4::AccessibleRole::Button
+        })
         .css_classes(if primary {
             vec!["pa-action", "primary"]
         } else {
@@ -271,9 +276,6 @@ fn meta_row(parts: &[(String, bool)]) -> gtk4::Fixed {
                     vec!["pa-meta"]
                 })
                 .build();
-            if t.starts_with('S') && t.contains('·') {
-                crate::layout::tag(&l, "text", &spaced_code(t), 0.0);
-            }
             f.put(&l, 0.0, 0.0);
             l
         })
@@ -308,19 +310,6 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     body.set_margin_end(16);
     page.append(&body);
     // The web's page box runs 73 px past the content (the navigation clearance), over a header block 485 px high.
-    crate::layout::Tag::new("page", "", 0.0)
-        .adjust([0.0, 0.0, 0.0, 72.0])
-        .extra(crate::layout::Extra {
-            role: "container",
-            label: String::new(),
-            radius: 0.0,
-            inset: [0.0, 0.0, 0.0, 0.0],
-            height: Some(484.55),
-            bg: None,
-            art: false,
-            font: None,
-        })
-        .apply(page);
     let gap = |b: &gtk4::Box, px: i32| b.append(&gtk4::Box::builder().height_request(px).build());
     // Focused episode for a series, the title itself for a film.
     let focus_ep = l.focus.as_ref().and_then(|(sn, id)| {
@@ -342,13 +331,13 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             .css_classes(["pa-kicker"])
             .xalign(0.0)
             .build();
-        crate::layout::tag(&k, "text", &spaced_code(&kicker), 0.0);
         body.append(&k);
     }
     // A film's title block sits 6 and 7 px (css) closer than the episode view's, as the web phone's.
     let film = focus_ep.is_none();
     let title_label = gtk4::Label::builder()
         .label(&w.title)
+        .accessible_role(gtk4::AccessibleRole::Heading)
         .css_classes(["pa-display"])
         .xalign(0.0)
         .build();
@@ -389,6 +378,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         body.append(
             &gtk4::Label::builder()
                 .label(e.episode.title.clone().unwrap_or_default())
+                .accessible_role(gtk4::AccessibleRole::Heading)
                 .css_classes(["pa-ep-heading"])
                 .xalign(0.0)
                 .build(),
@@ -484,7 +474,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     };
     let row1 = gtk4::Box::builder().spacing(8).build();
     let download = action_pill("downloads", "Download", 104, false, true);
-    crate::layout::tag(&download, "button", &format!("Download {title}"), 999.0);
+    crate::layout::name(&download, &format!("Download {title}"));
     match l.detail.media_file_id.clone().filter(|_| !series) {
         Some(file) => {
             let (app, work) = (app.clone(), w.clone());
@@ -508,7 +498,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         let started = l.resume.as_ref().map(|(_, pos, _)| *pos > 0).unwrap_or(false);
         if let Some((file, pos, label)) = l.resume.as_ref().filter(|_| started) {
             let b = action_pill("play", "Resume", 32, true, false);
-            crate::layout::tag(&b, "button", &format!("Resume {title}"), 999.0);
+            crate::layout::name(&b, &format!("Resume {title}"));
             let (file, pos, play, t) = (file.clone(), *pos, play.clone(), format!("{title} {label}"));
             b.connect_clicked(move |_| play(file.clone(), pos, t.clone()));
             row1.append(&b);
@@ -516,7 +506,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
             if let Some(file) = e.media_file_id.clone() {
                 // Nothing watched yet: the web says Start and has no Ask again.
                 let b = action_pill("play", "Start", 100, true, false);
-                crate::layout::tag(&b, "button", &format!("Start {title}"), 999.0);
+                crate::layout::name(&b, &format!("Start {title}"));
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), 0, t.clone()));
                 row1.append(&b);
@@ -531,7 +521,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         row1.append(&download);
         let playback = action_pill("list", "Playback", 104, false, false);
         playback.set_tooltip_text(Some("Playback options are not available yet."));
-        crate::layout::tag(&playback, "button", &format!("Playback settings for {title}"), 999.0);
+        crate::layout::name(&playback, &format!("Playback settings for {title}"));
         row1.append(&playback);
         if w.kind == "movie" {
             if let Some(file) = l.detail.media_file_id.clone() {
@@ -540,7 +530,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
                     None => ("Play".to_string(), 0),
                 };
                 let b = action_pill("play", &label, if start == 0 { 104 } else { 110 }, true, false);
-                crate::layout::tag(&b, "link", &format!("Play {title}"), 999.0);
+                crate::layout::name(&b, &format!("Play {title}"));
                 let (play, t) = (play.clone(), title.clone());
                 b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
                 row1.append(&b);
@@ -549,7 +539,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     }
     let row2 = gtk4::Box::builder().spacing(8).margin_top(12).build();
     let watch = action_pill("add", "Add to watchlist", 108, false, true);
-    crate::layout::tag(&watch, "button", "+ Add to watchlist", 999.0);
+    crate::layout::name(&watch, "+ Add to watchlist");
     {
         let (app, work) = (app.clone(), w.clone());
         watch.connect_clicked(move |b| {
@@ -571,7 +561,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         });
     }
     let playlist = action_pill("add", "Add to Playlist", 104, false, true);
-    crate::layout::tag(&playlist, "button", "+ Add to Playlist", 999.0);
+    crate::layout::name(&playlist, "+ Add to Playlist");
     {
         let (app, work) = (app.clone(), w.clone());
         playlist.connect_clicked(move |_| super::actions::show(&app, &work));
@@ -623,9 +613,6 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         if runtime > 0 {
             let outer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
             outer.add_css_class("pa-rail-band");
-            crate::layout::Tag::new("page", "", 0.0)
-                .adjust([0.0, 0.0, 0.0, -10.2])
-                .apply(&outer);
             let b = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
             b.set_margin_start(16);
             b.append(&chapters_rail(imgs, file, runtime, &title, play.clone()));
@@ -705,6 +692,7 @@ fn season_rail(
             } else {
                 format!("Season {n}")
             })
+            .accessible_role(gtk4::AccessibleRole::Heading)
             .css_classes(["pa-season-title"])
             .xalign(0.0)
             .margin_start(FOCUS_ROOM)
@@ -907,6 +895,7 @@ fn rail_head(col: &gtk4::Box, title: &str, count: &str) {
     col.append(
         &gtk4::Label::builder()
             .label(title)
+            .accessible_role(gtk4::AccessibleRole::Heading)
             .css_classes(["pa-season-title"])
             .xalign(0.0)
             .margin_start(FOCUS_ROOM)
@@ -1005,12 +994,11 @@ fn chapters_rail(
         card.set_size_request(EP_W, -1);
         let b = gtk4::Button::builder()
             .child(&card)
+            .accessible_role(gtk4::AccessibleRole::Link)
             .css_classes(["pa-card"])
             .valign(gtk4::Align::Start)
             .build();
-        crate::layout::Tag::new("link", &format!("Play {title} from Chapter {}", i + 1), 0.0)
-            .height(135.52)
-            .apply(&b);
+        crate::layout::name(&b, &format!("Play {title} from Chapter {}", i + 1));
         let (file, play, t) = (file.to_string(), play.clone(), title.to_string());
         b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
         row.append(&b);

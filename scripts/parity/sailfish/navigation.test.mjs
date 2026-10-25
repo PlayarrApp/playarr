@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { decodeFocus, hasKeyAckPair, hasKeyCompletion, hasNextKeyAckPair, hasNextKeyAckPress, keyCommand, nextCompletedKeySequence, nextKeyAckPress, parseParityEvents } from "./navigation.mjs";
+import { decodeFocus, hasKeyAckPair, hasKeyCompletion, hasNextKeyAckPair, hasNextKeyAckPress, keyCommand, nextCompletedKeySequence, nextKeyAckPress, parseParityEvents, playerCaptureReady } from "./navigation.mjs";
 
 test("maps suite navigation actions to VNC keysyms", () => {
   assert.deepEqual(["left", "right", "up", "down", "select", "back"].map(keyCommand), ["LEFT", "RIGHT", "UP", "DOWN", "ENTER", "ESC"]);
@@ -20,10 +20,27 @@ test("reads the newest route and focus event from app logs", () => {
   assert.deepEqual(decodeFocus(events.focus), { label: "Sample Card B", position: { rail: 1, index: 2 } });
 });
 
-test("reads actual player state without exposing a media identifier", () => {
-  assert.deepEqual(parseParityEvents("PARITY|player|1|4|0|1").player, {
-    state: 1, positionSeconds: 4, menuOpen: false, controls: true,
+test("reads source and engine player positions without exposing a media identifier", () => {
+  assert.deepEqual(parseParityEvents("PARITY|player|1|4|0|1|3500|4000").player, {
+    state: 1, positionSeconds: 4, menuOpen: false, controls: true, engineMs: 3500, sourceMs: 4000,
   });
+  assert.equal(parseParityEvents("PARITY|player|2|2|0|1").player.sourceMs, null);
+  assert.equal(parseParityEvents("PARITY|player-capture-failed|not-seekable").playerCaptureFailure, "not-seekable");
+  assert.deepEqual(parseParityEvents("PARITY|player-capture-ack|2000|2000").playerCaptureAcknowledgement, { sourceMs: 2000, engineMs: 2000 });
+});
+
+test("player capture readiness requires an exact post-seek acknowledgement at paused 2000 ms", () => {
+  const player = { state: 2, engineMs: 2000, sourceMs: 2000, controls: true };
+  const acknowledgement = { sourceMs: 2000, engineMs: 2000 };
+  assert.equal(playerCaptureReady(player, acknowledgement), true);
+  assert.equal(playerCaptureReady({ ...player, state: 1 }, acknowledgement), false);
+  assert.equal(playerCaptureReady({ ...player, sourceMs: 2001 }, acknowledgement), false);
+  assert.equal(playerCaptureReady({ ...player, controls: false }, acknowledgement), false);
+  assert.equal(playerCaptureReady(player, null), false);
+  assert.equal(playerCaptureReady({ ...player, engineMs: 2001 }, acknowledgement), false);
+  assert.equal(playerCaptureReady(player, { ...acknowledgement, engineMs: 1999 }), false);
+  assert.equal(playerCaptureReady(player, { ...acknowledgement, sourceMs: 1999 }), false);
+  assert.equal(playerCaptureReady(null, acknowledgement), false);
 });
 
 test("retains Qt key press and release acknowledgements in order", () => {

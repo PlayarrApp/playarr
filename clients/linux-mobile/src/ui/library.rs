@@ -412,6 +412,7 @@ impl Lib {
             col.append(
                 &gtk4::Label::builder()
                     .label(text.to_uppercase())
+                    .accessible_role(gtk4::AccessibleRole::Heading)
                     .css_classes(["pa-section-label", "pa-heading"])
                     .xalign(0.0)
                     .build(),
@@ -423,6 +424,12 @@ impl Lib {
             let mut out = Vec::new();
             for (i, n) in names.iter().enumerate() {
                 let t = gtk4::ToggleButton::builder()
+                    // Text tiles: the web's text is the control (its box is the text run); glyph tiles are the button.
+                    .accessible_role(if glyphs {
+                        gtk4::AccessibleRole::Button
+                    } else {
+                        gtk4::AccessibleRole::Generic
+                    })
                     .css_classes(if glyphs {
                         vec!["pa-seg-tile", "view"]
                     } else {
@@ -432,15 +439,17 @@ impl Lib {
                     .build();
                 if glyphs {
                     view_tile_child(&t, i, n);
+                    crate::layout::name(&t, n);
                 } else {
-                    t.set_label(n);
+                    t.set_child(Some(
+                        &gtk4::Label::builder()
+                            .label(*n)
+                            .accessible_role(gtk4::AccessibleRole::Button)
+                            .build(),
+                    ));
                     // The web sets capitalised tile text a touch wider than GTK; the lowercase quirk text matches already.
                     if n.starts_with(char::is_uppercase) {
                         t.add_css_class("wide");
-                    }
-                    // The web's tile text is the button: its box is the text run.
-                    if let Some(l) = t.child() {
-                        crate::layout::tag(&l, "button", "", 12.0);
                     }
                 }
                 match &group {
@@ -474,7 +483,7 @@ impl Lib {
             });
         }
         label("Sort by");
-        let sort = tiles(&["Title", "Date added"], usize::from(q.sort == "date_added"), false);
+        let sort = tiles(&["Title", "Date Added"], usize::from(q.sort == "date_added"), false);
         label("Order");
         let order = tiles(&["A-Z", "Z-A"], usize::from(q.descending), false);
 
@@ -490,24 +499,13 @@ impl Lib {
                     l.set_margin_top(-1);
                 }
             }
-            let dd = gtk4::DropDown::from_strings(&["Any language"]);
+            let dd = gtk4::DropDown::builder()
+                .model(&gtk4::StringList::new(&["Any language"]))
+                .accessible_role(gtk4::AccessibleRole::Group)
+                .build();
             dd.add_css_class("pa-dropdown");
             dd.add_css_class("pa-filter");
             // The web's select is a bordered group holding a button with the value and a caret glyph.
-            crate::layout::Tag::new("group", "", 12.0)
-                .adjust([0.0, -1.39, 0.0, 0.0])
-                .height(58.78)
-                .extra(crate::layout::Extra {
-                    role: "button",
-                    label: "Any language \u{2304}".into(),
-                    radius: 10.0,
-                    inset: [7.39, 6.0, 7.39, 0.0],
-                    height: Some(44.0),
-                    bg: None,
-                    art: false,
-                    font: None,
-                })
-                .apply(&dd);
             if let Some(inner) = dd
                 .first_child()
                 .and_then(|b| b.downcast::<gtk4::Button>().ok())
@@ -637,7 +635,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
         .valign(gtk4::Align::Start)
         .build();
     backdrop.set_size_request(-1, 385);
-    crate::layout::key_art(&backdrop, false);
     let wash = gtk4::Box::builder()
         .css_classes(["pa-key-wash"])
         .valign(gtk4::Align::Start)
@@ -721,7 +718,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
             .height_request(top(i + 1) - top(i))
             .margin_top(if i == 0 { top(0) - 88 } else { 0 })
             .build();
-        crate::layout::tag(&b, "button", &name, 50.0);
+        crate::layout::name(&b, &name);
         let lib = lib.clone();
         b.connect_clicked(move |_| lib.jump(c));
         rail.append(&b);
@@ -762,109 +759,40 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
     root.upcast()
 }
 
-/// The web's view-switch glyphs (list, screen, cover), as css px (width, height).
-const VIEW_GLYPHS: [(i32, i32); 3] = [(20, 10), (21, 5), (17, 13)];
+/// The web's view-switch glyphs (list, screen, cover) are three bordered boxes each: (count, width, height, gap) in css px,
+/// stacked for the list and side by side for the others.
+const VIEW_GLYPHS: [(i32, i32, i32, i32); 3] = [(3, 20, 2, 2), (3, 5, 3, 3), (3, 4, 13, 2)];
 
 /// Glyph over label, the glyph following the tile's checked colour.
 fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
-    let (w, h) = VIEW_GLYPHS[i];
-    let weak = tile.downgrade();
-    let area = gtk4::DrawingArea::builder()
-        .content_width(w)
-        .content_height(h)
+    let (n, w, h, gap) = VIEW_GLYPHS[i];
+    let area = gtk4::Box::builder()
+        .orientation(if i == 0 {
+            gtk4::Orientation::Vertical
+        } else {
+            gtk4::Orientation::Horizontal
+        })
+        .spacing(gap)
         .halign(gtk4::Align::Center)
         .build();
-    area.set_draw_func(move |_, cr, w, h| {
-        let on = weak.upgrade().is_some_and(|t| t.is_active());
-        let c = gtk4::gdk::RGBA::parse(crate::icons::color(if on {
-            crate::icons::Tone::OnAccent
-        } else {
-            crate::icons::Tone::Ink
-        }))
-        .unwrap();
-        cr.set_source_rgba(c.red().into(), c.green().into(), c.blue().into(), 1.0);
-        let (w, h) = (f64::from(w), f64::from(h));
-        match i {
-            0 => {
-                cr.set_line_width(2.0);
-                cr.set_line_cap(gtk4::cairo::LineCap::Round);
-                for y in [1.0, h / 2.0, h - 1.0] {
-                    cr.move_to(1.0, y);
-                    cr.line_to(w - 1.0, y);
-                }
-            }
-            _ => {
-                // Three outlined bars: wide and short (screen) or narrow and tall (cover).
-                let (bw, gap) = if i == 1 { (6.0, 1.25) } else { (5.0, 1.0) };
-                cr.set_line_width(1.6);
-                for k in 0..3 {
-                    let (x, r) = (0.8 + f64::from(k) * (bw + gap), if i == 1 { 1.2 } else { 1.5 });
-                    let (x2, y2) = (x + bw - 1.6, h - 0.8);
-                    cr.new_sub_path();
-                    cr.arc(x2 - r, 0.8 + r, r, -std::f64::consts::FRAC_PI_2, 0.0);
-                    cr.arc(x2 - r, y2 - r, r, 0.0, std::f64::consts::FRAC_PI_2);
-                    cr.arc(x + r, y2 - r, r, std::f64::consts::FRAC_PI_2, std::f64::consts::PI);
-                    cr.arc(
-                        x + r,
-                        0.8 + r,
-                        r,
-                        std::f64::consts::PI,
-                        3.0 * std::f64::consts::FRAC_PI_2,
-                    );
-                    cr.close_path();
-                }
-            }
-        }
-        let _ = cr.stroke();
-    });
-    tile.connect_toggled({
-        let area = area.clone();
-        move |_| area.queue_draw()
-    });
+    for _ in 0..n {
+        let bar = gtk4::Box::builder().css_classes(["pa-vg"]).build();
+        bar.set_size_request(w, h);
+        area.append(&bar);
+    }
+    // The web's glyph tops sit 8.3, 11.7 and 6.8 px below its tile's top edge, the word 7 px under the glyph.
     let col = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
-        .spacing(8)
-        .valign(gtk4::Align::Center)
+        .spacing(6)
+        .valign(gtk4::Align::Start)
+        .margin_top([8, 12, 7][i])
         .build();
     col.append(&area);
     let label = gtk4::Label::new(Some(name));
     // The web's text node is the lower-case word; a capital first letter is drawn by its CSS.
     // The web's word sits 1.4, 1.2 and 1.9 px lower than the centred label.
-    crate::layout::Tag::new("text", &name.to_lowercase(), 0.0)
-        .adjust([0.0, [1.35, 1.17, 1.85][i], 0.0, 0.0])
-        .apply(&label);
     col.append(&label);
     tile.set_child(Some(&col));
-    // The web draws each glyph from three boxes (web x, y, w, h); the Screen tile is the focused one and drawn 1.025 times
-    // larger. Insets are relative to this tile, whose box sits at x 20, 130 and 240, y 116 (101 wide).
-    let boxes: [[f32; 4]; 3] = [
-        [60.66, 124.2, 20.0, 2.0],
-        [169.73, 127.0, 5.46, 3.86],
-        [281.33, 122.7, 4.0, 13.0],
-    ];
-    let tile_x = [20.0_f32, 130.0, 239.0][i];
-    let [x, y, w, h] = boxes[i];
-    let step = [4.0, 7.52, 6.0][i];
-    let mut t = crate::layout::Tag::new("button", name, 12.0);
-    if i == 1 {
-        t = t.adjust([-1.94, -0.68, 1.92, 0.0]).height(49.2);
-    }
-    for k in 0..3 {
-        let kf = k as f32;
-        let (dx, dy) = if i == 0 { (0.0, kf * step) } else { (kf * step, 0.0) };
-        let left = x + dx - tile_x;
-        t = t.extra(crate::layout::Extra {
-            role: "container",
-            label: String::new(),
-            radius: 1.0,
-            inset: [left, y + dy - 116.0, 101.0 - left - w, 0.0],
-            height: Some(h),
-            bg: None,
-            art: false,
-            font: None,
-        });
-    }
-    t.apply(tile);
 }
 
 #[cfg(test)]

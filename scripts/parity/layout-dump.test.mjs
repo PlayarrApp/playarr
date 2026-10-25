@@ -8,12 +8,12 @@ const exe = [process.env.PARITY_CHROME, "/usr/bin/chromium", "/usr/bin/google-ch
 const skip = exe ? false : "no Chromium on this host";
 
 // One page per rule; every visible element is a labelled button or a text span, so the names tell what survived.
-const dump = async (body) => {
+const dump = async (body, volatile = []) => {
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   try {
     const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
     await page.setContent(`<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#fff;font:16px sans-serif}.abs{position:absolute}</style>${body}`);
-    return await page.evaluate(layoutPageFn, []);
+    return await page.evaluate(layoutPageFn, volatile);
   } finally { await browser.close(); }
 };
 const texts = (d) => d.elements.map((e) => e.text || `<${e.role}>`);
@@ -117,4 +117,38 @@ test("an omit entry is left out of the export", { skip }, async () => {
     const d = await page.evaluate(layoutPageFn, volatileFor("player-controls"));
     assert.deepEqual(d.elements.map((e) => e.text), ["keep"]);
   } finally { await browser.close(); }
+});
+
+test("text-transform: the exported text is the displayed text", { skip }, async () => {
+  const d = await dump(`<div style="text-transform:uppercase">up Case</div><div style="text-transform:lowercase">Low CASE</div>
+    <div style="text-transform:capitalize">cap the 3rd word-x o'neil</div><div style="text-transform:none">No Change</div>
+    <button style="text-transform:capitalize" aria-label="List View">list view</button>`);
+  assert.deepEqual(texts(d), ["UP CASE", "low case", "Cap The 3rd Word-X O'neil", "No Change", "List View"]);
+});
+
+test("border-radius: a percentage resolves against the box and radii are capped at half the short side", { skip }, async () => {
+  const d = await dump(`<button class="abs" aria-label="round" style="top:0;width:44px;height:44px;background:#123;border-radius:50%"></button>
+    <button class="abs" aria-label="pill" style="top:60px;width:80px;height:20px;background:#123;border-radius:50%"></button>
+    <button class="abs" aria-label="big" style="top:100px;width:40px;height:20px;background:#123;border-radius:999px"></button>
+    <button class="abs" aria-label="px" style="top:140px;width:40px;height:40px;background:#123;border-radius:6px"></button>`);
+  assert.deepEqual(d.elements.map((e) => e.radius), [22, 10, 10, 6]);
+});
+
+test("a wrapped paragraph is one element per rendered line, with glyph-run bounds", { skip }, async () => {
+  const d = await dump(`<p style="width:120px;font:16px/20px monospace">alpha beta gamma delta</p>`);
+  assert.deepEqual(texts(d), ["alpha beta", "gamma delta"]);
+  assert.equal(d.elements[0].rect.h, d.elements[1].rect.h);
+  assert.ok(d.elements[1].rect.y > d.elements[0].rect.y);
+  assert.ok(d.elements[0].rect.w <= 120);
+});
+
+test("a volatile element exports its glyph run, not its box", { skip }, async () => {
+  const d = await dump(`<div class="app-clock-time" style="width:200px;height:50px">12:00</div>`, volatileFor("home"));
+  assert.equal(d.elements[0].volatile, "header-clock");
+  assert.ok(d.elements[0].rect.w < 100 && d.elements[0].rect.h < 30);
+});
+
+test("adjacent text nodes are joined as rendered, with no inserted separator", { skip }, async () => {
+  const d = await dump(`<p id="c"></p><script>const c = document.getElementById("c"); for (const s of ["S", "01", " · E", "01"]) c.append(document.createTextNode(s));</script>`);
+  assert.deepEqual(texts(d), ["S01 · E01"]);
 });

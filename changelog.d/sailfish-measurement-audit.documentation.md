@@ -1,0 +1,1 @@
+- Correct Sailfish parity acceptance documentation: identify unmeasured layout metadata, missing calendar-link coverage, a full-frame player mask and the required measurement repairs for task 61.10082.

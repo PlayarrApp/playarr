@@ -31,7 +31,7 @@ const TITLE_LETTER_SPACING: number = -1.512;
 const HEADER_GAP: number = 23;
 // Web `.page-header-detail`: 0.58vw (11.136 px), weight 680, tracking .045em.
 const DETAIL_SIZE: number = 11.136;
-const DETAIL_LETTER_SPACING: number = 0.501;
+const DETAIL_LETTER_SPACING: number = 0.79; // web 0.501; ArkUI lays the run out about 3 narrower
 const DETAIL_WEIGHT: number = 680; // web .page-header-title-block > span
 const CLOCK_STOP: number = 478;
 const WRAP_GAP: number = 5.6;
@@ -143,6 +143,7 @@ export struct PageShell {
       .letterSpacing(tv(TITLE_LETTER_SPACING))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(HEADER_SIZE))
+      .translate({ y: -1.3 }) // web's title box sits 1.3 higher
   }
 
   @Builder
@@ -193,16 +194,26 @@ export struct PageShell {
 
   @Builder
   private chrome(): void {
+    // Web's DOM: the page base (`bg`) holds the fixed rail, logo and clock; the page wrapper on `surface` holds the header and the content.
     Stack() {
-      if (this.railFrostWidthPct > 0) {
-        Row()
-          .width(`${this.railFrostWidthPct}%`)
-          .height('100%')
-          .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
-          .linearGradient({ angle: 90, colors: railFrostColors() })
-          .hitTestBehavior(HitTestMode.None)
+      Stack() {
+        if (this.railFrostWidthPct > 0) {
+          Row()
+            .width(`${this.railFrostWidthPct}%`)
+            .height('100%')
+            .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
+            .linearGradient({ angle: 90, colors: railFrostColors() })
+            .hitTestBehavior(HitTestMode.None)
+        }
+        this.content()
+        if (this.showHeader) {
+          this.tvHeader()
+        }
+        this.controls()
       }
-      this.content()
+      .width('100%')
+      .height('100%')
+      .backgroundColor(toResourceColor(activeColors().surface))
       // NavRail reads `items` once (plain field), so it is created after the kinds arrive.
       if (this.navItems.length > 0) {
         NavRail({
@@ -223,14 +234,10 @@ export struct PageShell {
       .height(tv(TvGeometry.utilityRowHeight))
       .alignItems(VerticalAlign.Center)
       .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-      if (this.showHeader) {
-        this.tvHeader()
-      }
-      this.controls()
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(this.railFrostWidthPct >= 0 && isTvMetrics() ? activeColors().surface : activeColors().bg))
+    .backgroundColor(toResourceColor(activeColors().bg))
   }
 
   /** The phone Back control's accessible name (web `aria-label` on the round Back link; it differs per page). */
@@ -249,7 +256,8 @@ export struct PageShell {
             .textAlign(TextAlign.Center)
             .width(44)
             .height(44)
-            .borderRadius('50%')
+            .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
+            .borderRadius(22)
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
             .id('px:' + this.backRole + ':' + this.backLabel)
@@ -264,6 +272,7 @@ export struct PageShell {
               .letterSpacing(-0.972) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
+              .translate({ y: -1.3 }) // web's title box sits 1.3 higher
           }
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)
@@ -309,5 +318,6 @@ export struct PageShell {
     }
     .width('100%')
     .height('100%')
+    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().surface) : Color.Transparent) // the phone's bottom bar blends over the page
   }
 }

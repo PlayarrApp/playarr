@@ -418,7 +418,7 @@ export struct MediaRail {
           .letterSpacing(this.headingSize * (isTvMetrics() ? RAIL_HEADING_TRACKING_TV_EM : RAIL_HEADING_TRACKING_EM))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .translate({ y: ((FOCUS_LIFT.railHeading.translateY ?? 0) * this.headingEffective()) })
+          .translate({ y: ((FOCUS_LIFT.railHeading.translateY ?? 0) * this.headingEffective()) - (isTvMetrics() ? 1.5 : 0) }) // TV: web's heading box sits 1.5 higher
           .scale({ x: (1 + (FOCUS_LIFT.railHeading.scale - 1) * this.headingEffective()), y: (1 + (FOCUS_LIFT.railHeading.scale - 1) * this.headingEffective()), centerX: 0, centerY: '50%' })
       }
 

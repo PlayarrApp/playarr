@@ -322,8 +322,6 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         }
     }
     row.append(&col);
-    crate::layout::tag(&chip, "text", "", 999.0);
-    crate::layout::tag(&thumb, "image", "", 6.0);
     // The left border shows availability (we have it) versus not, never which library it belongs to.
     let have = if e.has_file { "have" } else { "missing" };
     let b = gtk4::Button::builder()
@@ -346,7 +344,6 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
         words.extend(sub_text);
         words.extend(texts);
         words.push(text.to_string());
-        crate::layout::tag(&b, "button", &words.join(" "), 12.0);
     }
     if let Some(id) = e.work_id.clone() {
         let (app, imgs, title) = (app.clone(), imgs.clone(), e.title.clone());
@@ -363,24 +360,29 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
 }
 
 fn pill(label: &str) -> gtk4::Button {
-    let b = gtk4::Button::builder().label(label).css_classes(["pa-pill"]).build();
-    // The web's pill text is the link: its box is the text run.
-    if let Some(l) = b.child() {
-        crate::layout::tag(&l, "button", "", 999.0);
-    }
-    b
+    // The web's text is the control (its box is the text run); the pill around it only carries the click.
+    let text = gtk4::Label::builder()
+        .label(label)
+        .accessible_role(gtk4::AccessibleRole::Button)
+        .css_classes(["pa-pill-label"])
+        .build();
+    gtk4::Button::builder()
+        .child(&text)
+        .accessible_role(gtk4::AccessibleRole::Generic)
+        .css_classes(["pa-pill"])
+        .build()
 }
 
 /// A round control with a text arrow, as the web's period navigation.
 fn round_arrow(arrow: &str) -> gtk4::Button {
     let b = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
+    crate::layout::name(&b, if arrow == "←" { "Previous" } else { "Next" });
     b.set_child(Some(
         &gtk4::Label::builder()
             .label(arrow)
             .css_classes(["pa-cal-arrow"])
             .build(),
     ));
-    crate::layout::tag(&b, "button", if arrow == "←" { "Previous" } else { "Next" }, 50.0);
     b
 }
 
@@ -539,7 +541,6 @@ impl Cal {
                 .valign(gtk4::Align::Center)
                 .margin_top(2)
                 .build();
-            crate::layout::tag(&chip, "text", "", 999.0);
             head.append(&chip);
         }
         let sec = gtk4::Box::builder()
@@ -707,8 +708,6 @@ impl Cal {
                 let shown = items.len().min(chips);
                 for (_, e, n) in items.iter().take(shown) {
                     let row = gtk4::Box::builder().spacing(7).css_classes(["pa-mline"]).build();
-                    let status = status_chip(e, today_date).0;
-                    crate::layout::tag(&row, "button", &format!("{}, {status}, {}", e.title, long_day(d)), 4.0);
                     let tone = match status_chip(e, today_date).1 {
                         "ok" => "have",
                         "soon" => "soon",
@@ -718,7 +717,6 @@ impl Cal {
                         .css_classes(["pa-dot", tone])
                         .valign(gtk4::Align::Center)
                         .build();
-                    crate::layout::tag(&dot, "container", "", 50.0);
                     // The web's 7-column grid pitch is 102.86 px; GTK rounds it to 103, so the dot sits 1 px left of its slot (the label is pulled back to keep its place).
                     dot.set_margin_start(-1);
                     dot.set_margin_end(1);
@@ -776,51 +774,6 @@ impl Cal {
             View::Month => Date { d: 1, ..t },
         });
         self.selected.set(None);
-        // The web names the agenda's page and its inner list alike.
-        if let Some(scroller) = self.page.ancestor(gtk4::ScrolledWindow::static_type()) {
-            let mut t = crate::layout::Tag::new("page", if v == View::Agenda { "|" } else { "" }, 0.0);
-            // The web's live region names the period shown ("5 Oct – 11 Oct 2026"); no drawn text carries it here.
-            let (sx, sy, sw) = match v {
-                View::Agenda => (33.81, 91.0, 140.31),
-                View::Week => (16.0, 109.0, 146.34),
-                View::Month => (16.0, 109.0, 100.19),
-            };
-            t = t.extra(crate::layout::Extra {
-                role: "status",
-                label: self.period_text(),
-                radius: 0.0,
-                inset: [sx, sy, 360.0 - sx - sw, 0.0],
-                height: Some(22.0),
-                bg: None,
-                art: false,
-                font: Some((16.0, 400)),
-            });
-            if v == View::Agenda {
-                // The web's agenda also draws the faded key art as its own image.
-                t = t.extra(crate::layout::Extra {
-                    role: "image",
-                    label: String::new(),
-                    radius: 0.0,
-                    inset: [0.0, -7.4, -14.4, 295.45],
-                    height: None,
-                    bg: None,
-                    art: true,
-                    font: None,
-                });
-                // ... and a full-page layer for its list.
-                t = t.extra(crate::layout::Extra {
-                    role: "container",
-                    label: String::new(),
-                    radius: 0.0,
-                    inset: [0.0, 0.0, 0.0, 0.0],
-                    height: Some(673.0),
-                    bg: None,
-                    art: false,
-                    font: None,
-                });
-            }
-            t.apply(&scroller);
-        }
         let week = v == View::Week;
         self.days_view.set_max_content_height(if week { WEEK_CLIP } else { -1 });
         self.days_view.set_vscrollbar_policy(if week {
@@ -937,8 +890,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .margin_end(16)
         .css_classes(["pa-cal-controls"])
         .build();
-    let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
-    crate::layout::tag(&range_label, "button", "", 999.0);
+    let range_label = gtk4::Label::builder()
+        .accessible_role(gtk4::AccessibleRole::Button)
+        .css_classes(["pa-pill-label"])
+        .build();
     let range = gtk4::Box::builder().css_classes(["pa-pill"]).build();
     range.append(&range_label);
     let prev = round_arrow("←");

@@ -6,7 +6,8 @@ Item {
     property alias source: img.source
     width: 44 * Tokens.u
     height: width
-    Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.surfaceSoft }
+    property color plateColor: Tokens.surfaceSoft
+    Rectangle { anchors.fill: parent; radius: width / 2; color: parent.plateColor }
     Image {
         id: img
         anchors.fill: parent

@@ -324,6 +324,16 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       const r = i.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
     }).every((i) => { if (!i.complete && i.loading === "lazy") i.loading = "eager"; return i.complete && i.naturalWidth > 0; }), null, { timeout: 20000 })); // eager: a lazy image inside the viewport but clipped by a scroller never intersects, so never loads
+    // The Movies preview fills its runtime from the focused item's detail. Sometimes the shown item never gets it (the detail is not stored; web race,
+    // cause unconfirmed), so reload the route up to 3 times until the final state shows it.
+    if (/\/movies\/?$/.test(new URL(page.url()).pathname) && !(await page.evaluate(() => !!document.querySelector("[role=dialog]")))) {
+      const runtime = () => page.waitForFunction(() => !!document.querySelector("[data-detail-field=runtime]"), null, { timeout: 8000 }).then(() => true, () => false);
+      for (let tries = 0; !(await runtime()); tries++) {
+        if (tries >= 3) throw new Error("readiness timeout: the Movies preview never showed its runtime");
+        await page.reload({ waitUntil: "load" });
+        await labelled("library grid", () => page.waitForFunction(() => document.querySelectorAll(".tv-library-grid-panel .tv-title-card").length > 0, null, { timeout: 30000 }));
+      }
+    }
     await labelled("loading placeholders gone", () => page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 }));
     await drainApiErrors();
     assertNoApiErrors(apiErrors);

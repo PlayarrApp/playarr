@@ -31,7 +31,7 @@ import { t } from '../../core/Language';
 // A function so t() runs on every build and the labels follow a live language switch.
 function titleActions(): ActionItem[] {
   return [
-    { id: 'play', glyph: isTvMetrics() ? '\u25BA' : '\u25B6\uFE0E', label: t('pages.workDetail.play', 'Play') },
+    { id: 'play', glyph: isTvMetrics() ? '\u25B6' : '\u25B6\uFE0E', label: t('pages.workDetail.play', 'Play') },
     { id: 'download', glyph: '⇩', label: t('settings.yourData.exportDownload', 'Download') },
     { id: 'playlist', glyph: '＋', label: t('components.mediaContextMenu.addToPlaylist', 'Add to Playlist') },
     { id: 'watched', glyph: '✓', label: t('components.mediaContextMenu.markAsWatched', 'Mark as watched') },
