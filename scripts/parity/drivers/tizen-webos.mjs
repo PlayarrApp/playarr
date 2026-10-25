@@ -276,8 +276,23 @@ export async function createDriver() {
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   }
   // Reload at a hash route and wait until the app is up again (a reload drops the debug channel for a few seconds).
+  // The app swaps its refresh token when the 15 minute access token runs out. A page reload that cuts that exchange short loses the new token, and
+  // the retry with the retired one is a token reuse: the server ends the session. Before any reload, let a refresh that is due finish first.
+  async function settleTokenRefresh() {
+    const state = `(() => { try { const t = JSON.parse(localStorage.getItem("playarr:session") || "null")?.accessToken; const p = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); return { token: t.slice(-24), left: p.exp - Date.now() / 1000 }; } catch (e) { return null; } })()`;
+    const first = await ev(state);
+    if (!first || first.left > 150) return;
+    // Due soon: wait for the app's own refresh to land (the access token changes), then give any retry traffic a moment.
+    for (let i = 0; i < 120; i += 1) {
+      await sleep(1000);
+      const now = await ev(state);
+      if (now && now.token !== first.token) { await sleep(3000); return; }
+    }
+    throw new Error("the app did not refresh its access token before the reload");
+  }
   async function load(route) {
     await guard();
+    await settleTokenRefresh();
     if (device === "tizen") {
       // The host is shared and often loaded: allow a slow reload before re-sending (a command polled during a reload is lost).
       for (let a = 0; a < 4; a += 1) {
