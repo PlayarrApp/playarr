@@ -83,8 +83,9 @@ directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the
   which the driver does), or the repeats cancel the long-press timer and the press becomes a click.
 - Light and dark captures go to `<cand>/dark` (or `<cand>` itself) and `<cand>/light`, with the web references in
   `web` and `web/light`, as the legend expects.
-- Search is captured with the on-screen keyboard dismissed and player-controls with the video plane hidden, on web and
-  device alike: the keyboard is platform UI and the video plane is a native overlay, neither is app output.
+- Search is captured with the on-screen keyboard dismissed (platform UI, not app output). The Samsung emulator draws the AVPlay
+  video as a layer above the browser, so its player-controls screenshot shows the paused clip without the controls; nothing in the
+  page is hidden or changed to work around that, and the pixel score of that one screen is an emulator limit (a real TV composites the plane under the page).
 - Playback is judged as playing when the playhead advances by `advanceSeconds` within `advanceSeconds + 6` s of wall
   clock; a fixed 3 s window of a stream that is still buffering fails even on web.
 - Home rails depend on the shared account's recent activity (other clients play and mark items), so run the web

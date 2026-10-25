@@ -65,7 +65,7 @@ function fetchWithTimeout(url: string, init: RequestInit, ms: number): Promise<R
   return fetch(url, { ...init, signal: controller.signal }).finally(() => window.clearTimeout(timer));
 }
 
-// Launch flags (?mirrorPointer=1, ?mirrorGeo=1, ?mirrorNoArt=1 ...) kept in sessionStorage because the router may rewrite the query.
+// Launch flags (?mirrorGeo=1, ?mirrorNoArt=1 ...) kept in sessionStorage because the router may rewrite the query.
 function mirrorFlag(name: string): boolean {
   if (new URLSearchParams(window.location.search).get(name) === "1") return true;
   try {
@@ -281,10 +281,6 @@ export function startDebugMirror(): void {
       let captureError: string | null = null;
       let initialIdentity: MirrorIdentity | null = null;
       let restoreArtwork: () => void = () => undefined;
-      let restoreRing: () => void = () => undefined;
-      // ?mirrorPointer=1: the web references show no :focus-visible outline on buttons (their sign-in used pointer clicks).
-      // Media cards keep their remote marker, as in the references. Computed styles are inlined in the render, so clear it on the element itself.
-      const hideFocusRing = mirrorFlag("mirrorPointer");
       try {
         initialIdentity = await readMirrorIdentity(token);
         if (initialIdentity.status !== "ok") throw new Error("mirror identity verification failed");
@@ -311,12 +307,6 @@ export function startDebugMirror(): void {
             fontCss = "";
             errors.push("font embed: " + String((err as Error).message).slice(0, 120));
           }
-        }
-        const ringEl = document.activeElement;
-        if (hideFocusRing && ringEl instanceof HTMLElement && ringEl !== document.body && !ringEl.closest(".media-card")) {
-          const previousOutline = ringEl.style.outline;
-          ringEl.style.outline = "none";
-          restoreRing = () => { ringEl.style.outline = previousOutline; };
         }
         const visibleImages = Array.from(document.body.querySelectorAll<HTMLImageElement>("img")).filter((img) => {
           const r = img.getBoundingClientRect();
@@ -385,7 +375,7 @@ export function startDebugMirror(): void {
         captureError = String((err && (err as Error).message) || err).slice(0, 300);
       } finally {
         restoreArtwork();
-        restoreRing();
+        
       }
       const body: Record<string, unknown> = {
         sentinel: MIRROR_SENTINEL,

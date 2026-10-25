@@ -27,7 +27,7 @@ const TIZEN_MIRROR = TIZEN_REAL ? process.env.TIZEN_MIRROR?.replace(/\/$/, "") :
 const mirrorToken = () => process.env.PLAYARR_VIDAA_MIRROR_TOKEN ?? "";
 const mirrorLocal = () => (process.env.TIZEN_MIRROR_LOCAL ?? TIZEN_MIRROR ?? "").replace(/\/$/, "");
 // The TV keeps the debug page in its cache between runs: a fresh query makes every run load the build the receiver serves now.
-const mirrorEntry = (route = "/") => `${TIZEN_MIRROR}/?mirrorPng=1&mirrorPointer=1&mirrorWidth=1920&r=${Date.now()}&mirrorToken=${encodeURIComponent(mirrorToken())}#${route}`;
+const mirrorEntry = (route = "/") => `${TIZEN_MIRROR}/?mirrorPng=1&mirrorWidth=1920&r=${Date.now()}&mirrorToken=${encodeURIComponent(mirrorToken())}#${route}`;
 const KEYCODE = { up: 38, down: 40, left: 37, right: 39, select: 13, back: 27 };
 const KEYNAME = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", select: "Enter", back: "Escape" };
 const XKEY = { up: "Up", down: "Down", left: "Left", right: "Right", select: "Return", back: "Escape" };
@@ -217,9 +217,9 @@ export async function createDriver() {
     } else await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: 960, y: 540 });
     if (!(await until(`!!document.querySelector(".player-controls") && !document.querySelector(".player-controls").classList.contains("is-hidden")`, 10000))) throw new Error("player controls did not show");
     if (device === "tizen") {
-      // The emulator composites the AVPlay object layer above the page, so a grab shows the video without the controls. Hide that layer, the
-      // equivalent of "video plane hidden on web and device alike" (docs/parity/DEVICES.md): the page is drawn as the app draws it, nothing is injected.
-      await ev(`(() => { const o = document.getElementById("av-player"); if (o) o.style.setProperty("visibility", "hidden", "important"); return true; })()`);
+      // The emulator draws the AVPlay video as its own layer above the browser, so a grab of a playing clip shows the video without the controls
+      // (a real TV composites the plane under the browser). The page is not touched: the screenshot is what the emulator shows, and the layout
+      // export is the DOM as laid out. The pixel score of this screen is therefore an emulator limit (docs/parity/DEVICES.md).
       await sleep(1000);
     }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.

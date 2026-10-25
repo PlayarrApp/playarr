@@ -1,0 +1,1 @@
+- Samsung Tizen: date ranges use plain spaces around the dash, as on the web.
