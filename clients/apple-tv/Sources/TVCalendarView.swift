@@ -54,7 +54,7 @@ struct TVCalendarView: View {
             agendaDetail(entry, item: item, today: model.today)
         }
 
-        TVPageHeader(title: "Calendar")
+        TVPageHeader(title: "Calendar", backName: "Back to home")
 
         // Web header controls, top right: the date range button, previous, Today, next (one group).
         rangeButton(model)

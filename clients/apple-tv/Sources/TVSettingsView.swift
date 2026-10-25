@@ -44,7 +44,7 @@ struct TVSettingsView: View {
             TVRailPanelGradient(width: 1248)
 
             // Web: the selected section is the page subtitle (shared small style), nothing else under the title.
-            TVPageHeader(title: "Preferences", detail: sections[selectedSection].title, backFocused: true)
+            TVPageHeader(title: "Preferences", detail: sections[selectedSection].title, backFocused: true, backName: "Settings", backRole: "button")
 
             // `.settings-option` rows: x 153.6, y 162, 470 (tvOS 480.4) x 91.9, pitch 91.9.
             ForEach(Array(visibleSections.enumerated()), id: \.element) { row, index in

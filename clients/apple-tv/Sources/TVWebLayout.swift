@@ -120,6 +120,9 @@ struct TVPageHeader: View {
     var detail: String? = nil
     /// Settings shows the back button focused (web: a white ring round the same disc).
     var backFocused = false
+    /// The back control's accessible name and role as the web has them (a link home, or a button back to the list).
+    var backName = "Back to Home"
+    var backRole = "link"
     @Environment(\.colorScheme) private var scheme
     /// Web `--line-strong`: rgba(223, 220, 221, .23) in dark, rgba(56, 38, 33, .28) in light.
     private var lineStrong: Color { scheme == .dark ? Color(red: 223 / 255, green: 220 / 255, blue: 221 / 255).opacity(0.23) : Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.28) }
@@ -149,7 +152,7 @@ struct TVPageHeader: View {
                         .foregroundStyle(DesignTokens.Color.textSecondary)
                         .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
                 )
-                .parityBox("link", text: "Back to Home", radius: 50, fill: DesignTokens.Stage.backLink)
+                .parityBox(backRole, text: backName, radius: 50, fill: DesignTokens.Stage.backLink)
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
