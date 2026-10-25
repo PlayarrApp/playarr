@@ -66,7 +66,7 @@ PlayarrPage {
             }
         }
     }
-    PLabel { renderType: Text.QtRendering;
+    Label { renderType: Text.QtRendering;
         x: -16 * Tokens.u; width: parent.width; y: 71.5 * Tokens.u
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("PROFILES")
@@ -74,7 +74,7 @@ PlayarrPage {
        
         font.family: Tokens.fam(820); font.letterSpacing: 2.19; font.pixelSize: Tokens.fs(7.36)
     }
-    PLabel { renderType: Text.QtRendering;
+    Label { renderType: Text.QtRendering;
         x: -16 * Tokens.u; width: parent.width; y: 82 * Tokens.u
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("Who’s watching?")
@@ -119,6 +119,13 @@ PlayarrPage {
                     x: -2.85 * Tokens.u; y: -2.85 * Tokens.u
                     width: 168.73 * Tokens.u
                     source: modelData.avatar
+                    // A bundled preset (".../avatars/<id>.png") is drawn natively from its artwork and plate colours.
+                    readonly property string presetId: /\/avatars\/[a-z]+\.png$/.test(String(modelData.avatar)) ? String(modelData.avatar).replace(/^.*\/avatars\/([a-z]+)\.png$/, "$1") : ""
+                    readonly property var presetColours: ({ astronaut: ["#5267ad", "#222d5f"], cat: ["#e37c68", "#9c3f66"], dinosaur: ["#55a46e", "#237265"],
+                                                           robot: ["#5d9caf", "#365383"], pirate: ["#d39a48", "#91464c"], alien: ["#8b71c5", "#4a477f"] })   // clients/shared/profile-avatars/presets.json
+                    artSource: presetId !== "" && presetColours[presetId] ? String(modelData.avatar).replace("/avatars/", "/avatar-art/") : ""
+                    plateStart: presetId !== "" && presetColours[presetId] ? presetColours[presetId][0] : "#000000"
+                    plateEnd: presetId !== "" && presetColours[presetId] ? presetColours[presetId][1] : "#000000"
                     // The plate PNG carries the figure inset by 7.55 %: the web's plate container and its inner picture.
                     // The active ring sits outside the plate, as on web.
                     Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: ringColor }   // alpha in the colour: item opacity drew a pink square behind the plate

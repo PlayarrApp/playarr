@@ -18,6 +18,12 @@ avatars.files = $$AVATARS/*.png
 avatars.path = /usr/share/$${TARGET}/avatars
 INSTALLS += avatars
 
+AVATARART = $$PWD/assets/avatar-art
+!exists($$AVATARART): AVATARART = $$PWD/../shared/profile-avatars/art
+avatarart.files = $$AVATARART/*.png
+avatarart.path = /usr/share/$${TARGET}/avatar-art
+INSTALLS += avatarart
+
 fonts.files = $$FONT $$PWD/fonts/*.ttf
 fonts.path = /usr/share/$${TARGET}/fonts
 INSTALLS += fonts
