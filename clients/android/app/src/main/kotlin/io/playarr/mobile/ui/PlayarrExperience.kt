@@ -5275,8 +5275,11 @@ private fun TelevisionSearchBody(
                 val requested = runCatching { searchFieldFocus.requestFocus() }.getOrDefault(false)
                 if (requested) {
                     // Keep the web TV focus ring without covering the page with Android's soft keyboard.
-                    kotlinx.coroutines.delay(200)
-                    softwareKeyboardController?.hide()
+                    // The IME can still be sliding in when the first hide lands (a flaky keyboard in the capture), so keep hiding for a moment.
+                    repeat(8) {
+                        kotlinx.coroutines.delay(200)
+                        softwareKeyboardController?.hide()
+                    }
                 }
                 initialSearchFocusHandled = true
             }
