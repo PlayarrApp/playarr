@@ -286,7 +286,7 @@ def export_layout(name, image=None, theme=None):
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
         count = layout_export.write(raw, name, theme, viewport, os.path.join(out, "layout"),
-                                    clock_pinned=True, image=image)  # patch_clock.py pins the preview clock to the fixture instant
+                                    clock_pinned=True)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
     except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)
