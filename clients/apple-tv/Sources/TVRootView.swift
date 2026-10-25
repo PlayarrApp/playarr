@@ -908,6 +908,7 @@ struct TVProfilesView: View {
 
             ZStack {
                 TVAuthStageBackground(palette: palette, style: .profiles)
+                    .parityBox("container", fill: palette.bg)
 
                 VStack(spacing: 0) {
                     // Web `.profiles-heading` top: clamp(104px, 15vh, 164px) @ 1080 → 162.
@@ -1083,15 +1084,15 @@ struct TVProfilesView: View {
                         }
                     }
                     .frame(width: size, height: size)
-                    // Web: the selected avatar is 268 wide; the button style already scales
-                    // and lifts the whole label (1.045, -8), so the avatar adds the rest.
-                    .scaleEffect(active ? 1.05 : 1)
+                    // Web: the button scales 1.045 and lifts 8 (the button style), the avatar adds 1.035 (263.9 wide).
+                    .scaleEffect(active ? 1.035 : 1)
+                    .parityBox("container", radius: 50, fill: palette.bg)
                     .overlay(
                         Circle().stroke(
                             palette.lineStrong.opacity(0.66),
                             lineWidth: 1
                         )
-                        .scaleEffect(active ? 1.05 : 1)
+                        .scaleEffect(active ? 1.035 : 1)
                     )
                     .overlay {
                         if active {
@@ -1113,7 +1114,7 @@ struct TVProfilesView: View {
                         .foregroundStyle(active ? palette.ink : palette.inkSoft)
                         .lineLimit(1)
                         .parityLayout(text: profile.displayName.isEmpty ? profile.username : profile.displayName, size: 17.28 * s, weight: 680, color: active ? palette.ink : palette.inkSoft)
-                        .offset(y: active ? 4.6 : 0)
+                        .offset(y: active ? 1.2 : 0)
 
                     Text(statusLabel(for: profile, busy: busy))
                         .font(TVTheme.font(size: 9.41 * s, css: 690))
@@ -1122,9 +1123,10 @@ struct TVProfilesView: View {
                         .foregroundStyle(palette.inkMuted)
                         .parityLayout(text: statusLabel(for: profile, busy: busy).uppercased(), size: 9.41 * s, weight: 690, color: palette.inkMuted, tracking: 0.42 * s)
                         .frame(minHeight: 12 * s)
-                        .offset(y: active ? 4.6 : 0)
+                        .offset(y: active ? 2.34 : 0)
                 }
                 .frame(width: size)
+                .parityBox("button", text: (profile.displayName.isEmpty ? profile.username : profile.displayName) + (profile.isCurrent ? ", current profile" : ""), fill: palette.bg)
             }
             .buttonStyle(TVProfileCardButtonStyle(palette: palette, isSelected: selected))
             .focusEffectDisabled(true)
@@ -1144,7 +1146,6 @@ struct TVProfilesView: View {
             }
             .disabled(switchingID != nil)
             .accessibilityLabel((profile.displayName.isEmpty ? profile.username : profile.displayName) + (profile.isCurrent ? ", current profile" : ""))
-            .parityBox("button", text: (profile.displayName.isEmpty ? profile.username : profile.displayName) + (profile.isCurrent ? ", current profile" : ""), fill: palette.bg)
             #if os(macOS)
             .environment(\.macDownTo, selected ? "profile-gear" : nil) // web: Down from the avatar lands on the gear
             // The driver reads the focused profile from the Mac focus engine's tag (the household page reported none, so the
@@ -1155,7 +1156,7 @@ struct TVProfilesView: View {
 
             if selected {
                 profileActions(for: profile, scale: s)
-                    .padding(.top, 20 * s)
+                    .padding(.top, 23.6 * s)
             }
         }
         .frame(width: size)

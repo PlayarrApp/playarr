@@ -312,6 +312,7 @@ struct TVProfileAddLabel: View {
                     .font(TVTheme.font(size: 76.8 * scale, css: 300))
                     .foregroundStyle(active ? palette.ink : palette.inkSoft)
                     .parityLayout(text: "+", size: 76.8 * scale, weight: 300, color: active ? palette.ink : palette.inkSoft)
+                    .offset(y: 1.2 * scale)
             }
             .frame(width: avatarSize, height: avatarSize)
             // Web focus avatar: scale 1.035 + 4px pink ring (box-shadow) + soft lift.
@@ -345,6 +346,7 @@ struct TVProfileAddLabel: View {
                 .foregroundStyle(active ? palette.ink : palette.inkSoft)
                 .lineLimit(1)
                 .parityLayout(text: "Sign in", size: 17.28 * scale, weight: 680, color: active ? palette.ink : palette.inkSoft)
+                .padding(.top, 2 * scale)
 
             Text("Add another profile")
                 .font(TVTheme.font(size: 9.41 * scale, css: 690))
@@ -352,6 +354,7 @@ struct TVProfileAddLabel: View {
                 .textCase(.uppercase)
                 .foregroundStyle(palette.inkMuted)
                 .parityLayout(text: "ADD ANOTHER PROFILE", size: 9.41 * scale, weight: 690, color: palette.inkMuted, tracking: 0.42 * scale)
+                .padding(.top, 0.8 * scale)
                 .frame(minHeight: 12 * scale)
         }
         .frame(width: avatarSize)
