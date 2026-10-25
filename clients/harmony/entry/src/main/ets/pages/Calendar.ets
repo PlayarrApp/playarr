@@ -451,14 +451,14 @@ export struct ReleaseCalendar {
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .translate({ y: isTvMetrics() ? (width === WEEK_COLUMN_WIDTH ? -1.4 : 1.1) : 0 }) // web's title box sits 1.4 higher in the week, 1.1 lower in the agenda
+          .translate({ y: isTvMetrics() ? 1.1 : 0 }) // web's title box sits 1.1 lower than ArkUI lays it out
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .translate({ y: isTvMetrics() ? (width === WEEK_COLUMN_WIDTH ? -1.3 : 1.1) : 0 })
+            .translate({ y: isTvMetrics() ? 1.3 : 0 })
             .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
@@ -518,7 +518,7 @@ export struct ReleaseCalendar {
       Text(dayHeading(day)).fontFamily(nunitoAt(640, isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE))
         .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)
         .fontWeight(FontWeight.Medium)
-        .fontColor(toResourceColorWithAlpha(activeColors().ink, day === this.today ? 0.9 : 1))
+        .fontColor(toResourceColor(day === this.today ? activeColors().accent : activeColors().ink))
         .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
       if (day === this.today) {
         Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, tv(TODAY_TAG_SIZE)))
@@ -526,7 +526,8 @@ export struct ReleaseCalendar {
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
           .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+          .fontColor(toResourceColor(activeColors().accent))
+          .translate({ y: -2.2 })
           .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
           .borderRadius(tv(11))
           .id('pxt:text:Today')
@@ -592,7 +593,7 @@ export struct ReleaseCalendar {
               Text(dayHeading(cell.day)).fontFamily(nunitoAt(500, tv(DAY_HEADING_SIZE)))
                 .fontSize(tv(DAY_HEADING_SIZE))
                 .fontWeight(FontWeight.Medium)
-                .fontColor(toResourceColor(activeColors().ink))
+                .fontColor(toResourceColor(cell.isToday ? activeColors().accent : activeColors().ink))
                 .translate({ y: -1.4 }) // web's heading box sits 1.4 higher
               if (cell.isToday) {
                 Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(500, tv(TODAY_TAG_SIZE)))
@@ -600,7 +601,8 @@ export struct ReleaseCalendar {
                   .fontWeight(FontWeight.Medium)
                   .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
                   .textCase(TextCase.UpperCase)
-                  .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
+                  .fontColor(toResourceColor(activeColors().accent))
+                  .translate({ y: -2.2 })
                   .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
                   .borderRadius(tv(11))
           .id('pxt:text:Today')
@@ -614,7 +616,8 @@ export struct ReleaseCalendar {
                 if (cell.entries.length === 0) {
                   Text(t('pages.calendar.dayEmpty', 'Nothing scheduled')).fontFamily(nunitoAt(400, tv(ENTRY_TITLE_SIZE)))
                     .fontSize(tv(ENTRY_TITLE_SIZE))
-                    .fontColor(toResourceColor(activeColors().inkSoft))
+                    .fontColor(toResourceColor(activeColors().inkMuted))
+                    .translate({ y: 1.1 })
                 }
                 ForEach(groupSeriesEpisodes(cell.entries), (item: CalendarItem) => {
                   this.entryCard(item, WEEK_COLUMN_WIDTH)

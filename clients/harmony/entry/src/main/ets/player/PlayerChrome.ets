@@ -199,7 +199,7 @@ const TV_TRACK_HEIGHT: number = 6;
 const TV_PLAY_SIZE: number = 64;
 const TV_SEEK_SIZE: number = 64;
 const TV_ROW_GAP: number = 13.6;
-const TV_BAR_GAP: number = 20;
+const TV_BAR_GAP: number = 0; // web: the 44 px seek row sits directly over the controls
 const TV_TIME_FONT_SIZE: number = 12;
 const TV_QUALITY_WIDTH: number = 120;
 const TV_VOLUME_WIDTH: number = 64;
@@ -371,7 +371,7 @@ struct ChromeButton {
     .backgroundColor(this.glassAlpha > 0 ? toResourceColorWithAlpha(CHROME_GLASS, this.glassAlpha) : (this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.fillAlpha) : Color.Transparent))
     .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.ringAlpha) } : { width: 0 })
     .scale({ x: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)), y: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)) })
-    .opacity(this.active ? 1 : 0.35)
+    .opacity(this.active ? 1 : 0.28)
     .focusable(this.active)
     .onFocus(() => {
       this.setFocused(true);
@@ -700,7 +700,7 @@ export struct PlayerChrome {
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           Blank()
-          this.tvIcon($r('app.media.player_volume'), this.onToggleMute, true, '')
+          this.tvIcon($r('app.media.player_volume'), this.onToggleMute, false, '')
           this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true, 'Subtitles: Off')
           this.tvIcon($r('app.media.player_queue'), (): void => {}, true, 'Playlist: 1 item')
           if (this.qualityLabel.length > 0) {
@@ -796,18 +796,14 @@ export struct PlayerChrome {
         .justifyContent(FlexAlign.Center)
         .id('px:slider:Seek')
         .position({ x: 12, y: 615.13 })
-        Column() {
-          Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
-            .fontSize(PHONE_TIME_FONT_SIZE)
-            .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-            .textAlign(TextAlign.Center)
-            .width(336)
-        }
-        .width(336)
-        .height(16.88)
-        .justifyContent(FlexAlign.Center)
-        .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
-        .position({ x: 12, y: 653.13 })
+        Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
+          .fontSize(PHONE_TIME_FONT_SIZE)
+          .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+          .textAlign(TextAlign.Center)
+          .width(336)
+          .height(16.88)
+          .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+          .position({ x: 12, y: 653.13 })
       }
       this.phoneSkip(true, this.canPrevious, this.onPrevious, 20, 674)
       ChromeButton({

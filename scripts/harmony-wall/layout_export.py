@@ -244,20 +244,20 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
                 if kind == "Text" and (own_text or role in ("heading", "text", "container")):
                     pass  # the Text's own lines carry this role below
                 else:
-                    emit(role, name, box, here, radius_of(a), opacity=opacity)
+                    emit(role, name, box, here, radius_of(a) * scale_k(mychain), opacity=opacity)
             elif nid == "pcard":
                 texts = all_texts(node)
                 name = str(a.get("accessibilityText") or "").strip()  # the card's own accessible name, when the inspector reports one
-                emit("link", name or (" ".join(texts) if len(texts) >= 2 else "Open " + (texts[0] if texts else "")), box, here, radius_of(a), opacity=opacity)
+                emit("link", name or (" ".join(texts) if len(texts) >= 2 else "Open " + (texts[0] if texts else "")), box, here, radius_of(a) * scale_k(mychain), opacity=opacity)
             elif nid.endswith("-nav-tile"):
                 texts = all_texts(node)
                 label = texts[0] if texts else ""
-                emit("link", ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else label, box, here, radius_of(a), opacity=opacity)
+                emit("link", ("Signed in as " + label + ". Open profiles.") if nid.startswith("profile") else label, box, here, radius_of(a) * scale_k(mychain), opacity=opacity)
             elif kind in ("Image", "Button", "Toggle", "TextInput"):
                 role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}[kind]
-                emit(role, "", box, here, radius_of(a), opacity=opacity)
+                emit(role, "", box, here, radius_of(a) * scale_k(mychain), opacity=opacity)
             elif kind != "Text" and (fills or has_gradient(a) or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01):
-                emit("container", "", box, here, radius_of(a), opacity=opacity)
+                emit("container", "", box, here, radius_of(a) * scale_k(mychain), opacity=opacity)
             if kind == "Text":
                 lines_role = pxid[1] if pxid is not None and (own_text or pxid[1] in ("heading", "text", "container")) else None
                 start = len(out)
