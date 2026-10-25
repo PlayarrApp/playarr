@@ -120,6 +120,9 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        // A click on the video only reveals the controls (web: a hidden player ignores the first press).
+        private void VideoSurface_Click(object sender, RoutedEventArgs e) => ShowChrome();
+
         private bool IsInChrome(DependencyObject node)
         {
             for (var n = node; n != null; n = Windows.UI.Xaml.Media.VisualTreeHelper.GetParent(n))
