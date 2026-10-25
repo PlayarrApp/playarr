@@ -238,7 +238,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
         abort(f"{name} is too plain: an error or signed-out screen")
     img.save(os.path.join(folder, name + ".png"))
-    export_layout(name, img)
+    export_layout(name, img, os.path.basename(folder))
     try:
         get("/state", resetdbg="1")  # the next frame's dump counts only what happens after this one
     except (OSError, SystemExit):
@@ -257,29 +257,36 @@ def player_held_at_2s(folder):
         raise SystemExit("player is not held paused at 2.000 s")
 
 
-def export_layout(name, image=None):
+def export_layout(name, image=None, theme=None):
     """Layout document next to the screenshot (same screen state): the app dumps its component tree, layout_export maps it to the schema.
-    A failed dump is logged, never fatal: the pixel capture stays valid."""
+    A failed dump is logged and listed as missing, never fatal: the pixel capture stays valid. The theme is the folder the screenshot went
+    into, and the request carries a fresh id, so a late answer to an earlier request can never be taken for this frame's tree."""
+    theme = theme or ("light" if THEME == "light" else "dark")
+    stale = os.path.join(out, "layout", theme, name + ".json")
+    if os.path.exists(stale):
+        os.remove(stale)  # a surviving file must be a fresh measurement
     try:
         import layout_export  # noqa: PLC0415
-        get("/setroute", name="dumplayout:" + name)
+        request = f"{name}.{theme}.{time.time_ns()}"
+        get("/setroute", name="dumplayout:" + request)
         raw = None
         for _ in range(10):
             time.sleep(1.5)
             try:
-                raw = get("/layoutget", id=name)
+                raw = get("/layoutget", id=request)
                 break
             except urllib.error.HTTPError:
                 continue
         if raw is None:
             print(f"layout {name}: the app sent no tree", flush=True)
+            MISSING.append("layout:" + name)
             return
-        rawdir = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark")  # the unconverted tree: exporter fixes replay offline
+        rawdir = os.path.join(out, "layout-raw", theme)  # the unconverted tree: exporter fixes replay offline
         os.makedirs(rawdir, exist_ok=True)
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
-        count = layout_export.write(raw, name, "light" if THEME == "light" else "dark", viewport, os.path.join(out, "layout"),
-                                    clock_pinned=True, image=image)  # patch_clock.py pins the preview clock to the fixture instant
+        count = layout_export.write(raw, name, theme, viewport, os.path.join(out, "layout"),
+                                    clock_pinned=True)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
     except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)

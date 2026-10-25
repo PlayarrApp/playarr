@@ -104,7 +104,7 @@
  */
 
 import { t } from '../core/Language';
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -167,7 +167,7 @@ const COVER_ASPECT_RATIO: number = 1.5;
 /** Web phone Screen view card: 16:9 art. */
 const TOUCH_LANDSCAPE_RATIO: number = 9 / 16;
 /** Web phone Screen view: 232 vp between card tops with a 185 vp card and its caption. */
-const TOUCH_LANDSCAPE_ROW_GAP: number = 34.96; // web row pitch 127.45 = 103.45 card + 24
+const TOUCH_LANDSCAPE_ROW_GAP: number = 33.36; // web row pitch 127.45 = 103.45 card + 24
 const TOUCH_GUTTER: number = 16;
 /** The letter rail's column: a 44 vp target with 4 vp of margin each side. */
 const TOUCH_ALPHA_RAIL: number = 52;
@@ -357,7 +357,7 @@ struct LibraryChip {
   build() {
 
     Text(this.label).fontFamily(nunitoAt(500, 13))
-      .fontSize(13)
+      .fontSize(13).lineHeight(webLineHeight(13)).halfLeading(true)
       .fontWeight(FontWeight.Medium)
       .fontColor(toResourceColor((this.selected ? activeColors().onAccent : activeColors().ink)))
       .padding({ left: Spacing.md, right: Spacing.md, top: Spacing.xs, bottom: Spacing.xs })
@@ -1005,7 +1005,7 @@ export struct Library {
 
         if (this.loadMoreFailed && !this.isLoadingMore) {
           Text("Couldn't load more. Scroll to try again.").fontFamily(nunitoAt(400, 12))
-            .fontSize(12)
+            .fontSize(12).lineHeight(webLineHeight(12)).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkMuted))
             .textAlign(TextAlign.Center)
             .width('100%')
@@ -1157,6 +1157,7 @@ export struct Library {
     .width('100%')
     .height(tv(1080)) // the panel is the full stage height; '100%' resolved to a shorter box and faded row 3
     .blendMode(BlendMode.DST_IN)
+    .id('px:mask:edge') // a blend layer: the layout export skips it, it draws nothing of its own
     .hitTestBehavior(HitTestMode.None)
   }
 
@@ -1232,14 +1233,14 @@ export struct Library {
           ListItem() {
             Row({ space: tv(16) }) {
               Text(work.title).fontFamily(nunitoAt(700, tv(16.32)))
-                .fontSize(tv(16.32))
+                .fontSize(tv(16.32)).lineHeight(webLineHeight(tv(16.32))).halfLeading(true)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .layoutWeight(1)
               Text(releaseYearOf(work)).fontFamily(nunitoAt(400, tv(13.4)))
-                .fontSize(tv(13.4))
+                .fontSize(tv(13.4)).lineHeight(webLineHeight(tv(13.4))).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().inkMuted))
             }
             .width('100%')

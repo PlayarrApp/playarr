@@ -44,7 +44,7 @@
  * established for their own routes in this same slice.
  */
 
-import { nunito, nunitoAt, arrowFont } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont, webLineHeight } from '../design/Typography';
 import type { AvailableProfileResponse } from '../core/Types/Profiles.ts';
 import { resolveAvatarPreset } from '../core/AvatarPreset.ts';
 import { BRAND_PINK, BRAND_PINK_SOFT, Spacing, Radii } from '../core/Tokens';
@@ -356,9 +356,9 @@ struct Profiles {
     if (phone) {
       // web: a pill whose link text and arrow are two elements ("Clients", "→")
       Row({ space: 8.8 }) {
-        Text('Clients').fontFamily(nunitoAt(720, 7.68)).fontSize(7.68).fontWeight(FontWeight.Bold)
+        Text('Clients').fontFamily(nunitoAt(720, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft)).id('px:link:Clients')
-        Text('→').fontFamily(arrowFont(720)).fontSize(7.68).fontWeight(FontWeight.Normal)
+        Text('→').fontFamily(arrowFont(720)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
       .height(tv(TV_ACTION_HEIGHT))
@@ -372,12 +372,12 @@ struct Profiles {
       .onClick(onTap)
     } else {
       Text(label).fontFamily(nunitoAt(700, tv(TV_ACTION_TEXT)))
-        .fontSize(tv(TV_ACTION_TEXT))
+        .fontSize(tv(TV_ACTION_TEXT)).lineHeight(webLineHeight(tv(TV_ACTION_TEXT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(tv(TV_ACTION_HEIGHT))
         .padding({ left: tv(17), right: tv(17) })
-        .id('pxt:button:' + label)
+        .id('px:button:' + label)
         .borderRadius(tv(TV_ACTION_HEIGHT / 2))
         .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -397,7 +397,7 @@ struct Profiles {
         .colorFilter(tintFilter(tint))
       if (label.length > 0) {
         Text(label).fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68))
-          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)
+          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68).lineHeight(webLineHeight(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -431,7 +431,7 @@ struct Profiles {
       }
       if (this.updateNote.length > 0 && isTvMetrics()) {
         Text(this.updateNote).fontFamily(nunitoAt(400, tv(13.4)))
-          .fontSize(tv(13.4))
+          .fontSize(tv(13.4)).lineHeight(webLineHeight(tv(13.4))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .position({ x: tv(FOOTER_LEFT), y: tv(FOOTER_TOP - 28) })
       }
@@ -483,7 +483,7 @@ struct Profiles {
         .zIndex(2)
       Column() {
       Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunitoAt(isTvMetrics() ? 900 : 820, isTvMetrics() ? tv(10.368) : 7.36))
-        .fontSize(isTvMetrics() ? tv(10.368) : 7.36)
+        .fontSize(isTvMetrics() ? tv(10.368) : 7.36).lineHeight(webLineHeight(isTvMetrics() ? tv(10.368) : 7.36)).halfLeading(true)
         .fontWeight(FontWeight.Bolder)
         .letterSpacing(isTvMetrics() ? tv(1.72) : tv(1.348) * 0.705)
         .textCase(TextCase.UpperCase)
@@ -493,12 +493,12 @@ struct Profiles {
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunitoAt(500, this.pick(80.64, PHONE_HEADING_SIZE)))
         .id('px:heading:' + t('pages.profiles.heading', 'Who’s watching?'))
-        .fontSize(this.pick(80.64, PHONE_HEADING_SIZE))
+        .fontSize(this.pick(80.64, PHONE_HEADING_SIZE)).lineHeight(webLineHeight(this.pick(80.64, PHONE_HEADING_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .letterSpacing(this.pick(-5.15, -2.77))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
-        .margin({ top: this.pick(-3.79, -0.75), left: isTvMetrics() ? 9.1 : PHONE_HEADING_LEFT })
+        .margin({ top: this.pick(-8, -0.75), bottom: this.pick(4.2, 0), left: isTvMetrics() ? 9.1 : PHONE_HEADING_LEFT }) // TV: the 110 vp line overflows its 77 vp frame; web's run starts 4.2 higher
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Row({ space: this.pick(36.74, PHONE_CHOICE_GAP) }) { // TV: the profile tile is 5.49 wider each side than its avatar
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
@@ -520,13 +520,13 @@ struct Profiles {
               .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
               .shadow(profile.is_current && !isTvMetrics() ? { radius: 40, color: 'rgba(130, 40, 66, 0.56)', offsetY: 16 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
             Text(profile.display_name).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
-              .fontSize(this.pick(17.28, 13.12))
+              .fontSize(this.pick(17.28, 13.12)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
               .fontWeight(FontWeight.Bold)
               .letterSpacing(this.pick(0.35, 0.28))
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: this.pick(16.78, profile.is_current ? 13.28 : 10.8) })  // web phone: the lifted current avatar pulls its name up
             Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
-              .fontSize(this.pick(9.408, 6.72))
+              .fontSize(this.pick(9.408, 6.72)).lineHeight(webLineHeight(this.pick(9.408, 6.72))).halfLeading(true)
               .fontWeight(FontWeight.Bold)
               .letterSpacing(this.pick(1.12, 0.67))
               .textCase(TextCase.UpperCase)
@@ -541,7 +541,7 @@ struct Profiles {
                   this.handleSignOut();
                 })
               }
-              .margin(isTvMetrics() ? { top: 24.84, bottom: -68.84 } : { top: tv(21) + 5.4, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
+              .margin(isTvMetrics() ? { top: 23.74, bottom: -67.74 } : { top: tv(21) + 5.4, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
             }
           }
           .width(this.pick(254.98, 150.48))
@@ -568,7 +568,7 @@ struct Profiles {
               })
             Text('+').fontFamily(nunitoAt(300, this.pick(76.8, 38.4)))
               .translate({ x: this.pick(-1.8, -1.2), y: -2.4 })
-              .fontSize(this.pick(76.8, 38.4))
+              .fontSize(this.pick(76.8, 38.4)).lineHeight(webLineHeight(this.pick(76.8, 38.4))).halfLeading(true)
               .fontWeight(FontWeight.Lighter)
               .fontColor(toResourceColor(activeColors().inkSoft))
           }
@@ -578,12 +578,12 @@ struct Profiles {
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
           Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
-            .fontSize(this.pick(17.28, 13.12))
+            .fontSize(this.pick(17.28, 13.12)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: this.pick(10.85, 9.35) })
           Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
-            .fontSize(this.pick(9.408, 6.72))
+            .fontSize(this.pick(9.408, 6.72)).lineHeight(webLineHeight(this.pick(9.408, 6.72))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .letterSpacing(this.pick(0.66, 0.33))
             .textCase(TextCase.UpperCase)
@@ -672,7 +672,7 @@ struct Profiles {
         Scroll() {
           Column({ space: Spacing.xl }) {
             Text($r('app.string.profiles_heading')).fontFamily(nunitoAt(700, HEADING_FONT_SIZE))
-              .fontSize(HEADING_FONT_SIZE)
+              .fontSize(HEADING_FONT_SIZE).lineHeight(webLineHeight(HEADING_FONT_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
 
@@ -706,16 +706,16 @@ struct Profiles {
                       })
 
                       Text(profile.display_name).fontFamily(nunitoAt(400, PROFILE_NAME_FONT_SIZE))
-                        .fontSize(PROFILE_NAME_FONT_SIZE)
+                        .fontSize(PROFILE_NAME_FONT_SIZE).lineHeight(webLineHeight(PROFILE_NAME_FONT_SIZE)).halfLeading(true)
                         .fontColor(toResourceColor(activeColors().ink))
 
                       if (profile.is_current) {
                         Text($r('app.string.profiles_current_badge')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
-                          .fontSize(PROFILE_STATUS_FONT_SIZE)
+                          .fontSize(PROFILE_STATUS_FONT_SIZE).lineHeight(webLineHeight(PROFILE_STATUS_FONT_SIZE)).halfLeading(true)
                           .fontColor(toResourceColor(activeColors().accent))
                       } else if (profile.pin_locked) {
                         Text($r('app.string.profiles_pin_locked_badge')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
-                          .fontSize(PROFILE_STATUS_FONT_SIZE)
+                          .fontSize(PROFILE_STATUS_FONT_SIZE).lineHeight(webLineHeight(PROFILE_STATUS_FONT_SIZE)).halfLeading(true)
                           .fontColor(toResourceColor(activeColors().inkMuted))
                       }
                     }
@@ -731,7 +731,7 @@ struct Profiles {
                 Column({ space: Spacing.sm }) {
                   Column() {
                     Text('+').fontFamily(nunitoAt(400, ADD_PROFILE_GLYPH_FONT_SIZE))
-                      .fontSize(ADD_PROFILE_GLYPH_FONT_SIZE)
+                      .fontSize(ADD_PROFILE_GLYPH_FONT_SIZE).lineHeight(webLineHeight(ADD_PROFILE_GLYPH_FONT_SIZE)).halfLeading(true)
                       .fontColor(toResourceColor(activeColors().inkMuted))
                   }
                   .width(this.avatarDiameter())
@@ -742,11 +742,11 @@ struct Profiles {
                   .alignItems(HorizontalAlign.Center)
 
                   Text($r('app.string.profiles_add_profile')).fontFamily(nunitoAt(400, PROFILE_NAME_FONT_SIZE))
-                    .fontSize(PROFILE_NAME_FONT_SIZE)
+                    .fontSize(PROFILE_NAME_FONT_SIZE).lineHeight(webLineHeight(PROFILE_NAME_FONT_SIZE)).halfLeading(true)
                     .fontColor(toResourceColor(activeColors().inkMuted))
 
                   Text($r('app.string.profiles_add_profile_hint')).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
-                    .fontSize(PROFILE_STATUS_FONT_SIZE)
+                    .fontSize(PROFILE_STATUS_FONT_SIZE).lineHeight(webLineHeight(PROFILE_STATUS_FONT_SIZE)).halfLeading(true)
                     .fontColor(toResourceColor(activeColors().inkMuted))
                     .textAlign(TextAlign.Center)
                     .constraintSize({ maxWidth: this.avatarDiameter() + Spacing.xl })
@@ -818,12 +818,12 @@ struct Profiles {
               })
 
               Text($r('app.string.profiles_pin_title')).fontFamily(nunitoAt(700, PIN_TITLE_FONT_SIZE))
-                .fontSize(PIN_TITLE_FONT_SIZE)
+                .fontSize(PIN_TITLE_FONT_SIZE).lineHeight(webLineHeight(PIN_TITLE_FONT_SIZE)).halfLeading(true)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
 
               Text(this.pinTargetProfile.display_name).fontFamily(nunitoAt(400, SUBHEADING_FONT_SIZE))
-                .fontSize(SUBHEADING_FONT_SIZE)
+                .fontSize(SUBHEADING_FONT_SIZE).lineHeight(webLineHeight(SUBHEADING_FONT_SIZE)).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().inkSoft))
 
               TextInput({ text: this.pinValue, placeholder: '0000' })
@@ -837,7 +837,7 @@ struct Profiles {
 
               if (this.pinError.length > 0) {
                 Text(this.pinError).fontFamily(nunitoAt(400, PROFILE_STATUS_FONT_SIZE))
-                  .fontSize(PROFILE_STATUS_FONT_SIZE)
+                  .fontSize(PROFILE_STATUS_FONT_SIZE).lineHeight(webLineHeight(PROFILE_STATUS_FONT_SIZE)).halfLeading(true)
                   .fontColor(toResourceColor(activeColors().danger))
               }
 

@@ -6,7 +6,7 @@
  * QR is the way to move the link to a phone).
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -100,7 +100,7 @@ export struct CalendarLinkPanel {
   @Builder
   private pill(label: string, onTap: () => void): void {
     Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
-      .fontSize(tv(PILL_SIZE))
+      .fontSize(tv(PILL_SIZE)).lineHeight(webLineHeight(tv(PILL_SIZE))).halfLeading(true)
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
       .padding({ left: tv(PILL_PADDING), right: tv(PILL_PADDING) })
@@ -114,7 +114,7 @@ export struct CalendarLinkPanel {
   @Builder
   private body(text: string, muted: boolean): void {
     Text(text).fontFamily(nunitoAt(400, tv(TEXT_SIZE)))
-      .fontSize(tv(TEXT_SIZE))
+      .fontSize(tv(TEXT_SIZE)).lineHeight(webLineHeight(tv(TEXT_SIZE))).halfLeading(true)
       .fontColor(toResourceColor(muted ? activeColors().inkSoft : activeColors().ink))
       .width(tv(PANEL_WIDTH))
   }
@@ -139,7 +139,7 @@ export struct CalendarLinkPanel {
           .backgroundColor('#FFFFFF')
           .focusable(false)
         Text(this.url).fontFamily(nunitoAt(400, tv(11)))
-          .fontSize(tv(11))
+          .fontSize(tv(11)).lineHeight(webLineHeight(tv(11))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width(tv(PANEL_WIDTH))
           .maxLines(4)
@@ -149,7 +149,7 @@ export struct CalendarLinkPanel {
         this.body(t('pages.calendar.link.otherDevice', 'Your link was created on another device and is not stored here. Reset it to get a new link to copy.'), true)
       }
       Text('Add it to your calendar app').fontFamily(nunitoAt(500, tv(HEADING_SIZE)))
-        .fontSize(tv(HEADING_SIZE))
+        .fontSize(tv(HEADING_SIZE)).lineHeight(webLineHeight(tv(HEADING_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
       this.body(t('pages.calendar.subscription.instructionGoogle', 'Google Calendar: Other calendars (+) > From URL, then paste the link.'), true)

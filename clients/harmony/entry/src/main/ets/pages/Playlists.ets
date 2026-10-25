@@ -7,7 +7,7 @@
  * panel's job) and moving a playlist between parents.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { tv } from '../design/Metrics';
 import { PageShell } from '../design/components/PageShell';
@@ -259,7 +259,7 @@ export struct PlaylistsScreen {
   @Builder
   private pill(label: string, onTap: () => void): void {
     Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
-      .fontSize(tv(PILL_SIZE))
+      .fontSize(tv(PILL_SIZE)).lineHeight(webLineHeight(tv(PILL_SIZE))).halfLeading(true)
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
       .padding({ left: tv(PILL_PADDING), right: tv(PILL_PADDING) })
@@ -274,14 +274,14 @@ export struct PlaylistsScreen {
     Row() {
       Column({ space: tv(COPY_GAP) }) {
         Text(title).fontFamily(nunitoAt(700, tv(TITLE_SIZE_ROW)))
-          .fontSize(tv(TITLE_SIZE_ROW))
+          .fontSize(tv(TITLE_SIZE_ROW)).lineHeight(webLineHeight(tv(TITLE_SIZE_ROW))).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         if (meta.length > 0) {
           Text(meta).fontFamily(nunitoAt(400, tv(META_SIZE)))
-            .fontSize(tv(META_SIZE))
+            .fontSize(tv(META_SIZE)).lineHeight(webLineHeight(tv(META_SIZE))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkMuted))
         }
       }
@@ -300,7 +300,7 @@ export struct PlaylistsScreen {
   private itemRow(item: ItemRow, index: number): void {
     Row({ space: tv(PILL_GAP) }) {
       Text(item.title).fontFamily(nunitoAt(700, tv(TITLE_SIZE_ROW)))
-        .fontSize(tv(TITLE_SIZE_ROW))
+        .fontSize(tv(TITLE_SIZE_ROW)).lineHeight(webLineHeight(tv(TITLE_SIZE_ROW))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
@@ -332,7 +332,7 @@ export struct PlaylistsScreen {
     Column({ space: tv(16) }) {
       if (this.drawer === 'delete') {
         Text('Deleting removes this playlist and its nested playlists. Titles in it are not deleted.').fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
-          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width(tv(268))
         this.pill(t('components.playlistContextMenu.confirmDelete', 'Delete playlist'), (): void => {
@@ -359,7 +359,7 @@ export struct PlaylistsScreen {
       })
       if (this.notice.length > 0) {
         Text(this.notice).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
-          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().danger))
           .width(tv(268))
       }
@@ -371,13 +371,13 @@ export struct PlaylistsScreen {
   private message(title: string, description: string): void {
     Column({ space: tv(8) }) {
       Text(title).fontFamily(nunitoAt(500, tv(26.4)))
-        .fontSize(tv(26.4))
+        .fontSize(tv(26.4)).lineHeight(webLineHeight(tv(26.4))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
       if (description.length > 0) {
         Text(description).fontFamily(nunitoAt(400, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
     }
@@ -439,7 +439,7 @@ export struct PlaylistsScreen {
         if (this.notice.length > 0 && this.drawer === '') {
           ListItem() {
             Text(this.notice).fontFamily(nunitoAt(400, tv(META_SIZE)))
-              .fontSize(tv(META_SIZE))
+              .fontSize(tv(META_SIZE)).lineHeight(webLineHeight(tv(META_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().danger))
           }
         }
@@ -459,7 +459,7 @@ export struct PlaylistsScreen {
           if (this.items.length === 0 && this.shownPlaylists().length === 0) {
             ListItem() {
               Text('This playlist is empty.').fontFamily(nunitoAt(400, tv(META_SIZE)))
-                .fontSize(tv(META_SIZE))
+                .fontSize(tv(META_SIZE)).lineHeight(webLineHeight(tv(META_SIZE))).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().inkSoft))
             }
           }

@@ -4,7 +4,7 @@
  * its level. The chosen cell is filled with ink, as the other choice tiles.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -39,11 +39,11 @@ export struct QualityMatrix {
   private cell(id: string, label: string, detail: string, cellWidth: number): void {
     Column({ space: tv(2) }) {
       Text(label).fontFamily(nunitoAt(700, tv(LABEL_SIZE)))
-        .fontSize(tv(LABEL_SIZE))
+        .fontSize(tv(LABEL_SIZE)).lineHeight(webLineHeight(tv(LABEL_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(id === this.selected ? activeColors().bg : activeColors().ink))
       Text(detail).fontFamily(nunitoAt(400, tv(DETAIL_SIZE)))
-        .fontSize(tv(DETAIL_SIZE))
+        .fontSize(tv(DETAIL_SIZE)).lineHeight(webLineHeight(tv(DETAIL_SIZE))).halfLeading(true)
         .fontColor(toResourceColor(id === this.selected ? activeColors().bg : activeColors().inkSoft))
     }
     .width(tv(cellWidth))
@@ -67,7 +67,7 @@ export struct QualityMatrix {
         ForEach(QUALITY_LEVELS, (level: string) => {
           Text(level).fontFamily(nunitoAt(700, tv(HEADING_SIZE)))
             .width(tv(this.cellWidth()))
-            .fontSize(tv(HEADING_SIZE))
+            .fontSize(tv(HEADING_SIZE)).lineHeight(webLineHeight(tv(HEADING_SIZE))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .textCase(TextCase.UpperCase)
             .fontColor(toResourceColor(activeColors().inkSoft))
@@ -77,11 +77,11 @@ export struct QualityMatrix {
         Row({ space: tv(CELL_GAP) }) {
           Column({ space: tv(2) }) {
             Text(tier.label).fontFamily(nunitoAt(700, tv(LABEL_SIZE)))
-              .fontSize(tv(LABEL_SIZE))
+              .fontSize(tv(LABEL_SIZE)).lineHeight(webLineHeight(tv(LABEL_SIZE))).halfLeading(true)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
             Text(tier.resolution).fontFamily(nunitoAt(400, tv(DETAIL_SIZE)))
-              .fontSize(tv(DETAIL_SIZE))
+              .fontSize(tv(DETAIL_SIZE)).lineHeight(webLineHeight(tv(DETAIL_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().inkSoft))
           }
           .width(tv(HEADING_COLUMN))

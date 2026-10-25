@@ -91,7 +91,7 @@
  * `SPINNER_BORDER_WIDTH`.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { image } from '@kit.ImageKit';
 import { activeColors, resolvedThemeMode, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
@@ -453,7 +453,7 @@ export struct PosterCard {
         if (this.episodeNumberOverlay.length > 0) {
           Text(this.episodeNumberOverlay).fontFamily(nunitoAt(560, isTvMetrics() ? tv(19.2) : 13))
             .width(isTvMetrics() ? tv(24) : 16)
-            .fontSize(isTvMetrics() ? tv(19.2) : 13)
+            .fontSize(isTvMetrics() ? tv(19.2) : 13).lineHeight(webLineHeight(isTvMetrics() ? tv(19.2) : 13)).halfLeading(true)
             .fontWeight(600)
             .fontColor('#ffffff')
             .textAlign(TextAlign.End)
@@ -489,13 +489,13 @@ export struct PosterCard {
         // two text elements as web has them (the caption, then the title on the same baseline)
         Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) }) {
           Text(this.episodeCaption).fontFamily(nunitoAt(700, this.subtitleFontSize))
-            .fontSize(this.subtitleFontSize)
+            .fontSize(this.subtitleFontSize).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().inkMuted)))
             .maxLines(1)
             .translate({ y: -1 })
           Text(this.title).fontFamily(nunitoAt(this.softCaption || !isTvMetrics() ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize)) // phone: web's episode title is not bold
-            .fontSize(this.titleFontSize)
+            .fontSize(this.titleFontSize).lineHeight(webLineHeight(this.titleFontSize)).halfLeading(true)
             .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink)))
             .letterSpacing(tv(this.titleFontSize * -0.015))
@@ -510,28 +510,28 @@ export struct PosterCard {
       } else {
         Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
           .width(this.cardWidth)
-          .fontSize(this.titleFontSize)
+          .fontSize(this.titleFontSize).lineHeight(webLineHeight(this.titleFontSize)).halfLeading(true)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
-          .letterSpacing(this.titleFontSize * -0.0154 + 0.06) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
+          .letterSpacing(this.titleFontSize * -0.0154 + (isTvMetrics() ? -0.12 : 0.06)) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
           .padding(this.softCaption ? { top: 7.3, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
-          .margin({ bottom: this.subtitle.length > 0 ? 0 : (this.softCaption ? 3.3 : (this.variant === 'grid' ? 3.4 : 0)) }) // web: the link box ends 3.3 (phone) or 3.4 (TV grid) under a title-only caption
+          .margin({ bottom: this.subtitle.length > 0 ? 0 : (this.softCaption ? 3.3 : (this.variant === 'grid' ? 1.8 : 0)) }) // web: the link box ends 3.3 (phone) or 3.4 (TV grid) under a title-only caption
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
         Text(this.subtitle).fontFamily(nunitoAt(400, this.subtitleFontSize))
           .width(this.cardWidth)
-          .fontSize(this.subtitleFontSize)
+          .fontSize(this.subtitleFontSize).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
           .fontWeight(FontWeight.Normal)
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption || isTvMetrics() ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .letterSpacing(isTvMetrics() ? -0.2 : -0.11) // web's subtitle run is narrower than ArkUI lays it out
-          .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 2.9 })
-          .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -12.6 : -10.5) : 0 }) // web Home: the card link ends above the subtitle line
+          .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 0.5 })
+          .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -14.2 : -10.5) : 0 }) // web Home: the card link ends above the subtitle line
       }
     }
     .width(this.cardWidth)

@@ -43,7 +43,7 @@
  * now-consumed pairing code.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { getDeviceAuthService, getServerDirectory } from '../AppContainer';
 import { Spacing, Radii } from '../core/Tokens';
 import type { DeviceCodeResponse } from '../core/Types/Auth';
@@ -189,7 +189,7 @@ struct Pairing {
     NavDestination() {
       Column({ space: Spacing.xl }) {
         Text($r('app.string.pairing_title')).fontFamily(nunitoAt(700, 24))
-          .fontSize(24)
+          .fontSize(24).lineHeight(webLineHeight(24)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
           .textAlign(TextAlign.Center)
@@ -216,22 +216,22 @@ struct Pairing {
 
             Column({ space: Spacing.sm }) {
               Text('Scan the QR code, or visit').fontFamily(nunitoAt(400, 18))
-                .fontSize(18)
+                .fontSize(18).lineHeight(webLineHeight(18)).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().inkSoft))
               Text(this.deviceCode.verification_uri).fontFamily(nunitoAt(700, 24))
-                .fontSize(24)
+                .fontSize(24).lineHeight(webLineHeight(24)).halfLeading(true)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().ink))
               Text('and enter this code').fontFamily(nunitoAt(400, 18))
-                .fontSize(18)
+                .fontSize(18).lineHeight(webLineHeight(18)).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().inkSoft))
               Text(this.deviceCode.user_code).fontFamily(nunitoAt(700, USER_CODE_FONT_SIZE))
-                .fontSize(USER_CODE_FONT_SIZE)
+                .fontSize(USER_CODE_FONT_SIZE).lineHeight(webLineHeight(USER_CODE_FONT_SIZE)).halfLeading(true)
                 .fontWeight(FontWeight.Bold)
                 .letterSpacing(USER_CODE_LETTER_SPACING)
                 .fontColor(toResourceColor(activeColors().ink))
               Text($r('app.string.pairing_waiting')).fontFamily(nunitoAt(400, 16))
-                .fontSize(16)
+                .fontSize(16).lineHeight(webLineHeight(16)).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().inkMuted))
             }
             .alignItems(HorizontalAlign.Start)

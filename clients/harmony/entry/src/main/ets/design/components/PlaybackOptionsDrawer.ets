@@ -3,7 +3,7 @@
  * fields and saved with PATCH /api/v1/media/{id}/playback-options. The next time the file plays it opens with these choices.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { Drawer } from './Drawer';
 import { SelectField } from './SelectField';
 import type { Choice } from './ChoiceSegments';
@@ -94,7 +94,7 @@ export struct PlaybackOptionsDrawer {
   @Builder
   private heading(text: string): void {
     Text(text).fontFamily(nunitoAt(700, tv(HEADING_SIZE)))
-      .fontSize(tv(HEADING_SIZE))
+      .fontSize(tv(HEADING_SIZE)).lineHeight(webLineHeight(tv(HEADING_SIZE))).halfLeading(true)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .width(tv(SECTION_WIDTH))
@@ -103,7 +103,7 @@ export struct PlaybackOptionsDrawer {
   @Builder
   private pill(label: string, onTap: () => void): void {
     Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
-      .fontSize(tv(PILL_SIZE))
+      .fontSize(tv(PILL_SIZE)).lineHeight(webLineHeight(tv(PILL_SIZE))).halfLeading(true)
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
       .padding({ left: tv(PILL_PADDING), right: tv(PILL_PADDING) })
@@ -150,7 +150,7 @@ export struct PlaybackOptionsDrawer {
         })
       } else if (this.failed) {
         Text('Playback options could not be loaded').fontFamily(nunitoAt(400, tv(HEADING_SIZE)))
-          .fontSize(tv(HEADING_SIZE))
+          .fontSize(tv(HEADING_SIZE)).lineHeight(webLineHeight(tv(HEADING_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().danger))
           .width(tv(SECTION_WIDTH))
       }

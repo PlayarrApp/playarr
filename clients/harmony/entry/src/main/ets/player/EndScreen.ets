@@ -15,7 +15,7 @@
  * Always dark, like the rest of the player (brief 5.6).
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { Spacing, Radii, BRAND_PINK } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
 import { toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
@@ -49,7 +49,7 @@ struct EndButton {
   build() {
 
     Text(this.label).fontFamily(nunitoAt(700, isTvMetrics() ? tv(BUTTON_SIZE_TV) : BUTTON_SIZE_TOUCH))
-      .fontSize(isTvMetrics() ? tv(BUTTON_SIZE_TV) : BUTTON_SIZE_TOUCH)
+      .fontSize(isTvMetrics() ? tv(BUTTON_SIZE_TV) : BUTTON_SIZE_TOUCH).lineHeight(webLineHeight(isTvMetrics() ? tv(BUTTON_SIZE_TV) : BUTTON_SIZE_TOUCH)).halfLeading(true)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(CARD_TEXT_PRIMARY))
       .maxLines(1)
@@ -113,14 +113,14 @@ export struct EndScreen {
     Scroll() {
       Column({ space: Spacing.lg }) {
         Text(this.heading()).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE_TV) : HEADING_SIZE_TOUCH))
-          .fontSize(isTvMetrics() ? tv(HEADING_SIZE_TV) : HEADING_SIZE_TOUCH)
+          .fontSize(isTvMetrics() ? tv(HEADING_SIZE_TV) : HEADING_SIZE_TOUCH).lineHeight(webLineHeight(isTvMetrics() ? tv(HEADING_SIZE_TV) : HEADING_SIZE_TOUCH)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(CARD_TEXT_PRIMARY))
           .maxLines(2)
 
         if ((this.nextTitle.length > 0)) {
           Text(this.nextTitle).fontFamily(nunitoAt(400, isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH))
-            .fontSize(isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH)
+            .fontSize(isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH).lineHeight(webLineHeight(isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH)).halfLeading(true)
             .fontColor(toResourceColorWithAlpha(CARD_TEXT_PRIMARY, 0.85))
             .maxLines(2)
         }
@@ -148,7 +148,7 @@ export struct EndScreen {
 
         if (this.hasSuggestions) {
           Text('More like this').fontFamily(nunitoAt(700, isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH))
-            .fontSize(isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH)
+            .fontSize(isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH).lineHeight(webLineHeight(isTvMetrics() ? tv(DETAIL_SIZE_TV) : DETAIL_SIZE_TOUCH)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(CARD_TEXT_PRIMARY))
             .margin({ top: Spacing.md })
