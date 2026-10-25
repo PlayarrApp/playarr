@@ -67,6 +67,11 @@ sub init()
     m.profileActionsGroup = m.top.findNode("profileActionsGroup")
     m.profilesSettingsBtn = m.top.findNode("profilesSettingsBtn")
     m.profilesSignOutBtn = m.top.findNode("profilesSignOutBtn")
+    m.profilesSettingsIcon = m.top.findNode("profilesSettingsIcon")
+    m.profilesSettingsRing = m.top.findNode("profilesSettingsRing")
+    m.profilesSignOutRing = m.top.findNode("profilesSignOutRing")
+    m.profilesSignOutIcon = m.top.findNode("profilesSignOutIcon")
+    m.profilesSignOutLabel = m.top.findNode("profilesSignOutLabel")
     m.profilesSettingsHit = m.top.findNode("profilesSettingsHit")
     m.profilesSignOutHit = m.top.findNode("profilesSignOutHit")
     m.profilesClientsBtn = m.top.findNode("profilesClientsBtn")
@@ -105,11 +110,21 @@ sub init()
     m.navHighlights = []
     m.navIcons = []
     m.navLabels = []
+    m.navHits = []
+    m.navGroupBgs = []
     for i = 0 to 9
         m.navHighlights.Push(m.top.findNode("navHighlight" + i.ToStr()))
         m.navIcons.Push(m.top.findNode("navIcon" + i.ToStr()))
         m.navLabels.Push(m.top.findNode("navLabel" + i.ToStr()))
         m.navLabels[i].setFields({ size: 8.83, weight: 680, tracking: 0.31 })
+        ' The link box of the item (64 px tile; its highlight chip when active or focused), named as the label reads.
+        m.navHits.Push(pgMark(m.navDock, "link", m.navLabels[i].text, 0, 0, 64, 64, 16))
+        m.navHighlights[i].id = "a11y|link|16|" + m.navLabels[i].text
+    end for
+    ' The panels behind the dock items are bitmaps; their ids name them for assistive tech (role container, radius 22).
+    for i = 0 to 3
+        m.navGroupBgs.Push(m.top.findNode("navGroupBg" + i.ToStr()))
+        m.navGroupBgs[i].id = "a11y|container|22|"
     end for
     m.browseGroup = m.top.findNode("browseGroup")
     m.browseGrid = m.top.findNode("browseGrid")
@@ -130,6 +145,11 @@ sub init()
     m.browseTitle = m.top.findNode("browseTitle")
     m.browseCountLabel = m.top.findNode("browseCountLabel")
     m.browseKeyArt = m.top.findNode("browseKeyArt")
+    for each wash in ["washBrowse", "washSearch", "washPage"]
+        m.top.findNode(wash).id = "a11y|container|0|"
+    end for
+    m.browseKeyArtVeil = m.top.findNode("browseKeyArtVeil")
+    m.browseKeyArtVeil.id = "a11y|fill|0|"
     if m.browseKeyArt <> invalid then m.browseKeyArt.ObserveField("loadStatus", "onBrowseKeyArtLoadStatus")
     m.browseKeyArtFade = m.top.findNode("browseKeyArtFade")
     ThemeSetRole(m.browseKeyArtFade, "bg")
@@ -148,9 +168,11 @@ sub init()
     m.searchTitle = m.top.findNode("searchTitle")
     searchChromeInit()
     m.searchFieldLabel = m.top.findNode("searchFieldLabel")
-    ThemeSetRole(m.top.findNode("searchFieldBg"), "surface")
+    ThemeSetRole(m.top.findNode("searchFieldBg"), "surfaceStrong", 217)
+    m.top.findNode("searchFieldBg").blendColor = ThemeColor("surfaceStrong", 217)
     ThemeSetRole(m.top.findNode("searchFieldRing"), "focusRing")
     m.searchEmptyState = m.top.findNode("searchEmptyState")
+    searchA11y()
     m.searchEmptyHint = m.top.findNode("searchEmptyHint")
     m.searchHint = m.top.findNode("searchHint")
     m.searchPreviewKind = m.top.findNode("searchPreviewKind")
@@ -211,6 +233,12 @@ sub init()
     end for
     detailChromeInit()
     m.profileLabel = m.top.findNode("profileLabel")
+    ' The identity tile: its panel, the link to the profiles and the avatar circle name themselves like the web's.
+    ident = m.top.findNode("userIdentity")
+    m.userPillBg = m.top.findNode("userPillBg")
+    m.userPillBg.id = "a11y|container|22|"
+    m.userLinkMark = pgMark(ident, "link", "", 6.8, 7.7, 64, 64, 16)
+    pgMark(ident, "container", "", 29, 22.94, 20, 20, 50)
     m.userFocusRing = m.top.findNode("userFocusRing")
     m.persistentHeader = m.top.findNode("persistentHeader")
     m.video = m.top.findNode("video")
@@ -386,6 +414,7 @@ sub init()
     m.deviceId = m.session.deviceId
     publishArtAuthHeaders()
     m.profileLabel.text = FirstWord(m.session.profileName)
+    m.userLinkMark.id = "a11y|link|16|Signed in as " + m.session.profileName + ". Open profiles."
     ' The build label under the tile reads like web's (major.minor.0).
     ai = CreateObject("roAppInfo")
     m.top.findNode("userVersion").text = "v" + ai.GetValue("major_version") + "." + ai.GetValue("minor_version") + ".0"
@@ -1372,11 +1401,14 @@ sub applyAppTheme()
     mode = ResolvePairingTheme(m.themePreference)
     m.global.themeMode = mode
     ' Dock images are white masks (alpha carries the shape), tinted by their token.
-    for i = 0 to 4
-        bg = m.top.findNode("navGroupBg" + i.ToStr())
-        if bg <> invalid then ThemeSetRole(bg, "surfaceStrong")
+    for each bg in m.navGroupBgs
+        ThemeSetRole(bg, "surfaceStrong")
+        bg.blendColor = ThemeColor("surfaceStrong")
+        A11yStamp(bg, true, 143)
     end for
-    ThemeSetRole(m.top.findNode("userPillBg"), "surfaceStrong")
+    ThemeSetRole(m.userPillBg, "surfaceStrong")
+    m.userPillBg.blendColor = ThemeColor("surfaceStrong")
+    A11yStamp(m.userPillBg, true, 143)
     ThemeSetRole(m.top.findNode("profilesKicker"), "brandInk")
     ThemeSetRole(m.top.findNode("searchPreviewKind"), "brandInk")
     for i = 0 to m.navHighlights.Count() - 1
@@ -1669,10 +1701,12 @@ sub applyProfilesChrome()
     if m.profilesThemeLabel <> invalid
         m.profilesThemeLabel.color = ink
         m.profilesThemeLabel.text = PairingThemeChromeLabel(m.themePreference, lang)
+        m.profilesThemeHit.id = "a11y|button|0|Theme: " + m.profilesThemeLabel.text
     end if
     if m.profilesLangLabel <> invalid
         m.profilesLangLabel.color = ink
         m.profilesLangLabel.text = PairingLanguageChromeLabel(m.languagePreference)
+        m.profilesLangHit.id = "a11y|button|0|" + m.profilesLangLabel.text
     end if
     if m.profilesThemeIcon <> invalid
         if isLight
@@ -1717,20 +1751,39 @@ sub applyProfilesChromeFocus()
     ' Gear and Sign out images have a light-theme twin (theme tokens, brand red kept).
     suffix = ""
     if ResolvePairingTheme(m.themePreference) = "light" then suffix = "-light"
-    if m.profilesSettingsBtn <> invalid
-        if settingsF
-            m.profilesSettingsBtn.uri = "pkg:/images/profiles-gear-focus" + suffix + ".png"
-        else
-            m.profilesSettingsBtn.uri = "pkg:/images/profiles-gear" + suffix + ".png"
-        end if
+    ' Gear and Sign out are tinted pills (surface fill, line outline, glyph bitmaps); focus turns the pill ink, or brand for Sign out.
+    pillRole = "surfaceStrong"
+    pillAlpha = 171
+    gearRole = "brand"
+    if settingsF
+        pillRole = "ink"
+        pillAlpha = 255
     end if
-    if m.profilesSignOutBtn <> invalid
-        if signOutF
-            m.profilesSignOutBtn.uri = "pkg:/images/profiles-signout-focus" + suffix + ".png"
-        else
-            m.profilesSignOutBtn.uri = "pkg:/images/profiles-signout" + suffix + ".png"
-        end if
+    m.profilesSettingsBtn.blendColor = ThemeColor(pillRole, pillAlpha)
+    ThemeSetRole(m.profilesSettingsBtn, pillRole, pillAlpha)
+    m.profilesSettingsIcon.blendColor = ThemeColor(gearRole)
+    ThemeSetRole(m.profilesSettingsIcon, gearRole)
+    outRole = "line"
+    m.profilesSettingsRing.blendColor = ThemeColor(outRole)
+    ThemeSetRole(m.profilesSettingsRing, outRole)
+    signRole = "surfaceStrong"
+    signAlpha = 171
+    signInk = "inkSoft"
+    if signOutF
+        signRole = "brand"
+        signAlpha = 255
+        signInk = "playerInk"
     end if
+    m.profilesSignOutBtn.blendColor = ThemeColor(signRole, signAlpha)
+    ThemeSetRole(m.profilesSignOutBtn, signRole, signAlpha)
+    m.profilesSignOutRing.blendColor = ThemeColor(outRole)
+    ThemeSetRole(m.profilesSignOutRing, outRole)
+    m.profilesSignOutIcon.blendColor = ThemeColor(signInk)
+    ThemeSetRole(m.profilesSignOutIcon, signInk)
+    m.profilesSignOutLabel.color = ThemeColor(signInk)
+    ThemeSetRole(m.profilesSignOutLabel, signInk)
+    A11yStamp(m.profilesSettingsBtn, true)
+    A11yStamp(m.profilesSignOutBtn, true)
     if m.profilesClientsFocus <> invalid
         m.profilesClientsFocus.visible = clientsF
         m.profilesClientsFocus.blendColor = ThemeColor("focusRing")
@@ -1799,6 +1852,12 @@ sub updateProfileActionsLayout()
     if y > 980 then y = 980
     m.profileActionsGroup.translation = [x, y]
     m.profileActionsGroup.opacity = 1
+    who = ""
+    if m.profiles[targetIndex] <> invalid and m.profiles[targetIndex].display_name <> invalid then who = m.profiles[targetIndex].display_name
+    m.profilesSettingsBtn.id = "a11y|button|999|" + who + " settings"
+    m.profilesSignOutBtn.id = "a11y|button|999|Sign out " + who
+    A11yStamp(m.profilesSettingsBtn, true)
+    A11yStamp(m.profilesSignOutBtn, true)
 end sub
 
 sub onProfilesRowFocused(event as Object)
@@ -2397,6 +2456,7 @@ end sub
 sub enterLibrary(profileName as String)
     SaveProfileName(profileName)
     m.profileLabel.text = FirstWord(profileName)
+    m.userLinkMark.id = "a11y|link|16|Signed in as " + profileName + ". Open profiles."
     m.items = []
     m.totalItems = invalid
     ' Stay in the library shell while the catalogue loads (no fullscreen status).
@@ -2706,16 +2766,19 @@ sub buildAlphabetStrip()
         label.setFields({ size: 9.22, weight: 400, width: 44, height: 12, horizAlign: "center" })
         label.text = letter
         label.color = ThemeColor("inkMuted")
+        ThemeSetRole(label, "inkMuted")
         m.browseAlphabet.AppendChild(label)
         m.alphabetLabels.Push(label)
         name = letter
         if letter = "#" then name = "Numbers and symbols"
+        pgMark(m.browseAlphabet, "button", name, -0.5, y, 44, 44, 50)
         y += 44
     end for
     m.browseLetterIndex = 0
     m.alphabetDot.translation = [10, 10]
     m.alphabetRing.translation = [6, 6]
     m.alphabetLabels[0].color = ThemeColor("bg")
+    ThemeSetRole(m.alphabetLabels[0], "bg")
 end sub
 
 sub enterBrowseAlphabet(preserveCurrent as Boolean)
@@ -2747,8 +2810,10 @@ sub renderBrowseAlphabetFocus()
     for i = 0 to m.alphabetLabels.Count() - 1
         if i = active
             m.alphabetLabels[i].color = ThemeColor("bg")
+            ThemeSetRole(m.alphabetLabels[i], "bg")
         else
             m.alphabetLabels[i].color = ThemeColor("inkMuted")
+            ThemeSetRole(m.alphabetLabels[i], "inkMuted")
         end if
     end for
     m.alphabetDot.translation = [10, active * 44 + 10]
@@ -2900,7 +2965,7 @@ sub updateBrowsePreview(work as Object)
         kicker = UCase(work.genres[0])
     end if
     m.browsePreviewKind.spec = { text: kicker, size: 12.29, weight: 860, tracking: 0.97, role: "brandInk", upper: true }
-    m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    m.browsePreviewTitle.spec = { text: work.title, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
     year = ""
     ' Web LibraryPreview: release year only (never the added date).
     if work.release_date <> invalid and work.release_date.Len() >= 4 then year = work.release_date.Left(4)
@@ -2979,7 +3044,18 @@ sub onBrowseKeyArtTimer()
         emitArtStatus(m.artActiveGeneration, m.artActiveScope, m.artActiveScope + "-preview", "pending", m.browseArtTelemetryVersion)
         sampleBrowseKeyArtStatus()
     end if
-    if Instr(1, uri, "style=stage-light") > 0 then m.browseKeyArt.opacity = 0.15 else if Instr(1, uri, "style=stage") > 0 then m.browseKeyArt.opacity = 0.15 else m.browseKeyArt.opacity = 0.4
+    fade = 0.4
+    web = 0.72
+    if Instr(1, uri, "style=stage-light") > 0
+        fade = 0.15
+        web = 0.24
+    else if Instr(1, uri, "style=stage") > 0
+        fade = 0.15
+    end if
+    m.browseKeyArt.opacity = web
+    veil = Int((1 - fade / web) * 255 + 0.5)
+    m.browseKeyArtVeil.color = ThemeColor("surface", veil)
+    ThemeSetRole(m.browseKeyArtVeil, "surface", veil)
     m.browseKeyArt.visible = true
     m.browseKeyArtFade.visible = true
 end sub
@@ -3042,6 +3118,8 @@ sub buildGridContent(grid as Object, works as Object, cardScale = 1.5 as Float)
         ' rebuildBrowseContent, since its item box size changes with it.
         ' Real .tv-title-card also never shows a kind line under the title.
         item.AddField("cardScale", "float", false)
+        item.AddField("gridCard", "boolean", false)
+        item.gridCard = true
         item.cardScale = cardScale
         item.AddField("showKind", "boolean", false)
         item.showKind = false
@@ -3162,6 +3240,16 @@ end sub
 
 ' Web /search page header: back circle, title, result count (after a divider or under the title) and the pill field with its
 ' magnifier and Clear. Built once; the XML ring and fill (searchFieldBg, searchFieldRing) are the pill itself.
+' Semantics of the search field (its pill, the placeholder box) and of the empty-state badge; ECP prints node ids.
+sub searchA11y()
+    searchBg = m.top.findNode("searchFieldBg")
+    searchBg.id = "a11y|search|999|"
+    A11yStamp(searchBg, true)
+    pgMark(m.searchGroup, "textbox", "Search your libraries and playlists", 215.6, 180.8, 506, 60, 0)
+    m.top.findNode("searchEmptyIcon").id = "a11y|container|50|"
+    pgMark(m.searchEmptyState, "image", "", 1163.6, 359.8, 54, 36, 0)
+end sub
+
 sub searchChromeInit()
     holder = m.searchGroup
     m.searchTitle.visible = false
@@ -3959,6 +4047,7 @@ end function
 sub enterHome(profileName as String)
     SaveProfileName(profileName)
     m.profileLabel.text = FirstWord(profileName)
+    m.userLinkMark.id = "a11y|link|16|Signed in as " + profileName + ". Open profiles."
     loadProfileAvatar()
     m.currentProfileName = profileName
     m.homeContinueEntries = []
@@ -4914,7 +5003,7 @@ sub layoutNavDock()
                 itemY = itemY + itemStep
             end if
         end for
-        bg = m.top.findNode("navGroupBg" + g.ToStr())
+        bg = m.navGroupBgs[g]
         shadow = m.top.findNode("navGroupShadow" + g.ToStr())
         if shadow <> invalid
             shadow.visible = visibleCount > 0
@@ -5067,6 +5156,7 @@ sub renderNavDockFocus()
             if m.navHighlights[i] <> invalid then m.navHighlights[i].visible = false
             if m.navIcons[i] <> invalid then m.navIcons[i].visible = false
             if m.navLabels[i] <> invalid then m.navLabels[i].visible = false
+            m.navHits[i].visible = false
         else
             if m.navIcons[i] <> invalid then m.navIcons[i].visible = true
             if m.navLabels[i] <> invalid then m.navLabels[i].visible = true
@@ -5079,17 +5169,26 @@ sub renderNavDockFocus()
             if m.navHighlights[i] <> invalid
                 m.navHighlights[i].visible = showChip
                 if showChip
+                    ' The chip bitmaps are white masks carrying alpha 46 (focus) and 23 (active), tinted with the ink colour.
                     if isFocused
                         m.navHighlights[i].uri = "pkg:/images/nav-item-focus.png"
+                        A11yStamp(m.navHighlights[i], true, 46)
                     else
                         m.navHighlights[i].uri = "pkg:/images/nav-item-active.png"
+                        A11yStamp(m.navHighlights[i], true, 23)
                     end if
                 end if
             end if
             ' The web scales an active or focused tile 1.05 about its centre: the icon is 21 px and the label 1.05 times as large.
+            hl = m.navHighlights[i].translation
+            ' The chip (active or focused) is the link's drawn box; an idle item has only its 64 px hit box.
+            m.navHits[i].visible = not showChip
+            m.navHits[i].setFields({ translation: [hl[0] + 1.8, hl[1] + 0.8], width: 64, height: 64 })
             base = m.navIcons[i].translation
             if showChip
                 m.navIcons[i].opacity = 1
+                m.navIcons[i].blendColor = ThemeColor("ink")
+                ThemeSetRole(m.navIcons[i], "ink")
                 m.navLabels[i].color = ThemeColor("ink")
                 if m.navIcons[i].width <> 21
                     m.navIcons[i].translation = [base[0] - 0.5, base[1] - 0.8]
@@ -5100,7 +5199,9 @@ sub renderNavDockFocus()
                     m.navLabels[i].translation = [lt[0], lt[1] + 0.3]
                 end if
             else
-                m.navIcons[i].opacity = 0.72
+                m.navIcons[i].opacity = 1
+                m.navIcons[i].blendColor = ThemeColor("inkMuted")
+                ThemeSetRole(m.navIcons[i], "inkMuted")
                 m.navLabels[i].color = ThemeColor("inkMuted")
                 if m.navIcons[i].width <> 20
                     m.navIcons[i].translation = [base[0] + 0.5, base[1] + 0.8]
@@ -5620,6 +5721,8 @@ sub buildDetailChaptersRail(isActive as Boolean)
         item.AddField("showKind", "boolean", false)
         item.showKind = false
         ' Web chapter card: big index over the art (01), then the start time and the chapter title under it.
+        item.AddField("linkName", "string", false)
+        item.linkName = "Play " + m.detailActions.workTitle + " from " + chapter.title
         item.AddField("overlayNumber", "string", false)
         number = (chapter.index + 1).ToStr()
         if Len(number) < 2 then number = "0" + number
@@ -6105,6 +6208,8 @@ sub buildEpisodeContent(groups as Object, kind as String)
                 item.artHeaders = artworkHeaders(item.hdPosterUrl, headers)
                 addEpisodeCardFields(item, episodeActive)
                 ' Web episode card: two-digit index over the art, "S01 · E01" then the title underneath, and the watch dot.
+                item.AddField("linkName", "string", false)
+                item.linkName = twoDigits(ep.episode_number) + " S" + twoDigits(season.season_number) + " · E" + twoDigits(ep.episode_number) + " " + item.title
                 item.AddField("overlayNumber", "string", false)
                 item.overlayNumber = twoDigits(ep.episode_number)
                 item.AddField("captionPrefix", "string", false)
@@ -6563,6 +6668,7 @@ sub resetPlayerAutoHide()
 end sub
 
 sub hidePlayerControls()
+    if m.paritySeekHold = true then return
     ' Web (shouldAutoHidePlayerControls): the controls hide on their own only while playing; a paused player keeps them.
     if m.video.state = "paused" then return
     m.playerControls.visible = false
@@ -6619,6 +6725,10 @@ sub sendPlaybackEvent(body as Object)
 end sub
 
 sub finishPlayback(reason as String)
+    if m.paritySeekHold = true
+        m.paritySeekHold = false
+        m.video.UnobserveFieldScoped("state")
+    end if
     if m.playbackEnded then return
     m.playbackEnded = true
     m.heartbeatTimer.control = "stop"
@@ -7045,8 +7155,8 @@ sub showOnly(name as String)
     m.settingsGroup.visible = name = "settings"
     m.pageGroup.visible = name = "page"
     ' Web .app-clock is at the same place on every screen.
-    m.clockTime.translation = [481, 68.2]
-    m.clockDate.translation = [535.4, 75]
+    m.clockTime.translation = [481, 69.19]
+    m.clockDate.translation = [535.4, 73.02]
     m.libraryGroup.visible = name = "library"
     m.homeGroup.visible = name = "home"
     m.browseGroup.visible = name = "browse"
@@ -7572,7 +7682,7 @@ end sub
 
 sub detailChromeInit()
     holder = m.top.findNode("detailGroup")
-    pgBackButton(holder, 153.6)
+    m.detailBackMark = pgBackButton(holder, 153.6, "Back to Movies", "button")
     m.detailHeaderTitle = CreateObject("roSGNode", "TrackedText")
     m.detailHeaderTitle.translation = [226.6, 58.2]
     holder.AppendChild(m.detailHeaderTitle)
@@ -7602,6 +7712,7 @@ sub layoutDetailHeader(work as Object, detail as Object)
     if work.kind = "site" then heading = "Sites"
     if work.kind = "artist" then heading = "Music"
     m.detailHeaderTitle.spec = PageTitleSpec(heading)
+    if m.detailBackMark <> invalid then pgRename(m.detailBackMark, "Back to " + heading)
         layoutHeaderSub(m.detailHeaderTitle.textWidth, m.detailHeaderChip, m.detailHeaderDivider, m.detailHeaderRule, work.title)
     ' Kicker: the first genre, like the library preview.
     kicker = UCase(work.kind)
@@ -7790,18 +7901,19 @@ sub onParitySeek()
     m.video.seek = m.paritySeekTarget
 end sub
 
-' Re-pause whenever the seek resumes playback; stop watching once paused on the target.
+' Re-pause whenever the seek resumes playback. Once the video sits paused on the target the seek is done (position is no longer watched), but
+' the hold stays: a stray resume is paused again and the controls stay up for the capture.
 sub onParitySeekStep()
-    if m.paritySeekTarget = invalid then return
+    if m.paritySeekTarget = invalid and m.paritySeekHold <> true then return
     if m.video.state = "playing"
         m.video.control = "pause"
-    else if m.video.state = "paused"
+    else if m.video.state = "paused" and m.paritySeekTarget <> invalid
         if Abs(m.video.position - m.paritySeekTarget) < 0.001
             m.video.control = "pause"
             print "PARITY|seekat|" + Str(Int(m.video.position * 1000 + 0.5)).Trim()
             m.video.UnobserveFieldScoped("position")
-            m.video.UnobserveFieldScoped("state")
             m.paritySeekTarget = invalid
+            m.paritySeekHold = true
         else
             m.video.seek = m.paritySeekTarget
         end if

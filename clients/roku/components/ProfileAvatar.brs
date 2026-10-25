@@ -11,6 +11,13 @@ sub init()
     m.name = m.top.findNode("name")
     m.status = m.top.findNode("status")
     m.itemGroup = m.top.findNode("itemGroup")
+    m.profileButton = m.top.findNode("profileButton")
+    m.profileCircle = m.top.findNode("profileCircle")
+    m.profileArt = m.top.findNode("profileArt")
+    m.plusGlyph = m.top.findNode("plusGlyph")
+    m.plusGlyph.color = ThemeColor("inkSoft")
+    ThemeSetRole(m.plusGlyph, "inkSoft")
+    m.profileArt.id = "a11y|image|0|"
     ThemeSetRole(m.focusRing, "cardGlow")
     m.focusRing.blendColor = ThemeColor("cardGlow")
     ThemeSetRole(m.focusShadow, "profileShadow")
@@ -41,6 +48,19 @@ sub onContentChanged()
     m.initial.visible = false
     m.name.text = content.title
     m.status.text = content.statusText
+    ' Accessible name as the web reads it, and the circle's container semantics (ECP prints ids).
+    name = content.title + ", ready"
+    if content.presetId = "add"
+        name = "+ Sign in ADD ANOTHER PROFILE"
+    else if content.statusText = "WATCHING NOW"
+        name = content.title + ", current profile"
+    else if content.statusText = "PIN REQUIRED"
+        name = content.title + ", PIN required"
+    end if
+    m.profileButton.id = "a11y|button|0|" + name
+    m.profileCircle.id = "a11y|container|50|"
+    m.plusGlyph.visible = content.presetId = "add"
+    m.profileArt.visible = content.presetId <> "add"
     updateProfileNameColor()
 end sub
 

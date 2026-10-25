@@ -862,11 +862,13 @@ export function createDriver({ out, args = [] } = {}) {
     let hits = 0;
     let lastSeen = "none";
     let sent = false;
+    let sentAt = 0;
     let lastMs = -1;
     const seekDeadline = Date.now() + 30000;
     while (hits < 2) {
       if (Date.now() > seekDeadline) throw new Error(`Roku player did not settle at 2.000 s (last ${lastSeen})`);
-      if (!sent) { seekAt = -1; await sendEcp(`input?paritySeek=2000`); sent = true; }
+      // A seek input that arrives before the channel takes it is sent again (the channel acknowledges with seekat 2000).
+      if (!sent || (seekAt !== 2000 && Date.now() - sentAt > 6000)) { seekAt = -1; sentAt = Date.now(); await sendEcp(`input?paritySeek=2000`); sent = true; }
       await sleep(900);
       const xml = await (await sendEcp("query/media-player", "GET")).text();
       const ms = Number(/<position>(\d+) ms/.exec(xml)?.[1] ?? "0");
@@ -1158,6 +1160,23 @@ export function createDriver({ out, args = [] } = {}) {
           await sleep(3000);
         }
       }
+      // The player frame is taken only with the controls up and the progress fill at 2 s of 60 (59.33 px): the controls hide on their own
+      // and a seek that did not land leaves another fill, so the measured tree is checked first and the state restored until it holds.
+      const playerHeld = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml) && /bounds="\{70, 933, 59\.\d+, 6\}"/.test(xml);
+      if (playerShot) {
+        let held = false;
+        for (let i = 0; i < 8 && !held; i += 1) {
+          held = playerHeld(await fetchAppUi());
+          if (held) break;
+          await sendEcp("keypress/Down");
+          await sleep(1500);
+          if (playerHeld(await fetchAppUi())) { held = true; break; }
+          seekAt = -1;
+          await sendEcp("input?paritySeek=2000");
+          await sleep(3000);
+        }
+        if (!held) throw new Error("Roku player controls were not up at 2.000 s");
+      }
       // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).
       let { jpeg, generation } = captureFrame();
       for (let i = 0; i < 8; i += 1) {
@@ -1187,10 +1206,11 @@ export function createDriver({ out, args = [] } = {}) {
       // The layout document (docs/parity/LAYOUT.md) of the screen just captured: same state as the screenshot.
       if (artEnabled && process.env.ROKU_PARITY_LAYOUT !== "0") {
         const appUi = await fetchAppUi();
+        if (playerShot && !playerHeld(appUi)) throw new Error("Roku player controls changed during the capture");
         writeFileSync(`${file}.appui.xml`, appUi); // the measured tree, kept so the export can be redone offline
         const themeDir = dirname(resolve(file));
         const id = resolve(file).split("/").pop().replace(/\.png$/, "");
-        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), pngFile: file, clockPinned: pinArg !== "" });
+        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), clockPinned: pinArg !== "", pngFile: file });
         const layoutDir = resolve(themeDir, "..", "layout", themeDir.split("/").pop());
         mkdirSync(layoutDir, { recursive: true });
         writeFileSync(resolve(layoutDir, `${id}.json`), JSON.stringify(doc, null, 1));
