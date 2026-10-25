@@ -451,9 +451,9 @@ export struct PosterCard {
             .position({ x: this.cardWidth - this.dotSize() - this.dotInset(), y: this.dotInset() })
         }
         if (this.episodeNumberOverlay.length > 0) {
-          Text(this.episodeNumberOverlay).fontFamily(nunitoAt(600, isTvMetrics() ? tv(20) : 13))
+          Text(this.episodeNumberOverlay).fontFamily(nunitoAt(560, isTvMetrics() ? tv(19.2) : 13))
             .width(isTvMetrics() ? tv(24) : 16)
-            .fontSize(isTvMetrics() ? tv(20) : 13)
+            .fontSize(isTvMetrics() ? tv(19.2) : 13)
             .fontWeight(600)
             .fontColor('#ffffff')
             .textAlign(TextAlign.End)
@@ -505,7 +505,8 @@ export struct PosterCard {
         }
         .width(this.cardWidth)
         .alignItems(VerticalAlign.Bottom)
-        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
+        .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? (this.artWash > 0 ? 2.6 : 0) : 2.4) })
+        .margin({ bottom: this.artWash > 0 && isTvMetrics() ? 2.65 : 0 })
       } else {
         Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
           .width(this.cardWidth)

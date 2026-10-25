@@ -255,7 +255,7 @@ const RIGHT_COLUMN_Y: number = 543;
 const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
 const RIGHT_COLUMN_FADE: number = 50;
-const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
+const RIGHT_COLUMN_GAP: number = 75.6; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 543; // static-server refs: the first season heading rests with the other details' right column (was 361, the scrolled old ref)
 const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 537;
@@ -393,7 +393,7 @@ struct DetailRowArtworkCard {
     PosterCard({
       variant: this.variant,
       linkRadius: 12,
-      accessibleName: this.variant === 'titleEpisode' && this.episodeCaption.length === 0 ? 'Open ' + this.title : '',
+      accessibleName: this.episodeCaption.length === 0 && this.episodeNumberOverlay.length === 0 ? 'Open ' + this.title : '',
       title: this.title,
       subtitle: this.subtitle,
       artwork: this.artworkStore.getArtwork(this.rowId),
@@ -1867,10 +1867,12 @@ struct Detail {
       Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
+        .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
+        .translate({ y: primary ? 1.5 : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
         .maxLines(1)
     }
     .id(this.pillId(label, primary ? '' : glyph, primary))
@@ -2060,7 +2062,7 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 4) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 6.5) }) {
       Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
         .id('px:heading:' + heading)
         .letterSpacing((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) // web's rail heading tracking

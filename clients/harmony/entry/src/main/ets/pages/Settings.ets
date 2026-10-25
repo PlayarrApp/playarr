@@ -307,7 +307,7 @@ export struct SettingsScreen {
         .fontSize(tv(ARROW_SIZE))
         .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
         .height(tv(ROW_HEIGHT))
-        .position({ x: tv(section.id === this.openSection ? ARROW_LEFT : ARROW_LEFT - 5), y: 0 })
+        .position({ x: tv(section.id === this.openSection ? ARROW_LEFT : ARROW_LEFT - 5), y: -1.5 })
     }
     .width(tv(ROW_WIDTH))
     .height(this.rowHeightOf(section))
