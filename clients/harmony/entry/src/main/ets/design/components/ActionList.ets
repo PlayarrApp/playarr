@@ -46,10 +46,12 @@ export struct ActionList {
               .width(tv(GLYPH_COLUMN))
               .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))
               .fontColor(toResourceColor(BRAND_PINK))
+              .translate({ y: isTvMetrics() ? -1.5 : -1.9 }) // web's glyph box sits higher
             Text(action.label).fontFamily(nunitoAt(700, isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE))
               .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().ink))
+              .translate({ y: isTvMetrics() ? -1.9 : -1.4 }) // web's label box sits higher
           }
           .width('100%')
           .height(tv(ROW_HEIGHT))

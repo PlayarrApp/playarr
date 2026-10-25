@@ -50,6 +50,11 @@ def font_metrics(family):
     return _FONT_METRICS[name]
 
 
+def shown(text):
+    """The text as displayed: variation selectors only choose a glyph style, they are not drawn."""
+    return str(text).replace("\ufe0e", "").replace("\ufe0f", "")
+
+
 def num(value, default=None):
     m = _NUM.search(str(value)) if value is not None else None
     return float(m.group()) if m else default
@@ -161,7 +166,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         x, y, w, h = (px(v) for v in box)
         if w < 0.5 or h < 0.5:
             return
-        el = {"text": text, "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
+        el = {"text": shown(text), "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
               "color": colour, "background": hex_of(background), "fontSize": size, "fontWeight": weight}
         if radius:
             el["radius"] = radius
@@ -195,7 +200,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         size_px = size * dpr * k
         if boxed:  # web's host-element boxes (clock, date, version): the Text node's own laid-out box, line height included
             if visible((x, y, w, h), clip):
-                emit("text", " ".join(" ".join(str(line["text"]) for line in measured).split()), (x, y, w, h), under, radius, colour, size, weight, opacity)
+                emit("text", " ".join(" ".join(shown(line["text"]) for line in measured).split()), (x, y, w, h), under, radius, colour, size, weight, opacity)
             return
         runs = []  # one Range per Text node, as web reports it: the union of the laid-out lines
         for i, line in enumerate(measured):
@@ -209,7 +214,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         if runs:
             x0, y0 = min(r[0][0] for r in runs), min(r[0][1] for r in runs)
             x1, y1 = max(r[0][0] + r[0][2] for r in runs), max(r[0][1] + r[0][3] for r in runs)
-            emit("text", " ".join(" ".join(r[1] for r in runs).split()), (x0, y0, x1 - x0, y1 - y0), under, radius, colour, size, weight, opacity)
+            emit("text", " ".join(" ".join(shown(r[1]) for r in runs).split()), (x0, y0, x1 - x0, y1 - y0), under, radius, colour, size, weight, opacity)
 
     def walk(node, under, opacity, chain, clip):
         a = attrs_of(node)

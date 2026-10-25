@@ -57,7 +57,7 @@ const EPISODE_META_MARGIN_TOP: number = 30;
 
 // Web `.tv-detail-meta`: 0.55vw chips, 0.85rem apart, the first one bolder and softer-ink, the rest muted.
 const META_CHIP_FONT_SIZE: number = 10.56;
-const META_CHIP_GAP: number = 13.6;
+const META_CHIP_GAP: number = 10.8; // web 13.6; ArkUI's wrapped Flex adds 2.8 per gap
 const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;

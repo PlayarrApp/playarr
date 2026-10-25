@@ -90,7 +90,7 @@ export struct Drawer {
             .textAlign(TextAlign.Center)
             .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
             .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
-            .borderRadius(isTvMetrics() ? tv(CLOSE_SIZE / 2) : TOUCH_CLOSE_SIZE / 2)
+            .borderRadius(50) // web: border-radius 50%
             .backgroundColor(toResourceColor(activeColors().surfaceSoft))
             .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
             .focusable(true)

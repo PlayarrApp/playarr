@@ -421,7 +421,7 @@ export const TvGeometry: TvGeometryTokens = {
   detailBackdropLeftPct: 55,
   detailCopyColumnWidthRatio: 0.39,
   detailCopyColumnStart: 154,
-  detailCopyColumnTop: 262, // web `.tv-detail-copy` top 259 plus the kicker's leading
+  detailCopyColumnTop: 260.7, // web's kicker box sits 1.3 higher // web `.tv-detail-copy` top 259 plus the kicker's leading
   detailBrowserWidthRatio: 0.57,
   detailBrowserHeightRatio: 0.72,
   detailBrowserEnd: 50,

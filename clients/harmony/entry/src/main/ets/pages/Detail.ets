@@ -227,7 +227,7 @@ const PLAY_FOCUS_FILL: string = '#a52745';
 function brandInk(): ResourceColor {
   return resolvedThemeMode() === 'dark' ? toResourceColor(BRAND_PINK_SOFT) : '#821e36';
 }
-const PILL_GLYPH_DARK: string = '#ba8492'; // sampled from the dark static-server ref (anti-aliased thin glyph; refine if the colour reads off)
+const PILL_GLYPH_DARK: string = '#eaa6b6'; // sampled from the dark static-server ref (anti-aliased thin glyph; refine if the colour reads off)
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
 const TOUCH_SETTLE_ATTEMPTS: number = 12;
 /** Web phone series detail, next-up episode in the middle: the page scrolled by about this much (measured on the 360 vp reference). */
@@ -734,7 +734,7 @@ function chapterTimeLabel(ms: number): string {
 /** One chapter card (web Chapters rail): "Chapter 01" (or the chapter's own title) under the card, its start time as the caption. */
 function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
   const number = chapter.index < 9 ? '0' + (chapter.index + 1).toString() : (chapter.index + 1).toString();
-  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : tf('pages.workDetail.chapterNumber', 'Chapter {{number}}', { number: String(number) });
+  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : tf('pages.workDetail.chapterNumber', 'Chapter {{number}}', { number: String(chapter.index + 1) });
   const row: DetailRow = {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
@@ -1877,10 +1877,10 @@ struct Detail {
     .height(tv(PILL_HEIGHT))
     .constraintSize({ minWidth: tv(primary ? PILL_PRIMARY_MIN_WIDTH : PILL_SECONDARY_MIN_WIDTH) })
     .padding({ left: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X), right: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X) })
-    .borderRadius(tv(PILL_HEIGHT / 2))
+    .borderRadius(999)
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(primary ? (this.filmPlayFocused(primary) ? PLAY_FOCUS_FILL : toResourceColor(activeColors().ink)) : resolvedThemeMode() === 'dark' ? (this.isSeriesPage() ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA)) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    .backgroundColor(primary ? (this.filmPlayFocused(primary) ? PLAY_FOCUS_FILL : toResourceColor(activeColors().ink)) : resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
     .shadow(this.pillShadow(primary))
     .border(this.filmPlayFocused(primary) ? { width: tv(2), color: resolvedThemeMode() === 'dark' ? toResourceColor(activeColors().bg) : '#ffffff' } : { width: 0 })
     .outline(this.filmPlayFocused(primary) ? { width: tv(3), color: resolvedThemeMode() === 'dark' ? '#ffffff' : toResourceColor(activeColors().ink), radius: tv(PILL_HEIGHT / 2) } : { width: 0 })
@@ -1919,7 +1919,7 @@ struct Detail {
   private tvSeriesActions(): void {
     Row({ space: tv(PILL_GAP) }) {
       if (this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null) {
-        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
         if (this.resumePlan.action !== 'start') {
@@ -1953,11 +1953,11 @@ struct Detail {
           this.actionsOpen = true;
         })
         if (this.primaryMediaFileId !== null && this.detail !== null && this.detail.work.kind === 'movie') {
-          this.actionPill(t('pages.workDetail.playbackButtonLabel', 'Playback'), '\u2630', false, true, (): void => {
+          this.actionPill(t('pages.workDetail.playbackButtonLabel', 'Playback'), '\u2637', false, true, (): void => {
             this.optionsOpen = true;
           })
         }
-        this.actionPill(this.primaryLabel(), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(this.primaryLabel(), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
       }

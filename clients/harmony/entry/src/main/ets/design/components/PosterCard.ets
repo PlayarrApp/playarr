@@ -254,7 +254,7 @@ export struct PosterCard {
     if (this.accessibleName.length > 0) {
       return this.accessibleName;
     }
-    return [this.episodeCaption, this.title, this.subtitle].filter((part: string): boolean => part.length > 0).join(' ');
+    return [this.episodeNumberOverlay, this.episodeCaption, this.title, this.subtitle].filter((part: string): boolean => part.length > 0).join(' ');
   }
 
   /** The unseen dot: web's 13 px on the TV; 9 vp, 7 in, on the phone grid. */
@@ -373,16 +373,6 @@ export struct PosterCard {
     return Math.round(Math.max(0, Math.min(1, this.progress)) * 100);
   }
 
-  private episodeCopySpacerLetterSpacing(): number {
-    const ui = this.getUIContext();
-    const spaceWidthVp = ui.px2vp(ui.getMeasureUtils().measureText({
-      textContent: ' ',
-      fontSize: this.subtitleFontSize,
-      fontWeight: FontWeight.Bold,
-    }));
-    return Math.max(0, tv(SERIES_EPISODE_CAPTION_TITLE_GAP) - spaceWidthVp);
-  }
-
   private episodeOverlayX(): number {
     return this.cardWidth - (isTvMetrics() ? tv(36) : 26.7);
   }
@@ -444,6 +434,7 @@ export struct PosterCard {
           }
           .width('100%')
           .height(PROGRESS_BAR_HEIGHT)
+          .id('px:img:') // web: the track is an image-role box with the fill inside
           .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().line) : 'rgba(255, 255, 255, 0.2)') // web phone: a white 20% track in both themes
           .justifyContent(FlexAlign.Start)
         }
@@ -495,24 +486,25 @@ export struct PosterCard {
       .height(this.cardHeight)
 
       if (this.episodeCaption.length > 0) {
-        Text() {
-          Span(this.episodeCaption)
+        // two text elements as web has them (the caption, then the title on the same baseline)
+        Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) }) {
+          Text(this.episodeCaption).fontFamily(nunitoAt(700, this.subtitleFontSize))
             .fontSize(this.subtitleFontSize)
             .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().inkMuted))
-          Span(' ')
-            .fontSize(this.subtitleFontSize)
-            .letterSpacing(this.episodeCopySpacerLetterSpacing())
-          Span(this.title)
+            .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().inkMuted))
+            .maxLines(1)
+            .translate({ y: -1 })
+          Text(this.title).fontFamily(nunitoAt(this.softCaption || !isTvMetrics() ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize)) // phone: web's episode title is not bold
             .fontSize(this.titleFontSize)
-            .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT) // phone: web's episode title is not bold
-            .fontColor(toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
+            .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
+            .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink))
             .letterSpacing(tv(this.titleFontSize * -0.015))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
         }
-        .fontFamily(nunitoAt(400, this.titleFontSize))
         .width(this.cardWidth)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .alignItems(VerticalAlign.Bottom)
         .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? 0 : 2.4) })
       } else {
         Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
@@ -536,7 +528,7 @@ export struct PosterCard {
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption || isTvMetrics() ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .letterSpacing(0)
+          .letterSpacing(isTvMetrics() ? -0.2 : -0.11) // web's subtitle run is narrower than ArkUI lays it out
           .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 2.9 })
           .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -12.6 : -10.5) : 0 }) // web Home: the card link ends above the subtitle line
       }
