@@ -51,13 +51,13 @@ namespace Playarr.Xbox.Views
             Background = Theme.PageStage();
             EdgeFade.AttachVertical(Root, RailsScroll, 833, true);
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
-            LayoutExport.SetBox(BackdropImage, new Windows.Foundation.Rect(133.03, -22.9, 899.97, 1190.59));
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
             BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
+            LayoutExport.SetSplit(PlaybackButton, true);
             PlaybackButton.Height = 64;
             // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
             PlayButton.GotFocus += (s, e) => PaintPlay(true);
@@ -144,6 +144,7 @@ namespace Playarr.Xbox.Views
             }
 
             MetaText.Text = string.Join("      ", meta);
+            LayoutExport.SetSplitOn(MetaText, "      ");
             OverviewText.Text = _viewModel.Overview;
 
             if (work != null && !ReferenceEquals(_backdropWork, work))
@@ -845,7 +846,7 @@ namespace Playarr.Xbox.Views
                 _downloadPill = download;
                 PrimaryRow.Children.Insert(0, download);
             }
-            var watch = Ui.Filled(Ui.Pill(inWatchlist ? "\u2713  Remove from watchlist" : "+  Add to watchlist", null));
+            var watch = Ui.WithIcon(Ui.Filled(Ui.Pill(inWatchlist ? "Remove from watchlist" : "Add to watchlist", null)), inWatchlist ? "\u2713" : "+", "PlayarrInkSoft");
             watch.Click += async (s, e) =>
             {
                 try
@@ -862,10 +863,11 @@ namespace Playarr.Xbox.Views
             watch.Height = 64;
             watch.MinWidth = 142;
             ActionRow.Children.Add(watch);
-            var playlist = Ui.Filled(Ui.Pill("+  Add to Playlist", OpenPlaylistDrawer));
+            var playlist = Ui.WithIcon(Ui.Filled(Ui.Pill("Add to Playlist", OpenPlaylistDrawer)), "+", "PlayarrInkSoft");
             playlist.Height = 64;
             playlist.MinWidth = 142;
             ActionRow.Children.Add(playlist);
+            foreach (var pill in new[] { download, watch, playlist }) { LayoutExport.SetSplit(pill, true); }
         }
 
         private async void OpenPlaylistDrawer()
@@ -1158,6 +1160,7 @@ namespace Playarr.Xbox.Views
 
             meta.AddRange(work.Genres);
             MetaText.Text = string.Join("      ", meta);
+            LayoutExport.SetSplitOn(MetaText, "      ");
             if (!string.IsNullOrEmpty(episode.Overview))
             {
                 OverviewText.Text = episode.Overview;

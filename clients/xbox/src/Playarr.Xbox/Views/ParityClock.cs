@@ -11,7 +11,7 @@ namespace Playarr.Xbox.Views
     internal static class ParityClock
     {
         private static readonly DateTime Pinned = new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Local);
-        private static readonly bool IsPinned = System.IO.File.Exists(System.IO.Path.Combine(ApplicationData.Current.LocalFolder.Path, "parity.on"));
+        internal static readonly bool IsPinned = System.IO.File.Exists(System.IO.Path.Combine(ApplicationData.Current.LocalFolder.Path, "parity.on"));
 
         public static DateTime Now => IsPinned ? Pinned : DateTime.Now;
 
