@@ -177,3 +177,11 @@ test("a volatile host keeps the real text style of its content and a control's a
   assert.deepEqual([d.elements[0].color, d.elements[0].fontSize, d.elements[0].fontWeight], ["#ff0000", 20, 700]);
   assert.deepEqual([d.elements[1].role, d.elements[1].text, d.elements[1].color, d.elements[1].fontSize], ["button", "Audio: English", "#00ff00", 12]);
 });
+
+test("color-mix fills resolve to the painted colour (opaque, translucent over the page, nested var)", { skip }, async () => {
+  const d = await dump(`<style>:root{--brand:#cf3157;--surface:#dfdcdd}</style>
+    <div class="abs" style="top:0;width:40px;height:20px;background:color-mix(in srgb, var(--brand) 12%, var(--surface))"></div>
+    <div class="abs" style="top:30px;width:40px;height:20px;background:color-mix(in srgb, #000000 50%, transparent)"></div>
+    <div class="abs" style="top:60px;width:40px;height:20px;background:color-mix(in srgb, #ff0000 25%, #0000ff)"></div>`);
+  assert.deepEqual(d.elements.map((e) => e.background), ["#ddc7cd", "#808080", "#4000bf"]);
+});
