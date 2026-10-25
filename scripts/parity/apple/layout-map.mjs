@@ -22,6 +22,7 @@ export function mapRaw(doc, screen, theme) {
       fontWeight: e.fontWeight ?? null,
     };
     if (e.radius > 0) out.radius = e.radius;
+    if (e.opacity != null && e.opacity !== 1) out.opacity = e.opacity;
     return out;
   });
   return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements };

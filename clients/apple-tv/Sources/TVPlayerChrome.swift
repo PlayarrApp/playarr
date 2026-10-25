@@ -66,6 +66,7 @@ struct TVPlayerChrome: View {
                 endPoint: .bottom
             )
             .frame(width: 1920, height: 518.4)
+            .parityBox("container", fill: Color.black)
             .placed(x: 0, y: 561.6, w: 1920, h: 518.4)
             .offset(y: controlsVisible ? 0 : 518.4)
             .opacity(controlsVisible ? 1 : 0)
@@ -91,10 +92,12 @@ struct TVPlayerChrome: View {
             HStack(spacing: 8.8) {
                 Image(systemName: "arrow.down.right.and.arrow.up.left")
                     .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 20, height: 20)
+                    .parityBox("image")
                 Text("Minimise")
-                    .font(TVTheme.font(size: 11.2, weight: .bold))
+                    .font(TVTheme.font(size: 11.2, css: 700))
                     .tracking(0.22)
-                    .parityLayout(text: "Minimise", size: 11.2, weight: Int(TVTheme.cssWeight(.bold)), tracking: 0.22)
+                    .parityLayout(text: "Minimise", size: 11.2, weight: 700, color: Color.white, tracking: 0.22)
             }
             .foregroundStyle(Color.white)
             .frame(width: 124, height: 48)
@@ -108,6 +111,8 @@ struct TVPlayerChrome: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 13, weight: .light))
                     .foregroundStyle(Color.white)
+                    .frame(width: 14, height: 22)
+                    .parityBox("image")
                     .frame(width: 48, height: 48)
                     .parityBox("button", text: "Close player", radius: 999, fill: Color(red: 7 / 255, green: 6 / 255, blue: 6 / 255))
                     .background(Circle().fill(Color(red: 12 / 255, green: 10 / 255, blue: 11 / 255).opacity(0.58)))
@@ -141,14 +146,15 @@ struct TVPlayerChrome: View {
     // MARK: Transport
 
     /// A 20 pt icon inside its 64 pt round control (web: icon buttons are 64 x 64 with the icon centred), named as the web names it.
-    private func icon(_ symbol: String, x: CGFloat, y: CGFloat = 980, opacity: Double = 0.92, name: String? = nil) -> some View {
+    private func icon(_ symbol: String, x: CGFloat, y: CGFloat = 980, opacity: Double = 0.92, name: String? = nil, disabled: Bool = false) -> some View {
         Image(systemName: symbol)
             .font(.system(size: 17, weight: .regular))
-            .foregroundStyle(Color.white.opacity(opacity))
+            .foregroundStyle(Color.white.opacity(disabled ? 1 : opacity))
             .frame(width: 20, height: 20)
-            .parityBox("image", fill: Color.black)
+            .parityBox("image", fill: Color.black, opacity: disabled ? 0.28 : 1)
             .frame(width: 64, height: 64)
-            .parityBox("button", text: name, radius: 50, fill: Color.black)
+            .parityBox("button", text: name, radius: 50, fill: Color.black, opacity: disabled ? 0.28 : 1)
+            .opacity(disabled ? 0.28 : 1)
             .accessibilityLabel(name ?? "")
             .placed(x: x - 22, y: y - 22, w: 64, h: 64, alignment: .center)
     }
@@ -161,11 +167,13 @@ struct TVPlayerChrome: View {
 
     private var transport: some View {
         ZStack(alignment: .topLeading) {
-            icon("backward.end", x: 92, opacity: 0.3, name: "Previous episode")
+            icon("backward.end", x: 92, name: "Previous episode", disabled: true)
             Button(action: onTogglePlay) {
                 Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 20, weight: .regular))
                     .foregroundStyle(Color.white)
+                    .frame(width: 20, height: 20)
+                    .parityBox("image")
                     .frame(width: 64, height: 64)
                     .background(Circle().fill(Color.white.opacity(0.14)))
             }
@@ -175,28 +183,28 @@ struct TVPlayerChrome: View {
             .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .play))
             .placed(x: 147.6, y: 958, w: 64, h: 64)
-            icon("forward.end", x: 247.2, opacity: 0.3, name: "Next episode")
-            Text(Self.clock(state.position))
-                .font(TVTheme.font(size: 10.88, weight: .regular))
-                .foregroundStyle(Color.white)
-                .parityLayout(text: Self.clock(state.position), size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color.white)
-                .placed(x: 302.8, y: 981.8, w: 30, h: 16.3)
-            Text("/")
-                .font(TVTheme.font(size: 10.88, weight: .regular))
-                .foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
-                .parityLayout(text: "/", size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
-                .placed(x: 330.6, y: 981.8, w: 8, h: 16.3)
-            Text(Self.clock(state.duration))
-                .font(TVTheme.font(size: 10.88, weight: .regular))
-                .foregroundStyle(Color.white)
-                .parityLayout(text: Self.clock(state.duration), size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: Color.white)
-                .placed(x: 340.2, y: 981.8, w: 30, h: 16.3)
+            icon("forward.end", x: 247.2, name: "Next episode", disabled: true)
+            HStack(spacing: 0) {
+                Text(Self.clock(state.position))
+                    .font(TVTheme.font(size: 10.88, css: 400))
+                    .foregroundStyle(Color.white)
+                Text(" / ")
+                    .font(TVTheme.font(size: 10.88, css: 400))
+                    .foregroundStyle(Color(red: 119 / 255, green: 107 / 255, blue: 113 / 255))
+                Text(Self.clock(state.duration))
+                    .font(TVTheme.font(size: 10.88, css: 400))
+                    .foregroundStyle(Color.white)
+            }
+            .fixedSize()
+            .frame(width: 58.39, height: 16.31, alignment: .leading)
+            .parityBox("container", text: "\(Self.clock(state.position)) / \(Self.clock(state.duration))", fill: Color.black)
+            .placed(x: 302.78, y: 981.84, w: 58.39, h: 16.31)
         }
     }
 
     private var rightGroup: some View {
         ZStack(alignment: .topLeading) {
-            icon("speaker.wave.2.fill", x: 1323.5, opacity: 0.3, name: "")
+            icon("speaker.wave.2.fill", x: 1323.5, name: "", disabled: true)
             icon("text.rectangle", x: 1401.1, name: "Subtitles: Off")
             icon("text.line.last.and.arrowtriangle.forward", x: 1478.7, name: "Playlist: 1 item")
             Button(action: onToggleQualityMenu) {
@@ -217,10 +225,13 @@ struct TVPlayerChrome: View {
                 .padding(.horizontal, 15.5)
                 .frame(width: 173.4, height: 60.5, alignment: .leading)
                 .background(Capsule().fill(Color.white.opacity(state.menuOpen ? 0.15 : 0)))
+                .frame(width: 160.45, height: 56)
+                .parityBox("button", text: "Quality: \(state.qualityLabel)", radius: 999, fill: Color.black)
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .quality))
+            .accessibilityLabel("Quality: \(state.qualityLabel)")
             .placed(x: 1527.8, y: 959.8, w: 173.4, h: 60.5)
             icon("info.circle", x: 1730.4, name: "Info and playback health")
             icon("macbook.and.iphone", x: 1808, name: "Play on another device")

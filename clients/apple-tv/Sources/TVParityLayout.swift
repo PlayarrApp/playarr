@@ -28,6 +28,7 @@ final class TVParityLayoutRegistry {
         var lines: [String]?
         var pitch: CGFloat = 0
         var layer = 0
+        var opacity: Double = 1
     }
 
     private var items: [UUID: Item] = [:]
@@ -148,8 +149,9 @@ final class TVParityLayoutRegistry {
                 "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
                 "tracking": Double(item.tracking),
-                "radius": Double(item.radius),
+                "radius": Double(min(item.radius, min(item.rect.width, item.rect.height) / 2)), // as drawn: a pill radius is half the box
                 "pitch": Double(item.pitch),
+                "opacity": item.opacity,
             ]
             if let lh = item.lineHeight { raw["lineHeight"] = Double(lh) }
             if let size = item.size, let weight = item.weight,
@@ -299,6 +301,7 @@ private struct TVParityBoxModifier: ViewModifier {
     let role: String
     let radius: CGFloat
     let fill: Color?
+    var opacity: Double = 1
     @Environment(\.self) private var environment
     @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
@@ -333,6 +336,7 @@ private struct TVParityBoxModifier: ViewModifier {
             item.background = nil
         }
         item.radius = radius
+        item.opacity = opacity
         item.layer = layer
         TVParityLayoutRegistry.shared.set(id, item)
     }
@@ -372,9 +376,9 @@ extension View {
 
     /// Reports a box (card link, image, container with a fill and radius) to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil) -> some View {
+    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil, opacity: Double = 1) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill))
+        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill, opacity: opacity))
         #else
         self
         #endif
