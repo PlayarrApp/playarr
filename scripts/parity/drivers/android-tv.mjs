@@ -9,7 +9,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { checkLayout, fillBackgrounds } from "../layout-sample.mjs";
+import { checkLayout } from "../layout-check.mjs";
 import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { guardAndroidDeviceAccount } from "../capture-state.mjs";
@@ -178,8 +178,9 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       if (json.startsWith("{")) {
         const dir = join(dirname(dirname(pngFile)), "layout", theme);
         mkdirSync(dir, { recursive: true });
-        const layout = fillBackgrounds(checkLayout(JSON.parse(json), theme), readFileSync(pngFile));
-        writeFileSync(join(dir, `${screen}.json`), JSON.stringify(layout));
+        const target = join(dir, `${screen}.json`);
+        rmSync(target, { force: true });
+        writeFileSync(target, JSON.stringify(checkLayout(JSON.parse(json), theme)));
         return;
       }
     }
