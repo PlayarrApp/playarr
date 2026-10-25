@@ -1046,9 +1046,12 @@ def main():
     parser.add_argument("--debug-port", type=int, default=40027)
     parser.add_argument("--cmd-name", default="playarr_cmd")
     parser.add_argument("--password-env", default="PLAYARR_VNC_SLOT7_PASSWORD")
+    parser.add_argument("--no-vnc", action="store_true", help="bridge only: frames and control on 127.0.0.1, no VNC listener of any kind")
     args = parser.parse_args()
     if args.bind in ("0.0.0.0", "::", ""):
         parser.error("--bind must be one interface address")
+    if args.no_vnc and not os.environ.get(args.password_env):
+        os.environ[args.password_env] = "unused-no-listener"
 
     commands = Commands(args.cmd_name)
     threading.Thread(target=run_debugger, args=(args.debug_port,), daemon=True).start()
@@ -1234,6 +1237,10 @@ def main():
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", args.ctl), Ctl)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     log(f"control on 127.0.0.1:{args.ctl}")
+    if args.no_vnc:  # the capture needs frames, keys and routes only: never open an RFB socket
+        sim_vnc.start_frames(server.hub, server.args, server.log, server.stop)
+        while True:
+            time.sleep(3600)
     server.serve()
 
 

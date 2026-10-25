@@ -227,7 +227,8 @@ export struct ProfileAvatar {
     }
     .width(this.diameter)
     .height(this.diameter)
-    .borderRadius(this.diameter / 2)
+    .id('px:container:')
+    .borderRadius('50%')
     .clip(true)
     // A circle clip: the rounded-rect clip left the drawing's sides flat in the Previewer.
     .clipShape(new CircleShape({ width: this.diameter, height: this.diameter }))
