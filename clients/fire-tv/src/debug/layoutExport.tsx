@@ -157,15 +157,16 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       const upper = style.textTransform === 'uppercase';
       const native = lines && lines.length ? lines : [{x: 0, y: 0, width: r[2], height: r[3], text}];
       native.forEach((line, index) => {
-        // The line box the renderer laid out (its own height when the style sets no line height).
+        // The line box the renderer laid out (its own height when the style sets no line height); lines stack by their heights.
         const lh = style.lineHeight ? style.lineHeight / scale : line.height / scale;
+        const above = native.slice(0, index).reduce((sum, l) => sum + l.height, 0) / scale;
         const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
         if (!lineText) return;
         out.push({
           ...(base as LayoutElement),
           text: upper ? lineText.toUpperCase() : lineText,
           role: webRole === 'heading' ? 'heading' : 'text',
-          rect: {x: round2(rect.x + line.x / scale), y: round2(lineTop + (line.y - native[0]!.y) / scale + (lh - runH) / 2), w: round2(line.width / scale), h: runH},
+          rect: {x: round2(rect.x + line.x / scale), y: round2(lineTop + above + (lh - runH) / 2), w: round2(line.width / scale), h: runH},
           color: hex(style.color),
           fontSize: size,
           fontWeight: m ? Number(m[1]) : 400,
@@ -178,8 +179,6 @@ export async function exportLayout(probe: LayoutProbe, bg: string, debug: boolea
       out.push({...(base as LayoutElement), text: label ?? '', role: webRole ?? 'image', rect, color: null, fontSize: null, fontWeight: null, src});
       return;
     }
-    // Full-screen layers are exported only when they carry a role.
-    if (rect.w >= 1919 && rect.h >= 1079 && !role) return;
     const painted = hex(style.backgroundColor) !== null || (style.borderWidth ?? 0) > 0;
     if (!role && !painted) return;
     out.push({

@@ -6,7 +6,7 @@
 import {PARITY_CONTROL} from './parityControl';
 import {registerLines} from './layoutExport';
 
-const NO_CLAIM = new Set(['container', 'image', 'img', 'skip', 'none', 'text']);
+const NO_CLAIM = new Set(['container', 'image', 'skip', 'none', 'text']);
 
 export function lx(role: string, label?: string, _radius?: number): object {
   if (NO_CLAIM.has(role)) return {};

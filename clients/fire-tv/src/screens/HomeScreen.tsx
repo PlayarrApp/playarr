@@ -542,7 +542,7 @@ const HomeCard = memo(function HomeCard(props: {
       onPress={onPress}
       onLongPress={onLongPress}
       // The web link ends under the title line; the meta line below it hangs out of the box.
-      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW), height: u(layout.artH + 11.25 + 17.9)}}
+      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW), height: u(layout.artH + 11.25 + 17.9), borderRadius: u(12)}}
     >
       <MediaFocus variant="home" focused={selected} width={layout.cardW} height={layout.artH} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft}}>

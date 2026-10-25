@@ -33,7 +33,7 @@ export function WatchState({progress, showUnwatched = false, dot = 13, inset = 1
   if (progress?.state === 'part_watched') {
     const percent = progress.duration_ms > 0 ? Math.min(100, Math.max(0, (progress.position_ms / progress.duration_ms) * 100)) : 0;
     return (
-      <View {...lx('img', '', 0)} style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: u(3.08), backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden'}}>
+      <View {...lx('img', '')} style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: u(3.08), backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden'}}>
         <View {...lx('container', '', 0)} style={{width: `${percent}%`, minWidth: u(3), height: '100%', backgroundColor: '#cf3157'}} />
       </View>
     );
@@ -41,7 +41,7 @@ export function WatchState({progress, showUnwatched = false, dot = 13, inset = 1
   if (progress?.state === 'unseen' || (!progress && showUnwatched)) {
     return (
       <View
-        {...lx('img', '', 50)}
+        {...lx('img', '')}
         style={{
           position: 'absolute',
           right: u(inset),
