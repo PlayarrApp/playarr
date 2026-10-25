@@ -112,12 +112,7 @@ internal static class Ui
     public static void RegisterFonts() => FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
 
     /// <summary>A fully rounded box is drawn the way the web's border-radius 999px (pill) or 50% (circle, up to 100 px) is: the radius is clamped to half the short side when drawn, and the view reports the CSS value.</summary>
-    internal static float FullRadius(float radius, float w, float h)
-    {
-        var half = Math.Min(w, h) / 2f;
-        if (radius < half - 0.6f || radius <= 1f) return radius;
-        return Math.Abs(w - h) < 1.5f ? (half <= 50f ? 50f : radius) : 999f;
-    }
+    internal static float FullRadius(float radius, float w, float h) => Math.Min(radius, Math.Min(w, h) / 2f); // a radius larger than half the short side draws as a full round (pill or circle); the view carries the drawn pixel radius
 
     public static View Box(float x, float y, float w, float h, Rgba? bg = null, float radius = 0)
     {

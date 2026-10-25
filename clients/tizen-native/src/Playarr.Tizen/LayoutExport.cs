@@ -33,8 +33,6 @@ internal static class LayoutExport
     private sealed record Node(string Text, string Role, float X, float Y, float W, float H, string? Color, string Background, float? FontSize, int? FontWeight, float Radius, float Opacity,
         int Order, int Id, int[] Chain, float PaintAlpha, (float R, float G, float B, float A)? Fill = null);
 
-    private static bool _lines; // debugging: one element per laid-out line instead of one per wrapped block
-
     private sealed class Ctx
     {
         public readonly List<Node> Nodes = new();
@@ -43,9 +41,8 @@ internal static class LayoutExport
         public float VW, VH;
     }
 
-    public static string Json(string screen, string theme, bool clockPinned, Container root, bool lines = false)
+    public static string Json(string screen, string theme, bool clockPinned, Container root)
     {
-        _lines = lines;
         var win = Window.Instance.WindowSize;
         var ctx = new Ctx { VW = win.Width, VH = win.Height };
         var bg = Window.Instance.BackgroundColor;
@@ -135,8 +132,6 @@ internal static class LayoutExport
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
                 var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + run.X * csx, cy + run.Y * csy, run.W * csx, run.H * csy))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
-                // a wrapped block is one element (as the web's is): its text and the union of its laid-out lines
-                if (m.Multiline && runs.Count > 1 && !_lines) { var x0 = runs.Min(r => r.R.X); var y0 = runs.Min(r => r.R.Y); runs = new() { (string.Join(" ", runs.Select(r => r.Text)), new RectF(x0, y0, runs.Max(r => r.R.R) - x0, runs.Max(r => r.R.B) - y0)) }; }
                 foreach (var (runText, r) in runs)
                 {
                     if (!r.Overlaps(clip)) continue;
@@ -186,9 +181,9 @@ internal static class LayoutExport
         }
         foreach (var l in lines.OrderBy(l => l.Y))
         {
-            // a wrapped label's line box carries the CSS leading after the line; the run is the font's own line (measured)
-            var box = l.Bottom - l.Y; var nat = Math.Min(box, Ui.TextHeight(meta.Size, meta.Weight, meta.Family) * Ui.TextScale);
-            yield return (text[l.First..(l.Last + 1)], l.L, meta.Block ? l.Y : l.Y + (box - nat) / 2f, l.R - l.L + spacing, meta.Block ? Math.Min(box, meta.LineHeight * Ui.TextScale) : nat);
+            // the run is the font's own line (measured on a label of this font); a wrapped label's lines start at the line top, a single line is centred in its box
+            var box = l.Bottom - l.Y; var nat = Ui.TextHeight(meta.Size, meta.Weight, meta.Family) * Ui.TextScale;
+            yield return (text[l.First..(l.Last + 1)], l.L, meta.Multiline ? l.Y : l.Y + (box - nat) / 2f, l.R - l.L + spacing, nat);
         }
     }
 
