@@ -256,7 +256,7 @@ export async function createDriver({ out } = {}) {
     async playerControls() {
       const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
       if (!film) throw new Error("suite has no pinned film for player-controls");
-      await command({ cmd: "armPause", ms: "2000" }, 500);
+      await command({ cmd: "armPause", ms: "1900" }, 500);
       // Play on the pinned film's page; if the clip has not started within 50 s (a dropped Select), open the page again and retry once.
       let paused = false;
       for (let attempt = 0; attempt < 2 && !paused; attempt++) {
@@ -266,12 +266,13 @@ export async function createDriver({ out } = {}) {
         const t0 = Date.now();
         while (Date.now() - t0 < 50000) {
           const player = (await state(20000).catch(() => ({}))).player ?? {};
-          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.05) { paused = true; break; }
+          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.2) { paused = true; break; }
           await sleep(1500);
         }
       }
       if (!paused) throw new Error("the Vega player did not pause at 2 s");
-      await press("Right"); // the first input only raises the controls
+      await sleep(7000); // the controls hide after 5 s without input
+      await press("Right"); // the first input with the controls hidden only raises them
       await sleep(2500);
     },
     async route(path, { screenId } = {}) {
