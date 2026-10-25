@@ -360,12 +360,23 @@ fn entry_widget(app: &Rc<App>, imgs: &Images, e: &CalendarEntry, week: bool) -> 
 }
 
 fn pill(label: &str) -> gtk4::Button {
-    gtk4::Button::builder().label(label).css_classes(["pa-pill"]).build()
+    // The web's text is the control (its box is the text run); the pill around it only carries the click.
+    let text = gtk4::Label::builder()
+        .label(label)
+        .accessible_role(gtk4::AccessibleRole::Button)
+        .css_classes(["pa-pill-label"])
+        .build();
+    gtk4::Button::builder()
+        .child(&text)
+        .accessible_role(gtk4::AccessibleRole::Generic)
+        .css_classes(["pa-pill"])
+        .build()
 }
 
 /// A round control with a text arrow, as the web's period navigation.
 fn round_arrow(arrow: &str) -> gtk4::Button {
     let b = gtk4::Button::builder().css_classes(["pa-pill", "round"]).build();
+    crate::layout::name(&b, if arrow == "←" { "Previous" } else { "Next" });
     b.set_child(Some(
         &gtk4::Label::builder()
             .label(arrow)
@@ -879,7 +890,10 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .margin_end(16)
         .css_classes(["pa-cal-controls"])
         .build();
-    let range_label = gtk4::Label::builder().css_classes(["pa-pill-label"]).build();
+    let range_label = gtk4::Label::builder()
+        .accessible_role(gtk4::AccessibleRole::Button)
+        .css_classes(["pa-pill-label"])
+        .build();
     let range = gtk4::Box::builder().css_classes(["pa-pill"]).build();
     range.append(&range_label);
     let prev = round_arrow("←");
