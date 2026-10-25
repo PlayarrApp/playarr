@@ -176,6 +176,7 @@ internal static class LayoutExport
             if (pos.Count == 0 || sz.Count == 0) continue;
             float y = pos[0].Y, x = pos[0].X, w = sz[0].Width, h = sz[0].Height;
             var li = lines.FindIndex(l => Math.Abs(l.Y - y) < h * 0.5f);
+            if (li >= 0 && x < lines[li].R - w * 0.5f) continue; // an elided glyph (past the ellipsis) is not drawn and reports no position of its own
             if (li < 0) lines.Add((y, y + h, x, x + w, i, i));
             else { var l = lines[li]; lines[li] = (l.Y, l.Bottom, Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }
         }
