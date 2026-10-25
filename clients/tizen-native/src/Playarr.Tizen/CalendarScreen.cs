@@ -271,7 +271,7 @@ internal sealed class CalendarScreen : IPage
             {
                 var holder = new View { PositionX = 0, PositionY = 5.8f };
                 content.Add(holder);
-                TodayTag(holder, Ui.TextWidth(head, 18.4f, 640, 0) + 12, 11.2f);
+                TodayTag(holder, Ui.TextWidth(head, 18.4f, 640, 0) + 9.42f, 11.2f);
             }
             var headingRing = Ring.Make(WeekColumnW, 34, 0, new Rgba(1, 1, 1));
             headingRing.PositionY = 3;
@@ -336,7 +336,7 @@ internal sealed class CalendarScreen : IPage
             Sem.Tag(band, "heading", ignoreOwnBg: false);
             var head = g.Key.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"));
             band.Add(Ui.Text(head, 0, 8.2f, 18.4f, 640, g.Key == _today ? _t.Accent : _t.Ink, 400, 27.6f));
-            if (g.Key == _today) TodayTag(band, Ui.TextWidth(head, 18.4f, 640, 0) + 12, 11);
+            if (g.Key == _today) TodayTag(band, Ui.TextWidth(head, 18.4f, 640, 0) + 9.42f, 11);
             clip.Add(band);
             y += 76f;
             foreach (var e in g.OrderBy(Order)) y += EntryCard(clip, e, 0, y, 1033.4f, 783.4f) + 13.6f;
@@ -364,9 +364,9 @@ internal sealed class CalendarScreen : IPage
         // A poster URL on the server's own loopback (the seeded static server) is unreachable from the TV: ask the server's artwork route instead.
         if (e.PosterUrl is { Length: > 0 } pu) LoadPoster(poster, e.WorkId is { } posterWork && Uri.TryCreate(pu, UriKind.Absolute, out var posterUri) && posterUri.IsLoopback ? $"/api/v1/artwork/work/{posterWork:D}/poster?w=185" : pu);
         card.Add(poster);
-        card.Add(Ui.Text(e.Title, 70.4f, 9, 19.2f, 640, _t.Ink, textW, 28.8f));
+        card.Add(Ui.Text(e.Title, 70.4f, sub.Length == 0 ? 9.72f : 9, 19.2f, 640, _t.Ink, textW, 28.8f));
         if (sub.Length > 0) card.Add(Ui.Text(sub, 70.4f, 40.2f, 19.2f, 400, _t.InkSoft, textW, 28.8f, multiline: sub.Length * 9.6f > textW, maxLines: 2));
-        var my = h - 106.9f + 71.4f;
+        var my = h - 106.9f + 71.4f - (sub.Length == 0 ? 0.61f : 0); // one-line entries: web meta row 0.6 px higher than the bottom-anchored position
         var instant = CalendarRules.ReleaseInstant(e);
         var parts = new List<string> { instant is { } at ? at.ToLocalTime().ToString("HH:mm") : "All day", e.ReleaseType is "digital" ? "Digital release" : "Airs", e.MediaKind == "movie" ? "Movies" : "Episodes" };
         // web .calendar-entry-meta: one span per part, 12 px apart (a run of spaces would drift from the span edges)
@@ -375,7 +375,7 @@ internal sealed class CalendarScreen : IPage
         var tone = CalendarRules.Tone(e, _today);
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
-        var pill = Ui.Box(mx, my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f); // web color-mix(tone 14 %, --surface)
+        var pill = Ui.Box(mx, sub.Length == 0 ? my - 0.46f : my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f); // web color-mix(tone 14 %, --surface)
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
         pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text", radius: 999));
         Sem.Tag(pill, "none");
@@ -401,7 +401,7 @@ internal sealed class CalendarScreen : IPage
         _keyArt.Set(e.WorkId is { } work ? $"/api/v1/artwork/work/{work:D}/backdrop?w=780" : null);
         var tone = CalendarRules.Tone(e, _today);
         _panel.Add(Ui.Text($"{(e.MediaKind == "movie" ? "Movies" : "Episodes")} \u00b7 {(e.ReleaseType is "digital" ? "Digital release" : "Airs")}", 153.6f, 263.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
-        var lines = Ui.Paragraph(_panel, e.Title, 153.6f, 308.5f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
+        var lines = Ui.Paragraph(_panel, e.Title, 153.6f, 307.42f, 69.12f, 600, _t.Ink, 369, 62.208f, -4.98f, 5);
         var my = 308.5f + 62.208f * lines + 24.6f;
         var code = CalendarRules.EpisodeCode(e.SeasonNumber, e.EpisodeNumber);
         var gb = CultureInfo.GetCultureInfo("en-GB");
@@ -413,7 +413,7 @@ internal sealed class CalendarScreen : IPage
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center));
+        pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text", radius: 999));
         _panel.Add(pill);
         var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, DetailsPanel.Soft(_t), 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
@@ -423,7 +423,7 @@ internal sealed class CalendarScreen : IPage
         var wl = Ui.Box(287.2f, by, 177.6f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
         wl.BorderlineWidth = 1; wl.BorderlineColor = Ui.LineA(_t, 0.153f);
         wl.Add(Ui.Text("+", 21, 18, 14.72f, 720, _t.InkSoft, 14, 22.08f));
-        wl.Add(Ui.Text("Add to watchlist", 39.6f, 18, 14.72f, 900, _t.InkSoft, 130, 22.08f));
+        wl.Add(Ui.Text("Add to watchlist", 38.52f, 17, 14.72f, 900, _t.InkSoft, 130, 22.08f));
         Sem.Tag(wl, "button", "+ Add to watchlist", radius: 999, ignoreOwnBg: true);
         _panel.Add(wl);
     }

@@ -446,7 +446,7 @@ internal fun ExperiencePlaylistsScreen(
     Box(Modifier.fillMaxSize()) {
         PlayarrPageLayout(
             pageId = PlayarrPageId.Playlists,
-            header = playarrPageHeader(title = playarrString(PlayarrString.PlaylistsTitle), onBack = { navController.openExperienceTopLevel("home") }, filters = PlayarrFilterAction(
+            header = playarrPageHeader(title = playarrString(PlayarrString.PlaylistsTitle), backLabel = playarrString(PlayarrString.CommonBackToHome), onBack = { navController.openExperienceTopLevel("home") }, filters = PlayarrFilterAction(
                 label = playarrString(PlayarrString.LibraryFilters),
                 onClick = { filtering = true },
                 active = filtering,
@@ -2309,7 +2309,7 @@ private fun ProfilesChromeTrigger(
     ) {
         Row(
             // Web `.chrome-select`: 1 px border plus 18.4 px padding, the 16 px icon and the label 9.6 px apart.
-            (if (webPhone) Modifier else Modifier.fillMaxWidth()).padding(horizontal = if (webPhone) 18.dp else 19.4.dp),
+            (if (webPhone) Modifier else Modifier.fillMaxWidth()).padding(horizontal = if (webPhone) 19.dp else 19.4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (webPhone) 10.dp else 9.6.dp),
         ) {
@@ -2491,7 +2491,7 @@ private fun ProfileChoice(
                 PlayarrProfileAvatar(
                     userId = profile.id,
                     preference = avatar,
-                    modifier = Modifier.fillMaxSize().parityBox("image", background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.center.x - 112.545f, r.center.y - 112.545f, r.center.x + 112.545f, r.center.y + 112.545f) }),
+                    modifier = Modifier.fillMaxSize().parityBox("image", background = WebBackground),
                 )
                 if (profile.pinLocked) {
                     Icon(
@@ -2511,7 +2511,7 @@ private fun ProfileChoice(
             .then(if (isTelevision) Modifier.offset(y = 1.9.dp) else Modifier)
             .then(lift)
             // Web: the button is the avatar plus its two text lines (the actions below are separate controls).
-            .parityBox("button", avatarDescription, background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top, r.right, r.top + r.width * 301.6f / 244f) })
+            .parityBox("button", avatarDescription, background = WebBackground)
             .onFocusChanged { if (it.isFocused) onFocus() },
     ) {
         if (isTelevision) {
@@ -2519,7 +2519,7 @@ private fun ProfileChoice(
                 shadows = avatarShadows,
                 shape = CircleShape,
                 modifier = Modifier.size(avatarSize).graphicsLayer { scaleX = if (selected) 1.035f else 1f; scaleY = scaleX }
-                    .parityBox("container", "", 50f, background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.center.x - 131.95f, r.center.y - 131.95f, r.center.x + 131.95f, r.center.y + 131.95f) }),
+                    .parityBox("container", "", 50f, background = WebBackground),
                 focusGlow = avatarFocused,
             ) { avatarSurface() }
         } else {
@@ -2695,7 +2695,7 @@ private fun AddProfileChoice(
             .width(cardWidth)
             .then(if (isTelevision) Modifier.offset(y = 1.2.dp) else Modifier)
             .then(lift)
-            .parityBox("button", "+ " + playarrString(PlayarrString.ProfilesSignIn) + " " + playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale), background = WebBackground, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.top, r.right, r.top + r.width * 301.6f / 244f) })
+            .parityBox("button", "+ " + playarrString(PlayarrString.ProfilesSignIn) + " " + playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale), background = WebBackground)
             .onFocusChanged { addFocused = it.hasFocus; if (it.hasFocus) onFocus() },
     ) {
         if (isTelevision) {
@@ -3257,7 +3257,7 @@ internal fun ExperienceParitySettingsScreen(
         androidx.compose.runtime.CompositionLocalProvider(io.playarr.shared.designsystem.page.LocalPlayarrBackFocus provides (if (LocalStageScale.current != 1f) tabletBackFocus else null)) {
         PlayarrPageLayout(
             pageId = PlayarrPageId.Settings,
-            header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), onBack = onBack, backActive = true, backLabel = playarrString(PlayarrString.ProfilesSettings), backRole = "button"),
+            header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), onBack = onBack, backActive = true, backLabel = playarrString(PlayarrString.ProfilesSettings), backAsButton = true),
             body = PlayarrPageBody.Bleed,
         ) {
             TvSettingsBody(
@@ -3280,11 +3280,11 @@ internal fun ExperienceParitySettingsScreen(
     }
     PlayarrPageLayout(
         pageId = PlayarrPageId.Settings,
-        header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), backLabel = playarrString(PlayarrString.ProfilesSettings), backRole = "button", onBack = { if (!wideScreen && picked != null) picked = null else onBack() }, subtitle = if (showIndex) null else playarrString(section.label).uppercase(LocalPlayarrLanguage.current.locale), largeTitle = showIndex),
+        header = playarrPageHeader(title = playarrString(PlayarrString.SettingsTitle), backLabel = playarrString(PlayarrString.ProfilesSettings), backAsButton = true, onBack = { if (!wideScreen && picked != null) picked = null else onBack() }, subtitle = if (showIndex) null else playarrString(section.label).uppercase(LocalPlayarrLanguage.current.locale), largeTitle = showIndex),
         body = if (!showIndex) PlayarrPageBody.Panel else PlayarrPageBody.Bleed,
     ) {
     if (showIndex) {
-        PhoneSettingsIndex(onOpen = { picked = it })
+        PhoneSettingsIndex(isAdmin = viewModel.isAdmin.collectAsState().value, onOpen = { picked = it })
         return@PlayarrPageLayout
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -4749,23 +4749,27 @@ internal fun phoneSettingsRowHeightPx(index: Int, density: Float): Float =
 
 /** Web mobile `.settings-options-list`: numbered rows 88 px tall, the first one drawn selected. */
 @Composable
-private fun PhoneSettingsIndex(onOpen: (SettingsSection) -> Unit) {
-    Box(Modifier.fillMaxSize().background(WebSurface)) {
+private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Unit) {
+    Box(Modifier.fillMaxSize().background(WebSurface).parityBox("container", background = WebSurface)) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 83.4.dp, bottom = 116.dp),
         ) {
-            itemsIndexed(phoneSettingsIndex, key = { _, row -> row.first.name }) { index, (candidate, description) ->
+            itemsIndexed(phoneSettingsIndex.filter { isAdmin || it.first != SettingsSection.RequestLatency }, key = { _, row -> row.first.name }) { index, (candidate, description) ->
                 val active = index == 0
+                // Web numbers the sections by their place in the full list (an admin-only row leaves a gap: 07, 09).
+                val number = settingsSectionNumber(phoneSettingsIndex.indexOfFirst { it.first == candidate })
+                val rowLabel = number + " " + playarrString(candidate.label) + " " + playarrString(description) + " →"
                 Row(
                     Modifier.fillMaxWidth().height(with(androidx.compose.ui.platform.LocalDensity.current) { phoneSettingsRowHeightPx(index, density).toDp() })
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
+                        .parityBox("link", rowLabel, background = if (active) WebSurfaceSoft else WebSurface)
                         .clickable { onOpen(candidate) }
                         .padding(horizontal = 12.dp, vertical = 16.dp),
                 ) {
                     Text(
-                        (index + 1).toString().padStart(2, '0'), color = WebInkMuted, fontSize = 8.96.sp, lineHeight = 13.44.sp,
-                        fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp),
+                        number, color = WebInk, fontSize = 8.96.sp, lineHeight = 13.44.sp,
+                        fontWeight = FontWeight(760), style = WebTextStyle, modifier = Modifier.width(44.dp).parityText(background = if (active) WebSurfaceSoft else WebSurface),
                     )
                     Column(Modifier.weight(1f).fillMaxHeight().padding(bottom = 1.4.dp), verticalArrangement = Arrangement.Center) {
                         Text(
@@ -4775,16 +4779,16 @@ private fun PhoneSettingsIndex(onOpen: (SettingsSection) -> Unit) {
                         )
                         Spacer(Modifier.height(2.1.dp))
                         Text(
-                            playarrString(description), color = WebInkMuted, fontSize = 10.88.sp, lineHeight = 15.776.sp,
+                            playarrString(description), color = WebInk, fontSize = 10.88.sp, lineHeight = 15.776.sp,
                             style = WebTextStyle, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            modifier = Modifier.offset(y = (-1).dp),
+                            modifier = Modifier.offset(y = (-1).dp).parityText(background = if (active) WebSurfaceSoft else WebSurface),
                         )
                     }
                     Spacer(Modifier.width(12.dp))
                     Box(Modifier.width(20.8.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
                         Text(
                             "→", color = if (active) WebInk else WebInkMuted, fontSize = 20.8.sp, lineHeight = 31.2.sp, style = WebTextStyle,
-                            modifier = Modifier.offset(x = if (active) 5.dp else 0.dp),
+                            modifier = Modifier.offset(x = if (active) 5.dp else 0.dp).parityText(background = if (active) WebSurfaceSoft else WebSurface),
                         )
                     }
                 }

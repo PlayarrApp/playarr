@@ -1,0 +1,1 @@
+- Samsung Tizen: full dates keep the comma after the weekday as on the web.

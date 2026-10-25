@@ -411,6 +411,7 @@ internal fun PlayarrPlayerChrome(
                 onAudio = { onAudio(it); openMenu = null; showControls() },
                 onSubtitle = { onSubtitle(it); openMenu = null; showControls() },
                 onTogglePlaylist = { playlistOpen = !playlistOpen; showControls() },
+                playlistCount = queue.items.size, playlistOpen = playlistOpen,
                 onMinimise = onMinimise,
                 onBack = onBack,
                 onHealth = if (health != null) ({ showControls(); healthOpen = true }) else null,
@@ -568,7 +569,6 @@ internal fun PlayarrPlayerChrome(
                         PlayerRoundButton(
                             icon = WebIcons.Health,
                             contentDescription = playarrString(PlayarrString.HealthOpen),
-                            exportLabel = "Info and playback health",
                             focusKey = "health",
                             onClick = { showControls(); healthOpen = true },
                         )
@@ -577,7 +577,6 @@ internal fun PlayarrPlayerChrome(
                         PlayerRoundButton(
                             icon = WebIcons.PlayOnDevice,
                             contentDescription = playarrString(PlayarrString.RemotePlayOnTitle),
-                            exportLabel = "Play on another device",
                             focusKey = "playon",
                             onClick = { showControls(); onPlayOnDevice() },
                         )
@@ -765,7 +764,7 @@ private fun PlayarrPlayerTopButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (isTelevision && iconOnly) Arrangement.Center else Arrangement.spacedBy(if (isTelevision) 8.8.dp else 8.dp),
         ) {
-            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image", background = if (iconOnly) Color(0xFF070606) else Color(0xFF0A0809), fit = if (iconOnly) { r -> androidx.compose.ui.geometry.Rect(r.center.x - 7f, r.center.y - 11f, r.center.x + 7f, r.center.y + 11f) } else null))
+            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image", background = if (iconOnly) Color(0xFF070606) else Color(0xFF0A0809)))
             if (isTelevision && !iconOnly) {
                 Text(label, fontSize = 11.2.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
             }
@@ -1199,7 +1198,7 @@ internal fun PlayarrTelevisionControlBar(
                         }
                         .fillMaxWidth()
                         .height(15.dp)
-                        .parityBox("slider", "Seek", background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.center.y - 22f, r.right, r.center.y + 22f) })
+                        .parityBox("slider", "Seek", background = Color.Black)
                         .semantics { contentDescription = seekDescription },
                 )
             }
@@ -1246,30 +1245,21 @@ internal fun PlayarrTelevisionControlBar(
             // Web always draws the audio control; with no tracks it is disabled (28%) and labelled "Audio: Unavailable".
             PlayerRoundButton(
                 icon = WebIcons.AudioTrack,
-                contentDescription = playarrString(PlayarrString.PlayerAudioTrackMenuLabel),
-                exportLabel = if (controls.audioTracks.isEmpty()) "Audio: Unavailable" else playarrString(PlayarrString.PlayerAudioTrackMenuLabel),
+                contentDescription = playerAudioButtonName(controls),
                 onClick = { onMenu(PlayarrPlayerMenu.Audio) },
                 enabled = controls.audioTracks.isNotEmpty() && !controls.switching,
                 focusKey = "audio",
             )
             PlayerRoundButton(
                 icon = WebIcons.Subtitles,
-                contentDescription = playarrString(PlayarrString.PlayerSubtitleTrackMenuLabel),
-                exportLabel = "Subtitles: Off",
+                contentDescription = playerSubtitlesButtonName(controls),
                 onClick = { onMenu(PlayarrPlayerMenu.Subtitles) },
                 enabled = !controls.switching,
                 focusKey = "subs",
             )
             PlayerRoundButton(
                 icon = WebIcons.PlaylistQueue,
-                contentDescription = if (playlistOpen) {
-                    playarrString(PlayarrString.PlayerClosePlaylist)
-                } else {
-                    playarrString(
-                        if (queue.items.size == 1) PlayarrString.PlayerPlaylistLabelSingular else PlayarrString.PlayerPlaylistLabelPlural,
-                        "count" to queue.items.size,
-                    )
-                },
+                contentDescription = playerPlaylistButtonName(queue.items.size, playlistOpen),
                 onClick = onTogglePlaylist,
                 enabled = !controls.switching,
                 modifier = Modifier.playerTracked("playlist", playlistFocusRequester),
@@ -1277,7 +1267,7 @@ internal fun PlayarrTelevisionControlBar(
             if (controls.qualityOptions.isNotEmpty()) {
                 val active = controls.qualityOptions.firstOrNull { it.id == controls.activeQualityId }
                 val source = remember { MutableInteractionSource() }
-                val qualityDescription = playarrString(PlayarrString.PlayerQualityMenuLabel)
+                val qualityDescription = playerQualityButtonName(controls)
                 Surface(
                     onClick = { onMenu(PlayarrPlayerMenu.Quality) },
                     enabled = !controls.switching,
@@ -1290,7 +1280,7 @@ internal fun PlayarrTelevisionControlBar(
                         .height(56.dp)
                         .playerTracked("quality", qualityFocusRequester)
                         .playerFocusRing(source, CircleShape)
-                        .parityBox("button", "Quality: " + (active?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") } ?: ""), 999f, background = Color.Black)
+                        .parityBox("button", qualityDescription, 999f, background = Color.Black)
                         .semantics { contentDescription = qualityDescription },
                 ) {
                     Row(
@@ -1705,3 +1695,35 @@ private fun PlayerDialogOption(
         if (selected) Text("✓", color = WebAccent, fontWeight = FontWeight.Bold)
     }
 }
+
+/** The web's `Audio: <track>` button name (the same string every user's screen reader hears). */
+@Composable
+internal fun playerAudioButtonName(controls: PlayarrPlaybackControls): String {
+    val locale = LocalPlayarrLanguage.current.locale
+    val active = controls.audioTracks.firstOrNull { it.id == controls.selectedAudioTrackId } ?: controls.audioTracks.firstOrNull()
+    val label = active?.let { playarrAudioTrackLabel(it, locale, playarrString(PlayarrString.PlayerChannelsMono), playarrString(PlayarrString.PlayerChannelsStereo)) }
+        ?: playarrString(PlayarrString.PlayerUnavailable)
+    return playarrString(PlayarrString.PlayerAudioButtonLabel, "label" to label)
+}
+
+/** The web's `Subtitles: <track|Off>` button name. */
+@Composable
+internal fun playerSubtitlesButtonName(controls: PlayarrPlaybackControls): String {
+    val locale = LocalPlayarrLanguage.current.locale
+    val active = controls.subtitleTracks.firstOrNull { it.id == controls.selectedSubtitleTrackId }
+    val label = active?.let { playarrSubtitleTrackLabel(it, locale, playarrString(PlayarrString.PlayerSubtitleForced)) } ?: playarrString(PlayarrString.PlayerOff)
+    return playarrString(PlayarrString.PlayerSubtitlesButtonLabel, "label" to label)
+}
+
+/** The web's `Quality: <level>` button name. */
+@Composable
+internal fun playerQualityButtonName(controls: PlayarrPlaybackControls): String {
+    val active = controls.qualityOptions.firstOrNull { it.id == controls.activeQualityId } ?: controls.qualityOptions.firstOrNull()
+    return playarrString(PlayarrString.PlayerQualityButtonLabel, "label" to active?.let { playarrQualityLabel(it.label, it.videoBitrateBps, it.id == "original") }.orEmpty())
+}
+
+/** The web's `Playlist: N item|episodes` button name; the open state keeps the close wording. */
+@Composable
+internal fun playerPlaylistButtonName(count: Int, open: Boolean): String =
+    if (open) playarrString(PlayarrString.PlayerClosePlaylist)
+    else playarrString(if (count == 1) PlayarrString.PlayerPlaylistLabelSingular else PlayarrString.PlayerPlaylistLabelPlural, "count" to count)

@@ -95,6 +95,7 @@ test("pinFontWeights repeats author weights with one more id and restores inheri
   const css = pinFontWeights(`.a { font-weight: 700; } .b::after { font: 600 1rem/1 x; } @media (min-width: 1px) { .c, .d { font-weight: 500; } }`);
   assert.match(css, /\*:not\(#_\)\s*{\s*font-weight: inherit !important/);
   assert.match(css, /h1:not\(#_\), h2:not\(#_\)[^{]*{\s*font-weight: bold !important/);
+  assert.match(css, /b:not\(#_\), strong:not\(#_\)\s*{\s*font-weight: bolder !important/);
   assert.match(css, /\.a:not\(#_\):not\(#__\)\s*{\s*font-weight: 700 !important/);
   assert.match(css, /\.b:not\(#_\):not\(#__\)::after\s*{\s*font-weight: 600 !important/);
   assert.match(css, /\.c:not\(#_\):not\(#__\), \.d:not\(#_\):not\(#__\)\s*{\s*font-weight: 500 !important/);

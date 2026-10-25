@@ -85,6 +85,7 @@ fun PlayarrPageLayout(
             .fillMaxSize()
             .parityBox("container", "", background = PlayarrWebTheme.palette.surface)
             .background(PlayarrWebTheme.palette.surface)
+            .parityBox("container", background = PlayarrWebTheme.palette.surface)
             .then(if (tv || !panel) Modifier else Modifier.windowInsetsPadding(phoneInsets))
             .semantics { pageIdTag = pageId },
     ) {
@@ -136,7 +137,8 @@ internal fun PlayarrPageActions(actions: List<PlayarrPageAction>, modifier: Modi
     val metrics = PlayarrPageTokens.current()
     Row(
         // On phones the profile chip is pinned top-right, so the cluster stops short of it.
-        modifier.padding(end = metrics.headerEnd, top = metrics.headerTop),
+        // Web phone: the action tiles sit at y 14, 2 px above the Back button (y 16).
+        modifier.padding(end = metrics.headerEnd, top = if (tv) metrics.headerTop else metrics.headerTop - 2.dp),
         // Phones: the web shell column is a row of tiles with an 8 px gap; on TV the header row only holds the period navigation.
         horizontalArrangement = Arrangement.spacedBy(if (tv) 0.dp else metrics.actionsGap),
         verticalAlignment = Alignment.CenterVertically,

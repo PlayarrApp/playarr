@@ -1,0 +1,80 @@
+/**
+ * Chromium before 105 (the webOS TV 23 Simulator ships 94) truncates a fractional computed line-height to whole
+ * pixels in every line box, so a block of N lines is up to N px shorter than the web draws it and everything below
+ * sits higher. This restores the web height with `min-block-size`: N lines times the exact line-height.
+ * Engines from 105 on lay out fractional line boxes and are left alone.
+ */
+
+/**
+ * Number of text lines from the client rects of a text run: rects whose tops are within 2 px share a line.
+ * @param {Iterable<{ top: number, width: number, height: number }>} rects
+ */
+export function countLines(rects) {
+  /** @type {number[]} */
+  const tops = [];
+  for (const r of rects) {
+    if (r.width < 0.5 || r.height < 0.5) continue;
+    if (!tops.some((t) => Math.abs(t - r.top) < 2)) tops.push(r.top);
+  }
+  return tops.length;
+}
+
+/** @param {string} userAgent */
+export function needsLineBoxFix(userAgent) {
+  const m = /Chrome\/(\d+)/.exec(userAgent);
+  return !!m && Number(m[1]) < 105;
+}
+
+/** @param {Window & typeof globalThis} win */
+export function installLineBoxFix(win) {
+  if (!needsLineBoxFix(win.navigator.userAgent)) return;
+  const doc = win.document;
+  const touched = new Set();
+  let scheduled = false;
+  const run = () => {
+    scheduled = false;
+    observer.disconnect();
+    for (const el of touched) /** @type {HTMLElement} */ (el).style.minBlockSize = "";
+    touched.clear();
+    const jobs = [];
+    for (const el of doc.body.querySelectorAll("*")) {
+      const cs = win.getComputedStyle(el);
+      if (cs.display === "inline" || cs.display === "none" || cs.display === "contents") continue;
+      const lh = parseFloat(cs.lineHeight);
+      if (!Number.isFinite(lh) || Math.abs(lh - Math.round(lh)) < 0.01) continue;
+      if (![...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim())) continue;
+      jobs.push({ el, lh, cs });
+    }
+    const sized = jobs.map(({ el, lh, cs }) => {
+      const range = doc.createRange();
+      range.selectNodeContents(el);
+      let lines = countLines([...range.getClientRects()]);
+      // Single-line ellipsis labels sit in boxes the web sizes itself (the line box overflows them): leave those alone.
+      if (lines < 2 && cs.textOverflow === "ellipsis") return null;
+      // A clamped block shows at most N lines however many the hidden text would wrap to.
+      const clamp = parseInt(cs.getPropertyValue("-webkit-line-clamp"), 10);
+      if (Number.isFinite(clamp) && clamp > 0) lines = Math.min(lines, clamp);
+      const box = cs.boxSizing === "border-box"
+        ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)
+        : 0;
+      // The block's own minimum (a clamp() height on a button) must keep winning over the line-box minimum.
+      return { el, target: Math.max(lines * lh + box, parseFloat(cs.minBlockSize) || 0) };
+    });
+    for (const s of sized) {
+      if (!s) continue;
+      /** @type {HTMLElement} */ (s.el).style.minBlockSize = `${s.target}px`;
+      touched.add(s.el);
+    }
+    observe();
+  };
+  const schedule = () => {
+    if (scheduled) return;
+    scheduled = true;
+    win.requestAnimationFrame(() => win.setTimeout(run, 0));
+  };
+  const observer = new win.MutationObserver(schedule);
+  const observe = () => observer.observe(doc.body, { childList: true, subtree: true, characterData: true });
+  observe();
+  win.addEventListener("resize", schedule);
+  schedule();
+}

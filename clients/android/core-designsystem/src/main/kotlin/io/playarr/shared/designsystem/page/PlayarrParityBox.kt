@@ -11,7 +11,7 @@ import androidx.compose.ui.semantics.semantics
 /** Debug builds only: set before setContent so `parityBox` records nothing (and costs nothing) in a release build. */
 var parityLayoutEnabled = false
 
-class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var style: Triple<Float, Int, androidx.compose.ui.graphics.Color>?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero) {
+class ParityBox(val view: View, var role: String, var label: String, var radius: Float, var opacity: Float, var background: androidx.compose.ui.graphics.Color, var fit: ((androidx.compose.ui.geometry.Rect) -> androidx.compose.ui.geometry.Rect)?, var style: Triple<Float, Int, androidx.compose.ui.graphics.Color>?, var bounds: androidx.compose.ui.geometry.Rect = androidx.compose.ui.geometry.Rect.Zero, var density: Float = 1f) {
     var coordinates: androidx.compose.ui.layout.LayoutCoordinates? = null
 
     /** Window bounds through the layers right now: a graphicsLayer animation does not call onGloballyPositioned, so the recorded bounds can be stale. */
@@ -32,7 +32,7 @@ fun Modifier.parityBox(role: String, label: String = "", radius: Float = 0f, opa
     if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
         val box = remember { ParityBox(view, role, label, radius, opacity, background, fit, style) }
-        box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit; box.style = style
+        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.role = role; box.label = label; box.radius = radius; box.opacity = opacity; box.background = background; box.fit = fit; box.style = style
         DisposableEffect(box) { parityBoxes.add(box); onDispose { parityBoxes.remove(box) } }
         onGloballyPositioned {
             box.coordinates = it
@@ -53,18 +53,15 @@ private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRadius
 val ParityLineBoxKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Boolean>("ParityLineBox")
 private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityLineBoxProp by ParityLineBoxKey
 
-val ParityTextKey = androidx.compose.ui.semantics.SemanticsPropertyKey<String>("ParityText")
-private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityTextProp by ParityTextKey
 val ParityBgKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Long>("ParityBg")
 private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityBgProp by ParityBgKey
 
 fun Modifier.parityRole(role: String, radius: Float = 0f): Modifier = semantics { parityRoleProp = role; if (radius > 0f) parityRadiusProp = radius }
 
 /** Layout export for a text run: its web role and radius, the raw DOM text where the web shows a CSS-transformed string, and the flat colour behind it. */
-fun Modifier.parityText(text: String? = null, role: String? = null, radius: Float = 0f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified): Modifier = semantics {
+fun Modifier.parityText(role: String? = null, radius: Float = 0f, background: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified): Modifier = semantics {
     if (role != null) parityRoleProp = role
     if (radius > 0f) parityRadiusProp = radius
-    if (text != null) parityTextProp = text
     if (background != androidx.compose.ui.graphics.Color.Unspecified) parityBgProp = background.value.toLong()
 }
 

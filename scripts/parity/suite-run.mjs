@@ -226,6 +226,12 @@ if (only.includes("screens")) {
         await waitReady(s.id, "capture");
         const path = join(out, theme, `${s.id}.png`);
         await driver.screenshot(path);
+        // Layout score document of the same screen state (docs/parity/LAYOUT.md), for drivers that export one.
+        if (typeof driver.layoutDump === "function" && !reference) {
+          const layout = await driver.layoutDump({ screen: s.id, theme });
+          mkdirSync(join(out, "layout", theme), { recursive: true });
+          writeFileSync(join(out, "layout", theme, `${s.id}.json`), `${JSON.stringify(layout, null, 1)}\n`);
+        }
         assertNotInterrupted();
         if (preflightHomeFixture && s.id === "home") {
           const homeFixtureAfter = await assertCanonicalHomeProgress(process.env);

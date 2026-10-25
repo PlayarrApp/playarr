@@ -133,6 +133,8 @@ internal sealed class MediaCard
     private float _titleY, _subY;
     /// <summary>Web Home: the focused card's caption rises 8 px with the card (the art's own lift is part of that).</summary>
     public float FocusCaptionLift { get; init; }
+    /// <summary>Extra lift of the sub caption over the title's (web's two caption lines rise by slightly different amounts).</summary>
+    public float FocusSubExtraLift { get; init; }
     /// <summary>Web Library: the focused card's link scales 1.015 and lifts 5 px (the layout export reports it; the art animates itself).</summary>
     public float LinkFocusScale { get; init; } = 1f;
     public float LinkFocusLift { get; init; }
@@ -171,7 +173,9 @@ internal sealed class MediaCard
         _stackFar.BackgroundColor = Mix(focused ? 0.18f : 0.13f);
     }
 
-    public void SetFocused(bool focused)
+    /// <param name="keepInk">web keeps the selected caption colour (--ink-max) while a drawer has taken the focus look away from the card.</param>
+    public void SetFocused(bool focused) => SetFocused(focused, false);
+    public void SetFocused(bool focused, bool keepInk)
     {
         _focused = focused;
         PaintStack(focused);
@@ -181,10 +185,10 @@ internal sealed class MediaCard
         Art.PositionY = _artDy + (focused ? _lift : 0);
         if (FocusCaptionLift != 0)
         {
-            var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d;
+            var d = focused ? FocusCaptionLift : 0; Title.PositionY = _titleY + d; if (_sub is not null) _sub.PositionY = _subY + d + (focused ? FocusSubExtraLift : 0);
             // web: the selected caption takes --ink-max (white in dark, black in light)
             var max = _t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1);
-            Title.TextColor = focused ? max : Ui.C(_t.Ink); if (_sub is not null) _sub.TextColor = focused ? max : Ui.C(_t.InkMuted);
+            Title.TextColor = focused || keepInk ? max : Ui.C(_t.Ink); if (_sub is not null) _sub.TextColor = focused || keepInk ? max : Ui.C(_t.InkMuted);
             if (FocusCaptionScale != 1f)
             {
                 // the whole card scales about its centre in web, the caption with it
@@ -231,7 +235,7 @@ internal sealed class MediaCard
             if (showRing && !OuterRing) _ring.RaiseToTop(); // the poster loads later and would otherwise sit on top of the ring
             if (OuterRing) SetOuterRing(showRing);
         }
-        Title.TextColor = focused ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
+        Title.TextColor = focused || keepInk ? (_t.Name == "dark" ? new Color(1, 1, 1, 1) : new Color(0, 0, 0, 1)) : Ui.C(_t.Ink);
     }
 
     public Box FocusRect(float x, float y)
@@ -397,7 +401,7 @@ internal sealed class MediaCard
     {
         var l = layout ?? CardLayout.From("thumbnail", "medium");
         return new(env, env.Theme, l.Cover ? CoverCard(card) : card, x, y, showSub: true, titleInset: 1.9f, scale: 1.025f, lift: -6, blur: 52, shadowY: 26, shadowAlpha: 0.32f, restBlur: 22,
-            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -8f, LinkFocusLift = -6f };
+            boxHeight: l.ArtHeight + 46, artW: l.Width, artH: l.ArtHeight) { OuterRing = true, FocusCaptionLift = -5.93f, FocusSubExtraLift = -0.8f, LinkFocusLift = -6f };
     }
 
     /// <summary>Web cover view: the poster is the art (poster first, backdrop as the fallback); an On deck episode keeps its frame.</summary>
@@ -638,7 +642,7 @@ internal sealed class DetailsPanel
             ? ty + tlh * lines + noMetaGap
             : metaY + (_library ? 41.2f : 40.9f);
         var ovLine = _library ? 21.842f : 20.325f; var ovSize = _library ? 13.824f : 12.864f;
-        var ovLines = Ui.Paragraph(Root, card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 322, ovLine, 0, 5); // web clamps the preview overview at 5 lines on every page
+        var ovLines = Ui.Paragraph(Root, string.IsNullOrWhiteSpace(card.Overview) && card.WorkId != Guid.Empty ? "No synopsis is available." : card.Overview, 153.6f, oy, ovSize, 600, Soft(t), 336, ovLine, 0, 5); // web clamps the preview overview at 5 lines on every page
         var top = ky; var bottom = oy + ovLines * ovLine;
         ContentBottom = bottom;
         var scrim = Ui.PanelScrim(t, 153.6f, top, 455, bottom - top);

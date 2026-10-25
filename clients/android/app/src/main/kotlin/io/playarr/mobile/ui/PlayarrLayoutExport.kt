@@ -108,7 +108,9 @@ internal object PlayarrLayoutExport {
                             .put("color", box.style?.let { hex(it.third.toArgb(), true) } ?: JSONObject.NULL)
                             .put("background", if (box.background != androidx.compose.ui.graphics.Color.Unspecified) hex(box.background.toArgb()) else insideColour(bmp, x.toInt(), y.toInt(), w.toInt(), h.toInt()) ?: JSONObject.NULL)
                             .put("fontSize", box.style?.first?.toDouble() ?: JSONObject.NULL).put("fontWeight", box.style?.second ?: JSONObject.NULL)
-                        if (box.radius > 0f) e.put("radius", box.radius.toDouble())
+                        // Radii are written as the web's CSS px (the dp value the composable was tagged with); the driver does not scale them.
+                        // Tagged radius (CSS px; 50 and above mean a fully rounded shape) and the same radius as drawn, in device px.
+                        if (box.radius > 0f) { e.put("radius", box.radius.toDouble()); e.put("radiusPx", (box.radius * box.density).toDouble()) }
                         if (box.opacity < 1f) e.put("opacity", box.opacity.toDouble())
                         elements.put(e)
                     }
@@ -185,7 +187,6 @@ internal object PlayarrLayoutExport {
                 val declared = style.lineHeight.takeIf { it.isSp }?.value?.times(density.fontScale * density.density)
                 val half = if (lineBox && declared != null) (declared - (ascent + descent)) / 2f else 0f
                 val rawText = input.text.text
-                val override = config.getOrNull(io.playarr.shared.designsystem.page.ParityTextKey)
                 val bgOverride = config.getOrNull(io.playarr.shared.designsystem.page.ParityBgKey)?.let { androidx.compose.ui.graphics.Color(it.toULong()) }
                 for (i in 0 until layout.lineCount) {
                     val lineText = rawText.substring(layout.getLineStart(i), layout.getLineEnd(i, true)).trim()
@@ -197,8 +198,8 @@ internal object PlayarrLayoutExport {
                     val a = coords.localToRoot(androidx.compose.ui.geometry.Offset(l, top)); val b = coords.localToRoot(androidx.compose.ui.geometry.Offset(r, bottom))
                     val rx = minOf(a.x, b.x) + dx; val ry = minOf(a.y, b.y) + dy; val rw = Math.abs(b.x - a.x); val rh = Math.abs(b.y - a.y)
                     out.put(
-                        JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()) } }
-                            .put("text", if (override != null && layout.lineCount == 1) override else lineText)
+                        JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()); put("radiusPx", (it * density.density).toDouble()) } }
+                            .put("text", lineText)
                             .put("role", config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey) ?: if (heading) "heading" else "text")
                             .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
                             .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)

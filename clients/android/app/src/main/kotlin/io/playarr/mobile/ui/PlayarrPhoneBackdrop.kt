@@ -28,6 +28,9 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -66,10 +69,12 @@ internal fun PhoneKeyArt(
                     .fillMaxWidth()
                     .height(boxHeight * 0.55f)
                     .graphicsLayer {
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) // web: 405.6 px wide from x 0, centred vertically
                         scaleX = 1.04f
                         scaleY = 1.04f
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
+                    .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f, background = surface)
                     .drawWithContent {
                         drawContent()
                         // mask-image: linear-gradient(90deg, #000 0%, #000 72%, transparent 100%)
@@ -98,7 +103,7 @@ internal fun PhoneKeyArt(
 internal fun PhoneStageWash(modifier: Modifier = Modifier) {
     val surface = WebSurface
     val clear = surface.copy(alpha = 0f)
-    Box(modifier.background(Brush.verticalGradient(0f to clear, 0.32f to clear, 0.66f to surface, 1f to surface)))
+    Box(modifier.parityBox("container", background = surface).background(Brush.verticalGradient(0f to clear, 0.32f to clear, 0.66f to surface, 1f to surface)))
 }
 
 /** Home's `.tv-rail-surface`: transparent at its top edge, solid surface from 8% down. */
@@ -246,6 +251,9 @@ internal fun PhonePill(
     enabled: Boolean = true,
     /** Fill the width the parent gives (a weighted pill in a row). */
     fill: Boolean = false,
+    /** Layout export: the accessible name and role the web gives this pill (`link` for Play, `button` otherwise). */
+    exportLabel: String? = null,
+    exportRole: String = "button",
     content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
 ) {
     // Web phone: `--page-focus-ring` 2 px, offset 3 px, on a keyboard-focused pill.
@@ -254,7 +262,9 @@ internal fun PhonePill(
     WebShadowedBox(
         shadows = listOf(shadow),
         shape = androidx.compose.foundation.shape.CircleShape,
-        modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp),
+        modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp)
+            .parityBox(exportRole, exportLabel.orEmpty(), 999f, background = container.compositeOver(WebSurface))
+            .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier),
         innerModifier = Modifier.background(container),
         innerFill = false,
         innerWidthFill = fill,
@@ -286,11 +296,11 @@ internal fun PhoneEpisodeArt(
     WebShadowedBox(
         shadows = webCardRestShadows,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        modifier = modifier.fillMaxWidth().androidx_aspect16x9(),
+        modifier = modifier.fillMaxWidth().androidx_aspect16x9().parityBox("container", radius = 8f, background = WebSurfaceSoft),
         innerModifier = Modifier.background(WebSurfaceSoft),
     ) {
         Box(
-            Modifier.fillMaxSize().graphicsLayer {
+            Modifier.fillMaxSize().parityBox("image", background = WebSurfaceSoft).graphicsLayer {
                 compositingStrategy = CompositingStrategy.Offscreen
                 colorFilter = EpisodeArtGrayscale
             },

@@ -1,0 +1,1 @@
+- webOS: strong and b text resolves to bolder, as in the web, so segmented controls and chips are as wide as the web draws them.

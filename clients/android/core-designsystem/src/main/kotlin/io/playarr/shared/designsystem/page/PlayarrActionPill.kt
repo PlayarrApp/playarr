@@ -1,6 +1,7 @@
 package io.playarr.shared.designsystem.page
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -128,7 +129,7 @@ fun PlayarrActionPill(
                 }
             } else {
                 Box(contentAlignment = Alignment.Center) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp))
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityBox("image", background = parityPillGlass()))
                 }
             }
         }

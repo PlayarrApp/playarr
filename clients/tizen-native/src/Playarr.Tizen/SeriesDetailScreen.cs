@@ -125,7 +125,8 @@ internal sealed class SeriesDetailScreen : IPage
             var still = ep.Episode.Images.Any(i => i.Kind == ImageKind.Thumb) ? $"/api/v1/artwork/episode/{_detail!.Work.Id:D}/{ep.Episode.Id:D}/thumb?w=540" : null;
             if (still is not null || ep.MediaFileId is not null) SetThumbAsync(art, still, ep.MediaFileId);
             art.Add(Ui.Gradient(0, 0, 268, 150.8f, false, (0, new Rgba(0, 0, 0, 0.05f)), (1, new Rgba(0, 0, 0, 0.48f))));
-            art.Add(Ui.Text(ep.Episode.EpisodeNumber.ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f - 1.4f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
+            var numLabel = Ui.Text(ep.Episode.EpisodeNumber.ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f - 1.4f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End);
+            var numY = numLabel.PositionY; art.Add(numLabel);
             var epFocused = false;
             var unseen = ep.MediaFileId is { } mf && (!_progress.TryGetValue(mf, out var pr) || pr.State == WatchState.Unwatched);
             var inProgress = ep.MediaFileId is { } mf2 && _progress.TryGetValue(mf2, out var pr2) && pr2.State == WatchState.InProgress ? pr2 : null;
@@ -165,7 +166,7 @@ internal sealed class SeriesDetailScreen : IPage
                 Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
                 Label = $"play {code}".ToLowerInvariant(),
                 Select = () => PlayEpisode(epc),
-                Style = f => { epFocused = f; art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -6 : 0; ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(_t.Ink); codeLabel.PositionY = codeY + (f ? -7.5f : 0); tt.PositionY = titleY + (f ? -7.5f : 0); },
+                Style = f => { epFocused = f; art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -7.04f : 0; numLabel.PositionY = numY + (f ? 1.01f : 0); ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(f ? maxInk : _t.Ink); codeLabel.PositionY = codeY + (f ? -7.5f : 0); tt.PositionY = titleY + (f ? -7.5f : 0); },
                 Focused = () => OnEpisodeFocused(railIdx, col, epc, seasonc),
             });
         }

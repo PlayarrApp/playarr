@@ -164,8 +164,9 @@ internal sealed class SearchScreen : IPage
         var art = Ui.Box(1125f, 311.8f, 132, 132, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 66);
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
         art.Add(Ui.Icon("search-empty", 37.6f, 47f, 57.6f, 38.4f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
+        Sem.Tag(art, "container", radius: 50, childImageBox: (38.59f, 47.98f, 54f, 36f));
         _empty.Add(art);
-        _empty.Add(Ui.Text("Start typing to search.", 1299f, 365.1f, 16.896f, 700, _t.Ink, 400, 25.344f, spacing: -0.34f));
+        _empty.Add(Ui.Text("Start typing to search.", 1298.6f, 365.1f, 16.896f, 700, _t.Ink, 400, 25.344f, spacing: -0.44f));
     }
 
     private void BuildSide()
@@ -173,6 +174,7 @@ internal sealed class SearchScreen : IPage
         var tile = Ui.Box(1845.5f, 151.2f, 62, 72, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
         _filterTile = tile;
         tile.Focusable = true;
+        Sem.Tag(tile, "button", "Filters", radius: 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         tile.Add(Ui.Icon("filters", 19, 15, 24, _t.InkMuted));
         tile.Add(Ui.Text("Filters", 0, 44.6f, 8.256f, 700, _t.InkMuted, 62, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));

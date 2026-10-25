@@ -70,12 +70,24 @@ export function insideAncestorClips(element, win = globalThis) {
 
 // The static seed's calendar posters are plain <img> URLs on the host's loopback artwork port, which the TV cannot reach: serve them through the page's own origin (the receiver forwards /art/*).
 function installLoopbackArt() {
-  const fix = (v) => String(v).replace(/^https?:\/\/(127\.0\.0\.1|localhost):\d+(\/art\/)/, `${location.origin}$2`);
+  // A TV page on file:// has no origin that forwards /art; the emulator reaches the host's loopback artwork server at 10.0.2.2 (QEMU user networking).
+  const fix = (v) => String(v).replace(/^https?:\/\/(127\.0\.0\.1|localhost):(\d+)(\/art\/)/, (m, h, port, rest) => (location.protocol === "file:" ? `http://10.0.2.2:${port}${rest}` : `${location.origin}${rest}`));
   const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
   Object.defineProperty(HTMLImageElement.prototype, "src", { ...d, set(v) { d.set.call(this, fix(v)); } });
   const sa = Element.prototype.setAttribute;
   Element.prototype.setAttribute = function (n, v) { return sa.call(this, n, this instanceof HTMLImageElement && n === "src" ? fix(v) : v); };
 }
+// Keeps the playback listener the app registers on AVPlay, so a capture can deliver the position tick of a paused seek (AVPlay sends none while paused).
+function tapAvplayListener() {
+  try {
+    const a = window.webapis && window.webapis.avplay;
+    if (!a || a.__tapped) return;
+    const set = a.setListener.bind(a);
+    a.setListener = function (listener) { window.__avListener = listener; return set(listener); };
+    a.__tapped = true;
+  } catch (e) { /* no AVPlay on this page */ }
+}
+
 export async function createDriver() {
   // TIZEN_REAL=1 runs the Samsung TV through the webOS CDP path, so DEVICE=webos is forced for it.
   const device = TIZEN_REAL ? "webos" : process.env.DEVICE;
@@ -170,6 +182,46 @@ export async function createDriver() {
       socket.close();
     }
   }
+  // Player chrome for the refs (web driver playerControls): the clip paused on its 2 s frame, controls revealed, focus dropped.
+  // Chromium 94 presents the frame before an exact 2.000 s seek target (burned-in 1.933), so the pin aims one frame later (2.02 s) to show the 2.000 s frame.
+  async function pinPlayerFrame() {
+    const pin = (t) => ev(`(async () => {
+      const v = document.querySelector("video");
+      v.pause();
+      if (Math.abs(v.currentTime - ${t}) > 0.01) await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = ${t}; setTimeout(res, 8000); });
+      v.pause();
+      if (v.requestVideoFrameCallback) await new Promise((res) => { v.requestVideoFrameCallback(() => res()); setTimeout(res, 3000); });
+      return v.paused && Math.abs(v.currentTime - ${t}) < 0.05;
+    })()`);
+    if (device === "tizen") {
+      // Tizen plays through AVPlay, a native plane the emulator grab does show: seek it to 2 s and hold it paused there.
+      const av = `(() => { const a = window.webapis && window.webapis.avplay; return a ? a.getState() : "none"; })()`;
+      if (!(await until(`(${av}) === "PLAYING" || (${av}) === "PAUSED"`, 60000))) throw new Error("AVPlay did not start");
+      for (let i = 0; i < 8; i += 1) {
+        // The page's seek bar follows AVPlay's time ticks, which only come while playing: seek, let a tick land, pause, then seek again so the
+        // last tick and the paused position agree on 2 s.
+        await ev(`(() => { const a = window.webapis.avplay; try { if (a.getState() === "PAUSED") a.play(); a.seekTo(2000, function () {}, function () {}); } catch (e) {} return true; })()`);
+        await sleep(2500);
+        await ev(`(() => { const a = window.webapis.avplay; try { a.pause(); a.seekTo(2000, function () {}, function () {}); } catch (e) {} return true; })()`);
+        await sleep(2500);
+        await ev(`(() => { try { if (window.__avListener && window.__avListener.oncurrentplaytime) window.__avListener.oncurrentplaytime(2000); } catch (e) {} return true; })()`);
+        await sleep(500);
+        const t = Number(await ev(`(() => { try { return window.webapis.avplay.getCurrentTime(); } catch (e) { return -1; } })()`));
+        if (Math.abs(t - 2000) < 120 && (await ev(av)) === "PAUSED") break;
+      }
+    } else if (!(await until(`(() => { const v = document.querySelector("video"); return !!v && v.readyState >= 2; })()`, 60000))) throw new Error("player video has no frames");
+    if (device === "tizen") {
+      // No CDP here and the emulator's own video is visible to the grab: reveal the controls with a key (they hide on a timer).
+      for (let i = 0; i < 6 && !(await ev(`(() => { const c = document.querySelector(".player-controls"); return !!c && !c.classList.contains("is-hidden"); })()`)); i += 1) { xkey("up", false); await sleep(1000); }
+    } else await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: 960, y: 540 });
+    if (!(await until(`!!document.querySelector(".player-controls") && !document.querySelector(".player-controls").classList.contains("is-hidden")`, 10000))) throw new Error("player controls did not show");
+    // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
+    let held = device === "tizen" ? 2 : 0;
+    for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.02)) ? held + 1 : 0; await sleep(700); }
+    if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
+    await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
+    await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
+  }
   async function clickDisplayAt(x, y) {
     const tree = execFileSync("xwininfo", ["-display", display, "-root", "-tree"], { encoding: "utf8" });
     const window = tree.split("\n").find((line) => line.includes('"webOS TV') && /\d+x\d+[+-]\d+[+-]-?\d+/.test(line));
@@ -189,8 +241,10 @@ export async function createDriver() {
   async function ev(expr) {
     if (device === "tizen") {
       const id = `d${Date.now()}${evalSeq++}`;
-      writeFileSync(`${NETLOG}/cmd.txt`, `eval:${id}:${expr.replace(/\n/g, " ")}`);
-      for (let i = 0; i < 40; i += 1) {
+      // Newlines stay: a line comment in the expression (fetchCurrentIdentity has some) would swallow the rest of a collapsed line.
+      writeFileSync(`${NETLOG}/cmd.txt`, `eval:${id}:${expr}`);
+      // A loaded host (many emulators) can stall the TV page for tens of seconds: wait up to PARITY_EVAL_WAIT_MS (default 120 s).
+      for (let i = 0; i < Number(process.env.PARITY_EVAL_WAIT_MS ?? 120000) / 500; i += 1) {
         await sleep(500);
         const hit = readFileSync(`${NETLOG}/log.txt`, "utf8").split("\n").reverse().find((l) => l.includes(`"id":"${id}"`));
         if (hit) { const o = JSON.parse(hit.slice(hit.indexOf("{"))); if (o.error) throw new Error(o.error); return o.value; }
@@ -347,7 +401,7 @@ export async function createDriver() {
       if (device === "tizen") {
         // No CDP here: the pin is a script kept in the app's localStorage, which the debug build's netlog.js runs at page start, before the app's first render.
         if (timeZone !== "UTC") throw new Error(`tizen stable capture unsupported for ${timeZone}: the page pin renders UTC only`);
-        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();window.__parityPinned = true;`;
+        const source = `(${installVisualDate})(${JSON.stringify(fixedNow)});(${installRegionPin})(${JSON.stringify(timeZone)}, ${JSON.stringify(locale)});(${installLoopbackArt})();(${tapAvplayListener})();window.__parityPinned = true;`;
         tizenPinScript = Buffer.from(source).toString("base64");
         return;
       }
@@ -357,7 +411,12 @@ export async function createDriver() {
     // The layout schema document (docs/parity/LAYOUT.md): the same DOM dump as the web refs, run in the app page through the inspector or netlog channel.
     async layoutDump({ screen, theme }) {
       await guard();
+      // The web ref of Search rests with the text field focused (autofocus); the TV opens its system keyboard for that, so the screenshot is taken without it.
+      // The layout document only needs the DOM state: focus the field for the dump, then drop it again.
+      const focusedSearch = device === "webos" && screen === "search" && (await ev(`(() => { const i = document.querySelector('input[type="search"]'); if (!i || document.activeElement === i) return false; i.focus(); return true; })()`));
+      if (focusedSearch) await sleep(800);
       const doc = await ev(layoutExpression(screen));
+      if (focusedSearch) await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
       if (!doc?.elements) throw new Error("layout dump returned no elements");
       return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements };
     },
@@ -378,6 +437,7 @@ export async function createDriver() {
       } else {
         await guard();
         execFileSync("xset", ["-display", display, "r", "off"], { stdio: "ignore" });
+        execFileSync("python3", [XCLICK, display, "focus"], { stdio: "ignore" }); // no window manager on the headless display: give the emulator window the input focus
         await applyTizenPin();
       }
       // X autorepeat would turn a held key into repeated presses and cancel the long-press timer.
@@ -539,15 +599,29 @@ export async function createDriver() {
           throw new Error("closing Search filters did not restore focus to Filters");
         }
         if (await keyboardVisible()) throw new Error("webOS system keyboard reopened after returning focus to Filters");
+        execFileSync("python3", [XCLICK, display, "park"], { stdio: "ignore" }); // the real click left the pointer over Filters: its hover look is not in the web ref
       }
       if (device === "webos" && (await keyboardVisible())) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
       if (await ev(BAD)) throw new Error("signed out or error page");
+      // Search is reached through the Filters button on the device (the system keyboard is dismissed by selecting it), which leaves Filters focused; the web ref shows it unfocused.
+      // Tizen: the Samsung keyboard opens for the focused field and halves the page: drop focus and let the page grow back before the grab.
+      if (device === "tizen" && (await ev(`location.hash === "#/search" && document.activeElement?.matches('input[type="search"]')`))) {
+        await ev(`(document.activeElement.blur(), true)`);
+        for (let i = 0; i < 20 && Number(await ev("innerHeight")) < 1070; i += 1) await sleep(500);
+        await sleep(1500);
+      }
+      if (await ev(`location.hash === "#/search" && document.activeElement?.matches('button[aria-controls="search-filters-drawer"]')`)) await ev(`(document.activeElement.blur(), true)`);
+      if (await ev(`/^#\\/player\\//.test(location.hash)`)) await pinPlayerFrame();
+      // Detail refs are taken at page top (the web driver does the same): the focus-scroll to the first episode card must not show in the capture.
+      if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
       await settleVisibleImages();
       await guard();
       const xwd = `${file}.xwd`;
       writeFileSync(xwd, execFileSync("xwd", ["-display", display, "-root", "-silent"], { maxBuffer: 64 << 20 }));
       await guard();
-      execFileSync("magick", [`xwd:${xwd}`, `png:${file}`]);
+      // The Tizen emulator draws its own title bar and 1 px borders (no window manager on the headless display): cut the 1920x1080 app area out of the root grab.
+      const crop = device === "tizen" ? ["-crop", `1920x1080+${process.env.TIZEN_CONTENT_OFFSET ?? "6,35"}`.replace(",", "+"), "+repage"] : [];
+      execFileSync("magick", [`xwd:${xwd}`, ...crop, `png:${file}`]);
       rmSync(xwd);
     },
     // ---- Downloads cases (webOS only): the same steps as the web driver, as page code over CDP (Playwright cannot attach to Chromium 94).

@@ -24,7 +24,10 @@ enum class PlayarrHeaderVariant { Page, Detail }
 
 /** The header's Back control. [label] is the accessible name. */
 @Immutable
-data class PlayarrBack(val label: String, val onBack: () -> Unit, val role: String = "link")
+data class PlayarrBack(val label: String, val onBack: () -> Unit) {
+    /** Layout export: detail pages draw Back as a button, list pages as a link. */
+    var asButton: Boolean = false
+}
 
 @Immutable
 data class PlayarrNavItem(
