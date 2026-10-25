@@ -26,6 +26,9 @@ MouseArea {
     property string parityRole: "button"
     property string a11yName: text          // the accessible name; a page sets it where it differs from the visible label
     property real focusRadius: height / 2
+    // A button with only a label is one web element, exported as its text run; one with an icon is exported by its box and its texts.
+    readonly property bool textRun: icon === "" && iconImage === ""
+    property bool layoutNoEmit: textRun
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -46,6 +49,7 @@ MouseArea {
         color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12)
     }
     Rectangle {
+        id: bg
         anchors.fill: parent
         radius: height / 2
         color: root.outlineOnly ? Tokens.surface : root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
@@ -95,6 +99,8 @@ MouseArea {
     PLabel { renderType: Text.NativeRendering;
         id: label
         visible: root.icon === "" && root.iconImage === ""
+        property string parityRole: root.parityRole
+        property var radiusSource: bg
         anchors.centerIn: parent
         font.family: root.labelFamily
         font.pixelSize: root.fontSize

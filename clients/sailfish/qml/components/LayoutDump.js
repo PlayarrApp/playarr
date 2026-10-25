@@ -228,7 +228,13 @@ function dump(root, u, weights, metrics, log) {
                     var textSample = polygonCenter(textPoly)
                     var el = { text: run.text, role: item.parityRole || "text", rect: rect(textBox.x, textBox.y, textBox.w, textBox.h),
                         color: hex(item.color), background: bgAt(textSample.x, textSample.y), fontSize: r2(item.font.pixelSize / u), fontWeight: weightOf(item, weights) }
-                    if (item.focusRadius) {
+                    if (item.radiusSource) {
+                        // the corner radius the element's own background rectangle draws
+                        var sourceScale = uniformRadiusScale(item.radiusSource, root)
+                        var sourceRadius = radiusOf(item.radiusSource, sourceScale)
+                        if (sourceRadius) el.radius = sourceRadius
+                        else if (sourceScale === null) radiusLimitations += 1
+                    } else if (item.focusRadius) {
                         if (textRadiusScale !== null) el.radius = r2(Math.min(item.focusRadius, Math.min(w, h) / 2) * textRadiusScale / u)
                         else radiusLimitations += 1
                     }
@@ -269,7 +275,7 @@ function dump(root, u, weights, metrics, log) {
                 var mk = { text: "", role: item.parityRole, rect: rect(x, y, box.w, box.h), color: null, background: bgAt(maskCenter.x, maskCenter.y), fontSize: null, fontWeight: null }
                 if (op < 0.999) mk.opacity = r2(op)
                 out.push(mk)
-            } else if ((item.navigationFocusable === true || item.a11yName !== undefined) && w > 0 && h > 0) {
+            } else if ((item.navigationFocusable === true || item.a11yName !== undefined) && item.layoutNoEmit !== true && w > 0 && h > 0) {
                 var focusCenter = polygonCenter(polygon)
                 var fr = { text: String(item.a11yName !== undefined ? item.a11yName : item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, box.w, box.h),
                     color: null, background: bgAt(focusCenter.x, focusCenter.y), fontSize: null, fontWeight: null, _at: [focusCenter.x, focusCenter.y], _box: mappedRect(item, root, 0, 0, w, h) }
@@ -283,7 +289,11 @@ function dump(root, u, weights, metrics, log) {
             }
         }
         var kids = item.children
-        for (var i = 0; i < kids.length; ++i) walk(kids[i], op, shown)
+        // Qt paints children in z order, then declaration order.
+        var order = []
+        for (var oi = 0; oi < kids.length; ++oi) order.push(oi)
+        order.sort(function (a, b) { return (kids[a].z - kids[b].z) || (a - b) })
+        for (var i = 0; i < order.length; ++i) walk(kids[order[i]], op, shown)
         if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true)
         // an element's background includes its own fill and its children's: settle it once the subtree has been painted
         // development aid: the QML type of each element (the suite driver drops it unless asked to keep it)

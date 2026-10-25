@@ -22,7 +22,7 @@ PlayarrPage {
     readonly property real gut: 20 * Tokens.u
     readonly property color chip: Tokens.dark ? Tokens.surfaceStrong : "#e6e4e5"   // web light controls are grey, not white
     // The web drawer: a full-screen dialog surface over the page.
-    Rectangle { parent: page; z: -1; anchors.fill: parent; color: Tokens.dark ? "#201c20" : "#ffffff"; property string parityRole: "dialog" }
+    Rectangle { parent: page; z: -1; anchors.fill: parent; color: Tokens.dark ? "#211d21" : "#ffffff"; property string parityRole: "dialog" }
     readonly property color pill: Tokens.dark ? "#2b252a" : "#eae8e9"   // web chip fill
     property string openSelect: ""     // "audio" or "subs": the language list that is expanded
 
@@ -33,7 +33,7 @@ PlayarrPage {
         clip: true
         // Section caption.
         Repeater {
-            model: page.calendar ? [ { t: qsTr("VIEW"), y: 97.5 } ] : [ { t: qsTr("VIEW"), y: 97.5 }, { t: qsTr("SORT BY"), y: 190 }, { t: qsTr("ORDER"), y: 283.4 }, { t: qsTr("AUDIO LANGUAGE"), y: 375 }, { t: qsTr("SUBTITLE LANGUAGE"), y: 479.3 + (page.openSelect === "audio" ? page.languages.length * 40 : 0) } ]
+            model: page.calendar ? [ { t: qsTr("VIEW"), y: 97.5 } ] : [ { t: qsTr("VIEW"), y: 97.5 }, { t: qsTr("SORT BY"), y: 190 }, { t: qsTr("ORDER"), y: 283.4 }, { t: qsTr("AUDIO LANGUAGE"), y: 376.1 }, { t: qsTr("SUBTITLE LANGUAGE"), y: 479.3 + (page.openSelect === "audio" ? page.languages.length * 40 : 0) } ]
             PLabel { renderType: Text.NativeRendering; x: page.gut; y: (modelData.y - 5) * Tokens.u; text: modelData.t; color: Tokens.inkMuted; property string parityRole: "heading"; font.family: Tokens.fam(720); font.letterSpacing: 1.4; font.pixelSize: Tokens.fsDown(7.04) }
         }
         PLabel { renderType: Text.NativeRendering; x: page.gut; y: 19 * Tokens.u; text: page.calendar ? qsTr("CALENDAR CONTROLS") : qsTr("LIBRARY CONTROLS"); color: Tokens.inkMuted; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.5 }
@@ -85,24 +85,28 @@ PlayarrPage {
                     Column {
                         anchors.centerIn: parent
                         spacing: 2 * Tokens.u
-                        Item {
+                        Item {   // the view icon: three bars (list), boxes (screen) or tall boxes (cover), drawn as borders like the web's
+                            id: ico
                             anchors.horizontalCenter: parent.horizontalCenter
                             readonly property string kind: modelData.id === "list" || modelData.id === "agenda" ? "list" : modelData.id === "cover" || modelData.id === "week" ? "tall" : "wide"
-                            width: 18 * Tokens.u; height: kind === "tall" ? 13 * Tokens.u : kind === "list" ? 11 * Tokens.u : 6 * Tokens.u
+                            transform: Translate { y: -2.6 }
+                            width: (kind === "list" ? 20 : kind === "tall" ? 16 : 20.98) * Tokens.u
+                            height: (kind === "tall" ? 13 : kind === "list" ? 10 : 3.86) * Tokens.u
                             Repeater {
                                 model: 3
                                 Rectangle {
-                                    readonly property string kind: parent.kind
                                     color: "transparent"; radius: 1 * Tokens.u
-                                    border.width: kind === "list" ? 0 : 1.2 * Tokens.u; border.color: parent.parent.parent.parent.active ? Tokens.primaryInk : Tokens.inkSoft
-                                    x: kind === "list" ? 0 : index * 7 * Tokens.u; y: kind === "list" ? index * 4.5 * Tokens.u : 0
-                                    width: kind === "list" ? parent.width : 4 * Tokens.u; height: kind === "list" ? 2 * Tokens.u : parent.height
-                                    Rectangle { visible: parent.kind === "list"; anchors.fill: parent; radius: 1; color: parent.parent.parent.parent.parent.active ? Tokens.primaryInk : Tokens.inkSoft }
+                                    border.color: parent.parent.parent.active ? Tokens.primaryInk : Tokens.inkSoft
+                                    border.width: ico.kind === "list" ? Math.floor(height / 2) : 1.2 * Tokens.u
+                                    x: ico.kind === "list" ? 0 : index * (ico.kind === "tall" ? 6 : 7.51) * Tokens.u
+                                    y: ico.kind === "list" ? index * 4 * Tokens.u : 0
+                                    width: ico.kind === "list" ? ico.width : (ico.kind === "tall" ? 4 : 5.46) * Tokens.u
+                                    height: ico.kind === "list" ? 2 * Tokens.u : ico.height
                                 }
                             }
                         }
-                        PLabel { renderType: Text.NativeRendering; anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: parent.parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(900); font.letterSpacing: 0.6; font.pixelSize: Tokens.fs(11.52)
-                            transform: Translate { y: (modelData.id === "list" || modelData.id === "agenda" ? 2.8 : modelData.id === "cover" || modelData.id === "week" ? 3.3 : 2.4) * Tokens.u } }
+                        PLabel { renderType: Text.NativeRendering; anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: parent.parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(900); font.letterSpacing: modelData.id === "list" ? 0.6 : 0.14; font.pixelSize: Tokens.fs(11.52)
+                            transform: Translate { y: (modelData.id === "list" || modelData.id === "agenda" ? 2.8 : modelData.id === "cover" || modelData.id === "week" ? 3.3 : 2.4) * Tokens.u + (modelData.id === "screen" ? 2 : 0) } }
                     }
                 }
             }
@@ -125,14 +129,15 @@ PlayarrPage {
                         page.set("sort", modelData.id)
                     } else { page.order = modelData.id; page.set("order", modelData.id) }
                 }
+                property bool layoutNoEmit: true   // the label below is the web's button (its text run)
                 readonly property bool isLeft: modelData.id === "title" || modelData.id === "asc"
                 readonly property bool active: modelData.row === 0 ? page.sort === modelData.id : page.order === modelData.id
                 x: isLeft ? 18.3 * Tokens.u : 199.6 * Tokens.u
                 y: modelData.y * Tokens.u
                 width: (isLeft ? 174.7 : 170.1) * Tokens.u; height: 47.7 * Tokens.u
                 onClicked: navigationActivate()
-                Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
-                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label; property string parityRole: "button"; property real focusRadius: 12 * Tokens.u; color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
+                Rectangle { id: pillBg; anchors.fill: parent; radius: 12 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
+                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label; property string parityRole: "button"; property var radiusSource: pillBg; color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
             }
         }
         // Language selects.

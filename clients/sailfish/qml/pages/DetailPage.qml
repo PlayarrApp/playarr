@@ -195,7 +195,7 @@ PlayarrPage {
                 height: implicitHeight - 6.5 * Tokens.u
                 color: Tokens.brandInk
                 font.family: Tokens.family820
-                font.letterSpacing: 0.9 * Tokens.u
+                font.letterSpacing: (epMode ? 0.12 : 0.9) * Tokens.u
                 font.pixelSize: Tokens.fsFit(10.56)
             }
             PLabel { renderType: Text.NativeRendering;
@@ -206,11 +206,11 @@ PlayarrPage {
                 color: Tokens.ink
                 property string parityRole: "heading"
                 font.family: Tokens.fam(560)   // web .tv-detail-title: weight 560, letter-spacing -0.072em
-                font.letterSpacing: -2.78 * Tokens.u
+                font.letterSpacing: -2.82 * Tokens.u
                 font.pixelSize: Tokens.fs(39)   // web: clamp(2rem, 10vw, 3.5rem) at 384 px
-                lineHeight: lineCount > 1 ? 0.70 : 0.92   // web: 0.95 of the font size between wrapped lines
-                topPadding: -3 * Tokens.u + 7.25   // the taller web title sits 6 px higher in its box
-                height: implicitHeight - 4.7 * Tokens.u - 7
+                lineHeight: lineCount > 1 ? 0.681 : 0.92   // web: 0.95 of the font size between wrapped lines
+                topPadding: -3 * Tokens.u + 7.25 + (lineCount > 1 ? 24.2 : 0)   // the taller web title sits 6 px higher in its box
+                height: implicitHeight - 4.7 * Tokens.u - 7 - (lineCount > 1 ? 20.2 : 0)
             }
             Row {
                 x: Tokens.pad
@@ -235,7 +235,7 @@ PlayarrPage {
                 maximumLineCount: 3
                 elide: Text.ElideRight
                 color: Tokens.inkSoft
-                font.family: Tokens.family400; font.letterSpacing: 0.24
+                font.family: Tokens.family400; font.letterSpacing: 0.31
                 font.pixelSize: Tokens.fsFit(11.52)
                 lineHeight: 0.98
                 bottomPadding: 1.5 * Tokens.u
@@ -250,7 +250,7 @@ PlayarrPage {
                     lift: true
                     id: dlBtn
                     visible: !!detail && !!detail.media_file_id
-                    icon: "\u21E9"; iconSize: Tokens.fs(9.2); labelFamily: Tokens.fam(700); padCss: 24.53; contentGap: 8.8; contentDy: -0.95; implicitHeight: 44 * Tokens.u
+                    icon: "\u21E9"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); padCss: 24.53; contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
                     a11yName: qsTr("Download %1").arg(work.title)
                     text: qsTr("Download")
                     parityRail: 0; parityIndex: 0; navigationActivate: function() { page.requestDownload() }
@@ -259,7 +259,7 @@ PlayarrPage {
                 }
                 PillButton {
                     lift: true
-                    icon: "\u2637"; iconSize: Tokens.fs(12.88); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: -0.95; implicitHeight: 44 * Tokens.u
+                    icon: "\u2637"; iconSize: Tokens.fs(12.88); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
                     a11yName: qsTr("Playback settings for %1").arg(work.title)
                     text: qsTr("Playback")
                     parityRail: 0; parityIndex: 1; navigationActivate: function() { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work }) }
@@ -270,7 +270,7 @@ PlayarrPage {
                 PillButton {
                     lift: true
                     primary: true
-                    icon: "\u25B6"; iconSize: Tokens.fs(9.52); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: -0.95
+                    icon: "\u25B6"; iconSize: Tokens.fs(9.52); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0
                     parityRole: "link"; iconDy: 0.57; a11yName: qsTr("Play %1").arg(work.title)
                     fontSize: Tokens.fs(11.2)
                     implicitHeight: 44 * Tokens.u
@@ -286,7 +286,7 @@ PlayarrPage {
                 visible: !!page.detail && !epMode
                 PillButton {
                     lift: true
-                    icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fs(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: -0.95; implicitHeight: 44 * Tokens.u
+                    icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
                     a11yName: (page.inWatchlist ? "\u2713 " : "+ ") + text; labelSpacing: -0.22
                     text: page.inWatchlist ? qsTr("Remove from watchlist") : qsTr("Add to watchlist")
                     parityRail: 0; parityIndex: 3; navigationActivate: function() { page.toggleWatchlist() }
@@ -295,7 +295,7 @@ PlayarrPage {
                 }
                 PillButton {
                     lift: true
-                    icon: "+"; iconSize: Tokens.fs(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: -0.95; implicitHeight: 44 * Tokens.u
+                    icon: "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
                     a11yName: "+ " + qsTr("Add to Playlist"); labelSpacing: -0.2; padCss: 17
                     text: qsTr("Add to Playlist")
                     parityRail: 0; parityIndex: 4; navigationActivate: function() { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work }) }
@@ -329,7 +329,7 @@ PlayarrPage {
                 Row {
                     x: Tokens.pad; spacing: 10.45 * Tokens.u
                     PLabel { renderType: Text.NativeRendering; text: page.target && page.target.season ? qsTr("Season %1").arg(page.target.season.season_number) : ""; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(10.24) }
-                    PLabel { renderType: Text.NativeRendering; text: page.target && page.target.episode ? "S " + ("0" + page.target.season.season_number).slice(-2) + " \u00B7 E " + ("0" + page.target.episode.episode.episode_number).slice(-2) : ""; color: Tokens.inkSoft; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.24) }
+                    PLabel { renderType: Text.NativeRendering; text: page.target && page.target.episode ? "S " + ("0" + page.target.season.season_number).slice(-2) + " \u00B7 E " + ("0" + page.target.episode.episode.episode_number).slice(-2) : ""; color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: -0.95; font.pixelSize: Tokens.fs(10.24) }
                     PLabel { renderType: Text.NativeRendering; visible: !!page.target && !!page.target.episode && !!page.target.episode.runtime_ms; text: page.target && page.target.episode ? Math.round((page.target.episode.runtime_ms || 0) / 60000) + " min" : ""; color: Tokens.inkSoft; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.24) }
                     PLabel { renderType: Text.NativeRendering; visible: yearRange() !== ""; text: yearRange(); color: Tokens.inkSoft; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.24) }
                     PLabel { renderType: Text.NativeRendering; visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.air_date; text: page.target && page.target.episode && page.target.episode.episode.air_date ? qsTr("Aired %1").arg(dmy(page.target.episode.episode.air_date)) : ""; color: Tokens.inkSoft; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.24) }
@@ -343,7 +343,7 @@ PlayarrPage {
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
                     wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight
-                    color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: -0.16; font.pixelSize: Tokens.fs(11.52); lineHeight: 0.97
+                    color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.24; font.pixelSize: Tokens.fsFit(11.52); lineHeight: 0.97
                 }
                 Item { width: 1; height: 21.5 * Tokens.u - 0.8 * Tokens.u }   // web: the actions sit lower under the episode copy
                 // The web lays the actions over a faded slice of the series backdrop.
@@ -369,7 +369,7 @@ PlayarrPage {
                         PillButton {
                             lift: true
                             primary: true
-                            icon: "\u25B6"; iconSize: Tokens.fs(9.52); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: -0.95
+                            icon: "\u25B6"; iconSize: Tokens.fs(9.52); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0
                             parityRole: "button"; a11yName: text + " " + page.work.title
                             fontSize: Tokens.fs(11.2)
                             implicitHeight: 44 * Tokens.u
@@ -393,7 +393,7 @@ PlayarrPage {
                             lift: true
                             id: wlBtn
                             
-                            icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fs(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: -0.95; labelSpacing: -0.22
+                            icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; labelSpacing: -0.22
                             a11yName: (page.inWatchlist ? "\u2713 " : "+ ") + text
                             fontSize: Tokens.fs(8)
                             implicitHeight: 44 * Tokens.u
@@ -405,7 +405,7 @@ PlayarrPage {
                             lift: true
                             id: plBtn
                             
-                            icon: "+"; iconSize: Tokens.fs(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: -0.95; labelSpacing: -0.22; padCss: 17
+                            icon: "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; labelSpacing: -0.22; padCss: 17
                             a11yName: "+ " + qsTr("Add to Playlist")
                             fontSize: Tokens.fs(8)
                             implicitHeight: 44 * Tokens.u
@@ -564,7 +564,7 @@ PlayarrPage {
                 width: parent.width; height: tracks.height - 42 * Tokens.u   // the band starts 28 px under the actions
                 visible: chapters.length > 0 || similar.length > 0
                 Item {   // Qt 5.6 has no horizontal Gradient: turn a vertical one on its side
-                    y: -50 * Tokens.u; width: parent.width; height: tracks.height; clip: true
+                    y: -50 * Tokens.u + 3.5; width: parent.width; height: tracks.height; clip: true
                     Rectangle {
                         anchors.centerIn: parent; width: parent.height; height: parent.width; rotation: -90
                         gradient: Gradient {
@@ -575,7 +575,7 @@ PlayarrPage {
                 }
             Column {
                 id: tracks
-                y: -50 * Tokens.u
+                y: -50 * Tokens.u + 1.5
                 width: parent.width
                 spacing: 18 * Tokens.u
                 bottomPadding: 28 * Tokens.u

@@ -7,6 +7,7 @@ import QtQuick.Window 2.2
 Page {
     id: page
     property alias navigation: navigation
+    property bool shellLayer: true   // false where the web draws no shell behind the page (the actions drawer)
     allowedOrientations: Orientation.Portrait
     showNavigationIndicator: false   // the web has no edge glow for the swipe back hint
     // Silica widgets (search field, busy indicator, menus) follow the app theme, not the ambience.
@@ -23,7 +24,7 @@ Page {
     // The web paints the shell, the app frame and the page one over another; each is a full-window surface here too.
     background: Component {
         Item {
-            Rectangle { anchors.fill: parent; color: Tokens.shell }
+            Rectangle { visible: page.shellLayer; anchors.fill: parent; color: Tokens.shell }
             Rectangle { anchors.fill: parent; color: Tokens.bg }
             Rectangle { anchors.fill: parent; color: Tokens.bg }
         }

@@ -6,6 +6,7 @@ import "../components"
 PlayarrPage {
     id: page
     objectName: "actions"
+    shellLayer: false
     property var work
     property var detail: null
     property var playlists: []
@@ -75,13 +76,13 @@ PlayarrPage {
         Column {
             id: col
             width: parent.width
-            spacing: 13.5 * Tokens.u
+            spacing: 14 * Tokens.u
             Item {
                 width: parent.width
                 height: 46.4 * Tokens.u + Math.min(2, titleLbl.lineCount) * 33 * Tokens.u
                 Column {
                     anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
-                    spacing: 5 * Tokens.u
+                    spacing: 5 * Tokens.u - 3.7
                     PLabel { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkMuted; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.4 }
                     PLabel { renderType: Text.NativeRendering;
                         id: titleLbl
