@@ -2745,6 +2745,7 @@ struct Detail {
           .textAlign(TextAlign.Center)
           .width(PHONE_BACK_SIZE)
           .height(PHONE_BACK_SIZE)
+          .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
           .borderRadius(PHONE_BACK_SIZE / 2)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -2758,6 +2759,7 @@ struct Detail {
           .letterSpacing(-0.972)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
+          .translate({ y: -1.2 }) // web's title box sits 1.2 higher
       }
       .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
       .alignItems(VerticalAlign.Center)
