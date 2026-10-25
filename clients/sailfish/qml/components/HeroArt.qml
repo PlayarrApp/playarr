@@ -17,6 +17,7 @@ Item {
     property real widthScale: 1      // the web draws the picture a little wider than the page
     property real imgTopCss: -1000   // explicit picture top and height (css px) instead of the object-position rule
     property real imgHCss: 0
+    property real lightLift: 0        // light theme: share of white laid over the picture (the web brightens it there)
     property bool bleed: true         // the picture also fills the strip behind a notch or cutout
     readonly property real over: bleed ? Tokens.safeTop : 0
     width: parent ? parent.width : 0
@@ -45,6 +46,7 @@ Item {
             layer.effect: Desaturate { desaturation: 1.0 }
         }
         Rectangle { property bool layoutSkip: true; anchors.fill: parent; color: "black"; opacity: Tokens.dark ? 0.4 : 0 }   // brightness(.6)
+        Rectangle { property bool layoutSkip: true; anchors.fill: parent; color: "white"; opacity: Tokens.dark ? 0 : root.lightLift }
         Rectangle {   // the web masks the picture out over its right 28%
             anchors.centerIn: parent
             width: parent.height; height: parent.width; rotation: -90

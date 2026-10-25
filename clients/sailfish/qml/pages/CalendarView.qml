@@ -421,7 +421,7 @@ Item {
         visible: root.mode === "agenda" && root.groups.length > 0 && root.groups[0].entries.length > 0
         work: root.groups.length > 0 && root.groups[0].entries.length > 0 && root.groups[0].entries[0].work_id ? { id: root.groups[0].entries[0].work_id, images: [] } : null
         overrideSrc: root.groups.length > 0 && root.groups[0].entries.length > 0 && root.groups[0].entries[0].work_id ? Api.artworkOf(root.groups[0].entries[0].work_id, "backdrop") : ""
-        boxH: 124 * Tokens.u; imgH: 375 * Tokens.u; fadeFrom: 0.3; fadeTo: 1
+        boxH: 124 * Tokens.u; imgH: 375 * Tokens.u; fadeFrom: 0.3; fadeTo: 1; lightLift: 0.93
     }
     // Web dark agenda: a faint ghost-art wash. Measured on the refs: a flat tint (39,34,39) over the first ~600 px that fades out by ~720,
     // plus a brighter left edge (about +15 at x=0) easing out over ~70 px down to ~340 px.
