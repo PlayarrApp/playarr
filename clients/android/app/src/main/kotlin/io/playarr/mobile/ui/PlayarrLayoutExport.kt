@@ -115,11 +115,14 @@ internal object PlayarrLayoutExport {
                         elements.put(e)
                     }
                 }
+                // Stable order: the semantics tree and the box set are walked in composition order, which varies between runs.
+                val sorted = (0 until elements.length()).map { elements.getJSONObject(it) }.sortedWith(compareBy({ it.getJSONObject("rect").getDouble("y") }, { it.getJSONObject("rect").getDouble("x") }, { it.getString("role") }, { it.getString("text") }, { it.getJSONObject("rect").getDouble("w") }))
+                val ordered = JSONArray().also { arr -> sorted.forEach { arr.put(it) } }
                 val doc = JSONObject()
                     .put("screen", screen).put("theme", theme)
                     .put("viewport", JSONObject().put("w", mainView.width).put("h", mainView.height).put("dpr", 1))
                     .put("clockPinned", parityClock != null)
-                    .put("elements", elements)
+                    .put("elements", ordered)
                 file.writeText(doc.toString())
                 parityLog("layout_export ok count=${elements.length()}")
             }.onFailure { parityLog("layout_export failed ${it.javaClass.simpleName} ${it.message?.take(120)}") }
