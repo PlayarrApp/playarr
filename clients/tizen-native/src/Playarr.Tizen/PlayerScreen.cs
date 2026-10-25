@@ -407,7 +407,7 @@ internal sealed class PlayerScreen : IPage
         _qualityBadge.PositionX = _qualityButtonX + 22.1f;
         _qualityLabel.PositionX = _qualityButtonX + 51.1f;
         Sem.Tag(_qualityHost, "button", "Quality: " + display.Label); _qualityHost.PositionX = _qualityButtonX; _qualityHost.Size = new Size(_qualityButtonWidth, 56);
-        _qualityLabel.Size = new Size(Math.Max(138, measuredWidth), _qualityLabel.Size.Height);
+        _qualityLabel.Size = new Size((Math.Max(138, measuredWidth) + 3) * Ui.TextScale, _qualityLabel.Size.Height); // label units are TextScale times design px
         _qualityLabel.Text = display.Label;
         _qualityBadge.Text = display.Badge;
     }
