@@ -157,6 +157,7 @@ final class TVParityLayoutRegistry {
             if let size = item.size, let weight = item.weight,
                let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) {
                 func width(_ text: String) -> Double { Double((text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width) }
+                raw["content"] = Double(font.ascender - font.descender) // the font's own ascent plus descent, as laid out
                 if let lines = item.lines { raw["lines"] = lines; raw["width"] = lines.map(width).max() ?? 0 }
                 else if let text = item.text { raw["width"] = width(text) }
             }
@@ -273,8 +274,12 @@ private struct TVParityLayoutModifier: ViewModifier {
         return r.opacity < 0.999 ? base + String(format: "%02x", byte(r.opacity)) : base
     }
 
+    @ViewBuilder private func boxed(_ content: Content) -> some View {
+        if let lineHeight { content.frame(height: lineHeight) } else { content }
+    }
+
     func body(content: Content) -> some View {
-        content
+        boxed(content)
             .background(
                 GeometryReader { proxy in
                     let frame = proxy.frame(in: tvScreenSpace)
@@ -387,10 +392,11 @@ extension View {
     /// Reports this view's text, style and frame to the parity layout export (debug builds only).
     @ViewBuilder
     func parityLayout(text: String? = nil, role: String = "text", size: CGFloat? = nil, weight: Int? = nil, color: Color? = nil, tracking: CGFloat = 0, lineHeight: CGFloat? = nil, lines: [String]? = nil, pitch: CGFloat = 0, onPage: Bool = false) -> some View {
+        // `lineHeight` is a real layout box in every build (the CSS line box the design uses); the export measures it.
         #if DEBUG && (os(tvOS) || os(macOS))
         modifier(TVParityLayoutModifier(text: text, role: role, size: size, weight: weight, color: color, tracking: tracking, lineHeight: lineHeight, lines: lines, pitch: pitch, onPage: onPage))
         #else
-        self
+        if let lineHeight { frame(height: lineHeight) } else { self }
         #endif
     }
 }

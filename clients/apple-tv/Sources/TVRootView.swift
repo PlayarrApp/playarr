@@ -917,7 +917,7 @@ struct TVProfilesView: View {
                         .font(TVTheme.font(size: 10.37 * s, css: 820))
                         .tracking(1.35 * s)
                         .foregroundStyle(palette.brandInk)
-                        .parityLayout(text: "PROFILES", size: 10.37 * s, weight: Int(TVTheme.cssWeight(.heavy)), color: palette.brandPink, tracking: 1.35 * s)
+                        .parityLayout(text: "PROFILES", size: 10.37 * s, weight: 820, color: palette.brandInk, tracking: 1.35 * s, lineHeight: 14)
                         .frame(height: 15.6 * s)
 
                     Text("Who\u{2019}s watching?")
@@ -1120,7 +1120,7 @@ struct TVProfilesView: View {
                         .tracking(0.42 * s)
                         .textCase(.uppercase)
                         .foregroundStyle(palette.inkMuted)
-                        .parityLayout(text: (statusLabel(for: profile, busy: busy)).uppercased(), size: 9.41 * s, weight: Int(TVTheme.cssWeight(.bold)), color: palette.inkMuted, tracking: 0.42 * s)
+                        .parityLayout(text: statusLabel(for: profile, busy: busy).uppercased(), size: 9.41 * s, weight: 690, color: palette.inkMuted, tracking: 0.42 * s, lineHeight: 13.59)
                         .frame(minHeight: 12 * s)
                         .offset(y: active ? 4.6 : 0)
                 }
