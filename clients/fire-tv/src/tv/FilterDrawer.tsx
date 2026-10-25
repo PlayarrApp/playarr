@@ -227,7 +227,7 @@ export function CloseButton({label, onPress, onFocused, x = 1826 - DRAWER_X, tak
         backgroundColor: colour.surfaceSoft,
       }}
     >
-      <T size={26.88} weight={720} lh={40.32} color={colour.ink} dy={-1}>
+      <T size={26.88} weight={720} lh={40.32} color={colour.ink}>
         {'×'}
       </T>
       {focused ? <FocusRing /> : null}

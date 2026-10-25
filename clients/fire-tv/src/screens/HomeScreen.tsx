@@ -368,7 +368,7 @@ function RailHeading({title, x, y, active, colour}: {title: string; x: number; y
         transform: active ? [{translateX: width * 0.08}, {translateY: -1}, {scale: 1.16}] : [],
       }}
     >
-      <T heading size={17.664} weight={610} ls={-0.53} lh={26.5} dy={3.1} color={colour}>
+      <T heading size={17.664} weight={610} ls={-0.53} lh={26.5} color={colour}>
         {title}
       </T>
     </View>
@@ -551,13 +551,13 @@ const HomeCard = memo(function HomeCard(props: {
           <WatchState progress={progress} showUnwatched={progressReady} />
         </View>
       </MediaFocus>
-      <View style={{marginTop: u(11.25)}}>
+      <View style={{marginTop: u(11.25), paddingHorizontal: u(1.9)}}>
         <CardCaption focused={selected} variant="home" artH={layout.artH} gap={11.25}>
-          <T size={11.904} weight={610} ls={-0.17856} color={selected ? focusInk(scheme) : colour.ink} lh={17.9} lines={1} dy={-1}>
+          <T size={11.904} weight={610} ls={-0.17856} color={selected ? focusInk(scheme) : colour.ink} lh={17.9} lines={1}>
             {title}
           </T>
           <View style={{marginTop: u(2.5)}}>
-            <T size={8.832} weight={400} color={selected ? focusInk(scheme) : colour.inkMuted} lh={11.5} lines={1} dy={-1}>
+            <T size={8.832} weight={400} color={selected ? focusInk(scheme) : colour.inkMuted} lh={11.5} lines={1}>
               {subtitle}
             </T>
           </View>

@@ -145,8 +145,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
   const debug = level !== '0';
   let root: Fiber = probe.fiber();
   while (root.return) root = root.return;
-  const hosts: Array<{fiber: Fiber; bg: string; opacity: number; owner: number}> = [];
-  const visit = (fiber: Fiber, under: string, opacity: number, owner: number): void => {
+  const hosts: Array<{fiber: Fiber; bg: string; opacity: number; parent: number}> = [];
+  const visit = (fiber: Fiber, under: string, opacity: number, parent: number): void => {
     for (let f = fiber.child; f; f = f.sibling) {
       // A navigator keeps the screens under the focused one mounted: they are not on screen.
       const nav = f.memoizedProps?.navigation;
@@ -154,16 +154,16 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       if (f.tag !== 5 && f.memoizedProps?.route && nav && typeof nav.isFocused === 'function' && !nav.isFocused()) continue;
       let nextBg = under;
       let nextOpacity = opacity;
-      let nextOwner = owner;
+      let nextParent = parent;
       if (f.tag === 5) {
         const style = StyleSheet.flatten(f.memoizedProps?.style) ?? {};
         const own = hex(style.backgroundColor);
         if (own) nextBg = over(own, under);
         if (typeof style.opacity === 'number') nextOpacity *= style.opacity;
-        hosts.push({fiber: f, bg: nextBg, opacity: nextOpacity, owner});
-        if (f.memoizedProps?.accessibilityRole) nextOwner = hosts.length - 1;
+        hosts.push({fiber: f, bg: nextBg, opacity: nextOpacity, parent});
+        nextParent = hosts.length - 1;
       }
-      visit(f, nextBg, nextOpacity, nextOwner);
+      visit(f, nextBg, nextOpacity, nextParent);
     }
   };
   visit(root, bg, 1, -1);
@@ -178,9 +178,9 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
     if (st.fontFamily && st.fontSize) wanted.set(`${st.fontFamily}|${st.fontSize}`, [String(st.fontFamily), st.fontSize]);
   }
   await Promise.all([...wanted].map(async ([key, [family, size]]) => extents.set(key, await probe.extent(family, size))));
-  const spans: Array<[number, number]> = [];
+  const first: number[] = [];
   hosts.forEach((h, i) => {
-    spans[i] = [out.length, out.length];
+    first[i] = out.length;
     const r = rects[i];
     if (!r || r[2] < 0.5 || r[3] < 0.5) return;
     if (r[0] > 1920 * scale || r[1] > 1080 * scale || r[0] + r[2] < 0 || r[1] + r[3] < 0) return;
@@ -235,7 +235,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
         out.push({
           ...(base as LayoutElement),
           text: transform(lineText),
-          role: webRole === 'heading' ? 'heading' : 'text',
+          role: webRole && webRole !== 'text' ? webRole : 'text',
           rect: {x: round2(rect.x + line.x / scale), y: round2(rect.y + lineTop), w: round2(line.width / scale), h: runH},
           color: hex(style.color),
           fontSize: size,
@@ -267,27 +267,25 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       src,
     });
   });
-  spans.forEach((span, i) => {
-    span[1] = spans[i + 1]?.[0] ?? out.length;
-  });
-  // A control whose only exported content is one line of text equal to its accessible name is one element in a browser's tree (a
-  // button with a text child): the glyph run takes the control's role. A control with an icon or other content stays a box.
+  // A filled, rounded box with one line of text and nothing else (a status pill) is one element in a browser's tree, an inline
+  // element with its own text: the glyph run takes the box's fill and radius. Boxes with a role, an image or more text stay boxes.
+  const end = (i: number): number => first[i + 1] ?? out.length;
   const dropped = new Set<number>();
-  const norm = (value: string): string => value.replace(/\s+/g, ' ').trim().toLowerCase();
   hosts.forEach((h, i) => {
     const props = h.fiber.memoizedProps ?? {};
-    const role = props.accessibilityRole as string | undefined;
-    const label = props.accessibilityLabel;
-    if (!role || typeof label !== 'string' || spans[i]![1] - spans[i]![0] === 0) return;
-    const owned = hosts.map((_, j) => j).filter((j) => hosts[j]!.owner === i && spans[j]![1] > spans[j]![0]);
-    const only = owned.length === 1 ? owned[0]! : -1;
-    if (only < 0 || String(hosts[only]!.fiber.type) !== 'RCTText' || spans[only]![1] - spans[only]![0] !== 1) return;
-    const run = out[spans[only]![0]!]!;
     const own = StyleSheet.flatten(props.style) ?? {};
-    // A filled control is a box with a text child of its own, as the browser's tree has it.
-    if (norm(run.text) !== norm(label) || hex(own.backgroundColor) !== null || hasBorder(own)) return;
-    out[spans[only]![0]!] = {...run, role: role === 'header' ? 'heading' : role === 'adjustable' ? 'slider' : role};
-    dropped.add(spans[i]![0]!);
+    if (props.accessibilityRole || String(h.fiber.type) === 'RCTText' || !(hex(own.backgroundColor) !== null || hasBorder(own)) || !own.borderRadius) return;
+    const inside = hosts.map((_, j) => j).filter((j) => {
+      for (let k = hosts[j]!.parent; k >= 0; k = hosts[k]!.parent) if (k === i) return end(j) > first[j]!;
+      return false;
+    });
+    if (inside.length !== 1 || String(hosts[inside[0]!]!.fiber.type) !== 'RCTText' || end(inside[0]!) - first[inside[0]!]! !== 1) return;
+    const box = out[first[i]!];
+    const run = out[first[inside[0]!]!]!;
+    if (!box || end(i) - first[i]! < 1) return;
+    run.background = box.background;
+    if (box.radius) run.radius = box.radius;
+    dropped.add(first[i]!);
   });
   return out.filter((_, index) => !dropped.has(index));
 }

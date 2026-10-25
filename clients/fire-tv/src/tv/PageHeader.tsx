@@ -43,7 +43,7 @@ export function BackButton({onPress, x = 153.6, y = 56.2, size = 50, accessibili
         borderColor: mix(colour.lineStrong, 0.7),
       }}
     >
-      <T size={17.28} weight={720} color={colour.inkSoft} lh={25.9} dy={3}>
+      <T size={17.28} weight={720} color={colour.inkSoft} lh={25.9}>
         {'←'}
       </T>
       {focused ? (
@@ -91,7 +91,7 @@ export function PageHeader({title, detail, onBack, backLabel, backFocus, webBack
       <BackButton onPress={onBack} accessibilityLabel={backLabel} hasTVPreferredFocus={backFocus} webBack={webBack} />
       <View style={{position: 'absolute', left: u(HEADER_X), top: u(56.2), height: u(50), flexDirection: 'row', alignItems: 'center'}} pointerEvents="none">
         <View onLayout={measure('title')}>
-          <T heading size={33.6} weight={580} ls={-1.512} lh={50} dy={1} color={colour.ink} lines={1}>
+          <T heading size={33.6} weight={580} ls={-1.512} lh={50} color={colour.ink} lines={1}>
             {title}
           </T>
         </View>

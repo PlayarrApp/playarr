@@ -211,18 +211,18 @@ export function EntryCard({item, width, wrap, selected, today, onFocus, onPress,
         ) : null}
         <View style={{flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', marginTop: u(2.4)}}>
           <View style={{marginRight: u(12)}}>
-            <T size={12.8} weight={400} lh={19.2} dy={-1} color={colour.inkMuted}>
+            <T size={12.8} weight={400} lh={19.2} color={colour.inkMuted}>
               {time ? new Intl.DateTimeFormat(locale, {timeStyle: 'short'}).format(time) : t('pages.calendar.allDay')}
             </T>
           </View>
           <View style={{marginRight: u(12)}}>
-            <T size={12.8} weight={400} lh={19.2} dy={-1} color={colour.inkMuted}>
+            <T size={12.8} weight={400} lh={19.2} color={colour.inkMuted}>
               {t(RELEASE_KEYS[first.release_type])}
             </T>
           </View>
           {item.kind === 'series' ? null : (
             <View style={{marginRight: u(12)}}>
-              <T size={12.8} weight={400} lh={19.2} dy={-1} color={colour.inkMuted}>
+              <T size={12.8} weight={400} lh={19.2} color={colour.inkMuted}>
                 {t(KIND_KEYS[first.media_kind])}
               </T>
             </View>
@@ -352,7 +352,7 @@ export function ItemDetails({item, locale, onOpen, width = 571.2}: {item: Calend
       ) : null}
       <View style={{marginTop: u(14.4)}}>
         <Label>{t('pages.calendar.sheetWhen')}</Label>
-        <T size={19.2} weight={400} lh={26.2} dy={4} color={colour.ink}>
+        <T size={19.2} weight={400} lh={26.2} color={colour.ink}>
           {when}
         </T>
       </View>

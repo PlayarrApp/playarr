@@ -287,7 +287,7 @@ const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, shared, 
   const innerW = CELL_W - 2 * (CELL_BORDER + CELL_PAD_X);
   const footY = y + h - CELL_BORDER - CELL_PAD_Y - MONTH_FOOT;
   const day = (
-    <T size={12.8} weight={640} lh={19.2} dy={-1.4} color={cell.inMonth ? colour.ink : colour.inkMuted}>
+    <T size={12.8} weight={640} lh={19.2} color={cell.inMonth ? colour.ink : colour.inkMuted}>
       {String(parseDay(cell.day).getUTCDate())}
     </T>
   );
@@ -356,7 +356,7 @@ const Line = React.memo(function Line({day, item, x, y, w, h, today, onSelect}: 
     >
       <View {...lx('container', '', 50)} style={{width: u(8.8), height: u(8.8), borderRadius: u(4.4), backgroundColor: dot}} />
       <View style={{marginLeft: u(7.2), flex: 1}}>
-        <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} dy={-1.3} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
+        <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
           {label}
         </T>
       </View>
