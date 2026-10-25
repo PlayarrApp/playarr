@@ -309,8 +309,9 @@ struct TVProfileAddLabel: View {
                     )
                 Text("+")
                     // Web clamp(2.4rem, 4vw, 5.4rem) weight 300 → ~0.35× avatar.
-                    .font(.system(size: avatarSize * 0.36, weight: .light))
+                    .font(TVTheme.font(size: 76.8 * scale, css: 300))
                     .foregroundStyle(active ? palette.ink : palette.inkSoft)
+                    .parityLayout(text: "+", size: 76.8 * scale, weight: 300, color: active ? palette.ink : palette.inkSoft, lineHeight: 105)
             }
             .frame(width: avatarSize, height: avatarSize)
             // Web focus avatar: scale 1.035 + 4px pink ring (box-shadow) + soft lift.
@@ -340,15 +341,17 @@ struct TVProfileAddLabel: View {
             )
 
             Text("Sign in")
-                .font(.system(size: 16 * scale, weight: .semibold))
+                .font(TVTheme.font(size: 17.28 * scale, css: 680))
                 .foregroundStyle(active ? palette.ink : palette.inkSoft)
                 .lineLimit(1)
+                .parityLayout(text: "Sign in", size: 17.28 * scale, weight: 680, color: active ? palette.ink : palette.inkSoft, lineHeight: 23)
 
             Text("Add another profile")
-                .font(.system(size: 9 * scale, weight: .bold))
-                .tracking(0.6 * scale)
+                .font(TVTheme.font(size: 9.41 * scale, css: 690))
+                .tracking(0.42 * scale)
                 .textCase(.uppercase)
                 .foregroundStyle(palette.inkMuted)
+                .parityLayout(text: "ADD ANOTHER PROFILE", size: 9.41 * scale, weight: 690, color: palette.inkMuted, tracking: 0.42 * scale, lineHeight: 13)
                 .frame(minHeight: 12 * scale)
         }
         .frame(width: avatarSize)
@@ -405,6 +408,8 @@ struct TVProfileActionLabel: View {
             case .settings:
                 Image(systemName: "gearshape")
                     .font(.system(size: 16 * scale, weight: .regular))
+                    .frame(width: 18 * scale, height: 18 * scale)
+                    .parityBox("image", fill: palette.surface)
                     .foregroundStyle(active ? palette.bg : palette.brandPink)
                     .frame(width: 44 * scale, height: 44 * scale)
                     .background(
@@ -424,8 +429,11 @@ struct TVProfileActionLabel: View {
                 HStack(spacing: 7 * scale) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 14 * scale, weight: .regular))
+                        .frame(width: 18 * scale, height: 18 * scale)
+                        .parityBox("image", fill: palette.surface)
                     Text("Sign out")
-                        .font(.system(size: 11 * scale, weight: .bold))
+                        .font(TVTheme.font(size: 10.75 * scale, css: 720))
+                        .parityLayout(text: "Sign out", size: 10.75 * scale, weight: 720, color: active ? Color.white : palette.inkSoft, lineHeight: 15)
                 }
                 .foregroundStyle(active ? Color.white : palette.inkSoft)
                 .padding(.horizontal, 16 * scale)

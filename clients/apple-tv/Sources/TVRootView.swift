@@ -914,16 +914,18 @@ struct TVProfilesView: View {
                     Color.clear.frame(height: 162 * s)
 
                     Text("PROFILES")
-                        .font(TVTheme.font(size: 10.37 * s, weight: .heavy))
+                        .font(TVTheme.font(size: 10.37 * s, css: 820))
                         .tracking(1.35 * s)
-                        .foregroundStyle(palette.brandPink)
+                        .foregroundStyle(palette.brandInk)
+                        .parityLayout(text: "PROFILES", size: 10.37 * s, weight: 820, color: palette.brandInk, tracking: 1.35 * s, lineHeight: 14)
                         .parityLayout(text: "PROFILES", size: 10.37 * s, weight: Int(TVTheme.cssWeight(.heavy)), color: palette.brandPink, tracking: 1.35 * s)
                         .frame(height: 15.6 * s)
 
                     Text("Who\u{2019}s watching?")
-                        .font(TVTheme.font(size: 80.64 * s, weight: .medium))
+                        .font(TVTheme.font(size: 80.64 * s, css: 500))
                         .tracking(-5.8 * s)
                         .foregroundStyle(palette.ink)
+                        .parityLayout(text: "Who\u{2019}s watching?", role: "heading", size: 80.64 * s, weight: 500, color: palette.ink, tracking: -5.8 * s, lineHeight: 110)
                         .lineLimit(1)
                         .parityLayout(text: "Who\u{2019}s watching?", size: 80.64 * s, weight: Int(TVTheme.cssWeight(.medium)), color: palette.ink, tracking: -5.8 * s)
                         .frame(height: 76.6 * s)
@@ -1069,6 +1071,7 @@ struct TVProfilesView: View {
                             presetName: profile.isCurrent ? environment.currentAvatarPreset : nil,
                             customImage: profile.isCurrent ? environment.currentAvatarImage : nil
                         )
+                        .parityBox("image", fill: palette.bg)
                         if busy {
                             ProgressView().tint(.white)
                         }
@@ -1108,17 +1111,19 @@ struct TVProfilesView: View {
                     )
 
                     Text(profile.displayName.isEmpty ? profile.username : profile.displayName)
-                        .font(TVTheme.font(size: 17.28 * s, weight: .semibold))
+                        .font(TVTheme.font(size: 17.28 * s, css: 680))
                         .foregroundStyle(active ? palette.ink : palette.inkSoft)
                         .lineLimit(1)
+                        .parityLayout(text: profile.displayName.isEmpty ? profile.username : profile.displayName, size: 17.28 * s, weight: 680, color: active ? palette.ink : palette.inkSoft, lineHeight: 24.04)
                         .parityLayout(text: profile.displayName.isEmpty ? profile.username : profile.displayName, size: 17.28 * s, weight: Int(TVTheme.cssWeight(.semibold)))
                         .offset(y: active ? 4.6 : 0)
 
                     Text(statusLabel(for: profile, busy: busy))
-                        .font(TVTheme.font(size: 9.41 * s, weight: .bold))
+                        .font(TVTheme.font(size: 9.41 * s, css: 690))
                         .tracking(0.42 * s)
                         .textCase(.uppercase)
                         .foregroundStyle(palette.inkMuted)
+                        .parityLayout(text: statusLabel(for: profile, busy: busy).uppercased(), size: 9.41 * s, weight: 690, color: palette.inkMuted, tracking: 0.42 * s, lineHeight: 13.59)
                         .parityLayout(text: (statusLabel(for: profile, busy: busy)).uppercased(), size: 9.41 * s, weight: Int(TVTheme.cssWeight(.bold)), color: palette.inkMuted, tracking: 0.42 * s)
                         .frame(minHeight: 12 * s)
                         .offset(y: active ? 4.6 : 0)
@@ -1142,7 +1147,8 @@ struct TVProfilesView: View {
                 if direction == .down, selected { focusedTarget = .settings }
             }
             .disabled(switchingID != nil)
-            .accessibilityLabel(profile.displayName.isEmpty ? profile.username : profile.displayName)
+            .accessibilityLabel((profile.displayName.isEmpty ? profile.username : profile.displayName) + (profile.isCurrent ? ", current profile" : ""))
+            .parityBox("button", text: (profile.displayName.isEmpty ? profile.username : profile.displayName) + (profile.isCurrent ? ", current profile" : ""), fill: palette.bg)
             #if os(macOS)
             .environment(\.macDownTo, selected ? "profile-gear" : nil) // web: Down from the avatar lands on the gear
             // The driver reads the focused profile from the Mac focus engine's tag (the household page reported none, so the
@@ -1175,7 +1181,8 @@ struct TVProfilesView: View {
             .buttonStyle(TVProfileActionButtonStyle())
             .focusEffectDisabled(true)
             .focused($focusedTarget, equals: .settings)
-            .accessibilityLabel("Settings for \(profile.displayName)")
+            .accessibilityLabel("\(profile.displayName) settings")
+            .parityBox("button", text: "\(profile.displayName) settings", radius: 999, fill: palette.surface)
             #if os(macOS)
             .environment(\.macFocusName, "profile-gear")
             .environment(\.macParityTag, MacParityTag(title: "Settings", id: "profile-settings", rail: 1, index: 0, gridPosition: nil))
@@ -1195,6 +1202,7 @@ struct TVProfilesView: View {
             .buttonStyle(TVProfileActionButtonStyle())
             .focusEffectDisabled(true)
             .accessibilityLabel("Sign out \(profile.displayName)")
+            .parityBox("button", text: "Sign out \(profile.displayName)", radius: 999, fill: palette.surface)
             #if os(macOS)
             .environment(\.macParityTag, MacParityTag(title: "Sign out", id: "profile-sign-out", rail: 1, index: 1, gridPosition: nil))
             #endif
@@ -1239,7 +1247,8 @@ struct TVProfilesView: View {
                 moveFocusToChrome()
             }
         }
-        .accessibilityLabel("Sign in, add another profile")
+        .accessibilityLabel("+ Sign in ADD ANOTHER PROFILE")
+        .parityBox("button", text: "+ Sign in ADD ANOTHER PROFILE", fill: palette.bg)
     }
 
     private func statusLabel(for profile: AvailableProfile, busy: Bool) -> String {
@@ -1702,6 +1711,7 @@ struct TVAuthStageChrome: View {
             ZStack(alignment: .topLeading) {
                 PlayarrLogoMark(size: logoSize)
                     .frame(width: logoSize, height: logoSize)
+                    .parityBox("image", fill: palette.bg)
                     .position(
                         x: logoLeft + logoSize / 2,
                         y: logoTop + logoSize / 2 + 4 * scale
@@ -1797,7 +1807,7 @@ struct TVAuthStageChrome: View {
                 icon: "globe",
                 label: displayPreferences.languageTriggerLabel,
                 minWidth: 168 * scale,
-                accessibility: "Language: \(displayPreferences.languageTriggerLabel)"
+                accessibility: displayPreferences.languageTriggerLabel
             )
         }
         .buttonStyle(TVChromeMenuButtonStyle(palette: palette))
@@ -1821,16 +1831,23 @@ struct TVAuthStageChrome: View {
             Image(systemName: icon)
                 .font(.system(size: 14 * scale, weight: .semibold))
                 .foregroundStyle(palette.inkMuted)
+                .frame(width: 16 * scale, height: 16 * scale)
+                .parityBox("image", fill: palette.bg)
             Text(label)
-                .font(.system(size: 13.8 * scale, weight: .bold))
+                .font(TVTheme.font(size: 11.52 * scale, css: 720))
                 .foregroundStyle(palette.ink)
                 .lineLimit(1)
+                .parityLayout(text: label, size: 11.52 * scale, weight: 720, color: palette.ink)
+            Spacer(minLength: 0)
             Image(systemName: "chevron.down")
-                .font(.system(size: 11 * scale, weight: .semibold))
+                .font(.system(size: 10 * scale, weight: .semibold))
                 .foregroundStyle(palette.inkMuted)
+                .frame(width: 12 * scale, height: 12 * scale)
+                .parityBox("image", fill: palette.bg)
         }
-        .padding(.horizontal, 18.4 * scale)
-        .frame(minWidth: minWidth, minHeight: 48 * scale)
+        .padding(.horizontal, 19.4 * scale)
+        .frame(width: minWidth, height: 48 * scale)
+        .parityBox("button", text: accessibility, fill: palette.bg)
         .contentShape(Rectangle())
         .accessibilityLabel(accessibility)
     }
