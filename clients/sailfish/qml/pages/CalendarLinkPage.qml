@@ -166,7 +166,6 @@ PlayarrPage {
         gradient: Gradient { GradientStop { position: 0; color: "transparent" } GradientStop { position: 1; color: Tokens.surface } }
     }
     NavBar {
-        blurSource: flick
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 10 * Tokens.u; rightMargin: 10 * Tokens.u; bottomMargin: 7 * Tokens.u }
         section: ""
         onSelected: {

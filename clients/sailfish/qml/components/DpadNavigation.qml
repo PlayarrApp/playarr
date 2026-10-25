@@ -238,6 +238,7 @@ Item {
         else if (route === "main") route = page.section === "home" ? "/" : page.section === "calendar" ? "/calendar?view=" + Api.setting("cal.mode", "agenda") : "/" + (page.section || "")
         else if (route === "player") route = "/player/" + page.mediaFileId
         else if (route === "filters") route = "/movies?panel=filters"
+        else if (route === "calendar-link") route = "/calendar?panel=link"
         else if (route === "link" || route === "") route = "__unknown__"
         else route = "/" + route
         console.log("PARITY|screen|" + route)

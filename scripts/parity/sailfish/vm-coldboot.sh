@@ -7,10 +7,12 @@
 #   1. host, VM powered off, once:  VBoxManage storagectl <vm> --name SATA --hostiocache on   (fsync 2.7 to 41 MB/s)
 #   2. guest, this script, once per disk image: 10 minute start timeouts for lipstick and pulseaudio, then unlock the
 #      screen and stop it blanking or locking again.
-# usage: vm-coldboot.sh   env: PLAYARR_SF_SSH_KEY, PLAYARR_SF_SSH_PORT (default 2223), PLAYARR_SF_SSH_HOST (default 127.0.0.1)
+# usage: vm-coldboot.sh   env: PLAYARR_SF_SSH_KEY, optional PLAYARR_SF_SSH_CONFIG, PLAYARR_SF_SSH_PORT (default 2223), PLAYARR_SF_SSH_HOST (default 127.0.0.1)
 set -euo pipefail
 : "${PLAYARR_SF_SSH_KEY:?private key of the emulator}"
-sf() { ssh -i "$PLAYARR_SF_SSH_KEY" -p "${PLAYARR_SF_SSH_PORT:-2223}" -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10 "root@${PLAYARR_SF_SSH_HOST:-127.0.0.1}" "$@"; }
+ssh_config_args=()
+if [ -n "${PLAYARR_SF_SSH_CONFIG:-}" ]; then ssh_config_args=(-F "$PLAYARR_SF_SSH_CONFIG"); fi
+sf() { ssh "${ssh_config_args[@]}" -i "$PLAYARR_SF_SSH_KEY" -p "${PLAYARR_SF_SSH_PORT:-2223}" -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10 "root@${PLAYARR_SF_SSH_HOST:-127.0.0.1}" "$@"; }
 # A cold boot takes 2 to 4 minutes before ssh answers and the lock screen is up.
 for _ in $(seq 1 120); do sf true 2>/dev/null && break; sleep 3; done
 sf 'for u in lipstick pulseaudio; do mkdir -p /etc/systemd/user/$u.service.d; printf "[Service]\nTimeoutStartSec=10min\n" > /etc/systemd/user/$u.service.d/timeout.conf; done'

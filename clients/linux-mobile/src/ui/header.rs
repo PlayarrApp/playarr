@@ -25,7 +25,13 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .margin_end(16)
         .margin_bottom(5)
         .build();
+    // A link on the list pages, a button on the detail and settings pages, as the web's back control.
     let back = gtk4::Button::builder()
+        .accessible_role(if title.is_empty() || title == "Preferences" {
+            gtk4::AccessibleRole::Button
+        } else {
+            gtk4::AccessibleRole::Link
+        })
         .css_classes(["pa-hbtn", "round"])
         .valign(gtk4::Align::Start)
         .build();
@@ -47,6 +53,7 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .build();
     let h1 = gtk4::Label::builder()
         .label(title)
+        .accessible_role(gtk4::AccessibleRole::Heading)
         .css_classes(["pa-h1"])
         .xalign(0.0)
         .ellipsize(gtk4::pango::EllipsizeMode::End)
@@ -72,19 +79,19 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
         .visible(false)
         .build();
     extra.set_child(Some(&icons::image("bell", 18, Tone::Soft)));
+    crate::layout::name(&action, "Filters");
+    crate::layout::name(&extra, "Calendar link");
     // The web's names for the header controls (a link on list pages, a button on detail and settings pages).
-    let (role, name) = match title {
-        "" => ("button", "Back to Movies"),
-        "Preferences" => ("button", "Settings"),
-        "Calendar" => ("link", "Back to home"),
-        _ => ("link", "Back to Home"),
+    let name = match title {
+        "" => "Back to Movies",
+        "Preferences" => "Settings",
+        "Calendar" => "Back to home",
+        _ => "Back to Home",
     };
-    crate::layout::tag(&back, role, name, 50.0);
+    crate::layout::name(&back, name);
     // The web's action buttons sit 2 px higher than the back button and the title block.
     back.set_margin_top(2);
     block.set_margin_top(2);
-    crate::layout::Tag::new("button", "Filters", 14.0).apply(&action);
-    crate::layout::Tag::new("button", "Calendar link", 14.0).apply(&extra);
     // The web row gap is 8 px but the title block starts 10 px after the back button.
     back.set_margin_end(2);
     row.append(&back);
@@ -104,7 +111,6 @@ pub fn build(app: &Rc<App>, title: &str, action_icon: &str) -> Header {
 impl Header {
     pub fn set_section(&self, text: &str) {
         self.title.set_label(text);
-        crate::layout::tag(&self.back, "button", &format!("Back to {text}"), 50.0);
     }
 
     /// The web hides the header subtitle on a phone (title only, #1299), so the text is kept but never shown.

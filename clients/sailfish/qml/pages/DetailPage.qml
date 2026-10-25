@@ -662,7 +662,6 @@ PlayarrPage {
 
     // The web keeps its nav on title pages; selecting a tab returns to the shell on that section.
     NavBar {
-        blurSource: flick
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 10 * Tokens.u; rightMargin: 10 * Tokens.u; bottomMargin: 7 * Tokens.u }
         section: page.work.kind === "movie" ? "movies" : page.work.kind === "series" ? "series" : "music"
         onSelected: {

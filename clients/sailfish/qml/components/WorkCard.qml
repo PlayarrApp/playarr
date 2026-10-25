@@ -96,20 +96,34 @@ MouseArea {
         radius: Tokens.radius + 3 * Tokens.u; color: "transparent"
         border.width: 3 * Tokens.u; border.color: root.ringColor
     }
-    Rectangle {   // web progress track under the fill of a part-watched card
-        visible: !!root.prog && root.prog.state === "part_watched" && root.prog.duration_ms > 0
-        anchors { left: art.left; right: art.right; bottom: art.bottom }
-        height: 3 * Tokens.u
-        color: Tokens.dark ? "#5a5559" : "#e5e3e4"
-        property string parityRole: "img"
+    // Keep the offscreen source and mask explicitly sized: Qt 5.6 does not
+    // resolve anchors on inline OpacityMask source objects to the art item.
+    Item {
+        id: progressSource
+        x: art.x; y: art.y; width: art.width; height: art.height
+        visible: false
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            height: 3 * Tokens.u
+            color: Tokens.dark ? "#5a5559" : "#e5e3e4"
+        }
+        Rectangle {
+            anchors { left: parent.left; bottom: parent.bottom }
+            height: 3 * Tokens.u
+            width: root.prog && root.prog.duration_ms > 0
+                ? parent.width * Math.max(0, Math.min(1, root.prog.position_ms / root.prog.duration_ms)) : 0
+            color: Tokens.brandPink
+        }
     }
-    // Watch state: a progress bar for part-watched, a ringed dot for unseen (web WatchStateOverlay).
-    Rectangle {
+    Rectangle { id: progressMask; x: art.x; y: art.y; width: art.width; height: art.height; radius: art.radius; visible: false; color: "white" }
+    // Watch state: mask both progress plates to the same rounded art silhouette.
+    // Without this, the three-pixel bar paints square pixels into the card's rounded bottom corners.
+    OpacityMask {
+        x: art.x; y: art.y; width: art.width; height: art.height
         visible: !!root.prog && root.prog.state === "part_watched" && root.prog.duration_ms > 0
-        anchors { left: art.left; bottom: art.bottom; leftMargin: 0 }
-        height: 3 * Tokens.u
-        width: visible ? art.width * Math.min(1, root.prog.position_ms / root.prog.duration_ms) : 0
-        color: Tokens.brandPink
+        source: progressSource
+        maskSource: progressMask
+        property string parityRole: "img"
     }
     UnseenDot {
         visible: root.showUnwatched && (!root.prog || root.prog.state === "unseen")
