@@ -40,6 +40,13 @@ function polygonContainsPolygon(container, subject) {
         if (!polygonContainsPoint(container, subject[i])) return false
     return true
 }
+// Share of `subject`'s area that lies inside the convex `container`.
+function polygonCoverage(container, subject) {
+    var area = Math.abs(polygonArea(subject))
+    if (area <= GEOMETRY_EPSILON) return 0
+    var inside = clipPolygon(subject, container)
+    return inside.length ? Math.abs(polygonArea(inside)) / area : 0
+}
 function mappedRect(item, root, x, y, w, h) {
     return [item.mapToItem(root, x, y), item.mapToItem(root, x + w, y),
         item.mapToItem(root, x + w, y + h), item.mapToItem(root, x, y + h)]
@@ -115,7 +122,7 @@ function gradientStops(gradient) {
     return visible ? stops : null
 }
 function weightOf(item, weights) {
-    var w = weights[item.font.family]
+    var w = weights[String(item.font.family).split(",")[0]]   // a family list: the first is the primary font
     if (w !== undefined) return w
     var f = item.font.weight
     return f >= 75 ? 700 : f >= 63 ? 600 : f <= 25 ? 300 : 400
@@ -185,13 +192,13 @@ function lineRuns(item, metrics, log) {
 function dump(root, u, weights, metrics, log) {
     var fills = [], out = [], radiusLimitations = 0
     // Backdrop at a point: the fills painted before `limit` (ancestors and earlier siblings), plus, from `limit` on, only the plates that
-    // cover the whole of `cover` ({x, y, w, h}): the element's own background, drawn as a child rectangle.
+    // cover (95 % or more of) `cover` ({x, y, w, h}): the element's own background, drawn as a child rectangle.
     function bgAt(cx, cy, limit, cover) {
         cx = Math.min(cx, root.width - 1); cy = Math.min(cy, root.height - 1)
         var bg = [255, 255, 255], end = limit === undefined ? fills.length : fills.length
         for (var i = 0; i < end; ++i) {
             var f = fills[i]
-            if (limit !== undefined && i >= limit && !polygonContainsPolygon(f.full, cover)) continue
+            if (limit !== undefined && i >= limit && polygonCoverage(f.full, cover) < 0.95) continue
             if (!polygonContainsPoint(f.polygon, { x: cx, y: cy })) continue
             var fc = { c: f.c, a: f.a }, fa = fc.a
             for (var k = 0; k < 3; ++k) bg[k] = bg[k] * (1 - fa) + fc.c[k] * fa
@@ -263,6 +270,9 @@ function dump(root, u, weights, metrics, log) {
                 var im = { text: "", role: item.parityRole || "image", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(imageCenter.x, imageCenter.y), fontSize: null, fontWeight: null }
                 if (op < 0.999) im.opacity = r2(op)
                 out.push(im)
+            } else if (item.source !== undefined && item.status !== undefined && item.paintedWidth !== undefined && w > 0 && h > 0) {
+                // a picture that is not drawn (loading, failed or without a source) is not exported; say so
+                log("LAYOUTWARN|image-not-drawn|status " + item.status + "|" + (String(item.source) === "" ? "no source" : "source set") + "|" + r2(w / u) + "x" + r2(h / u))
             } else if (item.available !== undefined && item.renderTarget !== undefined && w > 0 && h > 0) {
                 // Canvas: a drawn icon
                 var canvasCenter = polygonCenter(polygon)
@@ -273,6 +283,11 @@ function dump(root, u, weights, metrics, log) {
                 // a masked picture (rounded artwork): the visible drawing of an image
                 var maskCenter = polygonCenter(polygon)
                 var mk = { text: "", role: item.parityRole, rect: rect(x, y, box.w, box.h), color: null, background: bgAt(maskCenter.x, maskCenter.y), fontSize: null, fontWeight: null }
+                if (item.radiusSource) {
+                    var maskScale = uniformRadiusScale(item.radiusSource, root), maskRadius = radiusOf(item.radiusSource, maskScale)
+                    if (maskRadius) mk.radius = maskRadius
+                    else if (maskScale === null) radiusLimitations += 1
+                }
                 if (op < 0.999) mk.opacity = r2(op)
                 out.push(mk)
             } else if ((item.navigationFocusable === true || item.a11yName !== undefined) && item.layoutNoEmit !== true && w > 0 && h > 0) {

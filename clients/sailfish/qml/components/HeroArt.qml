@@ -6,6 +6,7 @@ import "."
 Item {
     id: root
     property var work
+    property string overrideSrc: ""   // a picture URL when only the work id is known
     property var kinds: ["backdrop", "poster"]
     property real boxH: 396 * Tokens.u
     property real imgFrac: 0.55       // share of the box the picture fills
@@ -36,7 +37,7 @@ Item {
             fillMode: root.imgH > 0 || root.imgHCss > 0 ? Image.PreserveAspectCrop : Image.Stretch   // Home: object-fit cover in the tall box
             height: root.imgHCss > 0 ? root.imgHCss * Tokens.u : root.imgH > 0 ? (parent.height + root.over) * 1.04 : (implicitWidth > 0 ? width * implicitHeight / implicitWidth : 0)
             y: root.imgTopCss > -1000 ? root.imgTopCss * Tokens.u : root.imgH > 0 ? -7.51 * Tokens.u : -Math.max(0, height - parent.height) * 0.22   // object-position: center 22%
-            source: work ? Api.artwork(work.id, work.images || [], root.kinds, true) : ""
+            source: overrideSrc !== "" ? overrideSrc : work ? Api.artwork(work.id, work.images || [], root.kinds, true) : ""
             asynchronous: true
             smooth: true
             mipmap: true

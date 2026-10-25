@@ -226,7 +226,7 @@ PlayarrPage {
                 color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(7.68) }
         PLabel { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"
                
-                color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: "Liberation Sans"; font.weight: Font.Bold; font.pixelSize: Tokens.fs(7.68) }
+                color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720) + ",Liberation Sans"; font.pixelSize: Tokens.fs(7.68) }
     }
     RemorsePopup { id: remorse }
 }

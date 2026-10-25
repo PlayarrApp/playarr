@@ -38,8 +38,8 @@ Item {
         PLabel { renderType: Text.NativeRendering   // the web's arrow is a system-font glyph (Nunito has none)
             anchors.centerIn: parent
             text: "\u2190"; color: Tokens.dark ? "#cdc1c6" : "#443a40"
-            anchors.verticalCenterOffset: -2.2 * Tokens.u
-            font.family: "Liberation Sans"; font.weight: Font.Bold; font.pixelSize: Tokens.fs(12.8)
+            anchors.verticalCenterOffset: -2.2 * Tokens.u + 3
+            font.family: Tokens.fam(720) + ",Liberation Sans"; font.pixelSize: Tokens.fs(12.8)
         }
     }
     PLabel { renderType: Text.NativeRendering;

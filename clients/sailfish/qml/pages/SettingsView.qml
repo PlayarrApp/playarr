@@ -60,7 +60,7 @@ Item {
                 PLabel { id: arrowLbl; renderType: Text.NativeRendering
                     x: (index === 0 ? 330.2 : 325.2) * Tokens.u; y: 29.41 * Tokens.u
                     text: "\u2192"; color: index === 0 ? Tokens.ink : Tokens.inkSoft
-                    font.family: "Liberation Sans"; font.weight: Font.Normal; font.pixelSize: Tokens.fs(20.8) }
+                    font.family: Tokens.family400 + ",Liberation Sans"; font.pixelSize: Tokens.fs(20.8) }
             }
         }
         EdgeFade { target: list }
