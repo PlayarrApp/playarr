@@ -764,7 +764,7 @@ private fun PlayarrPlayerTopButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (isTelevision && iconOnly) Arrangement.Center else Arrangement.spacedBy(if (isTelevision) 8.8.dp else 8.dp),
         ) {
-            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image", background = if (iconOnly) Color(0xFF070606) else Color(0xFF0A0809), fit = if (iconOnly) { r -> androidx.compose.ui.geometry.Rect(r.center.x - 7f, r.center.y - 11f, r.center.x + 7f, r.center.y + 11f) } else null))
+            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image", background = if (iconOnly) Color(0xFF070606) else Color(0xFF0A0809)))
             if (isTelevision && !iconOnly) {
                 Text(label, fontSize = 11.2.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
             }
@@ -1198,7 +1198,7 @@ internal fun PlayarrTelevisionControlBar(
                         }
                         .fillMaxWidth()
                         .height(15.dp)
-                        .parityBox("slider", "Seek", background = Color.Black, fit = { r -> androidx.compose.ui.geometry.Rect(r.left, r.center.y - 22f, r.right, r.center.y + 22f) })
+                        .parityBox("slider", "Seek", background = Color.Black)
                         .semantics { contentDescription = seekDescription },
                 )
             }
