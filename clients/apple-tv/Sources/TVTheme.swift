@@ -314,6 +314,7 @@ struct TVProfileAddLabel: View {
                     .offset(y: 1.2 * scale)
             }
             .frame(width: avatarSize, height: avatarSize)
+            .parityBox("container", radius: 999, fill: palette.bg)
             // Web focus avatar: scale 1.035 + 4px pink ring (box-shadow) + soft lift.
             .scaleEffect(active ? 1.035 : 1)
             .background {
@@ -1003,7 +1004,7 @@ struct TVFloatingNav: View {
             Button(action: profile.open) {
                 VStack(spacing: 2.75) { // the nav item layout: the avatar where a tab has its icon
                     TVProfileAvatar(userID: profile.userID, size: 20, presetName: profile.preset, customImage: profile.image)
-                        .parityBox("container", radius: 50)
+                        .parityBox("container", radius: 999)
                         .parityBox("image")
                     Text(profile.name.split(separator: " ").first.map(String.init) ?? profile.name)
                         .font(TVTheme.font(size: 8.832, css: 680))
