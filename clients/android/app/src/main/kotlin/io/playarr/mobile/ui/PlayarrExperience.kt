@@ -3193,7 +3193,7 @@ private fun ExperienceStage(
     feature: @Composable () -> Unit,
     rails: @Composable () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize().background(WebSurface)) {
+    Box(modifier = Modifier.fillMaxSize().background(WebSurface).then(if (isTelevision) Modifier else Modifier.parityBox("container", background = WebSurface))) {
         HeroBackdropStack {
         if (!isTelevision) {
             PhoneKeyArt(selected, serverUrl, accessToken, Modifier.fillMaxSize())
@@ -3551,7 +3551,7 @@ internal fun ExperienceMediaRail(
                 // Tablet static refs (1280 x 800): the cards sit 6.4 css px higher than the 1080 tuning gives.
                 .then(if (LocalStageScale.current != 1f) Modifier.offset(y = -(6.4f * cssDp).dp) else Modifier)
         } else {
-            Modifier.fillMaxWidth().padding(end = 5.dp).layout { measurable, constraints ->
+            Modifier.fillMaxWidth().layout { measurable, constraints ->
                 // Web `.tv-media-track-scroll` adds 24px above and 80px below the card for focus shadows, then uses
                 // matching negative margins so the card origin and following-rail position do not move. Give the
                 // LazyRow that paint headroom while reporting the original outer height to its parent.
@@ -4362,9 +4362,12 @@ private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetE
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LibraryFilterLabel(title)
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The web box adds its 1 px border to the padding (6.4 + 1 px), where Compose draws the border inside.
+            val under = io.playarr.shared.designsystem.page.LocalParityUnder.current.takeIf { it != Color.Unspecified } ?: WebSurfaceStrong
+            val fieldFill = io.playarr.shared.designsystem.page.parityOver(WebSurfaceSoft, 0.64f, under)
             Column(
-                Modifier.fillMaxWidth().background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
-                    .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(6.4.dp),
+                Modifier.fillMaxWidth().parityBox("group", radius = 12f, background = fieldFill).background(WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp))
+                    .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(7.4.dp),
             ) {
                 FlowRow(
                     Modifier.fillMaxWidth(),
@@ -4392,6 +4395,7 @@ private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetE
                     }
                     Row(
                         Modifier.defaultMinSize(minWidth = 128.dp).weight(1f).focusRequester(triggerFocus).clip(RoundedCornerShape(10.dp))
+                            .parityBox("button", (if (chosen.isEmpty()) playarrString(PlayarrString.LibraryAnyLanguage) else playarrString(PlayarrString.LibraryAddLanguage)) + " \u2304", radius = 10f, background = fieldFill)
                             .clickable(role = Role.Button) { open = !open }.heightIn(min = 44.dp).padding(horizontal = 12.dp, vertical = 4.8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(7.2.dp),
@@ -4406,7 +4410,7 @@ private fun PhoneLanguageMultiSelect(title: String, entries: List<LanguageFacetE
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        Text("\u2304", color = WebInkSoft, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), modifier = Modifier.graphicsLayer { rotationZ = chevronRotation })
+                        Text("\u2304", color = WebInkMuted, fontSize = 8.96.sp, lineHeight = 13.44.sp, fontWeight = FontWeight(680), modifier = Modifier.graphicsLayer { rotationZ = chevronRotation })
                     }
                 }
             }
@@ -5074,6 +5078,7 @@ private fun PhoneSearchContent(
                 // Web `.tv-search-form:has(input:focus-visible)`: the page focus ring (3px, offset 2px; 2px, offset 3px on phones) on the pill,
                 // with no rose border, scale or deeper shadow.
                 var fieldFocused by remember { mutableStateOf(false) }
+                val searchFill = WebSurfaceStrong.copy(alpha = 0.88f).compositeOver(WebSurface)
                 WebShadowedBox(
                     shadows = listOf(WebShadow(18.dp, 52.dp, Color(0xFF1F0E14).copy(alpha = 0.12f))),
                     shape = pillShape,
@@ -5085,24 +5090,25 @@ private fun PhoneSearchContent(
                 Row(
                     // Web's 50px min-height grows to 60px from the 44px input plus 14px padding and 2px border.
                     Modifier.fillMaxWidth().height(60.dp)
+                        .parityBox("search", radius = 999f, background = searchFill)
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
                         .border(1.dp, WebSearchBorder, pillShape)
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 17.dp), // the web box adds its 1 px border to the padding
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(PlayarrWebIcons.Search, contentDescription = null, tint = PlayarrWebTheme.palette.phoneInkMuted, modifier = Modifier.size(18.dp))
+                    Icon(PlayarrWebIcons.Search, contentDescription = null, tint = PlayarrWebTheme.palette.phoneInkMuted, modifier = Modifier.size(18.dp).parityBox("image", background = searchFill))
                     Spacer(Modifier.width(8.dp))
                     androidx.compose.foundation.text.BasicTextField(
                         value = query,
                         onValueChange = onQueryChange,
-                        modifier = Modifier.weight(1f).onFocusChanged { fieldFocused = it.isFocused },
+                        modifier = Modifier.weight(1f).height(44.dp).parityBox("textbox", playarrString(PlayarrString.SearchPlaceholder), background = searchFill).onFocusChanged { fieldFocused = it.isFocused },
                         singleLine = true,
                         textStyle = androidx.compose.ui.text.TextStyle(fontFamily = webFontFamily, color = WebInk, fontSize = 16.sp, lineHeight = 24.sp),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(WebInk),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
                         decorationBox = { inner ->
-                            Box(contentAlignment = Alignment.CenterStart) {
+                            Box(Modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
                                 if (query.isEmpty()) {
                                     Text(playarrString(PlayarrString.SearchPlaceholder), color = PlayarrWebTheme.palette.phoneInkMuted, fontSize = 16.sp, lineHeight = 24.sp, maxLines = 1)
                                 }
@@ -5190,13 +5196,14 @@ private fun PhoneSearchContent(
 @Composable
 private fun PhoneSearchIdleState(modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        val idleFill = WebSurfaceStrong.copy(alpha = 0.54f).compositeOver(WebSurface)
         Box(
-            Modifier.size(86.dp)
+            Modifier.size(86.dp).parityBox("container", radius = 50f, background = idleFill)
                 .background(WebSurfaceStrong.copy(alpha = 0.54f), CircleShape)
                 .border(1.dp, if (webIsDark) Color(0xFFDFDCDD).copy(alpha = 0.115f) else Color(0xFF382621).copy(alpha = 0.14f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(Modifier.size(width = 34.dp, height = (34f * 32f / 48f).dp)) {
+            Canvas(Modifier.size(width = 34.dp, height = (34f * 32f / 48f).dp).parityBox("image", background = idleFill)) {
                 val pink = Color(0xFFCF3157)
                 val scale = size.width / 48f
                 val strokeWidth = 1.8f * scale
@@ -6681,12 +6688,11 @@ private fun PhoneVideoDetailBody(
     val synopsis = episode?.overview?.takeIf(String::isNotBlank)
         ?: work.overview?.takeIf(String::isNotBlank)
         ?: playarrString(if (episode == null) PlayarrString.DetailNoSynopsis else PlayarrString.DetailNoEpisodeSynopsis)
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        // Web: the copy block starts 375 px down (kicker top) and the page scrolls under the fixed key art.
-        contentPadding = PaddingValues(top = 351.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(), bottom = 112.dp),
-    ) {
-        item {
+    // Web: the copy block starts 375 px down (kicker top) and the page scrolls under the fixed key art. A plain scrolling column
+    // (two blocks, nothing to lazy-load) so the page surface has its real full height.
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+      Column(Modifier.fillMaxWidth().parityBox("container", background = WebSurface).padding(top = 351.dp + webPhoneInsets().asPaddingValues().calculateTopPadding(), bottom = 82.dp)) {
+        run {
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Text(
                     (episodeCode ?: work.genres.firstOrNull() ?: work.kind.playarrSingularLabel()).uppercase(language.locale),
@@ -6723,7 +6729,7 @@ private fun PhoneVideoDetailBody(
                         episode.title ?: playarrString(PlayarrString.DetailEpisodeNumber, "number" to episode.episodeNumber),
                         color = WebInkSoft, fontSize = 14.4.sp, lineHeight = 16.56.sp, fontWeight = FontWeight(570), letterSpacing = (-0.504).sp,
                         style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() }.parityText(background = WebSurface),
+                        modifier = Modifier.graphicsLayer { translationY = -1.15.dp.toPx() }.semantics { heading() }.parityText(background = WebSurface),
                     )
                 }
                 Spacer(Modifier.height(if (episode != null) 6.9.dp else 12.dp))
@@ -6755,9 +6761,9 @@ private fun PhoneVideoDetailBody(
                 )
             }
         }
-        item {
+        run {
             Column(
-                Modifier.padding(top = 30.33.dp).fillMaxWidth().then(if (webIsDark) Modifier.background(webRailSurfaceBrush()) else Modifier),
+                Modifier.padding(top = 30.33.dp).fillMaxWidth().parityBox("container", background = WebSurface).then(if (webIsDark) Modifier.background(webRailSurfaceBrush()) else Modifier),
             ) {
                 if (series != null) {
                     seasons.forEach { season ->
@@ -6819,6 +6825,7 @@ private fun PhoneVideoDetailBody(
                 if (similarWorks.isNotEmpty()) Box(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) { SimilarWorksRail(similarWorks, serverUrl, accessToken, onOpenWork) }
             }
         }
+    }
     }
 }
 

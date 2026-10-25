@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -112,6 +113,9 @@ internal fun PlayarrProfileAvatar(
     preference: ProfileAvatarPreference?,
     modifier: Modifier = Modifier,
     glyphSize: TextUnit = 36.sp,
+    artworkModifier: Modifier = Modifier,
+    /** The web plate's own border: the artwork's 86% is of the padding box inside it. */
+    artworkInset: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val resolved = resolvedPlayarrProfileAvatarPreference(userId, preference)
     val preset = profileAvatarPresetVisuals[resolved.value]
@@ -154,23 +158,25 @@ internal fun PlayarrProfileAvatar(
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                PresetArtwork(preset.artwork)
+                PresetArtwork(preset.artwork, artworkModifier, artworkInset)
             }
         } else {
-            PresetArtwork(preset.artwork)
+            PresetArtwork(preset.artwork, artworkModifier, artworkInset)
         }
     }
 }
 
 @Composable
-private fun PresetArtwork(@DrawableRes artwork: Int) {
+private fun PresetArtwork(@DrawableRes artwork: Int, modifier: Modifier = Modifier, inset: androidx.compose.ui.unit.Dp = 0.dp) {
     // Web `.profile-avatar > svg` is 86% of the plate.
-    Image(
-        painter = painterResource(artwork),
-        contentDescription = null,
-        modifier = Modifier.fillMaxSize(0.86f),
-        contentScale = ContentScale.Fit,
-    )
+    Box(Modifier.fillMaxSize().padding(inset), contentAlignment = Alignment.Center) {
+        Image(
+            painter = painterResource(artwork),
+            contentDescription = null,
+            modifier = modifier.fillMaxSize(0.86f),
+            contentScale = ContentScale.Fit,
+        )
+    }
 }
 
 /** Brand rose used by web profiles kicker / selection rings (`#cf3157`). */

@@ -4747,7 +4747,7 @@ internal fun phoneSettingsRowHeightPx(index: Int, density: Float): Float =
 /** Web mobile `.settings-options-list`: numbered rows 88 px tall, the first one drawn selected. */
 @Composable
 private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Unit) {
-    Box(Modifier.fillMaxSize().background(WebSurface)) {
+    Box(Modifier.fillMaxSize().background(WebSurface).parityBox("container", background = WebSurface)) {
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 83.4.dp, bottom = 116.dp),
@@ -4756,11 +4756,11 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
                 val active = index == 0
                 // Web numbers the sections by their place in the full list (an admin-only row leaves a gap: 07, 09).
                 val number = settingsSectionNumber(phoneSettingsIndex.indexOfFirst { it.first == candidate })
-                val rowLabel = number + " " + playarrString(candidate.label) + " " + playarrString(description)
+                val rowLabel = number + " " + playarrString(candidate.label) + " " + playarrString(description) + " →"
                 Row(
                     Modifier.fillMaxWidth().height(with(androidx.compose.ui.platform.LocalDensity.current) { phoneSettingsRowHeightPx(index, density).toDp() })
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
-                        .parityBox("link", rowLabel, 12f, background = if (active) WebSurfaceSoft else WebSurface)
+                        .parityBox("link", rowLabel, background = if (active) WebSurfaceSoft else WebSurface)
                         .clickable { onOpen(candidate) }
                         .padding(horizontal = 12.dp, vertical = 16.dp),
                 ) {
