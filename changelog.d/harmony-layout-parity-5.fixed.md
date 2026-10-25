@@ -1,0 +1,1 @@
+- HarmonyOS TV and phone: layout parity round 2. Cards, the page layers, the player chrome, drawers, the profile picker, the calendar and the detail pages follow the web boxes, radii, colours and tracking; the layout export reads the inspector's transformed boxes, one run per text line and the apps' own accessible names.

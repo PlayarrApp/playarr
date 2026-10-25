@@ -253,7 +253,7 @@ const OVERLAY_TEXT_SIZE_TOUCH: number = 15;
  * background or text would be a real bug, not just an inconsistency: a
  * LIGHT-mode ink colour rendered over this page's fixed-dark background
  * would have little or no contrast. */
-const PLAYER_BG: RgbaColor = { r: 8, g: 6, b: 8, a: 1 };
+const PLAYER_BG: RgbaColor = { r: 0, g: 0, b: 0, a: 1 }; // web's stage is pure black
 const PLAYER_TEXT_PRIMARY: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
 
 /** This page's own three states, distinct from `media.AVPlayerState`

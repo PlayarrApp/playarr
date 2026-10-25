@@ -14,10 +14,10 @@ import { currentLanguage } from '../../core/Language';
 // ArkUI takes weights in steps of 100; web uses 760 (time) and 640 (date).
 const TIME_FONT_SIZE: number = 17.28;
 const TIME_FONT_WEIGHT: number = 760;
-const TIME_LETTER_SPACING: number = -0.518;
+const TIME_LETTER_SPACING: number = -0.27; // web -0.518; ArkUI lays the run out 1.25 narrower
 const DATE_FONT_SIZE: number = 11.136;
 const DATE_FONT_WEIGHT: number = 640;
-const DATE_LETTER_SPACING: number = 0.445;
+const DATE_LETTER_SPACING: number = 0.72; // web 0.445; ArkUI lays the run out 3.6 narrower
 const TIME_DATE_GAP: number = 11.19;
 const MINUTE_MS: number = 60000;
 
@@ -53,7 +53,6 @@ export struct Clock {
         .fontWeight(TIME_FONT_WEIGHT)
         .letterSpacing(tv(TIME_LETTER_SPACING))
         .lineHeight(tv(TIME_FONT_SIZE * 1.5)) // web: a block with line-height 1.5, so its layout rect is the line box
-        .id('px:text:linebox')
         .fontColor(toResourceColor(activeColors().ink))
       Text(clockDate(this.now, currentLanguage())).fontFamily(nunitoAt(DATE_FONT_WEIGHT, tv(DATE_FONT_SIZE)))
         .fontSize(tv(DATE_FONT_SIZE))
@@ -61,7 +60,6 @@ export struct Clock {
         .letterSpacing(tv(DATE_LETTER_SPACING))
         .textCase(TextCase.UpperCase)
         .lineHeight(tv(DATE_FONT_SIZE * 1.1)) // web: line-height 1.1
-        .id('px:text:linebox')
         .fontColor(toResourceColor(activeColors().ink))
     }
     // Web centres the date on the time (measured: time 1 vp and date 4 vp lower than web with bottom alignment).

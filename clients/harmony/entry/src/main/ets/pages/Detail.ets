@@ -227,7 +227,7 @@ const PLAY_FOCUS_FILL: string = '#a52745';
 function brandInk(): ResourceColor {
   return resolvedThemeMode() === 'dark' ? toResourceColor(BRAND_PINK_SOFT) : '#821e36';
 }
-const PILL_GLYPH_DARK: string = '#ba8492'; // sampled from the dark static-server ref (anti-aliased thin glyph; refine if the colour reads off)
+const PILL_GLYPH_DARK: string = '#eaa6b6'; // sampled from the dark static-server ref (anti-aliased thin glyph; refine if the colour reads off)
 const TOUCH_SCROLL_ID: string = 'detail-touch-scroll';
 const TOUCH_SETTLE_ATTEMPTS: number = 12;
 /** Web phone series detail, next-up episode in the middle: the page scrolled by about this much (measured on the 360 vp reference). */
@@ -255,7 +255,7 @@ const RIGHT_COLUMN_Y: number = 543;
 const RIGHT_COLUMN_WIDTH: number = 1038;
 const RIGHT_COLUMN_HEIGHT: number = 537;
 const RIGHT_COLUMN_FADE: number = 50;
-const RIGHT_COLUMN_GAP: number = 77; // web: Cast heading at 904 under Chapters at 553
+const RIGHT_COLUMN_GAP: number = 75.6; // web: Cast heading at 904 under Chapters at 553
 const SERIES_COLUMN_TOP: number = 543; // static-server refs: the first season heading rests with the other details' right column (was 361, the scrolled old ref)
 const SERIES_COLUMN_BLEED: number = 12;
 const SERIES_COLUMN_HEIGHT: number = 537;
@@ -392,6 +392,8 @@ struct DetailRowArtworkCard {
   private posterCard(): void {
     PosterCard({
       variant: this.variant,
+      linkRadius: 12,
+      accessibleName: this.episodeCaption.length === 0 && this.episodeNumberOverlay.length === 0 ? 'Open ' + this.title : '',
       title: this.title,
       subtitle: this.subtitle,
       artwork: this.artworkStore.getArtwork(this.rowId),
@@ -732,7 +734,7 @@ function chapterTimeLabel(ms: number): string {
 /** One chapter card (web Chapters rail): "Chapter 01" (or the chapter's own title) under the card, its start time as the caption. */
 function chapterRow(chapter: MediaChapter, mediaFileId: string): DetailRow {
   const number = chapter.index < 9 ? '0' + (chapter.index + 1).toString() : (chapter.index + 1).toString();
-  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : tf('pages.workDetail.chapterNumber', 'Chapter {{number}}', { number: String(number) });
+  const title = chapter.title !== undefined && chapter.title !== null && chapter.title.length > 0 ? chapter.title : tf('pages.workDetail.chapterNumber', 'Chapter {{number}}', { number: String(chapter.index + 1) });
   const row: DetailRow = {
     id: 'chapter-' + chapter.index.toString(),
     title: title,
@@ -1865,10 +1867,12 @@ struct Detail {
       Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
+        .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
+        .translate({ y: primary ? 1.5 : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
         .maxLines(1)
     }
     .id(this.pillId(label, primary ? '' : glyph, primary))
@@ -1878,7 +1882,7 @@ struct Detail {
     .borderRadius(tv(PILL_HEIGHT / 2))
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .backgroundColor(primary ? (this.filmPlayFocused(primary) ? PLAY_FOCUS_FILL : toResourceColor(activeColors().ink)) : resolvedThemeMode() === 'dark' ? (this.isSeriesPage() ? toResourceColorWithAlpha(activeColors().ink, 0) : toResourceColorWithAlpha(activeColors().ink, PILL_FILL_ALPHA)) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    .backgroundColor(primary ? (this.filmPlayFocused(primary) ? PLAY_FOCUS_FILL : toResourceColor(activeColors().ink)) : resolvedThemeMode() === 'dark' ? toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64) : toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
     .shadow(this.pillShadow(primary))
     .border(this.filmPlayFocused(primary) ? { width: tv(2), color: resolvedThemeMode() === 'dark' ? toResourceColor(activeColors().bg) : '#ffffff' } : { width: 0 })
     .outline(this.filmPlayFocused(primary) ? { width: tv(3), color: resolvedThemeMode() === 'dark' ? '#ffffff' : toResourceColor(activeColors().ink), radius: tv(PILL_HEIGHT / 2) } : { width: 0 })
@@ -1917,7 +1921,7 @@ struct Detail {
   private tvSeriesActions(): void {
     Row({ space: tv(PILL_GAP) }) {
       if (this.resumePlan !== null && this.resumePlan.target !== undefined && this.resumePlan.target !== null) {
-        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(resumeButtonLabel(this.resumePlan), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
         if (this.resumePlan.action !== 'start') {
@@ -1951,11 +1955,11 @@ struct Detail {
           this.actionsOpen = true;
         })
         if (this.primaryMediaFileId !== null && this.detail !== null && this.detail.work.kind === 'movie') {
-          this.actionPill(t('pages.workDetail.playbackButtonLabel', 'Playback'), '\u2630', false, true, (): void => {
+          this.actionPill(t('pages.workDetail.playbackButtonLabel', 'Playback'), '\u2637', false, true, (): void => {
             this.optionsOpen = true;
           })
         }
-        this.actionPill(this.primaryLabel(), '\u25BA', true, this.primaryMediaFileId !== null, (): void => {
+        this.actionPill(this.primaryLabel(), '\u25B6', true, this.primaryMediaFileId !== null, (): void => {
           this.playPrimary();
         })
       }
@@ -2058,14 +2062,15 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 4) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 6.5) }) {
       Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
         .id('px:heading:' + heading)
         .letterSpacing((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) // web's rail heading tracking
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11)))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11))
+        .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
+      Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)))
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)) // web: 9.98 on the TV
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
@@ -2229,7 +2234,7 @@ struct Detail {
     Stack() {
       KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 65 })
 
-      Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 20 : 0)) }) {
+      Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 23.8 : 0)) }) {
         FeatureCopy({
           kicker: this.tvCopyKicker(),
           title: (this.detail !== null ? this.detail.work.title : ''),
@@ -2620,13 +2625,14 @@ struct Detail {
         })
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column() {
-            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunitoAt(900, 10.56))
+            Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunitoAt(820, 10.56))
               .fontSize(10.56)
               .height(16)
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
               .textCase(TextCase.UpperCase)
               .fontColor(brandInk())
+              .translate({ y: -1.1 }) // web's kicker box sits 1.1 higher
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
             Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunitoAt(560, 36))
               .id('px:heading:' + (this.detail !== null ? this.detail.work.title : ''))
@@ -2637,6 +2643,7 @@ struct Detail {
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
               .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
+              .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -4.9 : -3.2 }) // web's title box sits higher than ArkUI lays it out
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
                 .fontSize(14.4)
@@ -2644,19 +2651,24 @@ struct Detail {
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .id('px:heading:' + planEpisodeTitle(this.detail, this.resumePlan))
                 .maxLines(1)
+                .translate({ y: -1.85 })
                 .margin({ top: 5.7 })
             }
             this.touchMetaChips()
-            Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
-              .fontSize(11.52)
-              .fontColor(toResourceColor(activeColors().inkMuted))
-              .lineHeight(16.7)
-              .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
-              .maxLines(3)
-              // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
-              .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 : 0 })
-              .align(Alignment.TopStart) // the reserved lines sit below the text, which must not centre in them
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            Column() {
+              Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
+                .fontSize(11.52)
+                .fontColor(toResourceColor(activeColors().inkMuted))
+                .lineHeight(16.7)
+                .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
+                .maxLines(3)
+                // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+            .justifyContent(FlexAlign.Start)
+            .constraintSize({ minHeight: this.detail !== null && this.detail.work.kind === 'series' ? 50.1 + (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 0 }) // the reserved lines (and the margin above them) sit below the text
             Column() {
               this.touchActionRows()
             }
@@ -2735,6 +2747,7 @@ struct Detail {
           .textAlign(TextAlign.Center)
           .width(PHONE_BACK_SIZE)
           .height(PHONE_BACK_SIZE)
+          .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
           .borderRadius(PHONE_BACK_SIZE / 2)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -2748,6 +2761,7 @@ struct Detail {
           .letterSpacing(-0.972)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
+          .translate({ y: -1.2 }) // web's title box sits 1.2 higher
       }
       .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
       .alignItems(VerticalAlign.Center)

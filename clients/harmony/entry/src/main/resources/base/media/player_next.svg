@@ -1,0 +1,5 @@
+<!-- Player transport icon after the web player (NextIcon, white, 24 viewBox). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="#FFFFFF">
+  <rect x="17.1" y="5" width="2.4" height="14" rx="1" />
+  <path d="M4.5 5.5v13L15.8 12z" />
+</svg>

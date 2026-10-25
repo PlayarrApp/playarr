@@ -34,7 +34,7 @@ import { balanceTitle } from '../../core/TitleBalance';
 const KICKER_FONT_SIZE: number = 12.288;
 // ArkUI takes weights in steps of 100 (other values fall back to 400); web uses 860 and 560.
 const KICKER_FONT_WEIGHT: number = 900;
-const KICKER_LETTER_SPACING: number = KICKER_FONT_SIZE * 0.08;
+const KICKER_LETTER_SPACING: number = KICKER_FONT_SIZE * 0.08 + 0.46; // web 0.08em; ArkUI lays the run out about 4 narrower
 // Dark theme kicker pink on web; light theme keeps the brand pink.
 // Web `--brand-ink` in the light theme (#821e36).
 const KICKER_COLOR_LIGHT: RgbaColor = { r: 130, g: 30, b: 54, a: 1 };
@@ -52,7 +52,7 @@ const EPISODE_TITLE_FONT_WEIGHT: number = 600;
 const EPISODE_TITLE_LETTER_SPACING: number = EPISODE_TITLE_FONT_SIZE * -0.035;
 const EPISODE_TITLE_LINE_HEIGHT: number = EPISODE_TITLE_FONT_SIZE * 1.15;
 const EPISODE_TITLE_MAX_CHARS: number = 24;
-const EPISODE_TITLE_MARGIN_TOP: number = 12.4;
+const EPISODE_TITLE_MARGIN_TOP: number = 21.6;
 const EPISODE_META_MARGIN_TOP: number = 30;
 
 // Web `.tv-detail-meta`: 0.55vw chips, 0.85rem apart, the first one bolder and softer-ink, the rest muted.
@@ -68,7 +68,7 @@ const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
 const SYNOPSIS_MAX_WIDTH: number = 324;
 // Nunito renders ~2% wider than web's at this size, so lines break one word earlier; trim the tracking, not the column.
-const SYNOPSIS_LETTER_SPACING: number = -0.018; // fitted to the layout ref's run width (313.5 unspaced vs 312.6)
+const SYNOPSIS_LETTER_SPACING: number = 0.025; // fitted to the layout ref's run width (313.5 unspaced vs 312.6)
 const SYNOPSIS_MAX_LINES: number = 5;
 // Measured on the 2026-10-18 Library refs: 5 lines at a 21.7 pitch, about 334 wide for 50 characters.
 const LIBRARY_SYNOPSIS_FONT_SIZE: number = 13.82;
@@ -76,9 +76,9 @@ const LIBRARY_SYNOPSIS_LINE_HEIGHT: number = 21.7;
 const LIBRARY_SYNOPSIS_MAX_WIDTH: number = 345;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
-const GAP_KICKER_TITLE: number = 27.6; // web title content box starts 6.4 higher (line box 62 inside a 94 content area)
-const GAP_TITLE_META: number = 29.82;
-const GAP_META_SYNOPSIS: number = 19.58;
+const GAP_KICKER_TITLE: number = 26.3; // web title content box starts 6.4 higher (line box 62 inside a 94 content area)
+const GAP_TITLE_META: number = 31.0;
+const GAP_META_SYNOPSIS: number = 18.8;
 
 @Component
 export struct FeatureCopy {
@@ -190,6 +190,7 @@ export struct FeatureCopy {
           .lineHeight(tv(EPISODE_TITLE_LINE_HEIGHT))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
+          .id('px:heading:' + this.subtitle)
           .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) })
       }
 
@@ -202,6 +203,7 @@ export struct FeatureCopy {
                 .fontSize(tv(META_CHIP_FONT_SIZE))
                 .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
                 .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
+                .margin({ right: index === 0 ? -2.7 : 0 }) // ArkUI lays the bold first chip 2.7 wider than web's
             },
             (chip: string, index: number) => `${index}-${chip}`
           )
@@ -216,6 +218,7 @@ export struct FeatureCopy {
               Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE))
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
+                .letterSpacing(this.libraryCopy ? -0.14 : 0) // web's run is narrower than ArkUI lays it out
                 .fontColor(this.copyTextColor())
             },
             (run: string, index: number) => `${index}-${run}`
