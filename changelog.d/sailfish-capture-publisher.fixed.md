@@ -1,0 +1,2 @@
+- Add a one-command Sailfish capture publisher that attests the committed capture inputs and installed executable, validates the full PNG set, and withholds unaccepted layout JSON while retaining archived run JSON.
+- Use Qt text rendering for the two profile headings to make repeated Sailfish captures deterministic.
