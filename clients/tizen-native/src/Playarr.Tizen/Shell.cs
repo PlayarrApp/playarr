@@ -121,7 +121,7 @@ internal sealed class Shell : View
         var pv = new NavView { Item = new NavItem("profile", "Profile", "/profiles", "", 3), CentreY = 992.1f };
         pv.Item64.Size = new Size(64, 64); pv.Item64.CornerRadius = 16; pv.Item64.PositionX = Cx - 32 - RailX; pv.Item64.PositionY = pv.CentreY - 32 - 952.4f;
         pv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
-        _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 50 };
+        _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 10 };
         pv.Icon = null!;
         Sem.Tag(_avatarIcon, "container");
         pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);

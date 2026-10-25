@@ -26,7 +26,6 @@ internal sealed class ProfilesScreen : IPage
     {
         _env = env; _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
-        _root.BackgroundColor = Ui.C(_t.Bg);
         _root.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
         _root.Add(Ui.Text("Profiles", 0, 162, 10.368f, 800, _t.BrandInk, 1920, 15.552f, HorizontalAlignment.Center, upper: true, spacing: 1.35f));
         _root.Add(Sem.Tag(Ui.Text("Who’s watching?", 0, 184.8f, 80.64f, 500, _t.Ink, 1920, 76.6f, HorizontalAlignment.Center, spacing: -6.24f), "heading"));
@@ -152,7 +151,7 @@ internal sealed class ProfilesScreen : IPage
             box.Add(Ui.Icon("log-out", 17, 13, 18, _t.InkSoft));
             box.Add(Ui.Text(text, 42, 13.9f, 10.752f, 700, _t.InkSoft, w - 42, 16.128f));
         }
-        else if (text.Length > 0) { var tl = Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center); box.Add(y >= 900 ? Sem.Tag(tl, "button") : tl); }
+        else if (text.Length > 0) { var tl = Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center); box.Add(tl); }
         else box.Add(Ui.Icon("settings", 13, 13, 18, _t.Brand));
         var ring = Ring.Make(w, 44, 22, new Rgba(1, 1, 1)); ring.Show(false);
         box.Add(ring);

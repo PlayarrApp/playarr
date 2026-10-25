@@ -98,13 +98,12 @@ internal sealed class PlayerScreen : IPage
         AddIcon("volume", 1323.6f, 980, "audio", dim: false);
         AddIcon("captions", 1401.2f, 980, "subtitles", dim: false, select: OpenSubtitles);
         AddIcon("queue", 1478.8f, 980, "playlist", dim: false);
-        _qualityBadge = Ui.Text("HD", 1556.5f, 984.5f, 7.68f, 700, white, 28, 11.52f, spacing: 0.3f);
-        _qualityLabel = Ui.Text("Original", 1580.3f, 982.1f, 10.56f, 700, white, 138, 15.84f, spacing: 0.1f);
+        _qualityBadge = Ui.Text("HD", 22.1f, 22.5f, 7.68f, 700, white, 28, 11.52f, spacing: 0.3f);
+        _qualityLabel = Ui.Text("Original", 51.1f, 20.1f, 10.56f, 700, white, 138, 15.84f, spacing: 0.1f);
+        _qualityHost.Add(_qualityBadge); _qualityHost.Add(_qualityLabel); // web: the quality button holds its badge and label
         _controls.Add(_qualityHost);
-        _controls.Add(_qualityBadge);
-        _controls.Add(_qualityLabel);
-        _qualityRing = Ring.Make(180, 36, 18, new Rgba(1, 1, 1), themed: false); _qualityRing.PositionX = _qualityButtonX; _qualityRing.PositionY = 968; _qualityRing.Show(false); _controls.Add(_qualityRing);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(_qualityButtonX, 972, _qualityButtonWidth, 36), Label = "quality", Select = () => { }, Style = f => _qualityRing.Show(f) });
+        _qualityRing = Ring.Make(180, 56, 28, new Rgba(1, 1, 1), themed: false); _qualityRing.Show(false); _qualityHost.Add(_qualityRing);
+        _focus.Items.Add(new Focusable { Rect = () => new Box(_qualityButtonX, 962, _qualityButtonWidth, 56), Label = "quality", Select = () => { }, Style = f => _qualityRing.Show(f) });
         AddIcon("info", 1730.4f, 980, "info", dim: false);
         AddIcon("cast", 1808, 980, "play on another device", dim: false);
 
@@ -402,10 +401,7 @@ internal sealed class PlayerScreen : IPage
         // web: the button is 65.5 px wider than its label and ends at x 1694.8
         _qualityButtonWidth = 65.5f + labelW; _qualityButtonX = 1694.8f - _qualityButtonWidth;
         var shift = 0f;
-        _qualityRing.PositionX = _qualityButtonX;
-        _qualityRing.Size = new Size(_qualityButtonWidth + 10, 46);
-        _qualityBadge.PositionX = _qualityButtonX + 22.1f;
-        _qualityLabel.PositionX = _qualityButtonX + 51.1f;
+        _qualityRing.Size = new Size(_qualityButtonWidth, 56);
         Sem.Tag(_qualityHost, "button", "Quality: " + display.Label); _qualityHost.PositionX = _qualityButtonX; _qualityHost.Size = new Size(_qualityButtonWidth, 56);
         _qualityLabel.Size = new Size((Math.Max(138, measuredWidth) + 3) * Ui.TextScale, _qualityLabel.Size.Height); // label units are TextScale times design px
         _qualityLabel.Text = display.Label;

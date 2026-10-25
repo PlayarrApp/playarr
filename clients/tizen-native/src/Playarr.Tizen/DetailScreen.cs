@@ -38,6 +38,7 @@ internal sealed class DetailScreen : IPage
         _env = env; _t = env.Theme; _id = id;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         _keyArt = new KeyArt(env, armed: true);
         _root.Add(_keyArt.Root);
         

@@ -11,14 +11,14 @@ namespace Playarr.Tizen;
 internal sealed class AuthImage(IPlayarrApiClient api, CaptureWork work)
 {
     /// <summary>Adds the image at <paramref name="path"/> to <paramref name="parent"/> when it has downloaded.</summary>
-    public void Apply(View parent, string? path, float w, float h, float radius = 0)
+    public void Apply(View parent, string? path, float w, float h, float radius = 0, bool roundImage = false)
     {
         if (path is null) return;
         Track(async () =>
         {
             var file = await GetAsync(path).ConfigureAwait(false);
             if (file is null) return;
-            await OnUiAsync(() => { var img = Ui.Remote(file, w, h); if (radius > 0 && parent.ClippingMode != ClippingModeType.ClipChildren) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ });
+            await OnUiAsync(() => { var img = Ui.Remote(file, w, h); if (radius > 0 && (roundImage || parent.ClippingMode != ClippingModeType.ClipChildren)) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ });
         });
     }
 
