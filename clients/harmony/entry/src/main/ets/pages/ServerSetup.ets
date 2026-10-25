@@ -32,7 +32,7 @@
  * -- the app's sole entry/`loadContent` target is `pages/Index.ets`.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { getServerDirectory } from '../AppContainer';
 import { normaliseServerUrl } from '../core/Url';
 import { Spacing, Radii } from '../core/Tokens';
@@ -109,13 +109,13 @@ struct ServerSetup {
     NavDestination() {
       Column({ space: Spacing.lg }) {
         Text($r('app.string.server_setup_title')).fontFamily(nunitoAt(700, 26))
-          .fontSize(26)
+          .fontSize(26).lineHeight(webLineHeight(26)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
           .textAlign(TextAlign.Center)
 
         Text($r('app.string.server_setup_hint')).fontFamily(nunitoAt(400, 15))
-          .fontSize(15)
+          .fontSize(15).lineHeight(webLineHeight(15)).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .textAlign(TextAlign.Center)
           .width('100%')
@@ -142,7 +142,7 @@ struct ServerSetup {
 
         if (this.errorMessage.length > 0) {
           Text(this.errorMessage).fontFamily(nunitoAt(400, 13))
-            .fontSize(13)
+            .fontSize(13).lineHeight(webLineHeight(13)).halfLeading(true)
             .fontColor(toResourceColor(activeColors().danger))
             .textAlign(TextAlign.Center)
             .width('100%')

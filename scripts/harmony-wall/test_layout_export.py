@@ -7,7 +7,7 @@ def column(children, rect="[0.00, 0.00],[1080.00, 2340.00]", fill="#FF151315", *
 
 
 def run(start, end, l, t, r, b):
-    return {"start": start, "end": end, "tight": [{"l": l, "t": t, "r": r, "b": b}], "max": []}
+    return {"start": start, "end": end, "ascent": (b - t) * 0.8, "descent": (b - t) * 0.2, "top": t, "tight": [{"l": l, "t": t, "r": r, "b": b}], "max": []}
 
 
 def text(rect, content, runs, **attrs):

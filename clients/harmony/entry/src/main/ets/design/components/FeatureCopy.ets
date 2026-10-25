@@ -22,7 +22,7 @@
  */
 
 import { LengthMetrics } from '@kit.ArkUI';
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -163,7 +163,7 @@ export struct FeatureCopy {
     Column() {
       if (this.kicker.length > 0) {
         Text(this.kicker).fontFamily(nunitoAt(KICKER_FONT_WEIGHT, tv(KICKER_FONT_SIZE)))
-          .fontSize(tv(KICKER_FONT_SIZE))
+          .fontSize(tv(KICKER_FONT_SIZE)).lineHeight(webLineHeight(tv(KICKER_FONT_SIZE))).halfLeading(true)
           .fontWeight(KICKER_FONT_WEIGHT)
           .letterSpacing(tv(KICKER_LETTER_SPACING))
           .fontColor(this.kickerColor())
@@ -177,7 +177,7 @@ export struct FeatureCopy {
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
-          .lineHeight(tv(HERO_TITLE_LINE_HEIGHT))
+          .lineHeight(webLineHeight(tv(HERO_TITLE_FONT_SIZE))).lineSpacing(Math.max(0, (tv(HERO_TITLE_LINE_HEIGHT)) - webLineHeight(tv(HERO_TITLE_FONT_SIZE)))).halfLeading(true)
           .constraintSize({ maxWidth: tv(HERO_TITLE_MAX_WIDTH) })
           .fontColor(toResourceColor(activeColors().ink))
       }
@@ -187,7 +187,7 @@ export struct FeatureCopy {
           .fontSize(tv(EPISODE_TITLE_FONT_SIZE))
           .fontWeight(EPISODE_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(EPISODE_TITLE_LETTER_SPACING))
-          .lineHeight(tv(EPISODE_TITLE_LINE_HEIGHT))
+          .lineHeight(webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))).lineSpacing(Math.max(0, (tv(EPISODE_TITLE_LINE_HEIGHT)) - webLineHeight(tv(EPISODE_TITLE_FONT_SIZE)))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
           .id('px:heading:' + this.subtitle)
@@ -200,7 +200,7 @@ export struct FeatureCopy {
             this.metaChips,
             (chip: string, index: number) => {
               Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, tv(META_CHIP_FONT_SIZE)))
-                .fontSize(tv(META_CHIP_FONT_SIZE))
+                .fontSize(tv(META_CHIP_FONT_SIZE)).lineHeight(webLineHeight(tv(META_CHIP_FONT_SIZE))).halfLeading(true)
                 .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
                 .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
                 .margin({ right: index === 0 ? -2.7 : 0 }) // ArkUI lays the bold first chip 2.7 wider than web's
@@ -216,7 +216,7 @@ export struct FeatureCopy {
             this.metaRuns,
             (run: string) => {
               Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
-                .fontSize(tv(COPY_TEXT_FONT_SIZE))
+                .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
                 .letterSpacing(this.libraryCopy ? -0.14 : 0) // web's run is narrower than ArkUI lays it out
                 .fontColor(this.copyTextColor())
@@ -231,7 +231,7 @@ export struct FeatureCopy {
             this.metaLines,
             (line: string) => {
               Text(line).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
-                .fontSize(tv(COPY_TEXT_FONT_SIZE))
+                .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
                 .fontColor(this.copyTextColor())
             },
@@ -247,7 +247,7 @@ export struct FeatureCopy {
         Text(this.synopsis).fontFamily(nunitoAt((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
           .fontWeight((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
-          .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))
+          .lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).lineSpacing(Math.max(0, (tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT)) - webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))).halfLeading(true)
           .letterSpacing(tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24))
           .fontColor((this.libraryCopy || this.strongSynopsis) ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })

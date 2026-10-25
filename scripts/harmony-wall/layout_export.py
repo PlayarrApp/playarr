@@ -168,14 +168,13 @@ def export(tree, screen, theme, viewport, clock_pinned=False):
         weight, size = weight_of(a), num(a.get("fontSize"), 16.0)
         col = argb(a.get("fontColor")) or (0, 0, 0, 1.0)
         colour = hex_of(over(col, under))
-        for line in runs:  # one element per laid-out line: that line's text and the union of its glyph-run boxes
+        for line in runs:  # one element per laid-out line: its text, the glyph runs' horizontal extent and the line's own box
             boxes = line["tight"]
             line_text = " ".join(shown(content[line["start"]:line["end"]]).split())
             if not boxes or not line_text:
                 continue
-            l, t = min(b["l"] for b in boxes), min(b["t"] for b in boxes)
-            r, bt = max(b["r"] for b in boxes), max(b["b"] for b in boxes)
-            rect = (ox + l * k, oy + t * k, (r - l) * k, (bt - t) * k)
+            l, r = min(b["l"] for b in boxes), max(b["r"] for b in boxes)
+            rect = (ox + l * k, oy + line["top"] * k, (r - l) * k, (line["ascent"] + line["descent"]) * k)  # the line box: ascent above the baseline, descent below
             if visible(rect, clip):
                 emit(role, line_text, rect, under, clip, radius, colour, round(size * k, 2), weight, opacity)
 

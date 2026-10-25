@@ -105,7 +105,7 @@
  * `isApiOk` from `net/ApiResult.ets`.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { media } from '@kit.MediaKit';
@@ -1342,13 +1342,13 @@ struct Player {
           .color(toResourceColor(PLAYER_TEXT_PRIMARY))
       } else {
         Text(this.errorMessage).fontFamily(nunitoAt(400, this.overlayTextSize()))
-          .fontSize(this.overlayTextSize())
+          .fontSize(this.overlayTextSize()).lineHeight(webLineHeight(this.overlayTextSize())).halfLeading(true)
           .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
           .textAlign(TextAlign.Center)
           .padding({ left: Spacing.xl, right: Spacing.xl })
 
         Text('Retry').fontFamily(nunitoAt(700, this.overlayTextSize()))
-          .fontSize(this.overlayTextSize())
+          .fontSize(this.overlayTextSize()).lineHeight(webLineHeight(this.overlayTextSize())).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
           .padding({ left: Spacing.lg, right: Spacing.lg, top: Spacing.sm, bottom: Spacing.sm })
@@ -1458,7 +1458,7 @@ struct Player {
 
         if (this.phase === 'ready' && this.subtitleCueText.length > 0) {
           Text(this.subtitleCueText).fontFamily(nunitoAt(400, isTvMetrics() ? tv(SUBTITLE_FONT_SIZE) : SUBTITLE_FONT_SIZE))
-            .fontSize(isTvMetrics() ? tv(SUBTITLE_FONT_SIZE) : SUBTITLE_FONT_SIZE)
+            .fontSize(isTvMetrics() ? tv(SUBTITLE_FONT_SIZE) : SUBTITLE_FONT_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(SUBTITLE_FONT_SIZE) : SUBTITLE_FONT_SIZE)).halfLeading(true)
             .fontColor(toResourceColor(PLAYER_TEXT_PRIMARY))
             .textAlign(TextAlign.Center)
             .backgroundColor(toResourceColorWithAlpha(PLAYER_BG, 0.7))

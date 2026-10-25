@@ -65,7 +65,7 @@
  * on the topmost rail's own item content to target it explicitly.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -182,7 +182,7 @@ struct NavTile {
         .focusable(false)
 
       Text(this.item.label).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
-        .fontSize(tv(TvGeometry.navTileLabelSize))
+        .fontSize(tv(TvGeometry.navTileLabelSize)).lineHeight(webLineHeight(tv(TvGeometry.navTileLabelSize))).halfLeading(true)
         .fontWeight(TvGeometry.navTileLabelWeight)
         .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
         .fontColor(toResourceColor(this.contentColor()))
@@ -303,7 +303,7 @@ export struct NavRail {
         ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE), illustrationRatio: 1 })
           .focusable(false)
         Text(this.firstName()).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
-          .fontSize(tv(TvGeometry.navTileLabelSize))
+          .fontSize(tv(TvGeometry.navTileLabelSize)).lineHeight(webLineHeight(tv(TvGeometry.navTileLabelSize))).halfLeading(true)
           .fontWeight(TvGeometry.navTileLabelWeight)
           .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
           .fontColor(toResourceColor(activeColors().inkMuted))
@@ -338,7 +338,7 @@ export struct NavRail {
   @Builder
   private versionText(): void {
     Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
-      .fontSize(tv(8))
+      .fontSize(tv(8)).lineHeight(webLineHeight(tv(8))).halfLeading(true)
       .letterSpacing(1.36) // web's run is 30.73 wide
       .fontColor(toResourceColor(activeColors().ink))
       .width(NAV_GROUP_WIDTH)

@@ -91,7 +91,7 @@
  * `SPINNER_BORDER_WIDTH`.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { image } from '@kit.ImageKit';
 import { activeColors, resolvedThemeMode, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
@@ -453,7 +453,7 @@ export struct PosterCard {
         if (this.episodeNumberOverlay.length > 0) {
           Text(this.episodeNumberOverlay).fontFamily(nunitoAt(560, isTvMetrics() ? tv(19.2) : 13))
             .width(isTvMetrics() ? tv(24) : 16)
-            .fontSize(isTvMetrics() ? tv(19.2) : 13)
+            .fontSize(isTvMetrics() ? tv(19.2) : 13).lineHeight(webLineHeight(isTvMetrics() ? tv(19.2) : 13)).halfLeading(true)
             .fontWeight(600)
             .fontColor('#ffffff')
             .textAlign(TextAlign.End)
@@ -489,13 +489,13 @@ export struct PosterCard {
         // two text elements as web has them (the caption, then the title on the same baseline)
         Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) }) {
           Text(this.episodeCaption).fontFamily(nunitoAt(700, this.subtitleFontSize))
-            .fontSize(this.subtitleFontSize)
+            .fontSize(this.subtitleFontSize).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().inkMuted)))
             .maxLines(1)
             .translate({ y: -1 })
           Text(this.title).fontFamily(nunitoAt(this.softCaption || !isTvMetrics() ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize)) // phone: web's episode title is not bold
-            .fontSize(this.titleFontSize)
+            .fontSize(this.titleFontSize).lineHeight(webLineHeight(this.titleFontSize)).halfLeading(true)
             .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink)))
             .letterSpacing(tv(this.titleFontSize * -0.015))
@@ -510,7 +510,7 @@ export struct PosterCard {
       } else {
         Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
           .width(this.cardWidth)
-          .fontSize(this.titleFontSize)
+          .fontSize(this.titleFontSize).lineHeight(webLineHeight(this.titleFontSize)).halfLeading(true)
           .fontWeight(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT)
           .letterSpacing(this.titleFontSize * -0.0154 + 0.06) // web's caption tracking (fitted to the layout refs' run widths, TV and phone)
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().ink))
@@ -524,7 +524,7 @@ export struct PosterCard {
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {
         Text(this.subtitle).fontFamily(nunitoAt(400, this.subtitleFontSize))
           .width(this.cardWidth)
-          .fontSize(this.subtitleFontSize)
+          .fontSize(this.subtitleFontSize).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
           .fontWeight(FontWeight.Normal)
           .fontColor((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption || isTvMetrics() ? activeColors().inkMuted : activeColors().ink))
           .maxLines(1)

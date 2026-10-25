@@ -65,3 +65,10 @@ export function nunitoAt(weight: number, size: number): string {
   }
   return nunito(weight);
 }
+
+/** The line height that makes a Text line the same box a browser reports for the run: the font's content area, ascent
+ * (1.011 em) and descent (0.353 em) rounded separately as Chromium does. ArkUI otherwise lays Nunito Sans out with
+ * its own, shorter ascent and descent (1.172 em), so every line box would be 0.19 em short. Pair it with `halfLeading(true)`. */
+export function webLineHeight(size: number): number {
+  return Math.round(1.011 * size) + Math.round(0.353 * size);
+}

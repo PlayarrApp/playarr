@@ -8,7 +8,7 @@
  * profile) and Server connection (the address in use). The other web sections land with 13.10018's later steps.
  */
 
-import { nunito, arrowFont, nunitoAt } from '../design/Typography';
+import { nunito, arrowFont, nunitoAt, webLineHeight } from '../design/Typography';
 import { activeColors, setThemeModeSetting, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
@@ -292,19 +292,19 @@ export struct SettingsScreen {
   private sectionRow(section: SettingsSection): void {
     Stack({ alignContent: Alignment.TopStart }) {
       Text(section.number).fontFamily(nunitoAt(700, tv(NUMBER_SIZE)))
-        .fontSize(tv(NUMBER_SIZE))
+        .fontSize(tv(NUMBER_SIZE)).lineHeight(webLineHeight(tv(NUMBER_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .position({ x: tv(NUMBER_LEFT), y: tv(NUMBER_TOP) })
       Text(section.title).fontFamily(nunitoAt(480, tv(TITLE_SIZE)))
-        .fontSize(tv(TITLE_SIZE))
+        .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(TITLE_LETTER_SPACING))
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
         .position({ x: tv(TITLE_LEFT), y: -1.5 }) // web's title box sits 1.5 higher
       Text('→').fontFamily(arrowFont(400))
-        .fontSize(tv(ARROW_SIZE))
+        .fontSize(tv(ARROW_SIZE)).lineHeight(webLineHeight(tv(ARROW_SIZE))).halfLeading(true)
         .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
         .height(tv(ROW_HEIGHT))
         .position({ x: tv(section.id === this.openSection ? ARROW_LEFT : ARROW_LEFT - 5), y: -1.5 })
@@ -377,12 +377,12 @@ export struct SettingsScreen {
   @Builder
   private panelHeading(title: string, description: string): void {
     Text(title).fontFamily(nunitoAt(500, tv(26.4)))
-      .fontSize(tv(26.4))
+      .fontSize(tv(26.4)).lineHeight(webLineHeight(tv(26.4))).halfLeading(true)
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(-0.924))
       .fontColor(toResourceColor(activeColors().ink))
     Text(description).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
-      .fontSize(tv(PANEL_TEXT_SIZE))
+      .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
       .fontColor(toResourceColor(activeColors().inkSoft))
   }
 
@@ -430,10 +430,10 @@ export struct SettingsScreen {
           },
         })
         Text(this.audioStatusText()).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
-          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(this.audioStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
         Text('Quality and subtitle defaults are saved on this device. Audio language follows your profile.').fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
-          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkMuted))
       }
       .alignItems(HorizontalAlign.Start)
@@ -450,7 +450,7 @@ export struct SettingsScreen {
   private profileLockPanel(): void {
     Column({ space: tv(16) }) {
       Text(this.pinLocked ? t('settings.profileLock.replacePinLabel', 'Replace PIN') : t('settings.profileLock.newPinLabel', 'New PIN')).fontFamily(nunitoAt(700, tv(PANEL_TEXT_SIZE)))
-        .fontSize(tv(PANEL_TEXT_SIZE))
+        .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
       Row({ space: tv(12) }) {
@@ -468,7 +468,7 @@ export struct SettingsScreen {
             this.pinDraft = value;
           })
         Text(this.lockStatus === 'saving' ? t('settings.profileLock.saving', 'Saving…') : this.pinLocked ? t('settings.profileLock.replace', 'Replace') : t('settings.profileLock.setPin', 'Set PIN')).fontFamily(nunitoAt(700, tv(PANEL_TEXT_SIZE)))
-          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(this.pinDraft.length === 4 ? activeColors().bg : activeColors().inkMuted))
           .backgroundColor(this.pinDraft.length === 4 ? toResourceColor(activeColors().ink) : toResourceColorWithAlpha(activeColors().surfaceSoft, 0.64))
@@ -481,11 +481,11 @@ export struct SettingsScreen {
       }
       Row({ space: tv(16) }) {
         Text(this.lockStatusText()).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
-          .fontSize(tv(PANEL_TEXT_SIZE))
+          .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(this.lockStatus === 'error' ? activeColors().danger : activeColors().inkSoft))
         if (this.pinLocked) {
           Text('Remove PIN').fontFamily(nunitoAt(700, tv(PANEL_TEXT_SIZE)))
-            .fontSize(tv(PANEL_TEXT_SIZE))
+            .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
             .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceSoft, 0.64))
@@ -507,12 +507,12 @@ export struct SettingsScreen {
   private pendingPanel(): void {
     Column({ space: tv(16) }) {
       Text(this.sectionTitle()).fontFamily(nunitoAt(500, tv(26.4)))
-        .fontSize(tv(26.4))
+        .fontSize(tv(26.4)).lineHeight(webLineHeight(tv(26.4))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
       Text(sectionCopyOf(this.openSection)).fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
-        .fontSize(tv(PANEL_TEXT_SIZE))
+        .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
     .width(tv(this.panelWidth()))
@@ -549,12 +549,12 @@ export struct SettingsScreen {
   private serverPanel(): void {
     Column({ space: tv(16) }) {
       Text('Server connection').fontFamily(nunitoAt(500, tv(26.4)))
-        .fontSize(tv(26.4))
+        .fontSize(tv(26.4)).lineHeight(webLineHeight(tv(26.4))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .letterSpacing(tv(-0.924))
         .fontColor(toResourceColor(activeColors().ink))
       Text(getServerDirectory().getActiveBaseUrl() ?? 'No server connected.').fontFamily(nunitoAt(400, tv(PANEL_TEXT_SIZE)))
-        .fontSize(tv(PANEL_TEXT_SIZE))
+        .fontSize(tv(PANEL_TEXT_SIZE)).lineHeight(webLineHeight(tv(PANEL_TEXT_SIZE))).halfLeading(true)
         .fontColor(toResourceColor(activeColors().inkSoft))
     }
     .width(tv(this.panelWidth()))
@@ -639,19 +639,19 @@ export struct SettingsScreen {
             Text(section.number).fontFamily(nunitoAt(760, 8.96))
               .fontSize(8.96)
               .fontWeight(FontWeight.Bold)
-              .lineHeight(12)
+              .lineHeight(webLineHeight(8.96)).lineSpacing(Math.max(0, (12) - webLineHeight(8.96))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().ink))
               .position({ x: 12, y: 15.3 })
             Column({ space: 2.4 }) {
               Text(section.title).fontFamily(nunitoAt(480, 16))
                 .fontSize(16)
                 .fontWeight(FontWeight.Medium)
-                .lineHeight(22)
+                .lineHeight(webLineHeight(16)).lineSpacing(Math.max(0, (22) - webLineHeight(16))).halfLeading(true)
                 .letterSpacing(-0.54)
                 .fontColor(toResourceColor(activeColors().ink))
               Text(sectionCopyOf(section.id)).fontFamily(nunitoAt(400, 10.88))
                 .fontSize(10.88)
-                .lineHeight(15)
+                .lineHeight(webLineHeight(10.88)).lineSpacing(Math.max(0, (15) - webLineHeight(10.88))).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
             }
@@ -659,7 +659,7 @@ export struct SettingsScreen {
             .width(340) // web dump: the copy is not clipped and runs under the arrow
             .position({ x: 56, y: 22.9 })
             Text('→').fontFamily(arrowFont(400))
-              .fontSize(20.8)
+              .fontSize(20.8).lineHeight(webLineHeight(20.8)).halfLeading(true)
               .fontColor(toResourceColor(section.id === this.openSection ? activeColors().ink : activeColors().inkMuted))
               .height(88)
               .position({ x: section.id === this.openSection ? 300.2 : 295.2, y: -0.6 }) // web: the unselected rows' arrow sits 5 vp further left

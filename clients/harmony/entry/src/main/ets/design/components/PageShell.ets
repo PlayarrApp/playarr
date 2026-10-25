@@ -6,7 +6,7 @@
  * between pages.
  */
 
-import { nunito, arrowFont, nunitoAt } from '../Typography';
+import { nunito, arrowFont, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry } from '../Metrics';
@@ -117,7 +117,7 @@ export struct PageShell {
   @Builder
   private headerBack(): void {
     Text('←').fontFamily(arrowFont(720))
-      .fontSize(17.28) // web dump: 17.28, Liberation Sans bold
+      .fontSize(17.28).lineHeight(webLineHeight(17.28)).halfLeading(true) // web dump: 17.28, Liberation Sans bold
       .fontWeight(FontWeight.Normal)
       .fontColor(toResourceColor(activeColors().inkSoft))
       .textAlign(TextAlign.Center)
@@ -138,7 +138,7 @@ export struct PageShell {
   private headerTitle(): void {
     Text(this.title).fontFamily(nunitoAt(580, tv(TITLE_SIZE)))
       .id('px:heading:' + this.title)
-      .fontSize(tv(TITLE_SIZE))
+      .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(TITLE_LETTER_SPACING))
       .fontColor(toResourceColor(activeColors().ink))
@@ -149,7 +149,7 @@ export struct PageShell {
   @Builder
   private headerDetail(inline: boolean): void {
     Text(this.kicker).fontFamily(nunitoAt(700, tv(DETAIL_SIZE)))
-      .fontSize(tv(DETAIL_SIZE))
+      .fontSize(tv(DETAIL_SIZE)).lineHeight(webLineHeight(tv(DETAIL_SIZE))).halfLeading(true)
       .fontWeight(DETAIL_WEIGHT)
       .letterSpacing(tv(DETAIL_LETTER_SPACING))
       .textCase(TextCase.UpperCase)
@@ -250,7 +250,7 @@ export struct PageShell {
       Row({ space: 10 }) {
         if (this.showHeader) {
           Text('←').fontFamily(arrowFont(720))
-            .fontSize(12.8) // web dump: 12.8 / 720
+            .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true) // web dump: 12.8 / 720
             .fontWeight(FontWeight.Normal)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .textAlign(TextAlign.Center)
@@ -267,7 +267,7 @@ export struct PageShell {
           Column() {
             Text(this.title).fontFamily(nunitoAt(580, 21.6))
               .id('px:heading:' + this.title)
-              .fontSize(21.6) // web 1.35rem
+              .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true) // web 1.35rem
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-0.972) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))

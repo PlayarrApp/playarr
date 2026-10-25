@@ -144,7 +144,7 @@
  *   for brief literals with no home in `core/Tokens.ts`.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { isTvMetrics, tv, activeGeometry } from '../design/Metrics';
 import { TvGeometry, TouchGeometry, BRAND_PINK, Spacing } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
@@ -358,7 +358,7 @@ struct ChromeButton {
         Image(this.icon).width(this.iconSize).height(this.iconSize)
       } else {
         Text(this.label).fontFamily(nunitoAt(700, this.fontSize))
-          .fontSize(this.fontSize)
+          .fontSize(this.fontSize).lineHeight(webLineHeight(this.fontSize)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
           .maxLines(1)
@@ -625,7 +625,7 @@ export struct PlayerChrome {
         // web: the Minimise pill (glass, hairline) beside the round close button
         Row({ space: tv(10) }) {
           Image($r('app.media.player_minimize')).width(tv(20)).height(tv(20))
-          Text('Minimise').fontFamily(nunitoAt(700, tv(11.2))).fontSize(tv(11.2)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+          Text('Minimise').fontFamily(nunitoAt(700, tv(11.2))).fontSize(tv(11.2)).lineHeight(webLineHeight(tv(11.2))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
         }
         .width(tv(124))
         .height(tv(TV_CLOSE_SIZE))
@@ -692,10 +692,10 @@ export struct PlayerChrome {
           })
           this.tvSkip(false, this.canNext, this.onNext)
           if (this.isLive()) {
-            Text('LIVE').fontFamily(nunitoAt(700, tv(TV_TIME_FONT_SIZE))).fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
+            Text('LIVE').fontFamily(nunitoAt(700, tv(TV_TIME_FONT_SIZE))).fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           } else {
             Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
-              .fontSize(tv(TV_TIME_FONT_SIZE))
+              .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
               .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
@@ -706,8 +706,8 @@ export struct PlayerChrome {
           if (this.qualityLabel.length > 0) {
             // web: the HD badge and the negotiated quality's name, between the queue and info buttons
             Row({ space: tv(12) }) {
-              Text('HD').fontFamily(nunitoAt(700, tv(7.68))).fontSize(tv(7.68)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+              Text('HD').fontFamily(nunitoAt(700, tv(7.68))).fontSize(tv(7.68)).lineHeight(webLineHeight(tv(7.68))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).lineHeight(webLineHeight(tv(10.56))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
             }
             .width(tv(160.45))
             .height(tv(56))
@@ -797,7 +797,7 @@ export struct PlayerChrome {
         .id('px:slider:Seek')
         .position({ x: 12, y: 615.13 })
         Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
-          .fontSize(PHONE_TIME_FONT_SIZE)
+          .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
           .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           .textAlign(TextAlign.Center)
           .width(336)
@@ -829,8 +829,8 @@ export struct PlayerChrome {
       this.phoneButton('Subtitles: Off', $r('app.media.player_subtitles'), 20, this.onOpenTracks, false, 250, 674)
       this.phoneButton('Playlist: 1 item', $r('app.media.player_queue'), 20, (): void => {}, false, 296, 674)
       Row() {
-        Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-        Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).fontWeight(FontWeight.Bold)
+        Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+        Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true).fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(40.31).maxLines(3).textAlign(TextAlign.Center)
       }
       .width(44)
