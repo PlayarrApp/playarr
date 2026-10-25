@@ -8,7 +8,7 @@
  * profile) and Server connection (the address in use). The other web sections land with 13.10018's later steps.
  */
 
-import { nunito, arrowFont, nunitoAt, webLineHeight } from '../design/Typography';
+import { nunito, arrowFont, nunitoAt, webLineHeight, webLineSpacing } from '../design/Typography';
 import { activeColors, setThemeModeSetting, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { isTvMetrics, tv, TvGeometry } from '../design/Metrics';
@@ -639,19 +639,19 @@ export struct SettingsScreen {
             Text(section.number).fontFamily(nunitoAt(760, 8.96))
               .fontSize(8.96)
               .fontWeight(FontWeight.Bold)
-              .lineHeight(webLineHeight(8.96)).lineSpacing(Math.max(0, (12) - webLineHeight(8.96))).halfLeading(true)
+              .lineHeight(webLineHeight(8.96)).lineSpacing(webLineSpacing(12, 8.96)).halfLeading(true)
               .fontColor(toResourceColor(activeColors().ink))
               .position({ x: 12, y: 15.3 })
             Column({ space: 2.4 }) {
               Text(section.title).fontFamily(nunitoAt(480, 16))
                 .fontSize(16)
                 .fontWeight(FontWeight.Medium)
-                .lineHeight(webLineHeight(16)).lineSpacing(Math.max(0, (22) - webLineHeight(16))).halfLeading(true)
+                .lineHeight(webLineHeight(16)).lineSpacing(webLineSpacing(22, 16)).halfLeading(true)
                 .letterSpacing(-0.54)
                 .fontColor(toResourceColor(activeColors().ink))
               Text(sectionCopyOf(section.id)).fontFamily(nunitoAt(400, 10.88))
                 .fontSize(10.88)
-                .lineHeight(webLineHeight(10.88)).lineSpacing(Math.max(0, (15) - webLineHeight(10.88))).halfLeading(true)
+                .lineHeight(webLineHeight(10.88)).lineSpacing(webLineSpacing(15, 10.88)).halfLeading(true)
                 .fontColor(toResourceColor(activeColors().ink))
                 .maxLines(1)
             }

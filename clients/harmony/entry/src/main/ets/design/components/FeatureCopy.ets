@@ -22,7 +22,7 @@
  */
 
 import { LengthMetrics } from '@kit.ArkUI';
-import { nunito, nunitoAt, webLineHeight } from '../Typography';
+import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -177,7 +177,7 @@ export struct FeatureCopy {
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
-          .lineHeight(webLineHeight(tv(HERO_TITLE_FONT_SIZE))).lineSpacing(Math.max(0, (tv(HERO_TITLE_LINE_HEIGHT)) - webLineHeight(tv(HERO_TITLE_FONT_SIZE)))).halfLeading(true)
+          .lineHeight(webLineHeight(tv(HERO_TITLE_FONT_SIZE))).lineSpacing(webLineSpacing(tv(HERO_TITLE_LINE_HEIGHT), tv(HERO_TITLE_FONT_SIZE))).halfLeading(true)
           .constraintSize({ maxWidth: tv(HERO_TITLE_MAX_WIDTH) })
           .fontColor(toResourceColor(activeColors().ink))
       }
@@ -187,7 +187,7 @@ export struct FeatureCopy {
           .fontSize(tv(EPISODE_TITLE_FONT_SIZE))
           .fontWeight(EPISODE_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(EPISODE_TITLE_LETTER_SPACING))
-          .lineHeight(webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))).lineSpacing(Math.max(0, (tv(EPISODE_TITLE_LINE_HEIGHT)) - webLineHeight(tv(EPISODE_TITLE_FONT_SIZE)))).halfLeading(true)
+          .lineHeight(webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))).lineSpacing(webLineSpacing(tv(EPISODE_TITLE_LINE_HEIGHT), tv(EPISODE_TITLE_FONT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
           .id('px:heading:' + this.subtitle)
@@ -247,7 +247,7 @@ export struct FeatureCopy {
         Text(this.synopsis).fontFamily(nunitoAt((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
           .fontWeight((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
-          .lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).lineSpacing(Math.max(0, (tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT)) - webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))).halfLeading(true)
+          .lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).lineSpacing(webLineSpacing(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT), tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).halfLeading(true)
           .letterSpacing(tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24))
           .fontColor((this.libraryCopy || this.strongSynopsis) ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })

@@ -7,7 +7,7 @@
  */
 
 import { t } from '../core/Language';
-import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../design/Theme';
@@ -421,7 +421,7 @@ export struct SearchScreen {
       Text(t('pages.search.emptyPrompt', 'Find any available movie, series, artist or playlist.')).fontFamily(nunitoAt(400, tv(PROMPT_SIZE)))
         .fontSize(tv(PROMPT_SIZE))
         .fontColor(toResourceColor(activeColors().inkMuted))
-        .lineHeight(webLineHeight(tv(PROMPT_SIZE))).lineSpacing(Math.max(0, (tv(21.6)) - webLineHeight(tv(PROMPT_SIZE)))).halfLeading(true)
+        .lineHeight(webLineHeight(tv(PROMPT_SIZE))).lineSpacing(webLineSpacing(tv(21.6), tv(PROMPT_SIZE))).halfLeading(true)
         .width(tv(PROMPT_WIDTH))
         .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PROMPT_TOP) })
     }

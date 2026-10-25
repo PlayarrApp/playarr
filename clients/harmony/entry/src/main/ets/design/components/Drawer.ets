@@ -5,7 +5,7 @@
  */
 
 import { atLeast } from '../../core/SafeInsets';
-import { nunito, nunitoAt, webLineHeight } from '../Typography';
+import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -75,7 +75,7 @@ export struct Drawer {
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
             .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
-            .lineHeight(webLineHeight(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).lineSpacing(Math.max(0, (isTvMetrics() ? tv(57) : 0) - webLineHeight(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE))).halfLeading(true) // web: 1.5 line height, two-line titles keep a 57 px pitch
+            .lineHeight(webLineHeight(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).lineSpacing(webLineSpacing(isTvMetrics() ? tv(57) : 0, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).halfLeading(true) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
             .translate({ y: isTvMetrics() ? -2 : 0 }) // web's heading box sits 2 higher on the TV
             .id('px:heading:' + this.title)

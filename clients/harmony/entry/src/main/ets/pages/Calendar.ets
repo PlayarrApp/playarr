@@ -13,7 +13,7 @@ import { LengthMetrics } from '@kit.ArkUI';
 import { image } from '@kit.ImageKit';
 import { fetchWorkArtwork } from '../data/ArtworkRepository';
 import { t } from '../core/Language';
-import { nunito, arrowFont, nunitoAt, webLineHeight } from '../design/Typography';
+import { nunito, arrowFont, nunitoAt, webLineHeight, webLineSpacing } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import { ActionTile } from '../design/components/ActionTile';
 import { Drawer } from '../design/components/Drawer';
@@ -903,7 +903,7 @@ export struct ReleaseCalendar {
           Text(this.selected.overview).fontFamily(nunito(600))
             .fontSize(13.82)
             .fontWeight(FontWeight.Medium)
-            .lineHeight(webLineHeight(13.82)).lineSpacing(Math.max(0, (tv(OVERVIEW_LINE_HEIGHT)) - webLineHeight(13.82))).halfLeading(true)
+            .lineHeight(webLineHeight(13.82)).lineSpacing(webLineSpacing(tv(OVERVIEW_LINE_HEIGHT), 13.82)).halfLeading(true)
             .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.87))
             .constraintSize({ maxWidth: tv(OVERVIEW_WIDTH) })
             .maxLines(OVERVIEW_MAX_LINES)
@@ -1174,21 +1174,21 @@ export struct ReleaseCalendar {
         Text(item.title).fontFamily(nunitoAt(600, PHONE_ENTRY_TITLE_SIZE)) // web 640: the 610 instance is the nearest
           .fontSize(PHONE_ENTRY_TITLE_SIZE)
           .fontWeight(FontWeight.Medium)
-          .lineHeight(webLineHeight(PHONE_ENTRY_TITLE_SIZE)).lineSpacing(Math.max(0, (PHONE_LINE_TITLE) - webLineHeight(PHONE_ENTRY_TITLE_SIZE))).halfLeading(true)
+          .lineHeight(webLineHeight(PHONE_ENTRY_TITLE_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_TITLE, PHONE_ENTRY_TITLE_SIZE)).halfLeading(true)
           .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
           .fontColor(toResourceColor(activeColors().ink))
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, PHONE_ENTRY_TITLE_SIZE))
             .fontSize(PHONE_ENTRY_TITLE_SIZE)
-            .lineHeight(webLineHeight(PHONE_ENTRY_TITLE_SIZE)).lineSpacing(Math.max(0, (PHONE_LINE_TITLE) - webLineHeight(PHONE_ENTRY_TITLE_SIZE))).halfLeading(true)
+            .lineHeight(webLineHeight(PHONE_ENTRY_TITLE_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_TITLE, PHONE_ENTRY_TITLE_SIZE)).halfLeading(true)
             .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
             .fontColor(toResourceColor(activeColors().inkSoft))
         }
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(ENTRY_META_GAP), cross: LengthMetrics.vp(PHONE_WEEK_META_ROW_GAP) } }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(Math.max(0, (PHONE_LINE_META) - webLineHeight(PHONE_ENTRY_META_SIZE))).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(Math.max(0, (PHONE_LINE_META) - webLineHeight(PHONE_ENTRY_META_SIZE))).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(Math.max(0, (PHONE_LINE_META) - webLineHeight(PHONE_ENTRY_META_SIZE))).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
           }
           this.statusPill(itemPillTone(item, this.today))
         }

@@ -101,7 +101,7 @@
  */
 
 import { t, tf } from '../core/Language';
-import { nunito, nunitoAt, arrowFont, webLineHeight } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
@@ -2639,7 +2639,7 @@ struct Detail {
               .fontSize(36) // measured against the static refs
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-2.59) // web -0.072em (fitted to the refs' run width)
-              .lineHeight(webLineHeight(36)).lineSpacing(Math.max(0, (34) - webLineHeight(36))).halfLeading(true)
+              .lineHeight(webLineHeight(36)).lineSpacing(webLineSpacing(34, 36)).halfLeading(true)
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
               .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
@@ -2659,7 +2659,7 @@ struct Detail {
               Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
                 .fontSize(11.52)
                 .fontColor(toResourceColor(activeColors().inkMuted))
-                .lineHeight(webLineHeight(11.52)).lineSpacing(Math.max(0, (16.7) - webLineHeight(11.52))).halfLeading(true)
+                .lineHeight(webLineHeight(11.52)).lineSpacing(webLineSpacing(16.7, 11.52)).halfLeading(true)
                 .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
                 .maxLines(3)
                 // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
