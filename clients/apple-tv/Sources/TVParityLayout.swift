@@ -165,7 +165,26 @@ final class TVParityLayoutRegistry {
         }
         let top = items.values.map(\.layer).max() ?? 0
         let styled = order.compactMap { items[$0] }.filter { $0.layer == top && $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }
-        var raws = styled.map(measure)
+        // A wrapped paragraph is one element per line (as the web dump lists it): its lines are the greedy wrap of the measured
+        // font at the width the view was laid out in; each line takes an equal share of the view's height.
+        var raws: [[String: Any]] = []
+        for item in styled {
+            let single = measure(item)
+            if let text = item.text, item.size != nil, item.lines == nil, let w = single["width"] as? Double, w > item.rect.width + 0.5, item.role != "button" {
+                let lines = TVTextWrap.lines(text, weight: CGFloat(item.weight ?? 400), size: item.size ?? 12, kern: item.tracking, width: item.rect.width)
+                if lines.count > 1 {
+                    let pitch = item.rect.height / CGFloat(lines.count)
+                    for (index, line) in lines.enumerated() {
+                        var sub = item
+                        sub.text = line
+                        sub.rect = CGRect(x: item.rect.minX, y: item.rect.minY + pitch * CGFloat(index), width: item.rect.width, height: pitch)
+                        raws.append(measure(sub))
+                    }
+                    continue
+                }
+            }
+            raws.append(single)
+        }
         for var entry in accessibilityElements(onlyPresented: top > 0) where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
             entry.background = nil
             var raw = measure(entry); raw["source"] = "ax"; raws.append(raw)

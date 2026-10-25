@@ -1908,10 +1908,10 @@ struct TVLibraryKindView: View {
             // native 3479 vs SPA 4996).
             // Wraps like the web heading (max-width 9ch), one 62.2 pt line box per line.
             TVHeroTitle(title: work.title)
-                .padding(.top, 29)
+                .padding(.top, 27.4)
             // SPA `.tv-preview-meta`: year then genres with soft separator.
             previewMeta(work)
-                .padding(.top, 26)
+                .padding(.top, 27.6)
                 .task(id: work.id) {
                     let detail = try? await environment.apiClient.fetchWork(id: work.id)
                     previewRuntime = (work.id, TVWebFormat.runtime(ms: detail?.runtimeMs))
@@ -2014,7 +2014,7 @@ struct TVLibraryKindView: View {
         let rowGap: CGFloat = 28.5
         #else
         let padL: CGFloat = 0
-        let rowGap: CGFloat = 27
+        let rowGap: CGFloat = 27.9 // web row pitch 240.4
         #endif
         let gridWidth = size.width - 783.4 + padL
         let padR: CGFloat = 0
