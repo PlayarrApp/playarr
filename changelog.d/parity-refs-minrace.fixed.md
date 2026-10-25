@@ -1,0 +1,1 @@
+- Parity web ref capture waits for the film preview runtime before the shot, so Movies refs no longer flicker between two states.

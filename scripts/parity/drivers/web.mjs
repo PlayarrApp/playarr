@@ -324,6 +324,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       const r = i.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
     }).every((i) => { if (!i.complete && i.loading === "lazy") i.loading = "eager"; return i.complete && i.naturalWidth > 0; }), null, { timeout: 20000 })); // eager: a lazy image inside the viewport but clipped by a scroller never intersects, so never loads
+    // The film preview's runtime fills in when the focused item's detail lands (async prefetch); capture only after it did. Series and music have no runtime.
+    if (!/^\/(series|music)/.test(new URL(page.url()).pathname)) await labelled("film preview runtime", () => page.waitForFunction(() => !document.querySelector(".tv-library-preview") || !!document.querySelector("[data-detail-field=runtime]"), null, { timeout: 20000 }));
     await labelled("loading placeholders gone", () => page.waitForFunction(() => !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-loader, [class*=spinner], [role=progressbar], [aria-busy=true]"), null, { timeout: 20000 }));
     await drainApiErrors();
     assertNoApiErrors(apiErrors);
