@@ -313,7 +313,7 @@ fn start_pipeline(
         .build();
     // The web's gaps: 13 px under the scrubber, 6 px above the first control row.
     // The web's time row is the full 336 px wide, 16.88 px high, overlapping the scrubber's 44 px hit area by 6 px.
-    let times = gtk4::Box::builder().margin_bottom(12).height_request(17).build();
+    let times = gtk4::Box::builder().margin_bottom(4).height_request(17).build();
     times.set_margin_top(-6);
     let times_inner = gtk4::Box::builder()
         .spacing(6)
@@ -329,6 +329,7 @@ fn start_pipeline(
     );
     times_inner.append(&dur_label);
     times.append(&times_inner);
+    let times_inner_tick = times_inner.clone();
     let row1 = gtk4::Box::builder().spacing(2).halign(gtk4::Align::Center).build();
     for b in [&skip_back, &toggle, &skip_fwd, &mute] {
         row1.append(b);
@@ -589,6 +590,10 @@ fn start_pipeline(
             set_icon(&toggle, "p-play");
         }
         let pos = player.position_ms();
+        crate::layout::name(
+            &times_inner_tick,
+            &format!("{} / {}", super::detail::fmt_clock(pos), super::detail::fmt_clock(dur)),
+        );
         pos_label.set_label(&super::detail::fmt_clock(pos));
         dur_label.set_label(&super::detail::fmt_clock(dur));
         if dur > 0 {

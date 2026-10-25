@@ -37,12 +37,18 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
             .build(),
     );
     col.append(
-        &gtk4::Label::builder()
-            .label(desc)
-            .css_classes(["pa-pref-desc"])
-            .xalign(0.0)
-            .ellipsize(gtk4::pango::EllipsizeMode::End)
-            .max_width_chars(1)
+        // The web keeps the description on one line and clips it at the card edge; a scroller reports no minimum width.
+        &gtk4::ScrolledWindow::builder()
+            .child(
+                &gtk4::Label::builder()
+                    .label(desc)
+                    .css_classes(["pa-pref-desc"])
+                    .xalign(0.0)
+                    .build(),
+            )
+            .hscrollbar_policy(gtk4::PolicyType::External)
+            .vscrollbar_policy(gtk4::PolicyType::Never)
+            .propagate_natural_height(true)
             .hexpand(true)
             .build(),
     );

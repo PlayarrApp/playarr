@@ -761,7 +761,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, kind: &'static str, tit
 
 /// The web's view-switch glyphs (list, screen, cover) are three bordered boxes each: (count, width, height, gap) in css px,
 /// stacked for the list and side by side for the others.
-const VIEW_GLYPHS: [(i32, i32, i32, i32); 3] = [(3, 20, 2, 2), (3, 5, 4, 3), (3, 4, 13, 2)];
+const VIEW_GLYPHS: [(i32, i32, i32, i32); 3] = [(3, 20, 2, 2), (3, 5, 3, 3), (3, 4, 13, 2)];
 
 /// Glyph over label, the glyph following the tile's checked colour.
 fn view_tile_child(tile: &gtk4::ToggleButton, i: usize, name: &str) {
