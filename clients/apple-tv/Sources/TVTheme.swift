@@ -1060,8 +1060,12 @@ struct TVFloatingNav: View {
                 #if !os(tvOS)
                 guard ProcessInfo.processInfo.arguments.contains("-PlayarrSelectEntersPage") else { return }
                 #endif
-                try? await Task.sleep(for: .milliseconds(300))
-                if case .nav(tab) = externalFocus.wrappedValue { externalFocus.wrappedValue = .stage }
+                // The page may still be loading (no focusable card yet): ask again while focus is still on this tab, up to 3 s.
+                for _ in 0..<10 {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard selection == tab, case .nav = externalFocus.wrappedValue else { break }
+                    externalFocus.wrappedValue = .stage
+                }
             }
         } label: {
             VStack(spacing: 2.75) { // web: the label's top sits 22.75 pt below the icon's
