@@ -26,7 +26,7 @@ const CHOICE_GAP: number = 8;
 const TOUCH_DRAWER_SECTION_WIDTH: number = 320;
 const CHOICE_RADIUS: number = 12;
 const CHOICE_LABEL_SIZE: number = 10.56;
-const DESCRIPTION_SIZE: number = 13.824;
+const DESCRIPTION_SIZE: number = 13.12;
 const SECTION_GAP: number = 30;
 // Web phone drawer choices: 46.7 high, 11.5 type, sections 8 vp closer than the TV's.
 const TOUCH_CHOICE_HEIGHT: number = 48; // web: 144 px inactive; the selected choice is 1.025 scaled
@@ -56,6 +56,8 @@ export struct ChoiceSegments {
   @Prop large: boolean = false;
   /** Settings panels: one line of copy under the large heading (web `.appearance-setting-heading p`). */
   @Prop description: string = '';
+  /** Settings > Colour theme: web's buttons carry the lower-case value, the other settings their label. */
+  @Prop lowerLabels: boolean = false;
   @Prop sectionWidth: number = SECTION_WIDTH;
   onChoose: (value: string) => void = () => {};
 
@@ -85,15 +87,15 @@ export struct ChoiceSegments {
   private viewShapes(value: string): void {
     if (value === 'list') {
       Column({ space: 2 }) {
-        this.viewShape(20, 2)
-        this.viewShape(20, 2)
-        this.viewShape(20, 2)
+        this.viewShape(20, isTvMetrics() ? 2.94 : 2)
+        this.viewShape(20, isTvMetrics() ? 2.94 : 2)
+        this.viewShape(20, isTvMetrics() ? 2.94 : 2)
       }
     } else if (value === 'screen') {
       Row({ space: 2.06 }) {
-        this.viewShape(5.46, 3.86)
-        this.viewShape(5.46, 3.86)
-        this.viewShape(5.48, 3.86)
+        this.viewShape(5.46, isTvMetrics() ? 13.13 : 3.86)
+        this.viewShape(5.46, isTvMetrics() ? 13.13 : 3.86)
+        this.viewShape(5.48, isTvMetrics() ? 13.13 : 3.86)
       }
     } else {
       Row({ space: 2 }) {
@@ -105,7 +107,7 @@ export struct ChoiceSegments {
   }
 
   build() {
-    Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP) }) {
+    Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP + (isTvMetrics() ? 1.8 : 0)) }) {
       if (this.large) {
         Text(this.heading).fontFamily(nunitoAt(500, tv(LARGE_HEADING_SIZE)))
           .fontSize(tv(LARGE_HEADING_SIZE))
@@ -124,25 +126,25 @@ export struct ChoiceSegments {
         Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
           .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
           .fontWeight(FontWeight.Bold)
-          .letterSpacing(tv(HEADING_LETTER_SPACING))
+          .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.27))
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
-          .id(isTvMetrics() ? '' : 'px:heading:' + this.heading.toUpperCase())
+          .id('px:heading:' + this.heading.toUpperCase())
       }
       Row({ space: tv(CHOICE_GAP) }) {
         ForEach(this.choices, (choice: Choice) => {
-         if (!isTvMetrics() && choice.icon !== undefined && choice.icon.length > 0) {
+         if (choice.icon !== undefined && choice.icon.length > 0) {
           // phone View buttons: web draws three outlined bars (list, screen, cover) over a lower-case 900-weight word
-          Column({ space: 6.85 }) {
+          Column({ space: isTvMetrics() ? 7.4 : 6.85 }) {
             this.viewShapes(choice.value)
             Text(choice.label.toLowerCase()).fontFamily(nunito(900))
-              .fontSize(TOUCH_CHOICE_LABEL_SIZE)
+              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
           .id('px:button:' + choice.label)
           .width(tv(this.choiceWidth()))
-          .height(TOUCH_CHOICE_HEIGHT)
+          .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
           .justifyContent(FlexAlign.Center)
           .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
             toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
@@ -154,8 +156,8 @@ export struct ChoiceSegments {
             this.onChoose(choice.value);
           })
          } else {
-          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? (this.large ? choice.label.toLowerCase() : choice.label) : capitalWords(choice.label))).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CHOICE_LABEL_SIZE)) : nunito(680))
-            .id((isTvMetrics() && !this.large) || (choice.icon !== undefined && choice.icon.length > 0) ? '' : 'px:button:' + choice.label)
+          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + (isTvMetrics() ? (this.lowerLabels ? choice.label.toLowerCase() : choice.label) : capitalWords(choice.label))).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
+            .id('px:button:' + choice.label)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)

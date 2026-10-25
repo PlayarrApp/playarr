@@ -24,7 +24,7 @@ export function Preview({kicker, title, meta, metaContent, overview, children}: 
   return (
     <Box x={153.6} y={259.2} w={455} pointerEvents="box-none">
       {kicker ? (
-        <T size={12.288} weight={820} ls={0.983} color="#cf3157" upper lh={18.4} lines={1}>
+        <T size={12.288} weight={820} ls={0.983} color={colour.stageKicker} upper lh={18.4} lines={1}>
           {kicker}
         </T>
       ) : null}

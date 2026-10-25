@@ -26,6 +26,9 @@ export function assertCaptureState(state, expectedUsername, { player = false, de
   }
   if (state.screenContentReady !== true) throw new Error("iOS parity app has not reported screen content ready");
   if (player && state.directPlay !== true) throw new Error("iOS parity app did not confirm direct play for the pinned fixture");
+  if (player && (state.playerCapture?.position !== 2 || state.playerCapture?.paused !== true || state.playerCapture?.itemReady !== true)) {
+    throw new Error("iOS parity player is not ready and paused at exactly 2.000 seconds");
+  }
   if (deterministic) {
     if (state.animationsDisabled !== true) throw new Error("iOS parity app did not confirm SwiftUI animations are disabled");
     if (!fixedNow || !state.frozenNow || Date.parse(state.frozenNow) !== Date.parse(fixedNow)) throw new Error("iOS parity app did not confirm the requested fixed capture clock");
@@ -43,6 +46,39 @@ export function assertResetProfile(profiles, loginUserID, expectedUsername) {
 
 export function assertScreenshotFile(file) {
   if (!existsSync(file) || statSync(file).size < 20000) throw new Error("empty frame");
+}
+
+export function parseCaptureLayout(contents, { screen, theme, deterministic = false } = {}) {
+  let layout;
+  try { layout = JSON.parse(contents); }
+  catch { throw new Error("iOS parity layout export is not valid JSON"); }
+  const positive = (value) => Number.isFinite(value) && value > 0;
+  if (!layout || !positive(layout.viewport?.w) || !positive(layout.viewport?.h) || !positive(layout.viewport?.dpr)
+    || !Array.isArray(layout.elements) || layout.elements.length === 0
+    || layout.elements.some((element) => !element || typeof element.role !== "string" || !element.role
+      || !Number.isFinite(element.rect?.x) || !Number.isFinite(element.rect?.y)
+      || !positive(element.rect?.w) || !positive(element.rect?.h))) {
+    throw new Error("iOS parity layout export has no valid viewport or element geometry");
+  }
+  if (deterministic && layout.clockPinned !== true) throw new Error("iOS parity layout export did not confirm the fixed capture clock");
+  if ((layout.screen && layout.screen !== screen) || (layout.theme && layout.theme !== theme)) {
+    throw new Error("iOS parity layout export belongs to another screen or theme");
+  }
+  return { ...layout, screen, theme };
+}
+
+export async function captureStableScreen(capture, readLayout, options) {
+  let layout;
+  await captureStableFrame(async () => {
+    const frame = await capture();
+    layout = await readLayout();
+    // Both parts must settle together; equal PNGs alone do not prove the exported tree is current.
+    return Buffer.concat([
+      createHash("sha256").update(frame).digest(),
+      createHash("sha256").update(JSON.stringify(layout)).digest(),
+    ]);
+  }, options);
+  return layout;
 }
 
 function digestTree(path) {
@@ -312,29 +348,41 @@ export async function createDriver() {
         }
         if (!state().motionDone) throw new Error("iOS scripted Home motion timed out before completion");
       }
+      const layoutPath = join(dirname(statePath()), "parity-layout.json");
+      const readLayout = () => parseCaptureLayout(readFileSync(layoutPath, "utf8"), { screen: id, theme, deterministic: deterministicCapture });
+      // The app writes atomically after its tree settles. A missing export is a capture failure, never an optional sidecar.
+      for (let attempt = 0; !existsSync(layoutPath) && attempt < 30; attempt += 1) await sleep(1000);
+      if (!existsSync(layoutPath)) throw new Error(`iOS parity layout export missing for ${id} after 30 seconds`);
+      readLayout();
       const raw = device === "ipad" ? `${file}.raw.png` : file;
       // Wait for two byte-identical frames so the capture contains the settled screen.
       // A frame only counts while the app still reports the screen ready: a Home that reloads after the first ready
       // (frozen animations make the spinner look "stable") must not be captured as "Preparing your home...".
       const stillReady = async () => {
-        for (let t = 0; t < 120; t += 1) { if (state().screenContentReady === true) return; await sleep(500); }
+        for (let t = 0; t < 120; t += 1) {
+          const current = state();
+          if (current.failure) throw new Error(`iOS parity app failed: ${String(current.failure)}`);
+          if (current.screenContentReady === true) {
+            assertCaptureState(current, expectedUsername, { player: id === "player-controls", deterministic: deterministicCapture, fixedNow });
+            return;
+          }
+          await sleep(500);
+        }
         throw new Error(`iOS parity screen ${id} left the ready state and did not recover within 60 seconds`);
       };
-      await captureStableFrame(async () => {
+      const layout = await captureStableScreen(async () => {
         await stillReady();
         run("xcrun", ["simctl", "io", udid, "screenshot", "--type=png", raw]);
         await stillReady();
         return readFileSync(raw);
-      }, { attempts: 8, intervalMs: 4000, wait: sleep });
+      }, readLayout, { attempts: 8, intervalMs: 4000, wait: sleep });
       if (device === "ipad") { run("sips", ["-r", "90", raw, "--out", file]); rmSync(raw); } // the iPad frame is landscape
       assertScreenshotFile(file);
+      if (id === "player-controls") writeFileSync(`${file}.player-state.json`, JSON.stringify(state().playerCapture));
       // Layout export (docs/parity/LAYOUT.md): the app's own style values and frames, written beside the screenshot.
-      try {
-        const layout = JSON.parse(readFileSync(join(dirname(statePath()), "parity-layout.json"), "utf8"));
-        const dir = join(dirname(dirname(file)), "layout", theme);
-        run("mkdir", ["-p", dir]);
-        writeFileSync(join(dir, `${id}.json`), JSON.stringify({ screen: id, theme, ...layout, viewport: device === "ipad" ? { w: Math.max(layout.viewport.w, layout.viewport.h), h: Math.min(layout.viewport.w, layout.viewport.h), dpr: layout.viewport.dpr } : layout.viewport }));
-      } catch { /* a build without the exporter, or a screen that registers nothing */ }
+      const dir = join(dirname(dirname(file)), "layout", theme);
+      run("mkdir", ["-p", dir]);
+      writeFileSync(join(dir, `${id}.json`), JSON.stringify(layout));
       if (layoutDiagnostics) {
         const diagnostics = run("xcrun", ["simctl", "spawn", udid, "log", "show", "--info", "--start", launchedAt, "--style", "compact",
           "--predicate", 'eventMessage CONTAINS "PLAYARR_IOS_TITLE_LAYOUT_DIAGNOSTIC"']);

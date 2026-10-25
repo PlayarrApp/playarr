@@ -140,7 +140,6 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
     end if
     role = "inkMuted"
     if chosen then role = "bg"
-    pgMark(g, "button", name, bx, by, bw, bh, 12, bg)
     for i = 0 to 2
         if kind = "list"
             ux = x + 32
@@ -161,7 +160,6 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
         gx = cx + s * (ux - cx)
         gy = cy + s * (uy - cy)
         pgRound(g, gx, gy, uw * s, uh * s, 1, role)
-        pgMark(g, "container", "", gx, gy, uw * s, uh * s, 1, bg)
     end for
     tw = 18.8
     if kind = "screen" then tw = 34.5
@@ -171,8 +169,6 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
     tgx = cx + s * (tx - cx)
     tgy = cy + s * (ty - cy)
     l = pgLabel(g, tgx, tgy, tw * s + 4, 15 * s, LCase(name), 10.56 * s, 900, role, { fitWidth: tw * s })
-    l.addFields({ parityHidden: true })
-    pgMarkText(g, LCase(name), tgx, tgy, tw * s, 15 * s, 10.56, 900, role, bg, "text", 0)
     m.filtersFocus.Push({ row: 0, col: col, x: x, y: 189.8, w: 84, h: 56 })
 end sub
 
@@ -198,8 +194,6 @@ sub filtersChoice(g as Object, x as Float, y as Float, w as Float, text as Strin
     tx = cx - tw * s / 2
     ty = y + 20.4 - 7.5 * (s - 1)
     l = pgLabel(g, tx, ty, tw * s + 4, 15 * s, text, 10.56 * s, 680, role, { fitWidth: tw * s })
-    l.addFields({ parityHidden: true })
-    pgMarkText(g, text, tx, ty, tw * s, 15 * s, 10.56, 680, role, bg, "button", 12)
     m.filtersFocus.Push({ row: row, col: col, x: x, y: y, w: w, h: 56 })
 end sub
 
@@ -221,14 +215,9 @@ sub filtersSelect(g as Object, y as Float, text as String, row as Integer)
     tok = "c:2b252a:eae8e9"
     pgRound(g, 1606, y, 268, 58.8, 12, "surfaceSoft", 170)
     pgRound(g, 1606, y, 268, 58.8, 12, "line", -1, true)
-    pgMark(g, "group", "", 1606, y, 268, 58.8, 12, tok)
-    pgMark(g, "button", text + " ⌄", 1613.4, y + 7.4, 253.2, 44, 10, tok)
     tw = PlayarrTextWidth(text, 11.84, 680, 0)
     l = pgLabel(g, 1625.4, y + 20.5, 215, 16, text, 11.84, 680, "ink", { maxLines: 1 })
-    l.addFields({ parityHidden: true })
-    pgMarkText(g, text, 1625.4, y + 20.5, tw, 16, 11.84, 680, "ink", tok, "text", 0)
     pgIcon(g, 1844, y + 22, 14, "chevron-down.png", "inkSoft")
-    pgMarkText(g, "⌄", 1844.7, y + 20.5, 9.9, 16, 11.84, 680, "inkMuted", tok, "text", 0)
     m.filtersFocus.Push({ row: row, col: 0, x: 1606, y: y, w: 268, h: 58.8 })
 end sub
 

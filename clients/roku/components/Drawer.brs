@@ -6,14 +6,11 @@
 ' dialogBg is the web's composited panel colour for this drawer ("c:<dark>:<light>").
 sub drawerChrome(g as Object, kicker as String, title as String, dialogBg as String, closeName as String, titleLines = 1 as Integer)
     pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
-    pgMark(g, "dialog", "", 1560, 0, 360, 1080, 0, dialogBg)
     pgLabel(g, 1606, 54, 190, 13, UCase(kicker), 9.6, 720, "inkMuted", { tracking: 0.669 })
     tt = pgTrackedText(g, 1606, 73.6, 214, title, 38.4, 590, -2.113, "ink", false, "left", 2, 57.6)
     pgRound(g, 1826, 54, 48, 50, 25, "surfaceSoft")
     pgRound(g, 1826, 54, 48, 50, 25, "line", -1, true)
     pgIcon(g, 1839, 67, 24, "player-close.png", "ink")
-    pgMark(g, "button", closeName, 1826, 54, 48, 50, 50, "surfaceSoft")
-    pgMarkText(g, "×", 1841.9, 60.8, 16.1, 36, 26.88, 720, "ink", "surfaceSoft", "text", 0)
 end sub
 
 sub drawerOpen(kicker as String, title as String, items as Object, returnTo as String)
@@ -57,8 +54,6 @@ sub drawerOpen(kicker as String, title as String, items as Object, returnTo as S
         if glyph = "+" then glyph = "＋"
         if glyph = "＋" then gw = 19.5
         if glyph = "○" then gw = 11.8
-        pgMark(g, "button", glyph + " " + items[i].label, 1606, y, 268, 68, 14, "surfaceSoft")
-        pgMarkText(g, glyph, 1624, y + 20.4, gw, 27, 19.52, 400, "brand", "surfaceSoft", "text", 0)
         ring = CreateObject("roSGNode", "Group")
         pgRound(ring, 1603, y - 3, 274, 74, 16, "focusRing", -1, true)
         pgRound(ring, 1604, y - 2, 272, 72, 15, "focusRing", -1, true)

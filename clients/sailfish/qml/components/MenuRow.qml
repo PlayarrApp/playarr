@@ -19,7 +19,7 @@ MouseArea {
         anchors.verticalCenter: parent.verticalCenter
         text: parent.selected ? "✓" : ""
         color: Tokens.brandPinkSoft
-        font.pixelSize: 16 * Tokens.u
+        font.pixelSize: Tokens.fs(16)
     }
     Label { renderType: Text.NativeRendering;
         anchors { left: check.right; right: parent.right; verticalCenter: parent.verticalCenter }
@@ -27,6 +27,6 @@ MouseArea {
         elide: Text.ElideRight
         color: Tokens.ink
         font.family: Tokens.family
-        font.pixelSize: 16 * Tokens.u
+        font.pixelSize: Tokens.fs(16)
     }
 }

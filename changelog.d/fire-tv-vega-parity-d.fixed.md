@@ -1,0 +1,1 @@
+- Fire TV (Vega): Home and detail pages fade their bottom edge as the web does, the Search idle page shows the web's hint and empty-state disc, and the drawer title wraps at the web's width (parity).

@@ -320,6 +320,7 @@ export struct SettingsScreen {
       choices: themeChoices(),
       selected: this.themeSetting,
       large: true,
+      lowerLabels: true,
       sectionWidth: this.panelWidth(),
       onChoose: (value: string) => {
         setThemeModeSetting(value as ThemeModeSetting);
@@ -361,7 +362,7 @@ export struct SettingsScreen {
       .width(tv(this.panelWidth()))
       .strokeWidth(1)
       .color(toResourceColorWithAlpha(activeColors().ink, 0.083))
-      .margin({ bottom: tv(34) }) // web: 41 px from the rule to the next heading
+      .margin({ bottom: tv(34 + 1.77) }) // web: 41 px from the rule to the next heading
   }
 
   @Builder

@@ -103,7 +103,7 @@ export struct AlphabetRail {
         .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
         .textAlign(TextAlign.Center)
         .fontSize(tv(LETTER_SIZE))
-        .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkSoft))
+        .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
         .backgroundColor(letter === this.activeLetter ? toResourceColorWithAlpha(activeColors().ink, 0.78) : Color.Transparent)
         .borderRadius(tv(TV_DISC / 2))
         .translate({ y: -tv(1.5) })

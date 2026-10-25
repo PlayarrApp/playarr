@@ -233,7 +233,7 @@ public final class PlayerViewModel {
             await applyTrackDefaults(defaults)
             duration = engine.duration > 0 ? engine.duration : Double(info.durationMS) / 1_000
             // A recovered session keeps the viewer's play state: a paused player stays paused.
-            if !startPaused { engine.play() }
+            if startPaused { engine.pause() } else { engine.play() }
             loadState = .playing
             if resumeAtSeconds == nil { sessionRecoveries = 0 }
             if let sessionID = info.sessionID {

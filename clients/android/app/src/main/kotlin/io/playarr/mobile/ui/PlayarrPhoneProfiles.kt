@@ -69,7 +69,7 @@ internal fun BoxScope.PhoneProfilesChrome() {
             painter = painterResource(R.drawable.playarr_mark),
             contentDescription = "Playarr",
             tint = Color.Unspecified,
-            modifier = Modifier.size(30.dp),
+            modifier = Modifier.size(30.dp).parityBox("image", background = WebBackground),
         )
     }
     Row(
@@ -140,12 +140,13 @@ internal fun PhoneProfileChoice(
                         scaleY = 1.045f
                     }
                 }
-                .clickable(enabled = enabled, onClick = onClick),
+                .parityBox("button", avatarDescription, background = WebBackground)
+                .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.8.dp),
         ) {
             PhoneProfileAvatarPlate(selected, Modifier.semantics { contentDescription = avatarDescription }) {
-                PlayarrProfileAvatar(userId = profile.id, preference = avatar, modifier = Modifier.fillMaxSize().parityBox("image", background = WebBackground))
+                PlayarrProfileAvatar(userId = profile.id, preference = avatar, modifier = Modifier.fillMaxSize().parityBox("container", radius = 50f, background = WebBackground), artworkModifier = Modifier.parityBox("image", background = WebBackground), artworkInset = 1.dp)
             }
             Text(
                 profile.displayName,
@@ -166,7 +167,7 @@ internal fun PhoneProfileChoice(
                 letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp).parityText(background = WebBackground),
             )
         }
-        if (selected) {
+        if (selected) androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
             Row(
                 Modifier.padding(top = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.8.dp),
@@ -184,7 +185,7 @@ internal fun PhoneProfileChoice(
                         modifier = Modifier.height(44.dp).parityBox("button", "Sign out ${profile.displayName}", 999f, background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)),
                     ) {
                         Row(
-                            Modifier.padding(horizontal = 16.dp),
+                            Modifier.padding(horizontal = 17.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(7.2.dp),
                         ) {
@@ -216,12 +217,13 @@ internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus:
                         scaleY = 1.045f
                     }
                 }
-                .clickable(enabled = enabled, onClick = onClick),
+                .parityBox("button", "+ ${playarrString(PlayarrString.ProfilesSignIn)} ${playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale)}", background = WebBackground)
+                .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.8.dp),
         ) {
             PhoneProfileAvatarPlate(selected, Modifier, dashed = true) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().parityBox("container", radius = 50f, background = WebBackground), contentAlignment = Alignment.Center) {
                     Text("+", color = WebInkSoft, fontSize = 38.4.sp, lineHeight = 57.6.sp, fontWeight = FontWeight(300), style = WebTextStyle, modifier = Modifier.parityText(background = WebBackground))
                 }
             }
@@ -306,7 +308,7 @@ private fun Color.mix(other: Color, fraction: Float): Color = androidx.compose.u
 
 /** `.profile-clients-link`: the glass pill bottom right. */
 @Composable
-internal fun BoxScope.PhoneProfilesClientsLink(onClick: () -> Unit) {
+internal fun BoxScope.PhoneProfilesClientsLink(onClick: () -> Unit) = androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
     Surface(
         onClick = onClick, shape = CircleShape,
         color = WebSurfaceStrong.copy(alpha = 0.72f), border = BorderStroke(1.dp, WebPillBorder),

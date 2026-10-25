@@ -41,14 +41,14 @@ PlayarrPage {
             text: page.profile.name
             color: Tokens.ink
             font.family: Tokens.family
-            font.pixelSize: 24 * Tokens.u
+            font.pixelSize: Tokens.fs(24)
         }
         Label { renderType: Text.NativeRendering;
             anchors.horizontalCenter: parent.horizontalCenter
             text: qsTr("Enter the profile PIN")
             color: Tokens.inkSoft
             font.family: Tokens.family
-            font.pixelSize: 15 * Tokens.u
+            font.pixelSize: Tokens.fs(15)
         }
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -69,7 +69,7 @@ PlayarrPage {
             text: page.message
             color: Tokens.danger
             font.family: Tokens.family
-            font.pixelSize: 14 * Tokens.u
+            font.pixelSize: Tokens.fs(14)
         }
         Grid {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -88,7 +88,7 @@ PlayarrPage {
                         border.width: 1; border.color: Tokens.line
                         opacity: parent.pressed ? 0.6 : 1
                     }
-                    Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: 28 * Tokens.u }
+                    Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(28) }
                 }
             }
         }

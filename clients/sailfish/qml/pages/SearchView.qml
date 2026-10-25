@@ -30,31 +30,30 @@ Item {
     }
 
     PageTitle { id: head; y: 4 * Tokens.u; title: qsTr("Search"); onBackClicked: root.goHome() }
-    // Web's search field: a white pill with a hairline border, a soft shadow and the focus ring at rest (global.css search input).
+    // Web's search field: a white pill with a hairline border and a soft shadow (global.css search input); the static touch refs show no focus ring at rest.
     Item {
         id: field
         property alias text: input.text
-        x: Tokens.pad; y: 89.4 * Tokens.u
-        width: parent.width - 2 * Tokens.pad; height: 60.4 * Tokens.u
-        RectangularGlow {   // web card shadow under the field
-            y: 10 * Tokens.u; width: parent.width; height: parent.height
-            glowRadius: 10 * Tokens.u; spread: 0.1; cornerRadius: height / 2 + glowRadius
-            color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, Tokens.dark ? 0.3 : 0.14)
+        x: Tokens.pad; y: 90 * Tokens.u
+        width: parent.width - 2 * Tokens.pad; height: 60 * Tokens.u
+        RectangularGlow {   // web card shadow under the field: a wide, low soft shadow
+            y: 22 * Tokens.u; width: parent.width; height: parent.height
+            glowRadius: 26 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius
+            color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, Tokens.dark ? 0.3 : 0.16)
         }
-        Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: Tokens.lineStrong }
-        Rectangle {   // rest focus ring: 2 px, 3 css px off the box (mobile web), ink in light and white in dark
-            anchors { fill: parent; margins: -4 * Tokens.u }
-            radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.dark ? "#ffffff" : Tokens.ink
-        }
-        Image { x: 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; width: 14 * Tokens.u; height: width; sourceSize: Qt.size(48, 48); source: NavIcons.url("search", Tokens.ink) }
+        Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: Tokens.lineStrong; property string parityRole: "search" }
+        Image { x: 17 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; width: 17.5 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("search", Tokens.ink) }
         TextInput {
             id: input
             property bool navigationFocusable: true
             property bool navigationInitialFocus: true
             property bool navigationNavUp: true
             property string parityLabel: input.text || qsTr("Search")
-            anchors { left: parent.left; leftMargin: 42 * Tokens.u; right: parent.right; rightMargin: 18 * Tokens.u; verticalCenter: parent.verticalCenter }
-            color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family; font.pixelSize: 13.2 * Tokens.u
+            property string a11yName: qsTr("Search your libraries and playlists")
+            property string parityRole: "textbox"
+            height: 44 * Tokens.u; verticalAlignment: TextInput.AlignVCenter
+            anchors { left: parent.left; leftMargin: 43 * Tokens.u; right: parent.right; rightMargin: 17 * Tokens.u; verticalCenter: parent.verticalCenter }
+            color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(16.6)
             inputMethodHints: Qt.ImhNoPredictiveText
             // D-pad focus rests on the field without the on-screen keyboard or a caret; Enter or a tap starts editing.
             property bool editing: false
@@ -69,6 +68,47 @@ Item {
             EnterKey.onClicked: focus = false
             onTextChanged: debounce.restart()
             Label { renderType: Text.NativeRendering; visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
+        }
+    }
+    MouseArea {   // web: the Filters button at the end of the header row, as on the library pages
+        id: filterBtn
+        anchors { right: parent.right; rightMargin: Tokens.pad; top: parent.top; topMargin: 14 * Tokens.u }
+        width: 44 * Tokens.u; height: width
+        property string a11yName: qsTr("Filters")
+        property real focusRadius: 14 * Tokens.u
+        onClicked: pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
+        Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
+        Image { anchors.centerIn: parent; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("filter", Qt.rgba(Tokens.ink.r * 0.8 + Tokens.bg.r * 0.2, Tokens.ink.g * 0.8 + Tokens.bg.g * 0.2, Tokens.ink.b * 0.8 + Tokens.bg.b * 0.2, 1)) }
+    }
+    // Web TvEmptyState (graphic search, "Start typing to search."): a round plate with the magnifier-minus drawing and the title beside it.
+    Item {
+        id: idle
+        visible: root.works.length === 0 && !root.busy && field.text.trim().length < 2
+        x: Tokens.pad; y: field.y + field.height + 20 * Tokens.u
+        width: parent.width - 2 * Tokens.pad; height: 86 * Tokens.u
+        Rectangle {
+            id: plate
+            width: 86 * Tokens.u; height: width; radius: width / 2
+            color: Qt.rgba(Tokens.surfaceStrong.r, Tokens.surfaceStrong.g, Tokens.surfaceStrong.b, 0.54)
+            border.width: 1; border.color: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.5)
+            Canvas {
+                // the web's 48 x 32 viewBox drawing, 34 css px wide, 1.8 stroke
+                width: 34 * Tokens.u; height: 22.7 * Tokens.u
+                anchors.centerIn: parent
+                property color ink: Tokens.dark ? "#d65a78" : "#ae2e4a"
+                onInkChanged: requestPaint()
+                onPaint: {
+                    var c = getContext("2d"), k = width / 48; c.clearRect(0, 0, width, height); c.scale(k, k)
+                    c.strokeStyle = ink; c.lineWidth = 1.8; c.lineCap = "round"
+                    c.beginPath(); c.arc(21, 14, 9, 0, 2 * Math.PI); c.stroke()
+                    c.beginPath(); c.moveTo(28, 21); c.lineTo(37, 29); c.moveTo(17, 14); c.lineTo(25, 14); c.stroke()
+                }
+            }
+        }
+        Label { renderType: Text.NativeRendering
+            anchors { left: plate.right; leftMargin: 22.3 * Tokens.u; verticalCenter: plate.verticalCenter }
+            text: qsTr("Start typing to search."); color: Tokens.ink
+            font.family: Tokens.family610; font.pixelSize: Tokens.fs(11.52); font.letterSpacing: -0.23 * Tokens.u
         }
     }
     WorkGrid {

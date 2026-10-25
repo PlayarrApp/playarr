@@ -13,6 +13,7 @@ import {FilterDrawer} from './FilterDrawer';
 import {FocusRing} from './FocusRing';
 import {T, u} from './kit';
 import {reportFocus} from '../debug/parityControl';
+import {lt, lx} from '../debug/layoutMarks';
 
 export interface Leaf {
   mediaFileId: string;
@@ -29,10 +30,10 @@ export function playableLeaves(detail: Pick<WorkDetail, 'media_file_id' | 'runti
   return detail.media_file_id ? [{mediaFileId: detail.media_file_id, runtimeMs: detail.runtime_ms ?? 0}] : [];
 }
 
-/** Web `.media-context-actions`: 68 px rows, 14 px gap, the first row 35 px below the drawer's content top. */
+/** Web `.media-context-actions`: 68 px rows, 14 px gap, the first row 31.2 px below the first section's label slot (221 px from the top under a two-line title). */
 const ROW_H = 68;
 const ROW_PITCH = 82;
-const ROWS_TOP = 35;
+const ROWS_TOP = 31.2;
 
 export function ActionsDrawer({work, onClose, onOpen, onAddToPlaylist}: {work: Work; onClose: () => void; onOpen: () => void; onAddToPlaylist: () => void}): React.ReactElement {
   const client = useApiClient();
@@ -120,6 +121,7 @@ function ActionRow({glyph, label, y, first, onPress, onReveal}: {glyph: string; 
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('button', `${glyph} ${label}`, 14)}
       hasTVPreferredFocus={first}
       onFocus={() => {
         reportFocus(`${glyph}${label}`);
@@ -133,9 +135,11 @@ function ActionRow({glyph, label, y, first, onPress, onReveal}: {glyph: string; 
       <View style={{width: u(42)}}>
         {glyph === '▶' ? (
           // Vega draws U+25B6 as a colour emoji; a drawn triangle keeps web's pink text glyph.
-          <View style={{width: 0, height: 0, marginLeft: u(2), borderTopWidth: u(8), borderBottomWidth: u(8), borderLeftWidth: u(13), borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#cf3157'}} />
+          <View {...lt('▶', 19.52, 400, '#cf3157')} style={{width: u(15.02), height: u(27), justifyContent: 'center'}}>
+            <View style={{width: 0, height: 0, marginLeft: u(1), borderTopWidth: u(8), borderBottomWidth: u(8), borderLeftWidth: u(13), borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#cf3157'}} />
+          </View>
         ) : (
-          <T size={19.52} weight={600} color="#cf3157">
+          <T size={19.52} weight={400} color="#cf3157">
             {glyph}
           </T>
         )}

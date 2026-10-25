@@ -83,9 +83,10 @@ export struct MultiSelect {
       Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
         .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
         .fontWeight(FontWeight.Bold)
-        .letterSpacing(tv(HEADING_LETTER_SPACING))
+        .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.27))
         .textCase(TextCase.UpperCase)
-        .fontColor(toResourceColor(activeColors().inkSoft))
+        .id('px:heading:' + this.heading.toUpperCase())
+        .fontColor(toResourceColor(activeColors().inkMuted))
       Column({ space: tv(LIST_GAP) }) {
         Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
           ForEach(this.selected, (value: string) => {
@@ -112,16 +113,17 @@ export struct MultiSelect {
             })
           }, (value: string): string => value)
           Row() {
-            Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(nunitoAt(isTvMetrics() ? 700 : 500, isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT))
+            Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CONTROL_FONT)) : nunito(680))
               .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)
               .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
             Text('⌄').fontFamily(nunitoAt(400, tv(CONTROL_FONT)))
-              .fontSize(tv(CONTROL_FONT))
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : 8.96)
               .fontColor(toResourceColor(activeColors().inkMuted))
               .rotate({ angle: this.open ? 180 : 0 })
           }
+          .id('px:button:' + (this.selected.length === 0 ? this.noneLabel : this.addLabel) + ' ⌄')
           // Web `flex: 1 1 8rem`: shares a line with the tokens when it fits.
           .flexGrow(1)
           .flexBasis(tv(TRIGGER_BASIS))
@@ -134,6 +136,7 @@ export struct MultiSelect {
           })
         }
         .width(isTvMetrics() ? tv(SECTION_WIDTH) : TOUCH_DRAWER_SECTION_WIDTH)
+        .id('px:group:')
         .padding(tv(FIELD_PADDING))
         .borderRadius(tv(FIELD_RADIUS))
         .border({ width: 1, color: this.lineStrong() })

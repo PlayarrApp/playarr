@@ -35,6 +35,10 @@ on:
         type: choice
         options: [en, th, ja]
         default: en
+      pr:
+        description: Pull request number recorded in build.json
+        type: string
+        default: ''
       skip_player:
         description: Skip the player-controls route while retaining the other full-set captures
         type: boolean
@@ -137,6 +141,7 @@ jobs:
     env:
       DEVICE: ${{ inputs.device || 'tv' }}
       TV_SCREENS: ${{ inputs.tv_screens || 'all' }}
+      PARITY_PR: ${{ inputs.pr }}
       SKIP_PLAYER: ${{ inputs.skip_player == true && 'true' || 'false' }}
       PHONE_CORE_ONLY: ${{ inputs.phone_core_only == true && 'true' || 'false' }}
       MOTION: ${{ inputs.motion == true && 'true' || 'false' }}
@@ -203,7 +208,7 @@ jobs:
           python scripts/harmony-wall/fixture_preflight.py --output fixture-preflight.json
           launch() {
             PLAYARR_VNC_PASSWORD=selftest1 python scripts/harmony-wall/harmony_vnc.py --bind 127.0.0.1 --port 5917 --ws $WS --ctl $CTL \
-              --debug-port $DBG --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD > bridge.log 2>&1 &
+              --debug-port $DBG --cmd-name playarr_cmd --password-env PLAYARR_VNC_PASSWORD --no-vnc > bridge.log 2>&1 &
             # the Previewer connects to the command pipe once, at start: the bridge must have created it by then
             for i in $(seq 1 60); do grep -q 'control on' bridge.log && break; sleep 1; done
             sleep 2
