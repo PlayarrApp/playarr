@@ -139,7 +139,7 @@ def all_texts(node):
     return found
 
 
-def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
+def export(tree, screen, theme, viewport, clock_pinned=False, image=None, origin=(0, 0)):
     """tree: the parsed inspector JSON with `$measured` on its Text nodes; viewport: (w, h, dpr). Returns the schema document."""
     vw, vh, dpr = viewport
     out = []
@@ -231,6 +231,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         if opacity <= 0.0:
             return
         raw = rect_of(node)
+        if raw is not None and origin != (0, 0):  # the app's stage sits at `origin` px in a larger window: report in the stage's own coordinates
+            raw = (raw[0] - origin[0], raw[1] - origin[1], raw[2], raw[3])
         fill = argb(a.get("backgroundColor"))
         here = under
         if kind in SYSTEM:
@@ -299,9 +301,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
     return doc
 
 
-def write(raw, screen, theme, viewport, dest_dir, clock_pinned=False, image=None):
+def write(raw, screen, theme, viewport, dest_dir, clock_pinned=False, image=None, origin=(0, 0)):
     import os
-    doc = export(json.loads(raw), screen, theme, viewport, clock_pinned, image=image)
+    doc = export(json.loads(raw), screen, theme, viewport, clock_pinned, image=image, origin=origin)
     os.makedirs(os.path.join(dest_dir, theme), exist_ok=True)
     with open(os.path.join(dest_dir, theme, screen + ".json"), "w") as f:
         json.dump(doc, f)

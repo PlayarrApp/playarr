@@ -58,3 +58,9 @@ s = s.replace("\n  build() {", builder, 1)
 s = s.replace("    .hideTitleBar(true)\n  }\n}", "    .hideTitleBar(true)\n    .navDestination(this.previewRoutes)\n  }\n}", 1)
 assert '.navDestination(this.previewRoutes)' in s
 open(p, 'w').write(s)
+
+if os.environ.get('DEVICE', 'tv') == 'tv':  # the TV window is taller than the 1080 stage and the stage starts 60 down, so no box is clamped by the window
+    s = open(p).read()
+    if '.height(1080)' not in s:
+        s = s.replace('.mode(NavigationMode.Stack)', '.mode(NavigationMode.Stack)\n    .height(1080)\n    .margin({ top: 60 })\n    .clip(false)', 1)
+        open(p, 'w').write(s)

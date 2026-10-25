@@ -44,6 +44,13 @@ class LayoutExportTest(unittest.TestCase):
         t = [e for e in doc["elements"] if e["role"] == "text"][0]
         self.assertEqual(t["rect"]["w"], 31.5)  # 30 px measured, drawn at 1.05
 
+    def test_a_stage_below_the_window_top_is_reported_in_its_own_coordinates(self):
+        tree = column([{"$type": "Row", "$rect": "[100.00, 160.00],[64.00, 64.00]", "$attrs": {"id": "px:button:Play", "backgroundColor": "#33FFFFFF"}, "$children": []}],
+                      rect="[0.00, 60.00],[1920.00, 1080.00]")
+        doc = export(tree, "x", "dark", (1920, 1080, 1), origin=(0, 60))
+        b = [e for e in doc["elements"] if e["role"] == "button"][0]
+        self.assertEqual((b["rect"]["x"], b["rect"]["y"]), (100.0, 100.0))
+
     def test_a_text_without_a_native_measurement_fails_the_export(self):
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "unmeasured", None)], rect="[0.00, 0.00],[1920.00, 1080.00]")
         with self.assertRaises(ExportError):

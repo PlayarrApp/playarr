@@ -40,8 +40,18 @@ def get(path, **q):
             time.sleep(4)
 
 
+STAGE_TOP = 60  # px: the TV stage's top in the Previewer window
+
+
+def device_is_tv() -> bool:
+    return len(sys.argv) > 1 and sys.argv[1] == "tv"
+
+
 def png() -> Image.Image:
-    return Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    img = Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    if device_is_tv() and img.size == (1920, 1740):  # the window is taller than the stage and the stage starts 60 down: the legend frame is the stage
+        img = img.crop((0, STAGE_TOP, 1920, STAGE_TOP + 1080))
+    return img
 
 
 def key(*names):
@@ -278,8 +288,9 @@ def export_layout(name, image=None):
         os.makedirs(rawdir, exist_ok=True)
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
+        origin = (0, STAGE_TOP) if device == "tv" else (0, 0)
         count = layout_export.write(raw, name, "light" if THEME == "light" else "dark", viewport, os.path.join(out, "layout"),
-                                    clock_pinned=True, image=image)  # patch_clock.py pins the preview clock to the fixture instant
+                                    clock_pinned=True, image=image, origin=origin)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
     except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)
@@ -977,6 +988,8 @@ manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get
             "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
 if PLAYER_FIXTURE_SOURCE is not None:
     manifest["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
+if device == "tv":
+    manifest["stage_top"] = STAGE_TOP  # px: the raw layout trees hold window coordinates, the stage starts this far down
 if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
     suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
     requested = TV_SELECTION if TV_SELECTION is not None else [
