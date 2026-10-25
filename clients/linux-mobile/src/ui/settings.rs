@@ -55,9 +55,12 @@ fn section_row(n: usize, title: &str, desc: &str) -> gtk4::Button {
     // The web nudges the first (hovered) row's arrow 5 px right.
     arrow.set_margin_end(if n == 1 { -10 } else { 0 });
     row.append(&arrow);
-    let b = gtk4::Button::builder().child(&row).css_classes(["pa-pref"]).build();
-    crate::layout::tag(&b, "link", &format!("{n:02} {title} {desc} \u{2192}"), 0.0);
-    b
+
+    gtk4::Button::builder()
+        .child(&row)
+        .accessible_role(gtk4::AccessibleRole::Link)
+        .css_classes(["pa-pref"])
+        .build()
 }
 
 pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
@@ -365,6 +368,5 @@ pub fn build(app: Rc<App>, client: Client) -> gtk4::Widget {
         .hscrollbar_policy(gtk4::PolicyType::Never)
         .css_classes(["pa-page"])
         .build();
-    crate::layout::tag(&scroller, "page", "|", 0.0);
     scroller.upcast()
 }

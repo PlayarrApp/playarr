@@ -17,7 +17,7 @@ pub mod shell;
 pub mod simple;
 
 use crate::api::{self, Client};
-use crate::layout;
+
 use crate::store;
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
@@ -304,6 +304,7 @@ impl App {
         block.append(
             &gtk4::Label::builder()
                 .label(title)
+                .accessible_role(gtk4::AccessibleRole::Heading)
                 .css_classes(["pa-panel-title"])
                 .xalign(0.0)
                 .ellipsize(gtk4::pango::EllipsizeMode::End)
@@ -330,8 +331,6 @@ impl App {
             (_, t) => t.to_string(),
         };
         let _ = dialog;
-        layout::tag(&panel, "dialog", "", 0.0);
-        layout::tag(&close, "button", if filters { "Close filters" } else { "Close" }, 50.0);
 
         let me = self.clone();
         close.connect_clicked(move |_| me.close_panel());
@@ -508,10 +507,10 @@ impl App {
                 } else if let Some(spec) = text.strip_prefix("layout:") {
                     // layout:<screen>:<output file>; exports the widget tree without touching the screen.
                     if let Some((screen, file)) = spec.split_once(':') {
-                        let theme = if crate::store::load_settings().theme == "light" {
-                            "light"
-                        } else {
+                        let theme = if adw::StyleManager::default().is_dark() {
                             "dark"
+                        } else {
+                            "light"
                         };
                         if let Err(e) =
                             crate::layout::export(me.window.content().unwrap().upcast_ref(), screen, theme, file)
@@ -580,8 +579,9 @@ pub fn clock_pinned() -> bool {
 }
 
 pub fn build_window(app: &adw::Application) {
-    let stack = gtk4::Stack::builder().build();
-    let layer = gtk4::Overlay::builder().child(&stack).build();
+    // The web draws the page body, the app container and the page as three nested fills; so do these widgets.
+    let stack = gtk4::Stack::builder().css_classes(["pa-app"]).build();
+    let layer = gtk4::Overlay::builder().child(&stack).css_classes(["pa-body"]).build();
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Playarr")
