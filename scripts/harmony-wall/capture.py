@@ -41,7 +41,10 @@ def get(path, **q):
 
 
 def png() -> Image.Image:
-    return Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    img = Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    if os.environ.get("TV_TALL") and img.size == (1920, 1620):  # the window is taller than the stage: the legend frame is its top 1080
+        img = img.crop((0, 0, 1920, 1080))
+    return img
 
 
 def key(*names):

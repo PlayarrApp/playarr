@@ -58,3 +58,9 @@ s = s.replace("\n  build() {", builder, 1)
 s = s.replace("    .hideTitleBar(true)\n  }\n}", "    .hideTitleBar(true)\n    .navDestination(this.previewRoutes)\n  }\n}", 1)
 assert '.navDestination(this.previewRoutes)' in s
 open(p, 'w').write(s)
+
+if os.environ.get('TV_TALL'):
+    s = open(p).read()
+    if '.height(1080)' not in s:
+        s = s.replace('.mode(NavigationMode.Stack)', '.mode(NavigationMode.Stack)\n    .height(1080)\n    .clip(false)', 1)
+        open(p, 'w').write(s)
