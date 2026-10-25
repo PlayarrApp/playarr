@@ -39,6 +39,8 @@ the static parity server once, then run everything (15 screens in both themes pl
 
 `run.sh` reverses the static server's artwork port into the emulator, and recycles the emulator unit every 8 app launches
 (`recycle.sh`: the software-GL emulator leaks about 190 MiB of host memory per launch and wedges `adb` near its cgroup limit).
+The run also writes `<out>/layout/<theme>/<screen>.json` through the debug build's `PlayarrLayoutExport`: per laid-out text line (from the app's `TextLayoutResult`, through the node's real window transform), plus every tagged `parityBox` read from its measured bounds. The exporter holds no web coordinates, labels or fixed rectangles; when the app differs from the web, the app is changed. The parity player is paused at once, seeked to exactly 2.000 s and held there until the player reports that position.
+
 Publish with `scripts/parity/android-tv/publish.sh <out dir> <branch> <pr>`; it deletes the previous candidate captures, keeps
 every JSON result and writes `build.json`. Player D-pad checks need the web ref's exact Play/Pause state and a playback window,
 so they stay out of this run. Fire OS runs the same app and APK.
