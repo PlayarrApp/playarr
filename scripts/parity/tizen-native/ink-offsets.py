@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# inkdy.py <cand> <theme> : per font size, median ink top/left offset (dev - web) of matched single-line text, from the PNGs
+# ink-offsets.py <cand> <theme> (PARITY_WEB_DIR = web refs dir) : per font size, median ink top/left offset (dev - web) of matched single-line text, from the PNGs
 import json,sys,collections,statistics,glob,os
 import numpy as np
 from PIL import Image
 cand,theme=sys.argv[1:3]
-B="/home/Storage/Projects/repositories/.data/ThomasMcFarlane/playarr/scratch/20261011-parity/tizen-native/web/"
+B=os.environ["PARITY_WEB_DIR"]+"/"  # the legend client dir holding the web refs
 def ink(im,r,pad=3,th=70):
     x0=max(int(r['x'])-pad,0);y0=max(int(r['y'])-pad,0);x1=min(int(r['x']+r['w'])+pad+1,im.shape[1]);y1=min(int(r['y']+r['h'])+pad+1,im.shape[0])
     c=im[y0:y1,x0:x1]; bg=c[0,0]; m=np.abs(c-bg).sum(2)>th; ys,xs=np.where(m)
