@@ -28,11 +28,6 @@ class LayoutExportTest(unittest.TestCase):
         self.assertEqual(t["color"], "#f4f0f1")
         self.assertEqual(t["background"], "#151315")
 
-    def test_padding_moves_the_content_origin(self):
-        tree = column([text("[30.00, 300.00],[970.00, 72.00]", "Hi", [run(0, 2, 0.0, 0.0, 30.0, 20.0)], padding="{\"top\":\"3.00vp\",\"left\":\"1.00vp\"}")])
-        t = [e for e in export(tree, "x", "dark", (360, 780, 3))["elements"] if e["role"] == "text"][0]
-        self.assertEqual((t["rect"]["x"], t["rect"]["y"]), (11.0, 103.0))
-
     def test_a_wrapped_text_exports_one_element_per_line(self):
         runs = [run(0, 8, 0.0, 0.0, 90.0, 20.0), run(8, 13, 0.0, 24.0, 50.0, 44.0)]
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "one two three", runs)], rect="[0.00, 0.00],[1920.00, 1080.00]")

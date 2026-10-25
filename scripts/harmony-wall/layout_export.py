@@ -74,19 +74,6 @@ def radius_of(attrs):
     return num(r, 0.0) or 0.0
 
 
-def padding_of(attrs, dpr):
-    """(left, top, right, bottom) of a node's padding in inspector px."""
-    raw = attrs.get("padding")
-    if isinstance(raw, str) and raw.startswith("{"):
-        try:
-            p = json.loads(raw)
-        except ValueError:
-            return (0.0, 0.0, 0.0, 0.0)
-        return tuple((num(p.get(k), 0.0) or 0.0) * dpr for k in ("left", "top", "right", "bottom"))
-    v = (num(raw, 0.0) or 0.0) * dpr
-    return (v, v, v, v)
-
-
 def has_gradient(attrs):
     for key in ("linearGradient", "radialGradient", "sweepGradient"):
         g = attrs.get(key)
@@ -167,8 +154,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False):
         case = str(a.get("textCase", ""))
         content = content.upper() if "Upper" in case else content.lower() if "Lower" in case else content
         k = scale_k(chain)
-        pl, pt, _, _ = (v * k for v in padding_of(a, dpr))  # the layout manager's boxes start at the Text's content box
-        ox, oy = raw[0] + pl, raw[1] + pt
+        ox, oy = raw[0], raw[1]  # the layout manager's coordinates are relative to the Text's own frame, padding included
         weight, size = weight_of(a), num(a.get("fontSize"), 16.0)
         col = argb(a.get("fontColor")) or (0, 0, 0, 1.0)
         colour = hex_of(over(col, under))

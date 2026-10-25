@@ -172,14 +172,23 @@ export struct FeatureCopy {
       }
 
       if (this.title.length > 0) {
-        Text(this.balancedTitle()).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
-          .id('px:' + this.titleRole + ':' + this.title)
-          .fontSize(tv(HERO_TITLE_FONT_SIZE))
-          .fontWeight(HERO_TITLE_FONT_WEIGHT)
-          .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
-          .lineHeight(webLineHeight(tv(HERO_TITLE_FONT_SIZE))).lineSpacing(webLineSpacing(tv(HERO_TITLE_LINE_HEIGHT), tv(HERO_TITLE_FONT_SIZE))).halfLeading(true)
-          .constraintSize({ maxWidth: tv(HERO_TITLE_MAX_WIDTH) })
-          .fontColor(toResourceColor(activeColors().ink))
+        // web: each line of the title is a run as tall as the font's content area (94), the lines only 62 apart; ArkUI's line
+        // spacing cannot be negative, so each line is its own Text and the pitch comes from a negative margin.
+        Column() {
+          ForEach(this.balancedTitle().split('\n'), (line: string, index: number) => {
+            Text(line).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
+              .id('px:' + this.titleRole + ':' + line)
+              .fontSize(tv(HERO_TITLE_FONT_SIZE))
+              .fontWeight(HERO_TITLE_FONT_WEIGHT)
+              .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
+              .lineHeight(webLineHeight(tv(HERO_TITLE_FONT_SIZE))).halfLeading(true)
+              .fontColor(toResourceColor(activeColors().ink))
+              .margin({ top: index > 0 ? tv(HERO_TITLE_LINE_HEIGHT) - webLineHeight(tv(HERO_TITLE_FONT_SIZE)) : 0 })
+          }, (line: string, index: number) => `${index}-${line}`)
+        }
+        .alignItems(HorizontalAlign.Start)
+        .constraintSize({ maxWidth: tv(HERO_TITLE_MAX_WIDTH) })
+        .margin({ top: (tv(HERO_TITLE_LINE_HEIGHT) - webLineHeight(tv(HERO_TITLE_FONT_SIZE))) / 2, bottom: (tv(HERO_TITLE_LINE_HEIGHT) - webLineHeight(tv(HERO_TITLE_FONT_SIZE))) / 2 })
       }
 
       if (this.subtitle.length > 0) {
@@ -187,11 +196,11 @@ export struct FeatureCopy {
           .fontSize(tv(EPISODE_TITLE_FONT_SIZE))
           .fontWeight(EPISODE_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(EPISODE_TITLE_LETTER_SPACING))
-          .lineHeight(webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))).lineSpacing(webLineSpacing(tv(EPISODE_TITLE_LINE_HEIGHT), tv(EPISODE_TITLE_FONT_SIZE))).halfLeading(true)
+          .lineHeight(webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
           .id('px:heading:' + this.subtitle)
-          .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) })
+          .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) + (tv(EPISODE_TITLE_LINE_HEIGHT) - webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))) / 2, bottom: (tv(EPISODE_TITLE_LINE_HEIGHT) - webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))) / 2 })
       }
 
       if (this.metaChips.length > 0) {
