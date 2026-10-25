@@ -17,20 +17,8 @@ for _ in range(30):
     raw = subprocess.run(adb + ["exec-out", f"run-as {pkg} cat files/parity-layout.json"], capture_output=True, text=True).stdout
     if raw.startswith("{"): break
 doc = json.loads(raw)
-dpr = doc["viewport"]["w"] / view[0]
-r2 = lambda v: round(v, 2)
-for e in doc["elements"]:
-    e["rect"] = {k: r2(v / dpr) for k, v in e["rect"].items()}
-    if e.get("fontSize") is not None: e["fontSize"] = r2(e["fontSize"] / dpr)
-    # A fully rounded shape (tag 50 and above: CircleShape, 50%) is drawn with half its short side; any other radius is the drawn one in CSS px.
-    px = e.pop("radiusPx", None)
-    if e.get("radius") is not None:
-        if e["radius"] >= 50: e["radius"] = r2(min(e["rect"]["w"], e["rect"]["h"]) / 2)
-        elif px is not None: e["radius"] = r2(px / dpr)
-# Rects are exported as the app measured them: no browser-specific rounding or other correction is applied here.
-doc["viewport"] = {"w": view[0], "h": view[1], "dpr": r2(dpr)}
-# clockPinned is the app's own report (parity clock hook active), not asserted here.
-doc["clockPinned"] = bool(doc.get("clockPinned"))
+# The app exports CSS px already (device px over its display density), radii included: nothing is converted, tagged or asserted here.
+assert doc["viewport"]["w"] == view[0] and doc["viewport"]["h"] == view[1], "exported viewport %s is not %s" % (doc["viewport"], view)
 os.makedirs(os.path.dirname(out), exist_ok=True)
 json.dump(doc, open(out, "w"))
 print("layout", screen, theme, len(doc["elements"]), "elements")

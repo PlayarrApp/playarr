@@ -228,17 +228,21 @@ export async function createDriver() {
       const lib = base.split("/").slice(0, 2).join("/");
       if (!RAIL[lib]) throw new Error(`no route for ${path}`);
       const kind = expectedLibraryKind(lib);
-      await click(...RAIL[lib], 25);
-      if (kind) {
-        const focusDeadline = Date.now() + 30000;
-        let libraryTrace = trace();
+      // The hosted runner sometimes ignores the rail click or leaves the focus on the rail: click again, then give the grid time.
+      let libraryTrace = {};
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await click(...RAIL[lib], attempt === 0 ? 25 : 12);
+        if (!kind) break;
+        const focusDeadline = Date.now() + (attempt < 2 ? 20000 : 30000);
+        libraryTrace = trace();
         while (Date.now() < focusDeadline && !libraryFocusReady(libraryTrace, kind)) {
           await sleep(500);
           libraryTrace = trace();
         }
-        if (!libraryFocusReady(libraryTrace, kind)) {
-          throw new Error(`refusing library capture before initial grid focus is ready (${libraryFocusSummary(libraryTrace)})`);
-        }
+        if (libraryFocusReady(libraryTrace, kind)) break;
+      }
+      if (kind && !libraryFocusReady(libraryTrace, kind)) {
+        throw new Error(`refusing library capture before initial grid focus is ready (${libraryFocusSummary(libraryTrace)})`);
       }
       if (/^\/(movies|series)\/[^/]+\/?$/.test(base) || base.endsWith("/:id")) await click(...FIRST_CARD, 8);
       else if (base.startsWith("/player")) throw new Error("player-controls requires the guarded direct-play route");
@@ -259,6 +263,7 @@ export async function createDriver() {
       await sleep(name === "select" && !long ? 9000 : 1200);
     },
     async clickAt(x, y, wait = 4) { await click(x, y, wait); },
+    async panelOpen() { return trace().playerPanel === true; },
     async location() { return location(); },
     async focused() { const t = trace(); return t.focus && t.position ? { label: t.focus, position: t.position } : (t.focus ?? null); },
     async screenshot(file) {

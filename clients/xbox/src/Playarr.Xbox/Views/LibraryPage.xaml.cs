@@ -385,6 +385,7 @@ namespace Playarr.Xbox.Views
                     };
                     button.Click += LetterButton_Click;
                     LayoutExport.Tag(button, "button", letter == '#' ? "Numbers and symbols" : letter.ToString());
+                    LayoutExport.SetSplit(button, true);
                     LetterRail.Children.Add(button);
                 }
                 _renderedActiveLetter = _activeLetter;
@@ -426,7 +427,7 @@ namespace Playarr.Xbox.Views
                         Child = new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = surface },
                     },
                 }
-                : new TextBlock { Text = letter.ToString(), FontSize = 9.22, FontWeight = FontWeights.Normal, Foreground = Ui.Res("PlayarrInkMuted") };
+                : new TextBlock { Text = letter.ToString(), FontSize = 9.22, FontWeight = FontWeights.Normal, Foreground = Ui.Res("PlayarrInkMuted"), Margin = new Thickness(0, 0, 0, 2.2) };
         }
 
         private void UpdateLetterRail()

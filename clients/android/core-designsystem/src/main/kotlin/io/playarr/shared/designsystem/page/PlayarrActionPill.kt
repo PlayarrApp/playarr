@@ -98,7 +98,7 @@ fun PlayarrActionPill(
                     },
                 )
                 .then(if (focused && !(tv && active && suppressFocusRingWhenActive)) Modifier.playarrFocusRing(PlayarrRingShape.Rounded(metrics.pillRadius)) else Modifier)
-                .parityBox("button", label, metrics.pillRadius.value, background = parityPillGlass())
+                .parityShape(14f)
                 .semantics { contentDescription = label },
             shape = tile,
             // Focus draws the ring only; the open state (panel shown) keeps the ink fill.
@@ -116,8 +116,8 @@ fun PlayarrActionPill(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(metrics.css(5.6f).dp, Alignment.CenterVertically),
                 ) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(metrics.css(iconCss).dp).parityBox("image", background = parityPillGlass()))
-                    Text(label, fontSize = metrics.css(labelCss).sp, lineHeight = metrics.css(labelCss * 11f / 8.256f).sp, fontWeight = FontWeight.Bold, letterSpacing = metrics.css(0.02f * labelCss).sp, maxLines = 1, modifier = Modifier.offset(y = metrics.css(-1f).dp))
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp).parityBox("image"))
+                    Text(label, fontSize = 8.256.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1, modifier = Modifier.offset(y = (-1).dp))
                     if (count > 0) {
                         Surface(color = palette.accent, shape = CircleShape) {
                             Text(
@@ -132,7 +132,7 @@ fun PlayarrActionPill(
                 }
             } else {
                 Box(contentAlignment = Alignment.Center) {
-                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityBox("image", background = parityPillGlass()))
+                    if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(18.dp).parityBox("image"))
                 }
             }
         }

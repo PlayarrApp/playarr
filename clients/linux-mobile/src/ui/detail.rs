@@ -994,9 +994,11 @@ fn chapters_rail(
         card.set_size_request(EP_W, -1);
         let b = gtk4::Button::builder()
             .child(&card)
+            .accessible_role(gtk4::AccessibleRole::Link)
             .css_classes(["pa-card"])
             .valign(gtk4::Align::Start)
             .build();
+        crate::layout::name(&b, &format!("Play {title} from Chapter {}", i + 1));
         let (file, play, t) = (file.to_string(), play.clone(), title.to_string());
         b.connect_clicked(move |_| play(file.clone(), start, t.clone()));
         row.append(&b);

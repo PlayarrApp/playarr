@@ -194,27 +194,34 @@ export async function createDriver() {
       return v.paused && Math.abs(v.currentTime - ${t}) < 0.05;
     })()`);
     if (device === "tizen") {
-      // Tizen plays through AVPlay, a native plane the emulator grab does show: seek it to 2 s and hold it paused there.
+      // Tizen plays through AVPlay, a native plane. Method of docs/parity/DEVICES.md: hold the clip paused at exactly 2000 ms (seek while
+      // paused, no play-then-pause), read the position back from the player, and refuse the capture unless it is paused on that frame.
       const av = `(() => { const a = window.webapis && window.webapis.avplay; return a ? a.getState() : "none"; })()`;
       if (!(await until(`(${av}) === "PLAYING" || (${av}) === "PAUSED"`, 60000))) throw new Error("AVPlay did not start");
-      for (let i = 0; i < 8; i += 1) {
-        // The page's seek bar follows AVPlay's time ticks, which only come while playing: seek, let a tick land, pause, then seek again so the
-        // last tick and the paused position agree on 2 s.
-        await ev(`(() => { const a = window.webapis.avplay; try { if (a.getState() === "PAUSED") a.play(); a.seekTo(2000, function () {}, function () {}); } catch (e) {} return true; })()`);
-        await sleep(2500);
-        await ev(`(() => { const a = window.webapis.avplay; try { a.pause(); a.seekTo(2000, function () {}, function () {}); } catch (e) {} return true; })()`);
-        await sleep(2500);
-        await ev(`(() => { try { if (window.__avListener && window.__avListener.oncurrentplaytime) window.__avListener.oncurrentplaytime(2000); } catch (e) {} return true; })()`);
-        await sleep(500);
+      let held = false;
+      for (let i = 0; i < 8 && !held; i += 1) {
+        const state = await ev(`new Promise((resolve) => { const a = window.webapis.avplay; try { a.pause(); a.seekTo(2000, () => resolve("ok"), () => resolve("seek failed")); } catch (e) { resolve(String(e)); } setTimeout(() => resolve("timeout"), 15000); })`);
+        await sleep(1500);
         const t = Number(await ev(`(() => { try { return window.webapis.avplay.getCurrentTime(); } catch (e) { return -1; } })()`));
-        if (Math.abs(t - 2000) < 120 && (await ev(av)) === "PAUSED") break;
+        // AVPlay lands a seek to 2000 ms on the next decoded frame and reports it (2023 ms on the 30 fps static clip): hold to within one frame, deterministically.
+        held = state === "ok" && t >= 2000 && t < 2034 && (await ev(av)) === "PAUSED";
       }
+      if (!held) throw new Error("player did not hold paused on the 2000 ms frame");
+      // AVPlay sends position ticks only while playing, so the page's seek bar still shows the pre-seek tick: hand the page the position just read back
+      // through the listener the app registered (the measured value, not a constant).
+      await ev(`(() => { try { const a = window.webapis.avplay; if (window.__avListener && window.__avListener.oncurrentplaytime) window.__avListener.oncurrentplaytime(a.getCurrentTime()); } catch (e) {} return true; })()`);
     } else if (!(await until(`(() => { const v = document.querySelector("video"); return !!v && v.readyState >= 2; })()`, 60000))) throw new Error("player video has no frames");
     if (device === "tizen") {
       // No CDP here and the emulator's own video is visible to the grab: reveal the controls with a key (they hide on a timer).
       for (let i = 0; i < 6 && !(await ev(`(() => { const c = document.querySelector(".player-controls"); return !!c && !c.classList.contains("is-hidden"); })()`)); i += 1) { xkey("up", false); await sleep(1000); }
     } else await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: 960, y: 540 });
     if (!(await until(`!!document.querySelector(".player-controls") && !document.querySelector(".player-controls").classList.contains("is-hidden")`, 10000))) throw new Error("player controls did not show");
+    if (device === "tizen") {
+      // The emulator composites the AVPlay object layer above the page, so a grab shows the video without the controls. Hide that layer, the
+      // equivalent of "video plane hidden on web and device alike" (docs/parity/DEVICES.md): the page is drawn as the app draws it, nothing is injected.
+      await ev(`(() => { const o = document.getElementById("av-player"); if (o) o.style.setProperty("visibility", "hidden", "important"); return true; })()`);
+      await sleep(1000);
+    }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
     let held = device === "tizen" ? 2 : 0;
     for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.02)) ? held + 1 : 0; await sleep(700); }
@@ -269,8 +276,23 @@ export async function createDriver() {
     return assertDeviceTestIdentity({ identity, allowedUsernames, expectedServerUrl: trustedServerUrl });
   }
   // Reload at a hash route and wait until the app is up again (a reload drops the debug channel for a few seconds).
+  // The app swaps its refresh token when the 15 minute access token runs out. A page reload that cuts that exchange short loses the new token, and
+  // the retry with the retired one is a token reuse: the server ends the session. Before any reload, let a refresh that is due finish first.
+  async function settleTokenRefresh() {
+    const state = `(() => { try { const t = JSON.parse(localStorage.getItem("playarr:session") || "null")?.accessToken; const p = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); return { token: t.slice(-24), left: p.exp - Date.now() / 1000 }; } catch (e) { return null; } })()`;
+    const first = await ev(state);
+    if (!first || first.left > 150) return;
+    // Due soon: wait for the app's own refresh to land (the access token changes), then give any retry traffic a moment.
+    for (let i = 0; i < 120; i += 1) {
+      await sleep(1000);
+      const now = await ev(state);
+      if (now && now.token !== first.token) { await sleep(3000); return; }
+    }
+    throw new Error("the app did not refresh its access token before the reload");
+  }
   async function load(route) {
     await guard();
+    await settleTokenRefresh();
     if (device === "tizen") {
       // The host is shared and often loaded: allow a slow reload before re-sending (a command polled during a reload is lost).
       for (let a = 0; a < 4; a += 1) {
@@ -411,17 +433,41 @@ export async function createDriver() {
     // The layout schema document (docs/parity/LAYOUT.md): the same DOM dump as the web refs, run in the app page through the inspector or netlog channel.
     async layoutDump({ screen, theme }) {
       await guard();
-      // The web ref of Search rests with the text field focused (autofocus); the TV opens its system keyboard for that, so the screenshot is taken without it.
-      // The layout document only needs the DOM state: focus the field for the dump, then drop it again.
-      const focusedSearch = device === "webos" && screen === "search" && (await ev(`(() => { const i = document.querySelector('input[type="search"]'); if (!i || document.activeElement === i) return false; i.focus(); return true; })()`));
-      if (focusedSearch) await sleep(800);
       const doc = await ev(layoutExpression(screen));
-      if (focusedSearch) await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
       if (!doc?.elements) throw new Error("layout dump returned no elements");
       return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements };
     },
-    async captureBuildIdentity() { throw new Error(`${device} stable build identity unsupported: deployed package digest is not exposed by this driver`); },
-    async waitReady() { throw new Error(`${device} stable deterministic capture unsupported: readiness is not exposed through the native app contract`); },
+    // The deployed package carries parity-build.json (written by the deploy scripts: repository HEAD, build time, SHA-256 of the entry bundle). The loaded
+    // bundle is hashed again here, so the identity is only returned when the running page really is that build.
+    async captureBuildIdentity() {
+      await guard();
+      const found = await ev(`new Promise((resolve) => {
+        const get = (url) => new Promise((ok, no) => { const x = new XMLHttpRequest(); x.open("GET", url + (url.includes("?") ? "&" : "?") + "n=" + Date.now()); x.onload = () => ok(x.responseText); x.onerror = () => no(new Error("read " + url)); x.send(); });
+        const hex = (buf) => Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+        (async () => {
+          const info = JSON.parse(await get("./parity-build.json"));
+          const entry = Array.from(document.scripts).map((e) => e.src).find((u) => /\\/assets\\//.test(u) && /\\.js(\\?|$)/.test(u));
+          if (!entry) return resolve({ error: "no entry bundle" });
+          const digest = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(await get(entry))));
+          resolve({ info, digest });
+        })().catch((e) => resolve({ error: String(e && e.message || e) }));
+      })`);
+      await guard();
+      if (!found || found.error) throw new Error(`${device} build identity unavailable: ${found?.error ?? "no answer"}`);
+      const { info, digest } = found;
+      if (!/^[0-9a-f]{40}$/.test(info.sha) || !Number.isFinite(Date.parse(info.builtAt))) throw new Error(`${device} parity-build.json is malformed`);
+      if (info.bundleSha256 !== digest) throw new Error(`${device} loaded bundle ${digest.slice(0, 12)} is not the deployed build ${String(info.bundleSha256).slice(0, 12)}`);
+      return `${info.sha}@${info.builtAt}`;
+    },
+    // Fonts decoded, no loading placeholders, every visible image settled, two frames painted: the same bar the web driver holds before a capture.
+    async waitReady() {
+      await guard();
+      if (!(await until(`document.fonts.status === "loaded" && !document.querySelector(".skeleton, [class*=skeleton-], .tv-mini-spinner")`, 60000))) throw new Error("fonts or loading placeholders did not settle");
+      await settleVisibleImages();
+      await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
+      await guard();
+    },
+    strictReadiness: true,
     // The simulator runs the web client in Chromium 94: Media Session is readable like on web; Tizen has no CDP hook for the handlers.
     supports: device === "webos" ? { nowPlaying: true, downloads: true, notifications: true, "grouped-downloads": true } : {},
     async start() {
@@ -548,12 +594,6 @@ export async function createDriver() {
         await ev(`(/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash) && ([document.scrollingElement, ...document.querySelectorAll("*")].forEach((e) => { if (e && e.scrollTop > 0) e.scrollTop = 0; }), true))`);
         await settleVisibleImages();
         await guard();
-        // Tizen plays through AVPlay, so the <video> element stays at 0: the AVPlay state and position count too. The inspector screenshot has no video plane, so the translucent controls sit on white. Stand in for the paused static clip frame (2 s, BT.709 like Chromium) so the control fills blend as they do over real video.
-        if (await ev(`(() => { const v = document.querySelector("video"); const a = window.webapis && window.webapis.avplay; const av = !!a && a.getState() === "PAUSED" && Math.abs(a.getCurrentTime() - 2000) < 500; return /^#\\/player\\//.test(location.hash) && !!v && ((v.paused && Math.abs(v.currentTime - 2) < 0.5) || av); })()`)) {
-          const frame = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../fixtures/static-clip-2s.png")).toString("base64");
-          await ev(`(() => { const v = document.querySelector("video"); if (document.getElementById("parity-video-frame")) return true; const i = document.createElement("img"); i.id = "parity-video-frame"; i.src = "data:image/png;base64,${frame}"; i.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none"; v.parentNode.insertBefore(i, v); return true; })()`);
-          await sleep(800);
-        }
         // Detail refs are taken at page top (web driver does the same): focus scrolled the page down on the TV.
         if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);
         if (TIZEN_MIRROR) {
@@ -603,14 +643,13 @@ export async function createDriver() {
       }
       if (device === "webos" && (await keyboardVisible())) throw new Error("webOS system keyboard is visible; refusing an obscured capture");
       if (await ev(BAD)) throw new Error("signed out or error page");
-      // Search is reached through the Filters button on the device (the system keyboard is dismissed by selecting it), which leaves Filters focused; the web ref shows it unfocused.
-      // Tizen: the Samsung keyboard opens for the focused field and halves the page: drop focus and let the page grow back before the grab.
-      if (device === "tizen" && (await ev(`location.hash === "#/search" && document.activeElement?.matches('input[type="search"]')`))) {
-        await ev(`(document.activeElement.blur(), true)`);
+      // Tizen: the Samsung keyboard opens for the focused field and halves the page. A real Back press closes the keyboard and leaves the field focused,
+      // which is the state the web shows.
+      if (device === "tizen" && Number(await ev("innerHeight")) < 1070 && (await ev(`location.hash === "#/search"`))) {
+        xkey("back");
         for (let i = 0; i < 20 && Number(await ev("innerHeight")) < 1070; i += 1) await sleep(500);
         await sleep(1500);
       }
-      if (await ev(`location.hash === "#/search" && document.activeElement?.matches('button[aria-controls="search-filters-drawer"]')`)) await ev(`(document.activeElement.blur(), true)`);
       if (await ev(`/^#\\/player\\//.test(location.hash)`)) await pinPlayerFrame();
       // Detail refs are taken at page top (the web driver does the same): the focus-scroll to the first episode card must not show in the capture.
       if (await ev(`/^#\\/(movies|series)\\/[^/]+\\/?$/.test(location.hash)`)) await ev(`(() => { for (const e of [document.scrollingElement, ...document.querySelectorAll("*")]) if (e && e.scrollTop > 0) e.scrollTop = 0; return true; })()`);

@@ -291,7 +291,7 @@ private fun PlayarrPhoneBackPill(
             modifier = Modifier.size(metrics.controlWidth, metrics.control).graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (below != null) Modifier.focusProperties { down = below } else Modifier)
                 .then(if (focused || focusScale > 1f) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
-                .parityBox(if (detailPage) "button" else "link", contentDescription, 50f, background = palette.surfaceStrong.copy(alpha = 0.7f).compositeOver(palette.background))
+                
                 .semantics { this.contentDescription = contentDescription },
             shape = androidx.compose.foundation.shape.CircleShape,
             color = if (active) palette.ink else palette.surfaceStrong.copy(alpha = 0.7f),
@@ -330,7 +330,7 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
                 .then(LocalPlayarrBackFocus.current?.let { Modifier.focusRequester(it) } ?: Modifier)
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (focused || active) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
-                .parityBox(if (back.asButton) "button" else "link", back.label, 50f, background = palette.surface)
+                
                 .semantics { contentDescription = back.label; role = Role.Button },
         ) {
             Box(contentAlignment = Alignment.Center) {

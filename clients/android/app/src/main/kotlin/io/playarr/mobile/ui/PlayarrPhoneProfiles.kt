@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -47,8 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.playarr.mobile.R
 import io.playarr.shared.designsystem.page.parityBox
-import io.playarr.shared.designsystem.page.parityText
-import io.playarr.shared.designsystem.page.parityOver
 
 /*
  * The web phone profile page (`.profiles-page` under the phone media query), metric for metric: the stage chrome row
@@ -69,7 +68,7 @@ internal fun BoxScope.PhoneProfilesChrome() {
             painter = painterResource(R.drawable.playarr_mark),
             contentDescription = "Playarr",
             tint = Color.Unspecified,
-            modifier = Modifier.size(30.dp).parityBox("image", background = WebBackground),
+            modifier = Modifier.size(30.dp).parityBox("image"),
         )
     }
     Row(
@@ -93,7 +92,7 @@ internal fun PhoneProfilesHeading(kicker: String, title: String) {
         Text(
             kicker.uppercase(),
             color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk, fontSize = 7.36.sp, lineHeight = 11.04.sp, fontWeight = FontWeight(820),
-            letterSpacing = 0.9568.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = WebBackground),
+            letterSpacing = 0.9568.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier,
         )
         Spacer(Modifier.height(7.2.dp))
         // 42.9 px title on a 40.755 px line: the box is shorter than the glyphs, so pin it and let the text overflow.
@@ -102,7 +101,7 @@ internal fun PhoneProfilesHeading(kicker: String, title: String) {
                 title,
                 color = WebInk, fontSize = 42.9.sp, lineHeight = 40.755.sp, fontWeight = FontWeight.Medium,
                 letterSpacing = (-3.0888).sp, textAlign = TextAlign.Center, style = WebTextStyle, maxLines = 1, softWrap = false,
-                modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true).offset(y = (-10).dp).semantics { heading() }.parityText(background = WebBackground),
+                modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true).offset(y = (-10).dp).semantics { heading() },
             )
         }
     }
@@ -140,19 +139,19 @@ internal fun PhoneProfileChoice(
                         scaleY = 1.045f
                     }
                 }
-                .parityBox("button", avatarDescription, background = WebBackground)
+                
                 .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.8.dp),
         ) {
             PhoneProfileAvatarPlate(selected, Modifier.semantics { contentDescription = avatarDescription }) {
-                PlayarrProfileAvatar(userId = profile.id, preference = avatar, modifier = Modifier.fillMaxSize().parityBox("container", radius = 50f, background = WebBackground), artworkModifier = Modifier.parityBox("image", background = WebBackground), artworkInset = 1.dp)
+                PlayarrProfileAvatar(userId = profile.id, preference = avatar, modifier = Modifier.fillMaxSize().parityBox("container", radius = 999f), artworkModifier = Modifier.parityBox("image"), artworkInset = 1.dp)
             }
             Text(
                 profile.displayName,
                 color = if (selected) WebInk else WebInkSoft, fontSize = 13.12.sp, lineHeight = 19.68.sp, fontWeight = FontWeight(680),
                 style = WebTextStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().offset(y = (-0.3).dp).parityText(background = WebBackground),
+                modifier = Modifier.fillMaxWidth().offset(y = (-0.3).dp),
             )
             Text(
                 playarrString(
@@ -164,7 +163,7 @@ internal fun PhoneProfileChoice(
                     },
                 ).uppercase(LocalPlayarrLanguage.current.locale),
                 color = WebInkMuted, fontSize = 6.72.sp, lineHeight = 10.08.sp, fontWeight = FontWeight(690),
-                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp).parityText(background = WebBackground),
+                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp),
             )
         }
         if (selected) androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
@@ -178,24 +177,24 @@ internal fun PhoneProfileChoice(
                 Surface(
                     onClick = onSettings, enabled = enabled, shape = CircleShape,
                     color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),
-                    modifier = Modifier.size(44.dp).parityBox("button", settingsName, 999f, background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)).semantics { contentDescription = settingsName },
-                ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfilesSettingsIcon(ProfilesBrandRose, Modifier.parityBox("image", background = parityOver(WebSurfaceStrong, 0.64f, WebBackground))) } }
+                    modifier = Modifier.size(44.dp).parityShape(999f),
+                ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfilesSettingsIcon(ProfilesBrandRose, Modifier.parityBox("image")) } }
                 onSignOut?.let { action ->
                     Surface(
                         onClick = action, enabled = enabled, shape = CircleShape,
                         color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),
-                        modifier = Modifier.height(44.dp).parityBox("button", signOutName, 999f, background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)).semantics { contentDescription = signOutName },
+                        modifier = Modifier.height(44.dp).parityShape(999f),
                     ) {
                         Row(
                             Modifier.padding(horizontal = 17.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(7.2.dp),
                         ) {
-                            ProfilesSignOutIcon(WebInkSoft, Modifier.parityBox("image", background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)))
+                            ProfilesSignOutIcon(WebInkSoft, Modifier.parityBox("image"))
                             Text(
                                 playarrString(PlayarrString.ProfilesSignOut),
                                 color = WebInkSoft, fontSize = 7.68.sp, lineHeight = 11.52.sp, fontWeight = FontWeight(720),
-                                style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)),
+                                style = WebTextStyle, maxLines = 1, modifier = Modifier,
                             )
                         }
                     }
@@ -219,25 +218,25 @@ internal fun PhoneAddProfileChoice(selected: Boolean, enabled: Boolean, onFocus:
                         scaleY = 1.045f
                     }
                 }
-                .parityBox("button", "+ ${playarrString(PlayarrString.ProfilesSignIn)} ${playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale)}", background = WebBackground)
+                
                 .clickable(enabled = enabled, onClick = onClick, role = androidx.compose.ui.semantics.Role.Button),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.8.dp),
         ) {
             PhoneProfileAvatarPlate(selected, Modifier, dashed = true) {
-                Box(Modifier.fillMaxSize().parityBox("container", radius = 50f, background = WebBackground), contentAlignment = Alignment.Center) {
-                    Text("+", color = WebInkSoft, fontSize = 38.4.sp, lineHeight = 57.6.sp, fontWeight = FontWeight(300), style = WebTextStyle, modifier = Modifier.parityText(background = WebBackground))
+                Box(Modifier.fillMaxSize().parityBox("container", radius = 999f), contentAlignment = Alignment.Center) {
+                    Text("+", color = WebInkSoft, fontSize = 38.4.sp, lineHeight = 57.6.sp, fontWeight = FontWeight(300), style = WebTextStyle, modifier = Modifier)
                 }
             }
             Text(
                 playarrString(PlayarrString.ProfilesSignIn),
                 color = if (selected) WebInk else WebInkSoft, fontSize = 13.12.sp, lineHeight = 19.68.sp, fontWeight = FontWeight(680),
-                style = WebTextStyle, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().offset(y = (-0.3).dp).parityText(background = WebBackground),
+                style = WebTextStyle, maxLines = 1, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().offset(y = (-0.3).dp),
             )
             Text(
                 playarrString(PlayarrString.ProfilesAddAnother).uppercase(LocalPlayarrLanguage.current.locale),
                 color = WebInkMuted, fontSize = 6.72.sp, lineHeight = 10.08.sp, fontWeight = FontWeight(690),
-                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp).parityText(background = WebBackground),
+                letterSpacing = 0.3024.sp, style = WebTextStyle, maxLines = 1, modifier = Modifier.offset(y = (-0.33).dp),
             )
         }
     }
@@ -314,11 +313,11 @@ internal fun BoxScope.PhoneProfilesClientsLink(onClick: () -> Unit) = androidx.c
     Surface(
         onClick = onClick, shape = CircleShape,
         color = WebSurfaceStrong.copy(alpha = 0.72f), border = BorderStroke(1.dp, WebPillBorder),
-        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 22.dp, bottom = 25.3.dp).height(44.dp).parityBox("link", "Clients", 999f, background = parityOver(WebSurfaceStrong, 0.72f, WebBackground)),
+        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 22.dp, bottom = 25.3.dp).height(44.dp).parityShape(999f),
     ) {
         Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.8.dp)) {
-            Text(playarrString(PlayarrString.ProfilesClients), color = WebInkSoft, fontSize = 7.68.sp, lineHeight = 11.52.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(radius = 999f, background = parityOver(WebSurfaceStrong, 0.72f, WebBackground)))
-            Text("→", color = WebInkSoft, fontSize = 7.68.sp, lineHeight = 11.52.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier.parityText(background = parityOver(WebSurfaceStrong, 0.72f, WebBackground)))
+            Text(playarrString(PlayarrString.ProfilesClients), color = WebInkSoft, fontSize = 7.68.sp, lineHeight = 11.52.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier)
+            Text("→", color = WebInkSoft, fontSize = 7.68.sp, lineHeight = 11.52.sp, fontWeight = FontWeight(720), style = WebTextStyle, maxLines = 1, modifier = Modifier)
         }
     }
 }

@@ -69,7 +69,10 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     mark.set_margin_bottom(6);
     top.append(&mark);
     let names: Vec<&str> = THEMES.iter().map(|t| t.1).collect();
-    let theme_pick = gtk4::DropDown::from_strings(&names);
+    let theme_pick = gtk4::DropDown::builder()
+        .model(&gtk4::StringList::new(&names))
+        .accessible_role(gtk4::AccessibleRole::Button)
+        .build();
     theme_pick.add_css_class("pa-dropdown");
     theme_pick.set_size_request(112, 48);
     let current = store::load_settings().theme;
@@ -97,7 +100,10 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     // The web keeps the sun glyph in both themes.
     decorate_dropdown(&theme_pick, "sun");
     top.append(&theme_pick);
-    let lang = gtk4::DropDown::from_strings(&["Auto"]);
+    let lang = gtk4::DropDown::builder()
+        .model(&gtk4::StringList::new(&["Auto"]))
+        .accessible_role(gtk4::AccessibleRole::Button)
+        .build();
     lang.add_css_class("pa-dropdown");
     lang.set_size_request(112, 48);
     lang.set_tooltip_text(Some("The app follows this device's language."));
@@ -129,7 +135,7 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     root.append(&heading);
 
     let tiles = gtk4::Box::builder()
-        .spacing(16)
+        .spacing(19)
         // Left-aligned like the web row, whose avatar starts 20 px in.
         .halign(gtk4::Align::Start)
         .margin_start(20)
@@ -240,11 +246,24 @@ fn tile(
     };
     let col = gtk4::Box::new(gtk4::Orientation::Vertical, 7);
     col.set_halign(gtk4::Align::Center);
-    let av = avatar_widget(&preset, 156);
+    // The web's round ring is 156 px with the 132 px artwork inside; the link around them is 3 px tighter on every side.
+    let av = avatar_widget(&preset, 132);
+    let ring = gtk4::Box::builder()
+        .css_classes(["pa-avatar-ring"])
+        .halign(gtk4::Align::Center)
+        .build();
+    ring.set_size_request(156, 156);
+    av.set_hexpand(true);
+    av.set_halign(gtk4::Align::Center);
+    av.set_valign(gtk4::Align::Center);
+    ring.append(&av);
+    ring.set_margin_start(-3);
+    ring.set_margin_end(-3);
+    ring.set_margin_top(-3);
     if p.is_current {
-        av.add_css_class("current");
+        ring.add_css_class("current");
     }
-    col.append(&av);
+    col.append(&ring);
     col.append(
         &gtk4::Label::builder()
             .label(&p.display_name)
@@ -267,6 +286,9 @@ fn tile(
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
+    // The web's avatar link starts 1.8 px in and 2.7 px down.
+    b.set_margin_start(2);
+    b.set_margin_top(3);
     crate::layout::name(
         &b,
         &if p.is_current {
@@ -413,8 +435,6 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
     let circle = gtk4::Box::builder()
         .css_classes(["pa-add-circle"])
         .halign(gtk4::Align::Center)
-        // Bottom-aligned with the 162 px current avatar, as on the web.
-        .margin_top(15)
         .build();
     circle.set_size_request(144, 144);
     let plus = gtk4::Label::builder().label("+").css_classes(["pa-add-plus"]).build();
@@ -443,6 +463,8 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .valign(gtk4::Align::Start)
         .build();
     crate::layout::name(&b, "+ Sign in ADD ANOTHER PROFILE");
+    // Bottom-aligned with the 162 px current avatar, as on the web.
+    b.set_margin_top(15);
     let app = app.clone();
     b.connect_clicked(move |_| {
         if !app.is_signing_out() {

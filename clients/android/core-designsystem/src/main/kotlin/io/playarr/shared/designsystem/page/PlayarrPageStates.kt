@@ -76,7 +76,7 @@ fun PlayarrEmptyState(spec: PlayarrEmptySpec) {
         ) {
             val glyph = androidx.compose.ui.graphics.lerp(palette.ink, androidx.compose.ui.graphics.Color(0xFFCF3157), 0.78f)
             Box(
-                Modifier.size(132.dp).parityBox("container", "", 50f)
+                Modifier.size(132.dp).parityBox("container", radius = 999f)
                     .background(palette.surfaceStrong.copy(alpha = 0.54f), CircleShape)
                     .border(1.dp, palette.hairline(0.15f, 0.18f).copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center,

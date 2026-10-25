@@ -22,9 +22,9 @@ internal sealed class UnavailableScreen : IPage
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(t.SurfaceStrong.R, t.SurfaceStrong.G, t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "link", "Back to Home", radius: 50);
+        Sem.Tag(back, "link", "Back to Home");
         _root.Add(back);
-        _root.Add(Ui.Text(title, 226.6f, 56.2f, 33.6f, 600, t.Ink, 600, 50, spacing: -1.51f));
+        _root.Add(Ui.Heading(title, 226.6f, 56.2f, 33.6f, 600, t.Ink, 600, 50, spacing: -1.51f));
         _root.Add(Ui.Text($"{title} is not available in this app yet.", 480, 480, 22, 600, t.InkSoft, 960, 33, HorizontalAlignment.Center));
         _root.Add(Ui.Text("Use the Playarr web app or another client for it.", 480, 520, 14, 400, t.InkMuted, 960, 21, HorizontalAlignment.Center));
     }

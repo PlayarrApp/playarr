@@ -80,7 +80,8 @@ function compare(w, d, { scoreText, edge = TOL.edge }) {
   }
   if (w.fontSize != null && !(Math.abs(w.fontSize - (d.fontSize ?? NaN)) <= TOL.fontSize)) diff("fontSize", w.fontSize, d.fontSize ?? null, (d.fontSize ?? 0) - w.fontSize);
   if (w.fontWeight != null && !(Math.abs(w.fontWeight - (d.fontWeight ?? NaN)) <= TOL.fontWeight)) diff("fontWeight", w.fontWeight, d.fontWeight ?? null, (d.fontWeight ?? 0) - w.fontWeight);
-  if ((w.radius ?? 0) > 0 || (d.radius ?? 0) > 0) {
+  // a radius on an element that draws nothing (no fill, border, shadow) cannot be seen, so a native control cannot report it
+  if (w.painted !== false && ((w.radius ?? 0) > 0 || (d.radius ?? 0) > 0)) {
     if (Math.abs((w.radius ?? 0) - (d.radius ?? 0)) > TOL.radius) diff("radius", w.radius ?? 0, d.radius ?? 0, (d.radius ?? 0) - (w.radius ?? 0));
   }
   if (Math.abs((w.opacity ?? 1) - (d.opacity ?? 1)) > TOL.opacity) diff("opacity", w.opacity ?? 1, d.opacity ?? 1, (d.opacity ?? 1) - (w.opacity ?? 1));
