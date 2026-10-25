@@ -1029,8 +1029,10 @@ struct TVWebHomeCard: View {
                             ZStack(alignment: .leading) {
                                 Color.white.opacity(0.2)
                                 DesignTokens.Color.brandPrimary.frame(width: max(3, artWidth * min(1, progress)))
+                                    .parityBox("container", fill: DesignTokens.Color.brandPrimary)
                             }
                             .frame(height: 3)
+                            .parityBox("img", fill: DesignTokens.Stage.surfaceSoft)
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12.48, style: .continuous))
