@@ -19,6 +19,19 @@ internal static class Ui
         return _measure.NaturalSize.Width / k;
     }
 
+    /// <summary>NUI's own natural single-line height (the font's laid-out line) of a label of this size and weight, measured on the hidden label like <see cref="TextWidth"/>.</summary>
+    private static readonly Dictionary<(float, int, string), float> HeightCache = new();
+    public static float TextHeight(float size, int weight, string family = Font)
+    {
+        if (HeightCache.TryGetValue((size, weight, family), out var cached)) return cached;
+        var key = (size, weight, family);
+        TextWidth("Hg", size, weight, 0, family);
+        (family, weight) = Face(family, weight, size);
+        var k = Math.Min(MeasureScale, Math.Max(1f, 200f / size));
+        _measure!.PixelSize = size * k; _measure.FontFamily = family; _measure.FontStyle = new PropertyMap().AddWeight(weight); _measure.CharacterSpacing = 0; _measure.Text = "Hg";
+        return HeightCache[key] = _measure.NaturalSize.Height / k;
+    }
+
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, TextMetaInfo> TextMeta = new();
 
     /// <summary>Greedy word wrap like the browser's, using measured widths; see <see cref="TextWrap"/>.</summary>
@@ -35,18 +48,19 @@ internal static class Ui
         }
     }
 
+    /// <summary>A heading (page title, rail title): a text label the accessibility tree exposes as a heading.</summary>
+    public static TextLabel Heading(string text, float x, float y, float size, int weight, Rgba color, float w = 0, float lh = 0, HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0) =>
+        Sem.Tag(Text(text, x, y, size, weight, color, w, lh, align, multiline, upper, spacing, family, maxLines), "heading");
+
     /// <summary>A wrapped paragraph as one single-line label per line (CSS line height <paramref name="lh"/>); returns the number of lines.</summary>
     public static int Paragraph(View parent, string text, float x, float y, float size, int weight, Rgba color, float width, float lh, float spacing = 0, int maxLines = int.MaxValue, bool balance = false, string role = "text")
     {
         var lines = WrapLines(text, size, weight, spacing, width, maxLines, balance: balance);
-        var group = new object();
-        for (var i = 0; i < lines.Count; i++)
-        {
-            var label = Text(lines[i], x, y + i * lh, size, weight, color, width, lh, spacing: spacing);
-            TextMeta.TryGetValue(label, out var meta); if (meta is not null) meta.Group = group;
-            if (role != "text") Sem.Tag(label, role);
-            parent.Add(label);
-        }
+        if (lines.Count == 0) return 0;
+        // one multi-line label (the web has one element for a wrapped block); the app wraps, NUI lays the lines out
+        var label = Text(string.Join("\n", lines), x, y + (lh - ((float)Math.Round(1.011 * size) + (float)Math.Round(0.353 * size))) / 2f, size, weight, color, width, lh, multiline: true, spacing: spacing, maxLines: lines.Count, exactLines: true);
+        if (role != "text") Sem.Tag(label, role);
+        parent.Add(label);
         return lines.Count;
     }
 
@@ -97,11 +111,14 @@ internal static class Ui
     /// <summary>Registers the bundled Nunito Sans weights so TextLabel can use them by family name.</summary>
     public static void RegisterFonts() => FontClient.Instance.AddCustomFontDirectory(ResPath("fonts"));
 
+    /// <summary>A fully rounded box is drawn the way the web's border-radius 999px (pill) or 50% (circle, up to 100 px) is: the radius is clamped to half the short side when drawn, and the view reports the CSS value.</summary>
+    internal static float FullRadius(float radius, float w, float h) => Math.Min(radius, Math.Min(w, h) / 2f); // a radius larger than half the short side draws as a full round (pill or circle); the view carries the drawn pixel radius
+
     public static View Box(float x, float y, float w, float h, Rgba? bg = null, float radius = 0)
     {
         var v = new View { PositionX = x, PositionY = y, Size = new Size(w, h) };
         if (bg is { } c) v.BackgroundColor = C(c);
-        if (radius > 0) v.CornerRadius = radius;
+        if (radius > 0) v.CornerRadius = FullRadius(radius, w, h);
         return v;
     }
 
@@ -110,17 +127,23 @@ internal static class Ui
     /// sits where the web's does; weight 300..800; <paramref name="spacing"/> is letter spacing in px.
     /// </summary>
     public static TextLabel Text(string text, float x, float y, float size, int weight, Rgba color, float w = 0, float lh = 0,
-        HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0)
+        HorizontalAlignment align = HorizontalAlignment.Begin, bool multiline = false, bool upper = false, float spacing = 0, string family = Font, int maxLines = 0, bool exactLines = false, bool block = false)
     {
-        var cssFamily = family;
-        if (GlyphAdvance(text) is { } adv && !multiline) { w = adv * size; align = HorizontalAlignment.Center; } // fallback-font glyphs: drawn centred in a box of the web's advance, so what follows starts where it does on web
+        var cssFamily = family; var reqWeight = weight;
+        if (block) { multiline = true; exactLines = true; maxLines = 1; }
+        // fallback-font glyphs: the label is a box of the web's advance and the letter spacing makes the layout advance of the glyph that wide, so what follows starts where it does on web
+        if (GlyphAdvance(text) is { } adv && !multiline) { if (text is not ("←" or "→")) { w = adv * size; align = HorizontalAlignment.Center; } spacing += adv * size - TextWidth(text, size, weight, spacing, family); }
+        if (!multiline && w <= 0) w = TextWidth(upper ? text.ToUpperInvariant() : text, size, weight, spacing, family); // an inline run is as wide as its text
         (family, weight) = Face(family, weight, size);
         var cssWeight = family.StartsWith(Font + " W", StringComparison.Ordinal) ? int.Parse(family[(Font.Length + 2)..]) : weight;
         var cssY = y;
         var line = lh > 0 ? lh : size * 1.4f;
-        var boxH = Math.Max(line, size * 1.45f); // tall enough that descenders are not clipped; the text stays centred on the CSS line box
-        y -= (boxH - line) / 2f;
-        if (!multiline && family.StartsWith(Font, StringComparison.Ordinal)) y -= BaselineShifts.Up(size); // NUI vs Chromium baseline rounding, measured per size
+        // a single line is a label exactly as tall as the browser's content area (rounded ascent plus rounded descent), top-aligned and centred in the CSS line box
+        var content = (float)Math.Round(1.011 * size) + (float)Math.Round(0.353 * size);
+        // a block-level text element (the clock) is as tall as its CSS line; an inline run is the browser's content area
+        var boxH = multiline ? Math.Max(line, size * 1.45f) : content;
+        y += multiline ? (exactLines ? 0 : -(boxH - line) / 2f) : (line - boxH) / 2f;
+        if (family.StartsWith(Font, StringComparison.Ordinal) && !block) y -= BaselineShifts.Up(size); // NUI vs Chromium glyph placement, measured per size
         var t = new TextLabel(upper ? text.ToUpperInvariant() : text)
         {
             PositionX = x,
@@ -130,24 +153,25 @@ internal static class Ui
             FontFamily = family,
             FontStyle = new PropertyMap().AddWeight(weight),
             HorizontalAlignment = align,
-            VerticalAlignment = multiline ? VerticalAlignment.Top : VerticalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
             MultiLine = multiline,
             Ellipsis = !multiline,
         };
         if (GlyphAdvance(text) is not null) t.Ellipsis = false;
+        if (!multiline && w > 0) t.RelativeLineHeight = boxH / TextHeight(size, reqWeight, cssFamily); // the label's line is exactly the box, as the browser's
         if (spacing != 0) t.CharacterSpacing = spacing * TextScale;
         if (multiline && maxLines > 0) t.Ellipsis = false;
-        if (multiline) { t.RelativeLineHeight = line / (size * 1.364f); t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(w * TextScale, size * 1.6f * Math.Max(2, maxLines) * TextScale); }
+        if (multiline) { if (exactLines) { t.LineSpacing = (line - TextHeight(size, reqWeight, cssFamily)) * TextScale; } else t.RelativeLineHeight = line / (size * 1.364f); t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size((w + (exactLines ? 3 : 0)) * TextScale, size * 1.6f * Math.Max(2, maxLines) * TextScale); }
         else if (w > 0) { t.WidthResizePolicy = ResizePolicyType.Fixed; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size((w + (align == HorizontalAlignment.Begin ? 3 : 0)) * TextScale, boxH * TextScale); } // slack: the drawn advances can exceed the measured ones by a fraction of a pixel, which would ellipsise a line that fits
         else { t.WidthResizePolicy = ResizePolicyType.UseNaturalSize; t.HeightResizePolicy = ResizePolicyType.Fixed; t.Size = new Size(0, boxH * TextScale); }
         t.PivotPoint = global::Tizen.NUI.PivotPoint.TopLeft; t.PositionUsesPivotPoint = true; t.ParentOrigin = global::Tizen.NUI.ParentOrigin.TopLeft;
         t.Scale = new Vector3(1 / TextScale, 1 / TextScale, 1);
-        TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline) { Family = cssFamily });
+        TextMeta.Add(t, new TextMetaInfo(size, cssWeight, line, cssY - y, spacing, align, color, multiline) { Family = cssFamily, Block = block });
         return t;
     }
 
     /// <summary>The web's advance (em) of glyphs that both clients draw from a fallback font: 0.838 em for the download, check and chevron glyphs, 0.769 em for the play triangle.</summary>
-    internal static float? GlyphAdvance(string text) => text switch { "⇩" or "✓" or "⌄" => 0.838f, "▶" => 0.769f, _ => null };
+    internal static float? GlyphAdvance(string text) => text switch { "⇩" or "✓" or "⌄" => 0.838f, "▶" => 0.769f, "←" or "→" => 1f, _ => null };
 
     /// <summary>Linear gradient box ("to right" when horizontal, else "to bottom"); stops are (offset 0..1, straight-alpha colour). Rendered once to a PNG and stretched.</summary>
     public static View Gradient(float x, float y, float w, float h, bool horizontal, params (float At, Rgba Color)[] stops)
@@ -290,4 +314,6 @@ internal sealed record TextMetaInfo(float Size, int Weight, float LineHeight, fl
     public string Family { get; set; } = Ui.Font;
     /// <summary>Lines of one wrapped paragraph share a group: web has one element for the whole block.</summary>
     public object? Group { get; set; }
+    /// <summary>A block-level text element: its box is the CSS line, not the font's content area.</summary>
+    public bool Block { get; set; }
 }

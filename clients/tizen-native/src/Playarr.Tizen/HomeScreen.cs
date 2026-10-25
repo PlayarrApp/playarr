@@ -46,7 +46,7 @@ internal sealed class HomeScreen : IPage
         _env = env; var (homeView, artworkSize) = env.Store.Appearance(); _layout = CardLayout.From(homeView, artworkSize); _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        Sem.Tag(_root, "container", "Home");
+        
         _keyArt = new KeyArt(env, armed: true);
         _panel = new DetailsPanel(env, library: false);
         _root.Add(_keyArt.Root);
@@ -107,7 +107,7 @@ internal sealed class HomeScreen : IPage
         for (var i = 0; i < model.Count; i++)
         {
             var rv = new RailView { Model = model[i], Y = y };
-            _stack.Add(Ui.Text(model[i].Title, RailX, y, 17.664f, 610, _t.Ink, 800, 26.496f, spacing: -0.53f));
+            _stack.Add(Ui.Heading(model[i].Title, RailX, y, 17.664f, 610, _t.Ink, 800, 26.496f, spacing: -0.53f));
             rv.Row.PositionY = y + 61.8f; rv.Row.Size = new Size(4000, _layout.ArtHeight + 76);
             for (var c = 0; c < model[i].Cards.Count; c++)
             {

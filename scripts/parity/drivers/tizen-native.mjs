@@ -143,7 +143,15 @@ export async function createDriver({ request = call, delay = sleep, env = proces
       // The layout document (docs/parity/LAYOUT.md) of the same screen state: the app walks its own NUI view tree.
       if (!env.PARITY_NO_LAYOUT) {
         const theme = basename(dirname(file)), screen = basename(file, ".png");
-        const doc = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
+        // text geometry is read from the labels' own layout, which can lag a frame behind the first read: take the document once two reads agree
+        let doc = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
+        for (let i = 0; i < 6; i++) {
+          await delay(300);
+          const again = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
+          const same = again?.json === doc?.json;
+          doc = again;
+          if (same) break;
+        }
         if (typeof doc?.json === "string") {
           const target = join(dirname(dirname(file)), "layout", theme, `${screen}.json`);
           if (writeLayout) writeLayout(target, doc.json);
