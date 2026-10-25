@@ -125,3 +125,11 @@ test("text-transform: the exported text is the displayed text", { skip }, async 
     <button style="text-transform:capitalize" aria-label="List View">list view</button>`);
   assert.deepEqual(texts(d), ["UP CASE", "low case", "Cap The 3rd Word-X O'neil", "No Change", "List View"]);
 });
+
+test("border-radius: a percentage resolves against the box and radii are capped at half the short side", { skip }, async () => {
+  const d = await dump(`<button class="abs" aria-label="round" style="top:0;width:44px;height:44px;background:#123;border-radius:50%"></button>
+    <button class="abs" aria-label="pill" style="top:60px;width:80px;height:20px;background:#123;border-radius:50%"></button>
+    <button class="abs" aria-label="big" style="top:100px;width:40px;height:20px;background:#123;border-radius:999px"></button>
+    <button class="abs" aria-label="px" style="top:140px;width:40px;height:40px;background:#123;border-radius:6px"></button>`);
+  assert.deepEqual(d.elements.map((e) => e.radius), [22, 10, 10, 6]);
+});

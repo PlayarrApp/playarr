@@ -49,14 +49,20 @@ export function layoutPageFn(volatile) {
     return z;
   };
   var norm = function (s) { return String(s || "").replace(/\s+/g, " ").trim(); };
+  /* Chromium has no text-transform: full-width (computed value is none). capitalize upper-cases the first letter of each word. */
+  var isLetter = function (c) { return c.toLowerCase() !== c.toUpperCase(); };
   var shown = function (s, cs) {
-    // Chromium has no text-transform: full-width (computed value is none), so it is not handled
     var t = cs.textTransform;
     if (/uppercase/.test(t)) return s.toUpperCase();
     if (/lowercase/.test(t)) return s.toLowerCase();
-    // capitalize: first letter of each word (a letter not preceded by a letter, digit or apostrophe), as Chromium does
-    if (/capitalize/.test(t)) return s.replace(/(^|[^\p{L}\p{N}'\u2019])(\p{L})/gu, function (m, a, b) { return a + b.toUpperCase(); });
-    return s;
+    if (!/capitalize/.test(t)) return s;
+    var out = "", prev = " ";
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i);
+      out += isLetter(c) && !isLetter(prev) && !/[0-9'\u2019]/.test(prev) ? c.toUpperCase() : c;
+      prev = c;
+    }
+    return out;
   };
   var clipped = function (el, r) {
     var left = r.left, top = r.top, right = r.right, bottom = r.bottom;
@@ -181,7 +187,12 @@ export function layoutPageFn(volatile) {
     var label = el.getAttribute("aria-label") || el.getAttribute("alt") || "";
     var text = own || (control || media ? norm(label) : "") || (control ? norm(el.innerText || el.value) : "");
     var zoom = zoomOf(el);
-    var radius = (parseFloat(cs.borderTopLeftRadius) || 0) * zoom;
+    var rawRadius = cs.borderTopLeftRadius;
+    var box = el.getBoundingClientRect();
+    var radius = (parseFloat(rawRadius) || 0) * zoom;
+    /* a percentage resolves against the box (min side for round/pill); any radius is capped at half the short side */
+    if (/%$/.test(rawRadius)) radius = parseFloat(rawRadius) / 100 * Math.min(box.width, box.height);
+    radius = Math.min(radius, Math.min(box.width, box.height) / 2);
     var row = {
       text: vol && !vol.entry.selector ? own : vol ? norm(el.innerText) : text,
       role: roleOf(el, !!own),
