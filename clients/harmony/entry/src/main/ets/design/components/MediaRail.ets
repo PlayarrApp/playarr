@@ -384,6 +384,7 @@ export struct MediaRail {
     .width('100%')
     .height('100%')
     .blendMode(BlendMode.DST_IN)
+    .id('px:mask:edge') // a blend layer: the layout export skips it, it draws nothing of its own
     .hitTestBehavior(HitTestMode.None)
   }
 

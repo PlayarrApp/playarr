@@ -105,13 +105,15 @@ def all_texts(node):
     return found
 
 
-def export(tree, screen, theme, viewport, clock_pinned=False):
-    """tree: the parsed inspector JSON with `$runs` on its Text nodes; viewport: (w, h, dpr). Returns the schema document."""
+def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False):
+    """tree: the parsed inspector JSON with `$runs` on its Text nodes; viewport: (w, h, dpr). Returns the schema document.
+    with_src adds each element's source line (the inspector's `$debugLine`) for analysis; published documents leave it out."""
     vw, vh, dpr = viewport
     out = []   # emitted elements, in paint order
     meta = []  # per element: [first, last] node sequence of the node it came from, then its clipped box, for the occlusion pass
     painters = []  # (first, last, clipped box in px) of every node that paints over what is behind it
     seq = [0]
+    src = [""]
     px = lambda v: v / dpr  # noqa: E731  (inspector px -> CSS px of the app viewport)
 
     def scale_k(chain):
@@ -141,6 +143,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False):
             el["radius"] = round(radius, 2)
         if opacity < 0.999:
             el["opacity"] = round(opacity, 3)
+        if with_src:
+            el["src"] = src[0]
         out.append(el)
         meta.append([seq[0], seq[0], clip_box(box, clip)])
 
@@ -189,6 +193,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False):
             return
         seq[0] += 1
         first = seq[0]
+        src[0] = str(node.get("$debugLine", "")).split('"')[3].split("main/ets/")[-1] if with_src and '"' in str(node.get("$debugLine", "")) else ""
         raw = rect_of(node)
         fill = argb(a.get("backgroundColor"))
         here = under
@@ -200,6 +205,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False):
             mychain = chain + [((raw[0] + raw[2] / 2), (raw[1] + raw[3] / 2), k)]
         nid = str(a.get("id", ""))
         pxid = nid.split(":", 2) if nid.startswith("px:") and nid.count(":") >= 2 else None
+        if pxid is not None and pxid[1] == "mask":
+            return  # a blend layer that only shapes what is drawn under it (DST_IN edge fades): it draws nothing itself
         box = raw
         if box is not None and (box[2] < 0.5 or box[3] < 0.5) and kind != "Text":
             box = None
@@ -232,7 +239,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False):
             nclip = (max(clip[0], raw[0]), max(clip[1], raw[1]), min(clip[2], raw[0] + raw[2]), min(clip[3], raw[1] + raw[3]))
         paints = fill is not None and fill[3] >= 0.5 and opacity >= 0.5 or kind == "Image" or has_gradient(a)
         if box is not None and paints and kind != "Text" and visible(box, clip):
-            painters.append([first, first, clip_box(box, clip)])
+            painters.append([first, first, clip_box(box, clip), src[0]])
         for c in kids:
             if c.get("$type") == "NavDestination" and c is not pages[-1]:
                 continue  # a page below the top one stays in the tree while hidden
@@ -244,7 +251,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False):
 
     walk(tree, (255, 255, 255, 1.0), 1.0, [], (0, 0, vw * dpr, vh * dpr))  # chain: (cx, cy, k) outermost first; clip: the app viewport in px
 
-    def covered(box, first, last):
+    def covered(box, first, last, by):
         """True when every point of a 3 x 3 grid over the box lies inside something painted after the element's own subtree."""
         x0, y0, x1, y1 = box
         if x1 <= x0 or y1 <= y0:
@@ -252,12 +259,22 @@ def export(tree, screen, theme, viewport, clock_pinned=False):
         for fx in (0.2, 0.5, 0.8):
             for fy in (0.2, 0.5, 0.8):
                 x, y = x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy
-                if not any(pf > last and bx0 <= x <= bx1 and by0 <= y <= by1 for pf, _, (bx0, by0, bx1, by1) in painters):
+                hit = next((p for p in painters if p[0] > last and p[2][0] <= x <= p[2][2] and p[2][1] <= y <= p[2][3]), None)
+                if hit is None:
                     return False
+                by.append(hit[3])
         return True
 
-    kept = [el for el, (first, last, box) in zip(out, meta) if not covered(box, first, last)]
-    doc = {"screen": screen, "theme": theme, "viewport": {"w": vw, "h": vh, "dpr": dpr}, "occluded": len(out) - len(kept), "elements": kept}
+    kept, dropped = [], []
+    for el, (first, last, box) in zip(out, meta):
+        by = []
+        if covered(box, first, last, by):
+            dropped.append({"text": el["text"], "role": el["role"], "by": sorted(set(by))})
+        else:
+            kept.append(el)
+    doc = {"screen": screen, "theme": theme, "viewport": {"w": vw, "h": vh, "dpr": dpr}, "occluded": len(dropped), "elements": kept}
+    if with_src:
+        doc["droppedBy"] = dropped
     if clock_pinned:
         doc["clockPinned"] = True
     return doc

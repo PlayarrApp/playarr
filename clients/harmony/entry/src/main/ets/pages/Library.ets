@@ -1157,6 +1157,7 @@ export struct Library {
     .width('100%')
     .height(tv(1080)) // the panel is the full stage height; '100%' resolved to a shorter box and faded row 3
     .blendMode(BlendMode.DST_IN)
+    .id('px:mask:edge') // a blend layer: the layout export skips it, it draws nothing of its own
     .hitTestBehavior(HitTestMode.None)
   }
 

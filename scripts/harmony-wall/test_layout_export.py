@@ -82,6 +82,12 @@ class LayoutExportTest(unittest.TestCase):
         doc = export(column([btn, drawer], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
         self.assertIn("button", [e["role"] for e in doc["elements"]])
 
+    def test_a_mask_layer_neither_exports_nor_hides_what_is_under_it(self):
+        label = text("[100.00, 100.00],[200.00, 30.00]", "Hi", [run(0, 2, 0.0, 0.0, 20.0, 20.0)])
+        mask = {"$type": "Column", "$rect": "[0.00, 0.00],[1920.00, 1080.00]", "$attrs": {"id": "px:mask:edge", "backgroundColor": "#FF000000"}, "$children": []}
+        doc = export(column([label, mask], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
+        self.assertEqual([e["role"] for e in doc["elements"]], ["container", "text"])
+
 
 if __name__ == "__main__":
     unittest.main()

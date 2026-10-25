@@ -13,7 +13,7 @@ for theme in ("dark", "light"):
     for raw in sorted(glob.glob(os.path.join(pulled, "layout-raw", theme, "*.json"))):
         name = os.path.basename(raw)[:-5]
         try:
-            doc = layout_export.export(json.load(open(raw)), name, theme, viewport, True)
+            doc = layout_export.export(json.load(open(raw)), name, theme, viewport, True, with_src=bool(os.environ.get("WITH_SRC")))
         except layout_export.ExportError as error:
             print(f"{theme}/{name}: {error}")
             continue
