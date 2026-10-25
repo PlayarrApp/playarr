@@ -224,7 +224,7 @@ export function layoutPageFn(volatile) {
       fontWeight: own ? Number(cs.fontWeight) || 400 : null
     };
     if (gradient) row.colorGradient = true;
-    if (radius > 0) row.radius = round(radius);
+    if (radius > 0) { row.radius = round(radius); if (!painted) row.painted = false; }
     if (op < 1) row.opacity = round(op);
     if (vol) {
       row.volatile = vol.entry.name;

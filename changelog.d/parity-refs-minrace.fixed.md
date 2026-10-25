@@ -1,1 +1,2 @@
 - Parity web ref capture waits for the film preview runtime before the shot, so Movies refs no longer flicker between two states.
+- Parity layout: the web dump marks radii on unpainted elements (painted false) and the scorer skips them; the dump joins adjacent text nodes as rendered; the Movies ref capture waits for the preview runtime.
