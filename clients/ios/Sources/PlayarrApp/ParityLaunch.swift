@@ -99,6 +99,7 @@ enum ParityLaunch {
         try? FileManager.default.removeItem(at: acceptanceStateURL)
     }
     static var isPlayerRoute: Bool { parts.first == "player" || parts.first == "player-quality" || parts.first == "play" }
+    static var isPlayerCapture: Bool { parts.first == "player" || parts.first == "player-quality" }
     static var title: String? {
         ["detail", "player", "player-quality"].contains(parts.first ?? "") && parts.count > 2 ? parts[2] : nil
     }

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { assertCaptureState, assertResetProfile, assertScreenshotFile } from "./drivers/apple-ios.mjs";
+import { assertCaptureState, assertResetProfile, assertScreenshotFile, captureStableScreen, parseCaptureLayout } from "./drivers/apple-ios.mjs";
 
 const ready = {
   signedIn: true,
@@ -10,6 +10,7 @@ const ready = {
   deviceTestIdentityVerified: true,
   authenticatedUsername: "device-test",
   directPlay: true,
+  playerCapture: { position: 2, paused: true, itemReady: true },
   screenContentReady: true,
   animationsDisabled: true,
   frozenNow: "2026-10-14T12:00:00Z",
@@ -24,6 +25,15 @@ test("iOS capture gates require verified identity, loaded content and direct-pla
   assert.throws(() => assertCaptureState({ ...ready, authenticatedUsername: "another-user" }, "device-test"), /DEVICE_TEST_USERNAME/);
   assert.throws(() => assertCaptureState({ ...ready, failure: "identity-mismatch" }, "device-test"), /identity-mismatch/);
   assert.throws(() => assertCaptureState({ ...ready, authenticatedUsername: undefined }, "device-test"), /DEVICE_TEST_USERNAME/);
+});
+
+test("player captures require an observed ready, paused position of exactly two seconds", () => {
+  for (const playerCapture of [undefined, {}, { position: "2", paused: true, itemReady: true },
+    { position: 1.999, paused: true, itemReady: true }, { position: 2.001, paused: true, itemReady: true },
+    { position: 2, paused: false, itemReady: true }, { position: 2, paused: true, itemReady: false }]) {
+    assert.throws(() => assertCaptureState({ ...ready, playerCapture }, "device-test", { player: true }), /exactly 2.000 seconds/);
+  }
+  assert.doesNotThrow(() => assertCaptureState({ ...ready, playerCapture: undefined }, "device-test"));
 });
 
 test("progress reset accepts only the exact authenticated current Device Test profile", () => {
@@ -54,4 +64,37 @@ test("iOS screenshot guard accepts only existing frames at least 20 KB", () => {
 test("iOS capture checks the app still reports the screen ready before and after each frame", () => {
   const source = readFileSync(new URL("./drivers/apple-ios.mjs", import.meta.url), "utf8");
   assert.match(source, /await stillReady\(\);\s*run\("xcrun", \["simctl", "io", udid, "screenshot"[^\n]*\n\s*await stillReady\(\);/);
+});
+
+const layout = {
+  viewport: { w: 1200, h: 800, dpr: 2 },
+  clockPinned: true,
+  elements: [{ role: "text", text: "Sample", rect: { x: 20, y: 40, w: 60, h: 20 } }],
+};
+
+test("iOS layout capture rejects incomplete, malformed or stale exports", () => {
+  const options = { screen: "home", theme: "dark", deterministic: true };
+  const parse = (value) => parseCaptureLayout(JSON.stringify(value), options);
+  assert.deepEqual(parse(layout), { ...layout, screen: "home", theme: "dark" });
+  for (const value of [null, {}, { ...layout, viewport: { w: 0, h: 800, dpr: 2 } }, { ...layout, elements: [] },
+    { ...layout, elements: [{ role: "text", rect: { x: null, y: 0, w: 1, h: 1 } }] }]) {
+    assert.throws(() => parse(value), /geometry/);
+  }
+  assert.throws(() => parseCaptureLayout("{", options), /valid JSON/);
+  assert.throws(() => parse({ ...layout, clockPinned: false }), /fixed capture clock/);
+  assert.throws(() => parse({ ...layout, screen: "movies" }), /another screen or theme/);
+  assert.throws(() => parse({ ...layout, theme: "light" }), /another screen or theme/);
+});
+
+test("identical screenshots do not pass while their layout exports change", async () => {
+  let captures = 0;
+  const layouts = [layout, { ...layout, elements: [{ ...layout.elements[0], text: "Ready" }] }];
+  const settled = await captureStableScreen(async () => { captures += 1; return Buffer.from("same frame"); },
+    async () => layouts[Math.min(captures - 1, 1)], { attempts: 3, wait: async () => {} });
+  assert.equal(captures, 3);
+  assert.deepEqual(settled, layouts[1]);
+  await assert.rejects(captureStableScreen(async () => Buffer.from("same frame"),
+    async () => ({ ...layout, sequence: captures++ }), { attempts: 3, wait: async () => {} }), /did not settle/);
+  await assert.rejects(captureStableScreen(async () => Buffer.from("same frame"),
+    async () => { throw new Error("layout missing"); }, { attempts: 3, wait: async () => {} }), /layout missing/);
 });

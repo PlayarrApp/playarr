@@ -87,7 +87,7 @@ struct DownloadsView: View {
             .offset(x: 37, y: 80)
             PlayarrBackButton(action: goHome)
                 .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
-            WMText("Downloads", 21.6, 580, lh: 32, ls: -0.972).offset(x: 68, y: WM.topInset + 5)
+            WMText("Downloads", 21.6, 580, lh: 32, ls: -0.972).offset(x: 70, y: WM.topInset + 7.8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea(edges: .vertical)

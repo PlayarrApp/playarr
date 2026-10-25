@@ -82,7 +82,7 @@ struct WMFieldBox<Field: View>: View {
 
     var body: some View {
         field()
-            .wm(14, 400)
+            .wm(14, 400, color: WM.ink)
             .foregroundStyle(WM.ink)
             .padding(.horizontal, 14)
             .frame(width: 318, height: 48, alignment: .leading)
@@ -148,7 +148,7 @@ struct WMPanelPage<Content: View>: View {
             }
             Button(action: onBack) {
                 Text("\u{2190}")
-                    .wm(12.8, 720)
+                    .wm(12.8, 720, color: WM.shell)
                     .foregroundStyle(WM.shell)
                     .frame(width: 44, height: 40)
                     .background(WM.ink, in: Ellipse())

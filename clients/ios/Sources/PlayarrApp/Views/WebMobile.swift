@@ -113,6 +113,7 @@ struct WMText: View {
     let color: Color
     let lineHeight: CGFloat
     let tracking: CGFloat
+    let role: String
 
     init(
         _ text: String,
@@ -120,7 +121,8 @@ struct WMText: View {
         _ weight: Int = 400,
         color: Color = WM.ink,
         lh: CGFloat,
-        ls: CGFloat = 0
+        ls: CGFloat = 0,
+        role: String = "text"
     ) {
         self.text = text
         self.size = size
@@ -128,6 +130,7 @@ struct WMText: View {
         self.color = color
         self.lineHeight = lh
         self.tracking = ls
+        self.role = role
     }
 
     var body: some View {
@@ -137,8 +140,9 @@ struct WMText: View {
             .foregroundStyle(color)
             .lineLimit(1)
             .truncationMode(.tail)
+            .parityRenderedText(text, role: role, size: size, weight: weight, color: color)
             .frame(height: lineHeight, alignment: .leading)
-            .parityLayout(text: text, role: "text", size: size, weight: weight, color: color, tracking: tracking)
+            .accessibilityAddTraits(role == "heading" ? .isHeader : [])
     }
 }
 
@@ -402,6 +406,7 @@ struct WMIconView: View {
             }
         }
         .frame(width: size, height: size)
+        .parityBox("image")
     }
 }
 
@@ -520,7 +525,7 @@ struct WMUnseenDot: View {
         Circle()
             .fill(WM.pink)
             .frame(width: 9, height: 9)
-            .parityBox("img")
+            .parityBox("image", background: WM.pink, radius: 4.5)
             .overlay(Circle().strokeBorder(Color.white.opacity(0.94), lineWidth: 2))
             .shadow(color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(0.45), radius: 4.5, y: 2)
     }
@@ -587,8 +592,6 @@ struct WMRailCard: View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
-                .parityBox("container", background: WM.artFill)
-                .parityBox("image", background: WM.artFill)
                 .background(WM.artFill)
                 .overlay(alignment: .bottomLeading) {
                     if let progress {
@@ -600,17 +603,19 @@ struct WMRailCard: View {
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .parityBox("image", background: WM.artFill, radius: 10)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
-            WMText(work.singularKindYearLabel, 7.3, 400, color: WM.ink, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
+            WMText(work.singularKindYearLabel, 6.88, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
         .frame(height: art + 24.7, alignment: .top)
-        .parityBox("link", name: "\(work.title) \(work.singularKindYearLabel)", radius: 12)
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(work.title) \(work.singularKindYearLabel)")
     }
 }
 
@@ -678,10 +683,9 @@ struct WMLibraryCard: View {
         VStack(alignment: .leading, spacing: 0) {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
-                .parityBox("container", background: WM.artFill)
-                .parityBox("image", background: WM.artFill)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .parityBox("image", background: WM.artFill, radius: 10)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
@@ -690,8 +694,9 @@ struct WMLibraryCard: View {
             WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
         }
         .frame(height: art + 24.7, alignment: .top)
-        .parityBox("link", name: "Open \(work.title)", radius: 12)
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Open \(work.title)")
     }
 }
 
@@ -714,9 +719,9 @@ struct WMSearchCard: View {
             WMText(work.singularKindYearLabel.uppercased(), 9.28, 720, color: WM.muted, lh: 13.92, ls: 0.3)
                 .padding(.top, 2)
         }
-        .parityBox("link", name: "Open \(work.title)", radius: 12)
         .frame(width: 173, height: 142.5, alignment: .topLeading)
-
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Open \(work.title)")
     }
 }
 
@@ -732,12 +737,13 @@ struct WMHeaderCircleButton: View {
         Button(action: action) {
             // The web draws the arrow glyph about 0.65 times the size of the app's fallback glyph, 1.3 pt lower.
             Text(glyph)
-                .wm(glyph == "\u{2190}" ? 8.3 : 12.8, weight)
+                .wm(glyph == "\u{2190}" ? 8.3 : 12.8, weight, color: WM.inkSoft)
                 .foregroundStyle(WM.inkSoft)
                 .offset(y: glyph == "\u{2190}" ? 1.3 : 0)
                 .frame(width: width, height: height)
                 .background(WM.chip.opacity(0.66), in: Ellipse())
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
+                .parityBox("container", background: WM.chip.opacity(0.66), radius: width == height ? width / 2 : 0)
         }
         .buttonStyle(.plain)
     }
@@ -756,7 +762,7 @@ struct WMLibraryHeader: View {
             PlayarrBackButton(action: onBack)
                 .offset(x: PlayarrPageTokens.gutter, y: top)
             WMText(title, 21.6, 580, lh: 33, ls: -1)
-                .offset(x: 71, y: top + 5)
+                .offset(x: 70, y: top + 5.5)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
                 Spacer()

@@ -232,7 +232,38 @@ writes them into the legend directory named by `LEGEND_ROOT` (`apple/tvos` or `m
 `build.json`). The workflow ref defaults to the app ref, so driver changes run before they reach `main`.
 ## iPhone and iPad: reproduce command
 
-Hosted only (no local Apple toolchain), static server, pinned clock `2026-10-07T12:00:00Z` (the workflow default):
-`gh workflow run parity-apple-ios.yml --ref main -f devices=iphone,ipad -f ref=<40-character app commit SHA>`, then
-download the `apple-wall-<device>-<run id>-dark|light` artifacts into `ios-phone/dev` and `ios-tablet/dev`
-(light screens in the `light/` subfolder) and write `build.json`. Touch devices: no D-pad checks.
+From the clean, pushed task branch with an open PR targeting `integration/parity`:
+
+```sh
+PARITY_LEGEND_ROOT="$legend_root" PARITY_RUN_ROOT="$task_scratch" \
+PARITY_ARCHIVE_SCRIPT="$archive_script" PARITY_CLEANUP_SCRIPT="$cleanup_script" \
+  scripts/parity/ios/run.sh iphone,ipad
+```
+
+Set the four paths to the campaign legend root, existing task scratch directory, JSON archive script and capture
+cleanup script. The command uses authenticated `gh`, `gh-watcher`, Node and Python. It dispatches the exact pushed
+commit on hosted Apple runners, uses the static server and pinned clock `2026-10-07T12:00:00Z`, waits once per run,
+validates capture provenance and viewport units, publishes both themes, archives results and removes temporary images.
+Touch devices have no D-pad checks. Optional second argument: a comma-separated screen list, for example
+`scripts/parity/ios/run.sh iphone home,filters,player-controls`.
+
+Failed runs still publish the captured subset and return a failure status; missing screens remain missing. Each run
+keeps `request.json`, `wait.json`, per-screen scores and capture hashes in `publication.json`, plus the previous active
+JSON. `build.json` retains the artifact's capture timestamp. Run the full command twice without changing the commit
+and compare the two manifests' PNG and layout hashes to check determinism.
+
+To resume an interrupted run, set `PARITY_IOS_RUN_ID` to its numeric ID and pass its single device and original screen
+list. The branch, commit and arguments must still match. Inspect at least three screens against the web references
+before asking the coordinator to validate a new exporter; automated scoring does not replace that audit.
+Set `PARITY_IOS_INSPECT_ONLY=1` for the first capture of a changed exporter to stop before publication, inspect its
+downloaded images and layouts, then resume the same run without that setting after the sanity check.
+
+Task 17.484 remains blocked on a reference-export discrepancy: Actions has a 44 px Close circle, but its web
+layout reports the CSS percentage `50%` as a radius of 50 px instead of the drawn 22 px. The native exporter must
+keep reporting the actual radius. Resolution belongs to the reference coordinator; the iOS lane must not alter
+the web or substitute reference values in its export.
+
+iOS layout scores are not validated. Remaining exporter gaps include text after truncation, ancestor clipping
+and opacity, and backgrounds composited through translucent or material ancestors. Resolve those gaps, obtain
+an independent CLEAN audit and coordinator validation, then run two complete captures at the same commit.
+Missing screenshots or layout files fail coverage; rescoring one capture twice does not establish determinism.

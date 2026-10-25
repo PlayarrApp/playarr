@@ -1,0 +1,1 @@
+- Remove invisible proxy boxes and invented circle radii from iOS parity exports. Measure the drawn pills and artwork, and use native accessibility elements for card and letter-rail controls.

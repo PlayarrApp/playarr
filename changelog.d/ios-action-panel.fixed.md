@@ -1,0 +1,1 @@
+- Align iOS title-action rows and panel headings with the web layout, and give the circular Close control a real accessibility label.
