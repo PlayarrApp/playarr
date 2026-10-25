@@ -184,7 +184,7 @@ internal sealed class DetailScreen : IPage
         foreach (var c in chapters)
         {
             var x = RailX + c.Index * ChapterPitch;
-            var box = new View { PositionX = x, Size = new Size(268, 200) };
+            var box = new View { PositionX = x, Size = new Size(268, 179.5f) }; // web: the link is the art and its caption row
             var rest = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f); // web .tv-episode-art resting shadow
             rest.BoxShadow = new Shadow(20, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.14f), new Vector2(0, 10), new Vector2(0, 0));
             box.Add(rest);

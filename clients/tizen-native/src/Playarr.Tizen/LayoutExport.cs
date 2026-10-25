@@ -136,7 +136,7 @@ internal static class LayoutExport
                 {
                     if (!r.Overlaps(clip)) continue;
                     var c = label.TextColor;
-                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * Math.Abs(csx), m.Weight, 0, cop, ctx.Order++, id, myChain, 0));
+                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * label.Scale.X, m.Weight, role is "button" or "text" && parent is View pv ? Math.Min(pv.CornerRadius.X, Math.Min(pv.Size.Width, pv.Size.Height) / 2f) * sx : 0, cop, ctx.Order++, id, myChain, 0));
                 }
                 continue;
             }
@@ -151,10 +151,12 @@ internal static class LayoutExport
             var radius = child.CornerRadius.X * csx;
             if (visible)
             {
-                var painted = fills || border || shadow;
+                // a section whose top edge is drawn as a hairline child (a top border) is a painted container
+                var hairline = role == "container" && child.Children.OfType<View>().Any(c => c.PositionY < 1 && c.Size.Height <= 1.5f && c.Size.Width >= size.Width * 0.95f && c.BackgroundColor.A > 0.02f);
+                var painted = fills || border || shadow || hairline;
                 var control = role is not null and not ("container" or "none" or "text" or "img");
                 if (child is ImageView)
-                    ctx.Nodes.Add(new Node("", role is null or "none" or "container" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, cop));
+                    ctx.Nodes.Add(new Node("", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, cop));
                 else if (control || (role == "img" && painted))
                     ctx.Nodes.Add(new Node(name ?? "", role!, cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, fills ? bc.A * cop : 0, fills ? (bc.R, bc.G, bc.B, bc.A * cop) : null));
                 else if (painted)
