@@ -1,1 +1,1 @@
-Android TV parity: the layout exporter reads only the laid-out app (real bounds, per-line text runs, real containers and Back semantics), TV geometry matches the web at 1920x1080, the parity player holds exactly 2.000 s and the Search keyboard no longer flickers into captures.
+- Android TV parity: the layout exporter reads only the laid-out app (real bounds, per-line text runs, real containers and Back semantics), TV geometry matches the web at 1920x1080, the parity player holds exactly 2.000 s and the Search keyboard no longer flickers into captures.
