@@ -451,14 +451,14 @@ export struct ReleaseCalendar {
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's title box sits 1.4 higher
+          .translate({ y: isTvMetrics() ? (width === WEEK_COLUMN_WIDTH ? -1.4 : 1.1) : 0 }) // web's title box sits 1.4 higher in the week, 1.1 lower in the agenda
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .translate({ y: isTvMetrics() ? -1.3 : 0 })
+            .translate({ y: isTvMetrics() ? (width === WEEK_COLUMN_WIDTH ? -1.3 : 1.1) : 0 })
             .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
@@ -535,6 +535,7 @@ export struct ReleaseCalendar {
     }
     .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
+    .id(isTvMetrics() ? 'px:heading:' : '')
     .alignItems(VerticalAlign.Center)
     // The TV's agenda sits on an opaque list; the phone's headings sit straight on the page like web's.
     .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent)
@@ -835,6 +836,7 @@ export struct ReleaseCalendar {
       .fontSize(tv(PANEL_BUTTON_FONT))
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
+      .id('pxt:button:' + label) // web: the button owns its text
       .height(tv(PANEL_BUTTON_HEIGHT))
       .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
       .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
@@ -863,22 +865,29 @@ export struct ReleaseCalendar {
             })
         }
         if (this.plan()!.watchlist !== null && this.plan()!.watchlist!.enabled && this.plan()!.snapshot !== null) {
-          Text(this.listed ? '✓  Remove from watchlist' : '+  Add to watchlist').fontFamily(nunitoAt(700, tv(PANEL_BUTTON_FONT)))
-            .fontSize(tv(PANEL_BUTTON_FONT))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(toResourceColor(activeColors().ink))
-            .height(tv(PANEL_BUTTON_HEIGHT))
-            .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
-            .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
-            .border({ width: 1, color: toResourceColor(activeColors().lineStrong) })
-            .opacity(this.watchlistBusy ? 0.6 : 1)
-            .focusable(true)
-            .onClick(() => {
-              this.toggleWatchlist();
-            })
+          Row({ space: tv(9.6) }) {
+            Text(this.listed ? '✓' : '+').fontFamily(nunitoAt(720, tv(PANEL_BUTTON_FONT)))
+              .fontSize(tv(PANEL_BUTTON_FONT))
+              .fontWeight(FontWeight.Bold)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+            Text(this.listed ? 'Remove from watchlist' : 'Add to watchlist').fontFamily(nunitoAt(900, tv(PANEL_BUTTON_FONT)))
+              .fontSize(tv(PANEL_BUTTON_FONT))
+              .fontWeight(FontWeight.Bold)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+          }
+          .id('px:button:' + (this.listed ? '✓ Remove from watchlist' : '+ Add to watchlist'))
+          .height(tv(PANEL_BUTTON_HEIGHT))
+          .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
+          .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
+          .border({ width: 1, color: toResourceColor(activeColors().lineStrong) })
+          .opacity(this.watchlistBusy ? 0.6 : 1)
+          .focusable(true)
+          .onClick(() => {
+            this.toggleWatchlist();
+          })
         }
       }
-      .margin({ top: tv(PANEL_GAP) })
+      .margin({ top: tv(PANEL_GAP) - 10.7 }) // web: the actions sit 10.7 nearer than the shifted copy above would leave them
     }
   }
 
@@ -886,7 +895,7 @@ export struct ReleaseCalendar {
   private panelExtras(): void {
     if (this.selected !== undefined) {
       Column({ space: tv(PANEL_GAP) }) {
-        this.statusPill(entryPillTone(this.selected, this.today))
+        this.statusPill(entryPillTone(this.selected, this.today), 2.42)
         if (this.selected.overview !== undefined && this.selected.overview !== null) {
           Text(this.selected.overview).fontFamily(nunito(600))
             .fontSize(13.82)
@@ -896,6 +905,7 @@ export struct ReleaseCalendar {
             .constraintSize({ maxWidth: tv(OVERVIEW_WIDTH) })
             .maxLines(OVERVIEW_MAX_LINES)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: 4.8 })
         }
         this.panelActions()
       }
@@ -934,6 +944,7 @@ export struct ReleaseCalendar {
     } else {
     Stage({
       titleRole: 'text',
+      panelTopAdjust: 3.6, // web's agenda hero sits 3.6 lower than the library's
       keyArt: '',
       kicker: this.selected !== undefined ?
         `${mediaKindLabel(this.selected.media_kind)} · ${releaseTypeLabel(this.selected.release_type)}` : '',

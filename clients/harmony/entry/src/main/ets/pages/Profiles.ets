@@ -515,7 +515,7 @@ struct Profiles {
             })
               // web phone: the current profile's avatar is lifted and enlarged (measured 1.13x, 8.6 vp up on the pinned reference)
               .scale(profile.is_current ? { x: 1.0816, y: 1.0816 } : { x: 1, y: 1 })
-              .translate({ y: profile.is_current && !isTvMetrics() ? -8.6 : 0 })
+              .translate({ y: 0 })
               // web phone: the current avatar throws a wide crimson glow (0.28 at the ring, 0.11 at 17 vp out on the static ref, light theme; none above it)
               .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
               .shadow(profile.is_current && !isTvMetrics() ? { radius: 40, color: 'rgba(130, 40, 66, 0.56)', offsetY: 16 } : { radius: 0, color: 'rgba(0, 0, 0, 0)' })
@@ -524,7 +524,7 @@ struct Profiles {
               .fontWeight(FontWeight.Bold)
               .letterSpacing(this.pick(0.35, 0.28))
               .fontColor(toResourceColor(activeColors().ink))
-              .margin({ top: this.pick(16.78, profile.is_current ? 5.5 : 10.8) })  // web phone: the lifted current avatar pulls its name up
+              .margin({ top: this.pick(16.78, profile.is_current ? 13.28 : 10.8) })  // web phone: the lifted current avatar pulls its name up
             Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
               .fontSize(this.pick(9.408, 6.72))
               .fontWeight(FontWeight.Bold)
@@ -541,11 +541,11 @@ struct Profiles {
                   this.handleSignOut();
                 })
               }
-              .margin(isTvMetrics() ? { top: 24.84, bottom: -68.84 } : { top: tv(21) + 3.8, bottom: -70.92 }) // web: the actions sit under the profile button, outside its box
+              .margin(isTvMetrics() ? { top: 24.84, bottom: -68.84 } : { top: tv(21) + 5.4, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
             }
           }
           .width(this.pick(254.98, 150.48))
-          .padding({ top: this.pick(5.49, 3.25), bottom: this.pick(8.8, 0) })
+          .padding({ top: this.pick(5.49, 3.25), bottom: this.pick(8.8, 6.5) })
           .id('px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
@@ -567,7 +567,7 @@ struct Profiles {
                 colors: [['rgba(255, 255, 255, 0.28)', 0], ['rgba(255, 255, 255, 0)', 1]],
               })
             Text('+').fontFamily(nunitoAt(300, this.pick(76.8, 38.4)))
-              .translate({ x: this.pick(-1.8, 0), y: this.pick(-2.4, 0) })
+              .translate({ x: this.pick(-1.8, -1.2), y: -2.4 })
               .fontSize(this.pick(76.8, 38.4))
               .fontWeight(FontWeight.Lighter)
               .fontColor(toResourceColor(activeColors().inkSoft))
@@ -581,7 +581,7 @@ struct Profiles {
             .fontSize(this.pick(17.28, 13.12))
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
-            .margin({ top: this.pick(10.85, 10.8) })
+            .margin({ top: this.pick(10.85, 9.35) })
           Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
             .fontSize(this.pick(9.408, 6.72))
             .fontWeight(FontWeight.Bold)
@@ -589,10 +589,10 @@ struct Profiles {
             .textCase(TextCase.UpperCase)
             .textAlign(TextAlign.Center)
             .fontColor(toResourceColor(activeColors().inkMuted))
-            .margin({ top: this.pick(13.72, 12), bottom: this.pick(5.6, 0) })
+            .margin({ top: this.pick(13.72, 13.2), bottom: this.pick(5.6, 1.4) })
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
-        .margin({ top: this.pick(14.79, 0), right: this.pick(5.49, 0) })
+        .margin({ top: this.pick(14.79, 12.33), right: this.pick(5.49, 0) })
         .id('px:button:+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase())
         .focusable(true)
         .onClick(() => {

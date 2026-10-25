@@ -2066,8 +2066,9 @@ struct Detail {
         .letterSpacing((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) // web's rail heading tracking
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
-      Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11)))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11))
+        .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
+      Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)))
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)) // web: 9.98 on the TV
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
@@ -2231,7 +2232,7 @@ struct Detail {
     Stack() {
       KeyArtBackdrop({ keyArt: this.heroArtwork, railFrostWidthPct: 65 })
 
-      Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 20 : 0)) }) {
+      Column({ space: tv(COPY_GAP - (this.isSeriesPage() ? 23.8 : 0)) }) {
         FeatureCopy({
           kicker: this.tvCopyKicker(),
           title: (this.detail !== null ? this.detail.work.title : ''),

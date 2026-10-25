@@ -52,12 +52,12 @@ const EPISODE_TITLE_FONT_WEIGHT: number = 600;
 const EPISODE_TITLE_LETTER_SPACING: number = EPISODE_TITLE_FONT_SIZE * -0.035;
 const EPISODE_TITLE_LINE_HEIGHT: number = EPISODE_TITLE_FONT_SIZE * 1.15;
 const EPISODE_TITLE_MAX_CHARS: number = 24;
-const EPISODE_TITLE_MARGIN_TOP: number = 12.4;
+const EPISODE_TITLE_MARGIN_TOP: number = 21.6;
 const EPISODE_META_MARGIN_TOP: number = 30;
 
 // Web `.tv-detail-meta`: 0.55vw chips, 0.85rem apart, the first one bolder and softer-ink, the rest muted.
 const META_CHIP_FONT_SIZE: number = 10.56;
-const META_CHIP_GAP: number = 10.8; // web 13.6; ArkUI's wrapped Flex adds 2.8 per gap
+const META_CHIP_GAP: number = 13.6;
 const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
@@ -68,7 +68,7 @@ const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
 const SYNOPSIS_MAX_WIDTH: number = 324;
 // Nunito renders ~2% wider than web's at this size, so lines break one word earlier; trim the tracking, not the column.
-const SYNOPSIS_LETTER_SPACING: number = -0.018; // fitted to the layout ref's run width (313.5 unspaced vs 312.6)
+const SYNOPSIS_LETTER_SPACING: number = 0.025; // fitted to the layout ref's run width (313.5 unspaced vs 312.6)
 const SYNOPSIS_MAX_LINES: number = 5;
 // Measured on the 2026-10-18 Library refs: 5 lines at a 21.7 pitch, about 334 wide for 50 characters.
 const LIBRARY_SYNOPSIS_FONT_SIZE: number = 13.82;
@@ -190,6 +190,7 @@ export struct FeatureCopy {
           .lineHeight(tv(EPISODE_TITLE_LINE_HEIGHT))
           .fontColor(toResourceColor(activeColors().inkSoft))
           .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
+          .id('px:heading:' + this.subtitle)
           .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) })
       }
 
@@ -202,6 +203,7 @@ export struct FeatureCopy {
                 .fontSize(tv(META_CHIP_FONT_SIZE))
                 .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
                 .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
+                .margin({ right: index === 0 ? -2.7 : 0 }) // ArkUI lays the bold first chip 2.7 wider than web's
             },
             (chip: string, index: number) => `${index}-${chip}`
           )
@@ -216,6 +218,7 @@ export struct FeatureCopy {
               Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE))
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
+                .letterSpacing(this.libraryCopy ? -0.14 : 0) // web's run is narrower than ArkUI lays it out
                 .fontColor(this.copyTextColor())
             },
             (run: string, index: number) => `${index}-${run}`

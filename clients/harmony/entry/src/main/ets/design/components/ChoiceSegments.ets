@@ -119,7 +119,7 @@ export struct ChoiceSegments {
         if (this.description !== '') {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE))
-            .fontColor(toResourceColor(activeColors().inkSoft))
+            .fontColor(toResourceColor(activeColors().inkMuted))
             .margin({ top: tv(-5), bottom: tv(1) })
         }
       } else {
@@ -128,7 +128,7 @@ export struct ChoiceSegments {
           .fontWeight(FontWeight.Bold)
           .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.27))
           .textCase(TextCase.UpperCase)
-          .fontColor(toResourceColor(isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted))
+          .fontColor(toResourceColor(activeColors().inkMuted))
           .id('px:heading:' + this.heading.toUpperCase())
       }
       Row({ space: tv(CHOICE_GAP) }) {
@@ -164,7 +164,7 @@ export struct ChoiceSegments {
             .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
             .fontWeight(FontWeight.Bold)
             .letterSpacing(this.large && isTvMetrics() ? 0.43 : 0) // web's run is about 3 wider than ArkUI lays it out
-            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : (isTvMetrics() ? activeColors().inkSoft : activeColors().inkMuted)))
+            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
             .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
               toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
             .borderRadius(tv(CHOICE_RADIUS))

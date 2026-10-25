@@ -204,7 +204,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
             lx = x + (w - lw) / 2 if "center" in align else (x + w - lw if "end" in align or "right" in align else x)
             baseline = top + i * lh + (lh - nat) / 2 + NATIVE_ASCENT_RATIO * nat  # the baseline ArkUI draws on
             asc, desc = metrics if metrics is not None else (NATIVE_ASCENT_RATIO * nat / size_px, (1 - NATIVE_ASCENT_RATIO) * nat / size_px)
-            rect = (lx, baseline - asc * size_px, lw, (asc + desc) * size_px)
+            above, below = round(asc * size * k) * dpr, round(desc * size * k) * dpr  # the content area's ascent and descent in whole CSS px, the unit a text box is measured in
+            rect = (lx, baseline - above, lw, above + below)
             if visible(rect, clip):
                 runs.append((rect, str(line["text"])))
         for rect, line_text in runs:

@@ -20,8 +20,9 @@ class LayoutExportTest(unittest.TestCase):
         t = [e for e in doc["elements"] if e["role"] == "text"][0]
         self.assertEqual(t["text"], "Hello world")
         self.assertEqual(t["fontWeight"], 610)
-        # the baseline ArkUI draws on (0.821 of the 66 px line below its top), with the font file's own ascent 1.011 and descent 0.353 around it
-        self.assertEqual(t["rect"], {"x": 10.0, "y": 102.89, "w": 100.0, "h": 21.82})
+        # the baseline ArkUI draws on (0.821 of the 66 px line below its top), with the font file's own ascent 1.011 and descent 0.353 around it,
+        # each rounded to whole CSS px (16 and 6 at 16 px) as a web text box is
+        self.assertEqual(t["rect"], {"x": 10.0, "y": 103.06, "w": 100.0, "h": 22.0})
         self.assertEqual(t["color"], "#f4f0f1")
         self.assertEqual(t["background"], "#151315")
 
