@@ -2178,6 +2178,7 @@ struct TVLibraryKindView: View {
                             .padding(10.54) // web: a 13 pt disc with its white ring inside, 10.5 pt from the art corner
                     }
                 }
+                .scaleEffect(isSelected ? 1.025 : 1) // web: the art grows beyond the card's own 1.015
                 if showTitle {
                     // Fixture SPA crops do not include the title line; draw it.
                     Text(work.title)
@@ -2193,8 +2194,8 @@ struct TVLibraryKindView: View {
             .frame(width: width, alignment: .leading)
             .parityBox("link", text: "Open \(work.title)", radius: 12, fill: DesignTokens.Stage.surface)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
-            .scaleEffect(isSelected ? 1.025 : 1)
-            .offset(y: isSelected ? -7 : 0)
+            .scaleEffect(isSelected ? 1.015 : 1)
+            .offset(y: isSelected ? -5 : 0)
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle(ignoresPress: actionsWorkID != nil))
@@ -2285,6 +2286,7 @@ struct TVLibraryKindView: View {
                     .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 44)
             }
         }
+        .offset(x: 3.03) // web: the buttons sit 3 pt further right
         .frame(height: 1080 - 277, alignment: .top)
         .clipped()
         .mask(
