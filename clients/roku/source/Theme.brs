@@ -219,6 +219,7 @@ sub ThemeApplyNode(node as Object, tokens as Object)
     kind = node.subtype()
     if kind = "Poster"
         node.blendColor = colour
+        if Instr(1, node.id, "@") > 0 then A11yStamp(node, true)
     else
         node.color = colour
     end if
@@ -357,3 +358,28 @@ function Theme() as object
         }
     }
 end function
+
+' Semantics ride on node ids as `a11y|role|radius[@rrggbbaa[~baked]]|name` (ECP query/app-ui prints ids). The optional @rrggbbaa is the colour the
+' app tints the node's bitmap with, alpha included, so the export composites the colour the app declared instead of reading JPEG pixels
+' back. ~baked is the alpha (0 to 255) the bitmap itself carries (the dock panels are white masks at 143), multiplied in.
+sub A11yStamp(node as Object, force = false as Boolean, baked = -1 as Integer)
+    id = node.id
+    if Left(id, 5) <> "a11y|" then return
+    if not force and Instr(1, id, "@") = 0 then return
+    parts = id.Split("|")
+    if parts.Count() < 4 then return
+    seg = parts[2]
+    if baked < 0 and Instr(1, seg, "~") > 0 then baked = Val(seg.Split("~")[1], 10)
+    radius = seg.Split("@")[0]
+    colour = node.blendColor
+    alpha = colour and 255
+    if baked >= 0 then alpha = Int(alpha * baked / 255 + 0.5)
+    hex = Right("00000000" + StrI((colour and &hFFFFFF00) or alpha, 16), 8)
+    suffix = ""
+    if baked >= 0 then suffix = "~" + baked.ToStr()
+    name = parts[3]
+    for i = 4 to parts.Count() - 1
+        name = name + "|" + parts[i]
+    end for
+    node.id = "a11y|" + parts[1] + "|" + radius + "@" + hex + suffix + "|" + name
+end sub

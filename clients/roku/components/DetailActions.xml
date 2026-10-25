@@ -14,7 +14,7 @@
     <field id="playMode" type="string" value="play" onChange="onLayoutChange" />
     <field id="playLabel" type="string" value="Start" onChange="onLayoutChange" />
     <field id="watchlisted" type="boolean" value="false" onChange="onLayoutChange" />
-    <field id="workTitle" type="string" value="" />
+    <field id="workTitle" type="string" value="" onChange="onWorkTitle" />
     <field id="itemSelected" type="integer" value="-1" alwaysNotify="true" />
   </interface>
   <children>

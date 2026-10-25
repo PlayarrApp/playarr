@@ -29,12 +29,12 @@ sub playerChromeBuild()
     g = m.pcGroup
     ' The pre-web controls (hidden labels and the 4 px track) are replaced by the web geometry.
     m.top.findNode("playerBarBg").visible = false
-    m.playerProgressTrack.translation = [70, 936]
+    m.playerProgressTrack.translation = [70, 933]
     m.playerProgressTrack.width = 1780
     m.playerProgressTrack.height = 6
-    m.playerBufferedFill.translation = [70, 936]
+    m.playerBufferedFill.translation = [70, 933]
     m.playerBufferedFill.height = 6
-    m.playerProgressFill.translation = [70, 936]
+    m.playerProgressFill.translation = [70, 933]
     m.playerProgressFill.height = 6
     m.playerProgressTrack.color = ThemeColor("playerTrack")
     m.playerBufferedFill.color = ThemeColor("playerBuffered")
@@ -57,10 +57,11 @@ sub playerChromeBuild()
         frame.uri = "pkg:/images/parity-clip-2s.png"
         frame.width = 1920
         frame.height = 1080
+        frame.id = "a11y|video|0|"
         g.insertChild(frame, 0)
     end if
 
-    m.pcThumb = pgRound(g, 121.8, 931.5, 15, 15, 7, "brand")
+    m.pcThumb = pgRound(g, 121.8, 928.5, 15, 15, 7, "brand")
     m.pcPrev = pgIcon(g, 92, 980, 20, "player-prev.png", "playerInk")
     m.pcPlayBg = pgRound(g, 147.6, 958, 64, 64, 32, "playerButton")
     m.pcPlay = pgIcon(g, 169.6, 980, 20, "player-pause.png", "playerInk")
@@ -71,26 +72,41 @@ sub playerChromeBuild()
 
     ' Quality pill (.player-quality-button): HD glyph and the current quality.
     ' Transparent at rest like web; the fill shows with focus (web hover and expanded).
-    m.pcQualityBg = pgRound(g, 1527.9, 959.8, 173.3, 60.5, 30, "playerButton")
+    m.pcQualityBg = pgRound(g, 1534.4, 962, 160.5, 56, 28, "playerButton")
     m.pcQualityBg.visible = false
-    m.pcQualityGlyph = pgLabel(g, 1543.5, 979.2, 30, 22, "HD", 8, 800, "playerInk", { horizAlign: "center", vertAlign: "center" })
-    m.pcQualityText = pgLabel(g, 1583.2, 981.4, 120, 18, "Original", 11, 800, "playerInk")
+    m.pcQualityGlyph = pgLabel(g, 1556.6, 984.2, 0, 11, "HD", 7.68, 700, "playerInk")
+    m.pcQualityText = pgLabel(g, 1585.6, 982.1, 0, 15, "Original", 10.56, 700, "playerInk")
 
     ' Subtitles, queue and info buttons (.player-btn.player-tool-button, 64 px circles; the web's audio slot sits before subtitles).
-    m.pcAudioIcon = pgIcon(g, 1317.1, 980, 20, "player-audio.png", "playerInk")
-    m.pcSubsIcon = pgIcon(g, 1394.7, 980, 20, "player-subtitles.png", "playerInk")
-    m.pcQueueIcon = pgIcon(g, 1472.3, 980, 20, "player-playlist.png", "playerInk")
-    m.pcInfoIcon = pgIcon(g, 1736.8, 980, 20, "player-health.png", "playerInk")
+    m.pcAudioIcon = pgIcon(g, 1323.6, 980, 20, "player-audio.png", "playerInk")
+    m.pcSubsIcon = pgIcon(g, 1401.2, 980, 20, "player-subtitles.png", "playerInk")
+    m.pcQueueIcon = pgIcon(g, 1478.8, 980, 20, "player-playlist.png", "playerInk")
+    m.pcInfoIcon = pgIcon(g, 1730.4, 980, 20, "player-health.png", "playerInk")
 
     ' Minimise and close (top right, .player-minimise and .player-close: 48 px high, 1 px border at 28% white). Roku cannot keep a
     ' mini player running behind the browse pages, so Minimise ends playback and returns to the title, as Back does.
-    pcFullRound(g, 1678, 37.8, 124, 48, "playerPill", 209, false)
+    minPill = pcFullRound(g, 1678, 37.8, 124, 48, "playerPill", 209, false)
+    minPill.id = "a11y|button|999|Minimise player"
     pcFullRound(g, 1678, 37.8, 124, 48, "playerInk", 71, true)
     pgIcon(g, 1702, 51.8, 20, "player-minimise.png", "playerInk")
-    pgLabel(g, 1730, 53.8, 66, 16, "Minimise", 11, 800, "playerInk")
-    pcFullRound(g, 1814, 37.8, 48, 48, "playerPill", -1, false)
+    pgLabel(g, 1730, 53.8, 66, 16, "Minimise", 11.2, 700, "playerInk")
+    closePill = pcFullRound(g, 1814, 37.8, 48, 48, "playerPill", -1, false)
+    closePill.id = "a11y|button|999|Close player"
     pcFullRound(g, 1814, 37.8, 48, 48, "playerInk", 71, true)
     pgIcon(g, 1829, 52.8, 18, "player-close.png", "playerInk")
+
+    ' Control semantics (web order); a control without a drawn box gets a transparent Rectangle at its box.
+    pgMark(g, "slider", "Seek", 70, 914, 1780, 44, 0)
+    m.pcPlayBg.id = "a11y|button|50|Play"
+    A11yStamp(m.pcPlayBg, true)
+    m.pcTimeMark = pgMark(g, "container", "0:00 / 0:00", 302.8, 981.8, 58.4, 16.3, 0)
+    m.pcPrevMark = pgMark(g, "button", "Previous episode", 70, 958, 64, 64, 50)
+    m.pcNextMark = pgMark(g, "button", "Next episode", 225.2, 958, 64, 64, 50)
+    m.pcAudioMark = pgMark(g, "button", "", 1301.6, 958, 64, 64, 50)
+    pgMark(g, "button", "Subtitles: Off", 1379.2, 958, 64, 64, 50)
+    pgMark(g, "button", "Playlist: 1 item", 1456.8, 958, 64, 64, 50)
+    m.pcQualityMark = pgMark(g, "button", "Quality: Original", 1534.4, 962, 160.5, 56, 999)
+    pgMark(g, "button", "Info and playback health", 1708.4, 958, 64, 64, 50)
 
     m.pcMenu = CreateObject("roSGNode", "Group")
     m.pcMenu.visible = false
@@ -123,15 +139,23 @@ end function
 ' Called from updatePlayerProgress with the playback state.
 sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Float)
     playerChromeBuild()
-    m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 931.5]
+    m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 928.5]
     m.pcTimeNow.text = formatPlaybackTime(position)
     m.pcTimeEnd.text = formatPlaybackTime(duration)
     sepX = 302.8 + m.pcTimeNow.boundingRect().width + 5
     m.pcTimeSep.translation = [sepX, 981.8]
     m.pcTimeEnd.translation = [sepX + 8.7, 981.8]
+    m.pcTimeMark.id = "a11y|container|0|" + m.pcTimeNow.text + " / " + m.pcTimeEnd.text
+    m.pcTimeMark.width = sepX + 8.7 + m.pcTimeEnd.boundingRect().width - 302.8
     m.pcPlay.uri = "pkg:/images/player-pause.png"
-    if m.video.state = "paused" then m.pcPlay.uri = "pkg:/images/player-play.png"
+    m.pcPlayBg.id = "a11y|button|50|Pause"
+    if m.video.state = "paused"
+        m.pcPlay.uri = "pkg:/images/player-play.png"
+        m.pcPlayBg.id = "a11y|button|50|Play"
+    end if
+    A11yStamp(m.pcPlayBg, true)
     m.pcQualityText.text = playerQualityButtonLabel()
+    m.pcQualityMark.id = "a11y|button|999|Quality: " + m.pcQualityText.text
     glyph = "HD"
     if m.qualityPref <> invalid and Left(m.qualityPref, 2) = "SD" then glyph = "SD"
     m.pcQualityGlyph.text = glyph
@@ -140,6 +164,8 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     m.pcNext.opacity = 0.28
     if n > 0 and m.playbackEpisodeIndex > 0 then m.pcPrev.opacity = 1
     if n > 0 and m.playbackEpisodeIndex < n - 1 then m.pcNext.opacity = 1
+    m.pcPrevMark.opacity = m.pcPrev.opacity
+    m.pcNextMark.opacity = m.pcNext.opacity
     playerChromeFocusDraw(fraction)
 end sub
 
@@ -150,11 +176,11 @@ function playerChromeItems() as Object
     if n > 0 and m.playbackEpisodeIndex > 0 then items.Push({ id: "prev", x: 70, y: 958, w: 64, h: 64 })
     items.Push({ id: "play", x: 147.6, y: 958, w: 64, h: 64 })
     if n > 0 and m.playbackEpisodeIndex < n - 1 then items.Push({ id: "next", x: 225.2, y: 958, w: 64, h: 64 })
-    items.Push({ id: "audio", x: 1295.1, y: 958, w: 64, h: 64 })
-    items.Push({ id: "subs", x: 1372.7, y: 958, w: 64, h: 64 })
-    items.Push({ id: "queue", x: 1450.3, y: 958, w: 64, h: 64 })
-    items.Push({ id: "quality", x: 1527.9, y: 959.8, w: 173.3, h: 60.5 })
-    items.Push({ id: "info", x: 1714.8, y: 958, w: 64, h: 64 })
+    items.Push({ id: "audio", x: 1301.6, y: 958, w: 64, h: 64 })
+    items.Push({ id: "subs", x: 1379.2, y: 958, w: 64, h: 64 })
+    items.Push({ id: "queue", x: 1456.8, y: 958, w: 64, h: 64 })
+    items.Push({ id: "quality", x: 1534.4, y: 962, w: 160.5, h: 56 })
+    items.Push({ id: "info", x: 1708.4, y: 958, w: 64, h: 64 })
     return items
 end function
 
@@ -172,12 +198,12 @@ sub playerChromeFocusDraw(fraction as Float)
     m.pcQualityBg.visible = m.pcFocus = "quality"
     m.pcThumb.width = 15
     m.pcThumb.height = 15
-    m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 931.5]
+    m.pcThumb.translation = [70 + 1780 * fraction - 7.5, 928.5]
     if big
         m.pcThumb.width = 24
         m.pcThumb.height = 24
-        m.pcThumb.translation = [70 + 1780 * fraction - 12, 927]
-        ring.translation = [67, 927]
+        m.pcThumb.translation = [70 + 1780 * fraction - 12, 924]
+        ring.translation = [67, 924]
         ring.width = 1786
         ring.height = 15
         ring.visible = not m.pcMenuOpen
@@ -272,7 +298,7 @@ function playerQualityButtonLabel() as String
             if want <> "" and option.id = want and option.video_bitrate_bps <> invalid then bps = option.video_bitrate_bps
         end for
     end if
-    if bps > 500000 then label = label + " · " + (Int(bps / 100000 + 0.5) / 10).ToStr() + " Mbps"
+    if bps > 0 then label = label + " · " + (Int(bps / 100000 + 0.5) / 10).ToStr() + " Mbps"
     return label
 end function
 

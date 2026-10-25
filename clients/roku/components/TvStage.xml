@@ -85,11 +85,15 @@
       elsewhere this session (PosterCard.xml's own poster Poster) that
       scaleToFill visibly warps photographic art.
     -->
+    <!-- Web page layers: the surface under the art and the opaque content panel over it (x 729.6 and right). -->
+    <Rectangle id="stageSurface" width="1920" height="1080" color="0x1B181BFF" />
     <Group id="keyArtLayer" opacity="0">
       <!-- Key-art Poster loads GET /api/v1/artwork/...&style=stage (server
            greyscale + opacity + right fade). No client-side filter wash on
            the bitmap itself - - that used to fight a full-colour source. -->
       <Poster id="keyArt" translation="[133.03,-22.9]" width="900" height="1190.6" loadDisplayMode="scaleToZoom" />
+      <!-- The web draws this art at its own opacity (0.72 dark, 0.24 light); the surface veil carries the rest of the measured fade. -->
+      <Rectangle id="keyArtVeil" translation="[133.03,-22.9]" width="900" height="1190.6" color="0x1B181B00" />
       <!-- Web masks the cropped image with linear-gradient(90deg, #000 72%,
            transparent 100%). The server bakes that fade into the source
            bitmap, but scaleToZoom crops the sides off, so the fade never
@@ -105,6 +109,8 @@
            270deg surface 50 % over 34 % (653 px). -->
       <StageScrims id="scrimLayer" />
     </Group>
+
+    <Rectangle id="stagePanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
 
     <!-- Home's .tv-home-rails frost sits above key art and below stage copy/rails. -->
     <Group id="homeRailFrostLayer" visible="false">

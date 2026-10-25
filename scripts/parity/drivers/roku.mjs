@@ -1190,7 +1190,7 @@ export function createDriver({ out, args = [] } = {}) {
         writeFileSync(`${file}.appui.xml`, appUi); // the measured tree, kept so the export can be redone offline
         const themeDir = dirname(resolve(file));
         const id = resolve(file).split("/").pop().replace(/\.png$/, "");
-        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), pngFile: file, clockPinned: pinArg !== "" });
+        const doc = buildLayoutDocument(appUi, { screen: id, theme: themeDir.split("/").pop(), clockPinned: pinArg !== "", pngFile: file });
         const layoutDir = resolve(themeDir, "..", "layout", themeDir.split("/").pop());
         mkdirSync(layoutDir, { recursive: true });
         writeFileSync(resolve(layoutDir, `${id}.json`), JSON.stringify(doc, null, 1));

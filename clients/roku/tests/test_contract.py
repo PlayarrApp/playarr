@@ -684,7 +684,7 @@ class SecretSafetyTests(unittest.TestCase):
         self.assertIn("pollDeviceToken()", MAIN)
 
     def test_repository_contains_no_baked_server_or_token(self) -> None:
-        binary_suffixes = {".png", ".jpg", ".jpeg", ".zip", ".ico", ".ttf"}
+        binary_suffixes = {".png", ".jpg", ".jpeg", ".zip", ".ico", ".ttf", ".otf"}
         all_text = "\n".join(
             path.read_text(encoding="utf-8")
             for path in ROOT.rglob("*")

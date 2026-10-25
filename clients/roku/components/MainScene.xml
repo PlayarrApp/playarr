@@ -107,14 +107,14 @@
       <!-- TvStageChrome theme + language (same square triggers as pairing / web). -->
       <Group id="profilesChromeControls" translation="[1552,50]">
         <Poster id="profilesThemePill" translation="[0,0]" width="144" height="48" uri="pkg:/images/pairing-chrome-dd-theme.png" />
-        <Poster id="profilesThemeIcon" translation="[14,16]" width="16" height="16" uri="pkg:/images/pairing-icon-theme.png" />
+        <Poster id="profilesThemeIcon" translation="[19.4,16]" width="16" height="16" uri="pkg:/images/pairing-icon-theme.png" />
         <Label id="profilesThemeLabel" translation="[44.75,15.03]" width="84" height="20" text="Dark" horizAlign="left" vertAlign="top" scale="[0.42,0.42]" scaleRotateCenter="[0,0]" color="0xF4F0F1FF" />
-        <Poster id="profilesThemeChevron" translation="[118,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
+        <Poster id="profilesThemeChevron" translation="[112.6,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
         <Rectangle id="profilesThemeHit" translation="[0,0]" width="144" height="48" color="0x00000000" focusable="true" />
         <Poster id="profilesLangPill" translation="[158,0]" width="168" height="48" uri="pkg:/images/pairing-chrome-dd.png" />
-        <Poster id="profilesLangIcon" translation="[172,16]" width="16" height="16" uri="pkg:/images/pairing-icon-lang.png" />
+        <Poster id="profilesLangIcon" translation="[177.4,16]" width="16" height="16" uri="pkg:/images/pairing-icon-lang.png" />
         <Label id="profilesLangLabel" translation="[202.75,15.03]" width="100" height="20" text="Auto" horizAlign="left" vertAlign="top" scale="[0.42,0.42]" scaleRotateCenter="[0,0]" color="0xF4F0F1FF" />
-        <Poster id="profilesLangChevron" translation="[300,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
+        <Poster id="profilesLangChevron" translation="[294.6,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
         <Rectangle id="profilesLangHit" translation="[158,0]" width="168" height="48" color="0x00000000" focusable="true" />
       </Group>
 
@@ -258,11 +258,14 @@
       overlapping the preview column.
     -->
     <Group id="browseGroup" visible="false">
+      <Rectangle id="browseSurface" width="1920" height="1080" color="0x1B181BFF" />
       <!-- Full-bleed key art (web TvStageShell) behind chrome; washed for text. -->
       <Poster id="browseKeyArt" translation="[133.03,-22.9]" width="900" height="1190.6"
         loadDisplayMode="scaleToZoom" visible="false" />
+      <Rectangle id="browseKeyArtVeil" translation="[133.03,-22.9]" width="900" height="1190.6" color="0x1B181B00" />
       <Poster id="browseKeyArtFade" translation="[781.03,-22.9]" width="252" height="1190.6" uri="pkg:/images/stage-key-art-fade.png" loadDisplayMode="scaleToFill" />
       <StageScrims id="browseScrims" />
+      <Rectangle id="browsePanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
       <!-- Web .tv-library-heading: back is dock Home; h1 + "1,730 TITLES". -->
       <TrackedText id="browseTitle" translation="[226.6,58.2]" />
       <TrackedText id="browseCountLabel" translation="[226.6,112]" />
@@ -341,6 +344,8 @@
       session).
     -->
     <Group id="searchGroup" visible="false">
+      <Rectangle id="searchSurface" width="1920" height="1080" color="0x1B181BFF" />
+      <Rectangle id="searchPanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
       <!-- Native Search shell only. No web-freeze crop Posters (those painted
            solid dark/blue panel slabs over the UI). -->
       <Label id="searchTitle" translation="[220,95]" width="900" height="60" text="Search" scale="[1.35,1.35]" color="0xFFFFFFFF" />
@@ -576,8 +581,10 @@
     <Group id="pageGroup" visible="false">
       <Rectangle id="pageBg" width="1920" height="1080" color="0x1B181BFF" />
       <Poster id="clientsStageBg" width="1920" height="1080" uri="pkg:/images/profiles-bg.png" visible="false" />
+      <!-- The web panel is a surface-coloured box (the Rectangle) with a lighter gradient laid over it (the bitmaps). -->
+      <Rectangle id="pagePanel" translation="[730,0]" width="1190" height="1080" color="0x1B181BFF" visible="false" />
       <Poster id="pagePanelFade" translation="[730,0]" width="260" height="1080" uri="pkg:/images/page-fade.png" visible="false" />
-      <Rectangle id="pagePanel" translation="[990,0]" width="930" height="1080" color="0x1B181BFF" visible="false" />
+      <Poster id="pagePanelTint" translation="[990,0]" width="930" height="1080" uri="pkg:/images/solid.png" loadDisplayMode="scaleToFill" visible="false" />
       <Group id="pageBody" />
       <Group id="pageHead" />
       <Group id="clientsStageChrome" visible="false">

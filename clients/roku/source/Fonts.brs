@@ -206,3 +206,25 @@ function EpisodeCodeTracking(text as String, tracking as Float) as Float
     if Left(text, 2) = "S " and Instr(1, text, "·") > 0 then return tracking
     return 0
 end function
+
+' Symbol glyphs the web draws from its fallback fonts (Nunito Sans has none of them): arrows, play, check, the sort chevron and a
+' fullwidth plus. fonts/Symbols.ttf is a subset of DejaVu Sans (Bitstream Vera licence) and fonts/SymbolsCjk.otf one glyph of
+' Noto Sans CJK (SIL OFL). The advance is the web's own measured width per em, so the glyph box is the box the web reports.
+function PlayarrSymbolFont(ch as String, size as Float) as Object
+    path = "pkg:/fonts/Symbols.ttf"
+    if ch = "＋" then path = "pkg:/fonts/SymbolsCjk.otf"
+    key = "playarrSymbol_" + path + "_" + Str(size)
+    g = GetGlobalAA()
+    if g[key] <> invalid then return g[key]
+    font = CreateObject("roSGNode", "Font")
+    font.uri = path
+    font.size = Int(size + 0.5)
+    g[key] = font
+    return font
+end function
+
+function PlayarrSymbolWidth(ch as String, size as Float) as Float
+    em = { "←": 1.0, "→": 1.0, "▶": 0.7695, "⇩": 0.8378, "☷": 0.8962, "⌄": 0.8378, "✓": 0.8381, "○": 0.6045, "＋": 1.0, "×": 0.6004 }
+    if em[ch] = invalid then return size
+    return em[ch] * size
+end function
