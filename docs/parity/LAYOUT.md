@@ -122,3 +122,7 @@ DOM dump as the web refs through their drivers (`layoutDump` in `drivers/tizen-w
 
 Fonts, weights and colours are mandatory in the schema: where a platform tree lacks them the lane's debug build must export them
 from the app's own style values, not guess from pixels.
+
+## Role aliases (per client, default off)
+
+Android (Compose) and Vega-style toolkits have no `link` role: a tappable text or card is a `button`. For those clients only, the scorer accepts a device `button` for a web `link`: `scoreLayout(..., { roleAliases: { link: ["button"] } })`, or `layout-score.mjs --role-alias link=button`. The alias is one way (web role to accepted device roles), applies to matching and to the role comparison, and is off unless the caller passes it. Pass it for android, android-phone, android-tablet and firetv (only if Vega cannot report a link). Every other client keeps the strict role match.

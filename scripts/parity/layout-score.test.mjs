@@ -171,3 +171,11 @@ test("a volatile element skips only its text: colour, font size and weight are s
   assert.deepEqual(fields(el("0:02", "#000000", 14), el("9:99", "#000000", 14)), []);
   assert.deepEqual(fields(el("0:02", "#000000", 14), el("9:99", "#ff0000", 20)).sort(), ["color", "fontSize"]);
 });
+
+test("a role alias lets a device button match a web link; off by default", () => {
+  const el = (role) => ({ text: "Open Film", role, rect: { x: 0, y: 0, w: 40, h: 20 }, color: null, background: "#ffffff", fontSize: null, fontWeight: null });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  assert.equal(scoreLayout(doc(el("link")), doc(el("button"))).score, 0);
+  assert.equal(scoreLayout(doc(el("link")), doc(el("button")), { roleAliases: { link: ["button"] } }).score, 100);
+  assert.equal(scoreLayout(doc(el("button")), doc(el("link")), { roleAliases: { link: ["button"] } }).score, 0);
+});

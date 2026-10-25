@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Deterministic layout score (docs/parity/LAYOUT.md).
-//   node layout-score.mjs --ref <web layout json> --device <device layout json> [--client <legend dir>] [--exclusions <json>] [--json] [--max 40]
+//   node layout-score.mjs --ref <web layout json> --device <device layout json> [--client <legend dir>] [--exclusions <json>] [--role-alias <webRole>=<deviceRole>]... [--json] [--max 40]
 // score = web elements that matched a device element with every field inside tolerance / scored web elements.
 // Self-contained on purpose: the legend service keeps a copy of this single file.
 import { readFileSync } from "node:fs";
@@ -62,11 +62,11 @@ const iou = (a, b) => {
 const dist = (a, b) => { const [p, q] = [center(a), center(b)]; return Math.hypot(p[0] - q[0], p[1] - q[1]); };
 
 /** Field-by-field comparison of one matched pair; returns the list of differences. */
-function compare(w, d, { scoreText, edge = TOL.edge }) {
+function compare(w, d, { scoreText, edge = TOL.edge, sameRole = (a, b) => a === b }) {
   const out = [];
   const diff = (field, ref, dev, delta) => out.push({ field, ref, device: dev, delta: round(delta) });
   if (scoreText && normText(w.text) !== normText(d.text)) diff("text", w.text, d.text, 0);
-  if (w.role !== d.role) diff("role", w.role, d.role, 0);
+  if (!sameRole(w.role, d.role)) diff("role", w.role, d.role, 0);
   for (const [name, a, b] of [["left", w.rect.x, d.rect.x], ["top", w.rect.y, d.rect.y], ["right", w.rect.x + w.rect.w, d.rect.x + d.rect.w], ["bottom", w.rect.y + w.rect.h, d.rect.y + d.rect.h]]) {
     if (Math.abs(a - b) > edge) diff(`rect.${name}`, round(a), round(b), b - a);
   }
@@ -89,7 +89,9 @@ function compare(w, d, { scoreText, edge = TOL.edge }) {
 }
 
 /** Score `device` against the web layout `ref`. Pure and deterministic: same inputs, same output. */
-export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions } = {}) {
+/** roleAliases: { <web role>: [<device roles accepted for it>] }, e.g. { link: ["button"] } for a platform without a link role. Default none. */
+export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions, roleAliases = {} } = {}) {
+  const sameRole = (webRole, devRole) => webRole === devRole || (roleAliases[webRole] ?? []).includes(devRole);
   const clockPinned = device.clockPinned === true;
   // "system" elements are OS chrome (status bar, home indicator): never matched, never reported.
   const dev = device.elements.map((e, i) => ({ ...e, i })).filter((e) => e.role !== "system");
@@ -118,7 +120,7 @@ export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions }
   // 1. normalised text + role, nearest rect.
   for (const w of scored) {
     const t = normText(w.text);
-    if (t && !isVolatileText(w)) pick(w, (d) => d.role === w.role && normText(d.text) === t, (d) => dist(w.rect, d.rect));
+    if (t && !isVolatileText(w)) pick(w, (d) => sameRole(w.role, d.role) && normText(d.text) === t, (d) => dist(w.rect, d.rect));
   }
   // 2. same text, another role (reported as a role difference).
   for (const w of scored) {
@@ -126,7 +128,7 @@ export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions }
     if (t && !pairs.has(w.i) && !isVolatileText(w)) pick(w, (d) => normText(d.text) === t, (d) => dist(w.rect, d.rect));
   }
   // 3. textless and volatile elements: same role, best overlap. 4. text elements whose text differs: same role, best overlap (text reported).
-  const overlap = (w) => (d) => d.role === w.role && iou(w.rect, d.rect) > 0;
+  const overlap = (w) => (d) => sameRole(w.role, d.role) && iou(w.rect, d.rect) > 0;
   const byOverlap = (w) => (d) => 1 - iou(w.rect, d.rect);
   for (const w of scored) if (!pairs.has(w.i) && (!normText(w.text) || isVolatileText(w))) pick(w, overlap(w), byOverlap(w));
   for (const w of scored) if (!pairs.has(w.i)) pick(w, overlap(w), byOverlap(w));
@@ -140,7 +142,7 @@ export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions }
     if (!d) { failures.push({ ref: brief, device: null, problems: [{ field: "missing", ref: null, device: null, delta: 0 }] }); continue; }
     const scoreText = !isVolatileText(w);
     if (w.clock) clockSeen.push(normText(w.text) === normText(d.text));
-    const problems = compare(w, d, { scoreText, edge });
+    const problems = compare(w, d, { scoreText, edge, sameRole });
     if (problems.length) failures.push({ ref: brief, device: { text: d.text, role: d.role, rect: d.rect }, problems });
     else equal += 1;
   }
@@ -174,6 +176,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const opt = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
   if (!opt("ref") || !opt("device")) { console.error("usage: layout-score.mjs --ref <web json> --device <device json> [--client <dir>] [--exclusions <json>] [--json] [--max N]"); process.exit(2); }
   const client = opt("client");
-  const result = scoreLayout(JSON.parse(readFileSync(opt("ref"), "utf8")), JSON.parse(readFileSync(opt("device"), "utf8")), client ? { client, exclusions: loadExclusions(opt("exclusions")) } : {});
+  const roleAliases = {};
+  args.forEach((a, i) => { if (a === "--role-alias") { const [web, dev] = (args[i + 1] ?? "").split("="); if (!web || !dev) throw new Error("--role-alias needs <webRole>=<deviceRole>"); (roleAliases[web] ??= []).push(dev); } });
+  const result = scoreLayout(JSON.parse(readFileSync(opt("ref"), "utf8")), JSON.parse(readFileSync(opt("device"), "utf8")), { roleAliases, ...(client ? { client, exclusions: loadExclusions(opt("exclusions")) } : {}) });
   console.log(args.includes("--json") ? JSON.stringify(result, null, 2) : formatReport(result, Number(opt("max") ?? 40)));
 }
