@@ -96,7 +96,7 @@ namespace Playarr.Xbox.Views
                     FontWeight = template.FontWeight,
                     CharacterSpacing = template.CharacterSpacing,
                     TextWrapping = TextWrapping.NoWrap,
-                    Foreground = template.Foreground,
+                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInk"],
                 };
                 LayoutExport.SetRole(block, "heading");
                 block.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));

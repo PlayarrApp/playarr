@@ -261,7 +261,7 @@ namespace Playarr.Xbox.Views
             {
                 role = "container";
             }
-            else if (element is Border border && (Hex(border.Background) is not null || (border.BorderBrush != null && border.BorderThickness.Left > 0)))
+            else if (element is Border border && (Hex(border.Background) is not null || border.Background is ImageBrush || (border.BorderBrush != null && border.BorderThickness.Left > 0)))
             {
                 role = "container";
             }
@@ -301,6 +301,22 @@ namespace Playarr.Xbox.Views
                 radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 1) : null,
                 opacity = EffectiveOpacity(element) is var opacity && opacity < 0.995 ? (double?)Math.Round(opacity, 2) : null,
             });
+            if (element is Border { Background: ImageBrush })
+            {
+                // A picture fill is a container (the plate) and the image drawn on it, as the web's avatar is.
+                output.Add(new
+                {
+                    text,
+                    role = "image",
+                    rect = new { x = Math.Round(rect.X, 1), y = Math.Round(rect.Y, 1), w = Math.Round(rect.Width, 1), h = Math.Round(rect.Height, 1) },
+                    color,
+                    background = element is Page && Own(element) is null ? $"#{Theme.Surface.R:x2}{Theme.Surface.G:x2}{Theme.Surface.B:x2}" : role == "text" ? BackgroundBehind(element) : (Own(element) is { Length: 7 } opaqueFill ? opaqueFill : BackgroundBehind(element, includeSelf: Own(element) != null)),
+                    fontSize,
+                    fontWeight,
+                    radius = radius > 0 ? (double?)Math.Round(radius * scale * radiusScale, 1) : null,
+                    opacity = EffectiveOpacity(element) is var shown && shown < 0.995 ? (double?)Math.Round(shown, 2) : null,
+                });
+            }
         }
 
         private static void AddRuns(TextBlock block, string separator, FrameworkElement root, double scale, List<object> output)

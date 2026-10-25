@@ -53,7 +53,7 @@ namespace Playarr.Xbox.Views
         private readonly StackPanel _titleLines = new StackPanel { Margin = new Thickness(0, 11.33, 0, 0) };
         private readonly StackPanel _metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12.8, Margin = new Thickness(0, 11.2, 0, 0) };
         private readonly TextBlock _meta = new TextBlock { FontSize = 13.06, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 18, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 20, LineStackingStrategy = LineStackingStrategy.BaselineToBaseline, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 26.2, 0, 0) };
+        private readonly TextBlock _overview = new TextBlock { Width = 328, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 20, LineStackingStrategy = LineStackingStrategy.BaselineToBaseline, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 26.2, 0, 0) };
         private readonly StackPanel _panel;
 
         public FocusDetail()

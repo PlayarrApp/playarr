@@ -89,7 +89,7 @@ namespace Playarr.Xbox.Views
                 subtitle.VerticalAlignment = VerticalAlignment.Center;
                 subtitle.Margin = new Thickness(0, -1.7, 0, 0);
                 row.Children.Add(title);
-                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(22, 8, 21, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(23.5, 8, 22.5, 0), Background = Res("PlayarrLineStrong"), VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(subtitle);
                 titles.Children.Add(row);
             }
@@ -133,7 +133,7 @@ namespace Playarr.Xbox.Views
             button.HorizontalAlignment = HorizontalAlignment.Left;
             button.VerticalAlignment = VerticalAlignment.Top;
             // The web draws Back as the text arrow, small and lightweight, not an icon-font arrow.
-            button.Content = new TextBlock { Text = "\u2190", FontSize = 17.28, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(-4, 0, 0, 0) };
+            button.Content = new TextBlock { Text = "\u2190", FontSize = 17.28, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(-2, 2.2, 0, 0), CharacterSpacing = 133 };
             return button;
         }
 
@@ -194,6 +194,7 @@ namespace Playarr.Xbox.Views
             var tile = new StackPanel { Spacing = 5.6 };
             tile.Children.Add(icon);
             tile.Children.Add(new TextBlock { Text = label, FontSize = 8.26, FontWeight = FontWeights.Bold, CharacterSpacing = 20, Foreground = Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Center });
+            LayoutExport.SetRole(icon, "image");
             var button = new Button
             {
                 Width = 62, Height = 72, Margin = new Thickness(0, top, 12.47, 0), Padding = new Thickness(0), CornerRadius = new CornerRadius(14),
@@ -203,6 +204,8 @@ namespace Playarr.Xbox.Views
                 FocusVisualPrimaryBrush = Theme.FocusRing, FocusVisualPrimaryThickness = new Thickness(3), FocusVisualSecondaryThickness = new Thickness(0),
             };
             button.Click += (s, e) => onClick();
+            LayoutExport.Tag(button, "button", label);
+            LayoutExport.SetSplit(button, true);
             return button;
         }
 

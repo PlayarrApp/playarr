@@ -424,7 +424,7 @@ namespace Playarr.Xbox.Views
                         Height = 24,
                         CornerRadius = new CornerRadius(12),
                         Background = ink,
-                        Child = new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = surface },
+                        Child = new TextBlock { Text = letter.ToString(), FontSize = 9.22, FontWeight = FontWeights.Normal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = Ui.Res("PlayarrBg") },
                     },
                 }
                 : new TextBlock { Text = letter.ToString(), FontSize = 9.22, FontWeight = FontWeights.Normal, Foreground = Ui.Res("PlayarrInkMuted"), Margin = new Thickness(0, 0, 0, 2.2) };

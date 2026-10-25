@@ -300,6 +300,8 @@ namespace Playarr.Xbox.Views
                 root.Height = height + 29.14; // the web's Home link: the art, the title line and the caption line
             }
 
+            root.MinHeight = root.MaxHeight = root.Height;
+
             root.Children.Add(RestingShadow(width, height));
             root.Children.Add(art);
             root.Children.Add(new TextBlock
