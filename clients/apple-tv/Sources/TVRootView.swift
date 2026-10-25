@@ -531,6 +531,7 @@ private struct TVProductionShell<Stage: View>: View {
                     showProfiles = false
                 }
             )
+            .parityLayerScope()
         }
         #if os(macOS)
         .onAppear {

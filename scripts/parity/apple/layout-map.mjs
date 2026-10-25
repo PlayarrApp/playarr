@@ -1,32 +1,21 @@
-// Maps the app's raw layout tree (TVParityLayout.swift: items with measured text widths, plus accessibility entries) to the
-// web-comparable layout JSON of docs/parity/LAYOUT.md. Pure, so it replays on saved raw trees without a hosted run:
+// Maps the app's raw layout tree (TVParityLayout.swift) to the layout JSON of docs/parity/LAYOUT.md. Translate only: units,
+// coordinate origin, role names and the dedup of an accessibility entry the app also reported itself. Every measured value (box,
+// colour, font size and weight, text, radius) is the app's own and is never adjusted towards the web.
 //   node scripts/parity/apple/layout-map.mjs <raw.json> <screen> <theme> > layout.json
 import { readFileSync } from "node:fs";
 
 const round = (v) => Math.round(v * 100) / 100;
-const contentHeight = (size) => Math.round(1.011 * size) + Math.round(0.353 * size); // Chromium: rounded ascent plus rounded descent
-
-function textRect(e) {
-  const { x, y, w, h } = e.rect;
-  if (e.fontSize == null || !e.text) return { x, y, w, h };
-  if (e.lines?.length) {
-    const top = y + e.pitch / 2 - contentHeight(e.fontSize) / 2;
-    return { x, y: top, w: e.width ?? w, h: e.pitch * (e.lines.length - 1) + contentHeight(e.fontSize) };
-  }
-  if (e.width == null || e.width > w + 0.5) return { x, y, w, h }; // wrapped: the view's own box is the text block
-  const height = e.lineHeight ?? contentHeight(e.fontSize);
-  return { x, y: y + h / 2 - height / 2, w: e.width, h: height };
-}
 
 export function mapRaw(doc, screen, theme) {
   const styled = doc.raw.filter((e) => e.source !== "ax");
-  // a plain accessibility entry is dropped when a styled one has the same text and nearly the same frame
   const plain = doc.raw.filter((e) => e.source === "ax" && !styled.some((s) => s.text === e.text && Math.abs(s.rect.x - e.rect.x) < 3 && Math.abs(s.rect.y - e.rect.y) < 12));
   const elements = [...styled, ...plain].map((e) => {
+    const single = e.fontSize != null && e.text && !e.lines && e.width != null && e.width <= e.rect.w + 0.5;
+    const rect = { x: e.rect.x, y: e.rect.y, w: single ? e.width : e.rect.w, h: e.rect.h }; // the text run's measured width
     const out = {
       text: e.text ?? "",
       role: e.role,
-      rect: Object.fromEntries(Object.entries(textRect(e)).map(([k, v]) => [k, round(v)])),
+      rect: Object.fromEntries(Object.entries(rect).map(([k, v]) => [k, round(v)])),
       color: e.color ?? null,
       background: e.background ?? null,
       fontSize: e.fontSize ?? null,

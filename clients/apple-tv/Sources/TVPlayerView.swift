@@ -52,6 +52,7 @@ struct TVPlayerView: View {
     var body: some View {
         // The player is full screen like the web's player page: the shell hides its nav and clock.
         screen
+            .parityLayerScope() // the player covers the page: only its own items are visible
             .onAppear {
                 setShellChromeHidden(true)
                 #if DEBUG && (os(tvOS) || os(macOS))

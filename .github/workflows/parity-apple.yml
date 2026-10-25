@@ -503,7 +503,8 @@ jobs:
           retention-days: 14
 
       - name: VNC server self-test (loopback, no tailnet)
-        if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.stream || inputs.search_smoke)) }}
+        # Owner rule: no VNC at all outside an explicit stream run; the loopback self-test started a VNC listener on every capture run.
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.stream && false }}
         timeout-minutes: 5
         env:
           STREAM_BIND: 127.0.0.1
