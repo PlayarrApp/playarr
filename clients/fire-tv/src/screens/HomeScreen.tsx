@@ -364,7 +364,7 @@ function RailHeading({title, x, y, active, colour}: {title: string; x: number; y
       style={{
         position: 'absolute',
         left: u(x),
-        top: u(y),
+        top: u(y + 3.1),
         transform: active ? [{translateX: width * 0.08}, {translateY: -1}, {scale: 1.16}] : [],
       }}
     >
@@ -543,9 +543,9 @@ const HomeCard = memo(function HomeCard(props: {
       onPress={onPress}
       onLongPress={onLongPress}
       // The web link ends under the title line; the meta line below it hangs out of the box.
-      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW), height: u(layout.artH + 11.25 + 17.9)}}
+      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(Math.floor(layout.cardW)), height: u(layout.artH + 11.25 + 17.9)}}
     >
-      <MediaFocus variant="home" focused={selected} width={layout.cardW} height={layout.artH} radius={12.48}>
+      <MediaFocus variant="home" focused={selected} width={Math.floor(layout.cardW)} height={layout.artH} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft}}>
           <ArtworkImage uri={uri} accessToken={token} style={{width: '100%', height: '100%'}} resizeMode="cover" />
           <WatchState progress={progress} showUnwatched={progressReady} />
@@ -556,7 +556,7 @@ const HomeCard = memo(function HomeCard(props: {
           <T size={11.904} weight={610} ls={-0.17856} color={selected ? focusInk(scheme) : colour.ink} lh={17.9} lines={1}>
             {title}
           </T>
-          <View style={{marginTop: u(2.5)}}>
+          <View style={{marginTop: u(4)}}>
             <T size={8.832} weight={400} color={selected ? focusInk(scheme) : colour.inkMuted} lh={11.5} lines={1}>
               {subtitle}
             </T>

@@ -391,7 +391,7 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
           overview={overview ?? (episodic ? t('pages.workDetail.noEpisodeSynopsis') : t('pages.workDetail.noSynopsis'))}
           movieActions={
             work.kind === 'movie' ? (
-              <PillRow top={39.6}>
+              <PillRow top={38.4}>
                 {/* The web's Download pill sits first in this row. This app has no downloads, so its slot stays empty and the other pills keep the web's positions. */}
                 <View style={{width: u(142 + 16)}} />
                 {playMediaFileId ? <Pill glyph={'\u2637'} label={t('pages.workDetail.playbackButtonLabel')} web={{role: 'button', label: `Playback settings for ${work.title}`}} onPress={() => setSettingsOpen(true)} focusable={!settingsFocused} /> : null}
@@ -544,7 +544,7 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
       onBlur={() => setFocused(false)}
       onPress={onPress}
       style={{
-        minWidth: u(primary ? 156 : 142),
+        minWidth: u(primary ? 165.36 : 142),
         height: u(64),
         marginRight: u(16),
         paddingHorizontal: u(primary ? 21.6 : 16),

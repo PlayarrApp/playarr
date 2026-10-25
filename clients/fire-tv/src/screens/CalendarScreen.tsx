@@ -244,7 +244,7 @@ function TodayPill({label, onPress, settled}: {label: string; onPress: () => voi
       onPress={onPress}
       style={{position: 'absolute', left: u(1694.7), top: u(56.2), width: u(83.2), height: u(50), borderRadius: u(25), backgroundColor: colour.surface, borderWidth: 1, borderColor: colour.line, alignItems: 'center', justifyContent: 'center'}}
     >
-      <T size={14.72} weight={720} color={colour.inkSoft}>
+      <T size={14.72} weight={720} color={colour.inkSoft} control={{role: 'button', label}}>
         {label}
       </T>
       {focused ? <FocusRing /> : null}

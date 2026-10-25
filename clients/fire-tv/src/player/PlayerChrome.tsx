@@ -196,7 +196,7 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
         left: u(1534.36),
         top: u(962),
         height: u(56),
-        paddingHorizontal: u(22),
+        paddingHorizontal: u(19),
         borderRadius: u(28),
         flexDirection: 'row',
         alignItems: 'center',
