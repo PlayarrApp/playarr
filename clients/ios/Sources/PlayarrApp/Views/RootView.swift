@@ -656,6 +656,7 @@ private struct AuthenticatedPlayarrShell: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(destination.title)
+                .accessibilityAddTraits(.isLink)
                             .accessibilityIdentifier(destination.phoneAccessibilityIdentifier)
                             .accessibilityAddTraits(phoneSelectedDestination == destination ? .isSelected : [])
                         }
@@ -766,6 +767,7 @@ private struct AuthenticatedPlayarrShell: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(destination.title)
+                .accessibilityAddTraits(.isLink)
             }
         }
         .padding(.vertical, 6)

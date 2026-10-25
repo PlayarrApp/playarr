@@ -138,7 +138,7 @@ struct SettingsView: View {
         ZStack(alignment: .topLeading) {
             PlayarrBackButton(action: goHome)
                 .offset(x: 16, y: WM.topInset + 2)
-            WMText("Preferences", 21.6, 580, lh: 32.4, ls: -0.972)
+            WMText("Preferences", 21.6, 580, lh: 32.4, ls: -0.972, role: "heading")
                 .offset(x: 70, y: WM.topInset + 7.8)
             ScrollView(.vertical) {
                 VStack(spacing: 0) {

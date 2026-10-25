@@ -609,7 +609,7 @@ struct WMRailCard: View {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
-            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
+            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 6.83).padding(.leading, 2)
             WMText(work.singularKindYearLabel, 6.88, 400, color: WM.muted, lh: 12.3).padding(.leading, 2).offset(y: -1.3)
         }
         .frame(height: art + 24.7, alignment: .top)
@@ -691,7 +691,7 @@ struct WMLibraryCard: View {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 }
                 .overlay { if focused { WMFocusRing(width: width, height: art) } }
-            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 8).padding(.leading, 2)
+            WMText(work.title, 8.8, 600, lh: 19.5, ls: -0.15).padding(.top, 6.83).padding(.leading, 2)
         }
         .frame(height: art + 24.7, alignment: .top)
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
@@ -761,7 +761,7 @@ struct WMLibraryHeader: View {
         ZStack(alignment: .topLeading) {
             PlayarrBackButton(action: onBack)
                 .offset(x: PlayarrPageTokens.gutter, y: top)
-            WMText(title, 21.6, 580, lh: 33, ls: -1)
+            WMText(title, 21.6, 580, lh: 33, ls: -1, role: "heading")
                 .offset(x: 70, y: top + 5.5)
             // The web hides the header subtitle on phones (#1299), so `detail` is not drawn here.
             HStack {
