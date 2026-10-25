@@ -1,0 +1,1 @@
+Fire TV parity: the layout export reads text metrics, boxes and lines from the renderer, and text, cards and settings sections line up with the web layout.
