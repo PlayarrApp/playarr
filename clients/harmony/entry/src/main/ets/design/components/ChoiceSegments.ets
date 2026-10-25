@@ -126,7 +126,7 @@ export struct ChoiceSegments {
         Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
           .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
           .fontWeight(FontWeight.Bold)
-          .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.27))
+          .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02))
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(activeColors().inkMuted))
           .id('px:heading:' + this.heading.toUpperCase())
@@ -138,6 +138,7 @@ export struct ChoiceSegments {
           Column({ space: isTvMetrics() ? 7.4 : 6.85 }) {
             this.viewShapes(choice.value)
             Text(capitalWords(choice.label)).fontFamily(nunito(900))
+              .letterSpacing(0.4) // web's label run is wider than ArkUI lays it out
               .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
