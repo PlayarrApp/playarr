@@ -540,6 +540,8 @@ export struct PosterCard {
     .scale({ x: this.cardScale(), y: this.cardScale() })
     .translate({ y: this.cardTranslateY() })
     .accessibilityText(this.linkName())
+    .accessibilityRole(AccessibilityRoleType.HYPERLINK)
+    .accessibilityGroup(true)
     .focusable(true)
     .onFocus(() => {
       this.setFocused(true);
