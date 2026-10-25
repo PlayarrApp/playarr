@@ -229,7 +229,7 @@ namespace Playarr.Xbox.Views
                 "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
             list.ItemContainerStyle = CatalogTileFactory.HomeCardContainerStyle;
             list.ItemClick += RailItem_Click;
-            CardFocus.Attach(list, true, 2.5);
+            CardFocus.Attach(list, true, 2.5, -6, 1.0); // the web Home card only lifts 6 px; its art alone scales
             CardActions.Attach(list, id => rail.Items.FirstOrDefault(w => w.Id == id));
             list.GotFocus += (s, e) =>
             {

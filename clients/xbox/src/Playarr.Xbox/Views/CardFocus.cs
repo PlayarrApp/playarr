@@ -20,7 +20,7 @@ namespace Playarr.Xbox.Views
         private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(260);
 
         /// <param name="halo">False for a rail whose container has no room for the soft glow and the art scale (reserve it with <see cref="ReserveFocusRoom"/> instead).</param>
-        public static void Attach(ListViewBase list, bool halo = true, double ringOutset = 0, double lift = Lift)
+        public static void Attach(ListViewBase list, bool halo = true, double ringOutset = 0, double lift = Lift, double cardScale = 1.015)
         {
             // No selection, hover, press or focus fill: the web card shows only the lift, the scale and the glow ring.
             list.ContainerContentChanging += (s, e) =>
@@ -31,8 +31,8 @@ namespace Playarr.Xbox.Views
                     ClearFill(container);
                 }
             };
-            list.GotFocus += (s, e) => Apply(e.OriginalSource, true, halo, ringOutset, lift);
-            list.LostFocus += (s, e) => Apply(e.OriginalSource, false, halo, ringOutset, lift);
+            list.GotFocus += (s, e) => Apply(e.OriginalSource, true, halo, ringOutset, lift, cardScale);
+            list.LostFocus += (s, e) => Apply(e.OriginalSource, false, halo, ringOutset, lift, cardScale);
         }
 
         /// <summary>
@@ -247,7 +247,7 @@ namespace Playarr.Xbox.Views
 
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<TextBlock, InkHolder> RestingInk = new System.Runtime.CompilerServices.ConditionalWeakTable<TextBlock, InkHolder>();
 
-        private static void Apply(object source, bool focused, bool halo, double ringOutset, double lift)
+        private static void Apply(object source, bool focused, bool halo, double ringOutset, double lift, double cardScale)
         {
             if (!(source is SelectorItem { ContentTemplateRoot: Panel card }))
             {
@@ -327,7 +327,7 @@ namespace Playarr.Xbox.Views
 
             // --card-lift-ease: cubic-bezier(0.2, 0.8, 0.2, 1) over --card-lift-duration.
             var story = new Storyboard();
-            foreach (var (property, value) in new[] { ("TranslateY", focused ? lift : 0), ("ScaleX", focused ? 1.015 : 1), ("ScaleY", focused ? 1.015 : 1) })
+            foreach (var (property, value) in new[] { ("TranslateY", focused ? lift : 0), ("ScaleX", focused ? cardScale : 1), ("ScaleY", focused ? cardScale : 1) })
             {
                 var animation = new DoubleAnimationUsingKeyFrames();
                 animation.KeyFrames.Add(new SplineDoubleKeyFrame

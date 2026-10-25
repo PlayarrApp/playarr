@@ -99,7 +99,7 @@ namespace Playarr.Xbox.Views
                         }
                     }
 
-                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 24, 0)));
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 24.95, 0)));
                     _homeCardContainerStyle = style;
                 }
 
@@ -125,7 +125,7 @@ namespace Playarr.Xbox.Views
                         }
                     }
 
-                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25, 27.4)));
+                    style.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 25.91, 26.99)));
                     _gridCardContainerStyle = style;
                 }
 

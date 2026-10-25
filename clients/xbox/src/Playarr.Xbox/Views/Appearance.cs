@@ -12,8 +12,9 @@ namespace Playarr.Xbox.Views
         private const string ArtworkSizeKey = "playarr-artwork-size";
 
         // The web's right-hand rail at 1920 px, split into 3 columns with a 25 px gap gives the 328 px card.
-        private const double RailWidth = 1034;
-        private const double Gap = 25;
+        private const double RailWidth = 1031.41;
+        private const double Gap = 24.95;
+        private const double CoverRail = 1034;
         private const double CoverGap = 19.2;
 
         public static readonly string[] Sizes = { "small", "medium", "large" };
@@ -47,11 +48,11 @@ namespace Playarr.Xbox.Views
 
         private static int Step => 1 - SizeIndex;
 
-        public static double CardWidth => System.Math.Round((RailWidth - (2 + Step) * Gap) / (3 + Step), 1);
+        public static double CardWidth => (RailWidth - (2 + Step) * Gap) / (3 + Step);
 
-        public static double CardHeight => System.Math.Floor(CardWidth * 9 / 16);
+        public static double CardHeight => CardWidth * 9 / 16;
 
-        public static double CoverWidth => System.Math.Round((RailWidth - (4 + Step) * CoverGap) / (5 + Step), 1);
+        public static double CoverWidth => System.Math.Round((CoverRail - (4 + Step) * CoverGap) / (5 + Step), 1);
 
         public static double CoverHeight => System.Math.Round(CoverWidth * 3 / 2, 1);
     }
