@@ -530,8 +530,8 @@ export struct PosterCard {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .letterSpacing(isTvMetrics() ? -0.2 : -0.11) // web's subtitle run is narrower than ArkUI lays it out
-          .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 2.9 })
-          .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -12.6 : -10.5) : 0 }) // web Home: the card link ends above the subtitle line
+          .padding(this.softCaption ? { left: 2.3, top: 0.5 } : { left: tv(TV_CAPTION_INSET), top: 0.5 })
+          .margin({ bottom: this.variant === 'home' ? (isTvMetrics() ? -14.2 : -10.5) : 0 }) // web Home: the card link ends above the subtitle line
       }
     }
     .width(this.cardWidth)

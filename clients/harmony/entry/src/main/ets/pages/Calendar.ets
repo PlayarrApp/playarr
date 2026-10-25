@@ -919,16 +919,20 @@ export struct ReleaseCalendar {
 
   @Builder
   private headerControl(label: string, round: boolean, onTap: () => void): void {
-    // web: the round arrow buttons hold a small regular-weight glyph, the Today pill a bold label
-    Text(label).fontFamily(round ? arrowFont(720) : nunitoAt(700, tv(round ? HEADER_CONTROL_FONT : HEADER_CONTROL_FONT)))
-      .fontSize(tv(round ? HEADER_CONTROL_FONT : HEADER_CONTROL_FONT)).lineHeight(webLineHeight(tv(round ? HEADER_CONTROL_FONT : HEADER_CONTROL_FONT))).halfLeading(true)
-      .fontWeight(round ? FontWeight.Normal : FontWeight.Bold)
-      .fontColor(toResourceColor(activeColors().inkSoft))
-      .textAlign(TextAlign.Center)
+    // web: the round arrow buttons are a box holding a small regular-weight glyph, the Today pill owns its bold label
+    if (round) {
+      Row() {
+        Text(label).fontFamily(arrowFont(720))
+          .fontSize(tv(HEADER_CONTROL_FONT)).lineHeight(webLineHeight(tv(HEADER_CONTROL_FONT))).halfLeading(true)
+          .fontWeight(FontWeight.Normal)
+          .fontColor(toResourceColor(activeColors().inkSoft))
+          .textAlign(TextAlign.Center)
+      }
+      .justifyContent(FlexAlign.Center)
+      .width(tv(HEADER_CONTROL_SIZE))
       .height(tv(HEADER_CONTROL_SIZE))
-      .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
-      .padding({ left: round ? 0 : tv(20), right: round ? 0 : tv(20), top: round ? tv(0.2) : 0 })
-      .id(round ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : 'px:button:' + label) // web: Today owns its text, the arrows hold a glyph
+      .padding({ top: tv(0.2) })
+      .id('px:button:' + (label === '←' ? 'Previous' : 'Next'))
       .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
       .backgroundColor(toResourceColor(activeColors().surface))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -936,6 +940,24 @@ export struct ReleaseCalendar {
       .onClick(() => {
         onTap();
       })
+    } else {
+      Text(label).fontFamily(nunitoAt(700, tv(HEADER_CONTROL_FONT)))
+        .fontSize(tv(HEADER_CONTROL_FONT)).lineHeight(webLineHeight(tv(HEADER_CONTROL_FONT))).halfLeading(true)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .textAlign(TextAlign.Center)
+        .height(tv(HEADER_CONTROL_SIZE))
+        .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
+        .padding({ left: tv(20), right: tv(20) })
+        .id('px:button:' + label)
+        .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
+        .backgroundColor(toResourceColor(activeColors().surface))
+        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
+        .focusable(true)
+        .onClick(() => {
+          onTap();
+        })
+    }
   }
 
   @Builder
