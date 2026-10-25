@@ -380,7 +380,7 @@ struct TVKeyArt: View {
                         Color.clear
                     }
                 }
-                .frame(width: 1038.3, height: 1190.6)
+                .frame(width: 899.97, height: 1190.59)
                 .clipped()
                 .parityBox("image", fill: DesignTokens.Stage.surface, opacity: scheme == .light ? 0.24 : DesignTokens.Shell.keyArtOpacity)
                 .modifier(TVKeyArtFilter())
@@ -395,7 +395,7 @@ struct TVKeyArt: View {
                         endPoint: .trailing
                     )
                 )
-                .offset(x: -20, y: -22.9)
+                .offset(x: 133.03, y: -22.9) // web: the key art box starts 133 pt in and is 900 wide
             }
             keyArtAfter.frame(width: 1920, height: 1080)
         }
