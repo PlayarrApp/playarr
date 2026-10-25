@@ -42,7 +42,7 @@ const KICKER_COLOR_DARK: RgbaColor = { r: 234, g: 166, b: 182, a: 1 };
 
 const HERO_TITLE_FONT_SIZE: number = 69.12;
 const HERO_TITLE_FONT_WEIGHT: number = 500; // web 560: nearest static instance below 600 is the closer width
-const HERO_TITLE_LETTER_SPACING: number = HERO_TITLE_FONT_SIZE * -0.077; // web is 2.3% narrower on "7 Distant Harbour 30"
+const HERO_TITLE_LETTER_SPACING: number = HERO_TITLE_FONT_SIZE * -0.0721; // web is 2.3% narrower on "7 Distant Harbour 30"
 const HERO_TITLE_LINE_HEIGHT: number = 62;
 const HERO_TITLE_MAX_WIDTH: number = 373;
 // Web `.tv-detail-copy h2:not(.tv-detail-title)` at 1920x1080.
@@ -62,12 +62,13 @@ const META_CHIP_ROW_GAP: number = 6.4;
 
 const COPY_TEXT_FONT_SIZE: number = 12.864;
 const COPY_TEXT_FONT_WEIGHT: number = 600;
-const SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref: 600 at 13.82, in the copy colour
+const SYNOPSIS_FONT_WEIGHT: number = 400;
+const LIBRARY_SYNOPSIS_FONT_WEIGHT: number = 600; // web layout ref (library hero): 600 at 13.82, in the copy colour
 const COPY_TEXT_INK_ALPHA: number = 0.87;
 const SYNOPSIS_LINE_HEIGHT: number = 20.4;
 const SYNOPSIS_MAX_WIDTH: number = 324;
 // Nunito renders ~2% wider than web's at this size, so lines break one word earlier; trim the tracking, not the column.
-const SYNOPSIS_LETTER_SPACING: number = -0.24;
+const SYNOPSIS_LETTER_SPACING: number = -0.018; // fitted to the layout ref's run width (313.5 unspaced vs 312.6)
 const SYNOPSIS_MAX_LINES: number = 5;
 // Measured on the 2026-10-18 Library refs: 5 lines at a 21.7 pitch, about 334 wide for 50 characters.
 const LIBRARY_SYNOPSIS_FONT_SIZE: number = 13.82;
@@ -109,6 +110,10 @@ export struct FeatureCopy {
   /** Home only: web's Home hero sits its meta 4 vp higher and its synopsis 3 vp further from it than the Library/Detail panel. Added to
    * the gaps above the meta lines and the synopsis (vp, may be negative). */
   @Prop metaGapAdjust: number = 0;
+  /** The layout export's role for the title (web's calendar hero is plain text, the others a heading). */
+  @Prop titleRole: string = 'heading';
+  /** Home, Calendar and Library heroes set the synopsis in the copy colour at weight 600; Detail keeps the muted regular one. */
+  @Prop strongSynopsis: boolean = true;
   @Prop synopsisGapAdjust: number = 0;
   /** Library hero: web sets its meta lighter and its synopsis at 14.4 / 21.6 in a wider column than Home and Detail. */
   @Prop libraryCopy: boolean = false;
@@ -168,7 +173,7 @@ export struct FeatureCopy {
 
       if (this.title.length > 0) {
         Text(this.balancedTitle()).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
-          .id('px:heading:' + this.title)
+          .id('px:' + this.titleRole + ':' + this.title)
           .fontSize(tv(HERO_TITLE_FONT_SIZE))
           .fontWeight(HERO_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
@@ -236,16 +241,16 @@ export struct FeatureCopy {
 
       if (this.synopsis.length > 0) {
         // web `.tv-detail-synopsis`: --ink-muted, no weight set (body 400)
-        Text(this.synopsis).fontFamily(nunitoAt(SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
+        Text(this.synopsis).fontFamily(nunitoAt((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
-          .fontWeight(SYNOPSIS_FONT_WEIGHT)
+          .fontWeight((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
           .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))
-          .letterSpacing(tv(SYNOPSIS_LETTER_SPACING))
-          .fontColor(this.copyTextColor())
+          .letterSpacing(tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24))
+          .fontColor((this.libraryCopy || this.strongSynopsis) ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : 1.22)) })
+          .margin({ top: tv(GAP_META_SYNOPSIS + this.synopsisGapAdjust + (this.libraryCopy ? 5.76 : (this.strongSynopsis ? 1.42 : 5.58))) })
       }
     }
     .width('100%')

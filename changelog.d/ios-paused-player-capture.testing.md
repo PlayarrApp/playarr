@@ -1,0 +1,1 @@
+- Load iOS parity player captures paused at two seconds and verify AVPlayer's observed position, readiness and pause state before and after each screenshot.

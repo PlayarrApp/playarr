@@ -39,6 +39,9 @@ struct PlayerView: View {
     @State private var buffered: [ClosedRange<Double>] = []
     @State private var isMuted = false
     @State private var fillsScreen = false
+    #if DEBUG
+    @State private var parityPlayerReady = false
+    #endif
     private let castCoordinator = CastSessionCoordinator.shared
 
     init(
@@ -167,17 +170,25 @@ struct PlayerView: View {
             }
         }
         .task(id: viewModel?.loadState) { @MainActor in
-            guard ParityLaunch.isPlayerRoute, let viewModel, case .playing = viewModel.loadState else { return }
-            // Parity capture: the fixture clip paused at 2.0 s, controls up.
-            // The engine state reaches the view model asynchronously: wait for
-            // playing, pause, then seek so the frame stays at exactly 2.0 s.
-            for _ in 0..<100 where viewModel.engineState != .playing {
-                try? await Task.sleep(for: .milliseconds(100))
-            }
-            if viewModel.engineState == .playing { viewModel.togglePlayPause() }
-            await viewModel.seek(to: 2.0)
+            parityPlayerReady = false
+            guard ParityLaunch.isPlayerCapture, let viewModel, case .playing = viewModel.loadState,
+                  let player = viewModel.avPlayer else { return }
             controlsVisible = true
             activeMenu = ParityLaunch.screen == "player-quality" ? .quality : nil
+            // Read AVPlayer itself: the view model's cached time may still contain
+            // the requested seek target even when AVFoundation has not reached it.
+            while !Task.isCancelled {
+                let position = player.currentTime().seconds
+                let paused = player.rate == 0 && player.timeControlStatus == .paused
+                let itemReady = player.currentItem?.status == .readyToPlay
+                ParityLaunch.record("playerCapture", [
+                    "position": position.isFinite ? position as Any : NSNull(),
+                    "paused": paused,
+                    "itemReady": itemReady,
+                ])
+                parityPlayerReady = position == 2.0 && paused && itemReady
+                try? await Task.sleep(for: .milliseconds(250))
+            }
         }
         #endif
         .onDisappear {
@@ -190,7 +201,8 @@ struct PlayerView: View {
     private var parityLoadState: ParityScreenLoad {
         guard ParityLaunch.isPlayerRoute, ParityLaunch.identityVerified else { return .loading }
         switch viewModel?.loadState {
-        case .playing where viewModel?.playbackMode == .direct: return .ready
+        case .playing where viewModel?.playbackMode == .direct:
+            return !ParityLaunch.isPlayerCapture || parityPlayerReady ? .ready : .loading
         case .failed: return .failed
         default: return .loading
         }
@@ -708,6 +720,15 @@ struct PlayerView: View {
 
     private func startPlayback() {
         guard let mediaFileID, let viewModel else { return }
+        #if DEBUG
+        if ParityLaunch.isPlayerCapture {
+            Task {
+                await viewModel.play(mediaFileID: mediaFileID, title: title,
+                                     startFromBeginning: true, resumeAtSeconds: 2.0, startPaused: true)
+            }
+            return
+        }
+        #endif
         Task { await viewModel.play(mediaFileID: mediaFileID, title: title) }
     }
 }

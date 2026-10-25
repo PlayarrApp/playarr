@@ -1,0 +1,1 @@
+- Make the iOS parity command publish only captures from the exact hosted run, preserve capture timestamps and prior JSON evidence, expose missing pairs, and archive and clean each published run.

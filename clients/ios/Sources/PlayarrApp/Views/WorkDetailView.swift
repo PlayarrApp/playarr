@@ -717,7 +717,7 @@ struct WorkDetailView: View {
                                         .frame(width: 192 * tabletScale, height: 108 * tabletScale)
                                         .background(Color.black.opacity(0.5))
                                         Text(String(format: "%02d", chapter.index + 1))
-                                            .wm(11 * tabletScale, 560)
+                                            .wm(11 * tabletScale, 560, color: .white)
                                             .foregroundStyle(.white)
                                             .padding(.trailing, 10 * tabletScale).padding(.bottom, 8 * tabletScale)
                                     }
@@ -1516,7 +1516,7 @@ struct WorkDetailView: View {
                 LinearGradient(colors: [.clear, .black.opacity(0.68)], startPoint: .center, endPoint: .bottom)
                 if let tabletScale {
                     Text(String(format: "%02d", detail.episode.episodeNumber))
-                        .wm(13.66 * tabletScale, 560)
+                        .wm(13.66 * tabletScale, 560, color: .white)
                         .foregroundStyle(.white)
                         .padding(.trailing, 12 * tabletScale)
                         .padding(.bottom, 8 * tabletScale)

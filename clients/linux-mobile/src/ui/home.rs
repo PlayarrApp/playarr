@@ -24,6 +24,8 @@ fn rail_row(children: impl IntoIterator<Item = gtk4::Button>, selected: bool) ->
     let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
     row.set_margin_start(16);
     row.set_margin_end(16);
+    // The captions hang below the cards, as the web's do; the scroller keeps room for them.
+    row.set_margin_bottom(12);
     let mut cards = Vec::new();
     let mut selected_card = None;
     for c in children {
@@ -78,6 +80,7 @@ fn section(title: &str, row: RailRow) -> FocusSection {
     content.append(
         &gtk4::Label::builder()
             .label(title)
+            .accessible_role(gtk4::AccessibleRole::Heading)
             .css_classes(["pa-rail-title"])
             .xalign(0.0)
             .margin_start(16)
@@ -272,7 +275,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .valign(gtk4::Align::Start)
         .build();
     backdrop.set_size_request(-1, 340);
-    crate::layout::key_art(&backdrop, false);
     let wash = gtk4::Box::builder()
         .css_classes(["pa-key-wash", "pa-home-wash"])
         .valign(gtk4::Align::Start)
@@ -284,6 +286,12 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .valign(gtk4::Align::Start)
         .build();
     edge.set_size_request(-1, 340);
+    // The web's rail surface: a frosted gradient under the rails, from below the header to the bottom.
+    let frost = gtk4::Box::builder()
+        .css_classes(["pa-rail-frost"])
+        .margin_top(72)
+        .can_target(false)
+        .build();
     let scroll = gtk4::ScrolledWindow::builder()
         .child(&page)
         .hscrollbar_policy(gtk4::PolicyType::Never)
@@ -292,6 +300,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let overlay = gtk4::Overlay::builder().child(&backdrop).build();
     overlay.add_overlay(&edge);
     overlay.add_overlay(&wash);
+    overlay.add_overlay(&frost);
     overlay.add_overlay(&scroll);
     scroll.add_css_class("pa-transparent");
     let reload = Rc::new(move |app: Rc<App>| load(&page, &backdrop, app, client.clone(), imgs.clone()));

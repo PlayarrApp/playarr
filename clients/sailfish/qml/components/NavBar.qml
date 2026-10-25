@@ -8,43 +8,36 @@ import QtGraphicalEffects 1.0
 Rectangle {
     id: root
     property string section: "home"
-    property Item blurSource: null   // the page content under the bar; the web blurs it behind the pill (backdrop-filter)
     signal selected(string target)
     signal profileClicked()
     readonly property var tabs: ["downloads", "search", "home", "series", "movies", "music", "playlists"]
-    height: 57.9 * Tokens.u
+    height: 58 * Tokens.u
     radius: 20 * Tokens.u
     color: Qt.rgba(Tokens.surfaceStrong.r, Tokens.surfaceStrong.g, Tokens.surfaceStrong.b, 0.88)
-    border.width: 1
-    border.color: Tokens.line
+    border.width: 0
 
     RectangularGlow {   // web: box-shadow 0 14px 40px rgba(31, 14, 20, .2)
-        anchors.fill: parent; anchors.topMargin: 14 * Tokens.u
+        x: 0; y: 14 * Tokens.u; width: parent.width; height: parent.height
         z: -2; glowRadius: 20 * Tokens.u; spread: 0; cornerRadius: root.radius + glowRadius
         color: Qt.rgba(31 / 255, 14 / 255, 20 / 255, Tokens.dark ? 0.2 : 0.2)
     }
-    ShaderEffectSource {
-        id: snap
-        visible: false
-        sourceItem: root.blurSource
-        sourceRect: root.blurSource ? Qt.rect(root.blurSource.mapFromItem(root, 0, 0).x, root.blurSource.mapFromItem(root, 0, 0).y, root.width, root.height) : Qt.rect(0, 0, 0, 0)
-    }
-    FastBlur { id: blurred; visible: false; anchors.fill: parent; source: snap; radius: 48 * Tokens.u / 2 }
-    Rectangle { id: pill; anchors.fill: parent; radius: root.radius; visible: false }
-    OpacityMask { z: -1; anchors.fill: parent; source: blurred; maskSource: pill; visible: root.blurSource !== null }
     Row {
-        x: 4.4 * Tokens.u   // web: 46.1 css px cells, the row starts a little in and runs past the bar's right edge
-        y: 6 * Tokens.u; height: parent.height - 12 * Tokens.u; width: 8 * 46.1 * Tokens.u
+        x: 5 * Tokens.u   // web: 44 x 46 links on a 46 px pitch, the row starts a little in and runs past the bar's right edge
+        y: 6 * Tokens.u; height: 46 * Tokens.u; width: 8 * 46 * Tokens.u
+        spacing: 2 * Tokens.u
         MouseArea {
             objectName: "parity-nav-profile"
             property bool navigationFocusable: true
             property int parityRail: 0
             property int parityIndex: 0
             function navigationActivate() { root.profileClicked() }
-            width: 46.1 * Tokens.u
-            height: parent.height
+            width: 44 * Tokens.u
+            height: 46 * Tokens.u
+            property string a11yName: qsTr("Signed in as %1. Open profiles.").arg(Api.profileName)
+            property string parityRole: "link"
+            property real focusRadius: 14 * Tokens.u
             onClicked: root.profileClicked()
-            Avatar { anchors.centerIn: parent; anchors.verticalCenterOffset: -4 * Tokens.u; width: 21 * Tokens.u;   // web seats the avatar higher than the icons
+            Avatar { plateColor: root.color; anchors.centerIn: parent; anchors.verticalCenterOffset: -4 * Tokens.u; width: 21 * Tokens.u;   // web seats the avatar higher than the icons
                      source: Api.profileAvatar }
         }
         Repeater {
@@ -55,13 +48,15 @@ Rectangle {
                 property int parityRail: 0
                 property int parityIndex: index + 1
                 function navigationActivate() { root.selected(modelData) }
-                width: 46.1 * Tokens.u
-                height: parent.height
+                width: 44 * Tokens.u
+                height: 46 * Tokens.u
+                property string parityRole: "link"
+                property real focusRadius: 14 * Tokens.u
+                property string a11yName: modelData === "downloads" ? qsTr("Downloads") : modelData === "search" ? qsTr("Search") : modelData === "home" ? qsTr("Home") : modelData === "series" ? qsTr("Series") : modelData === "movies" ? qsTr("Movies") : modelData === "music" ? qsTr("Music") : qsTr("Playlists")
                 onClicked: root.selected(modelData)
                 Rectangle {
-                    anchors.centerIn: parent
-                    width: 43.7 * Tokens.u; height: 45.7 * Tokens.u
-                    radius: 12 * Tokens.u
+                    anchors.fill: parent
+                    radius: 14 * Tokens.u
                     color: Tokens.primary
                     visible: root.section === modelData
                 }
@@ -70,8 +65,8 @@ Rectangle {
                     width: 21 * Tokens.u; height: width
                     sourceSize: Qt.size(48, 48)
                     smooth: true
-                    opacity: root.section === modelData || !Tokens.dark ? 1 : 0.72
-                    source: NavIcons.url(modelData, root.section === modelData ? Tokens.primaryInk : (Tokens.dark ? Tokens.ink : Tokens.inkSoft))
+                    // the idle icons of the dark bar are the ink at 72 % over the bar, drawn as one colour
+                    source: NavIcons.url(modelData, root.section === modelData ? Tokens.primaryInk : (Tokens.dark ? Qt.rgba(Tokens.ink.r * 0.72 + Tokens.surfaceStrong.r * 0.28, Tokens.ink.g * 0.72 + Tokens.surfaceStrong.g * 0.28, Tokens.ink.b * 0.72 + Tokens.surfaceStrong.b * 0.28, 1) : Tokens.inkSoft))
                 }
             }
         }

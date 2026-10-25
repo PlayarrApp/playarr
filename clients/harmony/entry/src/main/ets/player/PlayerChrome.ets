@@ -325,6 +325,8 @@ struct PlayPauseGlyph {
 @Component
 struct ChromeButton {
   label: string = '';
+  /** The layout export's node id (`px:button:<accessible name>`), empty for none. */
+  nodeId: string = '';
   buttonWidth: number = 44;
   buttonHeight: number = 44;
   fontSize: number = BUTTON_LABEL_FONT_SIZE;
@@ -380,9 +382,10 @@ struct ChromeButton {
           .maxLines(1)
       }
     }
+    .id(this.nodeId)
     .width(this.buttonWidth)
     .height(this.buttonHeight)
-    .borderRadius(this.circle ? this.buttonHeight / 2 : 0)
+    .borderRadius(this.circle ? (this.buttonWidth === this.buttonHeight ? '50%' : this.buttonHeight / 2) : 0)
     .backgroundColor(this.glassAlpha > 0 ? toResourceColorWithAlpha(CHROME_GLASS, this.glassAlpha) : (this.circle ? toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.fillAlpha) : Color.Transparent))
     .border(this.circle ? { width: this.ringWidth, color: toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, this.ringAlpha) } : { width: 0 })
     .scale({ x: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)), y: (1 + (FOCUS_LIFT.button.scale - 1) * effectiveFocusPercent(this.focusPercent, DEFAULT_ACTIVE_RAIL_FACTOR)) })
@@ -590,7 +593,8 @@ export struct PlayerChrome {
     ChromeButton({
       label: '',
       icon: icon,
-      iconSize: tv(17),
+      iconSize: tv(20),
+      nodeId: isTvMetrics() ? 'px:button:' + name : '',
       circle: true,
       fillAlpha: 0,
       ringAlpha: 0,
@@ -602,7 +606,6 @@ export struct PlayerChrome {
         this.setChildFocused(focused);
       }),
     })
-      .id(isTvMetrics() ? 'px:button:' + name : '')
   }
 
   /** Previous / next as web draws them: a bar and a triangle in the 64 px slot, dimmed while there is nothing to skip to. */
@@ -664,12 +667,12 @@ export struct PlayerChrome {
           buttonWidth: tv(TV_CLOSE_SIZE),
           buttonHeight: tv(TV_CLOSE_SIZE),
           fontSize: tv(22),
+          nodeId: 'px:button:Close player',
           onActivate: this.onBack,
           notifyFocusChanged: ((focused: boolean): void => {
             this.setChildFocused(focused);
           }),
         })
-          .id('px:button:Close player')
       }
       .width('100%')
       .justifyContent(FlexAlign.End)
@@ -679,7 +682,13 @@ export struct PlayerChrome {
 
       Column({ space: tv(TV_BAR_GAP) }) {
         if (!this.isLive()) {
-          this.progressTrack(tv(TV_TRACK_HEIGHT))
+          Column() {
+            this.progressTrack(tv(TV_TRACK_HEIGHT))
+          }
+          .width('100%')
+          .height(tv(44))
+          .justifyContent(FlexAlign.Center)
+          .id('px:slider:Seek')
         }
         Row({ space: tv(TV_ROW_GAP) }) {
           this.tvSkip(true, this.canPrevious, this.onPrevious)
@@ -690,6 +699,7 @@ export struct PlayerChrome {
             ringAlpha: 0,
             isPlaying: this.isPlaying,
             glyphSize: tv(TV_PLAY_SIZE / 2.4),
+            nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
             buttonWidth: tv(TV_PLAY_SIZE),
             buttonHeight: tv(TV_PLAY_SIZE),
             onActivate: this.onTogglePlayPause,
@@ -697,13 +707,13 @@ export struct PlayerChrome {
               this.setChildFocused(focused);
             }),
           })
-            .id('px:button:' + (this.isPlaying ? 'Pause' : 'Play'))
           this.tvSkip(false, this.canNext, this.onNext)
           if (this.isLive()) {
             Text('LIVE').fontFamily(nunitoAt(700, tv(TV_TIME_FONT_SIZE))).fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           } else {
             Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
               .fontSize(tv(TV_TIME_FONT_SIZE))
+              .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
           Blank()
@@ -717,6 +727,8 @@ export struct PlayerChrome {
               Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
             }
             .width(tv(160.45))
+            .height(tv(56))
+            .borderRadius(tv(28))
             .id('px:button:Quality: ' + this.qualityLabel)
             .padding({ left: tv(10) })
             .justifyContent(FlexAlign.Center)
@@ -741,35 +753,31 @@ export struct PlayerChrome {
     .hitTestBehavior(this.visible ? HitTestMode.Default : HitTestMode.Transparent)
   }
 
-  /** One phone control in a fixed slot: a bare icon (no circle) or, with `circle`, web's 44 vp round button. */
+  /** One phone control: web's 44 vp button at an absolute position, a bare icon (no ring) unless `circle`; `faded` is web's disabled 0.28. */
   @Builder
-  private phoneIcon(icon: Resource, iconSize: number, onTap: () => void, circle: boolean, boxSize: number, active: boolean): void {
-    Row() {
-      ChromeButton({
-        label: '',
-        icon: icon,
-        iconSize: iconSize,
-        circle: circle,
-        fillAlpha: circle ? 0.04 : 0,
-        ringAlpha: 0.3,
-        active: active,
-        buttonWidth: boxSize,
-        buttonHeight: boxSize,
-        onActivate: onTap,
-        notifyFocusChanged: ((focused: boolean): void => {
-          this.setChildFocused(focused);
-        }),
-      })
-    }
-    .width(PHONE_SLOT)
-    .height(PHONE_ROW_HEIGHT)
-    .justifyContent(FlexAlign.Center)
-    .alignItems(VerticalAlign.Center)
+  private phoneButton(name: string, icon: Resource | undefined, iconSize: number, onTap: () => void, circle: boolean, x: number, y: number, faded: boolean = false): void {
+    ChromeButton({
+      label: '',
+      icon: icon,
+      iconSize: iconSize,
+      circle: true,
+      fillAlpha: circle ? 0.04 : 0,
+      ringAlpha: circle ? 0.3 : 0,
+      active: !faded,
+      nodeId: 'px:button:' + name,
+      buttonWidth: 44,
+      buttonHeight: 44,
+      onActivate: onTap,
+      notifyFocusChanged: ((focused: boolean): void => {
+        this.setChildFocused(focused);
+      }),
+    })
+      .position({ x: x, y: y })
   }
 
-  /** Previous / next as web draws them: a bare icon (a bar and a triangle), no circle; dimmed while there is nothing to skip to. */
+  /** Previous / next as web draws them: a bar and a triangle inside a 44 vp button, dimmed while there is nothing to skip to. */
   @Builder
-  private phoneSkip(previous: boolean, active: boolean, onTap: () => void): void {
+  private phoneSkip(previous: boolean, active: boolean, onTap: () => void, x: number, y: number): void {
     Row({ space: 1 }) {
       if (!previous) {
         Polygon({ width: 10, height: 12 }).points([[0, 0], [0, 12], [10, 6]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(10).height(12)
@@ -779,12 +787,15 @@ export struct PlayerChrome {
         Polygon({ width: 10, height: 12 }).points([[10, 0], [10, 12], [0, 6]]).fill(toResourceColor(CHROME_TEXT_PRIMARY)).width(10).height(12)
       }
     }
-    .width(PHONE_SLOT)
-    .height(PHONE_ROW_HEIGHT)
+    .width(44)
+    .height(44)
+    .id('px:button:' + (previous ? 'Previous episode' : 'Next episode'))
+    .borderRadius('50%')
     .justifyContent(FlexAlign.Center)
     .alignItems(VerticalAlign.Center)
-    .opacity(active ? 1 : 0.35)
+    .opacity(active ? 1 : 0.28)
     .focusable(active)
+    .position({ x: x, y: y })
     .onClick(() => {
       if (active) {
         onTap();
@@ -792,94 +803,72 @@ export struct PlayerChrome {
     })
   }
 
-  /** Web phone player (360 vp reference): round minimise and close at the top right; at the bottom a thin progress track, the time
-   * centred under it, one row of previous / play / next / two volume / subtitles / queue icons and a second row of the quality
-   * facts, info, devices and full screen icons. */
+  /** Web phone player (360 vp reference), every control at web's own box: round minimise and close at the top right; at the bottom the 44 vp
+   * seek slider over a 6 vp track, the time centred under it, a row of 44 vp buttons (previous, play, next, mute, volume, subtitles, queue)
+   * and a second row of quality, info, devices and full screen. */
   @Builder
   private touchBar(): void {
-    Column() {
-      Row({ space: 6.2 }) {
-        this.phoneIcon($r('app.media.player_minimize'), 19, this.onBack, true, PHONE_TOP_BUTTON, true)
-        this.phoneIcon($r('app.media.player_close'), 25.6, this.onBack, true, PHONE_TOP_BUTTON, true)
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.End)
-      .padding({ right: 15.3, top: PHONE_TOP - 1 })
-
-      Blank()
-
-      Column() {
-        if (!this.isLive()) {
+    Stack({ alignContent: Alignment.TopStart }) {
+      this.phoneButton('Minimise player', $r('app.media.player_minimize'), 20, this.onBack, true, 248, 14)
+      this.phoneButton('Close player', $r('app.media.player_close'), 22, this.onBack, true, 300, 14)
+      if (!this.isLive()) {
+        Column() {
           this.progressTrack(PHONE_TRACK_HEIGHT)
-          Text(formatClockMs(this.positionMs) + '  /  ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
-            .fontSize(PHONE_TIME_FONT_SIZE)
-            .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
-            .padding({ top: 14.3, bottom: 7 })
-        } else {
-          Text('LIVE').fontFamily(nunitoAt(700, PHONE_TIME_FONT_SIZE)).fontSize(PHONE_TIME_FONT_SIZE).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
-            .padding({ top: 14.3, bottom: 7 })
         }
-        Row() {
-          this.phoneSkip(true, this.canPrevious, this.onPrevious)
-          Row() {
-            ChromeButton({
-              showGlyph: true,
-              circle: true,
-              fillAlpha: 0.14,
-              ringAlpha: 0,
-              ringWidth: 0,
-              isPlaying: this.isPlaying,
-              glyphSize: PHONE_PLAY_SIZE / 2.6,
-              buttonWidth: PHONE_PLAY_SIZE,
-              buttonHeight: PHONE_PLAY_SIZE,
-              onActivate: this.onTogglePlayPause,
-              notifyFocusChanged: ((focused: boolean): void => {
-                this.setChildFocused(focused);
-              }),
-            })
-          }
-          .width(PHONE_SLOT)
-          .height(PHONE_ROW_HEIGHT)
-          .justifyContent(FlexAlign.Center)
-          .alignItems(VerticalAlign.Center)
-          this.phoneSkip(false, this.canNext, this.onNext)
-          this.phoneIcon($r('app.media.player_volume'), 18.5, this.onToggleMute, false, 40, true)
-          this.phoneIcon($r('app.media.player_volume'), 18.5, this.onToggleMute, false, 40, true)
-          this.phoneIcon($r('app.media.player_subtitles'), 18.8, this.onOpenTracks, false, 40, true)
-          this.phoneIcon($r('app.media.player_queue'), 19, (): void => {}, false, 40, true)
-        }
-        .width('100%')
-        .padding({ left: 6.8 })
-        .justifyContent(FlexAlign.Start)
-        .alignItems(VerticalAlign.Center)
-        Row() {
-          Row() {
-            Text('HD').fontFamily(nunitoAt(700, PHONE_TIME_FONT_SIZE)).fontSize(PHONE_TIME_FONT_SIZE).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-          }
-          .width(40)
-          .justifyContent(FlexAlign.Center)
-          if (this.qualityLabel.length > 0) {
-            Text(this.qualityLabel).fontFamily(nunitoAt(700, PHONE_TIME_FONT_SIZE))
-              .fontSize(PHONE_TIME_FONT_SIZE)
-              .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              .width(28)
-              .maxLines(3)
-              .textAlign(TextAlign.Center)
-          } else {
-            Row().width(28)
-          }
-          this.phoneIcon($r('app.media.player_info'), 19, this.onOpenInfo, false, 40, true)
-          this.phoneIcon($r('app.media.player_cast'), 19.4, (): void => {}, false, 40, true)
-          this.phoneIcon($r('app.media.player_fullscreen'), 20.3, (): void => {}, false, 40, true)
-        }
-        .width('100%')
-        .padding({ left: 54 })
-        .justifyContent(FlexAlign.Start)
-        .alignItems(VerticalAlign.Center)
-        .height(PHONE_ROW_HEIGHT)
+        .width(336)
+        .height(44)
+        .justifyContent(FlexAlign.Center)
+        .id('px:slider:Seek')
+        .position({ x: 12, y: 615.13 })
+        Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
+          .fontSize(PHONE_TIME_FONT_SIZE)
+          .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
+          .textAlign(TextAlign.Center)
+          .width(336)
+          .height(16.88)
+          .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+          .position({ x: 12, y: 653.13 })
       }
-      .width('100%')
-      .padding({ left: PHONE_SIDE, right: PHONE_SIDE, bottom: 14.7 })
+      this.phoneSkip(true, this.canPrevious, this.onPrevious, 20, 674)
+      ChromeButton({
+        showGlyph: true,
+        circle: true,
+        fillAlpha: 0.14,
+        ringAlpha: 0,
+        ringWidth: 0,
+        isPlaying: this.isPlaying,
+        glyphSize: PHONE_PLAY_SIZE / 2.6,
+        nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
+        buttonWidth: PHONE_PLAY_SIZE,
+        buttonHeight: PHONE_PLAY_SIZE,
+        onActivate: this.onTogglePlayPause,
+        notifyFocusChanged: ((focused: boolean): void => {
+          this.setChildFocused(focused);
+        }),
+      })
+        .position({ x: 66, y: 674 })
+      this.phoneSkip(false, this.canNext, this.onNext, 112, 674)
+      this.phoneButton('Mute', $r('app.media.player_volume'), 20, this.onToggleMute, false, 158, 674)
+      this.phoneButton('', $r('app.media.player_volume'), 20, this.onToggleMute, false, 204, 674, true)
+      this.phoneButton('Subtitles: Off', $r('app.media.player_subtitles'), 20, this.onOpenTracks, false, 250, 674)
+      this.phoneButton('Playlist: 1 item', $r('app.media.player_queue'), 20, (): void => {}, false, 296, 674)
+      Row() {
+        Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+        Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).fontWeight(FontWeight.Bold)
+          .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(40.31).maxLines(3).textAlign(TextAlign.Center)
+      }
+      .width(44)
+      .height(44)
+      .id('px:button:Quality: ' + this.qualityLabel)
+      .borderRadius(22)
+      .justifyContent(FlexAlign.Center)
+      .position({ x: 89, y: 722 })
+      .onClick(() => {
+        this.onOpenQuality();
+      })
+      this.phoneButton('Info and playback health', $r('app.media.player_info'), 20, this.onOpenInfo, false, 135, 722)
+      this.phoneButton('Play on another device', $r('app.media.player_cast'), 20, (): void => {}, false, 181, 722)
+      this.phoneButton('Enter fullscreen', $r('app.media.player_fullscreen'), 20, (): void => {}, false, 227, 722)
     }
     .width('100%')
     .height('100%')

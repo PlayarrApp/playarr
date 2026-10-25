@@ -155,7 +155,7 @@ struct LibraryView: View {
                     HStack(spacing: 12) {
                         WMIconView(icon: .search, color: WM.muted, size: 16)
                         TextField("", text: $viewModel.searchText, prompt: Text("Search").foregroundColor(WM.muted))
-                            .wm(16)
+                            .wm(16, color: WM.ink)
                             .foregroundStyle(WM.ink)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
@@ -258,7 +258,7 @@ struct LibraryView: View {
                 PlayarrBackButton(action: goHome)
                     .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
                 WMText("Search", 21.6, 580, lh: 32.4, ls: -0.972)
-                    .offset(x: 68, y: WM.topInset + 5)
+                    .offset(x: 70, y: WM.topInset + 7.8)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
@@ -397,10 +397,14 @@ struct LibraryView: View {
                             Circle().stroke(PlayarrStyle.background, lineWidth: 2).frame(width: 24, height: 24).offset(y: 1)
                             Circle().stroke(WM.pink, lineWidth: 2.2).frame(width: 28, height: 28).offset(y: 1)
                         }
-                        Text(letter).wm(9.5, 700).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                        Text(letter).wm(8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                            .foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44).frame(height: 25.27)
                     .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(letter == "#" ? "Numbers and symbols" : letter)
+                    .accessibilityAddTraits(.isButton)
                     .onTapGesture {
                         let first = viewModel.works.first { work in
                             let initial = work.title.first.map { String($0).uppercased() } ?? "#"

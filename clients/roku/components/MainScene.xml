@@ -3,7 +3,7 @@
   <interface>
     <field id="screenState" type="string" value="starting" />
     <field id="deepLink" type="string" value="" onChange="onDeepLink" alwaysNotify="true" />
-    <field id="parityLayoutRequest" type="boolean" value="false" onChange="onParityLayoutRequest" alwaysNotify="true" />
+    <field id="paritySeek" type="float" value="-1" onChange="onParitySeek" alwaysNotify="true" />
     <field id="deepRoute" type="string" value="" onChange="onDeepRoute" alwaysNotify="true" />
   </interface>
   <children>
@@ -769,7 +769,6 @@
     <Timer id="homeHeroDetailTimer" duration="0.35" repeat="false" />
   </children>
   <script type="text/brightscript" uri="pkg:/source/Fonts.brs" />
-  <script type="text/brightscript" uri="pkg:/source/LayoutDump.brs" />
   <script type="text/brightscript" uri="pkg:/source/Theme.brs" />
   <script type="text/brightscript" uri="pkg:/source/Config.brs" />
   <script type="text/brightscript" uri="pkg:/source/Storage.brs" />

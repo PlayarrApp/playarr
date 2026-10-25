@@ -74,6 +74,7 @@
  * name>})`, which `navRailNavigate` below wraps in one line so every call
  * site reads as `navRailNavigate(ROUTES.x)`.
  */
+import {lx} from '../debug/layoutMarks';
 import React, {useContext, useEffect, useState} from 'react';
 import {View} from 'react-native';
 import {createStackNavigator} from '@amazon-devices/react-navigation__stack';
@@ -396,7 +397,7 @@ export function AppShellNavigator(): React.ReactElement {
     (activeRoute === ROUTES.workDetail ? detailTarget : activeRoute === ROUTES.musicDetail ? 'music' : null);
 
   return (
-    <View style={{flex: 1, backgroundColor: colour.bg}}>
+    <View {...lx('container', '')} style={{flex: 1, backgroundColor: colour.bg}}>
       <DetailRailContext.Provider value={setDetailTarget}>
       <CatalogKindsContext.Provider value={availableWorkKinds}>
       <ContentStack.Navigator screenOptions={{headerShown: false, animationEnabled: false}}>
@@ -438,7 +439,6 @@ export function AppShellNavigator(): React.ReactElement {
         profileName={profile?.displayName ?? ''}
         version={APP_CONFIG.clientVersion}
         availableWorkKinds={availableWorkKinds}
-        clockRight={activeRoute === ROUTES.home ? 633.6 : 710.4}
         onSelect={(target) => navRailNavigate(railRoutes[target])}
         onOpenProfiles={() => navigation.navigate(ROUTES.profiles)}
       />

@@ -3,6 +3,7 @@ import Sailfish.Silica 1.0
 import "components"
 import "pages"
 import "startRoute.js" as StartRoute
+import "components/LayoutDump.js" as LayoutDump
 
 ApplicationWindow {
     id: app
@@ -19,6 +20,21 @@ ApplicationWindow {
     }
 
     Component.onCompleted: Tokens.u = Screen.width / 390
+
+    FontMetrics { id: layoutFontMetrics }
+    // Parity layout export (docs/parity/LAYOUT.md); only a PLAYARR_STEPS `js:layoutDump()` step calls it.
+    function layoutDump() {
+        LayoutDump.dump(app.contentItem, Tokens.u, Tokens.weightOfFamily(), function (font, text) {
+            layoutFontMetrics.font = font
+            return { ascent: layoutFontMetrics.ascent, descent: layoutFontMetrics.descent }
+        }, function (line) { console.log(line) })
+    }
+
+    Connections {
+        target: pageStack.currentPage
+        ignoreUnknownSignals: true
+        onParityCaptureLayoutDumpRequested: app.layoutDump()
+    }
 
     function showStart() {
         pageStack.replaceAbove(null, startPage(Api.signedIn, Api.profiles.length))

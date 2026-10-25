@@ -1,5 +1,4 @@
 sub init()
-    m.global.observeField("parityLayoutSeq", "onParityLayoutTiles")
     m.tilesGroup = m.top.findNode("tiles")
     m.focusIdx = 0
     m.top.focusable = true
@@ -103,7 +102,6 @@ sub buildTiles()
         end if
         label = CreateObject("roSGNode", "WebLabel")
         label.setFields({ size: labelSize, weight: 700, height: 16 })
-        label.addFields({ parityHidden: true })
         label.text = t.text
         label.color = ThemeColor(labelRole)
         ThemeSetRole(label, labelRole)
@@ -226,16 +224,3 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     return false
 end function
 
-' Parity layout dump: the tiles answer for themselves (web buttons, glyphs and labels).
-sub onParityLayoutTiles()
-    if m.global.parityArtEnabled <> true or m.specs = invalid then return
-    anc = m.top
-    while anc <> invalid
-        if anc.hasField("visible") and anc.visible = false then return
-        anc = anc.getParent()
-    end while
-    o = ParityOrigin(m.top)
-    m.parityDx = o[0]
-    m.parityDy = o[1]
-    ParityTiles(m.specs, m.top.workTitle)
-end sub

@@ -1,0 +1,1 @@
+- Parity web layout dump: a wrapped paragraph is one element per rendered line, volatile text uses its glyph run, and percentage border radii resolve against the box.

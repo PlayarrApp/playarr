@@ -1,0 +1,1 @@
+- Fire TV (Vega): the filter and title actions drawers, Similar Titles, card captions, the clock column and the calendar's "today" follow the web client (parity).

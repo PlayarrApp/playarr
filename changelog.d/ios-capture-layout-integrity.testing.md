@@ -1,0 +1,1 @@
+- Require valid native layout exports for iOS parity captures and settle the screenshot and layout together; missing exports now fail the capture.

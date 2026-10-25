@@ -1,123 +1,162 @@
-// Roku layout exporter (docs/parity/LAYOUT.md): turns the channel's own scene-graph dump (clients/roku/source/LayoutDump.brs,
-// PARITY|layout|{json} lines on the debug console) into the schema document the layout scorer reads. The device draws every
-// text itself, so rects, sizes and colours are the channel's own values; only backgrounds are read from the screenshot.
+// Roku layout exporter (docs/parity/LAYOUT.md). It measures what the device holds: the ECP `query/app-ui` tree (every node the
+// firmware renders, with its bounds, colour, text and visibility), composed through each ancestor's translation, scale and opacity.
+// The channel carries no annotations and no web geometry. What the tree cannot say is read from the frame (backgrounds) or taken from
+// the font the channel set on each glyph Label (its node name, `f<weight>s<size>`). Roles are limited to what a node proves:
+// a Label is text, a Poster is an image, a Rectangle with alpha is a container.
 import { PNG } from "pngjs";
 import { readFileSync } from "node:fs";
 
-const LINE_HEIGHT = 1.364; // Nunito Sans content area (ascent 1.011 + descent 0.353), what Range.getBoundingClientRect reports
+const unescapeXml = (s) => s.replace(/&(lt|gt|amp|quot|apos|#\d+);/g, (_, e) => ({ lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" }[e] ?? String.fromCharCode(Number(e.slice(1)))));
+
+/** Minimal parser for the ECP app-ui XML: elements with quoted attributes, no text nodes. */
+export function parseAppUi(xml) {
+  const root = { tag: "#root", attrs: {}, children: [] };
+  const stack = [root];
+  const re = /<(\/?)([\w.:-]+)((?:\s+[\w:.-]+="[^"]*")*)\s*(\/?)>/g;
+  for (let m; (m = re.exec(xml)); ) {
+    if (m[1]) { stack.pop(); continue; }
+    const attrs = {};
+    for (const a of m[3].matchAll(/([\w:.-]+)="([^"]*)"/g)) attrs[a[1]] = unescapeXml(a[2]);
+    const node = { tag: m[2], attrs, children: [] };
+    stack[stack.length - 1].children.push(node);
+    if (!m[4]) stack.push(node);
+  }
+  return root;
+}
+
+const nums = (s) => (s ? s.replace(/[{}]/g, "").split(",").map(Number) : null);
 const hex = (c) => (c ? c.slice(0, 7) : null);
 const alphaOf = (c) => (c && c.length === 9 ? parseInt(c.slice(7), 16) / 255 : 1);
 
-export function fontFromUri(uri = "") {
-  const m = /NunitoSans-(\d+)(?:-(\d+))?\.ttf/.exec(uri);
-  if (m) return { weight: Number(m[1]), mono: false };
-  if (/JetBrainsMono-(\d+)/.test(uri)) return { weight: Number(/JetBrainsMono-(\d+)/.exec(uri)[1]), mono: true };
-  return { weight: 400, mono: false };
-}
-
 function sampler(pngFile) {
   const png = PNG.sync.read(readFileSync(pngFile));
-  const at = (px, py) => {
-    px = Math.max(0, Math.min(png.width - 1, Math.round(px))); py = Math.max(0, Math.min(png.height - 1, Math.round(py)));
-    const i = (py * png.width + px) * 4;
-    return "#" + [0, 1, 2].map((k) => png.data[i + k].toString(16).padStart(2, "0")).join("");
+  const px = (x, y) => {
+    x = Math.max(0, Math.min(png.width - 1, Math.round(x))); y = Math.max(0, Math.min(png.height - 1, Math.round(y)));
+    const i = (y * png.width + x) * 4;
+    return [png.data[i], png.data[i + 1], png.data[i + 2]];
   };
-  const ring = (x, y, w, h) => {
-    // Most common colour on the ring just outside the box: the colour behind the element.
+  const mode = (pts) => {
     const counts = new Map();
-    const put = (px, py) => {
-      px = Math.max(0, Math.min(png.width - 1, Math.round(px))); py = Math.max(0, Math.min(png.height - 1, Math.round(py)));
-      const i = (py * png.width + px) * 4;
-      const k = `${png.data[i]},${png.data[i + 1]},${png.data[i + 2]}`;
-      counts.set(k, (counts.get(k) ?? 0) + 1);
-    };
-    for (let px = x; px <= x + w; px += 2) { put(px, y - 2); put(px, y + h + 2); }
-    for (let py = y; py <= y + h; py += 2) { put(x - 2, py); put(x + w + 2, py); }
-    const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "0,0,0";
-    return "#" + best.split(",").map((v) => Number(v).toString(16).padStart(2, "0")).join("");
+    for (const [x, y] of pts) { const k = px(x, y).join(","); counts.set(k, (counts.get(k) ?? 0) + 1); }
+    const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0].split(",").map(Number);
+    return "#" + best.map((v) => v.toString(16).padStart(2, "0")).join("");
   };
-  ring.at = at;
-  ring.inside = (x, y, w, h) => {
-    // Mid-edge points 3 px inside the box: the fill itself, clear of corners and of what the box holds.
-    const inset = Math.min(3, w / 3, h / 3);
-    const pts = [[x + w / 2, y + inset], [x + w / 2, y + h - inset], [x + inset, y + h / 2], [x + w - inset, y + h / 2]];
-    const counts = new Map();
-    for (const [px, py] of pts) { const c = at(px, py); counts.set(c, (counts.get(c) ?? 0) + 1); }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  // The colour behind a box: the commonest colour on a ring 2 px outside it.
+  const behind = (r) => {
+    const pts = [];
+    for (let x = r.x; x <= r.x + r.w; x += 2) pts.push([x, r.y - 2], [x, r.y + r.h + 2]);
+    for (let y = r.y; y <= r.y + r.h; y += 2) pts.push([r.x - 2, y], [r.x + r.w + 2, y]);
+    return mode(pts);
   };
-  return ring;
+  // The fill itself: mid-edge points 3 px inside the box.
+  const inside = (r) => {
+    const i = Math.min(3, r.w / 3, r.h / 3);
+    return mode([[r.x + r.w / 2, r.y + i], [r.x + r.w / 2, r.y + r.h - i], [r.x + i, r.y + r.h / 2], [r.x + r.w - i, r.y + r.h / 2]]);
+  };
+  return { behind, inside };
 }
 
-export function buildLayoutDocument(lines, { screen, theme, pngFile, clockPinned }) {
-  const bg = sampler(pngFile);
-  const elements = [];
-  const FILLSET = ["container", "link", "button", "search", "textbox", "status", "dialog", "group", "heading"];
-  const dbg = [];
-  const boxes = [];
-  const under = (x, y, w, h) => {
-    const cx = x + w / 2, cy = y + h / 2;
-    // A dialog covers the page: what sits inside it rests on boxes of the dialog only.
-    const dlg = boxes.find((b) => b.role === "dialog" && cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
-    let best = null;
-    for (const b of boxes) {
-      if (dlg && !(b.x >= dlg.x - 0.5 && b.y >= dlg.y - 0.5 && b.x + b.w <= dlg.x + dlg.w + 0.5 && b.y + b.h <= dlg.y + dlg.h + 0.5)) continue;
-      if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h && (!best || b.w * b.h <= best.w * best.h)) best = b;
-    }
-    return best ? best.bg : null;
-  };
+const compose = (M, a, b) => ({ sx: M.sx * a, sy: M.sy * a, tx: M.sx * b[0] + M.tx, ty: M.sy * b[1] + M.ty });
+const mapRect = (M, [x, y, w, h]) => ({ x: M.sx * x + M.tx, y: M.sy * y + M.ty, w: M.sx * w, h: M.sy * h });
+
+/** Walks the tree and returns raw measured items in tree order (paint order). */
+export function measureTree(root) {
   const items = [];
-  for (const raw of lines) {
-    let it;
-    try { it = JSON.parse(raw); } catch { continue; }
-    if (it.k === "dbg") { dbg.push(it.m); continue; }
-    items.push(it);
-    // Text sits on the nearest box drawn beneath it, whatever order the channel printed them in.
-    if (it.k === "box" && !it.fixed) it.bg = ""; // sampled below
-    if (it.k === "box" && FILLSET.includes(it.role) && it.w < 1900 && it.bg) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg, role: it.role });
-  }
-  // A box's background is what the device draws inside it: the colour of its own fill over what is beneath (read from the frame).
-  const FILLS = ["container", "link", "button", "search", "textbox", "status", "dialog", "group", "heading"];
-  for (const it of items) if (it.k === "box" && !it.fixed && !it.inherit && FILLS.includes(it.role)) it.bg = bg.inside(it.x, it.y, it.w, it.h);
-  const encl = (it) => { let best = null; for (const o of items) { if (o === it || o.k !== "box" || !FILLS.includes(o.role) || o.inherit || o.w >= 1900 || !o.bg) continue; if (it.x >= o.x - 0.5 && it.y >= o.y - 0.5 && it.x + it.w <= o.x + o.w + 0.5 && it.y + it.h <= o.y + o.h + 0.5) best = o; } return best?.bg; };
-  for (const it of items) if (it.k === "box" && !it.fixed && (it.inherit || !FILLS.includes(it.role))) it.bg = encl(it) || bg.inside(it.x, it.y, it.w, it.h);
-  const sampled = items.filter((it) => it.k === "box" && FILLSET.includes(it.role) && it.w < 1900);
-  boxes.length = 0;
-  for (const it of sampled) boxes.push({ x: it.x, y: it.y, w: it.w, h: it.h, bg: it.bg, role: it.role });
+  const walk = (node, M, opacity, parent) => {
+    const parentTag = parent?.tag ?? "";
+    const a = node.attrs;
+    if (a.visible === "false") return;
+    const op = opacity * (a.opacity !== undefined ? Number(a.opacity) / 100 : 1);
+    if (op <= 0.001) return;
+    const bounds = nums(a.bounds);
+    const rect = bounds && bounds[2] > 0 && bounds[3] > 0 ? mapRect(M, bounds) : null;
+    if (node.tag === "Label" && a.text && rect) items.push({ kind: "label", node, rect, op, parent });
+    else if (node.tag === "Poster" && a.uri && rect) items.push({ kind: "poster", node, rect, op });
+    else if (node.tag === "Video" && rect) items.push({ kind: "video", node, rect, op });
+    else if (node.tag === "Rectangle" && rect && alphaOf(a.color) * op > 0.01) items.push({ kind: "rect", node, rect, op });
+    // Children live in this node's own frame: its translation, then scale about scaleRotateCenter. A list item sits where its bounds
+    // start (the list does not report a translation for its items).
+    let s = nums(a.scale)?.[0] ?? 1;
+    const c = nums(a.scaleRotateCenter) ?? [0, 0];
+    let tr = nums(a.translation) ?? [0, 0];
+    if (parentTag === "MarkupGrid" && bounds) tr = [bounds[0], bounds[1]];
+    const child = compose(M, s, [tr[0] + c[0] - s * c[0], tr[1] + c[1] - s * c[1]]);
+    for (const k of node.children) walk(k, child, op, node);
+  };
+  walk(root, { sx: 1, sy: 1, tx: 0, ty: 0 }, 1, null);
+  return items;
+}
+
+const fontOf = (name = "") => {
+  const m = /^f(\d+)s([\d.]+)$/.exec(name);
+  return m ? { weight: Number(m[1]), size: Number(m[2]) } : null;
+};
+
+export function buildLayoutDocument(appUiXml, { screen, theme, pngFile, clockPinned }) {
+  const frame = sampler(pngFile);
+  const items = measureTree(parseAppUi(appUiXml));
+  // Word and glyph Labels of one TrackedText are one text element: the union of their bounds, words joined by the gaps between them.
+  const groups = [];
+  let current = null;
+  // The video plane paints over everything before it in the tree (the pages under a full-screen player are not on screen).
+  const lastVideo = items.map((it) => it.kind).lastIndexOf("video");
+  if (lastVideo > 0) items.splice(0, lastVideo);
   for (const it of items) {
-    if (it.k === "label" || it.k === "tracked") {
-      if (it.size == null) continue;
-      const f = fontFromUri(it.font);
-      if (it.weightReq) f.weight = it.weightReq;
-      const lineH = it.size * LINE_HEIGHT;
-      const textW = it.k === "label" ? it.textw : it.w;
-      let x = it.x;
-      if (it.k === "label") {
-        if (it.align === "center") x = it.x + (it.w - textW) / 2; else if (it.align === "right") x = it.x + it.w - textW;
-      }
-      let y = it.y;
-      if (it.k === "label" && it.vert === "center") y = it.y + (it.h - lineH) / 2;
-      const h = it.k === "tracked" ? it.h : Math.round(it.size * 1.011) + Math.round(it.size * 0.353);
-      const colour = it.color;
-      elements.push({
-        text: it.text.replace(/\s+/g, " ").trim(), role: it.aria ?? it.arole ?? (it.role === "ink" && it.k === "tracked" && it.size >= 30 ? "heading" : "text"),
-        rect: { x, y, w: textW, h }, color: colour ? hex(colour) : null, background: (it.fixed ? it.bg : under(x, y, textW, h)) || it.bg || bg(x, y, textW, h),
-        fontSize: it.size, fontWeight: f.weight, ...(it.radius ? { radius: it.radius } : {}), ...(it.op < 0.995 ? { opacity: Math.round(it.op * 100) / 100 } : {}), _id: it.id, _tracked: it.k === "tracked" ? it.role : undefined,
-      });
-    } else if (it.k === "box") {
-      const background = it.bg ?? bg(it.x, it.y, it.w, it.h);
-      elements.push({ text: it.text ?? "", role: it.role, rect: { x: it.x, y: it.y, w: it.w, h: it.h }, color: null, background, fontSize: null, fontWeight: null, ...(it.radius ? { radius: it.radius } : {}), ...(it.opacity ? { opacity: it.opacity } : {}) });
-    } else if (it.k === "poster" && it.w > 0 && it.h > 0) {
-      elements.push({ text: "", role: "image", rect: { x: it.x, y: it.y, w: it.w, h: it.h }, color: null, background: bg(it.x, it.y, it.w, it.h), fontSize: null, fontWeight: null, _id: it.id, _uri: it.uri });
-    } else if (it.k === "rect") {
-      elements.push({ text: "", role: "container", rect: { x: it.x, y: it.y, w: it.w, h: it.h }, color: null, background: hex(it.color), fontSize: null, fontWeight: null, _id: it.id });
+    if (it.kind === "label" && fontOf(it.node.attrs.name)) {
+      // Glyph Labels of one TrackedText share a parent node and sit together in the tree.
+      if (current && current.parent === it.parent) current.labels.push(it);
+      else { current = { parent: it.parent, labels: [it] }; groups.push(current); }
+    } else {
+      current = null;
+      groups.push({ single: it });
     }
   }
-  const inView = (e) => e.rect.x < 1920 && e.rect.y < 1080 && e.rect.x + e.rect.w > 0 && e.rect.y + e.rect.h > 0;
-  elements.splice(0, elements.length, ...elements.filter(inView));
+  return finish(groups, frame, { screen, theme, clockPinned });
+}
+
+function finish(groups, frame, { screen, theme, clockPinned }) {
+  const elements = [];
   const r2 = (v) => Math.round(v * 100) / 100;
-  for (const e of elements) {
-    for (const k of Object.keys(e)) if (k.startsWith("_") || e[k] === undefined) delete e[k];
+  const push = (e) => {
     for (const k of ["x", "y", "w", "h"]) e.rect[k] = r2(e.rect[k]);
+    if (e.rect.x < 1920 && e.rect.y < 1080 && e.rect.x + e.rect.w > 0 && e.rect.y + e.rect.h > 0) elements.push(e);
+  };
+  const textElement = (labels, font, text) => {
+    const x0 = Math.min(...labels.map((l) => l.rect.x)), y0 = Math.min(...labels.map((l) => l.rect.y));
+    const x1 = Math.max(...labels.map((l) => l.rect.x + l.rect.w)), y1 = Math.max(...labels.map((l) => l.rect.y + l.rect.h));
+    const rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    const op = labels[0].op;
+    const colour = labels[0].node.attrs.color;
+    push({
+      text: text.replace(/\s+/g, " ").trim(), role: "text", rect, color: hex(colour), background: frame.behind(rect),
+      fontSize: font.size, fontWeight: font.weight, ...(op < 0.995 ? { opacity: r2(op) } : {}),
+    });
+  };
+  for (const g of groups) {
+    if (g.labels) {
+      const font = fontOf(g.labels[0].node.attrs.name);
+      // Words are set one Label each, so a gap wider than a fifth of the font size between neighbours on a line is a space.
+      let text = "";
+      let prev = null;
+      for (const l of g.labels) {
+        if (prev && (l.rect.y - prev.rect.y > font.size * 0.5 || l.rect.x - (prev.rect.x + prev.rect.w) > font.size * 0.2)) text += " ";
+        text += l.node.attrs.text;
+        prev = l;
+      }
+      textElement(g.labels, font, text);
+      continue;
+    }
+    const it = g.single;
+    if (it.kind === "label") {
+      // A Label the channel set without a tracked-text font: size is the line box over the font's line height (an estimate).
+      textElement([it], { size: r2(it.rect.h / 1.364), weight: 400 }, it.node.attrs.text);
+    } else if (it.kind === "video") {
+      push({ text: "", role: "video", rect: it.rect, color: null, background: frame.inside(it.rect), fontSize: null, fontWeight: null });
+    } else if (it.kind === "poster") {
+      push({ text: "", role: "image", rect: it.rect, color: null, background: frame.behind(it.rect), fontSize: null, fontWeight: null, ...(it.op < 0.995 ? { opacity: r2(it.op) } : {}) });
+    } else {
+      push({ text: "", role: "container", rect: it.rect, color: null, background: frame.inside(it.rect), fontSize: null, fontWeight: null, ...(it.op < 0.995 ? { opacity: r2(it.op) } : {}) });
+    }
   }
   return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements };
 }

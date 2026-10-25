@@ -1,0 +1,1 @@
+- Sailfish: layout exporter (QML item tree to the parity layout schema) written with every capture, static Nunito Sans weights for the web's weights, and the player controls, search, actions, filters, profiles, settings, detail and calendar screens laid out as the web boxes.

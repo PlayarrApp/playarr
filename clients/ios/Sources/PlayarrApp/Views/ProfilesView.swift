@@ -210,7 +210,7 @@ struct ProfilesView: View {
 
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
-                    .wm(11, 650).foregroundStyle(PlayarrStyle.danger)
+                    .wm(11, 650, color: PlayarrStyle.danger).foregroundStyle(PlayarrStyle.danger)
                     .offset(x: 24, y: 470)
             }
 
@@ -374,7 +374,7 @@ struct ProfilesView: View {
 
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
-                    .wm(11, 650).foregroundStyle(PlayarrStyle.danger)
+                    .wm(11, 650, color: PlayarrStyle.danger).foregroundStyle(PlayarrStyle.danger)
                     .offset(x: 41, y: 900)
             }
 

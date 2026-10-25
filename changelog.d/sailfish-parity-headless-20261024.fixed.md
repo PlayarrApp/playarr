@@ -1,0 +1,1 @@
+- Sailfish: no focus ring at rest on Home, library, Search, Actions or the calendar Today pill (touch layouts), the page back button is a translucent plate, the film Play button is the ink primary, the runtime reads "1 min", profiles ring and shadow, Search idle state and Filters button, Actions rows and Settings rows sized as the web, dark library wash as the static refs.

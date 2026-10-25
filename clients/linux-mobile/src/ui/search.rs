@@ -23,7 +23,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .margin_end(17)
         .build();
     entry.set_size_request(-1, 44);
-    crate::layout::tag(&entry, "textbox", "Search your libraries and playlists", 0.0);
     // The web's field is a 328 x 60 pill holding the 18 px icon and the input.
     let field = gtk4::Box::builder()
         .css_classes(["pa-search"])
@@ -35,7 +34,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     glass.set_margin_start(17);
     field.append(&glass);
     field.append(&entry);
-    crate::layout::tag(&field, "search", "", 999.0);
     // The web's empty state: a ring with a search-minus icon, then the prompt beside it.
     let status = gtk4::Label::builder()
         .label("Start typing to search.")
@@ -51,10 +49,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     ring.set_size_request(86, 86);
     let icon = crate::icons::image("search-minus", 34, crate::icons::Tone::Brand);
     // The web's svg box is the glyph's own bounds: 34 x 22.66 in the 34 px drawing.
-    crate::layout::Tag::new("image", "", 0.0)
-        .adjust([0.0, 5.67, 0.0, 0.0])
-        .height(22.66)
-        .apply(&icon);
     // Centred, not expanding: an expanding icon would stretch the ring to a pill and push it down the page.
     icon.set_hexpand(true);
     icon.set_valign(gtk4::Align::Center);
@@ -67,7 +61,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .margin_end(16)
         .margin_top(21)
         .build();
-    crate::layout::tag(&ring, "container", "", 50.0);
     empty.append(&ring);
     empty.append(&status);
     // Hide the ring with the prompt when results are shown.
@@ -100,7 +93,6 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .valign(gtk4::Align::Start)
         .build();
     backdrop.set_size_request(-1, 385);
-    crate::layout::key_art(&backdrop, false);
     let wash = gtk4::Box::builder()
         .css_classes(["pa-key-wash"])
         .valign(gtk4::Align::Start)

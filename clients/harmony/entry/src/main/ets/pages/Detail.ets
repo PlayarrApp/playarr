@@ -2061,6 +2061,7 @@ struct Detail {
     Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 4) }) {
       Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
         .id('px:heading:' + heading)
+        .letterSpacing((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) // web's rail heading tracking
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
         .fontColor(toResourceColor(activeColors().ink))
       Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(phoneSeasonHeading ? 10 : 11)))
@@ -2235,6 +2236,7 @@ struct Detail {
           subtitle: this.tvCopySubtitle(),
           metaChips: this.detail !== null ? metaChips(this.detail, this.hasResumeTarget() ? this.resumePlan : null) : [],
           synopsis: this.tvCopySynopsis(),
+          strongSynopsis: false,
         })
         this.tvActions()
       }
@@ -2484,9 +2486,9 @@ struct Detail {
   /** Phone series (web phone series detail): one row, the Start pill and the two secondary actions, labels at web's 8 vp. */
   @Builder
   private touchSeriesAction(label: string, onTap: () => void): void {
-    Row({ space: 4 }) {
-      Text('+').fontFamily(nunitoAt(700, 8))
-        .fontSize(8)
+    Row({ space: 8.79 }) {
+      Text('+').fontFamily(nunito(400))
+        .fontSize(9.2)
         .fontColor(brandInk())
       Text(label).fontFamily(nunitoAt(700, 8))
         .fontSize(8)
@@ -2495,7 +2497,7 @@ struct Detail {
         .maxLines(1)
     }
     .id(this.pillId(label, '+', false))
-    .layoutWeight(1)
+    .padding({ left: 16, right: 16 })
     .height(44)
     .justifyContent(FlexAlign.Center)
     .borderRadius(22)

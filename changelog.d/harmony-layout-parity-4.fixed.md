@@ -1,0 +1,1 @@
+- HarmonyOS: the preview player holds at 2.000 s for the player-controls capture, and TV library, calendar month and profiles geometry follow the web layout refs.

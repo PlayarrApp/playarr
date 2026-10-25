@@ -1,15 +1,17 @@
 // Suite driver for the Sailfish OS client on the SDK emulator (or a device) reached over ssh. Contract: docs/parity/SUITE.md.
-//   PLAYARR_SF_SSH_KEY (private key), PLAYARR_SF_SSH_PORT (default 2223), PLAYARR_SF_SSH_HOST (default 127.0.0.1),
-//   PLAYARR_SF_VNC_HELPER (credential-safe wrapper accepting `sailfish <vncdo args...>`).
-// D-pad checks send keys through VNC and read the app's QML focus and route telemetry.
+//   PLAYARR_SF_SSH_KEY (private key), optional PLAYARR_SF_SSH_CONFIG (passed to ssh and scp with -F),
+//   PLAYARR_SF_SSH_PORT (default 2223), PLAYARR_SF_SSH_HOST (default 127.0.0.1),
+//   PLAYARR_SF_VBOXMANAGE (VBoxManage binary, default `VBoxManage`), PLAYARR_SF_VM (VM name, default `sailfish`).
+// The VM runs headless with no remote display: screenshots use `VBoxManage controlvm screenshotpng`, keys use
+// `controlvm keyboardputscancode`. D-pad checks read the app's QML focus and route telemetry.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, chmodSync, mkdirSync, mkdtempSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { appIdentityReceipt, cleanupAppProcessScript, newProcessMarker, parseAppProcesses, requireSingleAppProcess, scanAppProcessesScript } from "./process.mjs";
 import { formatOwnedDiagnostics, ownedDiagnosticCommand, preserveBeforeCleanup, requireRouteReady, routeReadinessProbe, readOwnedRouteLog, serializeSteps } from "./route-readiness.mjs";
 import { detailRouteRequest } from "./detail-route.mjs";
-import { keyCommand, parseParityEvents, decodeFocus, hasKeyAckPair, hasKeyCompletion, nextKeyAckPress } from "./navigation.mjs";
+import { keyCommand, parseParityEvents, decodeFocus, hasKeyAckPair, hasKeyCompletion, nextKeyAckPress, playerCaptureReady } from "./navigation.mjs";
 import { signedInProfileProbe, verifiedDeviceTestUser as matchesDeviceTestUser } from "./account-identity.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -22,7 +24,8 @@ const readParityLog = (ssh, identity) => identity ? readOwnedRouteLog(ssh, ident
 export async function createDriver() {
   const env = process.env;
   const host = env.PLAYARR_SF_SSH_HOST ?? "127.0.0.1", port = env.PLAYARR_SF_SSH_PORT ?? "2223";
-  const sshArgs = ["-i", env.PLAYARR_SF_SSH_KEY, "-p", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"];
+  const sshConfigArgs = env.PLAYARR_SF_SSH_CONFIG ? ["-F", env.PLAYARR_SF_SSH_CONFIG] : [];
+  const sshArgs = [...sshConfigArgs, "-i", env.PLAYARR_SF_SSH_KEY, "-p", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"];
   const ssh = (user, cmd) => execFileSync("ssh", [...sshArgs, `${user}@${host}`, cmd], { encoding: "utf8", timeout: 60000 });
   const scratchRoot = env.PLAYARR_SF_SCRATCH;
   if (!scratchRoot) throw new Error("PLAYARR_SF_SCRATCH must point to the task scratch directory");
@@ -58,13 +61,24 @@ export async function createDriver() {
     } finally { ownedProcess = null; }
   }
   // Restart the app with a smoke script; every run starts with the theme so it holds without a stored preference.
+  let pendingSettle = 12;
+  let pendingLayoutDump = true;
   const launch = async (steps, detail = null) => {
     const marker = newProcessMarker();
     const resolvedSteps = typeof steps === "function" ? steps(marker) : steps;
-    const checkedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id))] : resolvedSteps;
+    // Detail refs are at the page top, but the series page scrolls itself to the next-up episode.
+    const probedSteps = detail ? [...resolvedSteps, ...Array(8).fill(routeReadinessProbe(marker, detail.kind, detail.id)), "js:pageStack.currentPage.scrollTop()"] : resolvedSteps;
+    // Layout export (docs/parity/LAYOUT.md) runs as the last step, at the end of the settle time, in the state that is captured.
+    const dumpAt = Math.max(1, Math.ceil((pendingSettle - 4) / 1.5) - (detail ? 2 : 0));
+    // Detail pages are put back at the top again right before the export: late data (similar titles, the next-up scroll) can move them.
+    const dumpSteps = detail ? ["js:pageStack.currentPage.scrollTop()", "wait", "js:layoutDump()"] : ["js:layoutDump()"];
+    const layoutSteps = !pendingLayoutDump ? probedSteps : probedSteps.length >= dumpAt
+      ? [...probedSteps.slice(0, dumpAt), ...dumpSteps, ...probedSteps.slice(dumpAt)]
+      : [...probedSteps, ...Array(dumpAt - probedSteps.length).fill("wait"), ...dumpSteps];
+    const checkedSteps = ["js:console.log('PARITY_CLOCK',Calendar.todayIso())", ...layoutSteps];
     const script = serializeSteps(theme, checkedSteps);
     writeFileSync(join(tmp, "steps"), script);
-    execFileSync("scp", ["-i", env.PLAYARR_SF_SSH_KEY, "-P", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", join(tmp, "steps"), `defaultuser@${host}:/run/user/100000/pa-steps.txt`]);
+    execFileSync("scp", [...sshConfigArgs, "-i", env.PLAYARR_SF_SSH_KEY, "-P", port, "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", join(tmp, "steps"), `defaultuser@${host}:/run/user/100000/pa-steps.txt`]);
     await cleanupOwnedProcess();
     const existing = parseAppProcesses(ssh("root", scanAppProcessesScript(marker)), marker);
     if (existing.length) {
@@ -104,7 +118,7 @@ export async function createDriver() {
   function plan(route, screenId, marker = "ROUTE") {
     const [path, q] = route.split("?");
     const view = new URLSearchParams(q ?? "").get("view");
-    // The suite's keys long-press the first card of the Movies library (the web ref's "2 Fast 2 Furious"), not Home's first card, which follows On deck.
+    // The suite's keys long-press the first card in the Movies library, not Home's first card, which follows On deck.
     if (screenId === "actions") return [["wait", "wait", "js:pageStack.currentPage.actionsFirst('movie')"], 16];
     if (path === "/") return [["wait"], 12];
     if (path === "/movies" && q?.includes("panel=filters")) return [["wait", ...section("movies"), "wait", `js:pageStack.push('${PAGES}/FiltersPage.qml')`], 16];
@@ -112,6 +126,7 @@ export async function createDriver() {
     if (path === "/series") return [["wait", ...section("series")], 14];
     if (path === "/music") return [["wait", ...section("music")], 14];
     if (path === "/search") return [["wait", ...section("search")], 12];
+    if (path === "/calendar" && q?.includes("panel=link")) return [["wait", ...calendar("agenda"), "wait", `js:pageStack.push('${PAGES}/CalendarLinkPage.qml')`], 20];
     if (path === "/calendar") return [["wait", ...calendar(view ?? "agenda")], 18];
     const movieId = path.match(/^\/movies\/([^/]+)\/?$/)?.[1];
     if (movieId === ":id") return [["wait", `js:${firstMovie}`], 16];
@@ -123,7 +138,7 @@ export async function createDriver() {
     if (path === "/profiles") return [["wait", `js:pageStack.push('${PAGES}/ProfilesPage.qml')`], 12];
     if (path.startsWith("/player/")) {
       if (screenId === "player-controls" && !/^[A-Za-z0-9_-]+$/.test(playerTarget || "")) throw new Error("PLAYARR_SF_PLAYER_FILE must be set to the verified direct-play fixture file ID");
-      if (screenId === "player-controls") return [["wait", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${playerTarget}',title:'Sample media',startMs:0})`, ...Array(36).fill("wait")], 38];
+      if (screenId === "player-controls") return [["wait", `js:pageStack.push('${PAGES}/PlayerPage.qml',{mediaFileId:'${playerTarget}',title:'Sample media',startMs:0,parityCaptureHold:true})`], 40, false];
       throw new Error(`player route requires an explicit verified target: ${route}`);
     }
     throw new Error(`no Sailfish mapping for ${route}`);
@@ -138,14 +153,25 @@ export async function createDriver() {
     await launch((marker) => {
       const planned = plan(route, screenId, marker);
       settle = planned[1];
+      pendingSettle = settle;
+      pendingLayoutDump = planned[2] !== false;
       return planned[0];
     }, detail);
-    await sleep(settle * 1000);
+    // The scroll-to-top step is the last of 12 steps 1.5 s apart (about 21 s after launch).
+    if (screenId === "player-controls") {
+      await waitForPlayerCapture();
+      await waitForPlayerLayoutAfterAck();
+    }
+    else await sleep((detail ? Math.max(settle, 24) : settle) * 1000);
     if (detail) requireRouteReady(readOwnedRouteLog(ssh, ownedProcess), ownedProcess.marker);
   }
-  const vnc = (...args) => {
-    if (!env.PLAYARR_SF_VNC_HELPER) throw new Error("PLAYARR_SF_VNC_HELPER must point to the credential-safe VNC wrapper");
-    execFileSync(env.PLAYARR_SF_VNC_HELPER, ["sailfish", ...args], { stdio: "ignore" });
+  const vbox = (...args) => execFileSync(env.PLAYARR_SF_VBOXMANAGE ?? "VBoxManage", ["controlvm", env.PLAYARR_SF_VM ?? "sailfish", ...args], { stdio: "ignore", timeout: 30000 });
+  // PS/2 set 1 make and break codes; arrows are extended (e0 prefix).
+  const SCANCODES = { LEFT: ["e0", "4b"], RIGHT: ["e0", "4d"], UP: ["e0", "48"], DOWN: ["e0", "50"], ENTER: ["1c"], ESC: ["01"] };
+  const keyEdge = (keysym, up) => {
+    const [pre, code] = SCANCODES[keysym].length === 2 ? SCANCODES[keysym] : [null, SCANCODES[keysym][0]];
+    const brk = (parseInt(code, 16) | 0x80).toString(16);
+    vbox("keyboardputscancode", ...(pre ? [pre] : []), up ? brk : code);
   };
   const waitForKeyAcks = async (after) => {
     const deadline = Date.now() + 10000;
@@ -187,6 +213,45 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
   function playerState() {
     return ownedProcess ? parseParityEvents(readParityLog(ssh, ownedProcess)).player : null;
   }
+  async function waitForPlayerCapture() {
+    const deadline = Date.now() + 60000;
+    while (Date.now() < deadline) {
+      const events = parseParityEvents(readParityLog(ssh, ownedProcess));
+      if (events.playerCaptureFailure) throw new Error(`Sailfish player capture seek is unsupported: ${events.playerCaptureFailure}`);
+      if (playerCaptureReady(events.player, events.playerCaptureAcknowledgement)) return;
+      await sleep(250);
+    }
+    const observed = playerState();
+    throw new Error(`Sailfish player capture did not acknowledge paused source position 2000 ms (observed source=${observed?.sourceMs ?? "unknown"} ms, engine=${observed?.engineMs ?? "unknown"} ms)`);
+  }
+  async function waitForPlayerLayoutAfterAck() {
+    const deadline = Date.now() + 60000;
+    while (Date.now() < deadline) {
+      const lines = readParityLog(ssh, ownedProcess).split(/\r?\n/);
+      let ackLine = -1, layoutLine = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes("PARITY|player-capture-ack|2000|2000")) ackLine = i;
+        if (lines[i].includes("LAYOUTEND|")) layoutLine = i;
+      }
+      if (ackLine >= 0 && layoutLine > ackLine) return;
+      await sleep(250);
+    }
+    throw new Error("Sailfish player capture did not emit a fresh layout export after its exact-position acknowledgement");
+  }
+
+  function writeLayout(file) {
+    const log = readOwnedRouteLog(ssh, ownedProcess);
+    const lines = log.split(/\r?\n/).filter((l) => l.includes("LAYOUTEL|"));
+    const elements = lines.flatMap((l) => JSON.parse(l.slice(l.indexOf("LAYOUTEL|") + 9)));
+    const end = log.match(/LAYOUTEND\|([\d.]+)\|([\d.]+)/);
+    if (!elements.length || !end) throw new Error("layout export produced no elements");
+    const dir = join(dirname(dirname(file)), "layout", theme);
+    mkdirSync(dir, { recursive: true });
+    const clockDate = log.match(/PARITY_CLOCK (\d{4}-\d{2}-\d{2})/)?.[1];
+    const expectedClockDate = screens.determinism.clock.slice(0, 10);
+    const doc = { screen: basename(file, ".png"), theme, viewport: { w: Math.round(Number(end[1])), h: Math.round(Number(end[2])), dpr: 768 / 390 }, clockPinned: clockDate === expectedClockDate, elements };
+    writeFileSync(join(dir, `${doc.screen}.json`), `${JSON.stringify(doc)}\n`);
+  }
 
   return {
     async start() {
@@ -210,13 +275,13 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     },
     async stop() { await cleanupOwnedProcess(); },
     async setTheme(t) { theme = t; },
-    async home() { if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified"); await launch(["wait"]); await sleep(12000); },
+    async home() { if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified"); pendingSettle = 12; await launch(["wait"]); await sleep(12000); },
     async key(name, { long } = {}) {
       if (!verifiedDeviceTestUser) throw new Error("Sailfish signed-in device-test identity has not been verified");
       const keysym = keyCommand(name);
       const previous = parseParityEvents(readParityLog(ssh, ownedProcess)).keyAcks;
       if (long) {
-        vnc("keydown", keysym);
+        keyEdge(keysym, false);
         const pressDeadline = Date.now() + 10000;
         while (Date.now() < pressDeadline) {
           const current = parseParityEvents(readParityLog(ssh, ownedProcess)).keyAcks;
@@ -227,8 +292,8 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
           throw new Error("Sailfish Qt did not acknowledge the press of the newly injected long key");
         }
         await sleep(800);
-        vnc("keyup", keysym);
-      } else vnc("key", keysym);
+        keyEdge(keysym, true);
+      } else { keyEdge(keysym, false); keyEdge(keysym, true); }
       const sequence = await waitForKeyAcks(previous.length);
       await waitForKeyCompletion(sequence);
     },
@@ -263,8 +328,9 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
       if (current.pid !== ownedProcess.pid || current.starttime !== ownedProcess.starttime) {
         throw new Error("Sailfish process identity changed before capture");
       }
-      vnc("capture", file);
+      vbox("screenshotpng", file);
       if (!existsSync(file)) throw new Error("capture failed");
+      writeLayout(file);
     },
     // Plays case.file straight in the player and reads the engine position from the app's own log.
     supports: { nowPlaying: true },

@@ -44,7 +44,7 @@
  * established for their own routes in this same slice.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont } from '../design/Typography';
 import type { AvailableProfileResponse } from '../core/Types/Profiles.ts';
 import { resolveAvatarPreset } from '../core/AvatarPreset.ts';
 import { BRAND_PINK, BRAND_PINK_SOFT, Spacing, Radii } from '../core/Tokens';
@@ -353,19 +353,37 @@ struct Profiles {
   /** Web's foot-of-page pills (Check for updates, Clients): a 44 px pill on surface-strong at 0.64, text only. */
   @Builder
   private footerPill(label: string, x: number, y: number, onTap: () => void, phone: boolean = false): void {
-    Text(label).fontFamily(nunitoAt(phone ? 720 : 700, phone ? 7.68 : tv(TV_ACTION_TEXT)))
-      .fontSize(phone ? 7.68 : tv(TV_ACTION_TEXT))
-      .fontWeight(FontWeight.Bold)
-      .fontColor(toResourceColor(activeColors().inkSoft))
+    if (phone) {
+      // web: a pill whose link text and arrow are two elements ("Clients", "→")
+      Row({ space: 8.8 }) {
+        Text('Clients').fontFamily(nunitoAt(720, 7.68)).fontSize(7.68).fontWeight(FontWeight.Bold)
+          .fontColor(toResourceColor(activeColors().inkSoft)).id('px:link:Clients')
+        Text('→').fontFamily(arrowFont(720)).fontSize(7.68).fontWeight(FontWeight.Normal)
+          .fontColor(toResourceColor(activeColors().inkSoft))
+      }
       .height(tv(TV_ACTION_HEIGHT))
-      .padding({ left: tv(17), right: tv(17) })
+      .padding({ left: 17, right: 17 })
       .borderRadius(tv(TV_ACTION_HEIGHT / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
-      .position(phone ? { x: '100%', y: '100%' } : { x: tv(x), y: tv(y) })
-      .markAnchor(phone ? { x: PHONE_FOOTER_RIGHT + 75, y: PHONE_FOOTER_BOTTOM + TV_ACTION_HEIGHT } : { x: 0, y: 0 })
+      .position({ x: 262.5, y: '100%' })
+      .markAnchor({ x: 0, y: PHONE_FOOTER_BOTTOM + TV_ACTION_HEIGHT })
       .focusable(true)
       .onClick(onTap)
+    } else {
+      Text(label).fontFamily(nunitoAt(700, tv(TV_ACTION_TEXT)))
+        .fontSize(tv(TV_ACTION_TEXT))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .height(tv(TV_ACTION_HEIGHT))
+        .padding({ left: tv(17), right: tv(17) })
+        .borderRadius(tv(TV_ACTION_HEIGHT / 2))
+        .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
+        .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
+        .position({ x: tv(x), y: tv(y) })
+        .focusable(true)
+        .onClick(onTap)
+    }
   }
 
   /** Web `.profile-action-button`: a 44 px pill on surface-strong at 0.64. */
@@ -387,7 +405,7 @@ struct Profiles {
     .constraintSize({ minWidth: tv(TV_ACTION_HEIGHT) })
     .justifyContent(FlexAlign.Center)
     .padding({ left: label.length > 0 ? tv(17) : 0, right: label.length > 0 ? tv(17) : 0 })
-    .id(isTvMetrics() ? '' : 'px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
+    .id('px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
     .borderRadius(tv(TV_ACTION_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -423,18 +441,18 @@ struct Profiles {
         }, true)
       }
       // Web's top-right controls: the theme select and the language select (Auto, English, Thai, Japanese).
-      Row({ space: this.pick(15, 8) }) {
+      Row({ space: this.pick(14, 8) }) {
         SelectField({
           options: themeChoices(),
-          lead: isTvMetrics() ? '' : 'sun',
-          controlName: isTvMetrics() ? '' : 'x',
+          lead: 'sun',
+          controlName: 'x',
           controlPrefix: 'Theme: ',
-          labelWeight: isTvMetrics() ? 700 : 500,
-          labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
+          labelWeight: 720,
+          labelSize: PHONE_SELECT_FONT,
           value: this.themeSetting,
           selectWidth: isTvMetrics() ? THEME_SELECT_WIDTH : PHONE_SELECT_WIDTH,
-          minHeight: isTvMetrics() ? 56 : PHONE_SELECT_HEIGHT,
-          radius: isTvMetrics() ? 12 : PHONE_SELECT_RADIUS,
+          minHeight: PHONE_SELECT_HEIGHT,
+          radius: PHONE_SELECT_RADIUS,
           onChange: (value: string): void => {
             setThemeModeSetting(value as ThemeModeSetting);
             saveThemeChoice(value as ThemeModeSetting);
@@ -442,14 +460,14 @@ struct Profiles {
         })
         SelectField({
           options: this.languageChoices(),
-          lead: isTvMetrics() ? '' : 'globe',
-          controlName: isTvMetrics() ? '' : 'x',
-          labelWeight: isTvMetrics() ? 700 : 500,
-          labelSize: isTvMetrics() ? 13.44 : PHONE_SELECT_FONT,
+          lead: 'globe',
+          controlName: 'x',
+          labelWeight: 720,
+          labelSize: PHONE_SELECT_FONT,
           value: this.languageChoice,
           selectWidth: isTvMetrics() ? LANGUAGE_SELECT_WIDTH : PHONE_SELECT_WIDTH,
-          minHeight: isTvMetrics() ? 56 : PHONE_SELECT_HEIGHT,
-          radius: isTvMetrics() ? 12 : PHONE_SELECT_RADIUS,
+          minHeight: PHONE_SELECT_HEIGHT,
+          radius: PHONE_SELECT_RADIUS,
           onChange: (value: string): void => {
             this.languageChoice = value;
             setCurrentLanguage(resolveLanguage(value, deviceLanguageTag()));
@@ -459,7 +477,7 @@ struct Profiles {
           },
         })
       }
-        .position(isTvMetrics() ? { x: tv(THEME_SELECT_LEFT), y: tv(THEME_SELECT_TOP) } : { x: '100%', y: PHONE_SELECT_TOP })
+        .position(isTvMetrics() ? { x: tv(THEME_SELECT_LEFT), y: 49.67 } : { x: '100%', y: PHONE_SELECT_TOP })
         .markAnchor(isTvMetrics() ? { x: 0, y: 0 } : { x: PHONE_SELECT_RIGHT + PHONE_SELECT_WIDTH * 2 + 8, y: 0 })
         .zIndex(2)
       Column() {
@@ -479,7 +497,7 @@ struct Profiles {
         .letterSpacing(this.pick(-5.806, -2.77))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
-        .margin({ top: this.pick(-13, 5.7), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
+        .margin({ top: this.pick(6.25, 5.7), left: isTvMetrics() ? 0 : PHONE_HEADING_LEFT })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Row({ space: this.pick(TV_CHOICE_GAP, PHONE_CHOICE_GAP) }) {
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
@@ -487,6 +505,7 @@ struct Profiles {
             ProfileAvatar({
               presetId: profile.is_current && this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(profile.id),
               diameter: this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH),
+              illustrationRatio: isTvMetrics() ? 0.853 : 0.848,
               initialFocus: profile.is_current,
               ringOn: profile.is_current && !isTvMetrics(),
               onSelect: () => {
@@ -494,7 +513,7 @@ struct Profiles {
               },
             })
               // web phone: the current profile's avatar is lifted and enlarged (measured 1.13x, 8.6 vp up on the pinned reference)
-              .scale(profile.is_current && !isTvMetrics() ? { x: 1.13, y: 1.13 } : { x: 1, y: 1 })
+              .scale(profile.is_current ? { x: 1.0816, y: 1.0816 } : { x: 1, y: 1 })
               .translate({ y: profile.is_current && !isTvMetrics() ? -8.6 : 0 })
               // web phone: the current avatar throws a wide crimson glow (0.28 at the ring, 0.11 at 17 vp out on the static ref, light theme; none above it)
               .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
@@ -524,7 +543,7 @@ struct Profiles {
             }
           }
           .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
-          .id(isTvMetrics() ? '' : 'px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
+          .id('px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
         // Web on TV: the tile opens the QR sign-in (/login/qr); a successful link returns to the picker.
@@ -576,7 +595,7 @@ struct Profiles {
         })
       }
       .alignItems(VerticalAlign.Top)
-      .margin({ top: this.pick(TV_CHOICES_TOP - 242, PHONE_CHOICES_TOP), left: isTvMetrics() ? 0 : PHONE_CHOICES_LEFT })
+      .margin({ top: this.pick(TV_CHOICES_TOP - 242 - 19.25, PHONE_CHOICES_TOP), left: isTvMetrics() ? 0 : PHONE_CHOICES_LEFT })
       .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       }
       .width('100%')

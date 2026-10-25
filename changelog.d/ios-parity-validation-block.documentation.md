@@ -1,0 +1,1 @@
+- Record the iOS parity reference-radius blocker and outstanding exporter validation requirements for task 17.484.
