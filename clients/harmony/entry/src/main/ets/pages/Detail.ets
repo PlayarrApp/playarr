@@ -1973,6 +1973,7 @@ struct Detail {
       }
     }
     .alignItems(HorizontalAlign.Start)
+    .margin({ top: 1.8 }) // web's pills start 1.8 lower once the synopsis lines are web-height runs
   }
 
   /** The series' resume plan (web's Resume / Start button): the kicker and the label follow it, and it plays the plan's target. */

@@ -115,7 +115,7 @@ export struct ChoiceSegments {
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
           .id('px:heading:' + this.heading)
-          .margin({ top: -2.5, bottom: (this.description === '' ? tv(5) : 0) + 2.5 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
+          .margin({ top: -4.5, bottom: this.description === '' ? tv(5) + 0.3 : -1.3 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE)).lineHeight(webLineHeight(tv(DESCRIPTION_SIZE))).halfLeading(true)
