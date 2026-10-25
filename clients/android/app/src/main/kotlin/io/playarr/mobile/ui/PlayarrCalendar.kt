@@ -104,6 +104,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -2224,12 +2225,14 @@ private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: ()
         CalendarPillTone.Missing -> PlayarrString.CalendarStatusMissing
         CalendarPillTone.Neutral -> PlayarrString.CalendarStatusUpcoming
     })
-    val dayName = remember(item) { item.first.date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", java.util.Locale.ENGLISH)) }
+    val chipLocale = LocalPlayarrLanguage.current.locale
+    val dayName = remember(item, chipLocale) { item.first.date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", chipLocale)) }
+    val chipName = "$label, $statusName, $dayName"
     val cellFlat = if (inMonth) WebSurface else io.playarr.shared.designsystem.page.parityOver(WebSurfaceSoft, 0.4f, WebSurface)
     Row(
         modifier.fillMaxWidth().heightIn(max = 44.dp).fillMaxHeight().calendarFocusRing(source, shape).calendarClick(source, onClick)
-            .parityBox("button", "$label, $statusName, $dayName", 4f, background = cellFlat)
-            .semantics(mergeDescendants = true) { contentDescription = label }.padding(horizontal = 5.6.dp),
+            .parityBox("button", chipName, 4f, background = cellFlat)
+            .semantics(mergeDescendants = true) { contentDescription = chipName; role = androidx.compose.ui.semantics.Role.Button }.padding(horizontal = 5.6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(8.8.dp).parityBox("container", radius = 50f, background = dot).background(dot, CircleShape))

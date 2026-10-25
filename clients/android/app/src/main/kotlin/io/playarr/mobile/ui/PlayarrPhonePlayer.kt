@@ -58,6 +58,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -209,6 +211,7 @@ internal fun BoxScope.PhonePlayerOverlay(
         ) {
             val bufferedFraction = if (durationMs > 0L) (timeline.bufferedPositionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
             val playedFraction = if (durationMs > 0L) (displayedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+            val seekLabel = playarrString(PlayarrString.PlayerSeek)
             val seekDescription = playarrString(
                 PlayarrString.PlayerSeekValueText,
                 "position" to formatPlayarrPlayerTime(displayedMs),
@@ -224,8 +227,8 @@ internal fun BoxScope.PhonePlayerOverlay(
                         .align(Alignment.Center)
                         .fillMaxWidth()
                         .requiredHeight(44.dp)
-                        .parityBox("slider", "Seek", background = Color.Black)
-                        .semantics { contentDescription = seekDescription }
+                        .parityBox("slider", seekLabel, background = Color.Black)
+                        .semantics { contentDescription = seekLabel; stateDescription = seekDescription }
                         .pointerInput(durationMs, controls.switching) {
                             if (durationMs <= 0L || controls.switching) return@pointerInput
                             awaitEachGesture {

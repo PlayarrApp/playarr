@@ -173,16 +173,18 @@ internal fun PhoneProfileChoice(
                 horizontalArrangement = Arrangement.spacedBy(8.8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val settingsName = playarrString(PlayarrString.ProfilesSettingsFor, "name" to profile.displayName)
+                val signOutName = playarrString(PlayarrString.ProfilesSignOutFor, "name" to profile.displayName)
                 Surface(
                     onClick = onSettings, enabled = enabled, shape = CircleShape,
                     color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),
-                    modifier = Modifier.size(44.dp).parityBox("button", playarrString(PlayarrString.ProfilesSettingsFor, "name" to profile.displayName), 999f, background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)),
+                    modifier = Modifier.size(44.dp).parityBox("button", settingsName, 999f, background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)).semantics { contentDescription = settingsName },
                 ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfilesSettingsIcon(ProfilesBrandRose, Modifier.parityBox("image", background = parityOver(WebSurfaceStrong, 0.64f, WebBackground))) } }
                 onSignOut?.let { action ->
                     Surface(
                         onClick = action, enabled = enabled, shape = CircleShape,
                         color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),
-                        modifier = Modifier.height(44.dp).parityBox("button", "Sign out ${profile.displayName}", 999f, background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)),
+                        modifier = Modifier.height(44.dp).parityBox("button", signOutName, 999f, background = parityOver(WebSurfaceStrong, 0.64f, WebBackground)).semantics { contentDescription = signOutName },
                     ) {
                         Row(
                             Modifier.padding(horizontal = 17.dp),

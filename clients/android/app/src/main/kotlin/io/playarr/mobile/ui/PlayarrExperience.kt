@@ -3936,6 +3936,7 @@ internal fun WebDetailPill(
             .scale(scale)
             .parityBox(exportRole ?: if (primary) "link" else "button", exportLabel ?: listOfNotNull(glyph?.takeIf { it == "+" }, label).joinToString(" "), 999f, background = Color(
                 red = pillFill.red * pillFill.alpha + WebSurface.red * (1 - pillFill.alpha), green = pillFill.green * pillFill.alpha + WebSurface.green * (1 - pillFill.alpha), blue = pillFill.blue * pillFill.alpha + WebSurface.blue * (1 - pillFill.alpha)))
+            .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier)
             .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused },
     ) {
@@ -4055,7 +4056,7 @@ internal fun LibraryResults(
                             val cut = pitch - (Math.round((row + 1) * phoneRowPitchPx) - Math.round(row * phoneRowPitchPx))
                             layout(placeable.width, placeable.height - cut) { placeable.place(0, 0) }
                         } else Modifier),
-                    contentLabel = if (isTelevision) openLabel else null, // web: aria-label "Open <title>"
+                    contentLabel = openLabel, // web: aria-label "Open <title>"
                     progress = progressByWork[work.id],
                     onContext = { onContext(work) },
                     showUnwatched = progressLoaded,
@@ -4645,8 +4646,6 @@ private fun ExperienceLibraryScreen(
             val letterFocus = remember { FocusRequester() }
             tvGrid.onLeftEdge = { false } // geometric, as web (see Home)
             tvGrid.onRightEdge = { runCatching { letterFocus.requestFocus() }.getOrDefault(false) }
-            // Web's library opens with the A-Z rail's "#" focused (not the first card); a tablet does the same.
-            if (LocalStageScale.current != 1f) LaunchedEffect(kind) { delay(400); runCatching { letterFocus.requestFocus() } }
             var filtersOpen by remember { mutableStateOf(false) }
             LaunchedEffect(filtersOpen, contextWork) {
                 parityLog("panel=${if (filtersOpen) "filters" else ""}")
@@ -4779,7 +4778,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
                             val active = shownLetter == letter
                             Box(
-                                Modifier.height(25.dp).fillMaxWidth().parityBox("button", if (letter == "#") "Numbers and symbols" else letter, radius = 50f, background = WebSurface).clickable { activeLetter = letter },
+                                Modifier.height(25.dp).fillMaxWidth().parityBox("button", if (letter == "#") "Numbers and symbols" else letter, radius = 50f, background = WebSurface).semantics { contentDescription = if (letter == "#") "Numbers and symbols" else letter }.clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (active) Box(Modifier.size(22.dp).then(if (savedSelectedId == null) Modifier.drawBehind {
@@ -4810,7 +4809,7 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             val shownLetter = if (activeLetter == "#") (filteredWorks.getOrNull(gridState.firstVisibleItemIndex) ?: selected).sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
-                            Box(Modifier.size(44.dp * alphaCss).parityBox("button", if (letter == "#") "Numbers and symbols" else letter, 50f, background = WebSurface), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp * alphaCss).parityBox("button", if (letter == "#") "Numbers and symbols" else letter, 50f, background = WebSurface).semantics { contentDescription = if (letter == "#") "Numbers and symbols" else letter }, contentAlignment = Alignment.Center) {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp * alphaCss)

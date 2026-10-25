@@ -2306,7 +2306,8 @@ private fun ProfilesChromeTrigger(
             .then(if (webPhone) Modifier else Modifier.width(minWidth))
             .height(48.dp)
             .scale(if (expanded) 1.02f else 1f)
-            .parityBox("button", exportLabel ?: label, background = WebBackground),
+            .parityBox("button", exportLabel ?: label, background = WebBackground)
+            .semantics { contentDescription = exportLabel ?: label },
     ) {
         Row(
             // Web `.chrome-select`: 1 px border plus 18.4 px padding, the 16 px icon and the label 9.6 px apart.
@@ -2591,13 +2592,14 @@ private fun ProfileChoice(
                 }
                 onSignOut?.let { action ->
                     // `.profile-sign-out-button`
+                    val signOutName = playarrString(PlayarrString.ProfilesSignOutFor, "name" to profile.displayName)
                     Surface(
                         onClick = action,
                         enabled = enabled,
                         shape = CircleShape,
                         color = WebSurfaceStrong.copy(alpha = 0.64f),
                         border = BorderStroke(1.dp, WebInkMuted.copy(alpha = 0.35f)),
-                        modifier = Modifier.heightIn(min = 44.dp).parityBox("button", "Sign out ${profile.displayName}", 999f, background = io.playarr.shared.designsystem.page.parityOver(WebSurfaceStrong, 0.64f, WebBackground)),
+                        modifier = Modifier.heightIn(min = 44.dp).parityBox("button", signOutName, 999f, background = io.playarr.shared.designsystem.page.parityOver(WebSurfaceStrong, 0.64f, WebBackground)).semantics { contentDescription = signOutName },
                     ) {
                         Row(
                             Modifier.padding(start = if (isTelevision) 17.dp else 16.dp, end = if (isTelevision) 17.dp else 16.dp, top = 10.dp, bottom = 10.dp),

@@ -92,6 +92,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -844,6 +846,7 @@ private fun PlayarrPlayerControlBar(
     } else {
         0f
     }
+    val seekLabel = playarrString(PlayarrString.PlayerSeek)
     val seekDescription = playarrString(
         PlayarrString.PlayerSeekValueText,
         "position" to formatPlayarrPlayerTime(displayedPositionMs),
@@ -935,7 +938,7 @@ private fun PlayarrPlayerControlBar(
                     }
                 }
                 .fillMaxWidth()
-                .semantics { contentDescription = seekDescription },
+                .semantics { contentDescription = seekLabel; stateDescription = seekDescription },
         )
         if (!isTelevision) {
             Text(
@@ -1072,6 +1075,7 @@ internal fun PlayarrTelevisionControlBar(
     durationMs: Long,
     bufferedProgress: Float,
     seekDescription: String,
+    seekLabel: String = playarrString(PlayarrString.PlayerSeek),
     seekFocusRequester: FocusRequester,
     playlistFocusRequester: FocusRequester = FocusRequester(),
     qualityFocusRequester: FocusRequester = FocusRequester(),
@@ -1198,8 +1202,8 @@ internal fun PlayarrTelevisionControlBar(
                         }
                         .fillMaxWidth()
                         .height(15.dp)
-                        .parityBox("slider", "Seek", background = Color.Black)
-                        .semantics { contentDescription = seekDescription },
+                        .parityBox("slider", seekLabel, background = Color.Black)
+                        .semantics { contentDescription = seekLabel; stateDescription = seekDescription },
                 )
             }
         }
