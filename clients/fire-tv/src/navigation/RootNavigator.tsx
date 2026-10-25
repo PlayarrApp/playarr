@@ -56,6 +56,7 @@
  * `RootNavigator`-level sibling, so that bare call already resolves
  * correctly.
  */
+import {PARITY_CONTROL} from '../debug/parityControl';
 import React from 'react';
 import {createStackNavigator} from '@amazon-devices/react-navigation__stack';
 import {TokenStore} from '@playarr-tv/device-auth';
@@ -78,7 +79,7 @@ export function initialRouteName(): typeof ROUTES.link | typeof ROUTES.profiles 
 export function RootNavigator(): React.ReactElement {
   const [initialRoute] = React.useState(initialRouteName);
   return (
-    <Stack.Navigator initialRouteName={initialRoute} screenOptions={{headerShown: false}}>
+    <Stack.Navigator initialRouteName={initialRoute} screenOptions={{headerShown: false, ...(PARITY_CONTROL ? {animationEnabled: false} : null)}}>
       <Stack.Screen name={ROUTES.link} component={LinkScreen} />
       <Stack.Screen name={ROUTES.profiles} component={ProfilesScreen} />
       <Stack.Screen name={APP_SHELL_ROUTE} component={AppShellNavigator} />

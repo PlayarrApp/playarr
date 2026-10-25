@@ -22,7 +22,8 @@ import {EdgeFade} from '../tv/EdgeFade';
 import {ActionTile} from '../tv/ActionTile';
 import {FilterDrawer, type DrawerSection} from '../tv/FilterDrawer';
 import {BalancedT, Box, T, u} from '../tv/kit';
-import {MediaFocus} from '../tv/mediaFocus';
+import {lx} from '../debug/layoutMarks';
+import {CardCaption, MediaFocus} from '../tv/mediaFocus';
 import {PageHeader} from '../tv/PageHeader';
 import {RailFrost, Stage} from '../tv/Stage';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
@@ -190,10 +191,11 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
 
   return (
     <Stage artUri={selected && artKind ? workArtworkUrl(baseUrl, selected.id, artKind) : undefined} accessToken={token}>
-      <PageHeader title={t('pages.search.title')} detail={detail} onBack={() => navigation.navigate(ROUTES.home)} />
+      <PageHeader title={t('pages.search.title')} detail={detail} webBack={{role: 'link', label: 'Back to Home'}} onBack={() => navigation.navigate(ROUTES.home)} />
 
       {/* A focused TextInput opens the system keyboard on arrival, which is how this platform's own Search behaves. */}
       <View
+        {...lx('search', '', 999)}
         style={{
           position: 'absolute',
           left: u(153.6),
@@ -222,6 +224,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           onBlur={() => setInputFocused(false)}
           placeholder={t('pages.search.searchPlaceholder')}
           placeholderTextColor={colour.inkMuted}
+          {...lx('textbox', t('pages.search.searchPlaceholder'))}
           returnKeyType="search"
           hasTVPreferredFocus
           accessibilityLabel={t('pages.search.ariaSearchPlayarr')}
@@ -306,16 +309,21 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
       <RailFrost dark={dark} soft={colour.surfaceSoft} strong={colour.surfaceStrong} />
 
       {debounced.length === 0 ? (
-        <Box x={826} y={172} w={700}>
-          <T size={17.664} weight={610} color={colour.ink}>
-            {t('pages.search.idleTitle')}
-          </T>
-          <View style={{marginTop: u(6)}}>
-            <T size={12} weight={400} color={colour.inkMuted}>
+        <>
+          {/* The web's `.tv-search-prompt` under the field and its `.tv-empty-state.is-rail` (graphic "search"): a 132 px disc, a gap of 42 px, the title. */}
+          <Box x={153.6} y={302.8} w={281.8}>
+            <T size={13.824} weight={400} lh={21.4272} color={colour.inkMuted}>
               {t('pages.search.emptyPrompt')}
             </T>
-          </View>
-        </Box>
+          </Box>
+          <View pointerEvents="none" {...lx('container', '', 50)} style={{position: 'absolute', left: u(1125), top: u(312), width: u(132), height: u(132), borderRadius: u(66), borderWidth: 1, borderColor: mix(colour.lineStrong, 0.5), backgroundColor: mix(colour.surfaceStrong, 0.54)}} />
+          <SearchGlyph x={1164} y={360} colour={dark ? '#d3576c' : '#ac2d49'} />
+          <Box x={1299} y={365} w={420}>
+            <T size={16.9} weight={650} ls={-0.338} lh={26} color={colour.ink}>
+              {t('pages.search.idleTitle')}
+            </T>
+          </Box>
+        </>
       ) : failed ? (
         <Box x={1304} y={350} w={500}>
           <T size={17.664} weight={610} color={colour.accent}>
@@ -458,16 +466,32 @@ function ResultCard(props: {
           <WatchState progress={props.progress} showUnwatched={props.progressReady} />
         </View>
       </MediaFocus>
-      <View style={{marginTop: u(11.5), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: u(1.9)}}>
-        <View style={{width: u(259.5)}}>
-          <T size={11.904} weight={610} ls={-0.179} lh={17.9} color={colour.ink} lines={1}>
-            {work.title}
-          </T>
-        </View>
-        <T size={8.448} weight={720} lh={12.7} color={colour.inkMuted} upper>
-          {props.label}
-        </T>
+      <View style={{marginTop: u(11.5), paddingHorizontal: u(1.9)}}>
+        <CardCaption focused={props.selected} variant="search" artH={ART_H} gap={11.5}>
+          <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+            <View style={{width: u(259.5)}}>
+              <T size={11.904} weight={610} ls={-0.179} lh={17.9} color={colour.ink} lines={1}>
+                {work.title}
+              </T>
+            </View>
+            <T size={8.448} weight={720} lh={12.7} color={colour.inkMuted} upper>
+              {props.label}
+            </T>
+          </View>
+        </CardCaption>
       </View>
     </Pressable>
+  );
+}
+
+/** The web's empty-state "search" graphic (a 48 x 32 viewBox drawn 54 px wide): a lens with a minus and a handle, 2 px strokes. */
+function SearchGlyph({x, y, colour}: {x: number; y: number; colour: string}): React.ReactElement {
+  const stroke = 2;
+  return (
+    <View pointerEvents="none" {...lx('image', '')} style={{position: 'absolute', left: u(x), top: u(y), width: u(54), height: u(36)}}>
+      <View style={{position: 'absolute', left: u(13.2), top: u(5.6), width: u(20.3), height: u(20.3), borderRadius: u(10.2), borderWidth: u(stroke), borderColor: colour}} />
+      <View style={{position: 'absolute', left: u(19.1), top: u(14.8), width: u(9), height: u(stroke), backgroundColor: colour, borderRadius: u(1)}} />
+      <View style={{position: 'absolute', left: u(30.6), top: u(22.7), width: u(12.1), height: u(stroke), backgroundColor: colour, borderRadius: u(1), transform: [{rotate: '41.6deg'}]}} />
+    </View>
   );
 }

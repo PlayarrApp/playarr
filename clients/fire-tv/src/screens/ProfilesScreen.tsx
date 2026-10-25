@@ -72,6 +72,7 @@ import {useTheme, type ThemePreference} from '../theme/ThemeProvider';
 import {Icon} from '../shell/icons';
 import {PlayarrLogo} from '../shell/Logo';
 import {Dropdown} from '../tv/Dropdown';
+import {lx} from '../debug/layoutMarks';
 import {Box, T, u} from '../tv/kit';
 import {ROUTES, type RouteName} from '../navigation/routes';
 import {APP_SHELL_ROUTE} from '../navigation/AppShellNavigator';
@@ -178,9 +179,11 @@ function ProfileChoice({
       onPress={() => onSelect(profile)}
       accessibilityRole="button"
       accessibilityLabel={profile.display_name || profile.username}
+      {...lx('button', `${profile.display_name || profile.username}${profile.is_current ? ', current profile' : ''}`)}
       style={{width: u(244), alignItems: 'center', transform: selected ? [{translateY: u(-8)}, {scale: 1.045}] : []}}
     >
       <View
+        {...lx('container', '', 50)}
         style={{
           width: u(244),
           height: u(244),
@@ -215,9 +218,11 @@ function AddProfileTile({selected, onFocus, onPress}: {selected: boolean; onFocu
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={t('pages.profiles.signIn')}
+      {...lx('button', `+ ${t('pages.profiles.signIn')} ${t('pages.profiles.addAnotherProfile').toUpperCase()}`)}
       style={{width: u(244), alignItems: 'center', transform: selected ? [{translateY: u(-8)}, {scale: 1.045}] : []}}
     >
       <View
+        {...lx('container', '', 50)}
         style={{
           width: u(244),
           height: u(244),
@@ -271,6 +276,7 @@ function ActionButton({
   label,
   onPress,
   danger,
+  web,
 }: {
   w: number;
   x: number;
@@ -279,6 +285,7 @@ function ActionButton({
   label: string;
   onPress: () => void;
   danger?: boolean;
+  web?: string;
 }) {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
@@ -286,6 +293,7 @@ function ActionButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      {...lx('button', web ?? label, 999)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
@@ -446,7 +454,7 @@ export function ProfilesScreen(): React.ReactElement {
   const background = colour.bg;
 
   return (
-    <View style={{flex: 1, backgroundColor: background}}>
+    <View {...lx('container', '')} style={{flex: 1, backgroundColor: background}}>
       <LinearGradient
         style={{position: 'absolute', left: 0, top: 0, right: 0, bottom: 0}}
         start={{x: 0.2033, y: -0.2532}}
@@ -507,11 +515,11 @@ export function ProfilesScreen(): React.ReactElement {
       />
 
       <View style={{position: 'absolute', left: 0, right: 0, top: u(162), alignItems: 'center'}} pointerEvents="none">
-        <T size={10.368} weight={820} ls={1.348} color="#cf3157" upper lh={15.6}>
+        <T size={10.368} weight={820} ls={1.348} color={colour.stageKicker} upper lh={15.6}>
           {t('pages.profiles.title')}
         </T>
         <View style={{marginTop: u(7.2)}}>
-          <T size={80.64} weight={500} ls={-5.806} lh={76.6} color={colour.ink}>
+          <T heading size={80.64} weight={500} ls={-5.806} lh={76.6} color={colour.ink}>
             {t('pages.profiles.heading')}
           </T>
         </View>
@@ -541,6 +549,7 @@ export function ProfilesScreen(): React.ReactElement {
             y={704}
             w={44}
             label="Preferences"
+            web={`${current.display_name || current.username} settings`}
             onPress={() => navigation.navigate(APP_SHELL_ROUTE, {screen: ROUTES.settings})}
           >
             {() => <Icon name="settings" size={u(18)} color="#cf3157" strokeWidth={1.7} />}
@@ -551,6 +560,7 @@ export function ProfilesScreen(): React.ReactElement {
             w={101.2}
             danger
             label={t('settings.account.signOut')}
+            web={`${t('settings.account.signOut')} ${current.display_name || current.username}`}
             onPress={() => {
               new TokenStore().clear();
               markAuthFailed();

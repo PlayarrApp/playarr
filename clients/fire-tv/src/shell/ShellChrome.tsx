@@ -7,6 +7,7 @@ import {focusDefaultTarget, focusNode, getFocusedTag, TvFocusScope, useRemoteKey
 import {findNodeHandle, Pressable, StyleSheet, Text, View} from 'react-native';
 import type {WorkKind} from '@playarr-tv/api-client';
 import {reportFocus} from '../debug/parityControl';
+import {lf, lx} from '../debug/layoutMarks';
 import {ProfileAvatar} from '../components/ProfileAvatar';
 import {mix} from '../theme/color';
 import {textRun} from '../theme/fonts';
@@ -71,17 +72,17 @@ export function visibleRailGroups(kinds: ReadonlySet<WorkKind> | null): readonly
 
 export const RAIL_ORDER: readonly RailTarget[] = RAIL_GROUPS.flatMap((group) => group.items.map((item) => item.target));
 
-// Measured from the web TV rail (1920x1080): 67 px links, 78 px wide groups, 14 px between groups, top-anchored at 119 px.
-const ITEM = 67;
-const GROUP_PAD_X = 4.5;
-const GROUP_PAD_Y = 5;
-const GROUP_GAP = 6.5;
+// Measured from the web TV rail (1920x1080, 2026-10-24 DOM dump): 64 px links, 77.5 px wide groups, 13.6 px between groups, top-anchored at 119.11 px.
+const ITEM = 64;
+const GROUP_PAD_X = 5.75;
+const GROUP_PAD_Y = 6.72;
+const GROUP_GAP = 9.59;
 const GROUP_BORDER = 1;
-const BETWEEN_GROUPS = 14;
+const BETWEEN_GROUPS = 13.6;
 const GROUP_X = 42;
-const RAIL_TOP = 119;
+const RAIL_TOP = 119.11;
 /** The profile group sits at the rail's foot (bottom 1031 px), with the version label under it. */
-const PROFILE_TOP = 952;
+const PROFILE_TOP = 952.42;
 
 function groupHeight(count: number): number {
   return 2 * GROUP_BORDER + 2 * GROUP_PAD_Y + count * ITEM + (count - 1) * GROUP_GAP;
@@ -125,6 +126,7 @@ function RailLink({
       accessibilityRole="button"
       accessibilityLabel={item.label}
       accessibilityState={{selected: active}}
+      {...lx('link', item.label)}
       {...({nextFocusUp: up, nextFocusDown: down} as object)}
       onFocus={(event) => {
         reportFocus(item.label, {rail: 'nav', index}, undefined, event.nativeEvent.target);
@@ -144,6 +146,7 @@ function RailLink({
     >
       <Icon name={item.icon} size={sw(20)} color={ink} />
       <Text
+        {...lf(8.832, 680, 8.832)}
         style={[
           textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
           {color: ink, marginTop: sw(4.8), fontSize: sw(8.832)},
@@ -250,11 +253,12 @@ export function ShellClock({right}: {right: number}): React.ReactElement {
   }, []);
   return (
     <View style={{position: 'absolute', top: sw(60.2), right: sw(1920 - right), height: sw(42), flexDirection: 'row', alignItems: 'center'}}>
-      <Text style={[textRun(17.28, 760, {letterSpacing: -0.5184}), {color: colour.ink, fontSize: sw(17.28)}]}>{formatClockTime(now)}</Text>
+      <Text {...lf(17.28, 760, 25.92, true)} style={[textRun(17.28, 760, {letterSpacing: -0.5184}), {color: colour.ink, fontSize: sw(17.28)}]}>{formatClockTime(now)}</Text>
       <Text
+        {...lf(11.136, 640, 12.25, true)}
         style={[
           textRun(11.136, 640, {letterSpacing: 0.4454}),
-          {color: colour.inkMuted, marginLeft: sw(11.2), textTransform: 'uppercase', fontSize: sw(11.136)},
+          {color: colour.ink, marginLeft: sw(11.2), textTransform: 'uppercase', fontSize: sw(11.136)},
         ]}
       >
         {formatClockDate(now)}
@@ -305,6 +309,7 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
           {...({nextFocusUp: up} as object)}
           accessibilityRole="button"
           accessibilityLabel={`Profile ${name}`}
+          {...lx('link', `Signed in as ${name}. Open profiles.`)}
           onFocus={(event) => {
             reportFocus('device', {rail: 'nav', index: navCount}, undefined, event.nativeEvent.target);
             setFocused(true);
@@ -321,11 +326,12 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
             transform: [{scale: focused ? 1.1 : 1}],
           }}
         >
-          <View style={{width: sw(20), height: sw(20)}}>
+          <View {...lx('container', '', 50)} style={{width: sw(20), height: sw(20)}}>
             {profileId ? <ProfileAvatar profileId={profileId} size={sw(20)} /> : null}
           </View>
           <Text
             numberOfLines={1}
+            {...lf(8.832, 680, 8.832)}
             style={[
               textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
               {color: ink, marginTop: sw(4.8), maxWidth: sw(58), fontSize: sw(8.832)},
@@ -336,6 +342,7 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
         </Pressable>
       </View>
       <Text
+        {...lf(8, 700)}
         style={[
           textRun(8, 700, {letterSpacing: 0.32, mono: true}),
           {position: 'absolute', left: sw(GROUP_X), width: sw(78), textAlign: 'center', top: sw(1038), color: colour.ink, fontSize: sw(8)},
@@ -363,7 +370,7 @@ export interface ShellChromeProps {
 export function ShellChrome(props: ShellChromeProps): React.ReactElement {
   const {active, profileId, profileName, version, onSelect, onOpenProfiles, clockRight = 633.6, availableWorkKinds} = props;
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+    <View pointerEvents="box-none" nativeID="parity-shell" style={StyleSheet.absoluteFill}>
       <View style={{position: 'absolute', left: sw(60.6), top: sw(60.2), width: sw(42), height: sw(42)}}>
         <PlayarrLogo size={sw(42)} />
       </View>

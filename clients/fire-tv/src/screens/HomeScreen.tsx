@@ -23,7 +23,8 @@ import {loadOnDeck, type OnDeckEntry} from '../lib/onDeck';
 import {runtimeLabel} from '../lib/runtimeLabel';
 import {blend} from '../theme/color';
 import {EdgeFade} from '../tv/EdgeFade';
-import {MediaFocus} from '../tv/mediaFocus';
+import {CardCaption, focusInk, MediaFocus} from '../tv/mediaFocus';
+import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
 import {BalancedT, Box, T, u} from '../tv/kit';
 import {indexWatchProgressByWork, WatchState} from '../tv/WatchState';
 import {RailFrost, Stage} from '../tv/Stage';
@@ -226,7 +227,7 @@ export function HomeScreen(): React.ReactElement {
     return scrollXs[rail];
   };
   useEffect(() => {
-    Animated.timing(railY, {toValue: focus.rail === 0 ? 0 : layout.centredHeadingY - layout.firstHeadingY - focus.rail * layout.railPitch, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+    Animated.timing(railY, {toValue: focus.rail === 0 ? 0 : layout.centredHeadingY - layout.firstHeadingY - focus.rail * layout.railPitch, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER}).start();
   }, [focus.rail, railY, layout.railPitch, layout.centredHeadingY, layout.firstHeadingY]);
   const scrollTargets = useRef<number[]>([]);
   const [scrolled, setScrolled] = useState<number[]>([]);
@@ -278,7 +279,7 @@ export function HomeScreen(): React.ReactElement {
         <T size={12.288} weight={860} ls={0.983} color={dark ? '#eaa6b6' : '#821e36'} upper lh={18.4}>
           {kicker}
         </T>
-        <View style={{marginTop: u(25.9), left: u(2.5), top: u(3)}}>
+        <View style={{marginTop: u(25.9)}}>
           <BalancedT key={featureTitle} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
             {featureTitle}
           </BalancedT>
@@ -319,6 +320,8 @@ export function HomeScreen(): React.ReactElement {
           ))}
         </Animated.View>
       </Box>
+      {/* The web's page scroller fades its end edge (--page-edge-fade-size) while more rails continue below. */}
+      <EdgeFade side="bottom" active={focus.rail < rails.length - 1} x={729.6} y={0} w={1190.4} h={1080} />
       {actionsWork ? (
         <ActionsDrawer
           work={actionsWork}
@@ -364,7 +367,7 @@ function RailHeading({title, x, y, active, colour}: {title: string; x: number; y
         transform: active ? [{translateX: width * 0.08}, {translateY: -1}, {scale: 1.16}] : [],
       }}
     >
-      <T size={17.664} weight={610} ls={-0.53} lh={26.5} color={colour}>
+      <T heading size={17.664} weight={610} ls={-0.53} lh={26.5} dy={3.1} color={colour}>
         {title}
       </T>
     </View>
@@ -524,7 +527,7 @@ const HomeCard = memo(function HomeCard(props: {
   );
   const onPress = useCallback(() => onOpen(work), [onOpen, work]);
   const onLongPress = useCallback(() => onActions(work), [onActions, work]);
-  const {colour} = useTheme();
+  const {colour, scheme} = useTheme();
   const kind = preferredArtworkKind(work, layout.cover ? ['poster', 'backdrop'] : ['backdrop', 'poster']);
   const uri = mediaFileId && !layout.cover ? mediaThumbnailUrl(baseUrl, mediaFileId) : kind ? workArtworkUrl(baseUrl, work.id, kind) : undefined;
   return (
@@ -533,11 +536,13 @@ const HomeCard = memo(function HomeCard(props: {
       {...(last && selfTag !== undefined ? ({nextFocusRight: selfTag} as object) : {})}
       accessibilityRole="button"
       accessibilityLabel={work.title}
+      {...lx('link', `${work.title} ${subtitle}`)}
       hasTVPreferredFocus={first}
       onFocus={onFocus}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW)}}
+      // The web link ends under the title line; the meta line below it hangs out of the box.
+      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW), height: u(layout.artH + 11.25 + 17.9)}}
     >
       <MediaFocus variant="home" focused={selected} width={layout.cardW} height={layout.artH} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft}}>
@@ -546,14 +551,16 @@ const HomeCard = memo(function HomeCard(props: {
         </View>
       </MediaFocus>
       <View style={{marginTop: u(11.25)}}>
-        <T size={11.904} weight={610} ls={-0.17856} color={colour.ink} lh={17.9} lines={1} dy={-2}>
-          {title}
-        </T>
-      </View>
-      <View style={{marginTop: u(2.5)}}>
-        <T size={8.832} weight={400} color={colour.inkMuted} lh={11.5} lines={1} dy={-2}>
-          {subtitle}
-        </T>
+        <CardCaption focused={selected} variant="home" artH={layout.artH} gap={11.25}>
+          <T size={11.904} weight={610} ls={-0.17856} color={selected ? focusInk(scheme) : colour.ink} lh={17.9} lines={1} dy={-1}>
+            {title}
+          </T>
+          <View style={{marginTop: u(2.5)}}>
+            <T size={8.832} weight={400} color={selected ? focusInk(scheme) : colour.inkMuted} lh={11.5} lines={1} dy={-1}>
+              {subtitle}
+            </T>
+          </View>
+        </CardCaption>
       </View>
     </Pressable>
   );
