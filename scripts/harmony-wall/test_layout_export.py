@@ -25,13 +25,26 @@ class LayoutExportTest(unittest.TestCase):
         self.assertEqual(t["color"], "#f4f0f1")
         self.assertEqual(t["background"], "#151315")
 
-    def test_a_wrapped_text_exports_one_element_per_measured_line(self):
+    def test_a_wrapped_text_exports_the_union_of_its_measured_lines(self):
         lines = [{"text": "one two", "w": 90.0, "h": 20.0, "lineH": 24.0}, {"text": "three", "w": 50.0, "h": 20.0, "lineH": 24.0}]
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "one two three", lines)], rect="[0.00, 0.00],[1920.00, 1080.00]")
         doc = export(tree, "x", "dark", (1920, 1080, 1))
         t = [e for e in doc["elements"] if e["role"] == "text"]
-        self.assertEqual([e["text"] for e in t], ["one two", "three"])
-        self.assertEqual([round(e["rect"]["y"] - t[0]["rect"]["y"], 2) for e in t], [0.0, 24.0])  # one line pitch apart
+        self.assertEqual([e["text"] for e in t], ["one two three"])  # one Range per Text node, as web reports a wrapped paragraph
+        one = export(column([text("[0.00, 0.00],[200.00, 24.00]", "one two", lines[:1])], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
+        first = [e for e in one["elements"] if e["role"] == "text"][0]["rect"]
+        self.assertEqual(t[0]["rect"]["w"], 90.0)  # the widest line
+        self.assertEqual(round(t[0]["rect"]["h"] - first["h"], 2), 24.0)  # one line pitch taller than a single line
+
+    def test_the_inspector_box_already_holds_the_scale_so_only_the_text_metrics_are_scaled(self):
+        lines = [{"text": "Movies", "w": 30.0, "h": 10.0, "lineH": 10.0}]
+        inner = text("[10.00, 10.00],[31.50, 10.50]", "Movies", lines)
+        tile = {"$type": "Column", "$rect": "[0.00, 0.00],[67.20, 67.20]", "$attrs": {"id": "px:link:Movies", "backgroundColor": "#17F4F0F1", "scale": {"x": "1.050000", "y": "1.050000"}}, "$children": [inner]}
+        doc = export(column([tile], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
+        link = [e for e in doc["elements"] if e["role"] == "link"][0]
+        self.assertEqual((link["rect"]["w"], link["rect"]["h"]), (67.2, 67.2))  # as reported, not 70.56
+        t = [e for e in doc["elements"] if e["role"] == "text"][0]
+        self.assertEqual(t["rect"]["w"], 31.5)  # 30 px measured, drawn at 1.05
 
     def test_a_text_without_a_native_measurement_fails_the_export(self):
         tree = column([text("[0.00, 0.00],[200.00, 48.00]", "unmeasured", None)], rect="[0.00, 0.00],[1920.00, 1080.00]")

@@ -244,13 +244,13 @@ export struct PosterCard {
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
 
-  /** The unseen dot: web's 13 px on the TV; 9 vp, 6 in, on the phone grid. */
+  /** The unseen dot: web's 13 px on the TV; 9 vp, 7 in, on the phone grid. */
   private dotSize(): number {
     return this.softCaption || !isTvMetrics() ? 9 : tv(UNSEEN_DOT_SIZE);
   }
 
   private dotInset(): number {
-    return this.softCaption || !isTvMetrics() ? 6 : tv(UNSEEN_DOT_INSET);
+    return this.softCaption || !isTvMetrics() ? 7 : tv(UNSEEN_DOT_INSET);
   }
 
   @State private focusPercent: number = 0;
@@ -433,7 +433,8 @@ export struct PosterCard {
           Column()
             .width(this.dotSize())
             .height(this.dotSize())
-            .borderRadius(this.dotSize() / 2)
+            .borderRadius(50) // web: border-radius 50%
+            .id('px:img:')
             .backgroundColor(toResourceColor(BRAND_PINK))
             .border({ width: 2, color: 'rgba(255, 255, 255, 0.94)' })
             .shadow({ radius: tv(9), color: 'rgba(31, 14, 20, 0.45)', offsetY: tv(2) })
@@ -455,6 +456,7 @@ export struct PosterCard {
       .height(this.cardHeight)
       .clip(true)
       .borderRadius(this.resolvedArtworkRadius())
+      .backgroundColor(toResourceColor(activeColors().surfaceSoft)) // web: the art frame paints the soft surface behind the image
       .scale({ x: this.artworkScale(), y: this.artworkScale() })
       .shadow(this.shadowLayer())
       .outline({ width: tv(FOCUS_RING_WIDTH), color: this.focusRingColor(this.visualFocus()), radius: this.resolvedArtworkRadius() + tv(FOCUS_RING_WIDTH) })
@@ -520,6 +522,7 @@ export struct PosterCard {
     }
     .width(this.cardWidth)
     .alignItems(HorizontalAlign.Start)
+    .borderRadius(12) // web: the card link's own radius (no clip; the art keeps its own)
     .translate({ y: this.cardTranslateY() })
     .focusable(true)
     .onFocus(() => {

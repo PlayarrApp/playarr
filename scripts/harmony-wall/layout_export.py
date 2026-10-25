@@ -138,12 +138,14 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
     out = []
     px = lambda v: v / dpr  # noqa: E731  (inspector px -> CSS px of the app viewport)
 
-    def transform(box, chain):
-        """Apply the declared scale (about the node centre) of the node and its ancestors; the inspector reports untransformed boxes."""
-        x, y, w, h = box
-        for cx, cy, k in chain:
-            x, y, w, h = cx + k * (x - cx), cy + k * (y - cy), w * k, h * k
-        return x, y, w, h
+    def scale_k(chain):
+        """The product of the declared scales of a node and its ancestors. The inspector's `$rect` is the box after those transforms
+        (a 64 px tile at scale 1.05 reports 67.2), so boxes are used as they are; only the text measurer, which knows nothing of the
+        transforms, has its unscaled metrics multiplied by this."""
+        k = 1.0
+        for _, _, kk in chain:
+            k *= kk
+        return k
 
     def scale_of(a):
         s = a.get("scale")
@@ -178,24 +180,30 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         if measured is None:
             raise ExportError(f"Text {content[:30]!r} has no native measurement ({node.get('$measureError', 'no $measured')})")
         x, y, w, h = box
-        pl, pt, pr, pb = padding_of(a, dpr)  # the Text's box includes its padding; its lines sit in the content box
+        k = scale_k(chain)
+        pl, pt, pr, pb = (v * k for v in padding_of(a, dpr))  # the Text's box includes its padding; its lines sit in the content box
         x, y, w, h = x + pl, y + pt, w - pl - pr, h - pt - pb
         align = str(a.get("textAlign", "")).lower()
         weight, size = weight_of(a), num(a.get("fontSize"), 16.0)
         col = argb(a.get("fontColor")) or (0, 0, 0, 1.0)
         colour = hex_of(over(col, under))
-        total = sum(line["lineH"] for line in measured)
+        total = sum(line["lineH"] for line in measured) * k
         top = y + (h - total) / 2 if total <= h else y  # ArkUI centres the laid-out lines in the Text box
         metrics = font_metrics(str(a.get("fontFamily", "")))
-        size_px = size * dpr
+        size_px = size * dpr * k
+        runs = []  # one Range per Text node, as web reports it: the union of the laid-out lines
         for i, line in enumerate(measured):
-            lw, nat, lh = line["w"], line["h"], line["lineH"]
+            lw, nat, lh = line["w"] * k, line["h"] * k, line["lineH"] * k
             lx = x + (w - lw) / 2 if "center" in align else (x + w - lw if "end" in align or "right" in align else x)
             baseline = top + i * lh + (lh - nat) / 2 + NATIVE_ASCENT_RATIO * nat  # the baseline ArkUI draws on
             asc, desc = metrics if metrics is not None else (NATIVE_ASCENT_RATIO * nat / size_px, (1 - NATIVE_ASCENT_RATIO) * nat / size_px)
-            rect = transform((lx, baseline - asc * size_px, lw, (asc + desc) * size_px), chain)
+            rect = (lx, baseline - asc * size_px, lw, (asc + desc) * size_px)
             if visible(rect, clip):
-                emit("text", " ".join(str(line["text"]).split()), rect, under, 0.0, colour, size, weight, opacity)
+                runs.append((rect, str(line["text"])))
+        if runs:
+            x0, y0 = min(r[0][0] for r in runs), min(r[0][1] for r in runs)
+            x1, y1 = max(r[0][0] + r[0][2] for r in runs), max(r[0][1] + r[0][3] for r in runs)
+            emit("text", " ".join(" ".join(r[1] for r in runs).split()), (x0, y0, x1 - x0, y1 - y0), under, 0.0, colour, size, weight, opacity)
 
     def walk(node, under, opacity, chain, clip):
         a = attrs_of(node)
@@ -217,7 +225,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
             mychain = chain + [((raw[0] + raw[2] / 2), (raw[1] + raw[3] / 2), k)]
         nid = str(a.get("id", ""))
         pxid = nid.split(":", 2) if nid.startswith("px:") and nid.count(":") >= 2 else None
-        box = transform(raw, list(reversed(mychain))) if raw is not None else None  # the node's own scale first, then its parents'
+        box = raw
         if box is not None and (box[2] < 0.5 or box[3] < 0.5) and kind != "Text":
             box = None
         if box is not None and fill is not None and fill[3] > 0.001:
@@ -245,7 +253,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
             if kind == "Text":
                 lines_role = pxid[1] if pxid is not None and pxid[1] in ("heading", "text", "container") else None
                 start = len(out)
-                text_lines(node, a, tuple(raw), here, opacity, list(reversed(mychain)), clip)
+                text_lines(node, a, tuple(raw), here, opacity, mychain, clip)
                 if lines_role is not None:
                     for el in out[start:]:
                         el["role"] = lines_role
@@ -253,8 +261,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, image=None):
         pages = [c for c in kids if c.get("$type") == "NavDestination"]
         nclip = clip
         if raw is not None and (kind in CLIP_KINDS or str(a.get("clip", "")).lower() == "true"):
-            cb = transform(raw, list(reversed(mychain)))
-            nclip = (max(clip[0], cb[0]), max(clip[1], cb[1]), min(clip[2], cb[0] + cb[2]), min(clip[3], cb[1] + cb[3]))
+            nclip = (max(clip[0], raw[0]), max(clip[1], raw[1]), min(clip[2], raw[0] + raw[2]), min(clip[3], raw[1] + raw[3]))
         sheet = 0
         for i, c in enumerate(kids):  # an opaque full-viewport sibling hides everything drawn before it (web drops occluded elements)
             cf, cr = argb(attrs_of(c).get("backgroundColor")), rect_of(c)

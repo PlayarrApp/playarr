@@ -76,8 +76,8 @@ const LIBRARY_SYNOPSIS_LINE_HEIGHT: number = 21.7;
 const LIBRARY_SYNOPSIS_MAX_WIDTH: number = 345;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
-const GAP_KICKER_TITLE: number = 27.6; // web title content box starts 6.4 higher (line box 62 inside a 94 content area)
-const GAP_TITLE_META: number = 29.82;
+const GAP_KICKER_TITLE: number = 25; // web title content box starts 6.4 higher (line box 62 inside a 94 content area)
+const GAP_TITLE_META: number = 32.42;
 const GAP_META_SYNOPSIS: number = 19.58;
 
 @Component

@@ -123,7 +123,7 @@ export struct PageShell {
       .textAlign(TextAlign.Center)
       .width(tv(HEADER_SIZE))
       .height(tv(HEADER_SIZE))
-      .borderRadius(tv(HEADER_SIZE / 2))
+      .borderRadius(50) // web: border-radius 50%
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
       // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
       .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
@@ -143,6 +143,7 @@ export struct PageShell {
       .letterSpacing(tv(TITLE_LETTER_SPACING))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(HEADER_SIZE))
+      .translate({ y: -1.3 }) // web's title box sits 1.3 higher
   }
 
   @Builder
@@ -193,16 +194,26 @@ export struct PageShell {
 
   @Builder
   private chrome(): void {
+    // Web's DOM: the page base (`bg`) holds the fixed rail, logo and clock; the page wrapper on `surface` holds the header and the content.
     Stack() {
-      if (this.railFrostWidthPct > 0) {
-        Row()
-          .width(`${this.railFrostWidthPct}%`)
-          .height('100%')
-          .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
-          .linearGradient({ angle: 90, colors: railFrostColors() })
-          .hitTestBehavior(HitTestMode.None)
+      Stack() {
+        if (this.railFrostWidthPct > 0) {
+          Row()
+            .width(`${this.railFrostWidthPct}%`)
+            .height('100%')
+            .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
+            .linearGradient({ angle: 90, colors: railFrostColors() })
+            .hitTestBehavior(HitTestMode.None)
+        }
+        this.content()
+        if (this.showHeader) {
+          this.tvHeader()
+        }
+        this.controls()
       }
-      this.content()
+      .width('100%')
+      .height('100%')
+      .backgroundColor(toResourceColor(activeColors().surface))
       // NavRail reads `items` once (plain field), so it is created after the kinds arrive.
       if (this.navItems.length > 0) {
         NavRail({
@@ -223,14 +234,10 @@ export struct PageShell {
       .height(tv(TvGeometry.utilityRowHeight))
       .alignItems(VerticalAlign.Center)
       .position({ x: tv(TvGeometry.clockLeft), y: tv(TvGeometry.utilityRowTop) })
-      if (this.showHeader) {
-        this.tvHeader()
-      }
-      this.controls()
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(this.railFrostWidthPct >= 0 && isTvMetrics() ? activeColors().surface : activeColors().bg))
+    .backgroundColor(toResourceColor(activeColors().bg))
   }
 
   /** The phone Back control's accessible name (web `aria-label` on the round Back link; it differs per page). */
