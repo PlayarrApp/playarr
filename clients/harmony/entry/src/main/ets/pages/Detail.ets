@@ -1867,12 +1867,12 @@ struct Detail {
       Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
-        .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
+          .translate({ y: primary ? (this.isSeriesPage() ? -1 : 1.6) : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
         .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
-        .translate({ y: primary ? 1.5 : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
+        .translate({ y: primary ? (this.isSeriesPage() ? -1 : 1.5) : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
         .maxLines(1)
     }
     .id(this.pillId(label, primary ? '' : glyph, primary))
@@ -2465,11 +2465,14 @@ struct Detail {
           .fontSize(size <= 8 ? 9.2 : 12.88) // web's glyph sizes
           .fontWeight(FontWeight.Normal)
           .fontColor(brandInk())
+          .translate({ y: -1.1 }) // web's glyph box sits 1.1 higher
       }
       // web: the 8 vp pills (Download, Add to ...) are bold in the ink colour, the larger Playback pill medium
       Text(label).fontFamily(nunitoAt(700, size))
         .fontSize(size)
         .fontWeight(FontWeight.Bold)
+        .letterSpacing(0.27) // web's label run is wider than ArkUI lays it out
+        .translate({ y: size > 8 ? -1.45 : 0 })
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }

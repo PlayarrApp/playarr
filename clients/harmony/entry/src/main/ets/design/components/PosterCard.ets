@@ -378,7 +378,7 @@ export struct PosterCard {
   }
 
   private episodeOverlayY(): number {
-    return this.cardHeight - (isTvMetrics() ? tv(33) : 26.3);
+    return this.cardHeight - (isTvMetrics() ? tv(35.9) : 26.3);
   }
 
   build() {
@@ -487,10 +487,11 @@ export struct PosterCard {
 
       if (this.episodeCaption.length > 0) {
         // two text elements as web has them (the caption, then the title on the same baseline)
-        Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) }) {
+        Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) - (isTvMetrics() ? 1.2 : 0) }) {
           Text(this.episodeCaption).fontFamily(nunitoAt(700, this.subtitleFontSize))
             .fontSize(this.subtitleFontSize)
             .fontWeight(FontWeight.Bold)
+            .letterSpacing(isTvMetrics() ? -0.13 : 0)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().inkMuted)))
             .maxLines(1)
             .translate({ y: -1 })
@@ -498,7 +499,7 @@ export struct PosterCard {
             .fontSize(this.titleFontSize)
             .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink)))
-            .letterSpacing(tv(this.titleFontSize * -0.015))
+            .letterSpacing(tv(this.titleFontSize * -0.015) - (isTvMetrics() ? 0.23 : 0))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
@@ -506,7 +507,7 @@ export struct PosterCard {
         .width(this.cardWidth)
         .alignItems(VerticalAlign.Bottom)
         .padding({ top: tv(SERIES_EPISODE_CAPTION_TOP_PADDING) + (isTvMetrics() ? (this.artWash > 0 ? 2.6 : 0) : 2.4) })
-        .margin({ bottom: this.artWash > 0 && isTvMetrics() ? 2.65 : 0 })
+        .margin({ bottom: isTvMetrics() ? (this.artWash > 0 ? 2.65 : 3.25) : 0 })
       } else {
         Text(this.title).fontFamily(nunitoAt(this.softCaption ? 610 : CARD_TITLE_FONT_WEIGHT, this.titleFontSize))
           .width(this.cardWidth)

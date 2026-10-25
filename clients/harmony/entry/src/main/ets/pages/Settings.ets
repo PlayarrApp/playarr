@@ -331,12 +331,13 @@ export struct SettingsScreen {
       large: true,
       lowerLabels: true,
       sectionWidth: this.panelWidth(),
+      sectionBottom: 31.2,
       onChoose: (value: string) => {
         setThemeModeSetting(value as ThemeModeSetting);
         saveThemeChoice(value as ThemeModeSetting);
       },
     })
-    this.settingDivider()
+    Column() {
     ChoiceSegments({
       heading: t('settings.appearance.homeViewTitle', 'Home screen artwork'),
       description: t('settings.appearance.homeViewDescription', 'Show portrait covers instead of wide media thumbnails on the home screen.'),
@@ -344,12 +345,20 @@ export struct SettingsScreen {
       selected: this.homeView,
       large: true,
       sectionWidth: this.panelWidth(),
+      sectionBottom: 0,
       onChoose: (value: string) => {
         this.homeView = value;
         saveAppearance('homeView', value);
       },
     })
-    this.settingDivider()
+    }
+    .width(tv(this.panelWidth()))
+    .alignItems(HorizontalAlign.Start)
+    .padding({ top: 33.74 })
+    .backgroundColor(toResourceColor(activeColors().surface)) // web: each section is a box on the page colour
+    .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
+    .margin({ bottom: 30.2 })
+    Column() {
     ChoiceSegments({
       heading: t('settings.appearance.artworkSizeTitle', 'Artwork size'),
       description: t('settings.appearance.artworkSizeDescription', 'Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.'),
@@ -357,11 +366,18 @@ export struct SettingsScreen {
       selected: this.artworkSize,
       large: true,
       sectionWidth: this.panelWidth(),
+      sectionBottom: 0,
       onChoose: (value: string) => {
         this.artworkSize = value;
         saveAppearance('artworkSize', value);
       },
     })
+    }
+    .width(tv(this.panelWidth()))
+    .alignItems(HorizontalAlign.Start)
+    .padding({ top: 33.74 })
+    .backgroundColor(toResourceColor(activeColors().surface)) // web: each section is a box on the page colour
+    .border({ width: { top: 1 }, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
   }
 
   /** Web `.appearance-setting + .appearance-setting`: a 1 px rule between settings. */

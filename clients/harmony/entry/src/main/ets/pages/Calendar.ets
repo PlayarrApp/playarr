@@ -662,8 +662,8 @@ export struct ReleaseCalendar {
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
               .margin({ bottom: isTvMetrics() ? 3 : 2 }) // web: the line sits a little above the button's centre
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .layoutWeight(1)
+              .textOverflow({ overflow: isTvMetrics() ? TextOverflow.Ellipsis : TextOverflow.None }) // web's phone line runs past its pill
+              .layoutWeight(isTvMetrics() ? 1 : 0)
           }
           .height(MONTH_LINE_HEIGHT)
           .width(isTvMetrics() ? 'calc(100% - 0.4vp)' : 'calc(100% - 9.8vp)')
@@ -677,6 +677,7 @@ export struct ReleaseCalendar {
       .width('100%')
       Row({ space: tv(6) }) {
         Text(String(dayOfMonth(cell.day))).fontFamily(nunito(640))
+          .letterSpacing(isTvMetrics() ? 0 : 0.7) // web's phone digits are wider than ArkUI lays them out
           .fontSize(tv(MONTH_DAY_SIZE))
           .fontWeight(FontWeight.Medium)
           .margin({ top: isTvMetrics() ? -4.2 : 3.84 })
@@ -1065,7 +1066,8 @@ export struct ReleaseCalendar {
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(44)
-        .padding({ left: 18.8, right: 18.8 })
+        .letterSpacing(0.3)
+        .padding({ left: 18.8, right: 18.8, bottom: 2.06 }) // web's text box sits 1 higher than the centred one
         .borderRadius(22)
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -1101,6 +1103,7 @@ export struct ReleaseCalendar {
         .textAlign(TextAlign.Center)
         .width(width)
         .height(44)
+        .padding({ bottom: 2.06 })
         .borderRadius(22)
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -1180,6 +1183,7 @@ export struct ReleaseCalendar {
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, PHONE_ENTRY_TITLE_SIZE))
             .fontSize(PHONE_ENTRY_TITLE_SIZE)
+            .letterSpacing(-0.22)
             .lineHeight(PHONE_LINE_TITLE)
             .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
             .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1193,6 +1197,7 @@ export struct ReleaseCalendar {
           this.statusPill(itemPillTone(item, this.today))
         }
         .width('100%')
+        .translate({ y: fixedHeight > 0 ? 0 : -2.1 }) // web's week meta line sits 2 higher
         .margin({ top: fixedHeight > 0 ? -0.5 : 0 })
       }
       .alignItems(HorizontalAlign.Start)
@@ -1206,7 +1211,7 @@ export struct ReleaseCalendar {
       maxHeight: fixedHeight === PHONE_ENTRY_HEIGHT ? fixedHeight : PHONE_CARD_NO_MAX, // web: a movie's pill wraps under the meta line and the card grows with it
     })
     // agenda: web's text starts 1 vp higher (static-ref dump)
-    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 8 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
+    .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 8 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : (fixedHeight > 0 ? 8 : 2.6) })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
     .id('px:button:' + entryButtonName(item, this.today))

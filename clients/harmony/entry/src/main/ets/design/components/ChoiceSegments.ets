@@ -59,6 +59,8 @@ export struct ChoiceSegments {
   /** Settings > Colour theme: web's buttons carry the lower-case value, the other settings their label. */
   @Prop lowerLabels: boolean = false;
   @Prop sectionWidth: number = SECTION_WIDTH;
+  /** Settings sections: the space under the choices (vp); negative keeps the drawer rhythm. */
+  @Prop sectionBottom: number = -1;
   onChoose: (value: string) => void = () => {};
 
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
@@ -115,12 +117,12 @@ export struct ChoiceSegments {
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
           .id('px:heading:' + this.heading)
-          .margin({ top: -2.5, bottom: (this.description === '' ? tv(5) : 0) + 2.5 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
+          .margin({ top: -2.5, bottom: (this.description === '' ? 3.8 : 0) + 2.5 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE))
             .fontColor(toResourceColor(activeColors().inkMuted))
-            .margin({ top: tv(-5), bottom: tv(1) })
+            .margin({ top: tv(-5), bottom: tv(3.3) })
         }
       } else {
         Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
@@ -180,6 +182,6 @@ export struct ChoiceSegments {
       }
     }
     .alignItems(HorizontalAlign.Start)
-    .margin({ bottom: this.large ? tv(SECTION_GAP) : (isTvMetrics() ? tv(SECTION_GAP + 3) : TOUCH_SECTION_GAP) })
+    .margin({ bottom: this.sectionBottom >= 0 ? this.sectionBottom : (this.large ? tv(SECTION_GAP) : (isTvMetrics() ? tv(SECTION_GAP + 3) : TOUCH_SECTION_GAP)) })
   }
 }
