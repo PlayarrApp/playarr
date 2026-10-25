@@ -1180,7 +1180,7 @@ namespace Playarr.Xbox.Views
             MetaRow.Children.Clear();
             for (var i = 0; i < parts.Count; i++)
             {
-                var block = Ui.Text(parts[i], 10.56, new FontWeight { Weight = i == 0 ? 680 : 400 }, i == 0 ? "PlayarrInkSoft" : "PlayarrInkMuted");
+                var block = Ui.Text(parts[i], 10.56, new FontWeight { Weight = (ushort)(i == 0 ? 680 : 400) }, i == 0 ? "PlayarrInkSoft" : "PlayarrInkMuted");
                 MetaRow.Children.Add(block);
             }
         }
