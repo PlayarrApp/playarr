@@ -22,31 +22,35 @@ final class TVParityLayoutRegistry {
         var tracking: CGFloat = 0
         var background: String?
         var radius: CGFloat = 0
+        /// The text of each laid-out line when the view draws the lines itself (one Text per line elsewhere).
+        var lines: [String]?
+        /// The line's bounds in its text view's own space (diagnostic: the view's origin is `rect` minus this).
+        var local: CGRect?
         var layer = 0
         var opacity: Double = 1
     }
 
     private var items: [UUID: Item] = [:]
-    /// The laid-out lines of a text view, from SwiftUI's own text layout (one item per line, glyph-run bounds).
-    private var runs: [UUID: [Item]] = [:]
+    /// The laid-out lines of a text view from SwiftUI's own text layout (glyph-run bounds, relative to the view's origin).
+    private var lineRects: [UUID: [CGRect]] = [:]
     private var order: [UUID] = []
     private var pending: Task<Void, Never>?
 
     func set(_ id: UUID, _ item: Item) {
-        if items[id] == nil, runs[id] == nil { order.append(id) }
+        if items[id] == nil { order.append(id) }
         items[id] = item
         schedule()
     }
 
-    func setRuns(_ id: UUID, _ lines: [Item]) {
-        if items[id] == nil, runs[id] == nil { order.append(id) }
-        runs[id] = lines
+    func setLines(_ id: UUID, _ rects: [CGRect]) {
+        guard lineRects[id] != rects else { return }
+        lineRects[id] = rects
         schedule()
     }
 
     func remove(_ id: UUID) {
         items[id] = nil
-        runs[id] = nil
+        lineRects[id] = nil
         order.removeAll { $0 == id }
         schedule()
     }
@@ -144,7 +148,7 @@ final class TVParityLayoutRegistry {
     private func snapshot() -> Data? {
         let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         func raw(_ item: Item) -> [String: Any] {
-            [
+            var out: [String: Any] = [
                 "text": item.text ?? "",
                 "role": item.role,
                 "rect": ["x": Double(item.rect.minX), "y": Double(item.rect.minY), "w": Double(item.rect.width), "h": Double(item.rect.height)],
@@ -155,8 +159,21 @@ final class TVParityLayoutRegistry {
                 "radius": Double(min(item.radius, min(item.rect.width, item.rect.height) / 2)), // as drawn: a pill radius is half the box
                 "opacity": item.opacity,
             ]
+            if let l = item.local { out["local"] = ["x": Double(l.minX), "y": Double(l.minY), "w": Double(l.width), "h": Double(l.height)] }
+            return out
         }
-        let ordered = order.flatMap { id -> [Item] in runs[id] ?? items[id].map { [$0] } ?? [] }
+        // a text view is one item per laid-out line, each at the view's current origin plus the line's own bounds
+        let ordered = order.flatMap { id -> [Item] in
+            guard let item = items[id] else { return [] }
+            guard let rects = lineRects[id], !rects.isEmpty else { return [item] }
+            return rects.enumerated().map { index, rect in
+                var line = item
+                line.local = rect
+                line.rect = rect.offsetBy(dx: item.rect.minX, dy: item.rect.minY)
+                if let names = item.lines, names.count == rects.count { line.text = names[index] }
+                return line
+            }
+        }
         let top = ordered.map(\.layer).max() ?? 0
         var raws = ordered.filter { $0.layer == top && $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }.map(raw)
         for var entry in accessibilityElements(onlyPresented: top > 0) where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
@@ -229,7 +246,6 @@ private struct TVParityLayoutModifier: ViewModifier {
     @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
-    @State private var frame = CGRect.zero
 
     private func hex(_ color: Color) -> String {
         let r = color.resolve(in: environment)
@@ -240,21 +256,15 @@ private struct TVParityLayoutModifier: ViewModifier {
 
     private func item(_ rect: CGRect) -> TVParityLayoutRegistry.Item {
         .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: rect, tracking: tracking,
-              background: hex(backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)), layer: layer)
+              background: hex(backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)), lines: lines, layer: layer)
     }
 
     @ViewBuilder
     private func rendered(_ content: Content) -> some View {
         if #available(tvOS 18.0, macOS 15.0, *), text != nil, size != nil {
             content.textRenderer(TVParityTextRenderer { bounds in
-                guard frame.width > 0, frame.height > 0 else { return }
-                let runs = bounds.enumerated().map { index, rect -> TVParityLayoutRegistry.Item in
-                    var run = item(rect.offsetBy(dx: frame.minX, dy: frame.minY))
-                    if let lines, lines.count == bounds.count { run.text = lines[index] }
-                    return run
-                }
                 let key = id
-                Task { @MainActor in TVParityLayoutRegistry.shared.setRuns(key, runs) }
+                Task { @MainActor in TVParityLayoutRegistry.shared.setLines(key, bounds) }
             })
         } else {
             content
@@ -277,7 +287,6 @@ private struct TVParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ rect: CGRect) {
-        frame = rect
         TVParityLayoutRegistry.shared.set(id, item(rect))
     }
 }
