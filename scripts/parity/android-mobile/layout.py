@@ -19,6 +19,12 @@ for _ in range(30):
 doc = json.loads(raw)
 # The app exports CSS px already (device px over its display density), radii included: nothing is converted, tagged or asserted here.
 assert doc["viewport"]["w"] == view[0] and doc["viewport"]["h"] == view[1], "exported viewport %s is not %s" % (doc["viewport"], view)
+# Colours behind elements are measured from the screenshot of the same frame by the shared sampler (as the TV driver does).
+png = os.path.join(os.path.dirname(os.path.dirname(out)), screen + ".png")
+here = os.path.dirname(os.path.abspath(__file__))
+node = """import {checkLayout,fillBackgrounds} from %s; import {readFileSync} from 'node:fs';
+const l=JSON.parse(readFileSync(0,'utf8')); process.stdout.write(JSON.stringify(fillBackgrounds(checkLayout(l,process.argv[2]),readFileSync(process.argv[1]))));""" % json.dumps("file://" + os.path.join(here, "..", "layout-sample.mjs"))
+doc = json.loads(subprocess.run(["node", "--input-type=module", "-e", node, png, theme], input=json.dumps(doc), capture_output=True, text=True, check=True).stdout)
 os.makedirs(os.path.dirname(out), exist_ok=True)
 json.dump(doc, open(out, "w"))
 print("layout", screen, theme, len(doc["elements"]), "elements")
