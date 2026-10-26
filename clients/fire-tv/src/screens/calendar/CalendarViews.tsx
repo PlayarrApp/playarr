@@ -287,7 +287,7 @@ const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, shared, 
   const innerW = CELL_W - 2 * (CELL_BORDER + CELL_PAD_X);
   const footY = y + h - CELL_BORDER - CELL_PAD_Y - MONTH_FOOT;
   const day = (
-    <T size={12.8} weight={640} lh={19.2} dy={-1.3} color={cell.inMonth ? colour.ink : colour.inkMuted}>
+    <T size={12.8} weight={640} lh={19.2} dy={-0.7} color={cell.inMonth ? colour.ink : colour.inkMuted}>
       {String(parseDay(cell.day).getUTCDate())}
     </T>
   );
