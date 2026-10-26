@@ -125,7 +125,7 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Colour theme", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Colour theme", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 210, w: 995, h: 39.6)
                 choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [343.3, 343.3, 343.3], y: 265.8) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
@@ -140,7 +140,7 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Home screen artwork", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Home screen artwork", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 383.8, w: 995, h: 39.6)
                 Text("Show portrait covers instead of wide media thumbnails on the home screen.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
@@ -161,7 +161,7 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Artwork size", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Artwork size", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 583.8, w: 995, h: 39.6)
                 Text("Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))

@@ -1367,12 +1367,12 @@ struct TVSearchView: View {
         switch model.state {
         case .idle:
             Text("Find any available movie, series, artist or playlist.")
-                .font(TVTheme.font(size: 14, weight: .regular))
+                .font(TVTheme.font(size: 13.82, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .parityLayout(text: "Find any available movie, series, artist or playlist.", size: 14, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
-                .frame(maxWidth: 340, alignment: .leading)
-                .lineSpacing(4)
-                .placed(x: 153.6, y: 268.2 + 56 + DesignTokens.Shell.searchPromptTopGap, w: 340)
+                .parityLayout(text: "Find any available movie, series, artist or playlist.", size: 13.82, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
+                .frame(maxWidth: 280, alignment: .leading)
+                .lineSpacing(2.4)
+                .placed(x: 153.6, y: 268.2 + 56 + DesignTokens.Shell.searchPromptTopGap, w: 280)
             idleEmptyState
         case .loading:
             ProgressView("Searching…")
@@ -1605,8 +1605,8 @@ struct TVSearchView: View {
                     .fill(DesignTokens.Color.backgroundRaised.opacity(0.28))
                 Circle()
                     .stroke(DesignTokens.Color.borderDefault.opacity(0.55), lineWidth: 1)
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 36, weight: .regular))
+                Image(systemName: "minus.magnifyingglass")
+                    .font(.system(size: 28, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.brandPrimary.opacity(0.78))
                     .frame(width: 54, height: 36)
                     .parityBox("image")

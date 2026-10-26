@@ -155,11 +155,11 @@ struct TVWorkDetailView: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line)
-                    .font(TVTheme.font(size: 69.12, weight: .semibold))
+                    .font(TVTheme.font(size: 69.12, css: 560))
                     .tracking(-4.98)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
-                    .parityLayout(text: line, size: 69.12, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -4.98)
+                    .parityLayout(text: line, role: "heading", size: 69.12, weight: 560, color: DesignTokens.Color.textPrimary, tracking: -4.98)
                     .fixedSize()
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
             }
@@ -254,7 +254,7 @@ struct TVWorkDetailView: View {
                     .tracking(-0.74)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
                     .lineLimit(1)
-                    .parityLayout(text: episodeTitle, size: 21.12, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textSecondary, tracking: -0.74)
+                    .parityLayout(text: episodeTitle, role: "heading", size: 21.12, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textSecondary, tracking: -0.74)
                     .placed(x: 153.6, y: episodeY, w: 309.2, h: 24.3)
             }
             metaRow(parts).placed(x: 153.6, y: metaY, h: 15.8)
@@ -328,8 +328,8 @@ struct TVWorkDetailView: View {
             if let glyph {
                 Text(glyph)
                     .font(TVTheme.font(size: 12.8, weight: .regular))
-                    .foregroundStyle(DesignTokens.Color.brandPrimary)
-                    .parityLayout(text: glyph, size: 12.8, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.brandPrimary)
+                    .foregroundStyle(DesignTokens.Stage.brandInk)
+                    .parityLayout(text: glyph, size: 12.8, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Stage.brandInk)
             }
             if let symbol {
                 Image(systemName: symbol)
@@ -347,11 +347,12 @@ struct TVWorkDetailView: View {
 
     private func playLabel(_ text: String, light: Bool, focusedLook: Bool = false, playName: String? = nil) -> some View {
         HStack(spacing: 8.8) {
-            Image(systemName: "play.fill")
-                .font(.system(size: 10.1, weight: .regular))
+            Text("\u{25B6}")
+                .font(TVTheme.font(size: 10.88, weight: .regular))
+                .parityLayout(text: "\u{25B6}", size: 10.88, weight: Int(TVTheme.cssWeight(.regular)), color: light ? DesignTokens.Color.backgroundBase : Color.white)
             Text(text)
                 .font(TVTheme.font(size: 11.9, weight: .bold))
-                .parityLayout(text: text, size: 11.9, weight: Int(TVTheme.cssWeight(.bold)))
+                .parityLayout(text: text, size: 11.9, weight: Int(TVTheme.cssWeight(.bold)), color: light ? DesignTokens.Color.backgroundBase : Color.white)
         }
         .foregroundStyle(light ? DesignTokens.Color.backgroundBase : Color.white)
         .frame(width: 156, height: 64)
@@ -467,7 +468,7 @@ struct TVWorkDetailView: View {
                 .font(TVTheme.font(size: 17.66, weight: .semibold))
                 .tracking(-0.53)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: title, size: 17.66, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.53)
+                .parityLayout(text: title, role: "heading", size: 17.66, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.53)
                 .placed(x: 881.6, y: y, w: 992.4, h: 26.5)
             Text(count)
                 .font(TVTheme.font(size: 9.98, weight: .regular))

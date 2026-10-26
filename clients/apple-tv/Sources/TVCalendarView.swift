@@ -428,9 +428,9 @@ struct TVCalendarView: View {
                 VStack(alignment: .leading, spacing: 10.4) {
                     ForEach(shown, id: \.id) { item in
                         HStack(spacing: 7.2) {
-                            Color.clear.frame(width: 5.6, height: 0)
                             Circle().fill(Self.toneColour(Self.tone(of: item, today: model.today))).frame(width: 8.8, height: 8.8)
                                 .parityBox("container", radius: 50, fill: Self.toneColour(Self.tone(of: item, today: model.today)))
+                                .padding(.leading, 5.6)
                             Text(item.entries.count > 1 ? "\(Self.title(of: item)) \u{00B7} \(item.entries.count)\u{00D7}" : Self.title(of: item))
                                 .font(TVTheme.font(size: 12.48, css: item.entries.count > 1 ? 680 : 400))
                                 .foregroundStyle(DesignTokens.Color.textPrimary)
@@ -443,7 +443,7 @@ struct TVCalendarView: View {
                     }
                 }
                 .padding(.leading, 11.4)
-                .padding(.top, 7)
+                .padding(.top, 1.8)
                 .padding(.trailing, 8)
                 HStack(spacing: 6) {
                     Text(String(Int(day.suffix(2)) ?? 0))

@@ -651,7 +651,7 @@ struct TVChoiceSection<Value: Hashable>: View {
                 .font(TVTheme.font(size: 9.6, css: 720))
                 .tracking(0.672)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .parityLayout(text: title.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
+                .parityLayout(text: title.uppercased(), role: "heading", size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                 .frame(height: 14.4)
             HStack(spacing: 8) {
                 ForEach(options, id: \.value) { option in
@@ -936,7 +936,7 @@ struct TVMultiSelectSection: View {
                 .font(TVTheme.font(size: 9.6, css: 720))
                 .tracking(0.672)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .parityLayout(text: title.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
+                .parityLayout(text: title.uppercased(), role: "heading", size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                 .frame(height: 14.4)
             if !loaded {
                 RoundedRectangle(cornerRadius: 12).fill(DesignTokens.Stage.surfaceSoft.opacity(0.5)).frame(width: 268, height: 58.8)
