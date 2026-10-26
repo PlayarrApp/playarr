@@ -1344,6 +1344,7 @@ internal enum class PlayarrString(
     ),
     SettingsHomeViewThumbnail("Thumbnails", "ภาพขนาดย่อ", "サムネイル"),
     SettingsHomeViewCover("Covers", "ภาพปก", "カバー"),
+    SettingsThemeNamed("Theme: {{name}}", "ธีม: {{name}}", "テーマ: {{name}}"),
     SettingsThemeSaved("Theme preference saved.", "บันทึกการตั้งค่าธีมแล้ว", "テーマ設定を保存しました。"),
     SettingsHomeViewSaved("Home screen view saved.", "บันทึกรูปแบบหน้าแรกแล้ว", "ホーム画面の表示を保存しました。"),
     SettingsLanguageDescription(

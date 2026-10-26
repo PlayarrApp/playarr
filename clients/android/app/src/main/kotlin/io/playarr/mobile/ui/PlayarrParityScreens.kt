@@ -123,6 +123,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -1922,7 +1925,7 @@ private fun TelevisionProfilesStage(
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = if (LocalStageScale.current != 1f) 183.dp else 162.dp)
+                .padding(top = if (LocalStageScale.current != 1f) 179.25.dp else 162.dp)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -1942,7 +1945,7 @@ private fun TelevisionProfilesStage(
                 fontWeight = FontWeight.Medium,
                 letterSpacing = (-5.806).sp,
                 lineHeight = 76.6.sp,
-                modifier = Modifier.padding(top = 7.2.dp).offset(x = 3.5.dp, y = (-17.25).dp).semantics { heading() },
+                modifier = Modifier.padding(top = 7.2.dp).offset(x = 3.5.dp, y = if (LocalStageScale.current != 1f) (-11.75).dp else (-17.25).dp).semantics { heading() },
             )
         }
 
@@ -1952,7 +1955,7 @@ private fun TelevisionProfilesStage(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(top = if (LocalStageScale.current != 1f) 432.4.dp else 382.4.dp)
+                .padding(top = if (LocalStageScale.current != 1f) 427.5.dp else 382.4.dp)
                 .height(420.dp),
             contentAlignment = Alignment.TopCenter,
         ) {
@@ -2194,9 +2197,9 @@ private fun BoxScope.ProfilesStageChrome(tablet: Boolean = false) {
     Row(
         modifier = Modifier
             .align(Alignment.TopEnd)
-            .padding(end = if (tablet) 28.5.dp else 42.dp, top = if (tablet) 37.dp else 50.dp)
+            .padding(end = if (tablet) 28.1.dp else 42.dp, top = if (tablet) 36.8.dp else 50.dp)
             .zIndex(3f),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (tablet) 10.3.dp else 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ProfilesChromeThemeDropdown(display)
@@ -2220,7 +2223,7 @@ internal fun ProfilesChromeThemeDropdown(display: PlayarrDisplayPreferences, web
             leading = { ProfilesThemeIcon(WebInkMuted) },
             onClick = { expanded = !expanded },
             webPhone = webPhone,
-            exportLabel = "Theme: $label",
+            exportLabel = playarrString(PlayarrString.SettingsThemeNamed, "name" to label),
         )
         androidx.compose.material3.DropdownMenu(
             expanded = expanded,
@@ -2305,7 +2308,7 @@ private fun ProfilesChromeTrigger(
             .then(if (webPhone) Modifier else Modifier.width(minWidth))
             .height(48.dp)
             .scale(if (expanded) 1.02f else 1f)
-            ,
+            .semantics { contentDescription = exportLabel ?: label },
     ) {
         Row(
             // Web `.chrome-select`: 1 px border plus 18.4 px padding, the 16 px icon and the label 9.6 px apart.
@@ -2428,8 +2431,8 @@ private fun ProfileChoice(
     avatarFocus: androidx.compose.ui.focus.FocusRequester? = null,
 ) {
     // Web `.profile-choice` flex-basis clamp(160px, 13vw, 244px): 13vw is 249.6 at 1920, so 244.
-    val cardWidth = if (isTelevision) 244.dp else 148.dp
-    val avatarSize = if (isTelevision) (if (LocalStageScale.current != 1f) 249.dp else 244.dp) else 132.dp
+    val cardWidth = if (isTelevision) (if (LocalStageScale.current != 1f) 249.6.dp else 244.dp) else 148.dp
+    val avatarSize = if (isTelevision) (if (LocalStageScale.current != 1f) 249.6.dp else 244.dp) else 132.dp
     val avatarDescription = playarrString(
         if (profile.isCurrent) PlayarrString.ProfilesAvatarLabelCurrent else PlayarrString.ProfilesAvatarLabel,
         "name" to profile.displayName,
@@ -2458,7 +2461,7 @@ private fun ProfileChoice(
                 // Web: DOWN from the selected profile reaches its first action, the settings button.
                 .then(if (selected) Modifier.focusProperties { down = settingsFocus } else Modifier)
                 .size(avatarSize)
-                .semantics { contentDescription = avatarDescription }
+                .clearAndSetSemantics { } // the merged profile button above carries the name, role and click action
                 // On TV the outer shadow layer owns the scale; phone keeps the original avatar modifier chain.
                 .then(if (isTelevision) Modifier else Modifier.scale(if (selected) 1.035f else 1f))
                 .then(
@@ -2516,6 +2519,8 @@ private fun ProfileChoice(
             
             .onFocusChanged { if (it.isFocused) onFocus() },
     ) {
+        // Web: the profile button is the avatar plus its name and status lines (the actions below are separate controls): one merged control with the avatar label.
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = avatarDescription; role = androidx.compose.ui.semantics.Role.Button; if (enabled) onClick { onClick(); true } }) {
         if (isTelevision) {
             WebShadowedBox(
                 shadows = avatarShadows,
@@ -2563,8 +2568,9 @@ private fun ProfileChoice(
             fontSize = if (isTelevision) 9.408.sp else 8.sp,
             fontWeight = if (isTelevision) FontWeight(690) else FontWeight.Bold,
             letterSpacing = if (isTelevision) 0.423.sp else 0.6.sp,
-            modifier = Modifier.padding(top = if (isTelevision) 4.33.dp else 4.dp),
+            modifier = Modifier.padding(top = if (isTelevision) (if (LocalStageScale.current != 1f) 9.8.dp else 4.33.dp) else 4.dp),
         )
+        }
         if (selected) {
           // Tablet web draws the action pills in css px (44 css tall).
           val tabletActions = LocalStageScale.current != 1f
@@ -2599,7 +2605,7 @@ private fun ProfileChoice(
                         shape = CircleShape,
                         color = WebSurfaceStrong.copy(alpha = 0.64f),
                         border = BorderStroke(1.dp, WebInkMuted.copy(alpha = 0.35f)),
-                        modifier = Modifier.heightIn(min = 44.dp).parityShape(999f),
+                        modifier = Modifier.heightIn(min = 44.dp).parityShape(999f).semantics { contentDescription = signOutName },
                     ) {
                         Row(
                             Modifier.padding(start = if (isTelevision) 17.dp else 16.dp, end = if (isTelevision) 17.dp else 16.dp, top = 10.dp, bottom = 10.dp),
@@ -2634,8 +2640,8 @@ private fun AddProfileChoice(
     onFocus: () -> Unit,
     onClick: () -> Unit,
 ) {
-    val cardWidth = if (isTelevision) 244.dp else 148.dp
-    val avatarSize = if (isTelevision) 244.dp else 132.dp
+    val cardWidth = if (isTelevision) (if (LocalStageScale.current != 1f) 249.6.dp else 244.dp) else 148.dp
+    val avatarSize = if (isTelevision) (if (LocalStageScale.current != 1f) 249.6.dp else 244.dp) else 132.dp
     // Draw-only lift: an offset would change the bounds focus search measures.
     val lift = if (selected) Modifier.graphicsLayer { translationY = -8.dp.toPx(); scaleX = 1.045f; scaleY = 1.045f } else Modifier
     var addFocused by remember { mutableStateOf(false) }
@@ -2681,7 +2687,8 @@ private fun AddProfileChoice(
                         )
                     }
                 }
-                .clickable(enabled = enabled, onClick = onClick),
+                .clickable(enabled = enabled, onClick = onClick)
+                .clearAndSetSemantics { }, // the merged add-profile button carries the name, role and click action
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -2698,7 +2705,7 @@ private fun AddProfileChoice(
             .width(cardWidth)
             .then(if (isTelevision) Modifier.offset(y = 1.2.dp) else Modifier)
             .then(lift)
-            
+            .semantics(mergeDescendants = true) { role = androidx.compose.ui.semantics.Role.Button; if (enabled) onClick { onClick(); true } }
             .onFocusChanged { addFocused = it.hasFocus; if (it.hasFocus) onFocus() },
     ) {
         if (isTelevision) {
@@ -4288,17 +4295,19 @@ private fun TvSettingsBody(
     ) {
         // Web (#1299): the section is the page header subtitle, wrapped under the title behind a 1 px rule as wide as the title,
         // in the page ink (not pink). shortcut: the rule is the English "Preferences" title's width, measure the title when localised titles differ.
-        Box(Modifier.offset(x = 226.6.dp, y = 112.dp).width(163.4.dp).height(1.dp).background(TvSettingsPalette.inputBorder))
+        val ku = if (tablet) 1f / stage else 1f
+        Box(Modifier.offset(x = if (tablet) (178.31f * ku).dp else 226.6.dp, y = if (tablet) (92.2f * ku).dp else 112.dp).width(if (tablet) (108.77f * ku).dp else 163.4.dp).height(1.dp).background(TvSettingsPalette.inputBorder))
         Text(
             playarrString(section.label).uppercase(locale),
             color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.ink,
-            fontSize = 11.136.sp, fontWeight = FontWeight(680), letterSpacing = 0.501.sp, lineHeight = 16.704.sp, style = cssLine(),
-            modifier = Modifier.offset(x = 226.6.dp, y = 117.7.dp),
+            fontSize = if (tablet) (9.92f * ku).sp else 11.136.sp, fontWeight = FontWeight(680), letterSpacing = if (tablet) (0.045f * 9.92f * ku).sp else 0.501.sp, lineHeight = if (tablet) (14f * ku).sp else 16.704.sp, style = cssLine(),
+            modifier = Modifier.offset(x = if (tablet) (178.31f * ku).dp else 226.6.dp, y = if (tablet) (98.58f * ku).dp else 117.7.dp),
         )
         val isAdmin by viewModel.isAdmin.collectAsState()
         LazyColumn(
             // Padding, not offset: the list must end at the screen edge so rows past it (11 sections) scroll into view.
-            Modifier.padding(start = playarrPageMetrics(true).start + (if (tablet) 23.dp else 0.dp), top = listTop).width(if (tablet) 432.dp else 470.dp).fillMaxHeight(),
+            // Tablet web: the 304 css px list starts at x 118.95 (css px, drawn at 1 / stage scale).
+            Modifier.padding(start = if (tablet) (118.95f / stage).dp else playarrPageMetrics(true).start, top = listTop).width(if (tablet) (304f / stage).dp else 470.dp).fillMaxHeight(),
         ) {
             // Web lists the admin-only sections (request latency) only for administrators and keeps every section's number.
             val rows = entries.mapIndexed { number, row -> number to row.first }
@@ -4317,20 +4326,21 @@ private fun TvSettingsBody(
                         .onFocusChanged { focused = it.isFocused; if (it.isFocused) onPick(candidate) }
                         .clickable { onPick(candidate) },
                 ) {
+                    val u = if (tablet) 1f / stage else 1f
                     Text(
                         settingsSectionNumber(number),
-                        color = if (tablet) WebInkMuted else WebInk, fontSize = 9.92.sp, fontWeight = FontWeight(760), lineHeight = 11.sp, style = cssLine(),
-                        modifier = Modifier.offset(x = if (tablet) 15.5.dp else 32.dp, y = 27.dp),
+                        color = if (tablet) WebInk else WebInk, fontSize = if (tablet) (9.92f * u).sp else 9.92.sp, fontWeight = FontWeight(760), lineHeight = if (tablet) (14f * u).sp else 11.sp, style = cssLine(),
+                        modifier = Modifier.offset(x = if (tablet) (25.6f * u).dp else 32.dp, y = if (tablet) (21.52f * u).dp else 27.dp),
                     )
                     Text(
                         playarrString(candidate.label),
-                        color = WebInk, fontSize = if (tablet) 30.5.sp else 29.6.sp, fontWeight = FontWeight(480), lineHeight = 33.sp, letterSpacing = (if (tablet) -0.9f else -1.05f).sp, style = cssLine(),
-                        modifier = Modifier.align(Alignment.CenterStart).padding(start = if (tablet) 94.3.dp else 92.dp).offset(y = (-1).dp),
+                        color = WebInk, fontSize = if (tablet) (20.48f * u).sp else 29.6.sp, fontWeight = FontWeight(480), lineHeight = if (tablet) (28f * u).sp else 33.sp, letterSpacing = if (tablet) (-0.0355f * 20.48f * u).sp else (-1.05f).sp, style = cssLine(),
+                        modifier = Modifier.align(Alignment.CenterStart).padding(start = if (tablet) (78.07f * u).dp else 92.dp).offset(y = if (tablet) (-0.36f * u).dp else (-1).dp),
                     )
                     Text(
                         "\u2192",
-                        color = if (selected) WebInk else WebInkMuted, fontSize = 20.8.sp, lineHeight = 23.sp, style = cssLine(),
-                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = (if (selected) 27.dp else 32.dp) + (if (tablet) 6.dp else 0.dp)).offset(y = (-2).dp),
+                        color = if (selected) WebInk else WebInkMuted, fontSize = if (tablet) (20.8f * u).sp else 20.8.sp, lineHeight = if (tablet) (28f * u).sp else 23.sp, style = cssLine(),
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = if (tablet) ((if (selected) 20.6f else 25.6f) * u).dp else (if (selected) 27.dp else 32.dp)).offset(y = if (tablet) (-0.6f * u).dp else (-2).dp),
                     )
                 }
             }
