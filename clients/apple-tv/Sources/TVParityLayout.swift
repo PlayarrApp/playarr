@@ -169,7 +169,9 @@ final class TVParityLayoutRegistry {
             return rects.enumerated().map { index, rect in
                 var line = item
                 line.local = rect
-                line.rect = rect.offsetBy(dx: item.rect.minX, dy: item.rect.minY)
+                // the first line sits at the view's top: the layout reports it a fraction of the font size lower (leading above the ascent),
+                // which is not where the view or its glyphs are; later lines keep the layout's own pitch
+                line.rect = rect.offsetBy(dx: item.rect.minX, dy: item.rect.minY - rects[0].minY)
                 if let names = item.lines, names.count == rects.count { line.text = names[index] }
                 return line
             }
@@ -301,6 +303,8 @@ private struct TVParityBoxModifier: ViewModifier {
     var opacity: Double = 1
     /// A full-bleed box reports the whole screen, not the TV safe area.
     var bleed = false
+    /// The font the box's own text is set in, when the box carries its text itself (a button or caption with no separate Text view).
+    var textStyle: (size: CGFloat, weight: Int, color: Color)? = nil
     @Environment(\.self) private var environment
     @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
@@ -343,6 +347,13 @@ private struct TVParityBoxModifier: ViewModifier {
         } else {
             item.background = nil
         }
+        if let textStyle {
+            item.size = textStyle.size
+            item.weight = textStyle.weight
+            let c = textStyle.color.resolve(in: environment)
+            func byte(_ v: Float) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
+            item.color = String(format: "#%02x%02x%02x", byte(c.red), byte(c.green), byte(c.blue))
+        }
         item.radius = radius
         item.opacity = opacity
         item.layer = layer
@@ -374,9 +385,9 @@ extension View {
 
     /// Reports a box (card link, image, container with a fill and radius) to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil, alpha: Double = 1, opacity: Double = 1, bleed: Bool = false) -> some View {
+    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil, alpha: Double = 1, opacity: Double = 1, bleed: Bool = false, textStyle: (size: CGFloat, weight: Int, color: Color)? = nil) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill, alpha: alpha, opacity: opacity, bleed: bleed))
+        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill, alpha: alpha, opacity: opacity, bleed: bleed, textStyle: textStyle))
         #else
         self
         #endif

@@ -1340,6 +1340,7 @@ struct TVHeaderPill: View {
                 .lineLimit(1)
                 .parityLayout(text: label, size: 14.72, weight: Int(720), color: DesignTokens.Color.textSecondary)
                 .frame(width: width, height: 50)
+                .parityBox("button", text: label, radius: 25, fill: DesignTokens.Color.backgroundElevated)
                 .background(Capsule().fill(DesignTokens.Color.backgroundElevated))
                 .overlay(Capsule().stroke(DesignTokens.Stage.line.opacity(0.35), lineWidth: 1))
         } else {

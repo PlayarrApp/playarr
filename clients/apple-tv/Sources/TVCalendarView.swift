@@ -58,9 +58,9 @@ struct TVCalendarView: View {
 
         // Web header controls, top right: the date range button, previous, Today, next (one group).
         rangeButton(model)
-        roundControl("\u{2190}", x: 1628.5) { Task { await model.step(-1) } }
+        roundControl("\u{2190}", name: "Previous", x: 1628.5) { Task { await model.step(-1) } }
         pillControl("Today", x: 1693.8, width: 84) { Task { await model.goToToday() } }
-        roundControl("\u{2192}", x: 1793.2) { Task { await model.step(1) } }
+        roundControl("\u{2192}", name: "Next", x: 1793.2) { Task { await model.step(1) } }
 
         // Side-panel buttons stack in the shell action column, in registration order.
         pill("Calendar link", symbol: "bell", slot: 0) {
@@ -150,13 +150,15 @@ struct TVCalendarView: View {
         }
     }
 
-    private func roundControl(_ glyph: String, x: CGFloat, action: @escaping () -> Void) -> some View {
+    private func roundControl(_ glyph: String, name: String, x: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(glyph)
                 .font(TVTheme.font(size: 14.72, css: 720))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
                 .parityLayout(text: glyph, size: 14.72, weight: Int(720), color: DesignTokens.Color.textSecondary)
                 .frame(width: 50, height: 50)
+                .parityBox("button", text: name, radius: 25, fill: DesignTokens.Color.backgroundElevated)
+                .accessibilityLabel(name)
                 .background(Circle().fill(DesignTokens.Color.backgroundElevated))
                 .overlay(Circle().stroke(DesignTokens.Stage.line.opacity(0.35), lineWidth: 1))
         }

@@ -6,10 +6,18 @@ import { readFileSync } from "node:fs";
 
 const round = (v) => Math.round(v * 100) / 100;
 
+// An accessibility entry and a styled item are one element when they carry the same text and cover mostly the same area
+// (the accessibility frame of a focusable control includes its focus margin).
+function overlaps(a, b) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 && (w * h) / Math.min(a.w * a.h, b.w * b.h) >= 0.6;
+}
+
 export function mapRaw(doc, screen, theme) {
   const styled = doc.raw.filter((e) => e.source !== "ax");
   // an accessibility text entry has no style (font, size, weight, colour): where the view reports none it is dropped, not exported bare
-  const plain = doc.raw.filter((e) => e.source === "ax" && !((e.role === "text" || e.role === "heading") && e.fontSize == null) && !styled.some((s) => s.text === e.text && Math.abs(s.rect.x - e.rect.x) < 3 && Math.abs(s.rect.y - e.rect.y) < 12));
+  const plain = doc.raw.filter((e) => e.source === "ax" && !((e.role === "text" || e.role === "heading") && e.fontSize == null) && !styled.some((s) => s.text === e.text && s.role === e.role && overlaps(s.rect, e.rect)));
   const elements = [...styled, ...plain].map((e) => {
     const out = {
       text: e.text ?? "",
