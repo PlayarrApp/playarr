@@ -80,12 +80,21 @@ def radius_of(attrs):
     return num(r, 0.0) or 0.0
 
 
-def has_gradient(attrs):
+def gradient_stops(attrs):
+    """Every colour stop of the node's gradient fill, as (r, g, b, a); empty when it has none."""
+    out = []
     for key in ("linearGradient", "radialGradient", "sweepGradient"):
         g = attrs.get(key)
-        if isinstance(g, dict) and g.get("colors"):
-            return True
-    return False
+        if isinstance(g, dict):
+            for stop in g.get("colors") or []:
+                c = argb(stop[0] if isinstance(stop, (list, tuple)) else stop)
+                if c is not None:
+                    out.append(c)
+    return out
+
+
+def has_gradient(attrs):
+    return bool(gradient_stops(attrs))
 
 
 def declared_role(attrs):
@@ -208,8 +217,13 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             fills = fill is not None and fill[3] > 0.01
             radius = radius_of(a) * scale_k(mychain)
             if kind == "Text":
-                # a Text the app declares a role for is that control itself (it draws its own fill): its lines take the role and the radius
-                text_lines(node, a, raw, here, opacity, mychain, clip, role or "text", radius if fills else 0.0)
+                # a Text the app declares a role for is that control: with its own fill or border it is a box (the control) holding glyph runs
+                # (the text); without one the runs are the control's only drawn part and carry the role
+                bordered = (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and (argb(a.get("borderColor")) or (0, 0, 0, 0))[3] > 0.01
+                control = role not in (None, "text")
+                if control and (fills or bordered):
+                    emit(role, name, box, here, clip, radius, opacity=opacity)
+                text_lines(node, a, raw, here, opacity, mychain, clip, "text" if control and (fills or bordered) else (role or "text"), 0.0 if control and (fills or bordered) else (radius if fills else 0.0))
             elif role not in (None, "text"):
                 emit("image" if kind == "Image" and role == "img" else role, name, box, here, clip, radius, opacity=opacity)
             elif kind in ("Image", "Button", "Toggle", "TextInput"):
@@ -222,7 +236,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         nclip = clip
         if raw is not None and (kind in CLIP_KINDS or str(a.get("clip", "")).lower() == "true"):
             nclip = (max(clip[0], raw[0]), max(clip[1], raw[1]), min(clip[2], raw[0] + raw[2]), min(clip[3], raw[1] + raw[3]))
-        paints = fill is not None and fill[3] >= 0.5 and opacity >= 0.5 or kind == "Image" or has_gradient(a)
+        stops = gradient_stops(a)
+        paints = fill is not None and fill[3] >= 0.5 and opacity >= 0.5 or kind == "Image" or (bool(stops) and min(c[3] for c in stops) >= 0.5)
         if box is not None and paints and kind != "Text" and visible(box, clip):
             painters.append([first, first, clip_box(box, clip), src[0]])
         for c in kids:

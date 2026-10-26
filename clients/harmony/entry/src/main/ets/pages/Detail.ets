@@ -101,6 +101,7 @@
  */
 
 import { t, tf } from '../core/Language';
+import { balanceTitle } from '../core/TitleBalance';
 import { nunito, nunitoAt, arrowFont, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
@@ -1973,7 +1974,7 @@ struct Detail {
       }
     }
     .alignItems(HorizontalAlign.Start)
-    .margin({ top: 1.8 }) // web's pills start 1.8 lower once the synopsis lines are web-height runs
+    .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 0.6 : 1.8 }) // web's pills start lower once the synopsis lines are web-height runs
   }
 
   /** The series' resume plan (web's Resume / Start button): the kicker and the label follow it, and it plays the plan's target. */
@@ -2169,7 +2170,7 @@ struct Detail {
       ForEach(
         this.rails,
         (rail: DetailRail) => {
-          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 2) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
+          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 4.3) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
             this.railHeading(rail.heading, rail.items.length.toString() + ' episodes', true)
             MediaRail({
               railId: rail.id,
@@ -2337,6 +2338,16 @@ struct Detail {
       return planSynopsis(this.detail, this.resumePlan);
     }
     return this.synopsisText();
+  }
+
+  /** The phone title broken into lines as web wraps it (a series title wraps at about 235 vp, balanced like the TV hero). */
+  private phoneTitleLines(): string[] {
+    const title: string = this.detail !== null ? this.detail.work.title : '';
+    const ui = this.getUIContext();
+    const box: number = ui.vp2px(this.detail !== null && this.detail.work.kind === 'series' ? 235 : 328);
+    return balanceTitle(title, (text: string): number => {
+      return ui.getMeasureUtils().measureText({ textContent: text, fontSize: 36, fontFamily: nunitoAt(560, 36), letterSpacing: -2.59 });
+    }, box).split('\n');
   }
 
   /** The accessible name of an action pill: Play carries the title, Download and Playback carry the title, the rest read glyph and label. */
@@ -2640,17 +2651,22 @@ struct Detail {
               .fontColor(brandInk())
               .translate({ y: -1.1 }) // web's kicker box sits 1.1 higher
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
-            Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunitoAt(560, 36))
-              
-              .fontSize(36) // measured against the static refs
-              .fontWeight(FontWeight.Medium)
-              .letterSpacing((-2.59) + (!isTvMetrics() ? -0.089 : 0)) // web -0.072em (fitted to the refs' run width)
-              .lineHeight(webLineHeight(36)).lineSpacing(webLineSpacing(34, 36)).halfLeading(true)
-              .fontColor(toResourceColor(activeColors().ink))
-              // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
-              .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
-              .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -3.2 : -1.5 }) // web's title box sits higher than ArkUI lays it out
-              .margin({ top: (34 - webLineHeight(36)) / 2, bottom: (34 - webLineHeight(36)) / 2 }) // web: the run is 49 tall in a 34 line box
+            // web: each wrapped line of the title is a run as tall as the font's content area (49), the lines only 34 apart; one Text per
+            // line (the breaks balanced like the TV hero) with the pitch from a negative margin, as ArkUI's line spacing cannot be negative
+            Column() {
+              ForEach(this.phoneTitleLines(), (line: string, index: number) => {
+                Text(line).fontFamily(nunitoAt(560, 36))
+                .fontSize(36) // measured against the static refs
+                .fontWeight(FontWeight.Medium)
+                .letterSpacing((-2.59) + (!isTvMetrics() ? -0.089 : 0)) // web -0.072em (fitted to the refs' run width)
+                .lineHeight(webLineHeight(36)).lineSpacing(webLineSpacing(34, 36)).halfLeading(true)
+                .fontColor(toResourceColor(activeColors().ink))
+                  .margin({ top: index > 0 ? 34 - webLineHeight(36) : 0 })
+              }, (line: string, index: number) => `${index}-${line}`)
+            }
+            .alignItems(HorizontalAlign.Start)
+            .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -3.2 : -1.5 }) // web's title box sits higher than ArkUI lays it out
+            .margin({ top: (34 - webLineHeight(36)) / 2, bottom: (34 - webLineHeight(36)) / 2 }) // web: the run is 49 tall in a 34 line box
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
                 .fontSize(14.4).lineHeight(webLineHeight(14.4)).halfLeading(true)

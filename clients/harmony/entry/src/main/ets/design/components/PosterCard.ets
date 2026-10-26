@@ -518,7 +518,7 @@ export struct PosterCard {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           // web phone caption: 9 vp lower than the TV one and 2.3 vp in from the card edge
           .padding(this.softCaption ? { top: 7.3, left: 2.3 } : { top: tv(TV_CAPTION_TOP_GAP), left: tv(TV_CAPTION_INSET) })
-          .margin({ bottom: this.subtitle.length > 0 ? 0 : (this.softCaption ? 3.3 : (this.variant === 'grid' ? 1.8 : 0)) }) // web: the link box ends 3.3 (phone) or 3.4 (TV grid) under a title-only caption
+          .margin({ bottom: this.subtitle.length > 0 ? 0 : (this.softCaption ? 2.1 : (this.variant === 'grid' ? 1.8 : 0)) }) // web: the link box ends 3.3 (phone) or 3.4 (TV grid) under a title-only caption
       }
 
       if (this.subtitle.length > 0 && this.episodeCaption.length === 0) {

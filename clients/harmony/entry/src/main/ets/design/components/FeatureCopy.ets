@@ -53,7 +53,7 @@ const EPISODE_TITLE_LETTER_SPACING: number = EPISODE_TITLE_FONT_SIZE * -0.035;
 const EPISODE_TITLE_LINE_HEIGHT: number = EPISODE_TITLE_FONT_SIZE * 1.15;
 const EPISODE_TITLE_MAX_CHARS: number = 24;
 const EPISODE_TITLE_MARGIN_TOP: number = 21.6;
-const EPISODE_META_MARGIN_TOP: number = 30;
+const EPISODE_META_MARGIN_TOP: number = 26.6;
 
 // Web `.tv-detail-meta`: 0.55vw chips, 0.85rem apart, the first one bolder and softer-ink, the rest muted.
 const META_CHIP_FONT_SIZE: number = 10.56;
