@@ -139,7 +139,7 @@ export struct ChoiceSegments {
             this.viewShapes(choice.value)
             Text(capitalWords(choice.label)).fontFamily(nunito(900))
               .letterSpacing(((0.4) + (isTvMetrics() ? -0.465 : 0)) + (!isTvMetrics() ? -0.468 : 0)) // web's label run is wider than ArkUI lays it out
-              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
+              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE).translate({ y: (isTvMetrics() ? -4.19 : 0) }).lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
@@ -163,7 +163,7 @@ export struct ChoiceSegments {
               .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
               .lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bold)
-              .letterSpacing((this.large && isTvMetrics() ? 0.43 : 0) + (isTvMetrics() ? -0.247 : 0)) // web's run is about 3 wider than ArkUI lays it out
+              .letterSpacing(((this.large && isTvMetrics() ? 0.43 : 0) + (isTvMetrics() ? -0.247 : 0)) + (!isTvMetrics() ? -0.075 : 0)) // web's run is about 3 wider than ArkUI lays it out
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
           .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)

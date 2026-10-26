@@ -77,7 +77,7 @@ export struct Drawer {
             .letterSpacing((isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING) + (!isTvMetrics() ? -0.078 : 0))
             .lineHeight(webLineHeight(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).lineSpacing(webLineSpacing(isTvMetrics() ? tv(57) : 0, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).halfLeading(true) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
-            .translate({ y: isTvMetrics() ? -2 : -3.2 }) // web's heading box sits higher than ArkUI lays it out
+            .translate({ y: (isTvMetrics() ? -2 : -3.2) + (isTvMetrics() ? 1.58 : 0) }) // web's heading box sits higher than ArkUI lays it out
             
         }
         .alignItems(HorizontalAlign.Start)

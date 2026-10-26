@@ -462,10 +462,10 @@ export struct ReleaseCalendar {
             .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? 0.24 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? 0.208 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).translate({ y: (isTvMetrics() ? -2.62 : 0) }).letterSpacing((isTvMetrics() ? 0.24 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).translate({ y: (isTvMetrics() ? -2.62 : 0) }).letterSpacing((isTvMetrics() ? 0.208 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? -0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).translate({ y: (isTvMetrics() ? -2.62 : 0) }).letterSpacing((isTvMetrics() ? -0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           }
           this.statusPill(itemPillTone(item, this.today), isTvMetrics() ? 6.4 : 0)
         }
@@ -656,7 +656,7 @@ export struct ReleaseCalendar {
               .borderRadius(tv(MONTH_DOT_SIZE / 2))
               .backgroundColor(toResourceColor(toneColor(itemPillTone(item, this.today))))
             Text(itemLineText(item)).fontFamily(nunitoAt(item.grouped ? 700 : 400, tv(MONTH_LINE_SIZE)))
-              .fontSize(tv(MONTH_LINE_SIZE)).lineHeight(webLineHeight(tv(MONTH_LINE_SIZE))).halfLeading(true)
+              .fontSize(tv(MONTH_LINE_SIZE)).translate({ y: (isTvMetrics() ? 1.38 : 0) }).lineHeight(webLineHeight(tv(MONTH_LINE_SIZE))).halfLeading(true)
               .fontWeight(item.grouped ? FontWeight.Bold : FontWeight.Normal)
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
@@ -1193,14 +1193,14 @@ export struct ReleaseCalendar {
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
       Column({ space: fixedHeight > 0 ? 2.4 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
         Text(item.title).fontFamily(nunitoAt(600, PHONE_ENTRY_TITLE_SIZE)) // web 640: the 610 instance is the nearest
-          .fontSize(PHONE_ENTRY_TITLE_SIZE)
+          .fontSize(PHONE_ENTRY_TITLE_SIZE).translate({ y: (!isTvMetrics() ? 1.02 : 0) })
           .fontWeight(FontWeight.Medium)
           .lineHeight(webLineHeight(PHONE_ENTRY_TITLE_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_TITLE, PHONE_ENTRY_TITLE_SIZE)).halfLeading(true)
           .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
           .fontColor(toResourceColor(activeColors().ink))
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, PHONE_ENTRY_TITLE_SIZE))
-            .fontSize(PHONE_ENTRY_TITLE_SIZE).letterSpacing((!isTvMetrics() ? -0.201 : 0))
+            .fontSize(PHONE_ENTRY_TITLE_SIZE).translate({ y: (!isTvMetrics() ? 1.06 : 0) }).letterSpacing((!isTvMetrics() ? -0.201 : 0))
             .lineHeight(webLineHeight(PHONE_ENTRY_TITLE_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_TITLE, PHONE_ENTRY_TITLE_SIZE)).halfLeading(true)
             .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
             .fontColor(toResourceColor(activeColors().inkSoft))

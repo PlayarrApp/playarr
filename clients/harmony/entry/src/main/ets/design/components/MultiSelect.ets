@@ -114,12 +114,12 @@ export struct MultiSelect {
           }, (value: string): string => value)
           Row() {
             Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CONTROL_FONT)) : nunito(680))
-              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT).letterSpacing(((isTvMetrics() ? -0.135 : 0)) + (!isTvMetrics() ? -0.197 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)).halfLeading(true)
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT).translate({ y: (!isTvMetrics() ? -1.05 : 0) }).letterSpacing(((isTvMetrics() ? -0.135 : 0)) + (!isTvMetrics() ? -0.197 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)).halfLeading(true)
               .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
             Text('⌄').fontFamily(nunitoAt(400, tv(CONTROL_FONT)))
-              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : 8.96).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : 8.96)).halfLeading(true)
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : 8.96).translate({ y: (!isTvMetrics() ? -1.38 : 0) }).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : 8.96)).halfLeading(true)
               .fontColor(toResourceColor(activeColors().inkMuted))
               .rotate({ angle: this.open ? 180 : 0 })
           }

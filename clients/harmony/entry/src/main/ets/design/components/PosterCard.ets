@@ -453,7 +453,7 @@ export struct PosterCard {
         if (this.episodeNumberOverlay.length > 0) {
           Text(this.episodeNumberOverlay).fontFamily(nunitoAt(560, isTvMetrics() ? tv(19.2) : 13))
             .width(isTvMetrics() ? tv(24) : 16)
-            .fontSize(isTvMetrics() ? tv(19.2) : 13).lineHeight(webLineHeight(isTvMetrics() ? tv(19.2) : 13)).halfLeading(true)
+            .fontSize(isTvMetrics() ? tv(19.2) : 13).translate({ y: (isTvMetrics() ? -3.12 : 0) }).lineHeight(webLineHeight(isTvMetrics() ? tv(19.2) : 13)).halfLeading(true)
             .fontWeight(600)
             .fontColor('#ffffff')
             .textAlign(TextAlign.End)

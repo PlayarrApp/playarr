@@ -2067,12 +2067,12 @@ struct Detail {
     Column({ space: phoneSeasonHeading && !isTvMetrics() ? 6.3 : tv(phoneSeasonHeading ? 7 : 6.5) - (isTvMetrics() ? 3.2 : 3.3) }) {
       Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
         
-        .letterSpacing(((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) + (isTvMetrics() ? 0.237 : 0)) // web's rail heading tracking
+        .letterSpacing((((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) + (isTvMetrics() ? 0.237 : 0)) + (!isTvMetrics() ? 0.077 : 0)) // web's rail heading tracking
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)).lineHeight(webLineHeight(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))).halfLeading(true)
         .fontColor(toResourceColor(activeColors().ink))
         .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
       Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)).lineHeight(webLineHeight(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10))).halfLeading(true) // web: 9.98 on the TV
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)).translate({ y: (!isTvMetrics() ? -1.68 : 0) }).lineHeight(webLineHeight(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10))).halfLeading(true) // web: 9.98 on the TV
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
@@ -2514,7 +2514,7 @@ struct Detail {
         .fontSize(9.2).lineHeight(webLineHeight(9.2)).halfLeading(true)
         .fontColor(brandInk())
       Text(label).fontFamily(nunitoAt(700, 8))
-        .fontSize(8).lineHeight(webLineHeight(8)).halfLeading(true)
+        .fontSize(8).letterSpacing((!isTvMetrics() ? -0.049 : 0)).lineHeight(webLineHeight(8)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
@@ -2670,7 +2670,7 @@ struct Detail {
             .margin({ top: (34 - webLineHeight(36)) / 2, bottom: (34 - webLineHeight(36)) / 2 }) // web: the run is 49 tall in a 34 line box
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
-                .fontSize(14.4).lineHeight(webLineHeight(14.4)).halfLeading(true)
+                .fontSize(14.4).letterSpacing((!isTvMetrics() ? -0.628 : 0)).lineHeight(webLineHeight(14.4)).halfLeading(true)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 
@@ -2681,7 +2681,7 @@ struct Detail {
             this.touchMetaChips()
             Column() {
               Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
-                .fontSize(11.52)
+                .fontSize(11.52).letterSpacing((!isTvMetrics() ? -0.073 : 0))
                 .fontColor(toResourceColor(activeColors().inkMuted))
                 .lineHeight(webLineHeight(11.52)).lineSpacing(webLineSpacing(16.7, 11.52)).halfLeading(true)
                 .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 10.6 })
@@ -2785,7 +2785,7 @@ struct Detail {
           .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
-          .translate({ y: -1.2 }) // web's title box sits 1.2 higher
+          .translate({ y: (-1.2) + (!isTvMetrics() ? 1.2 : 0) }) // web's title box sits 1.2 higher
       }
       .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
       .alignItems(VerticalAlign.Center)
