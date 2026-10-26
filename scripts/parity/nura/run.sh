@@ -65,5 +65,5 @@ for t in themes.split():
         n = os.path.basename(f)[:-4]
         Image.open(f).convert("RGB").crop((0, 64, 720, 1410)).save(f"{out}/{ren.get(n, n)}.png")
 PY
-  printf '{"branch":"%s","sha":"%s","pr":"%s","captured_at":"%s","server":"static server"}\n' "${BRANCH:-}" "${SHA:-}" "${PR:-}" "$(date -u +%FT%TZ)" > "$D/build.json"
+  printf '{"branch":"%s","sha":"%s","pr":"%s","captured_at":"%s","server":"static server"}\n' "${BRANCH:-}" "${SHA:-}" "${PR:-}" "$(date -u +%FT%TZ)" | tee "$D/build.json" > "$D/light/build.json"
 fi

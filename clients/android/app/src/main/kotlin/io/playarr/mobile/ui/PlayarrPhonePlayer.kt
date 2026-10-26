@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.icons.PlayarrWebIcons
 import android.app.Activity
@@ -222,7 +223,7 @@ internal fun BoxScope.PhonePlayerOverlay(
             // centred on it (as the web slider), which overflows the 6 dp track without changing the layout.
             Box(Modifier.fillMaxWidth().height(6.dp).background(Color.White.copy(alpha = 0.2f))) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(bufferedFraction).background(Color.White.copy(alpha = 0.34f)))
-                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBox("container").background(PlayerAccent))
+                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBackground("container", PlayerAccent))
                 Box(
                     Modifier
                         .align(Alignment.Center)

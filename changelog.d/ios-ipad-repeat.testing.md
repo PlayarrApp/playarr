@@ -1,0 +1,1 @@
+- Investigate iPad screenshot repeatability across same-commit runs.

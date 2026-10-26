@@ -132,7 +132,7 @@ function RoundButton(props: PlayerChromeProps & {nodeRef?: React.RefObject<View>
         ...(props.inline ? {marginHorizontal: u(15.5)} : {position: 'absolute', left: u(props.x ?? 0), top: u(props.y ?? 0)}),
         width: u(props.size),
         height: u(props.size),
-        borderRadius: 999,
+        borderRadius: u(props.size / 2),
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: props.filled ? 'rgba(255,255,255,0.14)' : props.inline ? 'transparent' : mix('#000000', 0.42),
@@ -196,8 +196,8 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
         left: u(1534.36),
         top: u(962),
         height: u(56),
-        paddingHorizontal: u(22),
-        borderRadius: 999,
+        paddingHorizontal: u(19),
+        borderRadius: u(28),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -218,7 +218,7 @@ function QualityPill(props: PlayerChromeProps): React.ReactElement {
 /** A drawn-only transport button (previous, next episode) at the web's 64 px box, dimmed like a disabled control. */
 function Decor({icon, label, x, y}: {icon: IconName; label: string; x: number; y: number}): React.ReactElement {
   return (
-    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
+    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(y), width: u(64), height: u(64), borderRadius: u(32), alignItems: 'center', justifyContent: 'center', opacity: 0.28}}>
       <Icon name={icon} size={u(20)} color="#ffffff" strokeWidth={2} />
     </View>
   );
@@ -226,7 +226,7 @@ function Decor({icon, label, x, y}: {icon: IconName; label: string; x: number; y
 
 function InlineIcon({icon, label, x, bright}: {icon: IconName; label: string; x: number; bright?: boolean}): React.ReactElement {
   return (
-    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(958), width: u(64), height: u(64), borderRadius: 999, alignItems: 'center', justifyContent: 'center'}}>
+    <View pointerEvents="none" {...lx('button', label, 50)} style={{position: 'absolute', left: u(x), top: u(958), width: u(64), height: u(64), borderRadius: u(32), alignItems: 'center', justifyContent: 'center'}}>
       <Icon name={icon} size={u(20)} color={bright ? '#ffffff' : 'rgba(255,255,255,0.34)'} strokeWidth={2} />
     </View>
   );
@@ -237,7 +237,7 @@ function MinimisePill(): React.ReactElement {
     <View
       pointerEvents="none"
       {...lx('button', 'Minimise player', 999)}
-      style={{position: 'absolute', left: u(1678), top: u(37.8), width: u(124), height: u(48), borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}
+      style={{position: 'absolute', left: u(1678), top: u(37.8), width: u(124), height: u(48), borderRadius: u(24), borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}
     >
       <Icon name="minimise" size={u(20)} color="#ffffff" strokeWidth={2} />
       <View style={{marginLeft: u(10)}}>

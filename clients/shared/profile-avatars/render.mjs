@@ -51,7 +51,18 @@ ${preset.art.join("\n")}
 `;
 }
 
+/** The artwork alone, on a transparent 100 box: for clients that draw the gradient plate themselves (web draws the art as its own picture). */
+export function artSvg(preset) {
+  const size = spec.viewBox;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+${preset.art.join("\n")}
+</svg>
+`;
+}
+
 const outDir = path.join(here, "plates");
+const artDir = path.join(here, "art");
+const ART_PNG_SIZE = 288;
 const check = process.argv.includes("--check");
 const problems = [];
 
@@ -69,25 +80,32 @@ for (const p of spec.presets) {
 }
 
 const hasRsvg = spawnSync("rsvg-convert", ["--version"]).status === 0;
-if (!check) fs.mkdirSync(outDir, { recursive: true });
+if (!check) { fs.mkdirSync(outDir, { recursive: true }); fs.mkdirSync(artDir, { recursive: true }); }
 for (const preset of spec.presets) {
   const svgPath = path.join(outDir, `${preset.id}.svg`);
   const svg = plateSvg(preset);
+  const artPath = path.join(artDir, `${preset.id}.svg`);
+  const art = artSvg(preset);
   if (check) {
+    if (!fs.existsSync(artPath) || fs.readFileSync(artPath, "utf8") !== art) problems.push(`stale ${path.relative(repo, artPath)}`);
     if (!fs.existsSync(svgPath) || fs.readFileSync(svgPath, "utf8") !== svg) problems.push(`stale ${path.relative(repo, svgPath)}`);
     continue;
   }
   fs.writeFileSync(svgPath, svg);
+  fs.writeFileSync(artPath, art);
   if (!hasRsvg) {
     console.warn("rsvg-convert not found: PNG plates not regenerated");
     continue;
   }
+  execFileSync("rsvg-convert", ["-w", String(ART_PNG_SIZE), "-h", String(ART_PNG_SIZE), "-o", path.join(artDir, `${preset.id}.png`), artPath]);
   execFileSync("rsvg-convert", ["-w", String(PNG_SIZE), "-h", String(PNG_SIZE), "-o", path.join(outDir, `${preset.id}.png`), svgPath]);
 }
 if (check && spawnSync("rsvg-convert", ["--version"]).status === 0) {
   for (const preset of spec.presets) {
     const png = path.join(outDir, `${preset.id}.png`);
     if (!fs.existsSync(png)) problems.push(`missing ${path.relative(repo, png)}`);
+    const artPng = path.join(artDir, `${preset.id}.png`);
+    if (!fs.existsSync(artPng)) problems.push(`missing ${path.relative(repo, artPng)}`);
   }
 }
 

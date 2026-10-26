@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import androidx.compose.ui.graphics.graphicsLayer
 import io.playarr.shared.designsystem.page.parityBox
@@ -800,7 +801,7 @@ private fun PlayerRoundButton(
         modifier = modifier
             .then(if (focusKey != null) Modifier.playerTracked(focusKey) else Modifier)
             .size(webVw(44f, 3.8f, 64f))
-            .parityShape(999f)
+            .parityShape(999f, alpha = if (enabled) 1f else 0.28f)
             .then(if (enabled) Modifier else Modifier.graphicsLayer { alpha = 0.28f })
             .playerFocusRing(source, CircleShape)
             .semantics { this.contentDescription = contentDescription },
@@ -1135,8 +1136,8 @@ internal fun PlayarrTelevisionControlBar(
                     )
                     .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
             )
-            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).parityBox("container").background(Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp)))
-            Box(Modifier.fillMaxWidth(progress).height(6.dp).parityBox("container").background(WebKicker, RoundedCornerShape(3.dp)))
+            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).parityBackground("container", Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp), radius = 3f))
+            Box(Modifier.fillMaxWidth(progress).height(6.dp).parityBackground("container", WebKicker, RoundedCornerShape(3.dp), radius = 3f))
             if (scrubFocused) {
                 // Enlarged, highlighted thumb (web: 24 px white disc with an accent ring) while the scrubber has focus.
                 Box(Modifier.fillMaxWidth(progress).height(24.dp), contentAlignment = Alignment.CenterEnd) {

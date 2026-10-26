@@ -327,7 +327,7 @@ Page {
         size: BusyIndicatorSize.Large
         running: page.playerBusyShouldRun()
     }
-    Label { renderType: Text.NativeRendering;
+    PLabel { renderType: Text.NativeRendering;
         anchors { centerIn: parent; margins: Theme.paddingLarge }
         width: parent.width - 2 * Theme.paddingLarge
         horizontalAlignment: Text.AlignHCenter
@@ -337,13 +337,13 @@ Page {
         color: "white"
     }
 
-    Label { renderType: Text.NativeRendering;
+    PLabel { renderType: Text.NativeRendering;
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.verticalCenter; topMargin: 70 * Tokens.u }
         visible: page.notice !== ""
         text: page.notice
         color: "white"
     }
-    Label { renderType: Text.NativeRendering;
+    PLabel { renderType: Text.NativeRendering;
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: (page.controls ? 130 * Tokens.u : 48 * Tokens.u) + Tokens.safeBottom; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
         visible: text !== ""
         text: page.cueText
@@ -404,11 +404,10 @@ Page {
                 onReleased: page.seekTo(sliderValue)
             }
         }
+        // The time code is one volatile text run (the web's player-time).
         Item {
             x: 12 * Tokens.u; y: 556.13 * Tokens.u; width: 366 * Tokens.u; height: 16.88 * Tokens.u
-            property string a11yName: timeLbl.text
-            property string parityRole: "container"
-            Label { renderType: Text.NativeRendering; id: timeLbl; anchors.centerIn: parent; text: page.mmss(page.positionMs) + "  /  " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.8) }
+            PLabel { renderType: Text.NativeRendering; id: timeLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: -2.4; font.letterSpacing: 0.27; text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs); color: "#ffffff"; property string parityRole: "container"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.56) }
         }
         PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }
         PlayerButton {
@@ -440,8 +439,8 @@ Page {
             onClicked: page.menuOpen = !page.menuOpen
         }
         // The quality control's own labels: a small HD badge and the current quality, which the web lets run over the right edge.
-        Label { renderType: Text.NativeRendering; x: 325.25 * Tokens.u; y: 593.23 * Tokens.u - 2; text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68) }
-        Label { renderType: Text.NativeRendering; x: 351.25 * Tokens.u; y: 575.23 * Tokens.u; width: 40.31 * Tokens.u; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
+        PLabel { renderType: Text.NativeRendering; x: 325.25 * Tokens.u; y: 593.23 * Tokens.u; text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68) }
+        PLabel { renderType: Text.NativeRendering; x: 351.25 * Tokens.u; y: 575.23 * Tokens.u; width: 40.31 * Tokens.u; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; lineHeightMode: Text.FixedHeight; lineHeight: 15.85 * Tokens.u
                 text: qsTr("Original · 0.3 Mbps"); color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(10.56) }
         PlayerButton { x: 127 * Tokens.u; y: 625 * Tokens.u; icon: "pHealth"; label: qsTr("Info and playback health"); parityIndex: 10 }
         PlayerButton { x: 173 * Tokens.u; y: 625 * Tokens.u; icon: "pCast"; label: qsTr("Play on another device"); parityIndex: 11 }
@@ -476,7 +475,7 @@ Page {
                 id: menuCol
                 width: parent.width
                 spacing: 4 * Tokens.u
-                Label { renderType: Text.NativeRendering; text: qsTr("Audio"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); visible: !!page.info && page.info.audio_tracks.length > 1 }
+                PLabel { renderType: Text.NativeRendering; text: qsTr("Audio"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); visible: !!page.info && page.info.audio_tracks.length > 1 }
                 Repeater {
                     model: page.info && page.info.audio_tracks.length > 1 ? page.info.audio_tracks : []
                     MenuRow {
@@ -490,7 +489,7 @@ Page {
                         onClicked: page.switchAudio(modelData)
                     }
                 }
-                Label { renderType: Text.NativeRendering; text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); topPadding: 10 * Tokens.u }
+                PLabel { renderType: Text.NativeRendering; text: qsTr("Subtitles"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); topPadding: 10 * Tokens.u }
                 MenuRow {
                     objectName: page.info && page.info.audio_tracks.length > 1 ? "parity-player-menu-off" : "parity-player-menu-first"
                     navigationInitialFocus: !page.info || page.info.audio_tracks.length <= 1
@@ -512,7 +511,7 @@ Page {
                         onClicked: { page.chooseSubtitle(modelData.id); page.menuOpen = false }
                     }
                 }
-                Label { renderType: Text.NativeRendering; text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); topPadding: 10 * Tokens.u }
+                PLabel { renderType: Text.NativeRendering; text: qsTr("Quality"); color: Tokens.brandPinkSoft; font.family: Tokens.family; font.weight: Font.Bold; font.pixelSize: Tokens.fs(13); topPadding: 10 * Tokens.u }
                 MenuRow {
                     parityRail: 1
                     parityIndex: 1000

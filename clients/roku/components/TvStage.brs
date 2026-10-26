@@ -15,6 +15,9 @@ sub init()
     m.global.observeField("themeMode", "onStageThemeChanged")
     m.keyArtLayer = m.top.findNode("keyArtLayer")
     m.keyArt = m.top.findNode("keyArt")
+    m.top.findNode("stageWash").id = "a11y|container|0|"
+    m.keyArtVeil = m.top.findNode("keyArtVeil")
+    m.keyArtVeil.id = "a11y|fill|0|"
     m.keyArtRetryTimer = m.top.findNode("keyArtRetryTimer")
     m.keyArtRetryTimer.ObserveField("fire", "onKeyArtRetry")
     m.keyArt.ObserveField("loadStatus", "onKeyArtLoadStatus")
@@ -99,13 +102,18 @@ sub onKeyArtUriChange()
     sampleStageArtStatus()
     ' The server bake is already greyscale and faded; the web draws it fainter still. Measured against the live web (mean luminance of
     ' the art zone over the page background): dark 0.3, light 0.15.
+    fade = 0.4
+    web = 0.72
     if Instr(1, uri, "style=stage-light") > 0
-        m.keyArt.opacity = 0.15
+        fade = 0.15
+        web = 0.24
     else if Instr(1, uri, "style=stage") > 0
-        m.keyArt.opacity = 0.3
-    else
-        m.keyArt.opacity = 0.4
+        fade = 0.3
     end if
+    m.keyArt.opacity = web
+    veil = Int((1 - fade / web) * 255 + 0.5)
+    m.keyArtVeil.color = ThemeColor("surface", veil)
+    ThemeSetRole(m.keyArtVeil, "surface", veil)
     m.keyArtRetryTimer.duration = 10
     m.keyArtRetryTimer.control = "start"
     if m.keyArtLayer <> invalid then m.keyArtLayer.opacity = 1
@@ -118,7 +126,7 @@ end sub
 
 sub onStageTitleChange()
     ' Web .tv-title-panel h1: 69.1 px, weight 560, -0.075em tracking, 62.2 px lines, max-width 9ch (373 px), text-wrap: balance.
-    m.stageTitleLabel.spec = { text: m.top.stageTitle, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true }
+    m.stageTitleLabel.spec = { text: m.top.stageTitle, size: 69.12, weight: 560, tracking: -4.98, role: "ink", width: 373.2, lineHeight: 62.208, maxLines: 3, balance: true, aria: "heading" }
     layoutStageText()
 end sub
 

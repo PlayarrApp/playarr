@@ -33,7 +33,7 @@ internal sealed class CalendarLinkDrawer
         Ui.Paragraph(Root, "Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", 1606, 163.4f, 13.824f, 400, t.InkMuted, 267, 20.3f);
         var box = Ui.Box(1606, 258.4f, 268, 44, t.Surface, 8);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
-        Sem.Tag(box, "textbox", "");
+        box.ClippingMode = ClippingModeType.ClipChildren; // the link text overflows its box and is clipped there
         box.Add(Ui.Text(link, 13, 12.5f, 12.8f, 400, t.Ink, 242, 19, family: Ui.Mono));
         Root.Add(box);
         var copy = Ui.Box(1606, 312.9f, 106, 58, t.Accent, 29);

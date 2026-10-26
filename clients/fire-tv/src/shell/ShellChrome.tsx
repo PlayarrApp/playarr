@@ -13,6 +13,7 @@ import {mix} from '../theme/color';
 import {textRun} from '../theme/fonts';
 import {sw} from '../theme/scale';
 import {useTheme} from '../theme/ThemeProvider';
+import {T} from '../tv/kit';
 import {appNow, formatClockDate, formatClockTime, onParityClockChange} from './clock';
 import {Icon, type IconName} from './icons';
 import {PlayarrLogo} from './Logo';
@@ -145,15 +146,11 @@ function RailLink({
       }}
     >
       <Icon name={item.icon} size={sw(20)} color={ink} />
-      <Text
-        {...lf(8.832, 680, 8.832)}
-        style={[
-          textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
-          {color: ink, marginTop: sw(4.8), fontSize: sw(8.832)},
-        ]}
-      >
-        {item.label}
-      </Text>
+      <View style={{marginTop: sw(4.8)}}>
+        <T size={8.832} weight={680} ls={0.309} lh={8.832} color={ink} lines={1}>
+          {item.label}
+        </T>
+      </View>
     </Pressable>
   );
 }
@@ -253,9 +250,9 @@ export function ShellClock({right}: {right: number}): React.ReactElement {
   }, []);
   return (
     <View style={{position: 'absolute', top: sw(60.2), right: sw(1920 - right), height: sw(42), flexDirection: 'row', alignItems: 'center'}}>
-      <Text {...lf(17.28, 760, 25.92, true)} style={[textRun(17.28, 760, {letterSpacing: -0.5184}), {color: colour.ink, fontSize: sw(17.28)}]}>{formatClockTime(now)}</Text>
+      <Text {...lf()} style={[textRun(17.28, 760, {letterSpacing: -0.5184}), {color: colour.ink, fontSize: sw(17.28)}]}>{formatClockTime(now)}</Text>
       <Text
-        {...lf(11.136, 640, 12.25, true)}
+        {...lf()}
         style={[
           textRun(11.136, 640, {letterSpacing: 0.4454}),
           {color: colour.ink, marginLeft: sw(11.2), textTransform: 'uppercase', fontSize: sw(11.136)},
@@ -329,23 +326,18 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
           <View {...lx('container', '', 50)} style={{width: sw(20), height: sw(20)}}>
             {profileId ? <ProfileAvatar profileId={profileId} size={sw(20)} /> : null}
           </View>
-          <Text
-            numberOfLines={1}
-            {...lf(8.832, 680, 8.832)}
-            style={[
-              textRun(8.832, 680, {letterSpacing: 0.309, lineHeight: 8.832}),
-              {color: ink, marginTop: sw(4.8), maxWidth: sw(58), fontSize: sw(8.832)},
-            ]}
-          >
-            {shortName}
-          </Text>
+          <View style={{marginTop: sw(4.8), maxWidth: sw(58)}}>
+            <T size={8.832} weight={680} ls={0.309} lh={8.832} color={ink} lines={1}>
+              {shortName}
+            </T>
+          </View>
         </Pressable>
       </View>
       <Text
-        {...lf(8, 700)}
+        {...lf()}
         style={[
           textRun(8, 700, {letterSpacing: 0.32, mono: true}),
-          {position: 'absolute', left: sw(GROUP_X), width: sw(78), textAlign: 'center', top: sw(1038), color: colour.ink, fontSize: sw(8)},
+          {position: 'absolute', left: sw(GROUP_X), width: sw(78), textAlign: 'center', top: sw(1036.5), color: colour.ink, fontSize: sw(8)},
         ]}
       >
         {`v${version}`}

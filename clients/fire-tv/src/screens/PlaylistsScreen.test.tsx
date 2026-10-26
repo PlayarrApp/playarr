@@ -75,7 +75,7 @@ describe('PlaylistsScreen route params from Search', () => {
 
     // Re-enter the playlist route using the detail's back target and params; its header must still return to Search.
     const playlistReturn = renderScreen({playlistId: 'playlist-root', trackId: 'playlist-child', backTo: ROUTES.search}, nav);
-    const back = playlistReturn.renderer.root.findByProps({accessibilityLabel: 'Back'});
+    const back = playlistReturn.renderer.root.findByProps({accessibilityLabel: 'Back to Home'});
     act(() => back.props.onPress());
     expect(nav.navigate).toHaveBeenCalledWith(ROUTES.search, undefined);
   });
@@ -91,7 +91,7 @@ describe('PlaylistsScreen route params from Search', () => {
     expect(renderer.root.findAllByType(Text).some((node) => node.props.children === 'Neutral Root')).toBe(false);
     expect(renderer.root.findAllByType(Text).some((node) => node.props.children === 'Neutral Child')).toBe(false);
     expect(fetchMock.mock.calls.map(([input]) => String(input instanceof Request ? input.url : input)).filter((url) => url.includes('/items'))).toHaveLength(0);
-    const back = renderer.root.findByProps({accessibilityLabel: 'Back'});
+    const back = renderer.root.findByProps({accessibilityLabel: 'Back to Home'});
     expect(() => act(() => back.props.onPress())).not.toThrow();
   });
 });

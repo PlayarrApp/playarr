@@ -101,7 +101,7 @@
  */
 
 import { t, tf } from '../core/Language';
-import { nunito, nunitoAt, arrowFont } from '../design/Typography';
+import { nunito, nunitoAt, arrowFont, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
@@ -1726,7 +1726,7 @@ struct Detail {
   @Builder
   private playTriangle(): void {
     Text('\u25B6').fontFamily(nunito(400)) // web draws the glyph (7.3 x 13 at 9.5 vp)
-      .fontSize(9.5)
+      .fontSize(9.5).lineHeight(webLineHeight(9.5)).halfLeading(true)
       .fontColor(this.playInk())
   }
 
@@ -1744,7 +1744,7 @@ struct Detail {
     Row({ space: Spacing.sm }) {
       if (isTvMetrics()) {
         Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE))
-          .fontSize(PLAY_BUTTON_ICON_SIZE)
+          .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
           .fontColor(this.playInk())
       } else {
         this.playTriangle()
@@ -1752,7 +1752,7 @@ struct Detail {
       Text(this.primaryLabel()).fontFamily(nunitoAt(700, isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)
+        .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11).lineHeight(webLineHeight(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.playInk())
     }
@@ -1865,11 +1865,11 @@ struct Detail {
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
       Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)))
-        .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
+        .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))).halfLeading(true)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
         .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
-        .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
+        .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
         .translate({ y: primary ? 1.5 : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
@@ -1973,6 +1973,7 @@ struct Detail {
       }
     }
     .alignItems(HorizontalAlign.Start)
+    .margin({ top: 1.8 }) // web's pills start 1.8 lower once the synopsis lines are web-height runs
   }
 
   /** The series' resume plan (web's Resume / Start button): the kicker and the label follow it, and it plays the plan's target. */
@@ -2019,7 +2020,7 @@ struct Detail {
     Column({ space: tv(8) }) {
       Stack() {
         Text(initialsOf((item as CastRow).name)).fontFamily(nunitoAt(500, tv(CAST_INITIALS_SIZE)))
-          .fontSize(tv(CAST_INITIALS_SIZE))
+          .fontSize(tv(CAST_INITIALS_SIZE)).lineHeight(webLineHeight(tv(CAST_INITIALS_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.6))
         if ((item as CastRow).headshot.length > 0) {
@@ -2038,7 +2039,7 @@ struct Detail {
       .focusable(true)
       .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
       Text((item as CastRow).name).fontFamily(nunitoAt(400, tv(12)))
-        .fontSize(tv(12))
+        .fontSize(tv(12)).lineHeight(webLineHeight(tv(12))).halfLeading(true)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -2062,15 +2063,15 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 6.5) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 6.5) - (isTvMetrics() ? 3.2 : 0) }) {
       Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
         .id('px:heading:' + heading)
         .letterSpacing((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) // web's rail heading tracking
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)).lineHeight(webLineHeight(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))).halfLeading(true)
         .fontColor(toResourceColor(activeColors().ink))
         .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
       Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)) // web: 9.98 on the TV
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)).lineHeight(webLineHeight(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10))).halfLeading(true) // web: 9.98 on the TV
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
@@ -2446,7 +2447,7 @@ struct Detail {
     Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
-          .fontSize(10.24)
+          .fontSize(10.24).lineHeight(webLineHeight(10.24)).halfLeading(true)
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
       }, (chip: string, index: number): string => index.toString() + chip)
@@ -2462,13 +2463,13 @@ struct Detail {
       if (glyph.length > 0) {
         // web: the pill glyphs are the brand pink (accent in light)
         Text(glyph).fontFamily(nunito(400))
-          .fontSize(size <= 8 ? 9.2 : 12.88) // web's glyph sizes
+          .fontSize(size <= 8 ? 9.2 : 12.88).lineHeight(webLineHeight(size <= 8 ? 9.2 : 12.88)).halfLeading(true) // web's glyph sizes
           .fontWeight(FontWeight.Normal)
           .fontColor(brandInk())
       }
       // web: the 8 vp pills (Download, Add to ...) are bold in the ink colour, the larger Playback pill medium
       Text(label).fontFamily(nunitoAt(700, size))
-        .fontSize(size)
+        .fontSize(size).lineHeight(webLineHeight(size)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
@@ -2493,10 +2494,10 @@ struct Detail {
   private touchSeriesAction(label: string, onTap: () => void): void {
     Row({ space: 8.79 }) {
       Text('+').fontFamily(nunito(400))
-        .fontSize(9.2)
+        .fontSize(9.2).lineHeight(webLineHeight(9.2)).halfLeading(true)
         .fontColor(brandInk())
       Text(label).fontFamily(nunitoAt(700, 8))
-        .fontSize(8)
+        .fontSize(8).lineHeight(webLineHeight(8)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
@@ -2521,7 +2522,7 @@ struct Detail {
       Row({ space: 6 }) {
         this.playTriangle()
         Text(this.primaryLabel()).fontFamily(nunitoAt(700, 11))
-          .fontSize(11)
+          .fontSize(11).lineHeight(webLineHeight(11)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .maxLines(1)
           .fontColor(toResourceColor(activeColors().bg))
@@ -2626,7 +2627,7 @@ struct Detail {
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column() {
             Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunitoAt(820, 10.56))
-              .fontSize(10.56)
+              .fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true)
               .height(16)
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(0.8)
@@ -2639,14 +2640,14 @@ struct Detail {
               .fontSize(36) // measured against the static refs
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-2.59) // web -0.072em (fitted to the refs' run width)
-              .lineHeight(34)
+              .lineHeight(webLineHeight(36)).lineSpacing(webLineSpacing(34, 36)).halfLeading(true)
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
               .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
               .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -4.9 : -3.2 }) // web's title box sits higher than ArkUI lays it out
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
-                .fontSize(14.4)
+                .fontSize(14.4).lineHeight(webLineHeight(14.4)).halfLeading(true)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().inkSoft))
                 .id('px:heading:' + planEpisodeTitle(this.detail, this.resumePlan))
@@ -2659,7 +2660,7 @@ struct Detail {
               Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
                 .fontSize(11.52)
                 .fontColor(toResourceColor(activeColors().inkMuted))
-                .lineHeight(16.7)
+                .lineHeight(webLineHeight(11.52)).lineSpacing(webLineSpacing(16.7, 11.52)).halfLeading(true)
                 .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
                 .maxLines(3)
                 // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
@@ -2741,7 +2742,7 @@ struct Detail {
         .hitTestBehavior(HitTestMode.None)
       Row({ space: 10 }) {
         Text('←').fontFamily(arrowFont(720))
-          .fontSize(12.8)
+          .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
           .fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .textAlign(TextAlign.Center)
@@ -2757,7 +2758,7 @@ struct Detail {
           })
         Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
           .id('px:heading:' + this.phoneKindTitle())
-          .fontSize(21.6)
+          .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
           .letterSpacing(-0.972)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))

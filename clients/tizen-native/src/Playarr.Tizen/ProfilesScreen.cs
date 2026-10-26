@@ -26,7 +26,6 @@ internal sealed class ProfilesScreen : IPage
     {
         _env = env; _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
-        _root.BackgroundColor = Ui.C(_t.Bg);
         _root.Add(new ImageView(Ui.ResPath("logo.png")) { PositionX = 60.6f, PositionY = 60.2f, Size = new Size(42, 42) });
         _root.Add(Ui.Text("Profiles", 0, 162, 10.368f, 800, _t.BrandInk, 1920, 15.552f, HorizontalAlignment.Center, upper: true, spacing: 1.35f));
         _root.Add(Sem.Tag(Ui.Text("Who’s watching?", 0, 184.8f, 80.64f, 500, _t.Ink, 1920, 76.6f, HorizontalAlignment.Center, spacing: -6.24f), "heading"));
@@ -86,20 +85,17 @@ internal sealed class ProfilesScreen : IPage
 
     private void AddAvatar(float x, string name, string sub, string preset, string label, Action select)
     {
-        var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, Circle + 120) };
+        var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, 301.63f) }; // web: the card is the circle and its two caption lines
         var art = new ImageView(Ui.ResPath($"avatars/{preset}.png")) { Size = new Size(Circle, Circle), CornerRadius = Circle / 2 };
         var cardFocused = false;
         float nameBase = 0, subBase = 0;
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
-        var ring = Ring.Make(Circle, Circle, Circle / 2, new Rgba(1, 1, 1)); ring.Show(false);
+        var (ring, glow) = Widgets.RailRing(_t, Circle, Circle, Circle / 2);
         var nameL = Ui.Text(name, 0, Circle + 8.4f, 17.28f, 700, _t.Ink, Circle, 25.92f, HorizontalAlignment.Center);
         var subL = Ui.Text(sub, 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f);
         var disc = new View { Size = new Size(Circle, Circle) };
         Sem.Tag(disc, "container");
-        Sem.Tag(art, "none");
-        // web: the picture keeps its size while the card scales and lifts around it
-        holder.Add(Sem.Tag(new View { Size = new Size(1, 1) }, "image"));
-        disc.Add(art); disc.Add(ring);
+        disc.Add(glow); disc.Add(art); disc.Add(ring);
         nameBase = nameL.PositionY; subBase = subL.PositionY;
         holder.Add(disc); holder.Add(nameL); holder.Add(subL);
         Sem.Tag(holder, "button", label);
@@ -110,18 +106,16 @@ internal sealed class ProfilesScreen : IPage
             Style = f =>
             {
                 cardFocused = f;
-                // web: the whole card scales 1.045 about its centre and lifts 8 px, its captions with it
-                var k = f ? 1.045f : 1f; var cx = Circle * 0.045f / 2;
-                nameL.Scale = new Vector3(k / Ui.TextScale, k / Ui.TextScale, 1); subL.Scale = nameL.Scale;
-                nameL.PositionX = f ? -cx : 0; subL.PositionX = f ? -cx : 0;
-                nameL.PositionY = nameBase + (f ? (nameBase - 150.8f) * 0.045f - 8 : 0); subL.PositionY = subBase + (f ? (subBase - 150.8f) * 0.045f - 8 : 0);
-                disc.Scale = f ? new Vector3(1.08f, 1.08f, 1) : new Vector3(1, 1, 1); disc.PositionY = f ? -9.4f : 0; ring.Show(f); },
+                // web: the whole card scales 1.045 about its centre and lifts 8 px; the circle grows a further 3.5 % inside it
+                holder.Scale = f ? new Vector3(1.045f, 1.045f, 1) : new Vector3(1, 1, 1); holder.PositionY = CircleY + (f ? -8 : 0);
+                disc.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1);
+                ring.Show(f); glow.Show(f); },
         });
     }
 
     private void AddAdd(float x)
     {
-        var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, Circle + 120) };
+        var holder = new View { PositionX = x, PositionY = CircleY, Size = new Size(Circle, 301.63f) };
         // web .profile-card-add: the brand wash, sampled from the web capture (top to bottom); the soft top-left highlight is not drawn
         var wash = _t.Name == "dark"
             ? Ui.Gradient(0, 0, Circle, Circle, false, (0f, Rgba.Of(84, 36, 52, 1f)), (1f, Rgba.Of(145, 40, 76, 1f)))
@@ -132,8 +126,8 @@ internal sealed class ProfilesScreen : IPage
         Sem.Tag(disc, "container");
         disc.Add(wash);
         disc.Add(Ui.Text("+", 0, 64.4f, 76.8f, 300, _t.InkSoft, Circle, 115.2f, HorizontalAlignment.Center));
-        var ring = Ring.Make(Circle, Circle, Circle / 2, new Rgba(1, 1, 1)); ring.Show(false);
-        disc.Add(ring);
+        var (ring, glow) = Widgets.RailRing(_t, Circle, Circle, Circle / 2);
+        disc.Add(glow); disc.Add(ring);
         holder.Add(disc);
         Sem.Tag(holder, "button", "+ Sign in ADD ANOTHER PROFILE");
         holder.Add(Ui.Text("Sign in", 0, Circle + 8.4f, 17.28f, 700, _t.InkSoft, Circle, 25.92f, HorizontalAlignment.Center));
@@ -143,7 +137,7 @@ internal sealed class ProfilesScreen : IPage
         {
             Rect = () => new Box(x, CircleY, Circle, Circle), Label = "sign in, add another profile",
             Select = () => _env.SignOut(),
-            Style = f => { disc.Scale = f ? new Vector3(1.08f, 1.08f, 1) : new Vector3(1, 1, 1); ring.Show(f); },
+            Style = f => { holder.Scale = f ? new Vector3(1.045f, 1.045f, 1) : new Vector3(1, 1, 1); holder.PositionY = CircleY + (f ? -8 : 0); disc.Scale = f ? new Vector3(1.035f, 1.035f, 1) : new Vector3(1, 1, 1); ring.Show(f); glow.Show(f); },
         });
     }
 
@@ -157,7 +151,7 @@ internal sealed class ProfilesScreen : IPage
             box.Add(Ui.Icon("log-out", 17, 13, 18, _t.InkSoft));
             box.Add(Ui.Text(text, 42, 13.9f, 10.752f, 700, _t.InkSoft, w - 42, 16.128f));
         }
-        else if (text.Length > 0) { var tl = Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center); box.Add(y >= 900 ? Sem.Tag(tl, "button") : tl); }
+        else if (text.Length > 0) { var tl = Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center); box.Add(tl); }
         else box.Add(Ui.Icon("settings", 13, 13, 18, _t.Brand));
         var ring = Ring.Make(w, 44, 22, new Rgba(1, 1, 1)); ring.Show(false);
         box.Add(ring);

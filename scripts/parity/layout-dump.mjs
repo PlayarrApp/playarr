@@ -21,6 +21,13 @@ export function layoutPageFn(volatile) {
       return [q[0] * 255, q[1] * 255, q[2] * 255, q.length > 3 ? q[3] : 1];
     }
     var m = /rgba?\(([^)]+)\)/.exec(c);
+    if (!m && /^(oklab|oklch|lab|lch|hwb|hsl|hsla|color)\(/.test(c)) {
+      /* a computed colour in another space (color-mix in oklab, ...): let the browser convert it to sRGB */
+      var cv = document.createElement("canvas"); cv.width = cv.height = 1;
+      var cx = cv.getContext("2d"); cx.clearRect(0, 0, 1, 1); cx.fillStyle = c; cx.fillRect(0, 0, 1, 1);
+      var px = cx.getImageData(0, 0, 1, 1).data;
+      return [px[0], px[1], px[2], px[3] / 255];
+    }
     if (!m) return [0, 0, 0, 0];
     var p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);
     return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
@@ -84,6 +91,26 @@ export function layoutPageFn(volatile) {
     return lines.filter(function (x) { return x.l && norm(x.text); }).map(function (x) {
       return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left, h: x.l.bottom - x.l.top };
     });
+  };
+  /* A single line cut by text-overflow: ellipsis shows the characters that fit before the ellipsis, then "…". Returns null when nothing is cut. */
+  var ellipsise = function (el, nodes, cs) {
+    var box = el.getBoundingClientRect();
+    var limit = box.right - (parseFloat(cs.paddingRight) || 0) - (parseFloat(cs.borderRightWidth) || 0);
+    var cv = document.createElement("canvas").getContext("2d");
+    cv.font = cs.font;
+    var ellW = cv.measureText("\u2026").width;
+    var range = document.createRange(), text = "", l = null;
+    for (var a = 0; a < nodes.length; a++) {
+      for (var i = 0; i < nodes[a].data.length; i++) {
+        range.setStart(nodes[a], i); range.setEnd(nodes[a], i + 1);
+        var cr = range.getBoundingClientRect();
+        if (cr.width <= 0) continue;
+        if (cr.right > limit - ellW + 0.01) return text.replace(/\s+$/, "") && l ? { text: shown(norm(text), cs) + "\u2026", left: l.left, top: l.top, right: Math.min(limit, l.right + ellW), bottom: l.bottom } : null;
+        text += nodes[a].data.charAt(i);
+        if (/\S/.test(nodes[a].data.charAt(i))) l = l ? { left: Math.min(l.left, cr.left), top: Math.min(l.top, cr.top), right: Math.max(l.right, cr.right), bottom: Math.max(l.bottom, cr.bottom) } : { left: cr.left, top: cr.top, right: cr.right, bottom: cr.bottom };
+      }
+    }
+    return null;
   };
   var clipped = function (el, r) {
     var left = r.left, top = r.top, right = r.right, bottom = r.bottom;
@@ -183,12 +210,13 @@ export function layoutPageFn(volatile) {
     var vol = matchVolatile(el, own);
     if (vol && vol.host !== el) continue;
     if (vol && vol.entry.omit) continue;
+    var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var r = el.getBoundingClientRect();
     if (vol && (own || vol.entry.selector && norm(el.innerText))) {
       var range = document.createRange();
       range.selectNodeContents(el);
       var rr = range.getBoundingClientRect();
-      if (rr.width >= 1 && rr.height >= 1) r = rr;
+      if (rr.width >= 1 && rr.height >= 1 && !control) r = rr; /* a control keeps its own box */
     } else if (own) {
       var rg = document.createRange();
       rg.setStartBefore(texts[0]);
@@ -196,11 +224,15 @@ export function layoutPageFn(volatile) {
       var tr = rg.getBoundingClientRect();
       if (tr.width >= 1 && tr.height >= 1) r = tr;
     }
+    var cut = own && !vol && cs.textOverflow === "ellipsis" && cs.overflowX !== "visible" && el.scrollWidth > el.clientWidth + 1 ? ellipsise(el, texts, cs) : null;
+    if (cut) {
+      own = cut.text;
+      r = { left: cut.left, top: cut.top, right: cut.right, bottom: cut.bottom, width: cut.right - cut.left, height: cut.bottom - cut.top };
+    }
     if (r.width < 1 || r.height < 1 || r.right <= 0 || r.bottom <= 0 || r.left >= innerWidth || r.top >= innerHeight) continue;
     if (clipped(el, r)) continue;
     var op = effOpacity(el);
     if (op <= 0) continue;
-    var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var media = tag === "img" || tag === "svg" || tag === "canvas" || tag === "video";
     var painted = visibleFill(cs, el);
     if (!vol && !own && !control && !media && !painted) continue;
@@ -214,18 +246,47 @@ export function layoutPageFn(volatile) {
     /* a percentage resolves against the box (min side for round/pill); any radius is capped at half the short side */
     if (/%$/.test(rawRadius)) radius = parseFloat(rawRadius) / 100 * Math.min(box.width, box.height);
     radius = Math.min(radius, Math.min(box.width, box.height) / 2);
+    /* A control with its own text keeps its CSS border box as the control element; the text is a separate text element with glyph-run bounds. */
+    var split = control && !!own && !vol;
+    if (split && box.width >= 1 && box.height >= 1 && !clipped(el, box) && !occluded(el, box)) {
+      var crow = {
+        text: norm(label) || own,
+        role: roleOf(el, false),
+        rect: { x: round(box.left), y: round(box.top), w: round(box.width), h: round(box.height) },
+        color: null,
+        background: toHex(backdrop(el)),
+        fontSize: null,
+        fontWeight: null
+      };
+      if (radius > 0) { crow.radius = round(radius); if (!painted) crow.painted = false; }
+      if (op < 1) crow.opacity = round(op);
+      rows.push(crow);
+    }
     var row = {
       text: vol && !vol.entry.selector ? own : vol ? norm(el.innerText) : text,
-      role: roleOf(el, !!own),
+      role: split ? "text" : roleOf(el, !!own),
       rect: { x: round(r.left), y: round(r.top), w: round(r.width), h: round(r.height) },
       color: own ? toHex(gradient || fill) : null,
       background: toHex(backdrop(el)),
       fontSize: own ? round(parseFloat(cs.fontSize) * zoom) : null,
       fontWeight: own ? Number(cs.fontWeight) || 400 : null
     };
+    if (vol && !own) {
+      /* volatile only waives the text content: keep the real text style (first text descendant) and a control's accessible name */
+      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), tn = walker.nextNode();
+      while (tn && !norm(tn.textContent)) tn = walker.nextNode();
+      if (tn && tn.parentElement) {
+        var tcs = getComputedStyle(tn.parentElement);
+        row.color = toHex(parse(tcs.webkitTextFillColor || tcs.color));
+        row.fontSize = round(parseFloat(tcs.fontSize) * zoom);
+        row.fontWeight = Number(tcs.fontWeight) || 400;
+      }
+      if (control && norm(label)) row.text = norm(label);
+    }
     if (gradient) row.colorGradient = true;
-    if (radius > 0) { row.radius = round(radius); if (!painted) row.painted = false; }
-    if (op < 1) row.opacity = round(op);
+    if (radius > 0 && !split) { row.radius = round(radius); if (!painted) row.painted = false; }
+    if (op < 1 && !(vol && vol.entry.opacityVolatile)) row.opacity = round(op);
+    if (vol && vol.entry.opacityVolatile) row.opacityVolatile = true;
     if (vol) {
       row.volatile = vol.entry.name;
       if (vol.entry.clock) row.clock = true;

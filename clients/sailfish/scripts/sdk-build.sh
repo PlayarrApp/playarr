@@ -45,6 +45,7 @@ build|test)
       # Shared files live outside clients/sailfish; stage them into the source tree for the build.
       mkdir -p $t/assets/avatars $t/assets/fonts
       cp /repo/clients/shared/profile-avatars/plates/*.png $t/assets/avatars/
+      mkdir -p $t/assets/avatar-art && cp /repo/clients/shared/profile-avatars/art/*.png $t/assets/avatar-art/
       cp /repo/docs/parity/fonts/NunitoSans-wght-web.ttf $t/assets/fonts/
       tar -C /tmp/s -cjf $top/SOURCES/harbour-playarr-'"$version"'.tar.bz2 harbour-playarr-'"$version"'
       cp /repo/clients/sailfish/rpm/harbour-playarr.spec $top/SPECS/

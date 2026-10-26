@@ -3,7 +3,7 @@
  * accent colour and a bold label, on surface-soft with a 14 radius, 14 apart. Lives in the shared `Drawer` body.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv, isTvMetrics } from '../Metrics';
@@ -44,11 +44,11 @@ export struct ActionList {
           Row() {
             Text(action.glyph).fontFamily(nunitoAt(400, isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)))
               .width(tv(GLYPH_COLUMN))
-              .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))
+              .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)).lineHeight(webLineHeight(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))).halfLeading(true)
               .fontColor(toResourceColor(BRAND_PINK))
               .translate({ y: isTvMetrics() ? -1.5 : -1.9 }) // web's glyph box sits higher
             Text(action.label).fontFamily(nunitoAt(700, isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE))
-              .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)
+              .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bold)
               .letterSpacing(0.3) // web's label run is a little wider than ArkUI lays it out
               .fontColor(toResourceColor(activeColors().ink))

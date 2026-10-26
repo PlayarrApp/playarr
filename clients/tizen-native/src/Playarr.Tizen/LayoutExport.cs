@@ -14,6 +14,11 @@ internal static class Sem
 {
     internal static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, string> Roles = new();
 
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<View, object> Overlays = new();
+    /// <summary>A generated gradient or scrim image: translucent by construction, so it never hides what is under it.</summary>
+    public static T Overlay<T>(T v) where T : View { Overlays.Add(v, v); return v; }
+    internal static bool IsOverlay(View v) => Overlays.TryGetValue(v, out _);
+
     public static T Tag<T>(T v, string role, string? name = null) where T : View
     {
         Roles.Remove(v); Roles.Add(v, role);
@@ -47,21 +52,7 @@ internal static class LayoutExport
         var ctx = new Ctx { VW = win.Width, VH = win.Height };
         var bg = Window.Instance.BackgroundColor;
         Walk(ctx, root, 0, 0, 1, 1, (bg.R, bg.G, bg.B), 1f, new RectF(0, 0, ctx.VW, ctx.VH), Array.Empty<int>());
-        var nodes = DropOccluded(ctx.Nodes);
-        // the background of an element is what is painted behind and including it at its centre: every earlier (or own) translucent fill over the window colour, in paint order
-        var fills = ctx.Nodes.Where(f => f.Fill is not null).ToList();
-        for (var i = 0; i < nodes.Count; i++)
-        {
-            var n = nodes[i]; var px = Math.Clamp(n.X + n.W / 2, 0, ctx.VW - 1); var py = Math.Clamp(n.Y + n.H / 2, 0, ctx.VH - 1); // the visible part's centre
-            (float R, float G, float B) c = (bg.R, bg.G, bg.B);
-            foreach (var f in fills)
-            {
-                if (f.Order > n.Order || f.Id == n.Id && n.Text.Length > 0 && n.FontSize is not null) continue;
-                if (px < f.X || px > f.X + f.W || py < f.Y || py > f.Y + f.H) continue;
-                var a = f.Fill!.Value.A; c = (c.R * (1 - a) + f.Fill.Value.R * a, c.G * (1 - a) + f.Fill.Value.G * a, c.B * (1 - a) + f.Fill.Value.B * a);
-            }
-            nodes[i] = n with { Background = Hex(c.R, c.G, c.B, 1) };
-        }
+        var nodes = DropOccluded(ctx.Nodes, ctx.VW, ctx.VH);
         var sb = new StringBuilder();
         string N(float v) => v.ToString("0.##", CultureInfo.InvariantCulture);
         sb.Append("{\"screen\":").Append(Q(screen)).Append(",\"theme\":").Append(Q(theme)).Append(",\"viewport\":{\"w\":").Append(N(ctx.VW)).Append(",\"h\":").Append(N(ctx.VH)).Append(",\"dpr\":1},\"clockPinned\":").Append(clockPinned ? "true" : "false").Append(",\"elements\":[");
@@ -90,7 +81,7 @@ internal static class LayoutExport
     private static string Q(string s) => Newtonsoft.Json.JsonConvert.ToString(s);
 
     // web: an element is dropped when every one of 3x3 samples of its box lands on a later paint (an image, or a fill of alpha 0.5 or more) outside its own subtree
-    private static List<Node> DropOccluded(List<Node> all)
+    private static List<Node> DropOccluded(List<Node> all, float vw, float vh)
     {
         var painters = all.Where(p => p.PaintAlpha >= 0.5f).ToList();
         var kept = new List<Node>();
@@ -100,8 +91,9 @@ internal static class LayoutExport
             foreach (var fy in new[] { 0.2f, 0.5f, 0.8f })
                 foreach (var fx in new[] { 0.2f, 0.5f, 0.8f })
                 {
-                    var px = n.X + n.W * fx; var py = n.Y + n.H * fy;
-                    if (px < 0 || py < 0) { continue; }
+                    // sampled inside the part of the box that is on screen
+                    var vx0 = Math.Max(n.X, 0); var vy0 = Math.Max(n.Y, 0); var vx1 = Math.Min(n.X + n.W, vw); var vy1 = Math.Min(n.Y + n.H, vh);
+                    var px = vx0 + (vx1 - vx0) * fx; var py = vy0 + (vy1 - vy0) * fy;
                     var hit = painters.Any(p => p.Order > n.Order && p.Id != n.Id && !p.Chain.Contains(n.Id) && !n.Chain.Contains(p.Id) && px >= p.X && px <= p.X + p.W && py >= p.Y && py <= p.Y + p.H);
                     if (!hit) { covered = false; break; }
                 }
@@ -131,12 +123,12 @@ internal static class LayoutExport
 
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
-                var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + run.X * csx, cy + run.Y * csy, run.W * csx, run.H * csy))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
+                var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + run.X * csx, cy + run.Y * csy, run.W * csx, run.H * csy).Intersect(clip))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
                 foreach (var (runText, r) in runs)
                 {
                     if (!r.Overlaps(clip)) continue;
-                    var c = label.TextColor;
-                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * Math.Abs(csx), m.Weight, 0, cop, ctx.Order++, id, myChain, 0));
+                    var c = label.TextColor; if (c.A * cop <= 0.01f) continue; // fully transparent text is not text
+                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * label.Scale.X, m.Weight, (role is "button" || role is "text" && parent is View { BorderlineWidth: > 0 } sole && sole.Children.Count == 1) && parent is View pv ? Math.Min(pv.CornerRadius.X, Math.Min(pv.Size.Width, pv.Size.Height) / 2f) * sx : 0, cop, ctx.Order++, id, myChain, 0));
                 }
                 continue;
             }
@@ -148,13 +140,15 @@ internal static class LayoutExport
             (float R, float G, float B) cbg = bg;
             if (fills) { var a = bc.A; cbg = (bg.R * (1 - a) + bc.R * a, bg.G * (1 - a) + bc.G * a, bg.B * (1 - a) + bc.B * a); }
             var visible = w > 1 && h > 1 && box.Overlaps(clip);
-            var radius = child.CornerRadius.X * csx;
+            var radius = Math.Min(child.CornerRadius.X * csx, Math.Min(w, h) / 2f);
             if (visible)
             {
-                var painted = fills || border || shadow;
+                // a section whose top edge is drawn as a hairline child (a top border) is a painted container
+                var hairline = role == "container" && child.Children.OfType<View>().Any(c => c.PositionY < 1 && c.Size.Height <= 1.5f && c.Size.Width >= size.Width * 0.95f && c.BackgroundColor.A > 0.02f);
+                var painted = fills || border || shadow || hairline;
                 var control = role is not null and not ("container" or "none" or "text" or "img");
                 if (child is ImageView)
-                    ctx.Nodes.Add(new Node("", role is null or "none" or "container" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, cop));
+                    ctx.Nodes.Add(new Node("", role is null or "none" ? "image" : role, cx, cy, w, h, null, Hex(bg.R, bg.G, bg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, Sem.IsOverlay(child) ? 0 : cop));
                 else if (control || (role == "img" && painted))
                     ctx.Nodes.Add(new Node(name ?? "", role!, cx, cy, w, h, null, Hex(cbg.R, cbg.G, cbg.B, 1), null, null, radius, cop, ctx.Order++, id, myChain, fills ? bc.A * cop : 0, fills ? (bc.R, bc.G, bc.B, bc.A * cop) : null));
                 else if (painted)
@@ -165,29 +159,22 @@ internal static class LayoutExport
         }
     }
 
-    /// <summary>One run per laid-out line of the label: the characters' own bounds from the text layout (TextGeometry), merged per line, in the label's local pixels.</summary>
+    /// <summary>One run per laid-out line of the label: the union of its glyphs' own bounds from the text layout (TextGeometry), in the label's local pixels. Nothing is added, measured elsewhere or guessed.</summary>
     private static IEnumerable<(string Text, float X, float Y, float W, float H)> TextRuns(TextLabel label, TextMetaInfo meta)
     {
-        var text = label.Text; var lines = new List<(float Y, float Bottom, float L, float R, int First, int Last)>(); var spacing = label.CharacterSpacing; // the web's run ends after the last glyph's letter spacing; NUI's last glyph box does not carry it var lines = new List<(float Y, float Bottom, float L, float R, int First, int Last)>();
+        var text = label.Text; var lines = new List<(float Top, float Bottom, float L, float R, int First, int Last)>();
         for (var i = 0; i < text.Length; i++)
         {
             if (char.IsWhiteSpace(text[i])) continue;
             var pos = TextGeometry.GetTextPosition(label, i, i); var sz = TextGeometry.GetTextSize(label, i, i);
             if (pos.Count == 0 || sz.Count == 0) continue;
             float y = pos[0].Y, x = pos[0].X, w = sz[0].Width, h = sz[0].Height;
-            var li = lines.FindIndex(l => Math.Abs(l.Y - y) < h * 0.5f);
-            if (label.Ellipsis && x + w > label.Size.Width - 0.75f * label.PixelSize && Ui.TextWidth(text, meta.Size, meta.Weight, meta.Spacing, meta.Family) * Ui.TextScale > label.Size.Width) continue; // glyphs in the ellipsis zone of an elided label are replaced by the ellipsis and report unstable positions
-            if (li < 0 && lines.Count > 0 && !meta.Multiline) continue; // a single-line label has one line: glyphs elsewhere were elided and are not drawn
-            if (li >= 0 && x < lines[li].R - w * 0.5f) continue; // an elided glyph (past the ellipsis) is not drawn and reports no position of its own
+            var li = meta.Multiline ? lines.FindIndex(l => Math.Abs(l.Top - y) < h * 0.5f) : (lines.Count > 0 ? 0 : -1);
             if (li < 0) lines.Add((y, y + h, x, x + w, i, i));
-            else { var l = lines[li]; lines[li] = (l.Y, l.Bottom, Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }
+            else { var l = lines[li]; lines[li] = (Math.Min(l.Top, y), Math.Max(l.Bottom, y + h), Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }
         }
-        foreach (var l in lines.OrderBy(l => l.Y))
-        {
-            // the run is the font's own line (measured on a label of this font); a wrapped label's lines start at the line top, a single line is centred in its box
-            var box = l.Bottom - l.Y; var nat = Ui.TextHeight(meta.Size, meta.Weight, meta.Family) * Ui.TextScale;
-            yield return (text[l.First..(l.Last + 1)], l.L, meta.Multiline ? l.Y : l.Y + (box - nat) / 2f, l.R - l.L + spacing, nat);
-        }
+        foreach (var l in lines.OrderBy(l => l.Top))
+            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L, l.Bottom - l.Top);
     }
 
     private static string Hex(float r, float g, float b, float a)

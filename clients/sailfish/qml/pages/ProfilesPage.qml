@@ -59,7 +59,7 @@ PlayarrPage {
                     anchors.centerIn: parent
                     spacing: 9.59 * Tokens.u
                     Image { property string parityRole: "image"; anchors.verticalCenter: parent.verticalCenter; width: 16 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url(index === 0 ? "sun" : "globe", Tokens.inkSoft) }
-                    Label { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
+                    PLabel { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
                             color: Tokens.ink; font.family: Tokens.fam(720); font.letterSpacing: -0.15; font.pixelSize: Tokens.fs(11.52);}
                     Image { anchors.verticalCenter: parent.verticalCenter; width: 12 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("chevron", Tokens.inkSoft) }
                 }
@@ -119,14 +119,21 @@ PlayarrPage {
                     x: -2.85 * Tokens.u; y: -2.85 * Tokens.u
                     width: 168.73 * Tokens.u
                     source: modelData.avatar
+                    // A bundled preset (".../avatars/<id>.png") is drawn natively from its artwork and plate colours.
+                    readonly property string presetId: /\/avatars\/[a-z]+\.png$/.test(String(modelData.avatar)) ? String(modelData.avatar).replace(/^.*\/avatars\/([a-z]+)\.png$/, "$1") : ""
+                    readonly property var presetColours: ({ astronaut: ["#5267ad", "#222d5f"], cat: ["#e37c68", "#9c3f66"], dinosaur: ["#55a46e", "#237265"],
+                                                           robot: ["#5d9caf", "#365383"], pirate: ["#d39a48", "#91464c"], alien: ["#8b71c5", "#4a477f"] })   // clients/shared/profile-avatars/presets.json
+                    artSource: presetId !== "" && presetColours[presetId] ? String(modelData.avatar).replace("/avatars/", "/avatar-art/") : ""
+                    plateStart: presetId !== "" && presetColours[presetId] ? presetColours[presetId][0] : "#000000"
+                    plateEnd: presetId !== "" && presetColours[presetId] ? presetColours[presetId][1] : "#000000"
                     // The plate PNG carries the figure inset by 7.55 %: the web's plate container and its inner picture.
                     // The active ring sits outside the plate, as on web.
                     Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: ringColor }   // alpha in the colour: item opacity drew a pink square behind the plate
                 }
-                Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 5.4 * Tokens.u; left: parent.left; right: parent.right }
+                PLabel { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 5.4 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink;
                         font.family: Tokens.fam(680); font.letterSpacing: 0.38; font.pixelSize: Tokens.fs(13.12) }
-                Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 35.9 * Tokens.u; left: parent.left; right: parent.right }
+                PLabel { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 35.9 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.dark ? "#c2b5bb" : "#4d4248";
                         font.family: Tokens.fam(680); font.letterSpacing: 1.13; font.pixelSize: Tokens.fs(6.72) }
             }
@@ -175,12 +182,12 @@ PlayarrPage {
                         GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0) }
                     }
                 }
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "+"; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(300); font.pixelSize: Tokens.fs(38.4) }
+                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "+"; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(300); font.pixelSize: Tokens.fs(38.4) }
             }
-            Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 8.8 * Tokens.u; left: parent.left; right: parent.right }
+            PLabel { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 8.8 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("Sign in"); color: Tokens.dark ? "#cdc1c6" : "#443a40";
                     font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(13.12) }
-            Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
+            PLabel { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.dark ? "#c2b5bb" : "#4d4248";
                     font.family: Tokens.fam(680); font.letterSpacing: 0.76; font.pixelSize: Tokens.fs(6.72) }
         }
@@ -220,13 +227,13 @@ PlayarrPage {
         width: 75.5 * Tokens.u; height: 43.7 * Tokens.u
         onClicked: Qt.openUrlExternally("https://playarr.app/clients")
         RectangularGlow { y: 14 * Tokens.u; width: parent.width; height: parent.height; glowRadius: 19 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius; color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12) }
-        Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.dark ? "#1e1a1e" : "#fcfcfb"; border.width: 1; border.color: Tokens.line }
-        Label { id: clientsLbl; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
+        Rectangle { id: clientsBg; anchors.fill: parent; radius: height / 2; color: Tokens.dark ? "#1e1a1e" : "#fcfcfb"; border.width: 1; border.color: Tokens.line }
+        PLabel { id: clientsLbl; property var radiusSource: clientsBg; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
                 property string parityRole: "link";
                 color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(7.68) }
-        Label { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"
+        PLabel { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"
                
-                color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: "Liberation Sans"; font.weight: Font.Bold; font.pixelSize: Tokens.fs(7.68) }
+                color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720) + ",Liberation Sans"; font.pixelSize: Tokens.fs(7.68) }
     }
     RemorsePopup { id: remorse }
 }

@@ -58,6 +58,7 @@ internal sealed class LibraryScreen : IPage
         _env = env; _t = env.Theme; _kind = kind; _layout = CardLayout.Library(env.Store.LibraryView(kind.ToString().ToLowerInvariant()) == "cover", env.Store.Appearance().ArtworkSize); _title = title; _baseRoute = route; _progress = _noProgress;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         
         _keyArt = new KeyArt(env, armed: true);
         _panel = new DetailsPanel(env, library: true);
@@ -114,7 +115,7 @@ internal sealed class LibraryScreen : IPage
             var ringL = Ring.Make(24, 24, 12, new Rgba(1, 1, 1)); ringL.PositionX = -5; ringL.PositionY = -5; ringL.Show(false); dot.Add(ringL);
             _side.Add(new Focusable
             {
-                Rect = () => new Box(1867.5f, cy - 12, 24, 24), Label = $"jump to {letter}".ToLowerInvariant(),
+                Rect = () => new Box(1857.5f, cy - 22, 44, 44), Label = $"jump to {letter}".ToLowerInvariant(),
                 Style = f => { ringL.Show(f); if (f) dot.Show(true); else if (letter != _activeLetter) dot.Show(false); },
                 Select = () => JumpTo(l),
             });

@@ -67,7 +67,7 @@ struct TVWorkDetailView: View {
                 switch viewModel.state {
                 case .idle, .loading:
                     // Skeleton loading (owner rule): the page frame with its header, never a spinner screen.
-                    TVPageHeader(title: work.kind == .series ? "Series" : "Movies", detail: work.title)
+                    TVPageHeader(title: work.kind == .series ? "Series" : "Movies", detail: work.title, backName: "Back to \(work.kind == .series ? "Series" : "Movies")", backRole: "button")
                 case .failed(let message):
                     TVErrorView(title: "Couldn’t load this title", message: message) {
                         Task { await viewModel.load() }
@@ -96,12 +96,15 @@ struct TVWorkDetailView: View {
         GeometryReader { _ in
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             keyArt(detail.work)
             TVStageWash()
 
             TVPageHeader(
                 title: detail.work.kind == .series ? "Series" : "Movies",
-                detail: detail.work.title
+                detail: detail.work.title,
+                backName: "Back to \(detail.work.kind == .series ? "Series" : "Movies")",
+                backRole: "button"
             )
 
             switch detail.children {
@@ -172,7 +175,7 @@ struct TVWorkDetailView: View {
                     .font(TVTheme.font(size: 10.56, weight: part.1 ? .bold : .regular))
                     .foregroundStyle(part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
                     .lineLimit(1)
-                    .parityLayout(text: part.0, size: 10.56, weight: Int(TVTheme.cssWeight(part.1 ? .bold : .regular)))
+                    .parityLayout(text: part.0, size: 10.56, weight: Int(TVTheme.cssWeight(part.1 ? .bold : .regular)), color: part.1 ? DesignTokens.Stage.inkSoft : DesignTokens.Stage.inkMuted)
             }
         }
     }
@@ -205,8 +208,8 @@ struct TVWorkDetailView: View {
                     .frame(width: 336, alignment: .leading)
                     .placed(x: 153.6, y: synopsisY + macDetail(1.5, 0), w: 336, h: 20.3 * CGFloat(synopsisLines), alignment: .topLeading)
             }
-            actionPill("Download", glyph: "\u{21E9}", x: 153.6, y: buttonsY, width: 142) { showDownloadNote = true }
-            actionPill("Playback", glyph: "\u{2637}", x: 311.6, y: buttonsY, width: 142)
+            actionPill("Download", glyph: "\u{21E9}", x: 153.6, y: buttonsY, width: 142, name: "Download \(work.title)") { showDownloadNote = true }
+            actionPill("Playback", glyph: "\u{2637}", x: 311.6, y: buttonsY, width: 142, name: "Playback settings for \(work.title)")
             moviePlay(detail, x: 469.6, y: buttonsY)
             actionPill("Add to watchlist", glyph: "+", x: 153.6, y: buttonsY + 76, width: 142)
             actionPill("Add to Playlist", glyph: "+", x: 311.6, y: buttonsY + 76, width: 142)
@@ -308,10 +311,15 @@ struct TVWorkDetailView: View {
         x: CGFloat,
         y: CGFloat,
         width: CGFloat,
+        name: String? = nil,
         action: (() -> Void)? = nil
     ) -> some View {
-        Button { action?() } label: { pillBody(label, glyph: glyph, symbol: symbol, width: width) }
+        Button { action?() } label: {
+            pillBody(label, glyph: glyph, symbol: symbol, width: width)
+                .parityBox("button", text: name ?? (glyph.map { "\($0) \(label)" } ?? label), radius: 32, fill: DesignTokens.Stage.actionPill)
+        }
             .buttonStyle(TVFocusableCardButtonStyle())
+            .accessibilityLabel(name ?? (glyph.map { "\($0) \(label)" } ?? label))
             .placed(x: x, y: y, w: width, h: 64)
     }
 
@@ -337,7 +345,7 @@ struct TVWorkDetailView: View {
         .background(pillBackground(false))
     }
 
-    private func playLabel(_ text: String, light: Bool, focusedLook: Bool = false) -> some View {
+    private func playLabel(_ text: String, light: Bool, focusedLook: Bool = false, playName: String? = nil) -> some View {
         HStack(spacing: 8.8) {
             Image(systemName: "play.fill")
                 .font(.system(size: 10.1, weight: .regular))
@@ -347,6 +355,7 @@ struct TVWorkDetailView: View {
         }
         .foregroundStyle(light ? DesignTokens.Color.backgroundBase : Color.white)
         .frame(width: 156, height: 64)
+        .parityBox(light ? "button" : "link", text: playName, radius: 32, fill: light ? DesignTokens.Stage.ink : Color(red: 0xa5 / 255, green: 0x27 / 255, blue: 0x45 / 255))
         // Web: the focused Play (the default focus on load) is a darker crimson (165, 39, 69) inside the control ring
         // (3 px, 2 px offset). The frozen capture has no focus, so it gets this look; on the Mac it follows the real focus.
         .modifier(PlayFocusLook(forced: focusedLook))
@@ -378,7 +387,7 @@ struct TVWorkDetailView: View {
     @ViewBuilder
     private func moviePlay(_ detail: WorkDetail, x: CGFloat, y: CGFloat) -> some View {
         // Web: Play is the focused control on load (scale 1.06).
-        let label = playLabel("Play", light: false, focusedLook: frozen || macDetail(TVParityLaunch.pinnedClock, false)).scaleEffect(1.06)
+        let label = playLabel("Play", light: false, focusedLook: frozen || macDetail(TVParityLaunch.pinnedClock, false), playName: "Play \(detail.work.title)").scaleEffect(1.06)
         if let mediaFileID = detail.mediaFileID, interactive {
             NavigationLink {
                 TVPlayerView(
@@ -393,6 +402,7 @@ struct TVWorkDetailView: View {
                 label
             }
             .buttonStyle(TVFocusableCardButtonStyle())
+            .accessibilityLabel("Play \(detail.work.title)")
             .focused($playFocused)
             #if os(macOS)
             .macPreferredFocus() // web: Play holds the focus when the film page opens
@@ -405,7 +415,7 @@ struct TVWorkDetailView: View {
 
     @ViewBuilder
     private func seriesStart(_ detail: WorkDetail, ordered: [SeasonDetail], x: CGFloat, y: CGFloat) -> some View {
-        let label = playLabel("Start", light: true)
+        let label = playLabel("Start", light: true, playName: "Start \(detail.work.title)")
         let first = ordered.first?.episodes.first(where: { $0.mediaFileID != nil })
         if let first, let mediaFileID = first.mediaFileID, !frozen {
             NavigationLink {
@@ -503,6 +513,8 @@ struct TVWorkDetailView: View {
                             .parityLayout(text: "Chapter \(chapter.index + 1)", size: 11.52, weight: Int(610), color: DesignTokens.Color.textPrimary, tracking: -0.17)
                             .placed(x: 28.9, y: 162.3, w: 239.2, h: 17.3)
                     }
+                    .frame(width: 268, height: 179.53, alignment: .topLeading)
+                    .parityBox("link", text: "Play \(detail.work.title) from Chapter \(chapter.index + 1)", fill: DesignTokens.Stage.surface)
                     .frame(width: 268, height: 190, alignment: .topLeading)
                     .placed(x: x, y: 620.7, w: 268, h: 190, alignment: .topLeading)
                 }
@@ -537,9 +549,10 @@ struct TVWorkDetailView: View {
                                     .font(TVTheme.font(size: 11.52, weight: .semibold))
                                     .foregroundStyle(DesignTokens.Color.textPrimary)
                                     .lineLimit(1)
-                                    .parityLayout(text: other.title, size: 11.52, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary)
+                                    .parityLayout(text: other.title, size: 11.9, weight: 610, color: DesignTokens.Color.textPrimary)
                                     .frame(width: cardWidth, alignment: .leading)
                             }
+                            .parityBox("link", text: "Open \(other.title)", fill: DesignTokens.Stage.surface)
                         }
                         .buttonStyle(TVFocusableCardButtonStyle())
                         .disabled(frozen) // not .focusable: on a Button it adds a second, inert focus target
@@ -555,7 +568,7 @@ struct TVWorkDetailView: View {
     /// Web "S01 · E01".
     private func episodeCode(season: Int32, episode: Int32) -> String {
         let s = String(format: "%02d", season), e = String(format: "%02d", episode)
-        return "S\(s) \u{00B7} E\(e)"
+        return "S \(s) \u{00B7} E \(e)" // web: the digits sit apart from the letters
     }
 
     private func macDetail<T>(_ macOS: T, _ other: T) -> T {
@@ -621,6 +634,8 @@ struct TVWorkDetailView: View {
         }
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: 13.44, style: .continuous))
+        .parityBox("image", fill: DesignTokens.Stage.surfaceSoft)
+        .parityBox("container", radius: width > 300 ? 12.48 : 13.44, fill: DesignTokens.Stage.surfaceSoft)
         .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(heavy ? 0.3 : 0.14), radius: heavy ? 24 : 10, y: heavy ? 24 : 10)
         .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(heavy ? 0.2 : 0.1), radius: heavy ? 10 : 4, y: heavy ? 10 : 3)
     }
@@ -725,9 +740,9 @@ struct TVWorkDetailView: View {
             #endif
             .overlay(alignment: .bottomTrailing) {
                 Text(String(format: "%02d", ep.episodeNumber))
-                    .font(TVTheme.font(size: 19.2, weight: .semibold))
+                    .font(TVTheme.font(size: 19.2, css: 560))
                     .foregroundStyle(Color.white)
-                    .parityLayout(text: String(format: "%02d", ep.episodeNumber), size: 19.2, weight: Int(TVTheme.cssWeight(.semibold)), color: Color.white)
+                    .parityLayout(text: String(format: "%02d", ep.episodeNumber), size: 19.2, weight: 560, color: Color.white)
                     .padding(.trailing, 11.6)
                     .padding(.bottom, 8.8)
             }
@@ -735,28 +750,31 @@ struct TVWorkDetailView: View {
                 Circle()
                     .fill(DesignTokens.Color.brandPrimary)
                     .frame(width: 13, height: 13)
-                    .overlay(Circle().stroke(Color.white, lineWidth: 1.6))
-                    .padding(10.6)
+                    .overlay(Circle().strokeBorder(Color.white, lineWidth: 1.6))
+                    .parityBox("img", radius: 50, fill: DesignTokens.Color.brandPrimary)
+                    .padding(10.5)
             }
+            .offset(y: selected ? -7 : 0) // web: only the art rises; the caption stays
             Text(code)
-                .font(TVTheme.font(size: 8.83, weight: .bold))
-                .foregroundStyle(DesignTokens.Color.textDisabled)
+                .font(TVTheme.font(size: 8.83, css: 700))
+                .foregroundStyle(selected ? Color.white : DesignTokens.Color.textDisabled)
                 .lineLimit(1)
-                .parityLayout(text: code, size: 8.83, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
+                .parityLayout(text: code, size: 8.83, weight: 700, color: selected ? Color.white : DesignTokens.Color.textDisabled)
                 .fixedSize()
                 .placed(x: 0, y: 158, w: 48, h: 13.2)
             Text(title)
-                .font(TVTheme.font(size: 11.52, weight: .semibold))
+                .font(TVTheme.font(size: 11.52, css: 610))
                 .tracking(-0.17)
-                .foregroundStyle(DesignTokens.Color.textPrimary)
+                .foregroundStyle(selected ? Color.white : DesignTokens.Color.textPrimary)
                 .lineLimit(1)
-                .parityLayout(text: title, size: 11.52, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.17)
+                .parityLayout(text: title, size: 11.52, weight: 610, color: selected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.17)
                 .placed(x: 49.3, y: 155, w: 218.7, h: 17.3)
         }
+        .frame(width: 268, height: 179.53, alignment: .topLeading)
+        .parityBox("link", text: "\(String(format: "%02d", ep.episodeNumber)) \(code.replacingOccurrences(of: "S ", with: "S").replacingOccurrences(of: "E ", with: "E")) \(title)", fill: DesignTokens.Stage.surface)
         .frame(width: 268, height: 190, alignment: .topLeading)
         // Media cards show focus as a soft shadow plus a lift, never a ring or fill (owner ruling). Pinned web values
         // (page-layout spec, section 5 item 1a): the card rises 7 px over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1).
-        .offset(y: selected ? -7 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: selected)
         if let mediaFileID = episode.mediaFileID, !frozen {
             NavigationLink {

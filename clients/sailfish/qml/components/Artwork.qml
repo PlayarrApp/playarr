@@ -9,6 +9,7 @@ Item {
     property var kinds: ["backdrop", "thumb", "poster"]
     property real radius: Tokens.radius
     property bool hero: false
+    property bool roundImage: false   // the web puts the corner radius on the picture itself (posters), not on a container around it
     property string override: ""     // a specific picture (an episode's frame) instead of the work art
     property color emptyColor: "transparent" // optional flat fill while a view has no artwork
     readonly property string src: override !== "" ? override : (work ? Api.artwork(work.id, work.images || [], kinds, hero) : "")
@@ -29,7 +30,7 @@ Item {
                 GradientStop { position: 0; color: Qt.hsla(hue(work ? work.title : ""), 0.45, Tokens.dark ? 0.32 : 0.62, 1) }
                 GradientStop { position: 1; color: Qt.hsla(hue(work ? work.title : ""), 0.5, Tokens.dark ? 0.08 : 0.3, 1) }
             }
-            Text {
+            PText {
                 visible: img.status !== Image.Ready
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 * Tokens.u }
                 text: work ? work.title.toUpperCase() : ""
@@ -61,5 +62,5 @@ Item {
     }
     Rectangle { anchors.fill: parent; radius: root.radius; color: Tokens.surfaceSoft }   // the web's art container, under the picture
     Rectangle { id: mask; anchors.fill: parent; radius: root.radius; visible: false }
-    OpacityMask { anchors.fill: parent; source: art; maskSource: mask; property string parityRole: img.status === Image.Ready ? "image" : "" }
+    OpacityMask { anchors.fill: parent; source: art; maskSource: mask; property string parityRole: img.status === Image.Ready ? "image" : ""; property var radiusSource: root.roundImage ? mask : null }
 }

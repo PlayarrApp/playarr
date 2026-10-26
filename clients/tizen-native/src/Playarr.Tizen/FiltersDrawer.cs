@@ -110,9 +110,11 @@ internal sealed class FiltersDrawer
                 var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
                 Sem.Tag(box, "group", "");
-                box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", label + " ⌄"));
-                box.Add(Ui.Text(label, 19.4f, 20.5f, 11.84f, 680, t.Ink, 200, 17.76f));
-                box.Add(Ui.Text(_openMulti == si ? "\u2303" : "\u2304", 238.6f, 20.5f, 11.84f, 700, t.InkMuted, 12, 17.76f));
+                var arrow = _openMulti == si ? "\u2303" : "\u2304";
+                var inner = Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", label + " " + arrow); // web: the button inside the field holds its label and arrow
+                inner.Add(Ui.Text(label, 12, 13.1f, 11.84f, 680, t.Ink, 200, 17.76f));
+                inner.Add(Ui.Text(arrow, 231.2f, 13.1f, 11.84f, 700, t.InkMuted, 12, 17.76f));
+                box.Add(inner);
                 var ring = Ring.Make(268, 58.8f, 12, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
                 _c.Add(box);
                 var yy = top; var secIndex = si; var ms = s;
@@ -130,9 +132,10 @@ internal sealed class FiltersDrawer
                 var box = Ui.Box(1606, top, 268, 58.8f, new Rgba(t.SurfaceSoft.R, t.SurfaceSoft.G, t.SurfaceSoft.B, 0.64f), 12);
                 box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
                 Sem.Tag(box, "group", "");
-                box.Add(Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", s.Options[s.Selected] + " ⌄"));
-                box.Add(Ui.Text(s.Options[s.Selected], 19.4f, 20.5f, 11.84f, 680, t.Ink, 200, 17.76f));
-                box.Add(Ui.Text("\u2304", 238.6f, 20.5f, 11.84f, 700, t.InkMuted, 12, 17.76f));
+                var inner = Sem.Tag(new View { PositionX = 7.4f, PositionY = 7.4f, Size = new Size(253.2f, 44) }, "button", s.Options[s.Selected] + " \u2304");
+                inner.Add(Ui.Text(s.Options[s.Selected], 12, 13.1f, 11.84f, 680, t.Ink, 200, 17.76f));
+                inner.Add(Ui.Text("\u2304", 231.2f, 13.1f, 11.84f, 700, t.InkMuted, 12, 17.76f));
+                box.Add(inner);
                 var ring = Ring.Make(268, 58.8f, 12, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
                 _c.Add(box);
                 var yy = top;

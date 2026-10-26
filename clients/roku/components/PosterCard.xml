@@ -79,6 +79,7 @@
       <Poster id="restShadow" translation="[-90,-90]" width="400" height="304" uri="pkg:/images/card-shadow-rest.png" />
       <Poster id="focusShadow" translation="[-90,-90]" width="400" height="304" uri="pkg:/images/card-shadow.png" opacity="0" />
       <Poster id="focusGlow" translation="[-90,-90]" width="400" height="304" uri="pkg:/images/card-glow.png" opacity="0" />
+      <Rectangle id="cardLink" width="220" height="153" color="0x00000000" />
       <Group id="artGroup" scaleRotateCenter="[110,62]">
         <!-- tv-web's .tv-home-card-art always carries a surface-soft
              background underneath the img, visible whenever there is no
@@ -93,7 +94,7 @@
              Prior 0x312A30 left cards above the parity suite's dark-bg
              normalise threshold while web cards fell below it, inventing
              large pure-AE false positives on empty art tiles. -->
-        <Rectangle id="posterBg" width="220" height="124" color="0x262126FF" />
+        <Rectangle id="posterBg" width="220" height="124" color="0x312A30FF" />
       <WebLabel id="overlayNumber" translation="[0,0]" width="60" height="30" horizAlign="right" text="" visible="false" color="0xFFFFFFFF" size="19.2" weight="560" />
         <!-- scaleToZoom (crop-to-fill, preserving aspect ratio), NOT
              scaleToFill (stretch-to-fill, distorting it): confirmed live
@@ -127,7 +128,7 @@
         <Rectangle id="progressTrack" translation="[0,121]" width="220" height="3" color="0xFFFFFF33" visible="false">
           <Rectangle id="progressFill" width="3" height="3" color="0xCF3157FF" />
         </Rectangle>
-        <Poster id="unwatchedBadge" translation="[195.3,10]" width="15" height="15" uri="pkg:/images/badge-unwatched.png" visible="false" />
+        <Poster id="unwatchedBadge" translation="[195.3,10]" width="13" height="13" uri="pkg:/images/round-r12.9.png" visible="false" />
         <!-- Cast (web .tv-cast-card): a 104 px round headshot centred in a 177 px slot, the name and character below. -->
         <MaskGroup id="circleMask" visible="false" translation="[36.5,0]" maskUri="pkg:/images/avatar-mask.png" maskSize="[104,104]">
           <Poster id="circlePoster" width="104" height="104" loadDisplayMode="scaleToZoom" />

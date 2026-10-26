@@ -28,6 +28,7 @@ final class TVParityLayoutRegistry {
         var lines: [String]?
         var pitch: CGFloat = 0
         var layer = 0
+        var opacity: Double = 1
     }
 
     private var items: [UUID: Item] = [:]
@@ -148,13 +149,15 @@ final class TVParityLayoutRegistry {
                 "fontSize": item.size.map { Double($0) } as Any? ?? NSNull(),
                 "fontWeight": item.weight as Any? ?? NSNull(),
                 "tracking": Double(item.tracking),
-                "radius": Double(item.radius),
+                "radius": Double(min(item.radius, min(item.rect.width, item.rect.height) / 2)), // as drawn: a pill radius is half the box
                 "pitch": Double(item.pitch),
+                "opacity": item.opacity,
             ]
             if let lh = item.lineHeight { raw["lineHeight"] = Double(lh) }
             if let size = item.size, let weight = item.weight,
                let font = DesignFont.uiFont(family: "Nunito Sans", postScriptName: DesignFont.nunitoPostScriptName, size: size, weight: weight, fixedAxes: [:]) {
                 func width(_ text: String) -> Double { Double((text as NSString).size(withAttributes: [.font: font, .kern: item.tracking]).width) }
+                raw["content"] = Double(font.ascender - font.descender) // the font's own ascent plus descent, as laid out
                 if let lines = item.lines { raw["lines"] = lines; raw["width"] = lines.map(width).max() ?? 0 }
                 else if let text = item.text { raw["width"] = width(text) }
             }
@@ -162,7 +165,26 @@ final class TVParityLayoutRegistry {
         }
         let top = items.values.map(\.layer).max() ?? 0
         let styled = order.compactMap { items[$0] }.filter { $0.layer == top && $0.rect.width > 0 && $0.rect.height > 0 && $0.rect.intersects(screen) }
-        var raws = styled.map(measure)
+        // A wrapped paragraph is one element per line (as the web dump lists it): its lines are the greedy wrap of the measured
+        // font at the width the view was laid out in; each line takes an equal share of the view's height.
+        var raws: [[String: Any]] = []
+        for item in styled {
+            let single = measure(item)
+            if let text = item.text, item.size != nil, item.lines == nil, let w = single["width"] as? Double, w > item.rect.width + 0.5, item.role != "button" {
+                let lines = TVTextWrap.lines(text, weight: CGFloat(item.weight ?? 400), size: item.size ?? 12, kern: item.tracking, width: item.rect.width)
+                if lines.count > 1 {
+                    let pitch = item.rect.height / CGFloat(lines.count)
+                    for (index, line) in lines.enumerated() {
+                        var sub = item
+                        sub.text = line
+                        sub.rect = CGRect(x: item.rect.minX, y: item.rect.minY + pitch * CGFloat(index), width: item.rect.width, height: pitch)
+                        raws.append(measure(sub))
+                    }
+                    continue
+                }
+            }
+            raws.append(single)
+        }
         for var entry in accessibilityElements(onlyPresented: top > 0) where entry.rect.width > 0 && entry.rect.height > 0 && entry.rect.intersects(screen) {
             entry.background = nil
             var raw = measure(entry); raw["source"] = "ax"; raws.append(raw)
@@ -181,23 +203,6 @@ final class TVParityLayoutRegistry {
     }
 }
 
-/// A card's visual transform (focus scale and lift). SwiftUI frames do not include `scaleEffect`, so views inside a scaled card
-/// report layout frames; the scope publishes the card's own frame and transform, and the reporting modifiers apply it, so the
-/// export holds what is drawn.
-struct TVParityTransform: Equatable {
-    var frame: CGRect = .zero
-    var scale: CGFloat = 1
-    var anchor = CGPoint(x: 0.5, y: 0.5)
-    var lift: CGFloat = 0
-
-    func apply(_ rect: CGRect) -> CGRect {
-        guard scale != 1 || lift != 0, frame.width > 0 else { return rect }
-        let ax = frame.minX + frame.width * anchor.x, ay = frame.minY + frame.height * anchor.y
-        return CGRect(x: ax + (rect.minX - ax) * scale, y: ay + (rect.minY - ay) * scale + lift,
-                      width: rect.width * scale, height: rect.height * scale)
-    }
-}
-
 /// The presentation layer of a view: 0 for the shell, +1 for each full-screen presentation (Who's watching, the player).
 /// Only the topmost layer is exported, as only it is visible.
 private struct TVParityLayerKey: EnvironmentKey { static let defaultValue = 0 }
@@ -213,29 +218,15 @@ private struct TVParityLayerScope: ViewModifier {
     func body(content: Content) -> some View { content.environment(\.parityLayer, layer + 1) }
 }
 
-private struct TVParityTransformKey: EnvironmentKey { static let defaultValue = TVParityTransform() }
+/// The flat colour a view is drawn on (CSS ancestor background): set where an element really paints a fill, read by every item inside.
+private struct TVParityBackdropKey: EnvironmentKey { static let defaultValue: Color? = nil }
 extension EnvironmentValues {
-    var parityTransform: TVParityTransform {
-        get { self[TVParityTransformKey.self] }
-        set { self[TVParityTransformKey.self] = newValue }
+    var parityBackdrop: Color? {
+        get { self[TVParityBackdropKey.self] }
+        set { self[TVParityBackdropKey.self] = newValue }
     }
 }
 
-private struct TVParityTransformScope: ViewModifier {
-    let scale: CGFloat
-    let anchor: CGPoint
-    let lift: CGFloat
-    @State private var frame: CGRect = .zero
-
-    func body(content: Content) -> some View {
-        content
-            .background(GeometryReader { proxy in
-                let f = proxy.frame(in: tvScreenSpace)
-                Color.clear.onAppear { frame = f }.onChange(of: f) { _, new in frame = new }
-            })
-            .environment(\.parityTransform, TVParityTransform(frame: frame, scale: scale, anchor: anchor, lift: lift))
-    }
-}
 
 private struct TVParityLayoutModifier: ViewModifier {
     let text: String?
@@ -249,8 +240,8 @@ private struct TVParityLayoutModifier: ViewModifier {
     var pitch: CGFloat = 0
     var onPage = false
     @Environment(\.self) private var environment
-    @Environment(\.parityTransform) private var transform
     @Environment(\.parityLayer) private var layer
+    @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
     @State private var id = UUID()
 
@@ -269,7 +260,6 @@ private struct TVParityLayoutModifier: ViewModifier {
                     Color.clear
                         .onAppear { report(frame) }
                         .onChange(of: frame) { _, new in report(new) }
-                        .onChange(of: transform) { _, _ in report(frame) }
                         .onChange(of: scheme) { _, _ in report(frame) }
                         .onChange(of: text) { _, _ in report(frame) }
                 }
@@ -278,8 +268,8 @@ private struct TVParityLayoutModifier: ViewModifier {
     }
 
     private func report(_ frame: CGRect) {
-        TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: transform.apply(frame), tracking: tracking,
-                                                 background: hex(onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface),
+        TVParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: color.map(hex), rect: frame, tracking: tracking,
+                                                 background: hex(backdrop ?? (onPage ? DesignTokens.Stage.bg : DesignTokens.Stage.surface)),
                                                  lineHeight: lineHeight, lines: lines, pitch: pitch, layer: layer)) // web: header on the page, content on the surface
     }
 }
@@ -289,10 +279,13 @@ private struct TVParityBoxModifier: ViewModifier {
     let role: String
     let radius: CGFloat
     let fill: Color?
+    var opacity: Double = 1
+    /// A full-bleed box reports the whole screen, not the TV safe area.
+    var bleed = false
     @Environment(\.self) private var environment
-    @Environment(\.parityTransform) private var transform
-    @Environment(\.parityLayer) private var layer
+    @Environment(\.parityBackdrop) private var backdrop
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.parityLayer) private var layer
     @State private var id = UUID()
 
     func body(content: Content) -> some View {
@@ -303,24 +296,26 @@ private struct TVParityBoxModifier: ViewModifier {
                     Color.clear
                         .onAppear { report(frame) }
                         .onChange(of: frame) { _, new in report(new) }
-                        .onChange(of: transform) { _, _ in report(frame) }
                         .onChange(of: scheme) { _, _ in report(frame) }
                         .onChange(of: text) { _, _ in report(frame) }
                 }
+                .ignoresSafeArea(edges: bleed ? .all : [])
             )
+            .environment(\.parityBackdrop, fill ?? backdrop)
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
     }
 
     private func report(_ frame: CGRect) {
-        var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: transform.apply(frame))
-        if let fill {
+        var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: frame)
+        if let fill = fill ?? backdrop {
             let r = fill.resolve(in: environment)
             func byte(_ v: Float) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
             item.background = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
         } else {
-            item.background = "#000000"
+            item.background = nil
         }
         item.radius = radius
+        item.opacity = opacity
         item.layer = layer
         TVParityLayoutRegistry.shared.set(id, item)
     }
@@ -338,11 +333,11 @@ extension View {
         #endif
     }
 
-    /// Marks a card's focus transform for the layout export (debug builds only).
+    /// Declares the flat colour this view paints (web: the ancestor background), for every item inside it.
     @ViewBuilder
-    func parityTransformScope(scale: CGFloat, anchor: CGPoint = CGPoint(x: 0.5, y: 0.5), lift: CGFloat = 0) -> some View {
+    func parityBackdrop(_ color: Color) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityTransformScope(scale: scale, anchor: anchor, lift: lift))
+        environment(\.parityBackdrop, color)
         #else
         self
         #endif
@@ -350,9 +345,9 @@ extension View {
 
     /// Reports a box (card link, image, container with a fill and radius) to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil) -> some View {
+    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil, opacity: Double = 1, bleed: Bool = false) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill))
+        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill, opacity: opacity, bleed: bleed))
         #else
         self
         #endif

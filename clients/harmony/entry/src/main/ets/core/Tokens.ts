@@ -382,7 +382,7 @@ export const TvGeometry: TvGeometryTokens = {
   homeRailsBottomPad: 405,
   // Web rail pitch is 366 (heading 26, gap 30, card 213, 97 to the next heading); the list height
   // includes room for the focus lift and caption, so the gap between rails is smaller here.
-  homeRailsHeadingGap: 38, // web: heading 49 above the cards (was 41); the caption's 10 vp joined the row
+  homeRailsHeadingGap: 34.8, // web: heading 49 above the cards (was 41); the caption's 10 vp joined the row
   homeRailsListHeight: 250,
   homeRailsRowGap: 81,
 
@@ -411,7 +411,7 @@ export const TvGeometry: TvGeometryTokens = {
   libraryGridCardWidth: 327,
   libraryGridCardHeight: 184,
   // Web row pitch is 240.5; its caption box sits 12 below the art where PosterCard's sits 5 below.
-  libraryGridRowGap: 27.4, // web row pitch 240.4: the 213 px link (whole pixels) plus this
+  libraryGridRowGap: 27.2, // web row pitch 240.4: the link cell (213 plus the web-height caption line) plus this
   libraryGridColumnGap: 26.5,
   libraryGridCardRadius: 12.48,
   azIndexRailRight: 22,

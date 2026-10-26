@@ -91,7 +91,6 @@ struct PlayarrLogoMark: View {
 struct TVStageBackground: View {
     var body: some View {
         DesignTokens.Color.backgroundBase
-            .parityBox("container", fill: DesignTokens.Stage.bg)
             .ignoresSafeArea()
     }
 }
@@ -309,10 +308,13 @@ struct TVProfileAddLabel: View {
                     )
                 Text("+")
                     // Web clamp(2.4rem, 4vw, 5.4rem) weight 300 → ~0.35× avatar.
-                    .font(.system(size: avatarSize * 0.36, weight: .light))
+                    .font(TVTheme.font(size: 76.8 * scale, css: 300))
                     .foregroundStyle(active ? palette.ink : palette.inkSoft)
+                    .parityLayout(text: "+", size: 76.8 * scale, weight: 300, color: active ? palette.ink : palette.inkSoft)
+                    .offset(y: 1.2 * scale)
             }
             .frame(width: avatarSize, height: avatarSize)
+            .parityBox("container", radius: 999, fill: palette.bg)
             // Web focus avatar: scale 1.035 + 4px pink ring (box-shadow) + soft lift.
             .scaleEffect(active ? 1.035 : 1)
             .background {
@@ -340,15 +342,19 @@ struct TVProfileAddLabel: View {
             )
 
             Text("Sign in")
-                .font(.system(size: 16 * scale, weight: .semibold))
+                .font(TVTheme.font(size: 17.28 * scale, css: 680))
                 .foregroundStyle(active ? palette.ink : palette.inkSoft)
                 .lineLimit(1)
+                .parityLayout(text: "Sign in", size: 17.28 * scale, weight: 680, color: active ? palette.ink : palette.inkSoft)
+                .padding(.top, 2 * scale)
 
             Text("Add another profile")
-                .font(.system(size: 9 * scale, weight: .bold))
-                .tracking(0.6 * scale)
+                .font(TVTheme.font(size: 9.41 * scale, css: 690))
+                .tracking(0.42 * scale)
                 .textCase(.uppercase)
                 .foregroundStyle(palette.inkMuted)
+                .parityLayout(text: "ADD ANOTHER PROFILE", size: 9.41 * scale, weight: 690, color: palette.inkMuted, tracking: 0.42 * scale)
+                .padding(.top, 0.8 * scale)
                 .frame(minHeight: 12 * scale)
         }
         .frame(width: avatarSize)
@@ -405,6 +411,8 @@ struct TVProfileActionLabel: View {
             case .settings:
                 Image(systemName: "gearshape")
                     .font(.system(size: 16 * scale, weight: .regular))
+                    .frame(width: 18 * scale, height: 18 * scale)
+                    .parityBox("image", fill: palette.surface)
                     .foregroundStyle(active ? palette.bg : palette.brandPink)
                     .frame(width: 44 * scale, height: 44 * scale)
                     .background(
@@ -424,8 +432,11 @@ struct TVProfileActionLabel: View {
                 HStack(spacing: 7 * scale) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 14 * scale, weight: .regular))
+                        .frame(width: 18 * scale, height: 18 * scale)
+                        .parityBox("image", fill: palette.surface)
                     Text("Sign out")
-                        .font(.system(size: 11 * scale, weight: .bold))
+                        .font(TVTheme.font(size: 10.75 * scale, css: 720))
+                        .parityLayout(text: "Sign out", size: 10.75 * scale, weight: 720, color: active ? Color.white : palette.inkSoft)
                 }
                 .foregroundStyle(active ? Color.white : palette.inkSoft)
                 .padding(.horizontal, 16 * scale)
@@ -687,7 +698,7 @@ private struct TVNavVectorIcon: View {
             }
             .frame(width: TVNavIconVector.renderedSize, height: TVNavIconVector.renderedSize)
             .accessibilityHidden(true)
-            .parityBox("image", fill: DesignTokens.Stage.surface)
+            .parityBox("image")
         } else {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 20, weight: .medium))
@@ -873,7 +884,7 @@ struct TVFloatingNavLayout {
         let bottom = min(max(viewportUnit * 0.032, 22), 46) - 14
         return TVFloatingNavLayout(
             topInset: header + 44 + controlGap,
-            bottomInset: max(0, bottom)
+            bottomInset: max(0, bottom) + 10.58 // web: the profile tile ends 48.1 pt above the screen edge
         )
     }
 
@@ -976,7 +987,7 @@ struct TVFloatingNav: View {
         }
         .padding(.vertical, DesignTokens.Shell.navGroupPadding)
         .padding(.horizontal, DesignTokens.Shell.navGroupPadding)
-        .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface)
+        .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.navPanel)
         .modifier(TVNavPanelShadow())
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
@@ -991,22 +1002,26 @@ struct TVFloatingNav: View {
     private func profileGroup(_ profile: TVNavProfile) -> some View {
         VStack(spacing: 6) {
             Button(action: profile.open) {
-                VStack(spacing: 5) {
-                    TVProfileAvatar(userID: profile.userID, size: 26, presetName: profile.preset, customImage: profile.image)
+                VStack(spacing: 2.75) { // the nav item layout: the avatar where a tab has its icon
+                    TVProfileAvatar(userID: profile.userID, size: 20, presetName: profile.preset, customImage: profile.image)
+                        .parityBox("container", radius: 999)
+                        .parityBox("image")
                     Text(profile.name.split(separator: " ").first.map(String.init) ?? profile.name)
-                        .font(TVTheme.font(size: 9, weight: .semibold))
-                        .tracking(0.3)
+                        .font(TVTheme.font(size: 8.832, css: 680))
+                        .tracking(0.31)
                         .lineLimit(1)
                         .foregroundStyle(DesignTokens.Color.textDisabled)
-                        .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 9, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textDisabled, tracking: 0.3)
+                        .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 8.832, weight: 680, color: DesignTokens.Color.textDisabled, tracking: 0.31)
                 }
                 .frame(width: DesignTokens.Shell.navItemSize, height: DesignTokens.Shell.navItemSize)
+                .parityBox("link", text: "Signed in as \(profile.name). Open profiles.", radius: 16, fill: DesignTokens.Stage.navPanel)
                 .modifier(TVNavItemFocusFill())
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
             .padding(DesignTokens.Shell.navGroupPadding)
+            .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.navPanel)
             .modifier(TVNavPanelShadow())
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
@@ -1019,7 +1034,8 @@ struct TVFloatingNav: View {
             Text(profile.version)
                 .font(TVTheme.mono(size: 8, css: 700))
                 .tracking(0.32)
-                .foregroundStyle(DesignTokens.Color.textDisabled)
+                .foregroundStyle(DesignTokens.Color.textPrimary)
+                .parityLayout(text: profile.version, size: 8, weight: 700, color: DesignTokens.Color.textPrimary, tracking: 0.32, onPage: true)
         }
     }
 
@@ -1045,14 +1061,18 @@ struct TVFloatingNav: View {
                 #if !os(tvOS)
                 guard ProcessInfo.processInfo.arguments.contains("-PlayarrSelectEntersPage") else { return }
                 #endif
-                try? await Task.sleep(for: .milliseconds(300))
-                if case .nav(tab) = externalFocus.wrappedValue { externalFocus.wrappedValue = .stage }
+                // The page may still be loading (no focusable card yet): ask again while focus is still on this tab, up to 3 s.
+                for _ in 0..<10 {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard selection == tab, case .nav = externalFocus.wrappedValue else { break }
+                    externalFocus.wrappedValue = .stage
+                }
             }
         } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: 2.75) { // web: the label's top sits 22.75 pt below the icon's
                 TVNavVectorIcon(tab: tab)
                 Text(tab.title)
-                    .font(TVTheme.font(size: 8.832, css: 680)) // web .app-nav-label: .46vw / 680 / .035em
+                    .font(TVTheme.font(size: 8.832, css: 680))
                     .tracking(0.31)
                     .lineLimit(1)
                     .parityLayout(text: tab.title, size: 8.832, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31)
@@ -1066,7 +1086,7 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
-            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Stage.surfaceSoft : DesignTokens.Stage.surface)
+            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Stage.navActive : DesignTokens.Stage.navPanel)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
@@ -1075,10 +1095,8 @@ struct TVFloatingNav: View {
                             : Color.clear
                     )
             )
-            #if os(macOS)
             // Web `.app-nav-link.is-active`: transform scale(1.05) (tile and content).
             .scaleEffect(isActive || isFocused ? 1.05 : 1)
-            #endif
             // Web TV nav: focus looks like the active tab (filled tile, ink text); no ring, no scale.
         }
         // Card-like style stays focusable; .plain can drop remote hand-off.
@@ -1201,12 +1219,12 @@ struct TVShellHeader: View {
                     .font(TVTheme.font(size: 17.28, css: 760))
                     .tracking(-0.52)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: Self.timeString(frozen: frozenClock), role: "text", size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52, lineHeight: 25.92, onPage: true)
+                    .parityLayout(text: Self.timeString(frozen: frozenClock), role: "text", size: 17.28, weight: 760, color: DesignTokens.Color.textPrimary, tracking: -0.52, onPage: true)
                 Text(Self.dateString(frozen: frozenClock))
                     .font(TVTheme.font(size: 11.136, css: 640))
                     .tracking(0.45)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: Self.dateString(frozen: frozenClock), size: 11.136, weight: 640, color: DesignTokens.Color.textPrimary, tracking: 0.45, lineHeight: 12.25, onPage: true)
+                    .parityLayout(text: Self.dateString(frozen: frozenClock), size: 11.136, weight: 640, color: DesignTokens.Color.textPrimary, tracking: 0.45, onPage: true)
             }
             }
             .placed(x: clockLeading, y: 68.2, h: 25.9)
@@ -1333,14 +1351,17 @@ struct TVHeaderPill: View {
         VStack(spacing: 5.6) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .regular))
+                .frame(width: 24, height: 24)
+                .parityBox("image")
             Text(label)
                 .font(TVTheme.font(size: 8.256, css: 700))
                 .tracking(0.165)
                 .lineLimit(1)
-                .parityLayout(text: label, size: 8.256, weight: Int(700), tracking: 0.165)
+                .parityLayout(text: label, size: 8.256, weight: 700, color: DesignTokens.Stage.inkMuted, tracking: 0.165)
         }
         .foregroundStyle(DesignTokens.Stage.inkMuted)
         .frame(width: width, height: Self.height)
+        .parityBox("button", text: label, radius: 14, fill: DesignTokens.Stage.headerTile)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(DesignTokens.Color.backgroundInputDisabled.opacity(0.78))

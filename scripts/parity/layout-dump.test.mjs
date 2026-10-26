@@ -47,7 +47,7 @@ test("screen-reader-only elements (1x1 clipped, clip rect 0, clip-path inset) ar
 test("inert hosts and aria-hidden hosts with focusable content are dropped; decorative aria-hidden stays", { skip }, async () => {
   const d = await dump(`<main inert><button>behind</button></main><main aria-hidden="true"><p>hidden page</p><a href="#">link</a></main>
     <button><span aria-hidden="true">+</span> Add</button>`);
-  assert.deepEqual(texts(d), ["Add", "+"]);
+  assert.deepEqual(texts(d), ["Add", "Add", "+"]);
 });
 
 test("elements fully covered by a drawer are dropped and counted; partly covered ones stay", { skip }, async () => {
@@ -123,7 +123,7 @@ test("text-transform: the exported text is the displayed text", { skip }, async 
   const d = await dump(`<div style="text-transform:uppercase">up Case</div><div style="text-transform:lowercase">Low CASE</div>
     <div style="text-transform:capitalize">cap the 3rd word-x o'neil</div><div style="text-transform:none">No Change</div>
     <button style="text-transform:capitalize" aria-label="List View">list view</button>`);
-  assert.deepEqual(texts(d), ["UP CASE", "low case", "Cap The 3rd Word-X O'neil", "No Change", "List View"]);
+  assert.deepEqual(texts(d), ["UP CASE", "low case", "Cap The 3rd Word-X O'neil", "No Change", "List View", "List View"]);
 });
 
 test("border-radius: a percentage resolves against the box and radii are capped at half the short side", { skip }, async () => {
@@ -151,4 +151,53 @@ test("a volatile element exports its glyph run, not its box", { skip }, async ()
 test("adjacent text nodes are joined as rendered, with no inserted separator", { skip }, async () => {
   const d = await dump(`<p id="c"></p><script>const c = document.getElementById("c"); for (const s of ["S", "01", " · E", "01"]) c.append(document.createTextNode(s));</script>`);
   assert.deepEqual(texts(d), ["S01 · E01"]);
+});
+
+test("a control with its own text keeps its border box; the text is a separate glyph-run element", { skip }, async () => {
+  const d = await dump(`<button class="abs" style="top:10px;left:10px;width:100px;height:44px;border:0;background:#123456;color:#fff;border-radius:8px">Today</button>`);
+  assert.deepEqual(d.elements.map((e) => [e.role, e.text]), [["button", "Today"], ["text", "Today"]]);
+  assert.deepEqual([d.elements[0].rect.w, d.elements[0].rect.h], [100, 44]);
+  assert.ok(d.elements[1].rect.w < 100 && d.elements[1].rect.h < 44);
+  assert.equal(d.elements[0].radius, 8);
+  assert.equal(d.elements[0].color, null);
+  assert.equal(d.elements[1].radius, undefined);
+});
+
+test("a volatile opacity is flagged, not exported", { skip }, async () => {
+  const d = await dump(`<button class="abs" style="opacity:.5;width:80px;height:30px" aria-label="Audio: X">Audio: X</button>`, [{ name: "player-audio", selector: "button[aria-label^=Audio]", opacityVolatile: true }]);
+  assert.equal(d.elements[0].opacity, undefined);
+  assert.equal(d.elements[0].opacityVolatile, true);
+  assert.equal(d.elements[0].rect.w, 80);
+});
+
+test("a volatile host keeps the real text style of its content and a control's accessible name", { skip }, async () => {
+  const d = await dump(`<div class="app-clock-time" style="font:700 20px sans-serif;color:#ff0000"><span>12:00</span></div>
+    <button class="abs" style="top:100px;font:600 12px sans-serif;color:#00ff00" aria-label="Audio: English"><svg width="10" height="10"></svg><span>1:00</span></button>`,
+  [{ name: "header-clock", selector: ".app-clock-time" }, { name: "player-audio", selector: "button[aria-label^=Audio]" }]);
+  assert.deepEqual([d.elements[0].color, d.elements[0].fontSize, d.elements[0].fontWeight], ["#ff0000", 20, 700]);
+  assert.deepEqual([d.elements[1].role, d.elements[1].text, d.elements[1].color, d.elements[1].fontSize], ["button", "Audio: English", "#00ff00", 12]);
+});
+
+test("color-mix fills resolve to the painted colour (opaque, translucent over the page, nested var)", { skip }, async () => {
+  const d = await dump(`<style>:root{--brand:#cf3157;--surface:#dfdcdd}</style>
+    <div class="abs" style="top:0;width:40px;height:20px;background:color-mix(in srgb, var(--brand) 12%, var(--surface))"></div>
+    <div class="abs" style="top:30px;width:40px;height:20px;background:color-mix(in srgb, #000000 50%, transparent)"></div>
+    <div class="abs" style="top:60px;width:40px;height:20px;background:color-mix(in srgb, #ff0000 25%, #0000ff)"></div>`);
+  assert.deepEqual(d.elements.map((e) => e.background), ["#ddc7cd", "#808080", "#4000bf"]);
+});
+
+test("text cut by text-overflow: ellipsis is exported as drawn (visible characters, ellipsis, clipped rect)", { skip }, async () => {
+  const d = await dump(`<div style="width:60px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace">abcdefghijklmnop</div>
+    <div style="width:300px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace;margin-top:30px">fits</div>`);
+  const cut = d.elements[0];
+  // monospace 16px is 9.6 px per character: five characters (48 px) plus the ellipsis (9.6 px) fit in 60 px
+  assert.equal(cut.text, "abcde…");
+  assert.ok(cut.rect.x + cut.rect.w <= 60.01 && cut.rect.w > 50);
+  assert.equal(d.elements[1].text, "fits");
+});
+
+test("a computed colour in another space (color-mix in oklab) resolves to sRGB", { skip }, async () => {
+  const d = await dump(`<div class="abs" style="top:0;width:40px;height:20px;background:color-mix(in oklab, #ff0000 40%, #0000ff)"></div>`);
+  assert.match(d.elements[0].background, /^#[0-9a-f]{6}$/);
+  assert.notEqual(d.elements[0].background, "#ffffff");
 });

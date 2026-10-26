@@ -65,7 +65,7 @@ internal sealed class MediaCard
         var snapX = (float)Math.Round(x); var snapY = (float)Math.Round(y); var snapW = (float)Math.Round(x + W) - snapX; var snapH = (float)Math.Round(y + H) - snapY;
         _artDy = snapY - y; Art.PositionX = snapX - x; Art.PositionY = _artDy;
         Art.Size = new Size(snapW, snapH);
-        { var cssBox = (-Art.PositionX, -_artDy, W, H); Sem.Tag(Art, "container"); } // the layout export reports the CSS box, not the pixel-snapped one
+        Sem.Tag(Art, "container");
         Art.BackgroundColor = Ui.C(t.SurfaceSoft); Art.CornerRadius = 12.48f;
         Art.ClippingMode = ClippingModeType.ClipChildren;
         env.Images.Apply(Art, card.ThumbUrl, snapW, snapH, 12.48f);

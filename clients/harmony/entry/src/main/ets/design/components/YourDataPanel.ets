@@ -4,7 +4,7 @@
  * device scans, then previews what the package would change and applies it.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import { tv } from '../Metrics';
 import { getServerDirectory } from '../../AppContainer';
@@ -192,7 +192,7 @@ export struct YourDataPanel {
   @Builder
   private heading(text: string): void {
     Text(text).fontFamily(nunitoAt(500, tv(26.4)))
-      .fontSize(tv(26.4))
+      .fontSize(tv(26.4)).lineHeight(webLineHeight(tv(26.4))).halfLeading(true)
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(-0.924))
       .fontColor(toResourceColor(activeColors().ink))
@@ -201,7 +201,7 @@ export struct YourDataPanel {
   @Builder
   private copy(text: string, soft: boolean): void {
     Text(text).fontFamily(nunitoAt(400, tv(13.824)))
-      .fontSize(tv(13.824))
+      .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
       .fontColor(toResourceColor(soft ? activeColors().inkSoft : activeColors().inkMuted))
       .width(tv(this.panelWidth))
   }
@@ -209,7 +209,7 @@ export struct YourDataPanel {
   @Builder
   private button(label: string, primary: boolean, enabled: boolean, onTap: () => void): void {
     Text(label).fontFamily(nunitoAt(700, tv(13.824)))
-      .fontSize(tv(13.824))
+      .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
       .backgroundColor(primary ? toResourceColorWithAlpha(activeColors().ink, enabled ? 1 : 0.4) : toResourceColorWithAlpha(activeColors().surfaceSoft, 0.64))
@@ -257,7 +257,7 @@ export struct YourDataPanel {
         }
         if (this.exportError.length > 0) {
           Text(this.exportError).fontFamily(nunitoAt(400, tv(13.824)))
-            .fontSize(tv(13.824))
+            .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().danger))
         }
 
@@ -287,7 +287,7 @@ export struct YourDataPanel {
           this.copy('File received (' + formatBytes(this.session.size_bytes) + '). Review it below.', true)
         }
         Text('If progress already exists').fontFamily(nunitoAt(700, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
         Row({ space: tv(12) }) {
@@ -306,12 +306,12 @@ export struct YourDataPanel {
         })
         if (this.importError.length > 0) {
           Text(this.importError).fontFamily(nunitoAt(400, tv(13.824)))
-            .fontSize(tv(13.824))
+            .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().danger))
         }
         if (this.preview !== null) {
           Text('What this import would do').fontFamily(nunitoAt(700, tv(16)))
-            .fontSize(tv(16))
+            .fontSize(tv(16)).lineHeight(webLineHeight(tv(16))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
           ForEach(this.preview.warnings, (warning: string) => {
@@ -327,7 +327,7 @@ export struct YourDataPanel {
         }
         if (this.result !== null) {
           Text(resultLine(this.result)).fontFamily(nunitoAt(400, tv(13.824)))
-            .fontSize(tv(13.824))
+            .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
             .fontColor(toResourceColor(this.result.completed ? activeColors().inkSoft : activeColors().danger))
             .width(tv(this.panelWidth))
         }

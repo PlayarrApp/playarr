@@ -4,7 +4,7 @@
  * response `pages/Player.ets` already holds, nothing is fetched here.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { Drawer } from '../design/components/Drawer';
 import { activeColors, toResourceColor } from '../design/Theme';
 import { tv } from '../design/Metrics';
@@ -35,19 +35,19 @@ export struct PlayerInfoDrawer {
   private infoBody(): void {
     Column({ space: tv(SECTION_GAP) }) {
       Text(this.title).fontFamily(nunitoAt(500, tv(TITLE_SIZE)))
-        .fontSize(tv(TITLE_SIZE))
+        .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
         .width('100%')
       if (this.meta.length > 0) {
         Text(this.meta).fontFamily(nunitoAt(400, tv(META_SIZE)))
-          .fontSize(tv(META_SIZE))
+          .fontSize(tv(META_SIZE)).lineHeight(webLineHeight(tv(META_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .width('100%')
       }
       if (this.synopsis.length > 0) {
         Text(this.synopsis).fontFamily(nunitoAt(400, tv(SYNOPSIS_SIZE)))
-          .fontSize(tv(SYNOPSIS_SIZE))
+          .fontSize(tv(SYNOPSIS_SIZE)).lineHeight(webLineHeight(tv(SYNOPSIS_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .maxLines(8)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -57,11 +57,11 @@ export struct PlayerInfoDrawer {
         ForEach(this.facts, (fact: InfoFact) => {
           Row({ space: tv(12) }) {
             Text(fact.label).fontFamily(nunitoAt(400, tv(FACT_SIZE)))
-              .fontSize(tv(FACT_SIZE))
+              .fontSize(tv(FACT_SIZE)).lineHeight(webLineHeight(tv(FACT_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().inkMuted))
               .width(tv(FACT_LABEL_WIDTH))
             Text(fact.value).fontFamily(nunitoAt(400, tv(FACT_SIZE)))
-              .fontSize(tv(FACT_SIZE))
+              .fontSize(tv(FACT_SIZE)).lineHeight(webLineHeight(tv(FACT_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
           }

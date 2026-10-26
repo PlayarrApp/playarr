@@ -257,7 +257,7 @@ struct LibraryView: View {
             ZStack(alignment: .topLeading) {
                 PlayarrBackButton(action: goHome)
                     .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
-                WMText("Search", 21.6, 580, lh: 32.4, ls: -0.972)
+                WMText("Search", 21.6, 580, lh: 32.4, ls: -0.972, role: "heading")
                     .offset(x: 70, y: WM.topInset + 7.8)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -452,6 +452,8 @@ struct LibraryView: View {
                     }
                     .id(work.id)
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Open \(work.title)")
+                    .accessibilityAddTraits(.isLink)
                     .focusable()
                     .focused($focusedWork, equals: work.id)
                     .focusEffectDisabled()

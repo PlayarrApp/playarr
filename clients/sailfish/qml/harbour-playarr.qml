@@ -24,9 +24,11 @@ ApplicationWindow {
     FontMetrics { id: layoutFontMetrics }
     // Parity layout export (docs/parity/LAYOUT.md); only a PLAYARR_STEPS `js:layoutDump()` step calls it.
     function layoutDump() {
-        LayoutDump.dump(app.contentItem, Tokens.u, Tokens.weightOfFamily(), function (font, text) {
+        LayoutDump.dump(app.contentItem, Tokens.u, Tokens.weightOfFamily(), function (font) {
             layoutFontMetrics.font = font
-            return { ascent: layoutFontMetrics.ascent, descent: layoutFontMetrics.descent }
+            return { ascent: layoutFontMetrics.ascent, descent: layoutFontMetrics.descent,
+                advance: function (text) { return layoutFontMetrics.advanceWidth(text) },
+                elide: function (text, mode, width) { return layoutFontMetrics.elidedText(text, mode, width) } }
         }, function (line) { console.log(line) })
     }
 

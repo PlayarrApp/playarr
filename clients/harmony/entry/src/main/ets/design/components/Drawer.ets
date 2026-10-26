@@ -5,7 +5,7 @@
  */
 
 import { atLeast } from '../../core/SafeInsets';
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -66,7 +66,7 @@ export struct Drawer {
       Row() {
         Column({ space: isTvMetrics() ? tv(6.5) : TOUCH_KICKER_GAP }) {
           Text(this.kicker).fontFamily(nunitoAt(700, isTvMetrics() ? tv(KICKER_SIZE) : 7.2))
-            .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
+            .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2).lineHeight(webLineHeight(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .letterSpacing(tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05))
             .textCase(TextCase.UpperCase)
@@ -75,7 +75,7 @@ export struct Drawer {
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
             .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
-            .lineHeight(isTvMetrics() ? tv(57) : 0) // web: 1.5 line height, two-line titles keep a 57 px pitch
+            .lineHeight(webLineHeight(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).lineSpacing(webLineSpacing(isTvMetrics() ? tv(57) : 0, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).halfLeading(true) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
             .translate({ y: isTvMetrics() ? -2 : 0 }) // web's heading box sits 2 higher on the TV
             .id('px:heading:' + this.title)
@@ -84,7 +84,7 @@ export struct Drawer {
         .layoutWeight(1)
         Stack() {
           Text('×').fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE))
-            .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
+            .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)).halfLeading(true)
             .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))
             .id('px:button:' + (this.title === 'Filters' ? 'Close filters' : 'Close'))

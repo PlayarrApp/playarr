@@ -13,7 +13,7 @@
   ],
   "player-controls": [
     { "name": "player-time", "selector": ".player-time" },
-    { "name": "player-audio", "selector": "button[aria-label^=\"Audio:\"]" },
+    { "name": "player-audio", "selector": "button[aria-label^=\"Audio:\"]", "opacityVolatile": true },
     { "name": "player-buffered", "selector": ".player-seek-buffered", "omit": true }
   ],
   "player-quality-menu": [

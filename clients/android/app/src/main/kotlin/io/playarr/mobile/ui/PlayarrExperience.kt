@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.playarrEdgeFades
@@ -1875,7 +1876,7 @@ internal fun PlayarrExperience(
         }
         if (isTelevision) {
             // Keep the TV layout tree and its focus order unchanged.
-            Box(modifier = Modifier.fillMaxSize().parityBox("container").background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().parityBackground("container", WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 backgroundContent()
                 if (shouldShowPlayarrMiniPlayer(isPlayer, activePlaybackItem != null, persistentPlayerState is ExperienceLoad.Ready && !playbackFailed)) {
                     PlayarrMiniPlayer(
@@ -1891,7 +1892,7 @@ internal fun PlayarrExperience(
                 }
             }
         } else {
-            Box(modifier = Modifier.fillMaxSize().parityBox("container").background(WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
+            Box(modifier = Modifier.fillMaxSize().parityBackground("container", WebBackground).onFocusChanged { appFocusState.value = it.hasFocus }) {
                 Box(
                     Modifier.fillMaxSize()
                         .graphicsLayer {
@@ -3223,7 +3224,7 @@ private fun ExperienceStage(
     feature: @Composable () -> Unit,
     rails: @Composable () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize().parityBox("container").background(WebSurface)) {
+    Box(modifier = Modifier.fillMaxSize().parityBackground("container", WebSurface)) {
         HeroBackdropStack {
         if (!isTelevision) {
             PhoneKeyArt(selected, serverUrl, accessToken, Modifier.fillMaxSize())
@@ -3797,9 +3798,8 @@ internal fun ExperienceLandscapeCard(
                         Modifier
                     },
                 )
-                .scale(artScale)
-                .parityBox("container", radius = if (webPhone) 8f else if (webTvStyle) 12.48f else 10f),
-            innerModifier = Modifier.background(if (webSearch) WebSurfaceStrong else WebSurfaceSoft)
+                .scale(artScale),
+            innerModifier = Modifier.parityBackground("container", if (webSearch) WebSurfaceStrong else WebSurfaceSoft, radius = if (webPhone) 8f else if (webTvStyle) 12.48f else 10f)
                 .then(if (!webPhone && !webTvStyle && (focused || selected)) Modifier.border(1.dp, WebInk.copy(alpha = 0.62f), RoundedCornerShape(10.dp)) else Modifier),
         ) {
             AuthenticatedArtwork(
@@ -3825,8 +3825,8 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) 3.08.dp else 3.dp).parityBox("img").background(Color.White.copy(alpha = 0.28f))) {
-                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBox("container").background(WebAccent))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) 3.08.dp else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f))) {
+                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
                 }
             }
             if (showUnwatched && stackCount <= 1 && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
@@ -3939,7 +3939,7 @@ internal fun WebDetailPill(
                 ambientColor = Color(0xFF382621).copy(alpha = 0.12f), spotColor = Color(0xFF382621).copy(alpha = if (primary) 0.18f else 0.12f),
             ))
             .scale(scale)
-            
+            .parityShape(999f)
             .webFocusRing(focused, offset = 2.dp)
             .onFocusChanged { focused = it.isFocused },
     ) {
@@ -5230,8 +5230,7 @@ private fun PhoneSearchIdleState(modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         val idleFill = WebSurfaceStrong.copy(alpha = 0.54f).compositeOver(WebSurface)
         Box(
-            Modifier.size(86.dp).parityBox("container", radius = 999f)
-                .background(WebSurfaceStrong.copy(alpha = 0.54f), CircleShape)
+            Modifier.size(86.dp).parityBackground("container", WebSurfaceStrong.copy(alpha = 0.54f), CircleShape, radius = 999f)
                 .border(1.dp, if (webIsDark) Color(0xFFDFDCDD).copy(alpha = 0.115f) else Color(0xFF382621).copy(alpha = 0.14f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
@@ -7782,8 +7781,8 @@ private fun WebEpisodeDetailCard(
             shadows = if (lift) webCardFocusShadows else webCardRestShadows,
             shape = RoundedCornerShape(13.44.dp),
             focusGlow = focused,
-            modifier = Modifier.fillMaxWidth().height(if (tablet) 151.9.dp else 150.8.dp).scale(artScale).parityBox("container", radius = 13.44f),
-            innerModifier = Modifier.background(WebSurfaceSoft),
+            modifier = Modifier.fillMaxWidth().height(if (tablet) 151.9.dp else 150.8.dp).scale(artScale),
+            innerModifier = Modifier.parityBackground("container", WebSurfaceSoft, radius = 13.44f),
         ) {
             WebEpisodeArt {
                 AuthenticatedArtwork(
@@ -7819,8 +7818,8 @@ private fun WebEpisodeDetailCard(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(end = 11.5.dp, bottom = 8.8.dp),
             )
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBox("img").background(Color.White.copy(alpha = 0.28f))) {
-                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBox("container").background(WebAccent))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f))) {
+                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
                 }
             }
             if (available && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
@@ -8174,8 +8173,8 @@ private fun WebEpisodeCard(
             shadows = if (focused) webCardFocusShadows else webCardRestShadows,
             shape = RoundedCornerShape(13.44.dp),
             focusGlow = focused,
-            modifier = Modifier.fillMaxWidth().height(artHeight).parityBox("container", radius = 13.44f),
-            innerModifier = Modifier.background(WebSurfaceSoft),
+            modifier = Modifier.fillMaxWidth().height(artHeight),
+            innerModifier = Modifier.parityBackground("container", WebSurfaceSoft, radius = 13.44f),
         ) {
             WebEpisodeArt { art() }
             badge?.let {
@@ -10094,7 +10093,7 @@ private fun ExperiencePlayerScreen(
     }
     // Video minimises to Picture-in-Picture; Back closes the player (progress recorded).
     BackHandler(enabled = (localVideoShown || state is ExperienceLoad.Loading) && !inPip) { onBack() }
-    Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().parityBackground("container", Color.Black), contentAlignment = Alignment.Center) {
         when (val current = state) {
             // Play opens the player straight away: a black stage with only the standard buffering spinner.
             ExperienceLoad.Loading -> CircularProgressIndicator(color = Color.White, modifier = Modifier.size(38.dp))
@@ -10294,7 +10293,7 @@ private fun PlayarrMusicPlayerVisual(
 ) {
     val work = item.artworkWork
     val displayTitle = item.displayTitle(LocalPlayarrLanguage.current)
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().parityBackground("container", Color.Black)) {
         work?.let {
             AuthenticatedArtwork(
                 work = it,

@@ -104,7 +104,7 @@ export interface ParityHooks {
   player(): {state: string; positionSeconds: number; durationSeconds: number; error?: string};
   theme(): string;
   /** The layout document of the screen as drawn now, as JSON text (cmd=layout). */
-  layout?(debug: boolean): Promise<string>;
+  layout?(debug: string): Promise<string>;
 }
 
 let layoutChunks: string[] = [];
@@ -136,7 +136,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
     if (command.cmd === 'layout' && hooks.layout) {
       // The document is long and the device log drops lines in bursts: keep the numbered chunks, log them paced, and let the driver
       // ask again for the ones it did not read (cmd=layoutchunk&i=3,7).
-      void hooks.layout(command.debug === '1').then((json) => {
+      void hooks.layout(String(command.debug ?? '0')).then((json) => {
         layoutChunks = [];
         for (let at = 0; at < json.length; at += 700) layoutChunks.push(json.slice(at, at + 700));
         layoutSeq = command.seq ?? null;
