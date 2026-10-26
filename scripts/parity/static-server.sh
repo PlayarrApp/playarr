@@ -31,7 +31,7 @@ fi
 [[ -x "$BIN" ]] || { echo "static-server: backend binary not found: $BIN" >&2; exit 1; }
 
 # 2. Web build (server-hosted, base /tv/).
-WEB="$ROOT/clients/tv-web/web/dist-server"
+WEB="${PARITY_WEB_DIST:-$ROOT/clients/tv-web/web/dist-server}"
 if [[ ! -f "$WEB/index.html" ]]; then
   # The build rewrites the tracked public/build-manifest.json; restore it with git checkout when done.
   (cd clients/tv-web && scoped bash -c 'pnpm install --frozen-lockfile && pnpm --filter "./packages/**" run build && pnpm --filter "@playarr-tv/web..." run build:server') >&2
