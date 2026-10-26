@@ -115,7 +115,7 @@ export struct ChoiceSegments {
           .letterSpacing((tv(LARGE_HEADING_LETTER_SPACING)) + (isTvMetrics() ? -0.227 : 0))
           .fontColor(toResourceColor(activeColors().ink))
           
-          .margin({ top: -4.5, bottom: this.description === '' ? tv(5) + 0.3 : -1.3 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
+          .margin({ top: -4.5, bottom: this.description === '' ? tv(5) - 1.9 : -1.3 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
             .fontSize(tv(DESCRIPTION_SIZE)).letterSpacing((isTvMetrics() ? -0.093 : 0)).lineHeight(webLineHeight(tv(DESCRIPTION_SIZE))).halfLeading(true)
@@ -174,7 +174,7 @@ export struct ChoiceSegments {
             toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
           .borderRadius(tv(CHOICE_RADIUS))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
-          .scale(!isTvMetrics() && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
+          .scale((this.large || !isTvMetrics()) && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
           .focusable(true)
           .onClick(() => {
             this.onChoose(choice.value);
