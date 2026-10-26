@@ -365,7 +365,7 @@ struct LibraryView: View {
                 ForEach(displayedLetters, id: \.self) { letter in
                     ZStack {
                         if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
-                        Text(letter).wm(8.8, 700).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                        Text(letter).wm(8.8, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -399,7 +399,7 @@ struct LibraryView: View {
                             Circle().stroke(PlayarrStyle.background, lineWidth: 2).frame(width: 24, height: 24).offset(y: 1)
                             Circle().stroke(WM.pink, lineWidth: 2.2).frame(width: 28, height: 28).offset(y: 1)
                         }
-                        Text(letter).wm(8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                        Text(letter).wm(8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter)
                             .foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44).frame(height: 25.27)

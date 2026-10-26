@@ -161,7 +161,7 @@ struct SettingsView: View {
                                     .frame(width: 275, height: 15.776, alignment: .leading)
                                     .offset(x: 56, y: 46.4)
                                 Text("→")
-                                    .wm(18, color: WM.ink)
+                                    .wm(18, color: WM.ink, text: "→")
                                     .foregroundStyle(WM.ink)
                                     .offset(x: rowFocused ? 332 : 329, y: 32)
                             }
@@ -830,7 +830,7 @@ extension SettingsView {
                 WMQualityCell(width: 318, selected: qualityID == "original") {
                     WMText("Original", 9.28, 700, lh: 14).offset(x: 11, y: 11)
                     WMText("Best available source", 7.04, 400, color: WM.muted, lh: 11).offset(x: 11, y: 27)
-                    Text("\u{2713}").wm(11.84, 400, color: WM.pink).foregroundStyle(WM.pink).offset(x: 291, y: 15)
+                    Text("\u{2713}").wm(11.84, 400, color: WM.pink, text: "\u{2713}").foregroundStyle(WM.pink).offset(x: 291, y: 15)
                 }
             }
             .buttonStyle(.plain)

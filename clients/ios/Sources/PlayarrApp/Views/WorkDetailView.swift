@@ -558,7 +558,7 @@ struct WorkDetailView: View {
             .padding(.top, 22 * tabletVerticalScale)
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
-                    .wm(9.28 * tabletScale, 400, text: overview)
+                    .wm(9.28 * tabletScale, 400, color: PlayarrStyle.inkSoft, text: overview)
                     .foregroundStyle(PlayarrStyle.inkSoft)
                     .lineSpacing(5 * tabletScale)
                     .lineLimit(5)
@@ -643,10 +643,10 @@ struct WorkDetailView: View {
         if !viewModel.similarWorks.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Similar Titles")
-                    .wm(12.567 * tabletScale, 610)
+                    .wm(12.567 * tabletScale, 610, color: PlayarrStyle.ink, text: "Similar Titles")
                     .foregroundStyle(PlayarrStyle.ink)
                 Text("\(viewModel.similarWorks.count) titles")
-                    .wm(7.36 * tabletScale, 400)
+                    .wm(7.36 * tabletScale, 400, color: PlayarrStyle.muted, text: "\(viewModel.similarWorks.count) titles")
                     .foregroundStyle(PlayarrStyle.muted)
                     .padding(.top, 4 * tabletScale)
                 ScrollView(.horizontal) {
@@ -664,7 +664,7 @@ struct WorkDetailView: View {
                                         .frame(width: 229 * tabletScale, height: 129 * tabletScale)
                                         .clipShape(RoundedRectangle(cornerRadius: 10 * tabletScale, style: .continuous))
                                     Text(other.title)
-                                        .wm(8 * tabletScale, 400)
+                                        .wm(8 * tabletScale, 400, color: PlayarrStyle.muted, text: other.title)
                                         .foregroundStyle(PlayarrStyle.muted)
                                         .lineLimit(1)
                                         .frame(width: 229 * tabletScale, alignment: .leading)
@@ -687,10 +687,10 @@ struct WorkDetailView: View {
         if let model = tabletMovieModel, !model.chapters.isEmpty, let mediaFileID = detail.mediaFileID {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Chapters")
-                    .wm(12.567 * tabletScale, 610)
+                    .wm(12.567 * tabletScale, 610, color: PlayarrStyle.ink, text: "Chapters")
                     .foregroundStyle(PlayarrStyle.ink)
                 Text(model.chaptersFromServer ? "\(model.chapters.count) chapters" : "\(model.chapters.count) scene markers")
-                    .wm(7.36 * tabletScale, 400)
+                    .wm(7.36 * tabletScale, 400, color: PlayarrStyle.muted, text: model.chaptersFromServer ? "\(model.chapters.count) chapters" : "\(model.chapters.count) scene markers")
                     .foregroundStyle(PlayarrStyle.muted)
                     .padding(.top, 4 * tabletScale)
                 ScrollView(.horizontal) {
@@ -717,7 +717,7 @@ struct WorkDetailView: View {
                                         .frame(width: 192 * tabletScale, height: 108 * tabletScale)
                                         .background(Color.black.opacity(0.5))
                                         Text(String(format: "%02d", chapter.index + 1))
-                                            .wm(11 * tabletScale, 560, color: .white)
+                                            .wm(11 * tabletScale, 560, color: .white, text: String(format: "%02d", chapter.index + 1))
                                             .foregroundStyle(.white)
                                             .padding(.trailing, 10 * tabletScale).padding(.bottom, 8 * tabletScale)
                                     }
@@ -725,10 +725,10 @@ struct WorkDetailView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 10 * tabletScale, style: .continuous))
                                     HStack(spacing: 9 * tabletScale) {
                                         Text(Self.clockLabel(chapter.startMS))
-                                            .wm(7 * tabletScale, 700)
+                                            .wm(7 * tabletScale, 700, color: PlayarrStyle.muted, text: Self.clockLabel(chapter.startMS))
                                             .foregroundStyle(PlayarrStyle.muted)
                                         Text(chapter.title ?? "Chapter \(chapter.index + 1)")
-                                            .wm(8 * tabletScale, 610)
+                                            .wm(8 * tabletScale, 610, color: PlayarrStyle.ink, text: chapter.title ?? "Chapter \(chapter.index + 1)")
                                             .foregroundStyle(PlayarrStyle.ink)
                                     }
                                 }
@@ -745,10 +745,10 @@ struct WorkDetailView: View {
         if !viewModel.credits.cast.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Cast")
-                    .wm(12.567 * tabletScale, 610)
+                    .wm(12.567 * tabletScale, 610, color: PlayarrStyle.ink, text: "Cast")
                     .foregroundStyle(PlayarrStyle.ink)
                 Text("\(viewModel.credits.cast.count) people")
-                    .wm(7.36 * tabletScale, 400)
+                    .wm(7.36 * tabletScale, 400, color: PlayarrStyle.muted, text: "\(viewModel.credits.cast.count) people")
                     .foregroundStyle(PlayarrStyle.muted)
                     .padding(.top, 4 * tabletScale)
                 ScrollView(.horizontal) {
@@ -769,11 +769,11 @@ struct WorkDetailView: View {
                                 .frame(width: 74 * tabletScale, height: 74 * tabletScale)
                                 .clipShape(Circle())
                                 Text(credit.person.name)
-                                    .wm(8 * tabletScale, 700)
+                                    .wm(8 * tabletScale, 700, color: PlayarrStyle.ink, text: credit.person.name)
                                     .foregroundStyle(PlayarrStyle.ink)
                                     .lineLimit(1)
                                 Text(credit.character ?? credit.job ?? "")
-                                    .wm(6.4 * tabletScale, 400)
+                                    .wm(6.4 * tabletScale, 400, color: PlayarrStyle.muted, text: credit.character ?? credit.job ?? "")
                                     .foregroundStyle(PlayarrStyle.muted)
                                     .lineLimit(1)
                             }
@@ -892,7 +892,7 @@ struct WorkDetailView: View {
                 .padding(.top, titleToSubtitleGap)
             HStack(alignment: .firstTextBaseline, spacing: 13.6 * tabletScale) {
                 Text(selected.season.season.title ?? "Season \(seasonNumber)")
-                    .wm(7.68 * tabletScale, 680)
+                    .wm(7.68 * tabletScale, 680, color: PlayarrStyle.inkSoft, text: selected.season.season.title ?? "Season \(seasonNumber)")
                     .foregroundStyle(PlayarrStyle.inkSoft)
                     .fixedSize(horizontal: true, vertical: false)
                 Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
@@ -905,7 +905,7 @@ struct WorkDetailView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .wm(7.68 * tabletScale, 400)
+            .wm(7.68 * tabletScale, 400, color: PlayarrStyle.muted)
             .foregroundStyle(PlayarrStyle.muted)
             .overlay {
                 TabletDetailFrameDiagnostic(element: "metadata", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
@@ -913,7 +913,7 @@ struct WorkDetailView: View {
             .padding(.top, subtitleToMetadataGap)
             if let synopsis, !synopsis.isEmpty {
                 Text(synopsis)
-                    .wm(synopsisFontSize, 400, text: synopsis)
+                    .wm(synopsisFontSize, 400, color: PlayarrStyle.muted, text: synopsis)
                     .foregroundStyle(PlayarrStyle.muted)
                     .lineSpacing(synopsisLayout.lineSpacing)
                     .lineLimit(5)
@@ -1018,7 +1018,7 @@ struct WorkDetailView: View {
 
     private func tabletSeriesActionLabel(_ title: String, systemImage: String, tabletScale: CGFloat) -> some View {
         Label(title, systemImage: systemImage)
-            .wm(7.9228 * tabletScale, 610)
+            .wm(7.9228 * tabletScale, 610, color: PlayarrStyle.ink)
             .foregroundStyle(PlayarrStyle.ink)
             .lineLimit(1)
             .padding(.horizontal, 16 * tabletScale)
@@ -1345,7 +1345,7 @@ struct WorkDetailView: View {
                         .tracking(-0.377 * tabletScale)
                         .foregroundStyle(PlayarrStyle.ink)
                     Text("\(railEpisodes.count) episodes")
-                        .wm(7.36 * tabletScale, 400)
+                        .wm(7.36 * tabletScale, 400, color: PlayarrStyle.muted, text: "\(railEpisodes.count) episodes")
                         .foregroundStyle(PlayarrStyle.muted)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1516,7 +1516,7 @@ struct WorkDetailView: View {
                 LinearGradient(colors: [.clear, .black.opacity(0.68)], startPoint: .center, endPoint: .bottom)
                 if let tabletScale {
                     Text(String(format: "%02d", detail.episode.episodeNumber))
-                        .wm(13.66 * tabletScale, 560, color: .white)
+                        .wm(13.66 * tabletScale, 560, color: .white, text: String(format: "%02d", detail.episode.episodeNumber))
                         .foregroundStyle(.white)
                         .padding(.trailing, 12 * tabletScale)
                         .padding(.bottom, 8 * tabletScale)
@@ -1556,11 +1556,11 @@ struct WorkDetailView: View {
             if let tabletScale {
                 HStack(alignment: .firstTextBaseline, spacing: 8.8 * tabletScale) {
                     Text(label)
-                        .wm(6.278 * tabletScale, 700)
+                        .wm(6.278 * tabletScale, 700, color: PlayarrStyle.muted, text: label)
                         .foregroundStyle(PlayarrStyle.muted)
                         .fixedSize()
                     Text(title)
-                        .wm(8.196 * tabletScale, 610)
+                        .wm(8.196 * tabletScale, 610, color: PlayarrStyle.ink, text: title)
                         .foregroundStyle(PlayarrStyle.ink)
                         .lineLimit(1)
                         .truncationMode(.tail)

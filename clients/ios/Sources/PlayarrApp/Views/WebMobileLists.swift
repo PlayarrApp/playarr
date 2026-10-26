@@ -78,7 +78,7 @@ private struct WMListNote: View {
 
     var body: some View {
         Text(text)
-            .wm(8.8, 400, color: tone)
+            .wm(8.8, 400, color: tone, text: text)
             .foregroundStyle(tone)
     }
 }
@@ -100,7 +100,7 @@ private struct WMListEmpty: View {
     private var errorBody: some View {
         VStack(spacing: 8) {
             Text(title)
-                .wm(17.6, 650, color: isError ? WM.pink : WM.ink)
+                .wm(17.6, 650, color: isError ? WM.pink : WM.ink, text: title)
                 .foregroundStyle(isError ? WM.pink : WM.ink)
             Text(description)
                 .wm(12.3, 400, color: WM.muted, text: description)
@@ -124,7 +124,7 @@ private struct WMPrimaryPill: View {
 
     var body: some View {
         Text(label)
-            .wm(15, 400, color: WM.ink)
+            .wm(15, 400, color: WM.ink, text: label)
             .foregroundStyle(WM.ink)
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
@@ -139,7 +139,7 @@ private struct WMSmallPill: View {
 
     var body: some View {
         Text(label)
-            .wm(7.68, 400, color: WM.ink)
+            .wm(7.68, 400, color: WM.ink, text: label)
             .foregroundStyle(WM.ink)
             .padding(.horizontal, 14.4)
             .frame(height: 34)

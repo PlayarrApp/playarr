@@ -350,7 +350,7 @@ struct WMDetailPage: View {
 
     private var header: some View {
         ZStack(alignment: .topLeading) {
-            PlayarrBackButton(action: onBack)
+            PlayarrBackButton(label: work.kind == .movie ? "Back to Movies" : "Back to \(work.kind.displayName)", role: "button", action: onBack)
                 .accessibilityIdentifier("detail-back")
                 .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             // The web hides the header subtitle on phones (#1299), so only the page title shows here.
@@ -465,7 +465,7 @@ struct WMDetailPage: View {
         name: String? = nil
     ) -> some View {
         HStack(spacing: gap) {
-            Text(glyph).wm(glyphSize, color: glyphColor).foregroundStyle(glyphColor)
+            Text(glyph).wm(glyphSize, color: glyphColor, text: glyph).foregroundStyle(glyphColor)
                 .accessibilityHidden(true)
             WMText(label, labelSize, 700, color: labelColor, lh: labelSize * 1.5).fixedSize()
         }

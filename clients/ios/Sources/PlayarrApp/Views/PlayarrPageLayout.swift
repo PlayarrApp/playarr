@@ -14,6 +14,8 @@ enum PlayarrPageTokens {
 /// The one Back button: a round `controlHeight` circle (owner decision Q10). Every page uses this view, never a
 /// hand-sized `WMHeaderCircleButton` arrow; `PageChromeSourceGuardTests` fails the build otherwise.
 struct PlayarrBackButton: View {
+    var label = "Back to Home"
+    var role = "link"
     let action: () -> Void
 
     var body: some View {
@@ -22,9 +24,11 @@ struct PlayarrBackButton: View {
             height: PlayarrPageTokens.controlHeight,
             glyph: "\u{2190}",
             weight: 400, // the web Back arrow is a plain button glyph, not 720
+            role: role,
+            name: label,
             action: action
         )
-        .accessibilityLabel("Back")
+        .accessibilityLabel(label)
         .accessibilityAddTraits(.isLink)
     }
 }

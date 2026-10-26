@@ -142,7 +142,7 @@ struct CalendarView: View {
             .padding(.bottom, 136 * proxy.size.height / 1024)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
 
-            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            PlayarrBackButton(label: "Back to home", action: goHome).offset(x: 122 * scale, y: 55 * scale)
             WMText("Calendar", max(19.2, 24 * scale), 520, lh: 36, ls: -1)
                 .offset(x: 182 * scale, y: 57 * scale)
             HStack(spacing: 8) {
@@ -280,7 +280,7 @@ struct CalendarView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
 
-            PlayarrBackButton(action: goHome)
+            PlayarrBackButton(label: "Back to home", action: goHome)
                 .offset(x: 16, y: top)
             WMText("Calendar", 22, 520, lh: 33, ls: -1)
                 .offset(x: 70, y: top + 5)
@@ -639,7 +639,7 @@ struct CalendarView: View {
                 .frame(width: 358, alignment: .topLeading)
                 .padding(.top, 10)
             Text("Select a release to see its details.")
-                .wm(16, color: WM.muted)
+                .wm(16, color: WM.muted, text: "Select a release to see its details.")
                 .foregroundStyle(WM.muted)
                 .frame(width: 358, alignment: .topLeading)
                 .padding(.top, 36)
