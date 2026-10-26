@@ -179,3 +179,12 @@ test("a role alias lets a device button match a web link; off by default", () =>
   assert.equal(scoreLayout(doc(el("link")), doc(el("button")), { roleAliases: { link: ["button"] } }).score, 100);
   assert.equal(scoreLayout(doc(el("button")), doc(el("link")), { roleAliases: { link: ["button"] } }).score, 0);
 });
+
+test("heading-to-text alias: a device text matches a web heading only when passed, box and style still scored", () => {
+  const el = (role, size) => ({ text: "Movies", role, rect: { x: 0, y: 0, w: 40, h: 20 }, color: "#000000", background: "#ffffff", fontSize: size, fontWeight: 400 });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  const alias = { roleAliases: { heading: ["text"] } };
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 20))).score, 0);
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 20)), alias).score, 100);
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 30)), alias).score, 0);
+});
