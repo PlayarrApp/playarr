@@ -333,7 +333,7 @@ namespace Playarr.Xbox.Views
                 LineHeight = 12,
                 LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
                 Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"],
-                Margin = new Thickness(2, 4.4, 0, 0),
+                Margin = new Thickness(2, 4.4, 0, -14.43), // the web draws the caption below its link box
             });
             return root;
         }
