@@ -495,10 +495,12 @@ sub nameCard(content as Object, circle as Boolean, hasNumber as Boolean)
     else
         linkName = "Open " + content.title
     end if
-    capH = 29.38
-    if hasNumber then capH = 28.7
     m.cardLink.width = m.cardArtW
-    m.cardLink.height = m.posterBg.height + capH
+    ' The link spans the art down to the end of the last caption line as Roku lays it out.
+    last = m.title
+    if m.kind.visible then last = m.kind
+    m.cardLink.height = PlayarrTextBottom(last)
+    if m.cardLink.height < m.posterBg.height then m.cardLink.height = m.posterBg.height
     m.cardLink.scaleRotateCenter = [m.cardArtW / 2, m.cardLink.height / 2]
     linkRadius = 0
     if content.gridCard = true then linkRadius = 12

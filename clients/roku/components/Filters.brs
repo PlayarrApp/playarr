@@ -158,9 +158,7 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
         end if
         gx = cx + s * (ux - cx)
         gy = cy + s * (uy - cy)
-        ' The bar's own colour is the glyph's ink, not a background: the web reports the tile's colour behind it.
-        pgBare(g, "container", "", gx, gy, uw * s, uh * s, 1)
-        pgRound(g, gx, gy, uw * s, uh * s, 1, role)
+        pgTag(pgRound(g, gx, gy, uw * s, uh * s, 1, role), "container", 1)
     end for
     tw = 18.8
     if kind = "screen" then tw = 34.5
@@ -181,9 +179,9 @@ sub filtersChoice(g as Object, x as Float, y as Float, w as Float, text as Strin
     bx = cx + s * (x - cx)
     by = cy + s * (y - cy)
     if chosen
-        pgTag(pgRound(g, bx, by, w * s, 56 * s, 12, "ink"), "fill", 12)
+        pgTag(pgRound(g, bx, by, w * s, 56 * s, 12, "ink"), "button", 12, text)
     else
-        pgTag(pgRound(g, bx, by, w * s, 56 * s, 12, "surfaceSoft", 170), "fill", 12)
+        pgTag(pgRound(g, bx, by, w * s, 56 * s, 12, "surfaceSoft", 170), "button", 12, text)
         pgRound(g, bx, by, w * s, 56 * s, 12, "line", -1, true)
     end if
     role = "inkMuted"
@@ -192,8 +190,7 @@ sub filtersChoice(g as Object, x as Float, y as Float, w as Float, text as Strin
     end if
     tx = cx - tw * s / 2
     ty = y + 20.4 - 7.5 * (s - 1)
-    ' The button's only child is its text, so the web reports the text run as the button.
-    l = pgLabel(g, tx, ty, tw * s + 4, 15 * s, text, 10.56 * s, 680, role, { fitWidth: tw * s, aria: "button", radius: 12 })
+    l = pgLabel(g, tx, ty, tw * s + 4, 15 * s, text, 10.56 * s, 680, role, { fitWidth: tw * s })
     m.filtersFocus.Push({ row: row, col: col, x: x, y: y, w: w, h: 56 })
 end sub
 
@@ -215,7 +212,6 @@ sub filtersSelect(g as Object, y as Float, text as String, row as Integer)
     pgRound(g, 1606, y, 268, 58.8, 12, "surfaceSoft", 170)
     pgRound(g, 1606, y, 268, 58.8, 12, "line", -1, true)
     pgMark(g, "group", "", 1606, y, 268, 58.8, 12)
-    pgMark(g, "button", text + " ⌄", 1613.4, y + 7.4, 253.2, 44, 10)
     tw = PlayarrTextWidth(text, 11.84, 680, 0)
     l = pgLabel(g, 1625.4, y + 20.5, 215, 16, text, 11.84, 680, "ink", { maxLines: 1 })
     pgGlyph(g, "⌄", 1844.7, y + 20.5, 11.84, 680, "inkMuted")
@@ -488,7 +484,8 @@ end sub
 sub calFiltersRender()
     g = m.filtersGroup
     g.removeChildrenIndex(g.getChildCount(), 0)
-    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
+    pgRect(g, 1560, 0, 360, 1080, "drawerBase")
+    pgTint(g, 1560, 0, 360, 1080, "drawerPanel")
     pgLabel(g, 1606, 52, 190, 16, "CALENDAR", 11, 700, "inkMuted")
     pgLabel(g, 1606, 75, 200, 56, "Filters", 36, 600, "ink")
     pgRound(g, 1826.5, 54.5, 49, 49, 25, "surfaceSoft")
