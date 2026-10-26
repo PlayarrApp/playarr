@@ -144,6 +144,7 @@ export struct FeatureCopy {
       return measureUtils.measureText({
         textContent: text,
         fontSize: size,
+        fontFamily: nunitoAt(HERO_TITLE_FONT_WEIGHT, size),
         fontWeight: HERO_TITLE_FONT_WEIGHT,
         letterSpacing: tv(HERO_TITLE_LETTER_SPACING),
       });
