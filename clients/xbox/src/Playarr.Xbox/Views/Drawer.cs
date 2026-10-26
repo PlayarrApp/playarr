@@ -38,19 +38,19 @@ namespace Playarr.Xbox.Views
                 Background = Ui.Res("PlayarrSurfaceStrong"),
                 BorderBrush = Ui.Res("PlayarrLine"),
                 BorderThickness = new Thickness(1, 0, 0, 0),
-                Padding = new Thickness(46, 54, 46, 40),
+                Padding = new Thickness(45, 54, 46, 40),
                 XYFocusKeyboardNavigation = XYFocusKeyboardNavigationMode.Enabled,
                 TabFocusNavigation = KeyboardNavigationMode.Cycle,
             };
-            var header = new StackPanel { Margin = new Thickness(0, 0, 56, 0), VerticalAlignment = VerticalAlignment.Top };
+            var header = new StackPanel { Margin = new Thickness(0, 0, 48, 0), VerticalAlignment = VerticalAlignment.Top };
             var eyebrowText = Ui.Text(eyebrow.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted");
             eyebrowText.CharacterSpacing = 120;
             header.Children.Add(eyebrowText);
             var titleText = Ui.Text(title, 38.4, new FontWeight { Weight = 590 }, "PlayarrInk", new Thickness(0, 6, 0, 0));
             LayoutExport.SetRole(titleText, "heading");
             titleText.TextWrapping = TextWrapping.WrapWholeWords;
-            titleText.LineHeight = 53;
-            titleText.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            titleText.LineHeight = 57.6;
+            titleText.LineStackingStrategy = LineStackingStrategy.BaselineToBaseline;
             titleText.MaxLines = 3;
             header.Children.Add(titleText);
             panel.Children.Add(header);
@@ -60,7 +60,7 @@ namespace Playarr.Xbox.Views
             close.CornerRadius = new CornerRadius(24);
             close.Height = 50;
             close.Content = new TextBlock { Text = "\u00d7", FontSize = 26.88, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 36, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInk"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            LayoutExport.Tag(close, "button", "Close " + title.ToLowerInvariant());
+            LayoutExport.Tag(close, "button", eyebrow == "Title actions" ? "Close" : "Close filters"); // the web labels every drawer's close this way
             LayoutExport.SetSplit(close, true);
             close.Background = Ui.Res("PlayarrSurfaceStrong");
             close.HorizontalAlignment = HorizontalAlignment.Right;
@@ -71,7 +71,7 @@ namespace Playarr.Xbox.Views
             var scroller = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden };
             var bodyHost = new Grid { Margin = new Thickness(0, 0, 0, 0) };
             bodyHost.Children.Add(scroller);
-            header.SizeChanged += (s, e) => bodyHost.Margin = new Thickness(0, e.NewSize.Height + 35.4, 0, 0);
+            header.SizeChanged += (s, e) => bodyHost.Margin = new Thickness(0, e.NewSize.Height + 36.9, 0, 0);
             panel.Children.Add(bodyHost);
 
             LayoutExport.SetRole(panel, "dialog");
@@ -372,13 +372,18 @@ namespace Playarr.Xbox.Views
         /// <summary>An action row ("Play", "Mark as Watched"): icon in brand pink and label, as the web actions panel.</summary>
         public static Button Action(string glyph, string label, Action onClick)
         {
-            var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
-            var icon = new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 19.52, LineHeight = 27, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrBrand"), VerticalAlignment = VerticalAlignment.Center };
-            // The web draws these as text glyphs; the export names them as the web does.
+            // The web draws the row's glyph as text in the brand colour, 42 px before the label.
+            var content = new Grid();
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) });
+            content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var icon = new TextBlock { Text = glyph, FontSize = 19.52, Foreground = Ui.Res("PlayarrBrand"), VerticalAlignment = VerticalAlignment.Center };
+            if (glyph.Length > 0 && glyph[0] >= '\ue000')
+            {
+                icon.FontFamily = new FontFamily("Segoe MDL2 Assets"); // the app's own rows keep their icon-font glyphs
+            }
             content.Children.Add(icon);
             var text = Ui.Text(label, 19.2, new FontWeight { Weight = 700 }, "PlayarrInk");
-            text.LineHeight = 26;
-            text.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            Grid.SetColumn(text, 1);
             content.Children.Add(text);
             var button = new Button
             {

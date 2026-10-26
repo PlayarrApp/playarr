@@ -44,7 +44,7 @@
             <StackPanel x:Name="MetaRow" Orientation="Horizontal" Spacing="13.6" Margin="0,11.2,0,0" />
             <TextBlock
                 x:Name="OverviewText"
-                Width="346"
+                Width="328"
                 HorizontalAlignment="Left"
                 FontSize="12.86"
                 LineHeight="20.31"

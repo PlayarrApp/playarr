@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -255,9 +256,21 @@ namespace Playarr.Xbox.Views
             }
 
             // The web turns the caption lines to the pure focus ink (white in dark, black in light) while the card has focus.
+            var captions = new System.Collections.Generic.List<TextBlock>();
             foreach (var child in card.Children)
             {
-                if (child is TextBlock caption)
+                if (child is TextBlock direct)
+                {
+                    captions.Add(direct);
+                }
+                else if (child is StackPanel { Orientation: Orientation.Horizontal } captionRow)
+                {
+                    captions.AddRange(captionRow.Children.OfType<TextBlock>());
+                }
+            }
+
+            foreach (var caption in captions)
+            {
                 {
                     if (!RestingInk.TryGetValue(caption, out var resting))
                     {
