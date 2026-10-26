@@ -907,7 +907,7 @@ export struct ReleaseCalendar {
             .constraintSize({ maxWidth: tv(OVERVIEW_WIDTH) })
             .maxLines(OVERVIEW_MAX_LINES)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .margin({ top: 4.8 })
+            .margin({ top: 6.1 })
         }
         this.panelActions()
       }
@@ -968,7 +968,7 @@ export struct ReleaseCalendar {
     } else {
     Stage({
       titleRole: 'text',
-      panelTopAdjust: 3.6, // web's agenda hero sits 3.6 lower than the library's
+      panelTopAdjust: 5.2, // web's agenda hero sits 3.6 lower than the library's
       keyArt: '',
       kicker: this.selected !== undefined ?
         `${mediaKindLabel(this.selected.media_kind)} · ${releaseTypeLabel(this.selected.release_type)}` : '',

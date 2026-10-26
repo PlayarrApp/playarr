@@ -532,7 +532,7 @@ struct Profiles {
               .letterSpacing((this.pick(1.12, 0.67)) + (isTvMetrics() ? -0.228 : 0))
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(activeColors().inkMuted))
-              .margin({ top: this.pick(15.8, profile.is_current ? 11.5 : 9.5) })
+              .margin({ top: this.pick(13.3, profile.is_current ? 11.5 : 9.5) })
             if (profile.is_current) {
               Row({ space: tv(9) }) {
                 this.tvActionButton($r('app.media.nav_settings'), '', BRAND_PINK, () => {
@@ -542,11 +542,11 @@ struct Profiles {
                   this.handleSignOut();
                 })
               }
-              .margin(isTvMetrics() ? { top: 23.74, bottom: -67.74 } : { top: tv(21) + 5.4 - 1.1, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
+              .margin(isTvMetrics() ? { top: 23.74 - 1.3, bottom: -67.74 + 1.3 } : { top: tv(21) + 5.4 - 1.1, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
             }
           }
           .width(this.pick(254.98, 150.48))
-          .padding({ top: this.pick(5.49, 3.25), bottom: this.pick(8.8, 6.5) })
+          .padding({ top: this.pick(4.09, 3.25), bottom: this.pick(1.0, 6.5) })
           .accessibilityText(profile.display_name + (profile.is_current ? ', current profile' : '')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
