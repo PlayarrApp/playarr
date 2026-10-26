@@ -384,3 +384,4 @@ dropdown.pa-dropdown.pa-filter > button { min-height: 42px; border-radius: 10px;
 .pa-body.playing, .pa-body.playing .pa-app { background: #000000; }
 button.pa-mline { padding: 0 6px; font-weight: 400; border-radius: 4px; min-height: 32px; }
 button.pa-entry.week { padding-top: 10px; padding-bottom: 8px; }
+.pa-seg-tile:checked { transform: scale(1.025); }
