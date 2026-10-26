@@ -193,7 +193,7 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
       }}
     >
       {focused ? <View style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: u(4), backgroundColor: colour.accent}} /> : null}
-      <View style={{position: 'absolute', left: u(32), top: u(23.8)}}>
+      <View style={{position: 'absolute', left: u(32), top: u(25.1)}}>
         <T size={9.92} weight={760} lh={18.4} color={colour.ink}>
           {section.number}
         </T>
@@ -203,7 +203,7 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
           {t(section.titleKey)}
         </T>
       </View>
-      <View style={{position: 'absolute', left: u(lit ? 422.6 : 417.6), top: u(30.5)}}>
+      <View style={{position: 'absolute', left: u(lit ? 422.6 : 417.6), top: u(29.4)}}>
         <T size={20.8} weight={400} lh={31.2} color={lit ? colour.ink : colour.inkMuted}>
           {'→'}
         </T>

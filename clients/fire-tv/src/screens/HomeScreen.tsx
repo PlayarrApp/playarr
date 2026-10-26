@@ -364,8 +364,8 @@ function RailHeading({title, x, y, active, colour}: {title: string; x: number; y
       style={{
         position: 'absolute',
         left: u(x),
-        top: u(y + 3.1),
-        transform: active ? [{translateX: width * 0.08}, {translateY: -1}, {scale: 1.16}] : [],
+        top: u(y),
+        transform: active ? [{translateX: width * 0.08}, {translateY: 2.2}, {scale: 1.16}] : [],
       }}
     >
       <T heading size={17.664} weight={610} ls={-0.53} lh={26.5} color={colour}>

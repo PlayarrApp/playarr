@@ -195,12 +195,12 @@ function ProfileChoice({
       >
         <ProfileAvatar profileId={profile.id} size={selected ? u(236) : u(244)} style={selected ? undefined : undefined} />
       </View>
-      <View style={{marginTop: u(selected ? 19 : 8.8)}}>
+      <View style={{marginTop: u(8.8), transform: selected ? [{translateY: u(10.2)}] : []}}>
         <T size={17.28} weight={680} color={selected ? colour.ink : colour.inkSoft} lh={27.1} lines={1}>
           {profile.display_name || profile.username}
         </T>
       </View>
-      <View style={{marginTop: u(selected ? 10 : 8.8), minHeight: u(14.7)}}>
+      <View style={{marginTop: u(8.8), minHeight: u(14.7), transform: selected ? [{translateY: u(11.4)}] : []}}>
         <T size={9.408} weight={690} ls={0.423} color={colour.inkMuted} upper lh={14.7}>
           {profile.is_current ? t('pages.profiles.statusCurrent') : profile.pin_locked ? 'PIN required' : ''}
         </T>

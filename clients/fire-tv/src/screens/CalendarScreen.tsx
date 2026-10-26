@@ -138,10 +138,10 @@ export function CalendarScreen(): React.ReactElement {
       <PageHeader title={t('pages.calendar.title')} onBack={() => navigation.navigate(ROUTES.home)} webBack={{role: 'link', label: 'Back to home'}} />
 
       <RoundNav x={1629.3} glyph={'←'} label={t('pages.calendar.previous')} onPress={() => setAnchor(shiftAnchor(view, anchor, -1))} />
-      <TodayPill label={t('pages.calendar.today')} settled={state.status === 'ready'} onPress={() => setAnchor(anchorForView(view, today))} />
+      <TodayPill ownText={view !== 'month'} label={t('pages.calendar.today')} settled={state.status === 'ready'} onPress={() => setAnchor(anchorForView(view, today))} />
       <RoundNav x={1793.2} glyph={'→'} label={t('pages.calendar.next')} onPress={() => setAnchor(shiftAnchor(view, anchor, 1))} />
 
-      <PeriodPicker label={rangeLabel} anchor={anchor} locale={locale} onChange={setAnchor} />
+      <PeriodPicker ownText={view !== 'month'} label={rangeLabel} anchor={anchor} locale={locale} onChange={setAnchor} />
 
 
       {state.status === 'loading' || state.status === 'idle' ? (
@@ -212,7 +212,7 @@ function RoundNav({x, glyph, label, onPress}: {x: number; glyph: string; label: 
   );
 }
 
-function TodayPill({label, onPress, settled}: {label: string; onPress: () => void; settled: boolean}): React.ReactElement {
+function TodayPill({label, onPress, settled, ownText}: {label: string; onPress: () => void; settled: boolean; ownText: boolean}): React.ReactElement {
   const {colour} = useTheme();
   const [focused, setFocused] = useState(false);
   // Web opens the calendar on Today (data-tv-focus-default). The entries mount after it and Vega would leave focus on
@@ -244,7 +244,7 @@ function TodayPill({label, onPress, settled}: {label: string; onPress: () => voi
       onPress={onPress}
       style={{position: 'absolute', left: u(1694.7), top: u(56.2), width: u(83.2), height: u(50), borderRadius: u(25), backgroundColor: colour.surface, borderWidth: 1, borderColor: colour.line, alignItems: 'center', justifyContent: 'center'}}
     >
-      <T size={14.72} weight={720} color={colour.inkSoft} control={{role: 'button', label}}>
+      <T size={14.72} weight={720} color={colour.inkSoft} control={ownText ? {role: 'button', label} : undefined}>
         {label}
       </T>
       {focused ? <FocusRing /> : null}
