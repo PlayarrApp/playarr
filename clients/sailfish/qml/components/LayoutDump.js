@@ -244,7 +244,8 @@ function dump(root, u, weights, metrics, log) {
         for (var i = 0; i < k.length; ++i) if (k[i].source !== undefined && k[i].paintedWidth !== undefined) return true
         return false
     }
-    function walk(item, opAcc, shown, inMask, inPicture) {
+    function walk(item, opAcc, shown, inMask, inPicture) {   // inMask: the item that draws the effect this subtree is the source of
+        var painter = inMask || item
         if (!item || (!item.visible && shown !== true) || item.layoutSkipTree === true) return
         var op = opAcc * item.opacity
         if (op <= 0.001) return
@@ -285,7 +286,7 @@ function dump(root, u, weights, metrics, log) {
                 var mySeq = ++seq
                 var pic = inPicture && !stops
                 if (filled && !pic) fills.push({ polygon: polygon, full: mappedRect(item, root, 0, 0, w, h), c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
-                if (filled && !pic && !stops && item.color.a * op >= 0.5) painters.push({ poly: polygon, seq: mySeq, item: item })
+                if (filled && !pic && !stops && item.color.a * op >= 0.5) painters.push({ poly: polygon, seq: mySeq, item: painter })
                 else if (stops) filled = true   // a gradient is a visible fill, but like the web's background-image it is not a backdrop colour
                 var bordered = drawnBorder(item.border)
                 if ((filled || bordered) && !pic && item.layoutNoEmit !== true) {
@@ -302,7 +303,7 @@ function dump(root, u, weights, metrics, log) {
             } else if (item.source !== undefined && item.status !== undefined && item.paintedWidth !== undefined && w > 0 && h > 0 && item.status === 1) {
                 var imgSeq = ++seq
                 // only a picture that covers its whole box (cover fill mode) hides what is under it; a stretched PNG may be transparent
-                if (op >= 0.5 && item.fillMode === 2) painters.push({ poly: polygon, seq: imgSeq, item: item })
+                if (op >= 0.5 && item.fillMode === 2) painters.push({ poly: polygon, seq: imgSeq, item: painter })
                 if (!inMask) {   // the mask item already stands for this picture
                 var imageCenter = polygonCenter(polygon)
                 var im = { text: "", role: item.parityRole || "image", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(imageCenter.x, imageCenter.y), fontSize: null, fontWeight: null }
@@ -354,7 +355,7 @@ function dump(root, u, weights, metrics, log) {
         for (var oi = 0; oi < kids.length; ++oi) order.push(oi)
         order.sort(function (a, b) { return (kids[a].z - kids[b].z) || (a - b) })
         for (var i = 0; i < order.length; ++i) walk(kids[order[i]], op, shown, inMask, inPicture || holdsPicture(item))
-        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, true, inPicture)
+        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, item, inPicture)
         // an element's background includes its own fill and its children's: settle it once the subtree has been painted
         // development aid: the QML type of each element (the suite driver drops it unless asked to keep it)
         for (var k = mark; k < out.length; ++k) if (out[k]._src === undefined) out[k]._src = String(item).replace(/\(0x.*$/, "")
