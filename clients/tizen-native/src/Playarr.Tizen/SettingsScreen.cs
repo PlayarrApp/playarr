@@ -84,8 +84,9 @@ internal sealed class SettingsScreen : IPage
         _env = env; _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         
-        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container", "Appearance")); // web .tv-directory: the right 65 % carries the library panel frost
+        _root.Add(Sem.Tag(Ui.PanelWash(_t, 1248), "container")); // web .tv-directory: the right 65 % carries the library panel frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
@@ -118,12 +119,12 @@ internal sealed class SettingsScreen : IPage
         for (var i = 0; i < Options.Length; i++)
         {
             var y = 162 + i * 91.9f; var idx = i;
-            var card = Ui.Box(153.6f, y, 470.4f, 91.9f, i == 0 ? _t.SurfaceSoft : new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, 0.0f), 18);
+            var card = Ui.Box(153.6f, y, 470.4f, 91.9f, i == 0 ? _t.SurfaceSoft : new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, 0.0f), 0);
             card.Add(Ui.Text(Numbers[i], 32, 26.8f, 9.92f, 800, _t.Ink, 40, 14.88f));
             card.Add(Ui.Text(Options[i], 92, 23.8f, 29.6f, 500, _t.Ink, 307.6f, 44.4f, spacing: -1.08f));
             card.Add(Ui.Text("→", i == 0 ? 422.6f : 417.6f, 31f, 20.8f, 400, i == 0 ? _t.Ink : _t.InkMuted, 30, 31.2f)); // web: the open row nudges its arrow 5 px
             Sem.Tag(card, "link", $"{Numbers[i]} {Options[i]} →");
-            var ring = Ring.Make(470.4f, 91.9f, 18, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
+            var ring = Ring.Make(470.4f, 91.9f, 0, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
             _list.Add(card);
             _focus.Items.Add(new Focusable
             {
@@ -174,7 +175,9 @@ internal sealed class SettingsScreen : IPage
     /// <summary>Web Appearance sections below the theme: a heading, a description and a segmented control, each under a hairline (measured at 1920x1080).</summary>
     private void AppearanceSection(float top, string title, string description, string[] labels, int selected, Action<int> save, string saved)
     {
-        _panel.Add(Ui.Box(773.8f, top - 52, 1042.1f, 1, new Rgba(_t.Line.R, _t.Line.G, _t.Line.B, _t.Line.A)));
+        var section = Sem.Tag(new View { PositionX = 773.8f, PositionY = top - 50, Size = new Size(1042.1f, 169) }, "container");
+        section.Add(Ui.Box(0, 0, 1042.1f, 1, new Rgba(_t.Line.R, _t.Line.G, _t.Line.B, _t.Line.A))); // the section's top border
+        _panel.Add(section);
         _panel.Add(Sem.Tag(Ui.Text(title, 773.8f, top - 18.5f, 26.4f, 600, _t.Ink, 800, 39.6f, spacing: -0.92f), "heading"));
         _panel.Add(Ui.Text(description, 773.8f, top + 26, 13.12f, 400, _t.InkMuted, 900, 19.6f));
         var boxes = new List<(View Box, TextLabel Text)>();

@@ -155,7 +155,7 @@ internal static class Ui
             HorizontalAlignment = align,
             VerticalAlignment = VerticalAlignment.Top,
             MultiLine = multiline,
-            Ellipsis = !multiline,
+            Ellipsis = false, // an overflowing line is clipped by its parent, never elided, so every glyph has a laid-out position
         };
         if (GlyphAdvance(text) is not null) t.Ellipsis = false;
         if (!multiline && w > 0) t.RelativeLineHeight = boxH / TextHeight(size, reqWeight, cssFamily); // the label's line is exactly the box, as the browser's
@@ -181,7 +181,7 @@ internal static class Ui
         var key = (horizontal ? "h" : "v") + string.Join("_", stops.Select(s => $"{s.At:0.###}-{s.Color.R:0.##}-{s.Color.G:0.##}-{s.Color.B:0.##}-{s.Color.A:0.###}"));
         var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.Make(horizontal, stops));
-        return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
+        return Sem.Overlay(new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) });
     }
 
     /// <summary>
@@ -229,7 +229,7 @@ internal static class Ui
         var key = $"d{degrees:0.###}-{pixelWidth}x{pixelHeight}-" + string.Join("_", stops.Select(s => $"{s.At:0.###}-{s.Color.R:0.##}-{s.Color.G:0.##}-{s.Color.B:0.##}-{s.Color.A:0.###}"));
         var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeDiagonal(stops, pixelWidth, pixelHeight, degrees));
-        return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
+        return Sem.Overlay(new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) });
     }
 
     public static View RadialGradient(float x, float y, float w, float h, Rgba color, float centerX, float centerY, float radiusFraction)
@@ -241,7 +241,7 @@ internal static class Ui
         var key = $"r{pixelWidth}x{pixelHeight}-{centerX:0.###}-{centerY:0.###}-{radiusFraction:0.###}-{color.R:0.##}-{color.G:0.##}-{color.B:0.##}-{color.A:0.###}";
         var path = dir + "grad-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(key)))[..16] + ".png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.MakeRadial(pixelWidth, pixelHeight, color, centerX, centerY, radiusFraction));
-        return new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) };
+        return Sem.Overlay(new ImageView(path) { PositionX = x, PositionY = y, Size = new Size(w, h) });
     }
 
     /// <summary>The details-panel scrim over a panel box (x, y, w, h): extends 40% left, 22% right, 14% above and below, as web.</summary>
@@ -251,7 +251,7 @@ internal static class Ui
         Directory.CreateDirectory(dir);
         var path = dir + $"scrim-{t.Name}.png";
         if (!File.Exists(path)) File.WriteAllBytes(path, GradientPng.PanelScrim(new Rgba(t.Surface.R, t.Surface.G, t.Surface.B, 0.94f)));
-        return new ImageView(path) { PositionX = x - 0.4f * w, PositionY = y - 0.14f * h, Size = new Size(w * 1.62f, h * 1.28f) };
+        return Sem.Overlay(new ImageView(path) { PositionX = x - 0.4f * w, PositionY = y - 0.14f * h, Size = new Size(w * 1.62f, h * 1.28f) });
     }
 
     /// <summary>An ImageView drawn through a grayscale/contrast/brightness shader (web's filter on the Home key art).</summary>
@@ -272,6 +272,7 @@ internal static class Ui
         map.Add(Visual.Property.Shader, new PropertyValue(shader));
         var iv = new ImageView { PositionX = x, PositionY = y, Size = new Size(w, h) };
         iv.Image = map;
+        iv.WidthResizePolicy = ResizePolicyType.Fixed; iv.HeightResizePolicy = ResizePolicyType.Fixed; iv.Size = new Size(w, h); iv.Position = new Position(x, y); // setting the visual must not resize the view to the picture's natural size
         return iv;
     }
 
