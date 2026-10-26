@@ -129,7 +129,8 @@ PlayarrPage {
                         page.set("sort", modelData.id)
                     } else { page.order = modelData.id; page.set("order", modelData.id) }
                 }
-                property bool layoutNoEmit: true   // the label below is the web's button (its text run)
+                property string a11yName: modelData.label
+                property real focusRadius: 12 * Tokens.u
                 readonly property bool isLeft: modelData.id === "title" || modelData.id === "asc"
                 readonly property bool active: modelData.row === 0 ? page.sort === modelData.id : page.order === modelData.id
                 x: isLeft ? 18.3 * Tokens.u : 199.6 * Tokens.u
@@ -137,7 +138,7 @@ PlayarrPage {
                 width: (isLeft ? 174.7 : 170.1) * Tokens.u; height: 47.7 * Tokens.u
                 onClicked: navigationActivate()
                 Rectangle { id: pillBg; anchors.fill: parent; radius: 12 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
-                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label; property string parityRole: "button"; property var radiusSource: pillBg; color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
+                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label;  color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
             }
         }
         // Language selects.
