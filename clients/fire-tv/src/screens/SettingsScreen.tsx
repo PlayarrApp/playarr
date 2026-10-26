@@ -203,7 +203,7 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
           {t(section.titleKey)}
         </T>
       </View>
-      <View style={{position: 'absolute', left: u(lit ? 422.6 : 417.6), top: u(29.4)}}>
+      <View style={{position: 'absolute', left: u(lit ? 422.6 : 417.6), top: u(30)}}>
         <T size={20.8} weight={400} lh={31.2} color={lit ? colour.ink : colour.inkMuted}>
           {'→'}
         </T>

@@ -294,7 +294,7 @@ function GhostButton({label, onPress, disabled}: {label: string; onPress: () => 
 }
 
 /** The period label as a button; choosing a month and year jumps there. */
-export function PeriodPicker({label, anchor, locale, onChange, ownText}: {label: string; anchor: Day; locale: string; onChange: (day: Day) => void; ownText: boolean}): React.ReactElement {
+export function PeriodPicker({label, anchor, locale, onChange}: {label: string; anchor: Day; locale: string; onChange: (day: Day) => void}): React.ReactElement {
   const {colour} = useTheme();
   const {t} = useLanguage();
   const [open, setOpen] = useState(false);
@@ -320,7 +320,7 @@ export function PeriodPicker({label, anchor, locale, onChange, ownText}: {label:
         // The web's range button: a secondary pill in the header group, left of Previous / Today / Next (right edge 1613.9).
         style={{position: 'absolute', right: u(1920 - 1613.9), top: u(56.2), height: u(50), paddingHorizontal: u(21), borderRadius: u(25), borderWidth: 1, borderColor: colour.line, flexDirection: 'row', alignItems: 'center', backgroundColor: colour.surface}}
       >
-        <T size={14.72} weight={720} color={colour.inkSoft} control={ownText ? {role: 'button', label} : undefined}>
+        <T size={14.72} weight={720} color={colour.inkSoft}>
           {label}
         </T>
         {focused ? <FocusRing /> : null}
