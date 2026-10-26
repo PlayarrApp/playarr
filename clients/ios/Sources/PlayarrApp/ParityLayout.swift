@@ -295,6 +295,10 @@ private struct ParityRenderedTextModifier: ViewModifier {
                     .onAppear { ParityLayoutRegistry.shared.markAlive(id); frame = proxy.frame(in: .global) }
                     .onChange(of: proxy.frame(in: .global)) { _, value in frame = value }
             })
+            .onChange(of: covered, initial: true) { _, isCovered in
+                // A panel opened over this text: it is no longer visible, so its runs leave the export.
+                if isCovered { ParityLayoutRegistry.shared.remove(id) } else { ParityLayoutRegistry.shared.markAlive(id) }
+            }
             .onDisappear { ParityLayoutRegistry.shared.remove(id) }
     }
 }
