@@ -1067,7 +1067,7 @@ struct TVProfilesView: View {
                             )
                         TVProfileAvatar(
                             userID: profile.id.uuidString.lowercased(),
-                            size: size,
+                            size: size - 36 * s, // web: the avatar art sits 18 pt inside the plate
                             presetName: profile.isCurrent ? environment.currentAvatarPreset : nil,
                             customImage: profile.isCurrent ? environment.currentAvatarImage : nil
                         )
