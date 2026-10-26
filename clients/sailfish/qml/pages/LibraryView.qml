@@ -98,7 +98,6 @@ Item {
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter; verticalCenterOffset: -1.25 * Tokens.u }
         width: 44 * Tokens.u; height: width
         property string a11yName: qsTr("Filters")
-        property real focusRadius: 14 * Tokens.u
         onClicked: {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
@@ -171,15 +170,15 @@ Item {
                 width: 44 * Tokens.u; height: 19 * Tokens.u
                 property string a11yName: modelData === "#" ? qsTr("Numbers and symbols") : modelData
                 property string parityRole: "button"
-                property real focusRadius: height / 2
                 onClicked: root.jumpTo(modelData)
+                Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.bg }   // the letter's own plate, the page colour at rest
                 Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
                     visible: root.activeLetter === modelData
                     x: (parent.width - 34 * Tokens.u) / 2; y: (index === 0 ? 2.4 : -8) * Tokens.u; width: 34 * Tokens.u; height: parent.height + (index === 0 ? 10.6 : 14) * Tokens.u; clip: true
-                    Rectangle { property bool layoutSkip: true; x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
-                    Rectangle { property bool layoutSkip: true; x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 29.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.brandPink }
+                    Rectangle { x: (parent.width - width) / 2; y: (19 * Tokens.u - height) / 2 + (index === 0 ? -2.4 : 8) * Tokens.u; width: 24.5 * Tokens.u; height: width; radius: width / 2; color: Tokens.bg }
                 }
-                Rectangle { property bool layoutSkip: true   // the web draws this plate as a shadow ring, not a background
+                Rectangle {
                             anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
                             color: Tokens.primary }   // web: the ink plate of the active letter
                 PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.8);

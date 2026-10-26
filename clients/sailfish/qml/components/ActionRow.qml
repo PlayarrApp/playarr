@@ -14,7 +14,6 @@ MouseArea {
     property alias text: label.text
     property bool primary: false
     property string a11yName: glyph + " " + label.text
-    property real focusRadius: 14 * Tokens.u
     width: parent ? parent.width - 40 * Tokens.u : 0
     x: 20 * Tokens.u
     height: 68 * Tokens.u

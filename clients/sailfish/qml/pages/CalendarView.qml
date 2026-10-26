@@ -193,7 +193,6 @@ Item {
         property bool navigationFocusable: true
         property string parityLabel: qsTr("Filters")
         property string a11yName: qsTr("Filters")
-        property real focusRadius: 14 * Tokens.u
         property int parityRail: 1
         property int parityIndex: 0
         function navigationActivate() { root.openFilters() }
@@ -209,7 +208,6 @@ Item {
         property bool navigationFocusable: true
         property string parityLabel: qsTr("Calendar link")
         property string a11yName: qsTr("Calendar link")
-        property real focusRadius: 14 * Tokens.u
         property int parityRail: 1
         property int parityIndex: 1
         function navigationActivate() { pageStack.push(Qt.resolvedUrl("CalendarLinkPage.qml")) }
@@ -275,8 +273,8 @@ Item {
                                 visible: cell.es.length > 0
                                 x: 5.8 * Tokens.u; y: 1.8 * Tokens.u; width: 91.25 * Tokens.u; height: 34.05 * Tokens.u
                                 property string a11yName: cell.es.length ? cell.es[0].title + ", " + root.pill(cell.es[0]) + ", " + Qt.formatDate(new Date(modelData.date + "T00:00:00"), "dddd d MMMM") : ""
-                                property real focusRadius: 4 * Tokens.u
                                 onClicked: cell.navigationActivate()
+                                Rectangle { anchors.fill: parent; radius: 4 * Tokens.u; color: cell.past ? (Tokens.dark ? "#241f23" : "#efeeed") : Tokens.bg }   // the chip's own plate
                                 Rectangle {
                                     x: 5.59 * Tokens.u; y: 12.62 * Tokens.u
                                     width: 8.8 * Tokens.u; height: width; radius: width / 2
@@ -320,7 +318,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
                         color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
-                        PLabel { renderType: Text.NativeRendering; id: todayLbl; property var radiusSource: todayChip; anchors.centerIn: parent; anchors.verticalCenterOffset: dayCol.wk ? 0 : -1.2; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fsFit(11.2) }
+                        PLabel { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: dayCol.wk ? 0 : -1.2; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fsFit(11.2) }
                     }
                     }
                     Repeater {
@@ -332,7 +330,6 @@ Item {
                             property int parityRail: 0
                             property int parityIndex: index
                             property string a11yName: [modelData.title, subLbl.text, timeLbl.text, relLbl.text, kindLbl.text, badge.text].filter(function (x) { return !!x }).join(" ")
-                            property real focusRadius: 12 * Tokens.u
                             function navigationActivate() { root.openEntry(modelData) }
                             x: dayCol.wk ? 0 : Tokens.pad
                             width: dayCol.cw - (dayCol.wk ? 0 : 2 * Tokens.pad)   // static-seed refs: the agenda card ends at the page padding
@@ -377,7 +374,7 @@ Item {
                                         id: badgeChip
                                                                                 width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
                                         color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#392c2f" : "#e8dedd") : (Tokens.dark ? "#341c23" : "#f5dee2"); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#996a6e" : "#aa8285") : Tokens.brandPink
-                                        PLabel { renderType: Text.NativeRendering; id: badge; property var radiusSource: badgeChip; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
+                                        PLabel { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
                                     }
                                 }
                                 }

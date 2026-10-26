@@ -46,7 +46,6 @@ PlayarrPage {
             property int parityIndex: 0
             function navigationActivate() { pageStack.pop() }
             property string a11yName: qsTr("Close filters")
-            property real focusRadius: width / 2
             x: parent.width - page.gut - width; y: 20 * Tokens.u
             width: 44 * Tokens.u; height: width
             onClicked: pageStack.pop()
@@ -77,7 +76,6 @@ PlayarrPage {
                     readonly property bool active: (page.calendar ? page.calMode : page.view) === modelData.id
                     readonly property int slot: index
                     property string a11yName: modelData.label
-                    property real focusRadius: 12 * Tokens.u
                     scale: active ? 1.025 : 1
                     width: 111.33 * Tokens.u; height: 48 * Tokens.u
                     onClicked: navigationActivate()
@@ -130,7 +128,6 @@ PlayarrPage {
                     } else { page.order = modelData.id; page.set("order", modelData.id) }
                 }
                 property string a11yName: modelData.label
-                property real focusRadius: 12 * Tokens.u
                 readonly property bool isLeft: modelData.id === "title" || modelData.id === "asc"
                 readonly property bool active: modelData.row === 0 ? page.sort === modelData.id : page.order === modelData.id
                 x: isLeft ? 18.3 * Tokens.u : 199.6 * Tokens.u
@@ -163,7 +160,6 @@ PlayarrPage {
                     function navigationActivate() { page.openSelect = parent.opened ? "" : modelData.key }
                     x: 7.39 * Tokens.u; y: 7.39 * Tokens.u; width: parent.width - 14.78 * Tokens.u; height: 44 * Tokens.u
                     property string a11yName: curLbl.text + " " + chevLbl.text
-                    property real focusRadius: 10 * Tokens.u
                     onClicked: navigationActivate()
                     PLabel { renderType: Text.NativeRendering; id: curLbl
                         x: 12 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -2

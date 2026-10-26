@@ -75,7 +75,6 @@ Item {
         anchors { right: parent.right; rightMargin: Tokens.pad; top: parent.top; topMargin: 14 * Tokens.u }
         width: 44 * Tokens.u; height: width
         property string a11yName: qsTr("Filters")
-        property real focusRadius: 14 * Tokens.u
         onClicked: pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
         Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
         Image { anchors.centerIn: parent; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("filter", Qt.rgba(Tokens.ink.r * 0.8 + Tokens.bg.r * 0.2, Tokens.ink.g * 0.8 + Tokens.bg.g * 0.2, Tokens.ink.b * 0.8 + Tokens.bg.b * 0.2, 1)) }

@@ -199,7 +199,6 @@ PlayarrPage {
             property bool navigationFocusable: true
             property string parityLabel: qsTr("Settings")
             property string a11yName: qsTr("%1 settings").arg(Api.profileName)
-            property real focusRadius: width / 2
             property int parityRail: 1
             property int parityIndex: 0
             width: 44 * Tokens.u; height: width
@@ -225,7 +224,6 @@ PlayarrPage {
         id: clients
         property string a11yName: qsTr("Clients")
         property string parityRole: "link"
-        property real focusRadius: height / 2
         anchors { right: parent.right; rightMargin: 22 * Tokens.u; bottom: parent.bottom; bottomMargin: 22 * Tokens.u }
         width: 75.5 * Tokens.u; height: 43.7 * Tokens.u
         onClicked: Qt.openUrlExternally("https://playarr.app/clients")

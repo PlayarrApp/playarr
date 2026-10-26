@@ -135,12 +135,30 @@ test("does not invent a scalar radius for nonuniformly transformed rounded geome
   assert.ok(lines.some((line) => line === "LAYOUTWARN|nonuniform-rounded-radius|1"));
 });
 
-test("preserves focus radius under uniform scale even when the visible box is clipped", () => {
+test("takes a control's radius from the shape painted over it, never from a hint", () => {
   const root = makeItem("root", 100, 100);
-  attach(root, focus("scaled-focus", 12, 12, { x: -12, scaleX: 2, scaleY: 2, focusRadius: 6 }));
-  const [result] = dump(root);
-  assert.deepEqual(result.rect, { x: -12, y: 0, w: 24, h: 24 });
-  assert.equal(result.radius, 12);
+  const hinted = attach(root, focus("hint-only", 12, 12, { x: 2, y: 2, focusRadius: 6 }));
+  const painted = attach(root, focus("painted", 12, 12, { x: 30, y: 2, scaleX: 2, scaleY: 2 }));
+  attach(painted, makeItem("plate", 12, 12, { border: { width: 0 }, radius: 3, color: { r: 0, g: 0, b: 0, a: 1 } }));
+  const [first, second] = dump(root).filter((row) => row.role === "button");
+  assert.ok(hinted);
+  assert.equal(Object.hasOwn(first, "radius"), false);
+  assert.equal(second.radius, 6);
+});
+
+test("drops an element that an opaque later sibling covers, keeps one beneath a translucent plate", () => {
+  const root = makeItem("root", 100, 100);
+  attach(root, focus("covered", 10, 10, { x: 10, y: 10 }));
+  attach(root, makeItem("plate", 50, 50, { border: { width: 0 }, radius: 0, color: { r: 1, g: 1, b: 1, a: 0.9 } }));
+  attach(root, focus("under-glass", 10, 10, { x: 60, y: 60 }));
+  attach(root, makeItem("glass", 20, 20, { x: 55, y: 55, border: { width: 0 }, radius: 0, color: { r: 1, g: 1, b: 1, a: 0.2 } }));
+  assert.deepEqual(dump(root).filter((row) => row.role === "button").map((row) => row.text), ["under-glass"]);
+});
+
+test("reports a text font size at the scale it is drawn", () => {
+  const root = makeItem("root", 100, 100);
+  attach(root, makeItem("scaled", 40, 10, textItem({ text: "abcd", scaleX: 2, scaleY: 2 })));
+  assert.equal(dump(root)[0].fontSize, 20);
 });
 
 test("a zero-size clipping ancestor hides descendants", () => {
@@ -203,12 +221,12 @@ test("exports one run per rendered line from the recorded line boxes", () => {
 
 test("exports an elided line as drawn, with the visible text and width", () => {
   const root = makeItem("root", 100, 100);
-  attach(root, makeItem("clipped", 40, 10, textItem({ text: "abcdefghijkl", elide: 1, contentWidth: 40 })));
+  attach(root, makeItem("clipped", 40, 10, textItem({ text: "abcdefghijkl", elide: 1, contentWidth: 40, truncated: true })));
   attach(root, makeItem("limited", 40, 30, textItem({
-    text: "aa bb cc dd ee ff gg", elide: 1, wrapMode: 1, maximumLineCount: 2, lineCount: 2, y: 20,
+    text: "aa bb cc dd ee ff gg", elide: 1, wrapMode: 1, maximumLineCount: 2, lineCount: 2, y: 20, truncated: true, contentWidth: 40,
     laidLines: [{ x: 0, y: 0, w: 40, h: 10 }, { x: 0, y: 12, w: 40, h: 10 }],
   })));
-  attach(root, makeItem("centred", 40, 10, textItem({ text: "abcd", horizontalAlignment: 4, y: 60 })));
+  attach(root, makeItem("centred", 40, 10, textItem({ text: "abcd", horizontalAlignment: 4, contentWidth: 20, y: 60 })));
   const runs = dump(root);
   assert.equal(runs[0].text, "abcdefg…");
   assert.deepEqual(runs[0].rect, { x: 0, y: 0, w: 40, h: 10 });

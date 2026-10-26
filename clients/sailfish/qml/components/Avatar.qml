@@ -30,14 +30,12 @@ Item {
         visible: false
         width: root.width; height: root.width
         Rectangle {
-            property bool layoutNoEmit: true
-            anchors.centerIn: parent
+                        anchors.centerIn: parent
             width: root.width * 2; height: root.width * 1.3925; rotation: -35
             gradient: Gradient { GradientStop { position: 0; color: root.plateStart } GradientStop { position: 1; color: root.plateEnd } }
         }
         Canvas {   // the sheen: white at 28 % fading to nothing over 26.77 % of the plate
-            property bool layoutSkip: true
-            anchors.fill: parent
+                anchors.fill: parent
             renderTarget: Canvas.Image
             onPaint: {
                 var ctx = getContext("2d"), w = width
