@@ -112,8 +112,8 @@ PlayarrPage {
         // Sort and order: two wide pills each.
         Repeater {
             model: page.calendar ? [] : [
-                { row: 0, y: 207.7, id: "title", label: qsTr("Title") }, { row: 0, y: 207.7, id: "date_added", label: qsTr("Date Added") },
-                { row: 1, y: 300.6, id: "asc", label: page.sort === "title" ? qsTr("A-Z") : qsTr("Oldest") }, { row: 1, y: 300.6, id: "desc", label: page.sort === "title" ? qsTr("Z-A") : qsTr("Newest") } ]
+                { row: 0, y: 208.48, id: "title", label: qsTr("Title") }, { row: 0, y: 208.48, id: "date_added", label: qsTr("Date Added") },
+                { row: 1, y: 301.05, id: "asc", label: page.sort === "title" ? qsTr("A-Z") : qsTr("Oldest") }, { row: 1, y: 301.05, id: "desc", label: page.sort === "title" ? qsTr("Z-A") : qsTr("Newest") } ]
             MouseArea {
                 property bool navigationFocusable: true
                 property string parityLabel: modelData.label
@@ -130,9 +130,10 @@ PlayarrPage {
                 property string a11yName: modelData.label
                 readonly property bool isLeft: modelData.id === "title" || modelData.id === "asc"
                 readonly property bool active: modelData.row === 0 ? page.sort === modelData.id : page.order === modelData.id
-                x: isLeft ? 18.3 * Tokens.u : 199.6 * Tokens.u
+                x: isLeft ? 20 * Tokens.u : 199 * Tokens.u
                 y: modelData.y * Tokens.u
-                width: (isLeft ? 174.7 : 170.1) * Tokens.u; height: 47.7 * Tokens.u
+                width: 171 * Tokens.u; height: 48 * Tokens.u
+                scale: active ? 1.025 : 1
                 onClicked: navigationActivate()
                 Rectangle { id: pillBg; anchors.fill: parent; radius: 12 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
                 PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label;  color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }

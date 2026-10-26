@@ -289,7 +289,7 @@ function dump(root, u, weights, metrics, log) {
                 var bordered = drawnBorder(item.border)
                 if ((filled || bordered) && !pic && item.layoutNoEmit !== true) {
                     var center = polygonCenter(polygon)
-                    var rc = { text: "", role: item.parityRole || "container", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(center.x, center.y), fontSize: null, fontWeight: null, _at: [center.x, center.y], _box: mappedRect(item, root, 0, 0, w, h) }
+                    var rc = { text: "", role: item.parityRole || "container", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(center.x, center.y), fontSize: null, fontWeight: null, }
                     var rectangleRadiusScale = uniformRadiusScale(item, root)
                     var rr = radiusOf(item, rectangleRadiusScale)
                     if (item.radius > 0 && rectangleRadiusScale === null) radiusLimitations += 1
@@ -300,7 +300,8 @@ function dump(root, u, weights, metrics, log) {
                 }
             } else if (item.source !== undefined && item.status !== undefined && item.paintedWidth !== undefined && w > 0 && h > 0 && item.status === 1) {
                 var imgSeq = ++seq
-                if (op >= 0.5) painters.push({ poly: polygon, seq: imgSeq, item: item })
+                // only a picture that covers its whole box (cover fill mode) hides what is under it; a stretched PNG may be transparent
+                if (op >= 0.5 && item.fillMode === 2) painters.push({ poly: polygon, seq: imgSeq, item: item })
                 if (!inMask) {   // the mask item already stands for this picture
                 var imageCenter = polygonCenter(polygon)
                 var im = { text: "", role: item.parityRole || "image", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(imageCenter.x, imageCenter.y), fontSize: null, fontWeight: null }
@@ -372,6 +373,7 @@ function dump(root, u, weights, metrics, log) {
             if (!hit) hidden = false
         }
         if (!hidden) kept.push(el2)
+        else log("LAYOUTWARN|occluded|" + el2.role + "|" + el2.text.slice(0, 24) + "|" + r2(r.x / u) + "," + r2(r.y / u) + " " + r2(r.w / u) + "x" + r2(r.h / u))
     }
     out = kept
     for (var q = 0; q < out.length; ++q) { delete out[q]._item; delete out[q]._seq; delete out[q]._r }

@@ -15,14 +15,15 @@ Item {
     width: 44 * Tokens.u
     height: width
     property color plateColor: Tokens.surfaceSoft
-    Rectangle { visible: !root.drawn; anchors.fill: parent; radius: width / 2; color: parent.plateColor }
-    Image {
-        id: img
-        visible: !root.drawn
-        anchors.fill: parent
-        sourceSize: Qt.size(width * 2, height * 2)
-        smooth: true
-        asynchronous: true
+    Rectangle {   // the plate, with the picture inside it
+        visible: !root.drawn; anchors.fill: parent; radius: width / 2; color: root.plateColor
+        Image {
+            id: img
+            anchors.fill: parent
+            sourceSize: Qt.size(width * 2, height * 2)
+            smooth: true
+            asynchronous: true
+        }
     }
     // Qt 5.6 gradients run top to bottom only: a rotated, longer rectangle gives the 145deg line, masked to the disc.
     Item {
