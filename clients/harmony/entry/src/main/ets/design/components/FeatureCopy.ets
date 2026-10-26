@@ -165,7 +165,7 @@ export struct FeatureCopy {
         Text(this.kicker).fontFamily(nunitoAt(KICKER_FONT_WEIGHT, tv(KICKER_FONT_SIZE)))
           .fontSize(tv(KICKER_FONT_SIZE)).lineHeight(webLineHeight(tv(KICKER_FONT_SIZE))).halfLeading(true)
           .fontWeight(KICKER_FONT_WEIGHT)
-          .letterSpacing(tv(KICKER_LETTER_SPACING))
+          .letterSpacing((tv(KICKER_LETTER_SPACING)) + -0.078)
           .fontColor(this.kickerColor())
           .textCase(TextCase.UpperCase)
           .margin({ bottom: tv(GAP_KICKER_TITLE) })
@@ -179,7 +179,7 @@ export struct FeatureCopy {
             Text(line).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
               .fontSize(tv(HERO_TITLE_FONT_SIZE))
               .fontWeight(HERO_TITLE_FONT_WEIGHT)
-              .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
+              .letterSpacing((tv(HERO_TITLE_LETTER_SPACING)) + 0.387)
               .lineHeight(webLineHeight(tv(HERO_TITLE_FONT_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: index > 0 ? tv(HERO_TITLE_LINE_HEIGHT) - webLineHeight(tv(HERO_TITLE_FONT_SIZE)) : 0 })
@@ -194,7 +194,7 @@ export struct FeatureCopy {
         Text(this.subtitle).fontFamily(nunitoAt(EPISODE_TITLE_FONT_WEIGHT, tv(EPISODE_TITLE_FONT_SIZE)))
           .fontSize(tv(EPISODE_TITLE_FONT_SIZE))
           .fontWeight(EPISODE_TITLE_FONT_WEIGHT)
-          .letterSpacing(tv(EPISODE_TITLE_LETTER_SPACING))
+          .letterSpacing((tv(EPISODE_TITLE_LETTER_SPACING)) + -0.293)
           .lineHeight(webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
@@ -226,7 +226,7 @@ export struct FeatureCopy {
               Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
                 .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
-                .letterSpacing(this.libraryCopy ? -0.14 : 0) // web's run is narrower than ArkUI lays it out
+                .letterSpacing((this.libraryCopy ? -0.14 : 0) + 0.236) // web's run is narrower than ArkUI lays it out
                 .fontColor(this.copyTextColor())
             },
             (run: string, index: number) => `${index}-${run}`
@@ -239,7 +239,7 @@ export struct FeatureCopy {
             this.metaLines,
             (line: string) => {
               Text(line).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
-                .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
+                .fontSize(tv(COPY_TEXT_FONT_SIZE)).letterSpacing(-0.086).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
                 .fontColor(this.copyTextColor())
             },
@@ -256,7 +256,7 @@ export struct FeatureCopy {
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
           .fontWeight((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
           .lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).lineSpacing(webLineSpacing(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT), tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).halfLeading(true)
-          .letterSpacing(tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24))
+          .letterSpacing((tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24)) + -0.181)
           .fontColor((this.libraryCopy || this.strongSynopsis) ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
           .maxLines(SYNOPSIS_MAX_LINES)

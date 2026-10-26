@@ -489,7 +489,7 @@ export struct PosterCard {
         // two text elements as web has them (the caption, then the title on the same baseline)
         Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) }) {
           Text(this.episodeCaption).fontFamily(nunitoAt(700, this.subtitleFontSize))
-            .fontSize(this.subtitleFontSize).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
+            .fontSize(this.subtitleFontSize).letterSpacing((isTvMetrics() ? -0.212 : 0)).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().inkMuted)))
             .maxLines(1)
@@ -498,7 +498,7 @@ export struct PosterCard {
             .fontSize(this.titleFontSize).lineHeight(webLineHeight(this.titleFontSize)).halfLeading(true)
             .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink)))
-            .letterSpacing(tv(this.titleFontSize * -0.015))
+            .letterSpacing((tv(this.titleFontSize * -0.015)) + (isTvMetrics() ? -0.326 : 0))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)

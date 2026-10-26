@@ -144,7 +144,7 @@ export struct PageShell {
       
       .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
       .fontWeight(FontWeight.Medium)
-      .letterSpacing(tv(TITLE_LETTER_SPACING))
+      .letterSpacing((tv(TITLE_LETTER_SPACING)) + (isTvMetrics() ? -0.23 : 0))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(HEADER_SIZE))
       .translate({ y: 0.2 }) // web's title box sits level with the web header's

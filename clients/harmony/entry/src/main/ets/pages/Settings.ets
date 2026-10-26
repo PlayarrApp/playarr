@@ -299,7 +299,7 @@ export struct SettingsScreen {
       Text(section.title).fontFamily(nunitoAt(480, tv(TITLE_SIZE)))
         .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
-        .letterSpacing(tv(TITLE_LETTER_SPACING))
+        .letterSpacing((tv(TITLE_LETTER_SPACING)) + (isTvMetrics() ? -0.185 : 0))
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
         .position({ x: tv(TITLE_LEFT), y: -1.5 }) // web's title box sits 1.5 higher

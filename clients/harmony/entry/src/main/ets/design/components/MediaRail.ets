@@ -416,7 +416,7 @@ export struct MediaRail {
           .fontSize(this.headingSize).lineHeight(webLineHeight(this.headingSize)).halfLeading(true)
           .fontWeight(this.headingWeight)
           .fontColor(toResourceColor(activeColors().ink))
-          .letterSpacing(this.headingSize * (isTvMetrics() ? RAIL_HEADING_TRACKING_TV_EM : RAIL_HEADING_TRACKING_EM))
+          .letterSpacing((this.headingSize * (isTvMetrics() ? RAIL_HEADING_TRACKING_TV_EM : RAIL_HEADING_TRACKING_EM)) + (isTvMetrics() ? -0.193 : 0))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .translate({ y: ((FOCUS_LIFT.railHeading.translateY ?? 0) * this.headingEffective()) - (isTvMetrics() ? 1.5 : 0) }) // TV: web's heading box sits 1.5 higher

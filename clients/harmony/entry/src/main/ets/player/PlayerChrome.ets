@@ -625,7 +625,7 @@ export struct PlayerChrome {
         // web: the Minimise pill (glass, hairline) beside the round close button
         Row({ space: tv(10) }) {
           Image($r('app.media.player_minimize')).width(tv(20)).height(tv(20))
-          Text('Minimise').fontFamily(nunitoAt(700, tv(11.2))).fontSize(tv(11.2)).lineHeight(webLineHeight(tv(11.2))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+          Text('Minimise').fontFamily(nunitoAt(700, tv(11.2))).fontSize(tv(11.2)).letterSpacing((isTvMetrics() ? 0.146 : 0)).lineHeight(webLineHeight(tv(11.2))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
         }
         .width(tv(124))
         .height(tv(TV_CLOSE_SIZE))
@@ -707,7 +707,7 @@ export struct PlayerChrome {
             // web: the HD badge and the negotiated quality's name, between the queue and info buttons
             Row({ space: tv(12) }) {
               Text('HD').fontFamily(nunitoAt(700, tv(7.68))).fontSize(tv(7.68)).lineHeight(webLineHeight(tv(7.68))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).lineHeight(webLineHeight(tv(10.56))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+              Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).letterSpacing((isTvMetrics() ? -0.103 : 0)).lineHeight(webLineHeight(tv(10.56))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
             }
             .width(tv(160.45))
             .height(tv(56))

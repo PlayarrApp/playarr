@@ -1869,7 +1869,7 @@ struct Detail {
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
         .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
-        .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))).halfLeading(true)
+        .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)).letterSpacing((isTvMetrics() ? -0.053 : 0)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
         .translate({ y: primary ? 1.5 : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
@@ -2066,7 +2066,7 @@ struct Detail {
     Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 6.5) - (isTvMetrics() ? 3.2 : 0) }) {
       Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
         
-        .letterSpacing((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) // web's rail heading tracking
+        .letterSpacing(((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) + (isTvMetrics() ? 0.237 : 0)) // web's rail heading tracking
         .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)).lineHeight(webLineHeight(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))).halfLeading(true)
         .fontColor(toResourceColor(activeColors().ink))
         .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher

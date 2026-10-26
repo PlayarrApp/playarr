@@ -271,7 +271,7 @@ export struct SearchScreen {
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
       Text(message).fontFamily(nunitoAt(500, tv(EMPTY_TEXT_SIZE)))
         .fontSize(tv(EMPTY_TEXT_SIZE)).lineHeight(webLineHeight(tv(EMPTY_TEXT_SIZE))).halfLeading(true)
-        .letterSpacing(-0.28) // web's run is 6 narrower
+        .letterSpacing((-0.28) + (isTvMetrics() ? -0.128 : 0)) // web's run is 6 narrower
         .translate({ y: -1.2 })
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))

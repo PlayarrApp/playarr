@@ -309,7 +309,7 @@ export struct NavRail {
         Text(this.firstName()).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
           .fontSize(tv(TvGeometry.navTileLabelSize)).lineHeight(webLineHeight(tv(TvGeometry.navTileLabelSize))).halfLeading(true)
           .fontWeight(TvGeometry.navTileLabelWeight)
-          .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
+          .letterSpacing((NAV_TILE_LABEL_LETTER_SPACING) + -0.062)
           .fontColor(toResourceColor(activeColors().inkMuted))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -343,7 +343,7 @@ export struct NavRail {
   private versionText(): void {
     Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
       .fontSize(tv(8)).lineHeight(webLineHeight(tv(8))).halfLeading(true)
-      .letterSpacing(1.36) // web's run is 30.73 wide
+      .letterSpacing((1.36) + 0.178) // web's run is 30.73 wide
       .fontColor(toResourceColor(activeColors().ink))
       .width(NAV_GROUP_WIDTH)
       .position({ x: 0, y: 1038.45 })

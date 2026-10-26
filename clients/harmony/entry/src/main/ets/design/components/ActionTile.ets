@@ -45,7 +45,7 @@ export struct ActionTile {
       Text(this.label).fontFamily(nunitoAt(700, tv(LABEL_SIZE)))
         .fontSize(tv(LABEL_SIZE)).lineHeight(webLineHeight(tv(LABEL_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
-        .letterSpacing(tv(LABEL_LETTER_SPACING))
+        .letterSpacing((tv(LABEL_LETTER_SPACING)) + -0.07)
         .fontColor(toResourceColor(activeColors().inkMuted))
         .maxLines(1)
         .translate({ y: -1.2 }) // web's label box sits 1.2 higher

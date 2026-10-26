@@ -68,7 +68,7 @@ export struct Drawer {
           Text(this.kicker).fontFamily(nunitoAt(700, isTvMetrics() ? tv(KICKER_SIZE) : 7.2))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2).lineHeight(webLineHeight(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
-            .letterSpacing(tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05))
+            .letterSpacing((tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05)) + (isTvMetrics() ? -0.279 : 0))
             .textCase(TextCase.UpperCase)
             .fontColor(toResourceColor(activeColors().inkMuted))
           Text(this.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE))
