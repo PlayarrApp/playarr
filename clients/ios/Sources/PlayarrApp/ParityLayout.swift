@@ -367,9 +367,15 @@ struct ParityTextRenderer: TextRenderer {
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
         for line in layout { context.draw(line) }
         report(layout.map { line in
-            ParityRenderedLine(rect: line.typographicBounds.rect, indices: line.flatMap { $0.characterIndices })
+            ParityRenderedLine(rect: line.typographicBounds.rect, indices: line.flatMap { $0.characterIndices.compactMap(parityOffset) })
         })
     }
+}
+
+/// `Text.Layout.CharacterIndex` as a plain offset into the text's characters.
+func parityOffset(_ index: Any) -> Int? {
+    if let plain = index as? Int { return plain }
+    return Mirror(reflecting: index).children.lazy.compactMap { $0.value as? Int }.first
 }
 
 /// The string a line really shows: the characters it draws, plus the ellipsis when text was cut after it.
