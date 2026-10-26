@@ -1,0 +1,1 @@
+- Android parity capture keeps a screenshot only when two screenshots around the layout export are byte-identical, the layout export gives one element per text style run, and circle pills and calendar entries export the radius they draw.
