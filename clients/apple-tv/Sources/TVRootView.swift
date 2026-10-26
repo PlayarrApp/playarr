@@ -963,6 +963,7 @@ struct TVProfilesView: View {
                 )
             }
         }
+        .parityBackdrop(palette.bg)
         .ignoresSafeArea()
         .preferredColorScheme(displayPreferences.colorScheme)
         .task { await reload() }
@@ -1085,9 +1086,10 @@ struct TVProfilesView: View {
                         }
                     }
                     .frame(width: size, height: size)
+                    // Reported inside the scale, so the box is the one drawn.
+                    .parityBox("container", radius: 999, fill: palette.bg)
                     // Web: the button scales 1.045 and lifts 8 (the button style), the avatar adds 1.035 (263.9 wide).
                     .scaleEffect(active ? 1.035 : 1)
-                    .parityBox("container", radius: 999, fill: palette.bg)
                     .overlay(
                         Circle().stroke(
                             palette.lineStrong.opacity(0.66),

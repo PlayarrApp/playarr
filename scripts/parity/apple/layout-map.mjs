@@ -11,19 +11,10 @@ export function mapRaw(doc, screen, theme) {
   // an accessibility text entry has no style (font, size, weight, colour): where the view reports none it is dropped, not exported bare
   const plain = doc.raw.filter((e) => e.source === "ax" && !((e.role === "text" || e.role === "heading") && e.fontSize == null) && !styled.some((s) => s.text === e.text && Math.abs(s.rect.x - e.rect.x) < 3 && Math.abs(s.rect.y - e.rect.y) < 12));
   const elements = [...styled, ...plain].map((e) => {
-    const single = e.fontSize != null && e.text && !e.lines && e.width != null && e.width <= e.rect.w + 0.5;
-    // the text run: its measured width by the font's own ascent plus descent (hhea, from the UIFont drawn), centred in the view's box;
-    // a wrapped heading spans first ascent to last descent of its lines
-    let rect = { x: e.rect.x, y: e.rect.y, w: e.rect.w, h: e.rect.h };
-    if (e.lines?.length && e.content != null) {
-      rect = { x: e.rect.x, y: e.rect.y + e.pitch / 2 - e.content / 2, w: e.width, h: e.pitch * (e.lines.length - 1) + e.content };
-    } else if (single && e.content != null) {
-      rect = { x: e.rect.x, y: e.rect.y + e.rect.h / 2 - e.content / 2, w: e.width, h: e.content };
-    } else if (single) rect.w = e.width;
     const out = {
       text: e.text ?? "",
       role: e.role,
-      rect: Object.fromEntries(Object.entries(rect).map(([k, v]) => [k, round(v)])),
+      rect: Object.fromEntries(Object.entries(e.rect).map(([k, v]) => [k, round(v)])),
       color: e.color ?? null,
       background: e.background ?? null,
       fontSize: e.fontSize ?? null,
