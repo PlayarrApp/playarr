@@ -68,7 +68,7 @@ export struct Drawer {
           Text(this.kicker).fontFamily(nunitoAt(700, isTvMetrics() ? tv(KICKER_SIZE) : 7.2))
             .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2).lineHeight(webLineHeight(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
-            .letterSpacing(tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05))
+            .letterSpacing((tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05)) + (isTvMetrics() ? -0.279 : 0))
             .textCase(TextCase.UpperCase)
             .fontColor(toResourceColor(activeColors().inkMuted))
           Text(this.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE))
@@ -78,7 +78,7 @@ export struct Drawer {
             .lineHeight(webLineHeight(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).lineSpacing(webLineSpacing(isTvMetrics() ? tv(57) : 0, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).halfLeading(true) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
             .translate({ y: isTvMetrics() ? -2 : 0 }) // web's heading box sits 2 higher on the TV
-            .id('px:heading:' + this.title)
+            
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
@@ -87,7 +87,7 @@ export struct Drawer {
             .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)).halfLeading(true)
             .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))
-            .id('px:button:' + (this.title === 'Filters' ? 'Close filters' : 'Close'))
+            .accessibilityText((this.title === 'Filters' ? 'Close filters' : 'Close')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
             .padding({ bottom: isTvMetrics() ? 0 : 3.4 }) // web phone: the glyph box sits 1.7 higher than the centred one
             .textAlign(TextAlign.Center)
             .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
@@ -151,7 +151,7 @@ export struct Drawer {
       right: isTvMetrics() ? tv(PADDING_H - RING_ROOM) : atLeast(TOUCH_PADDING_H, this.safeRight),
       bottom: isTvMetrics() ? 0 : 24 + this.safeBottom,
     })
-    .id('px:dialog:')
+    .accessibilityRole(AccessibilityRoleType.DIALOG)
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, isTvMetrics() ? DRAWER_BG_ALPHA : 1))
     .backdropBlur(DRAWER_BACKDROP_BLUR)
     .shadow({ radius: tv(90), offsetX: -tv(32), offsetY: 0, color: SHADOW_COLOR })

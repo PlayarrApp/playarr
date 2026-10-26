@@ -83,9 +83,9 @@ export struct MultiSelect {
       Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
         .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
-        .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02))
+        .letterSpacing((tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02)) + (isTvMetrics() ? 0.044 : 0))
         .textCase(TextCase.UpperCase)
-        .id('px:heading:' + this.heading.toUpperCase())
+        
         .fontColor(toResourceColor(activeColors().inkMuted))
       Column({ space: tv(LIST_GAP) }) {
         Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
@@ -114,7 +114,7 @@ export struct MultiSelect {
           }, (value: string): string => value)
           Row() {
             Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CONTROL_FONT)) : nunito(680))
-              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)).halfLeading(true)
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT).letterSpacing((isTvMetrics() ? -0.135 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)).halfLeading(true)
               .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
@@ -123,7 +123,7 @@ export struct MultiSelect {
               .fontColor(toResourceColor(activeColors().inkMuted))
               .rotate({ angle: this.open ? 180 : 0 })
           }
-          .id('px:button:' + (this.selected.length === 0 ? this.noneLabel : this.addLabel) + ' ⌄')
+          .accessibilityText((this.selected.length === 0 ? this.noneLabel : this.addLabel) + ' ⌄').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           // Web `flex: 1 1 8rem`: shares a line with the tokens when it fits.
           .flexGrow(1)
           .flexBasis(tv(TRIGGER_BASIS))
@@ -136,7 +136,7 @@ export struct MultiSelect {
           })
         }
         .width(isTvMetrics() ? tv(SECTION_WIDTH) : TOUCH_DRAWER_SECTION_WIDTH)
-        .id('px:group:')
+        
         .padding(tv(FIELD_PADDING))
         .borderRadius(tv(FIELD_RADIUS))
         .border({ width: 1, color: this.lineStrong() })

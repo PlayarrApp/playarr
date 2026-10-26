@@ -423,8 +423,8 @@ export struct ReleaseCalendar {
   @Builder
   private statusPill(tone: EntryPillTone, offset: number = 0): void {
     Text(pillLabel(tone)).fontFamily(nunitoAt(750, isTvMetrics() ? tv(PILL_SIZE) : 10.24))
-      .id('px:text:' + pillLabel(tone)) // web: the pill owns its text; its Range sits inside the padding
-      .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24).lineHeight(webLineHeight(isTvMetrics() ? tv(PILL_SIZE) : 10.24)).halfLeading(true)
+       // web: the pill owns its text; its Range sits inside the padding
+      .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24).letterSpacing((isTvMetrics() ? -0.109 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(PILL_SIZE) : 10.24)).halfLeading(true)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
@@ -454,7 +454,7 @@ export struct ReleaseCalendar {
           .translate({ y: isTvMetrics() ? 1.1 : 0 }) // web's title box sits 1.1 lower than ArkUI lays it out
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE))
-            .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)).halfLeading(true)
+            .fontSize(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE).letterSpacing((isTvMetrics() ? -0.241 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_TITLE_SIZE) : PHONE_ENTRY_TITLE_SIZE)).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -462,10 +462,10 @@ export struct ReleaseCalendar {
             .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? 0.24 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? 0.208 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? -0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           }
           this.statusPill(itemPillTone(item, this.today), isTvMetrics() ? 6.4 : 0)
         }
@@ -481,7 +481,7 @@ export struct ReleaseCalendar {
     .padding({ left: tv(ENTRY_PADDING_LEFT) })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
-    .id('px:button:' + entryButtonName(item, this.today))
+    .accessibilityText(entryButtonName(item, this.today)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .border({
       width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
       color: {
@@ -516,7 +516,7 @@ export struct ReleaseCalendar {
   private dayHeader(day: string): void {
     Row({ space: tv(10) }) {
       Text(dayHeading(day)).fontFamily(nunitoAt(640, isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE))
-        .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)).halfLeading(true)
+        .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE).letterSpacing((isTvMetrics() ? -0.124 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(day === this.today ? activeColors().accent : activeColors().ink))
         .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
@@ -524,19 +524,18 @@ export struct ReleaseCalendar {
         Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, tv(TODAY_TAG_SIZE)))
           .fontSize(tv(TODAY_TAG_SIZE)).lineHeight(webLineHeight(tv(TODAY_TAG_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Medium)
-          .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
+          .letterSpacing((tv(TODAY_TAG_LETTER_SPACING)) + (isTvMetrics() ? 0.344 : 0))
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(activeColors().accent))
           .translate({ y: -2.2 })
           .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
           .borderRadius(tv(11))
-          .id('px:text:Today')
+          
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
       }
     }
     .width(isTvMetrics() ? tv(LIST_WIDTH) : '100%')
     .height(tv(DAY_HEADING_HEIGHT))
-    .id(isTvMetrics() ? 'px:heading:' : '')
     .alignItems(VerticalAlign.Center)
     // The TV's agenda sits on an opaque list; the phone's headings sit straight on the page like web's.
     .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent)
@@ -591,7 +590,7 @@ export struct ReleaseCalendar {
           Column({ space: tv(WEEK_HEADING_GAP) }) {
             Row({ space: tv(10) }) {
               Text(dayHeading(cell.day)).fontFamily(nunitoAt(500, tv(DAY_HEADING_SIZE)))
-                .fontSize(tv(DAY_HEADING_SIZE)).lineHeight(webLineHeight(tv(DAY_HEADING_SIZE))).halfLeading(true)
+                .fontSize(tv(DAY_HEADING_SIZE)).letterSpacing((isTvMetrics() ? -0.123 : 0)).lineHeight(webLineHeight(tv(DAY_HEADING_SIZE))).halfLeading(true)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(cell.isToday ? activeColors().accent : activeColors().ink))
                 .translate({ y: -1.4 }) // web's heading box sits 1.4 higher
@@ -599,13 +598,13 @@ export struct ReleaseCalendar {
                 Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(500, tv(TODAY_TAG_SIZE)))
                   .fontSize(tv(TODAY_TAG_SIZE)).lineHeight(webLineHeight(tv(TODAY_TAG_SIZE))).halfLeading(true)
                   .fontWeight(FontWeight.Medium)
-                  .letterSpacing(tv(TODAY_TAG_LETTER_SPACING))
+                  .letterSpacing((tv(TODAY_TAG_LETTER_SPACING)) + (isTvMetrics() ? 0.344 : 0))
                   .textCase(TextCase.UpperCase)
                   .fontColor(toResourceColor(activeColors().accent))
                   .translate({ y: -2.2 })
                   .padding({ left: tv(8), right: tv(8), top: tv(2), bottom: tv(2) })
                   .borderRadius(tv(11))
-          .id('px:text:Today')
+          
                   .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.9) })
               }
             }
@@ -615,7 +614,7 @@ export struct ReleaseCalendar {
               Column({ space: tv(ENTRY_GAP + 1) }) {
                 if (cell.entries.length === 0) {
                   Text(t('pages.calendar.dayEmpty', 'Nothing scheduled')).fontFamily(nunitoAt(400, tv(ENTRY_TITLE_SIZE)))
-                    .fontSize(tv(ENTRY_TITLE_SIZE)).lineHeight(webLineHeight(tv(ENTRY_TITLE_SIZE))).halfLeading(true)
+                    .fontSize(tv(ENTRY_TITLE_SIZE)).letterSpacing((isTvMetrics() ? -0.206 : 0)).lineHeight(webLineHeight(tv(ENTRY_TITLE_SIZE))).halfLeading(true)
                     .fontColor(toResourceColor(activeColors().inkMuted))
                     .translate({ y: 1.1 })
                 }
@@ -667,7 +666,7 @@ export struct ReleaseCalendar {
           }
           .height(MONTH_LINE_HEIGHT)
           .width(isTvMetrics() ? 'calc(100% - 0.4vp)' : 'calc(100% - 9.8vp)')
-          .id('px:button:' + item.title + ', ' + pillLabel(itemPillTone(item, this.today)) + ', ' + dayHeading(cell.day))
+          .accessibilityText(item.title + ', ' + pillLabel(itemPillTone(item, this.today)) + ', ' + dayHeading(cell.day)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .borderRadius(4)
           .margin(isTvMetrics() ? { left: 0.2, right: 0.2 } : { left: 4.8, right: 5 }) // web: a 44 vp button 5.8 vp in from the cell edge, its content centred
           .padding({ left: 5.6 })
@@ -836,10 +835,10 @@ export struct ReleaseCalendar {
   @Builder
   private panelButton(label: string, primary: boolean, onTap: () => void): void {
     Text(label).fontFamily(nunitoAt(700, tv(PANEL_BUTTON_FONT)))
-      .fontSize(tv(PANEL_BUTTON_FONT)).lineHeight(webLineHeight(tv(PANEL_BUTTON_FONT))).halfLeading(true)
+      .fontSize(tv(PANEL_BUTTON_FONT)).letterSpacing((isTvMetrics() ? -0.123 : 0)).lineHeight(webLineHeight(tv(PANEL_BUTTON_FONT))).halfLeading(true)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(primary ? activeColors().bg : activeColors().ink))
-      .id('px:button:' + label) // web: the button owns its text
+      .accessibilityText(label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true) // web: the button owns its text
       .height(tv(PANEL_BUTTON_HEIGHT))
       .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
       .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
@@ -874,11 +873,11 @@ export struct ReleaseCalendar {
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().inkSoft))
             Text(this.listed ? 'Remove from watchlist' : 'Add to watchlist').fontFamily(nunitoAt(900, tv(PANEL_BUTTON_FONT)))
-              .fontSize(tv(PANEL_BUTTON_FONT)).lineHeight(webLineHeight(tv(PANEL_BUTTON_FONT))).halfLeading(true)
+              .fontSize(tv(PANEL_BUTTON_FONT)).letterSpacing((isTvMetrics() ? 0.228 : 0)).lineHeight(webLineHeight(tv(PANEL_BUTTON_FONT))).halfLeading(true)
               .fontWeight(FontWeight.Bold)
               .fontColor(toResourceColor(activeColors().inkSoft))
           }
-          .id('px:button:' + (this.listed ? '✓ Remove from watchlist' : '+ Add to watchlist'))
+          .accessibilityText((this.listed ? '✓ Remove from watchlist' : '+ Add to watchlist')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .height(tv(PANEL_BUTTON_HEIGHT))
           .padding({ left: tv(PANEL_BUTTON_PADDING), right: tv(PANEL_BUTTON_PADDING) })
           .borderRadius(tv(PANEL_BUTTON_HEIGHT / 2))
@@ -932,7 +931,7 @@ export struct ReleaseCalendar {
       .width(tv(HEADER_CONTROL_SIZE))
       .height(tv(HEADER_CONTROL_SIZE))
       .padding({ top: tv(0.2) })
-      .id('px:button:' + (label === '←' ? 'Previous' : 'Next'))
+      .accessibilityText((label === '←' ? 'Previous' : 'Next')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
       .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
       .backgroundColor(toResourceColor(activeColors().surface))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -942,14 +941,14 @@ export struct ReleaseCalendar {
       })
     } else {
       Text(label).fontFamily(nunitoAt(700, tv(HEADER_CONTROL_FONT)))
-        .fontSize(tv(HEADER_CONTROL_FONT)).lineHeight(webLineHeight(tv(HEADER_CONTROL_FONT))).halfLeading(true)
+        .fontSize(tv(HEADER_CONTROL_FONT)).letterSpacing((isTvMetrics() ? -0.15 : 0)).lineHeight(webLineHeight(tv(HEADER_CONTROL_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .textAlign(TextAlign.Center)
         .height(tv(HEADER_CONTROL_SIZE))
         .constraintSize({ minWidth: tv(HEADER_CONTROL_SIZE) })
         .padding({ left: tv(20), right: tv(20) })
-        .id('px:button:' + label)
+        .accessibilityText(label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .borderRadius(tv(HEADER_CONTROL_SIZE / 2))
         .backgroundColor(toResourceColor(activeColors().surface))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
@@ -1034,8 +1033,8 @@ export struct ReleaseCalendar {
   private pageControls(): void {
     Row({ space: tv(HEADER_CONTROL_GAP) }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(700, tv(HEADER_CONTROL_FONT)))
-        .id('px:button:' + rangeLabel(this.view, this.anchor))
-        .fontSize(tv(HEADER_CONTROL_FONT)).lineHeight(webLineHeight(tv(HEADER_CONTROL_FONT))).halfLeading(true)
+        .accessibilityText(rangeLabel(this.view, this.anchor)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+        .fontSize(tv(HEADER_CONTROL_FONT)).letterSpacing((isTvMetrics() ? -0.251 : 0)).lineHeight(webLineHeight(tv(HEADER_CONTROL_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(tv(HEADER_CONTROL_SIZE))
@@ -1082,7 +1081,7 @@ export struct ReleaseCalendar {
   private touchControls(): void {
     Row({ space: PHONE_CONTROL_GAP }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(720, 11.52))
-        .id('px:button:' + rangeLabel(this.view, this.anchor))
+        .accessibilityText(rangeLabel(this.view, this.anchor)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .fontSize(11.52).lineHeight(webLineHeight(11.52)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1116,7 +1115,7 @@ export struct ReleaseCalendar {
     Stack() {
       // web: the arrows are thin, smaller glyphs than the bold labels
       Text(label).fontFamily(label.length === 1 ? arrowFont(720) : nunitoAt(720, 11.52))
-        .id(label.length === 1 ? '' : 'px:button:' + label)
+        .accessibilityText(label.length === 1 ? '' : label).accessibilityRole(label.length === 1 ? AccessibilityRoleType.TEXT : AccessibilityRoleType.BUTTON)
         .fontSize(11.52).lineHeight(webLineHeight(11.52)).halfLeading(true)
         .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
@@ -1136,7 +1135,7 @@ export struct ReleaseCalendar {
           .hitTestBehavior(HitTestMode.None)
       }
     }
-    .id(label.length === 1 ? 'px:button:' + (label === '←' ? 'Previous' : 'Next') : '')
+    .accessibilityText(label.length === 1 ? (label === '←' ? 'Previous' : 'Next') : '').accessibilityRole(label.length === 1 ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.ROLE_NONE)
     .borderRadius(22)
     .width(width)
     .height(44)
@@ -1231,7 +1230,7 @@ export struct ReleaseCalendar {
     .padding({ left: tv(ENTRY_PADDING_LEFT), right: tv(ENTRY_PADDING_LEFT), top: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 6.7 : (fixedHeight > 0 ? 8 : 8), bottom: fixedHeight === PHONE_ENTRY_HEIGHT_NO_SUBTITLE ? 8.6 : 8 })
     .borderRadius(tv(ENTRY_RADIUS))
     .backgroundColor(toResourceColor(activeColors().surfaceStrong))
-    .id('px:button:' + entryButtonName(item, this.today))
+    .accessibilityText(entryButtonName(item, this.today)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .border({
       width: { left: tv(ENTRY_EDGE), top: 1, right: 1, bottom: 1 },
       color: {

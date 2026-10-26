@@ -22,7 +22,7 @@ export struct TouchIconButton {
     }
     .width(44)
     .height(44)
-    .id('px:button:' + this.label)
+    .accessibilityText(this.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .offset({ y: -2 }) // web sits this button 2.3 vp above the Back circle centre (an offset keeps the header height)
     .borderRadius(14)
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))

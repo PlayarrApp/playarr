@@ -50,7 +50,7 @@ export struct ActionList {
             Text(action.label).fontFamily(nunitoAt(700, isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE))
               .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bold)
-              .letterSpacing(0.3) // web's label run is a little wider than ArkUI lays it out
+              .letterSpacing((0.3) + (isTvMetrics() ? -0.476 : 0)) // web's label run is a little wider than ArkUI lays it out
               .fontColor(toResourceColor(activeColors().ink))
               .translate({ y: isTvMetrics() ? -1.9 : -1.4 }) // web's label box sits higher
           }
@@ -59,7 +59,7 @@ export struct ActionList {
           .padding({ left: tv(ROW_PADDING_H), right: tv(ROW_PADDING_H) })
           .borderRadius(tv(ROW_RADIUS))
           .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-          .id('px:button:' + action.glyph + ' ' + action.label)
+          .accessibilityText(action.glyph + ' ' + action.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         }
         // Phone: web's ring sits 2 vp clear of the row (the wrapper's padding), without moving the layout.
         .width(isTvMetrics() ? '100%' : 'calc(100% + 4vp)')

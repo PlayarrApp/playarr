@@ -40,8 +40,18 @@ def get(path, **q):
             time.sleep(4)
 
 
+# The Previewer window is larger than the app's stage so no box is clamped by the window: the stage starts at STAGE_ORIGIN px inside it.
+# TV: 2400 x 1740 px, stage 1920 x 1080 at (240, 60). Phone: 1800 x 2700 px (dpr 3), stage 1080 x 2340 at (180, 180).
+STAGE = {"tv": ((240, 60), (2400, 1740), (1920, 1080)), "phone": ((180, 180), (1800, 2700), (1080, 2340))}
+STAGE_DEVICE = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in STAGE else "tv"
+STAGE_ORIGIN, WINDOW_SIZE, STAGE_SIZE = STAGE[STAGE_DEVICE]
+
+
 def png() -> Image.Image:
-    return Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    img = Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    if img.size == WINDOW_SIZE:  # the legend frame is the stage
+        img = img.crop((STAGE_ORIGIN[0], STAGE_ORIGIN[1], STAGE_ORIGIN[0] + STAGE_SIZE[0], STAGE_ORIGIN[1] + STAGE_SIZE[1]))
+    return img
 
 
 def key(*names):
@@ -51,11 +61,11 @@ def key(*names):
 
 
 def click(x, y):
-    get("/click", x=x, y=y)
+    get("/click", x=x + STAGE_ORIGIN[0], y=y + STAGE_ORIGIN[1])
 
 
 def longclick(x, y):
-    get("/longclick", x=x, y=y)
+    get("/longclick", x=x + STAGE_ORIGIN[0], y=y + STAGE_ORIGIN[1])
 
 
 def route(name, wait=12):
@@ -253,7 +263,7 @@ def player_held_at_2s(folder):
     if not os.path.exists(raw):
         raise SystemExit("player did not report its state: no layout tree")
     tree = open(raw, encoding="utf-8").read()
-    if not re.search(r"0:02\s+/\s+1:00", tree) or "px:button:Play" not in tree:
+    if not re.search(r"0:02\s+/\s+1:00", tree) or not re.search(r'"accessibilityText":\s*"Play"', tree):
         raise SystemExit("player is not held paused at 2.000 s")
 
 
@@ -286,7 +296,7 @@ def export_layout(name, image=None, theme=None):
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
         count = layout_export.write(raw, name, theme, viewport, os.path.join(out, "layout"),
-                                    clock_pinned=True)  # patch_clock.py pins the preview clock to the fixture instant
+                                    clock_pinned=True, origin=STAGE_ORIGIN)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
     except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)
@@ -429,7 +439,7 @@ def motion_walk(folder):
     """Round 3 motion: Home scrolled down through the rails and back up, then along a rail, then Filters scrolled, by pointer swipes
     (the Previewer drops keys). Frames to capture/motion/<theme>/."""
     def swipe(x1, y1, x2, y2):
-        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2); time.sleep(0.7)
+        get("/swipe", x1=x1 + STAGE_ORIGIN[0], y1=y1 + STAGE_ORIGIN[1], x2=x2 + STAGE_ORIGIN[0], y2=y2 + STAGE_ORIGIN[1]); time.sleep(0.7)
 
     route("home", 30); focus_first_card(); burst(folder, "home-00-top")
     for i in range(1, 5):
@@ -833,7 +843,7 @@ else:
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
                 # the web refs are taken at page top; the app scrolls to the next-up episode, so drag back up before the frame
                 for _ in range(3):
-                    get("/swipe", x1=540, y1=500, x2=540, y2=2200, steps=12, ms=300); time.sleep(1.5)
+                    get("/swipe", x1=540 + STAGE_ORIGIN[0], y1=500 + STAGE_ORIGIN[1], x2=540 + STAGE_ORIGIN[0], y2=2200 + STAGE_ORIGIN[1], steps=12, ms=300); time.sleep(1.5)
                 time.sleep(2)
                 snap(name, folder, 100000)
                 if kind == "series":  # the saved frame itself must show art (the page may have moved since the last check)
@@ -886,7 +896,7 @@ else:
         selection, absent = phone_core_manifest_selection(requested, captured, SKIP_PLAYER)
         missing = list(dict.fromkeys(MISSING + absent))
         manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": (int(os.environ["PARITY_PR"]) if os.environ.get("PARITY_PR", "").isdigit() else None), "server": "static server",
-                    "theme": THEME, "missing": missing, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "stage_origin": list(STAGE_ORIGIN), "theme": THEME, "missing": missing, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     "screen_selection": {**selection, "captured": {THEME: selection["captured"]}}}
         if PLAYER_FIXTURE_SOURCE is not None:
             manifest["screen_selection"]["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
@@ -934,7 +944,7 @@ else:
             debug("motion-%s-%d" % (name, i), png()); time.sleep(gap)
 
     def swipe(x1, y1, x2, y2):
-        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2, steps=12, ms=300)
+        get("/swipe", x1=x1 + STAGE_ORIGIN[0], y1=y1 + STAGE_ORIGIN[1], x2=x2 + STAGE_ORIGIN[0], y2=y2 + STAGE_ORIGIN[1], steps=12, ms=300)
 
     def motion_home():
         route("home", 40); burst("home-00-top")
@@ -984,6 +994,7 @@ manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get
             "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
 if PLAYER_FIXTURE_SOURCE is not None:
     manifest["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
+manifest["stage_origin"] = list(STAGE_ORIGIN)  # px: the raw layout trees hold window coordinates, the stage starts here
 if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
     suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
     requested = TV_SELECTION if TV_SELECTION is not None else [

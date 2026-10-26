@@ -1,6 +1,6 @@
 """Maps the Previewer's inspector tree (UIContext.getFilteredInspectorTree) to the parity layout schema (docs/parity/LAYOUT.md).
 
-Everything here comes from what the app drew: the inspector's boxes and fills, the app's own accessible names (`px:<role>:<name>` ids) and
+Everything here comes from what the app drew: the inspector's boxes and fills, the app's own accessible names (accessibilityText) and roles (accessibilityRole, mirrored by the preview build) and
 the glyph runs the live Text component's layout manager reports (`$runs`, written by patch_route.py's dumplayout). Nothing is derived from
 the web references, no font file is read and no baseline is assumed: a Text without `$runs` fails the export."""
 import json
@@ -10,6 +10,12 @@ _NUM = re.compile(r"-?\d+(?:\.\d+)?")
 WEIGHT_NAMES = {"lighter": 300, "regular": 400, "normal": 400, "medium": 500, "bold": 700, "bolder": 800}
 SYSTEM = ("Navigation", "NavDestination", "root")
 CLIP_KINDS = ("Scroll", "List", "Grid", "WaterFlow", "Swiper")
+
+
+# AccessibilityRoleType values (SDK API 18) the app declares, as the name the layout schema uses for them. The app mirrors each declared role
+# into accessibilityTextHint in the preview build (patch_role.py), because the Previewer's inspector does not report accessibilityRole.
+NATIVE_ROLES = {5: "button", 39: "link", 40: "img", 111: "textbox", 91: "search", 24: "dialog", 96: "slider", 120: "video", 108: "text", 124: None}
+NO_OWN_PAINT_BLEND = (0, 4)  # BlendMode NONE and SRC_OVER draw normally; any other mode (DST_IN edge fades) only shapes what is under it
 
 
 class ExportError(Exception):
@@ -82,17 +88,14 @@ def has_gradient(attrs):
     return False
 
 
-def all_texts(node):
-    found = []
-    for child in node.get("$children") or []:
-        a = attrs_of(child)
-        if child.get("$type") == "Text" and (a.get("content") or a.get("text")):
-            found.append(str(a.get("content") or a.get("text")))
-        found.extend(all_texts(child))
-    return found
+def declared_role(attrs):
+    hint = str(attrs.get("accessibilityTextHint", ""))
+    if not hint.startswith("pvrole:"):
+        return None
+    return NATIVE_ROLES.get(int(hint[7:]))
 
 
-def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False):
+def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, origin=(0, 0)):
     """tree: the parsed inspector JSON with `$runs` on its Text nodes; viewport: (w, h, dpr). Returns the schema document.
     with_src adds each element's source line (the inspector's `$debugLine`) for analysis; published documents leave it out."""
     vw, vh, dpr = viewport
@@ -181,6 +184,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False):
         first = seq[0]
         src[0] = str(node.get("$debugLine", "")).split('"')[3].split("main/ets/")[-1] if with_src and '"' in str(node.get("$debugLine", "")) else ""
         raw = rect_of(node)
+        if raw is not None and origin != (0, 0):  # the stage sits at `origin` px in a larger window: report in the stage's own coordinates
+            raw = (raw[0] - origin[0], raw[1] - origin[1], raw[2], raw[3])
         fill = argb(a.get("backgroundColor"))
         here = under
         if kind in SYSTEM:
@@ -189,10 +194,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False):
         mychain = chain
         if raw is not None and k != 1.0:
             mychain = chain + [((raw[0] + raw[2] / 2), (raw[1] + raw[3] / 2), k)]
-        nid = str(a.get("id", ""))
-        pxid = nid.split(":", 2) if nid.startswith("px:") and nid.count(":") >= 2 else None
-        if pxid is not None and pxid[1] == "mask":
-            return  # a blend layer that only shapes what is drawn under it (DST_IN edge fades): it draws nothing itself
+        if num(a.get("blendMode"), 0) not in NO_OWN_PAINT_BLEND:
+            return  # a blend layer: it only shapes what is drawn under it
+        role = declared_role(a)
+        name = str(a.get("accessibilityText") or "").strip()
         box = raw
         if box is not None and (box[2] < 0.5 or box[3] < 0.5) and kind != "Text":
             box = None
@@ -203,18 +208,12 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False):
             fills = fill is not None and fill[3] > 0.01
             radius = radius_of(a) * scale_k(mychain)
             if kind == "Text":
-                # a Text that carries an app role is that control itself (it draws its own fill): its lines take the role
-                text_lines(node, a, raw, here, opacity, mychain, clip, pxid[1] if pxid is not None else "text", radius if pxid is not None else 0.0)
-            elif pxid is not None:
-                emit(pxid[1], pxid[2], box, here, clip, radius, opacity=opacity)
-            elif nid == "pcard":
-                emit("link", str(a.get("accessibilityText") or "").strip(), box, here, clip, radius, opacity=opacity)  # the card's own accessible name
-            elif nid.endswith("-nav-tile"):
-                texts = all_texts(node)
-                emit("link", texts[0] if texts else "", box, here, clip, radius, opacity=opacity)
+                # a Text the app declares a role for is that control itself (it draws its own fill): its lines take the role and the radius
+                text_lines(node, a, raw, here, opacity, mychain, clip, role or "text", radius if fills else 0.0)
+            elif role not in (None, "text"):
+                emit("image" if kind == "Image" and role == "img" else role, name, box, here, clip, radius, opacity=opacity)
             elif kind in ("Image", "Button", "Toggle", "TextInput"):
-                role = {"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}[kind]
-                emit(role, "", box, here, clip, radius, opacity=opacity)
+                emit({"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}[kind], name, box, here, clip, radius, opacity=opacity)
             elif fills or has_gradient(a) or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01:
                 emit("container", "", box, here, clip, radius, opacity=opacity)
         own = list(range(mark, len(out)))
@@ -266,9 +265,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False):
     return doc
 
 
-def write(raw, screen, theme, viewport, dest_dir, clock_pinned=False):
+def write(raw, screen, theme, viewport, dest_dir, clock_pinned=False, origin=(0, 0)):
     import os
-    doc = export(json.loads(raw), screen, theme, viewport, clock_pinned)
+    doc = export(json.loads(raw), screen, theme, viewport, clock_pinned, origin=origin)
     os.makedirs(os.path.join(dest_dir, theme), exist_ok=True)
     with open(os.path.join(dest_dir, theme, screen + ".json"), "w") as f:
         json.dump(doc, f)

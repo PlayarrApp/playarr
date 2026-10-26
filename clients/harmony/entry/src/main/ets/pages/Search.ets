@@ -9,6 +9,7 @@
 import { t } from '../core/Language';
 import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
+import { LengthMetrics } from '@kit.ArkUI';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
@@ -271,7 +272,7 @@ export struct SearchScreen {
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
       Text(message).fontFamily(nunitoAt(500, tv(EMPTY_TEXT_SIZE)))
         .fontSize(tv(EMPTY_TEXT_SIZE)).lineHeight(webLineHeight(tv(EMPTY_TEXT_SIZE))).halfLeading(true)
-        .letterSpacing(-0.28) // web's run is 6 narrower
+        .letterSpacing((-0.28) + (isTvMetrics() ? -0.128 : 0)) // web's run is 6 narrower
         .translate({ y: -1.2 })
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
@@ -347,9 +348,10 @@ export struct SearchScreen {
         .borderRadius(0)
         .padding(0)
         .caretColor(toResourceColor(activeColors().ink))
+        .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
         .layoutWeight(1)
         .height(tv(60)) // web: the textbox fills the 76 px pill less its 8 px insets
-        .id('px:textbox:' + t('pages.search.searchPlaceholder', 'Search your libraries and playlists'))
+        .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
         .defaultFocus(true)
         .onChange((value: string) => {
           this.onQueryChange(value);
@@ -367,7 +369,7 @@ export struct SearchScreen {
     }
     .width(tv(FORM_WIDTH))
     .height(tv(FORM_HEIGHT))
-    .id('px:search:')
+    .accessibilityRole(AccessibilityRoleType.SEARCH)
     .padding({ left: tv(FORM_PADDING_LEFT), right: tv(FORM_PADDING_LEFT - 3.6) })
     .borderRadius(tv(FORM_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
@@ -457,9 +459,10 @@ export struct SearchScreen {
           .borderRadius(0)
           .padding(0)
           .caretColor(toResourceColor(activeColors().ink))
+        .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
           .layoutWeight(1)
           .height(44)
-          .id('px:textbox:' + t('pages.search.searchPlaceholder', 'Search your libraries and playlists'))
+          .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
           .defaultFocus(true)
           .onFocus(() => { this.fieldFocused = true; })
           .onBlur(() => { this.fieldFocused = false; })
@@ -470,7 +473,7 @@ export struct SearchScreen {
       .width('100%')
       .height(60) // web phone field: 60 vp, 18 vp below the header
       .padding({ left: 16, right: 16 })
-      .id('px:search:')
+      .accessibilityRole(AccessibilityRoleType.SEARCH)
       .borderRadius(30)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })

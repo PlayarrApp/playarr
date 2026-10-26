@@ -131,7 +131,7 @@ export struct PageShell {
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
     // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
     .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
-    .id('px:' + this.backRole + ':' + this.backLabel)
+    .accessibilityText(this.backLabel).accessibilityRole(this.backRole === 'button' ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
     .focusable(true)
     .onClick(() => {
       popRoute(getNavStack());
@@ -141,10 +141,10 @@ export struct PageShell {
   @Builder
   private headerTitle(): void {
     Text(this.title).fontFamily(nunitoAt(580, tv(TITLE_SIZE)))
-      .id('px:heading:' + this.title)
+      
       .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
       .fontWeight(FontWeight.Medium)
-      .letterSpacing(tv(TITLE_LETTER_SPACING))
+      .letterSpacing((tv(TITLE_LETTER_SPACING)) + (isTvMetrics() ? -0.23 : 0))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(HEADER_SIZE))
       .translate({ y: 0.2 }) // web's title box sits level with the web header's
@@ -268,13 +268,13 @@ export struct PageShell {
           .borderRadius(22)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
-          .id('px:' + this.backRole + ':' + this.backLabel)
+      .accessibilityText(this.backLabel).accessibilityRole(this.backRole === 'button' ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
           .onClick(() => {
             popRoute(getNavStack());
           })
           Column() {
             Text(this.title).fontFamily(nunitoAt(580, 21.6))
-              .id('px:heading:' + this.title)
+              
               .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true) // web 1.35rem
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-0.972) // web -0.045em

@@ -434,7 +434,7 @@ export struct PosterCard {
           }
           .width('100%')
           .height(PROGRESS_BAR_HEIGHT)
-          .id('px:img:') // web: the track is an image-role box with the fill inside
+          .accessibilityRole(AccessibilityRoleType.IMAGE) // web: the track is an image-role box with the fill inside
           .backgroundColor(isTvMetrics() ? toResourceColor(activeColors().line) : 'rgba(255, 255, 255, 0.2)') // web phone: a white 20% track in both themes
           .justifyContent(FlexAlign.Start)
         }
@@ -444,7 +444,7 @@ export struct PosterCard {
             .width(this.dotSize())
             .height(this.dotSize())
             .borderRadius(this.dotSize() / 2)
-            .id('px:img:')
+            .accessibilityRole(AccessibilityRoleType.IMAGE)
             .backgroundColor(toResourceColor(BRAND_PINK))
             .border({ width: 2, color: 'rgba(255, 255, 255, 0.94)' })
             .shadow({ radius: tv(9), color: 'rgba(31, 14, 20, 0.45)', offsetY: tv(2) })
@@ -489,7 +489,7 @@ export struct PosterCard {
         // two text elements as web has them (the caption, then the title on the same baseline)
         Row({ space: tv(SERIES_EPISODE_CAPTION_TITLE_GAP) }) {
           Text(this.episodeCaption).fontFamily(nunitoAt(700, this.subtitleFontSize))
-            .fontSize(this.subtitleFontSize).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
+            .fontSize(this.subtitleFontSize).letterSpacing((isTvMetrics() ? -0.212 : 0)).lineHeight(webLineHeight(this.subtitleFontSize)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(activeColors().inkMuted)))
             .maxLines(1)
@@ -498,7 +498,7 @@ export struct PosterCard {
             .fontSize(this.titleFontSize).lineHeight(webLineHeight(this.titleFontSize)).halfLeading(true)
             .fontWeight(this.softCaption || !isTvMetrics() ? FontWeight.Medium : CARD_TITLE_FONT_WEIGHT)
             .fontColor(this.artWash > 0 ? '#ffffff' : ((this.focusedCaption || (isTvMetrics() && this.visualFocus() > 0.5)) ? (resolvedThemeMode() === 'dark' ? '#ffffff' : '#000000') : toResourceColor(this.softCaption ? activeColors().inkSoft : activeColors().ink)))
-            .letterSpacing(tv(this.titleFontSize * -0.015))
+            .letterSpacing((tv(this.titleFontSize * -0.015)) + (isTvMetrics() ? -0.326 : 0))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
@@ -540,6 +540,8 @@ export struct PosterCard {
     .scale({ x: this.cardScale(), y: this.cardScale() })
     .translate({ y: this.cardTranslateY() })
     .accessibilityText(this.linkName())
+    .accessibilityRole(AccessibilityRoleType.HYPERLINK)
+    .accessibilityGroup(true)
     .focusable(true)
     .onFocus(() => {
       this.setFocused(true);
