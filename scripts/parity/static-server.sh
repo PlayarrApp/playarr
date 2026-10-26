@@ -9,7 +9,7 @@
 # - The backend runs from this repo, inside a memory cgroup, on the LAN address and port of parity.env, with
 #   PLAYARR_STATIC=1: no arr or peer sync, relay, ACME, backups, metadata refresh or other upstream job.
 # - Web client: the server-hosted build (clients/tv-web, build:server) at <url>/tv.
-# Env: PARITY_STATIC_HOME (default ~/.cache/playarr-parity-static), PLAYARR_SERVER_BIN (skip the cargo build).
+# Env: PARITY_WEB_DIST (serve this web bundle instead of dist-server), PARITY_STATIC_HOME (default ~/.cache/playarr-parity-static), PLAYARR_SERVER_BIN (skip the cargo build).
 # Needs PLAYARR_PARITY_STATIC_PASSWORD in ~/.secrets. The password is never printed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
