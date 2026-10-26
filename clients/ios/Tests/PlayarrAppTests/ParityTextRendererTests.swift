@@ -66,22 +66,4 @@ final class ParityTextRendererTests: XCTestCase {
         XCTAssertEqual(shown.count, 1)
         XCTAssertTrue(shown[0].hasSuffix("\u{2026}"), shown[0])
     }
-
-    func testProbeCharacterIndex() throws {
-        var probe = ""
-        let renderer = ImageRenderer(content: Text("abc def ghi")
-            .textRenderer(ProbeRenderer { probe = $0 })
-            .frame(width: 40, height: 100, alignment: .topLeading))
-        XCTAssertNotNil(renderer.uiImage)
-        XCTFail(probe)
-    }
-}
-
-@available(iOS 18.0, *)
-private struct ProbeRenderer: TextRenderer {
-    let report: (String) -> Void
-    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
-        for line in layout { context.draw(line) }
-        report(layout.map { line in line.flatMap { $0.characterIndices }.map { "\(String(reflecting: $0)) \(Mirror(reflecting: $0).children.map { "\($0.label ?? "-")=\(type(of: $0.value))" })" }.joined(separator: ";") }.joined(separator: " | "))
-    }
 }

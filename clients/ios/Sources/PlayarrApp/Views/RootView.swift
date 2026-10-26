@@ -422,7 +422,7 @@ private struct AuthenticatedPlayarrShell: View {
                     .zIndex(20)
             }
         }
-        .background(PlayarrStyle.background.ignoresSafeArea().parityBox("container", background: PlayarrStyle.background))
+        .background(PlayarrStyle.background.parityBox("container", background: PlayarrStyle.background).ignoresSafeArea())
         // The shell colour, then the page colour every screen paints over it (each page draws WM.page full-bleed).
         .parityFill(PlayarrStyle.surface)
         .parityFill(PlayarrStyle.background)
