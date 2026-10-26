@@ -6,6 +6,7 @@ import "."
 Item {
     id: root
     property var work
+    property string overrideSrc: ""   // a picture URL when only the work id is known
     property var kinds: ["backdrop", "poster"]
     property real boxH: 396 * Tokens.u
     property real imgFrac: 0.55       // share of the box the picture fills
@@ -16,6 +17,7 @@ Item {
     property real widthScale: 1      // the web draws the picture a little wider than the page
     property real imgTopCss: -1000   // explicit picture top and height (css px) instead of the object-position rule
     property real imgHCss: 0
+    property real lightLift: 0        // light theme: share of white laid over the picture (the web brightens it there)
     property bool bleed: true         // the picture also fills the strip behind a notch or cutout
     readonly property real over: bleed ? Tokens.safeTop : 0
     width: parent ? parent.width : 0
@@ -36,7 +38,7 @@ Item {
             fillMode: root.imgH > 0 || root.imgHCss > 0 ? Image.PreserveAspectCrop : Image.Stretch   // Home: object-fit cover in the tall box
             height: root.imgHCss > 0 ? root.imgHCss * Tokens.u : root.imgH > 0 ? (parent.height + root.over) * 1.04 : (implicitWidth > 0 ? width * implicitHeight / implicitWidth : 0)
             y: root.imgTopCss > -1000 ? root.imgTopCss * Tokens.u : root.imgH > 0 ? -7.51 * Tokens.u : -Math.max(0, height - parent.height) * 0.22   // object-position: center 22%
-            source: work ? Api.artwork(work.id, work.images || [], root.kinds, true) : ""
+            source: overrideSrc !== "" ? overrideSrc : work ? Api.artwork(work.id, work.images || [], root.kinds, true) : ""
             asynchronous: true
             smooth: true
             mipmap: true
@@ -44,6 +46,7 @@ Item {
             layer.effect: Desaturate { desaturation: 1.0 }
         }
         Rectangle { property bool layoutSkip: true; anchors.fill: parent; color: "black"; opacity: Tokens.dark ? 0.4 : 0 }   // brightness(.6)
+        Rectangle { property bool layoutSkip: true; anchors.fill: parent; color: "white"; opacity: Tokens.dark ? 0 : root.lightLift }
         Rectangle {   // the web masks the picture out over its right 28%
             anchors.centerIn: parent
             width: parent.height; height: parent.width; rotation: -90
