@@ -170,13 +170,14 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         weight, size = weight_of(a), num(a.get("fontSize"), 16.0)
         col = argb(a.get("fontColor")) or (0, 0, 0, 1.0)
         colour = hex_of(over(col, under))
+        leading = (num(a.get("lineSpacing"), 0.0) or 0.0) * dpr  # lineSpacing is inspector vp: the extra space ArkUI adds to every line
         for line in runs:  # one element per laid-out line: its text, the glyph runs' horizontal extent and the line's own box
             boxes = line["tight"]
             line_text = " ".join(shown(content[line["start"]:line["end"]]).split())
             if not boxes or not line_text:
                 continue
             l, r = min(b["l"] for b in boxes), max(b["r"] for b in boxes)
-            rect = (ox + l * k, oy + line["top"] * k, (r - l) * k, (line["ascent"] + line["descent"]) * k)  # the line box: ascent above the baseline, descent below
+            rect = (ox + l * k, oy + line["top"] * k, (r - l) * k, (line["ascent"] + line["descent"] - leading) * k)  # the line box: ascent above the baseline, descent below, less the leading the app added between lines
             if visible(rect, clip):
                 emit(role, line_text, rect, under, clip, radius, colour, round(size * k, 2), weight, opacity)
 

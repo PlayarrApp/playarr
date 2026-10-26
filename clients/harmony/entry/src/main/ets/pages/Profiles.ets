@@ -357,11 +357,12 @@ struct Profiles {
       // web: a pill whose link text and arrow are two elements ("Clients", "→")
       Row({ space: 8.8 }) {
         Text('Clients').fontFamily(nunitoAt(720, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().inkSoft)).accessibilityText('Clients').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
+          .fontColor(toResourceColor(activeColors().inkSoft))
         Text('→').fontFamily(arrowFont(720)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
       .height(tv(TV_ACTION_HEIGHT))
+      .accessibilityText('Clients').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
       .padding({ left: 17, right: 17 })
       .borderRadius(tv(TV_ACTION_HEIGHT / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
@@ -531,7 +532,7 @@ struct Profiles {
               .letterSpacing((this.pick(1.12, 0.67)) + (isTvMetrics() ? -0.228 : 0))
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(activeColors().inkMuted))
-              .margin({ top: this.pick(15.8, profile.is_current ? 14 : 12) })
+              .margin({ top: this.pick(15.8, profile.is_current ? 11.5 : 9.5) })
             if (profile.is_current) {
               Row({ space: tv(9) }) {
                 this.tvActionButton($r('app.media.nav_settings'), '', BRAND_PINK, () => {
@@ -541,7 +542,7 @@ struct Profiles {
                   this.handleSignOut();
                 })
               }
-              .margin(isTvMetrics() ? { top: 23.74, bottom: -67.74 } : { top: tv(21) + 5.4, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
+              .margin(isTvMetrics() ? { top: 23.74, bottom: -67.74 } : { top: tv(21) + 5.4 - 1.1, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
             }
           }
           .width(this.pick(254.98, 150.48))
