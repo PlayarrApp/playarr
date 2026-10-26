@@ -21,6 +21,8 @@ final class ParityLayoutRegistry {
         var radius: CGFloat = 0
         /// Product of the ancestors' opacity and mask alpha at this element (docs/parity/LAYOUT.md `opacity`).
         var opacity: Double = 1
+        /// True when the view paints its own fill (so its `background` includes that fill).
+        var painted = false
     }
 
     private var items: [UUID: Item] = [:]
@@ -141,7 +143,17 @@ final class ParityLayoutRegistry {
         }
         // Only registered views and native accessibility elements exist in the export. A style on a parent with no
         // source string cannot identify a child text run, so keep the child's accessibility entry without guessed style.
-        var all = styled.filter { $0.text != nil || $0.size == nil } + plain
+        // A native control with no own fill sits on the innermost painted container that encloses it: that container's
+        // composited colour (registered by the app's own fills) is the colour behind it.
+        let painted = styled.filter { $0.painted }
+        let backed = plain.map { entry -> Item in
+            var entry = entry
+            let room = entry.rect.insetBy(dx: -1, dy: -1)
+            entry.background = painted.filter { $0.rect.contains(room) && $0.rect != entry.rect }
+                .min { $0.rect.width * $0.rect.height < $1.rect.width * $1.rect.height }?.background
+            return entry
+        }
+        var all = styled.filter { $0.text != nil || $0.size == nil } + backed
         let viewport = CGRect(origin: .zero, size: screen.size)
         all = all.filter { $0.rect.intersects(viewport) && $0.rect.width > 1 && $0.rect.height > 1 }
         all.sort { ($0.rect.minY, $0.rect.minX, $0.text ?? "", $0.role) < ($1.rect.minY, $1.rect.minX, $1.text ?? "", $1.role) }
@@ -336,7 +348,7 @@ private struct ParityLayoutModifier: ViewModifier {
 
     private func report(_ frame: CGRect) {
         guard frame.width > 0, !environment.parityCovered, let opacity = environment.parityPaint.effective(frame) else { ParityLayoutRegistry.shared.remove(id); return }
-        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { ParityRGB.over($0, environment.parityBackdrop, environment).hex } ?? pageHex, radius: radius, opacity: opacity))
+        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { ParityRGB.over($0, environment.parityBackdrop, environment).hex } ?? pageHex, radius: radius, opacity: opacity, painted: box != nil))
     }
 }
 
