@@ -173,7 +173,7 @@ export function LinkPanel({onClose, onFocused}: {onClose: () => void; onFocused?
   const left = 1606 - 1560;
   return (
     <>
-      <View style={{position: 'absolute', left: u(1560), top: 0, width: u(DRAWER_W), height: u(1080), backgroundColor: colour.surfaceStrong}}>
+      <View {...lx('dialog', '')} style={{position: 'absolute', left: u(1560), top: 0, width: u(DRAWER_W), height: u(1080), backgroundColor: colour.surfaceStrong}}>
         <TvFocusScope autoFocus trap={['up', 'down', 'left', 'right']} style={{width: u(DRAWER_W), height: u(1080)}}>
           <View style={{position: 'absolute', left: u(left), top: u(54)}}>
             <T size={9.6} weight={720} ls={0.672} lh={14.4} color={colour.inkMuted} upper>
@@ -210,7 +210,7 @@ export function LinkPanel({onClose, onFocused}: {onClose: () => void; onFocused?
           ) : null}
           {url ? (
             <>
-              <View style={{position: 'absolute', left: u(left), top: u(254.4), width: u(268), height: u(44), borderRadius: u(8), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: colour.surface, justifyContent: 'center', paddingHorizontal: u(12), overflow: 'hidden'}}>
+              <View {...lx('textbox', t('pages.calendar.subscription.urlLabel'))} style={{position: 'absolute', left: u(left), top: u(254.4), width: u(268), height: u(44), borderRadius: u(8), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: colour.surface, justifyContent: 'center', paddingHorizontal: u(12), overflow: 'hidden'}}>
                 <T size={12.8} weight={400} mono lh={19} color={colour.ink} lines={1} style={{width: u(900)}}>
                   {url}
                 </T>
