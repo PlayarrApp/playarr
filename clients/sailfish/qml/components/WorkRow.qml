@@ -29,8 +29,8 @@ MouseArea {
     }
     Column {
         anchors { left: art.right; leftMargin: 14 * Tokens.u; right: parent.right; rightMargin: Tokens.pad; verticalCenter: parent.verticalCenter }
-        Label { renderType: Text.NativeRendering; width: parent.width; text: work ? work.title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering; width: parent.width; text: work ? work.title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
+        PLabel { renderType: Text.NativeRendering;
             width: parent.width
             text: work ? (work.kind === "movie" ? qsTr("Movie") : work.kind === "series" ? qsTr("Series") : qsTr("Artist")) + (work.release_date ? " \u00B7 " + work.release_date.substr(0, 4) : "") : ""
             elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(13)

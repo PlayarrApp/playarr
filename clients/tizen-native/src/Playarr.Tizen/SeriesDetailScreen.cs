@@ -44,6 +44,7 @@ internal sealed class SeriesDetailScreen : IPage
         _env = env; _t = env.Theme; _id = id;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         _keyArt = new KeyArt(env, armed: true); // web paints the key art as soon as focus lands on the first episode
         _root.Add(_keyArt.Root);
         
@@ -117,7 +118,7 @@ internal sealed class SeriesDetailScreen : IPage
         {
             var ep = season.Episodes[ci];
             var x = RailX + ci * CardPitch;
-            var box = new View { PositionX = x, Size = new Size(268, 200) };
+            var box = new View { PositionX = x, Size = new Size(268, 179.5f) }; // web: the link is the art and its caption row
             var art = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f);
             art.ClippingMode = ClippingModeType.ClipChildren;
             // web: the episode's own still when the catalog has one, else the media-file frame (cover crop); a 135deg black wash and the number sit on top
@@ -165,7 +166,7 @@ internal sealed class SeriesDetailScreen : IPage
                 Rect = () => new Box(x - rail.Scroll, FocusedHeadingY - (_activeRail - railIdx) * RailPitch + 80.7f, 268, 150.8f),
                 Label = $"play {code}".ToLowerInvariant(),
                 Select = () => PlayEpisode(epc),
-                Style = f => { epFocused = f; art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -7.04f : 0; numLabel.PositionY = numY + (f ? 1.01f : 0); ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(f ? maxInk : _t.Ink); codeLabel.PositionY = codeY + (f ? -7.5f : 0); tt.PositionY = titleY + (f ? -7.5f : 0); },
+                Style = f => { epFocused = f; box.PositionY = f ? -7 : 0; art.Scale = f ? new Vector3(1.025f, 1.025f, 1) : new Vector3(1, 1, 1); art.PositionY = f ? -0.04f : 0; numLabel.PositionY = numY + (f ? 1.01f : 0); ring.Scale = art.Scale; ring.PositionY = art.PositionY - 3; ring.Show(f); glow.Show(f); glow.Scale = art.Scale; glow.PositionY = art.PositionY; tt.TextColor = Ui.C(f ? maxInk : _t.Ink); codeLabel.PositionY = codeY + (f ? -0.5f : 0); tt.PositionY = titleY + (f ? -0.5f : 0); },
                 Focused = () => OnEpisodeFocused(railIdx, col, epc, seasonc),
             });
         }

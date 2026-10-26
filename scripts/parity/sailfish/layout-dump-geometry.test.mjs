@@ -34,7 +34,7 @@ function attach(parent, child) {
 
 function dumpLines(root, u = 1) {
   const lines = [];
-  context.layout.dump(root, u, {}, () => ({ ascent: 8, descent: 2 }), (line) => lines.push(line));
+  context.layout.dump(root, u, {}, () => ({ ascent: 8, descent: 2, advance: (text) => text.length * 5, elide: (text, mode, width) => text.slice(0, Math.max(0, Math.floor(width / 5) - 1)) + "…" }), (line) => lines.push(line));
   return lines;
 }
 
@@ -97,7 +97,7 @@ test("inherits visibility and opacity while retaining partially visible geometry
   attach(zeroOpacity, focus("transparent-child", 10, 10));
   const result = dump(root);
   assert.deepEqual(result.map((item) => item.text), ["partly-visible"]);
-  assert.deepEqual(result[0].rect, { x: 90, y: 10, w: 10, h: 10 });
+  assert.deepEqual(result[0].rect, { x: 90, y: 10, w: 20, h: 10 });
   assert.equal(result[0].opacity, 0.5);
 });
 
@@ -109,7 +109,7 @@ test("keeps radius tied to the drawn box when viewport clipping shortens its vis
   }));
   assert.ok(rounded);
   const [result] = dump(root);
-  assert.deepEqual(result.rect, { x: 0, y: 10, w: 15, h: 20 });
+  assert.deepEqual(result.rect, { x: -15, y: 10, w: 30, h: 20 });
   assert.equal(result.radius, 8);
 });
 
@@ -120,7 +120,7 @@ test("samples a heavily clipped flat fill from inside its visible polygon", () =
     color: { r: 1, g: 0, b: 0, a: 1 },
   }));
   const [result] = dump(root);
-  assert.deepEqual(result.rect, { x: 0, y: 0, w: 10, h: 20 });
+  assert.deepEqual(result.rect, { x: -50, y: 0, w: 60, h: 20 });
   assert.equal(result.background, "#ff0000");
 });
 
@@ -139,7 +139,7 @@ test("preserves focus radius under uniform scale even when the visible box is cl
   const root = makeItem("root", 100, 100);
   attach(root, focus("scaled-focus", 12, 12, { x: -12, scaleX: 2, scaleY: 2, focusRadius: 6 }));
   const [result] = dump(root);
-  assert.deepEqual(result.rect, { x: 0, y: 0, w: 12, h: 24 });
+  assert.deepEqual(result.rect, { x: -12, y: 0, w: 24, h: 24 });
   assert.equal(result.radius, 12);
 });
 
@@ -176,10 +176,44 @@ test("does not composite rotated flat fills into empty AABB corners", () => {
   attach(root, makeItem("corner-text", 2, 2, {
     x: 27, y: 42, text: "x", contentWidth: 2, contentHeight: 10,
     font: { family: "Sans", pixelSize: 10, weight: 50 }, color: { r: 0, g: 0, b: 0, a: 1 },
-    lineCount: 1, baselineOffset: 1, horizontalAlignment: 0, implicitWidth: 2, elide: 0,
+    lineCount: 1, baselineOffset: 1, horizontalAlignment: 0, implicitWidth: 2, elide: 3,
   }));
   const text = dump(root).find((item) => item.text === "x");
   assert.equal(text.background, "#ffffff");
+});
+
+function textItem(props) {
+  return {
+    text: "", contentWidth: 10, contentHeight: 10, font: { family: "Sans", pixelSize: 10, weight: 50, letterSpacing: 0 }, color: { r: 0, g: 0, b: 0, a: 1 },
+    lineCount: 1, baselineOffset: 8, horizontalAlignment: 1, wrapMode: 0, elide: 3, leftPadding: 0, rightPadding: 0, ...props,
+  };
+}
+
+test("exports one run per rendered line from the recorded line boxes", () => {
+  const root = makeItem("root", 100, 100);
+  attach(root, makeItem("para", 60, 30, textItem({
+    text: "aa bbb cc dd", lineCount: 2, wrapMode: 1, contentWidth: 40, baselineOffset: 8,
+    laidLines: [{ x: 0, y: 0, w: 50, h: 10 }, { x: 0, y: 12, w: 50, h: 10 }],
+  })));
+  const runs = dump(root);
+  // 5 px per character: "aa bbb cc" is 45 px, "aa bbb cc dd" does not fit 50 px.
+  assert.deepEqual(runs.map((run) => run.text), ["aa bbb cc", "dd"]);
+  assert.deepEqual(runs.map((run) => run.rect), [{ x: 0, y: 0, w: 45, h: 10 }, { x: 0, y: 12, w: 10, h: 10 }]);
+});
+
+test("keeps the whole text of a single elided line and elides a line cut by the line limit", () => {
+  const root = makeItem("root", 100, 100);
+  attach(root, makeItem("clipped", 40, 10, textItem({ text: "abcdefghijkl", elide: 1, contentWidth: 40 })));
+  attach(root, makeItem("limited", 40, 30, textItem({
+    text: "aa bb cc dd ee ff gg", elide: 1, wrapMode: 1, maximumLineCount: 2, lineCount: 2, y: 20,
+    laidLines: [{ x: 0, y: 0, w: 40, h: 10 }, { x: 0, y: 12, w: 40, h: 10 }],
+  })));
+  attach(root, makeItem("centred", 40, 10, textItem({ text: "abcd", horizontalAlignment: 4, y: 60 })));
+  const runs = dump(root);
+  assert.equal(runs[0].text, "abcdefghijkl");
+  assert.deepEqual(runs[0].rect, { x: 0, y: 0, w: 60, h: 10 });
+  assert.deepEqual(runs.slice(1, 3).map((run) => run.text), ["aa bb cc", "dd ee f…"]);
+  assert.deepEqual(runs[3].rect, { x: 10, y: 60, w: 20, h: 10 });
 });
 
 test("clips overflowing local content by the item's own clip and its parent clip", () => {

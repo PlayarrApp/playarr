@@ -51,8 +51,11 @@ function fixture() {
   mkdirSync(join(destination, "layout"));
   const bytes = png();
   for (const theme of themes) {
-    mkdirSync(join(runDir, theme));
-    for (const screen of screens) writeFileSync(join(runDir, theme, `${screen}.png`), bytes);
+    mkdirSync(join(runDir, theme)); mkdirSync(join(runDir, "layout", theme), { recursive: true });
+    for (const screen of screens) {
+      writeFileSync(join(runDir, theme, `${screen}.png`), bytes);
+      writeFileSync(join(runDir, "layout", theme, `${screen}.json`), `${JSON.stringify({ screen, theme, viewport: { w: 390, h: 683, dpr: 2 }, elements: [{ text: "x", role: "text" }] })}\n`);
+    }
   }
   return { runDir, legendRoot, destination };
 }
@@ -76,7 +79,7 @@ function snapshot(dir) {
 const source = { branch: "parity-sailfish-test", sha: "a".repeat(40), manifestSha256: "b".repeat(64) };
 const guest = { qmlManifestSha256: "c".repeat(64), executableSha256: "d".repeat(64) };
 
-test("publishes only the complete PNG set and preserves unrelated JSON", () => {
+test("publishes the complete capture and layout set and preserves unrelated JSON", () => {
   const f = fixture();
   writeFileSync(join(f.destination, "downloads.json"), '{"history":true}\n');
   writeFileSync(join(f.destination, "home.png"), Buffer.from("old"));
@@ -87,9 +90,11 @@ test("publishes only the complete PNG set and preserves unrelated JSON", () => {
   const build = JSON.parse(readFileSync(join(f.destination, "build.json"), "utf8"));
   assert.equal(build.sha, source.sha);
   assert.equal(build.pr, 552);
-  assert.equal(build.layouts_published, false);
+  assert.equal(build.layouts_published, true);
+  assert.equal(Object.keys(build.layout_sha256).length, 32);
   assert.equal(readdirSync(join(f.destination, "light")).filter((name) => name.endsWith(".png")).length, 16);
-  assert.equal(readdirSync(join(f.destination, "layout"), { withFileTypes: true }).length, 0);
+  assert.equal(readdirSync(join(f.destination, "layout", "dark")).length, 16);
+  assert.equal(readdirSync(join(f.destination, "layout", "light")).length, 16);
 });
 
 test("rejects an incomplete run without changing the destination", () => {
@@ -101,7 +106,7 @@ test("rejects an incomplete run without changing the destination", () => {
   assert.equal(snapshot(f.destination), before);
 });
 
-test("rejects malformed PNGs and existing diagnostic layout JSON before mutation", () => {
+test("rejects malformed PNGs and incomplete or development layout documents before mutation", () => {
   const f = fixture();
   writeFileSync(join(f.destination, "history.json"), "preserve\n");
   const before = snapshot(f.destination);
@@ -109,11 +114,12 @@ test("rejects malformed PNGs and existing diagnostic layout JSON before mutation
   assert.throws(() => validateRun(f.runDir), /Invalid PNG/);
   assert.throws(() => publishRun({ ...f, source, guestBefore: guest, guestAfter: guest }), /Invalid PNG/);
   assert.equal(snapshot(f.destination), before);
-  writeFileSync(join(f.destination, "layout.json"), "native diagnostic\n");
-  writeFileSync(join(f.destination, "layout", "dark.json"), "native diagnostic\n");
-  const withLayout = snapshot(f.destination);
-  assert.throws(() => publishRun({ ...f, source, guestBefore: guest, guestAfter: guest }), /layout JSON/);
-  assert.equal(snapshot(f.destination), withLayout);
+  writeFileSync(join(f.runDir, "light", "calendar-link.png"), png());
+  rmSync(join(f.runDir, "layout", "dark", "home.json"));
+  assert.throws(() => publishRun({ ...f, source, guestBefore: guest, guestAfter: guest }), /Missing layout document/);
+  writeFileSync(join(f.runDir, "layout", "dark", "home.json"), JSON.stringify({ screen: "home", theme: "dark", elements: [{ text: "x", _src: "QQuickItem" }] }));
+  assert.throws(() => publishRun({ ...f, source, guestBefore: guest, guestAfter: guest }), /development fields/);
+  assert.equal(snapshot(f.destination), before);
 });
 
 test("rejects symlink captures before changing the destination", () => {

@@ -26,6 +26,9 @@ MouseArea {
     property string parityRole: "button"
     property string a11yName: text          // the accessible name; a page sets it where it differs from the visible label
     property real focusRadius: height / 2
+    // A button with only a label is one web element, exported as its text run; one with an icon is exported by its box and its texts.
+    readonly property bool textRun: icon === "" && iconImage === "" && a11yName === text
+    property bool layoutNoEmit: textRun
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""
@@ -46,6 +49,7 @@ MouseArea {
         color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12)
     }
     Rectangle {
+        id: bg
         anchors.fill: parent
         radius: height / 2
         color: root.outlineOnly ? Tokens.surface : root.fill.a > 0 ? root.fill : root.primary ? Tokens.primary : Tokens.surfaceStrong
@@ -58,7 +62,7 @@ MouseArea {
         anchors { fill: parent; margins: -4 * Tokens.u }
         radius: height / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary
     }
-    Label { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.letterSpacing: root.labelSpacing; font.pixelSize: root.fontSize; }
+    PLabel { renderType: Text.NativeRendering; id: tm; visible: false; text: label.text; font.family: root.labelFamily; font.letterSpacing: root.labelSpacing; font.pixelSize: root.fontSize; }
     Row {
         id: content
         visible: root.icon !== "" || root.iconImage !== ""
@@ -70,7 +74,7 @@ MouseArea {
             width: root.iconSize; height: width; sourceSize: Qt.size(48, 48)
             source: root.iconImage
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             id: iconLbl
             visible: root.iconImage === ""
             anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: root.iconDy * Tokens.u
@@ -79,7 +83,7 @@ MouseArea {
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
         }
-        Label { renderType: Text.NativeRendering;
+        PLabel { renderType: Text.NativeRendering;
             id: label2
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 2 * root.padCss * Tokens.u - root.iconW - root.contentGap * Tokens.u)
@@ -92,9 +96,11 @@ MouseArea {
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
         }
     }
-    Label { renderType: Text.NativeRendering;
+    PLabel { renderType: Text.NativeRendering;
         id: label
         visible: root.icon === "" && root.iconImage === ""
+        property string parityRole: root.textRun ? root.parityRole : ""
+        property var radiusSource: root.textRun ? bg : null
         anchors.centerIn: parent
         font.family: root.labelFamily
         font.pixelSize: root.fontSize

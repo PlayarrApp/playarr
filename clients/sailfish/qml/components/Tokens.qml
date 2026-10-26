@@ -15,6 +15,8 @@ QtObject {
     readonly property real safeBottom: Math.max(0, Math.max(testBottom, Screen.bottomCutout && Screen.bottomCutout.height ? Screen.bottomCutout.height : 0) - 8 * u)
 
     // Pages sit on the web's surface colour (the web token `bg` is only the outer shell).
+    // The web `bg` token: the outer shell behind the app frame.
+    readonly property color shell: dark ? "#151315" : "#f5f3f2"
     readonly property color bg: dark ? "#1b181b" : "#fbfaf9"
     readonly property color surface: dark ? "#1b181b" : "#fbfaf9"
     readonly property color surfaceStrong: dark ? "#211d21" : "#ffffff"
@@ -62,7 +64,20 @@ QtObject {
     readonly property string family820: nunito820.name
     // Device-pixel snapping like the browser: edges land on whole pixels so art is not resampled by a half pixel.
     // A css font size as whole device pixels: Chromium lays text out at the fractional size, Qt 5.6 only takes an int.
+    // fsFit: Qt rounds the ascent and descent of a pixel size up, so the nearest size can give a taller text box than the web's (which rounds each
+    // to the nearest). Of the sizes within half a css px of the web's, take the one whose box is closest to the web's (Nunito Sans metrics).
     function fs(css) { return Math.round(css * u) }
+    function fsFit(css) {
+        var p0 = Math.round(css * u), best = p0, bestCost = 1e9
+        var aw = Math.round(1.011 * css), dw = Math.round(0.353 * css)
+        for (var p = p0 - 1; p <= p0 + 1; ++p) {
+            if (Math.abs(p / u - css) > 0.5) continue
+            var ea = Math.abs(Math.ceil(1.011 * p - 0.01) / u - aw), ed = Math.abs(Math.ceil(0.353 * p - 0.01) / u - dw)
+            var cost = (Math.max(ea, ed) > 0.9 ? 10 : 0) + ea + ed + Math.abs(p / u - css) / 10
+            if (cost < bestCost) { bestCost = cost; best = p }
+        }
+        return best
+    }
     function fsDown(css) { return Math.floor(css * u) }
     function px(v) { return Math.round(v * u) }
     readonly property real pad: 16 * u

@@ -190,3 +190,19 @@ test("text nodes split by an element keep a separator; adjacent ones do not", { 
   const d = await dump(`<div style="display:flex;gap:12px"><span id="k"></span></div><script>const k = document.getElementById("k").parentElement; k.replaceChildren(document.createTextNode("Released"), document.createElement("i"), document.createTextNode("1 Jun 1998"));</script>`);
   assert.deepEqual(texts(d), ["Released 1 Jun 1998"]);
 });
+
+test("text cut by text-overflow: ellipsis is exported as drawn (visible characters, ellipsis, clipped rect)", { skip }, async () => {
+  const d = await dump(`<div style="width:60px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace">abcdefghijklmnop</div>
+    <div style="width:300px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace;margin-top:30px">fits</div>`);
+  const cut = d.elements[0];
+  // monospace 16px is 9.6 px per character: five characters (48 px) plus the ellipsis (9.6 px) fit in 60 px
+  assert.equal(cut.text, "abcde…");
+  assert.ok(cut.rect.x + cut.rect.w <= 60.01 && cut.rect.w > 50);
+  assert.equal(d.elements[1].text, "fits");
+});
+
+test("a computed colour in another space (color-mix in oklab) resolves to sRGB", { skip }, async () => {
+  const d = await dump(`<div class="abs" style="top:0;width:40px;height:20px;background:color-mix(in oklab, #ff0000 40%, #0000ff)"></div>`);
+  assert.match(d.elements[0].background, /^#[0-9a-f]{6}$/);
+  assert.notEqual(d.elements[0].background, "#ffffff");
+});

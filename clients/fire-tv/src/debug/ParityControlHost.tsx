@@ -61,7 +61,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         }
         if (route.name.startsWith('Settings')) return '/settings';
         const web = ROUTE_TO_WEB[route.name] ?? `/${route.name.toLowerCase()}`;
-        return web + currentQuery(web === '/calendar' ? ['view'] : web === '/movies' || web === '/series' || web === '/music' ? ['panel'] : []);
+        return web + currentQuery(web === '/calendar' ? ['view', 'panel'] : web === '/movies' || web === '/series' || web === '/music' ? ['panel'] : []);
       },
       route: (path) => {
         const base = path.split('?')[0] ?? '/';
@@ -113,13 +113,12 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
     const pauser = setInterval(() => {
       if (armedPause === null) return;
       const state = engine.getState();
-      if (state.state === 'playing' && state.currentTimeSeconds * 1000 >= armedPause - 150) {
-        const target = armedPause;
+      if (state.state === 'playing' && state.currentTimeSeconds * 1000 >= armedPause) {
         armedPause = null;
-        // Land on exactly the requested instant: pause first, then seek to it (the clip is paused, so the frame is the one at target).
-        void engine.pause().then(() => engine.seek(target / 1000));
+        // Paused on the player's own reported position (no seek: a seek while paused leaves the video plane black on Vega).
+        void engine.pause();
       }
-    }, 40);
+    }, 10);
     const timer = setInterval(() => {
       if (!playerRef.current?.isVisible()) return;
       const state = engine.getState();

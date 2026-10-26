@@ -95,6 +95,7 @@ internal sealed class SearchScreen : IPage
         _mediaType = requestedOption.Value is not null ? requestedType : "all";
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         
         _root.Add(Ui.PanelWash(_t, 1248));
         _keyArt = new KeyArt(env);
@@ -123,11 +124,11 @@ internal sealed class SearchScreen : IPage
         var form = Ui.Box(153.6f, 172.8f, 590, 76, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 38);
         form.BorderlineWidth = 1; form.BorderlineColor = Ui.LineA(_t, 0.15f);
         Sem.Tag(form, "search");
-        form.Add(Sem.Tag(new View { PositionX = 62, PositionY = 8, Size = new Size(506, 60) }, "textbox", "Search your libraries and playlists"));
         form.Add(Ui.Icon("search", 25, 26, 24, _t.InkMuted));
-        _field = new TextField { PositionX = 66, PositionY = 18, Size = new Size(440, 40), PixelSize = 17f, TextColor = Ui.C(_t.Ink), FontFamily = Ui.Font,
+        _field = new TextField { PositionX = 62, PositionY = 8, Size = new Size(506, 60), Padding = new Extents(4, 0, 10, 10), PixelSize = 17f, TextColor = Ui.C(_t.Ink), FontFamily = Ui.Font,
             PlaceholderText = "Search your libraries and playlists", PlaceholderTextColor = Ui.C(_t.InkMuted), EnableCursorBlink = true };
         _field.TextChanged += (_, e) => OnText(_field.Text);
+        Sem.Tag(_field, "textbox", "Search your libraries and playlists");
         form.Add(_field);
         _clear = Ui.Box(514, 11, 67, 54, null, 27);
         _clear.Add(Ui.Text("Clear", 0, 18.8f, 10.944f, 800, _t.InkMuted, 67, 16.4f, HorizontalAlignment.Center));

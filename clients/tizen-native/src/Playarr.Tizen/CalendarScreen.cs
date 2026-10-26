@@ -53,6 +53,7 @@ internal sealed class CalendarScreen : IPage
         _anchor = view == CalendarView.Month ? new DateTime(_today.Year, _today.Month, 1) : view == CalendarView.Week ? CalendarRules.StartOfWeek(_today) : _today;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        if (view == CalendarView.Agenda) _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the agenda page has a section and a stage layer
         
         if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); } // web: the focused entry's backdrop under the agenda panel's frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
@@ -198,9 +199,9 @@ internal sealed class CalendarScreen : IPage
             {
                 var day = start.AddDays(r * 7 + c); var x = GridX + c * CellW; var y = RowsY + r * CellH;
                 var outside = day.Month != _anchor.Month;
-                var cell = Ui.Box(x, y, CellW, CellH, new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, outside ? 0.35f : 0.7f), 0);
+                var cell = Ui.Box(x, y, CellW, CellH, new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, outside ? 0.35f : 0f), 0);
                 cell.BorderlineWidth = 1; cell.BorderlineColor = Ui.C(_t.Line);
-                Sem.Tag(cell, "container"); // web: only the days outside the month carry a visible fill
+                Sem.Tag(cell, "container"); // web: only the days outside the month carry a fill; every day has the hairline border
                 _body.Add(cell);
                 var list = byDay.TryGetValue(day, out var l) ? l : new List<CalendarEntry>();
                 var shown = Math.Min(4, list.Count);
@@ -209,11 +210,11 @@ internal sealed class CalendarScreen : IPage
                     var e = list[k];
                     var dot = ToneColor(CalendarRules.Tone(e, _today));
                     var ly = 15.3f + k * 25.4f;
-                    cell.Add(Ui.Box(11.4f, ly + 4.1f, 8.8f, 8.8f, dot, 4.4f));
-                    var toneName = CalendarRules.Tone(e, _today) switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
-                    cell.Add(Sem.Tag(new View { PositionX = 5.8f, PositionY = 1.8f + k * 25.4f, Size = new Size(226, 44) }, "button", $"{e.Title}, {toneName}, {day.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"))}"));
+                    var row = new View { PositionX = 5.8f, PositionY = 1.8f + k * 25.4f, Size = new Size(226, 44) }; // the event row (dot and title); the day cell is the focus target
+                    row.Add(Ui.Box(5.6f, ly + 4.1f - row.PositionY, 8.8f, 8.8f, dot, 4.4f));
                     var multi = e.Members is { Count: > 1 } m ? $" · {m.Count}×" : "";
-                    cell.Add(Ui.Text(e.Title + multi, 27.4f, ly, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
+                    row.Add(Ui.Text(e.Title + multi, 21.6f, ly - row.PositionY, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
+                    cell.Add(row);
                 }
                 cell.Add(Ui.Text(day.Day.ToString(), 8.8f, CellH - 33, 12.8f, 640, day == _today ? _t.Ink : outside ? _t.InkMuted : _t.Ink, 30, 19.2f));
                 if (list.Count > shown) cell.Add(Ui.Text($"+{list.Count - shown} more", 43, CellH - 33, 12.48f, 400, _t.InkSoft, 90, 18.72f));
@@ -354,10 +355,10 @@ internal sealed class CalendarScreen : IPage
         var textW = w - 70.4f - 16f;
         var h = 106.9f + (sub.Length * 9.6f > textW ? 28.8f : 0) - (sub.Length == 0 ? 29f : 0); // web: an entry without a subtitle line is 29 px shorter
         // web .calendar-entry: --surface-strong with a 4 px left border (--success when available, else --ink-muted); the border colour is the card, the surface sits 4 px in
-        var card = Ui.Box(x, y, w, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 12);
-        card.CornerRadius = 12;
-        var surface = Ui.Box(4, 0, w - 4, h, _t.SurfaceStrong, 12); surface.BorderlineWidth = 1; surface.BorderlineColor = Ui.C(_t.LineStrong); // web --line-strong
-        card.Add(surface);
+        var card = Ui.Box(x, y, w, h, _t.SurfaceStrong, 12);
+        card.BorderlineWidth = 1; card.BorderlineColor = Ui.C(_t.LineStrong); // web --line-strong
+        card.ClippingMode = ClippingModeType.ClipChildren;
+        card.Add(Ui.Box(0, 0, 4, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 0)); // the 4 px left border
         var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
         poster.ClippingMode = ClippingModeType.ClipChildren;
         Sem.Tag(poster, "none");
@@ -435,7 +436,7 @@ internal sealed class CalendarScreen : IPage
 
     private void LoadPoster(View poster, string url)
     {
-        if (url.StartsWith('/')) { _env.Images.Apply(poster, url, 40, 60); return; }
+        if (url.StartsWith('/')) { _env.Images.Apply(poster, url, 40, 60, 6, roundImage: true); return; }
         var sized = SizedPosterUrl(url);
         _env.Images.Track(async () =>
         {

@@ -8,6 +8,7 @@ PlayarrPage {
     id: page
     objectName: "main"
     property string section: "home"
+    contentTop: section === "home" ? 72 * Tokens.u : 0
 
     Component.onCompleted: Progress.refresh()
     onStatusChanged: if (status === PageStatus.Active) Progress.refresh()

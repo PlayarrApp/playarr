@@ -90,7 +90,7 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: u(primary ? 24 : 16),
-        borderRadius: 999,
+        borderRadius: u(height / 2),
         borderWidth: primary ? 0 : 1,
         borderColor: colour.lineStrong,
         backgroundColor: primary ? (focused ? colour.ink : colour.accent) : focused ? colour.surfaceSoft : colour.surface,
@@ -98,7 +98,7 @@ export function Button({label, onPress, variant = 'primary', w, h, disabled, has
         transform: [{scale: focused ? 1.03 : 1}],
       }}
     >
-      <T wrole="button" size={primary ? 14.72 : 11.52} weight={720} color={primary ? colour.onAccent : colour.inkSoft}>
+      <T size={primary ? 14.72 : 11.52} weight={720} color={primary ? colour.onAccent : colour.inkSoft} control={{role: 'button', label}}>
         {label}
       </T>
     </Pressable>
@@ -152,6 +152,12 @@ function SegmentButton({label, active, gap, onPress}: {label: string; active: bo
       {focused ? <FocusRing radius={12} /> : null}
     </Pressable>
   );
+}
+
+/** A settings section below a hairline: the web's `section` with a top border, whose box runs from the line to its last control. */
+export function Section({children}: {children: React.ReactNode}): React.ReactElement {
+  const {colour} = useTheme();
+  return <View style={{borderTopWidth: 1, borderColor: colour.line, paddingTop: u(30.2)}}>{children}</View>;
 }
 
 export function Divider({w = 995}: {w?: number}): React.ReactElement {

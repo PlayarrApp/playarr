@@ -79,7 +79,7 @@ export function initialRouteName(): typeof ROUTES.link | typeof ROUTES.profiles 
 export function RootNavigator(): React.ReactElement {
   const [initialRoute] = React.useState(initialRouteName);
   return (
-    <Stack.Navigator initialRouteName={initialRoute} screenOptions={{headerShown: false, ...(PARITY_CONTROL ? {animationEnabled: false} : null)}}>
+    <Stack.Navigator initialRouteName={initialRoute} screenOptions={{headerShown: false, cardStyle: {backgroundColor: 'transparent'}, ...(PARITY_CONTROL ? {animationEnabled: false} : null)}}>
       <Stack.Screen name={ROUTES.link} component={LinkScreen} />
       <Stack.Screen name={ROUTES.profiles} component={ProfilesScreen} />
       <Stack.Screen name={APP_SHELL_ROUTE} component={AppShellNavigator} />

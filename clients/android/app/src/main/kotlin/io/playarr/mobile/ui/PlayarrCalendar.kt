@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import androidx.compose.ui.graphics.compositeOver
 import io.playarr.shared.designsystem.page.parityBox
@@ -599,7 +600,7 @@ private fun PhoneCalendarEntry(item: CalendarItem, selected: Boolean, zone: Zone
     val fill = WebSurfaceStrong
     Surface(
         // Material's clickable Surface paints a focus state layer (a fill); web's focus state is the ring alone.
-        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === TvCalendarMetrics && agenda && rowSubtitle.isEmpty()) 78f else if ((m === TvCalendarMetrics || (m === PhoneCalendarMetrics && LocalStageScale.current == 1f)) && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).parityShape(12f).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
+        modifier = modifier.padding(start = 0.dp, end = 0.dp).fillMaxWidth().then(if (m === TvCalendarMetrics && wrapTitles) Modifier.heightIn(min = m.entryHeight.dp) else Modifier.height((if (wrapTitles) 87f else if (m === TvCalendarMetrics && agenda && rowSubtitle.isEmpty()) 78f else if ((m === TvCalendarMetrics || (m === PhoneCalendarMetrics && LocalStageScale.current == 1f)) && rowSubtitle.isEmpty()) 76.5f else if (LocalCalendarTabletAgenda.current) 89.9f else m.entryHeight).dp)).calendarClick(remember { MutableInteractionSource() }, onClick).parityShape(m.entryRadius).calendarAvailabilityBorder(item.isAvailable(), m.entryRadius.dp).then(
             if (selected) {
                 // `.calendar-entry.is-selected`: a 4 px left border and 1 px borders in ink, plus a 1 px inset ring, so the
                 // padding box has a rounder inner left edge than the outer shape.
@@ -1630,11 +1631,9 @@ private fun CalendarMonthChips(
                             // `.calendar-line` text rows with an availability dot, then the day number and "+N more".
                             val cellBg = (if (inMonth) WebSurface else WebSurfaceSoft.copy(alpha = 0.4f).compositeOver(WebSurface))
                             Column(
-                                Modifier.width(columnWidth(columnIndex)).fillMaxHeight().parityBox("container")
-                                    .background(if (inMonth) Color.Transparent else WebSurfaceSoft.copy(alpha = 0.4f))
+                                Modifier.width(columnWidth(columnIndex)).fillMaxHeight().parityBackground("container", if (inMonth) Color.Transparent else WebSurfaceSoft.copy(alpha = 0.4f))
                                     .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.11f, 0.13f))
                                     .then(if (day == today) Modifier.border(2.dp, WebInk) else Modifier)
-                                    .parityBox("container")
                                     .padding(start = 5.8.dp, end = 5.8.dp, top = 1.8.dp, bottom = 0.8.dp + (if (tabletCss) 9.dp else 0.dp)), // web: 1 px border plus 0.05rem / 0.3rem padding
                             ) {
                                 Column(Modifier.weight(1f)) {
@@ -2230,7 +2229,7 @@ private fun CalendarLine(item: CalendarItem, tone: CalendarPillTone, onClick: ()
             .semantics(mergeDescendants = true) { contentDescription = label }.padding(horizontal = 5.6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(8.8.dp).parityBox("container", radius = 999f).background(dot, CircleShape))
+        Box(Modifier.size(8.8.dp).parityBackground("container", dot, CircleShape, radius = 999f))
         Text(
             label, color = WebInk, fontSize = 12.48.sp, lineHeight = 14.976.sp, fontWeight = if (item is CalendarItem.Series) FontWeight(680) else FontWeight.Normal,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 7.dp),

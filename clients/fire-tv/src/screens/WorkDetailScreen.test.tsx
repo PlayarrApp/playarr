@@ -209,7 +209,7 @@ describe('WorkDetailScreen', () => {
 
     const renderer = await renderDetail(navigation);
     await act(async () => {
-      renderer.root.findByProps({accessibilityLabel: 'A Related Film'}).props.onPress();
+      renderer.root.findByProps({accessibilityLabel: 'Open A Related Film'}).props.onPress();
     });
 
     expect(navigation.navigate).toHaveBeenCalledWith(ROUTES.workDetail, {workId: 'w3'});
@@ -229,8 +229,8 @@ describe('WorkDetailScreen', () => {
 
     const renderer = await renderDetail(fakeNavigation());
 
-    expect(renderer.root.findAllByProps({accessibilityLabel: 'Same Genre Film'}).length).toBeGreaterThan(0);
-    expect(renderer.root.findAllByProps({accessibilityLabel: 'The First Film'}).filter((node) => typeof node.props.onPress === 'function')).toHaveLength(0);
+    expect(renderer.root.findAllByProps({accessibilityLabel: 'Open Same Genre Film'}).length).toBeGreaterThan(0);
+    expect(renderer.root.findAllByProps({accessibilityLabel: 'Open The First Film'}).filter((node) => typeof node.props.onPress === 'function')).toHaveLength(0);
   });
 
   it('calls onPlay with the movie\'s media file id when Play is pressed', async () => {
@@ -259,7 +259,7 @@ describe('WorkDetailScreen', () => {
     });
 
     act(() => {
-      renderer.root.findByProps({accessibilityLabel: 'Play'}).props.onPress();
+      renderer.root.findByProps({accessibilityLabel: 'Play The First Film'}).props.onPress();
     });
 
     expect(onPlay).toHaveBeenCalledWith('mf-1', {title: 'The First Film'});

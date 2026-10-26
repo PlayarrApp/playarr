@@ -6,8 +6,8 @@ internal static class BaselineShifts
 {
     private static readonly SortedDictionary<float, float> Table = new()
     {
-        [8f] = 2.5f, [8.256f] = 1f, [8.832f] = 1f, [9.216f] = 1.5f, [9.6f] = 0.5f, [9.92f] = 0.25f, [9.984f] = 0.5f, [11.136f] = 2.75f, [11.52f] = 1f,
-        [11.84f] = 0.25f, [11.904f] = 1f, [12.288f] = 0.5f, [12.8f] = 1f, [13.824f] = 1.25f, [13.056f] = 1f, [14.72f] = 0f, [17.664f] = 0.5f, [18.4f] = 0f, [19.2f] = 1f,
+        [8f] = 2.5f, [8.256f] = 1f, [8.832f] = 1f, [9.216f] = 1.5f, [9.6f] = 0.5f, [9.92f] = 0.25f, [9.984f] = 0.5f, [11.136f] = 0f, [11.52f] = 1f,
+        [11.84f] = 0.25f, [11.904f] = 1f, [12.288f] = 0.5f, [12.8f] = 1f, [13.824f] = 0f, [13.056f] = 1f, [14.72f] = 0f, [17.664f] = 0.5f, [18.4f] = 0f, [19.2f] = 1f,
     };
 
     public static float Up(float size)

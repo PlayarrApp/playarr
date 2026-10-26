@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.PlayarrBack
@@ -329,8 +330,7 @@ private fun PhoneDrawerPanel(
     Box(
         Modifier.fillMaxSize()
             .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
-            .parityBox("container", fillAlpha = if (blurUnderlay) 0.94f else 0.985f)
-            .background(WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f))
+            .parityBackground("container", WebSurfaceStrong.copy(alpha = if (blurUnderlay) 0.94f else 0.985f))
     ) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
@@ -434,8 +434,7 @@ private fun PlayarrTvDrawer(
                             size = androidx.compose.ui.geometry.Size(122.dp.toPx(), size.height),
                         )
                     }
-                    .parityBox("container", fillAlpha = 0.94f)
-                    .background(WebSurfaceStrong.copy(alpha = 0.94f))
+                    .parityBackground("container", WebSurfaceStrong.copy(alpha = 0.94f))
                     .clickable(interactionSource = null, indication = null, enabled = false) {},
             ) {
                 Column(

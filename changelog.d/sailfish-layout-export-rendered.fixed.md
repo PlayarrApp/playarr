@@ -1,0 +1,2 @@
+- Sailfish: the layout exporter now reads only the rendered app (transformed and clipped item boxes, per-line text from `Text.lineLaidOut`, drawn fills and borders, effect sources) and the capture publisher publishes the 32 layout documents with every run.
+- Sailfish: labels no longer lose their ellipsis (the line-recording handler gave Qt an unlimited line width), preset profile avatars are drawn as a gradient plate with the artwork as its own picture as on web, and many boxes, font sizes and spacings now match web mobile in both themes.

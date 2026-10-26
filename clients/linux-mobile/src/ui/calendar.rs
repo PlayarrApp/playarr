@@ -707,7 +707,8 @@ impl Cal {
                 }
                 let shown = items.len().min(chips);
                 for (_, e, n) in items.iter().take(shown) {
-                    let row = gtk4::Box::builder().spacing(7).css_classes(["pa-mline"]).build();
+                    let row = gtk4::Box::builder().spacing(7).build();
+                    let status_text = status_chip(e, today_date).0;
                     let tone = match status_chip(e, today_date).1 {
                         "ok" => "have",
                         "soon" => "soon",
@@ -726,14 +727,22 @@ impl Cal {
                     } else {
                         e.title.clone()
                     };
-                    let name = gtk4::Label::builder()
-                        .label(text)
-                        .ellipsize(gtk4::pango::EllipsizeMode::End)
-                        .xalign(0.0)
-                        .build();
+                    // The web keeps the title on one line and clips it at the cell edge; the scroller reports no minimum width.
+                    let name = gtk4::Label::builder().label(text).xalign(0.0).build();
                     name.set_margin_start(-1);
-                    row.append(&name);
-                    cell.append(&row);
+                    let clip = gtk4::ScrolledWindow::builder()
+                        .child(&name)
+                        .hscrollbar_policy(gtk4::PolicyType::External)
+                        .vscrollbar_policy(gtk4::PolicyType::Never)
+                        .hexpand(true)
+                        .build();
+                    row.append(&clip);
+                    let btn = gtk4::Button::builder()
+                        .child(&row)
+                        .css_classes(["pa-plain", "pa-mline"])
+                        .build();
+                    crate::layout::name(&btn, &format!("{}, {status_text}, {}", e.title, long_day(d)));
+                    cell.append(&btn);
                 }
                 let foot = gtk4::Box::builder()
                     .spacing(6)
@@ -897,6 +906,9 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
     let range = gtk4::Box::builder().css_classes(["pa-pill"]).build();
     range.append(&range_label);
     let prev = round_arrow("←");
+    // The web's previous button sits 1.8 px right of the whole-pixel flow.
+    prev.set_margin_start(2);
+    prev.set_margin_end(-2);
     let today_btn = pill("Today");
     today_btn.add_css_class("selected");
     let next = round_arrow("→");

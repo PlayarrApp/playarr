@@ -105,6 +105,7 @@ MouseArea {
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: 3 * Tokens.u
+            property string parityRole: "img"
             color: Tokens.dark ? "#5a5559" : "#e5e3e4"
         }
         Rectangle {
@@ -123,7 +124,6 @@ MouseArea {
         visible: !!root.prog && root.prog.state === "part_watched" && root.prog.duration_ms > 0
         source: progressSource
         maskSource: progressMask
-        property string parityRole: "img"
     }
     UnseenDot {
         visible: root.showUnwatched && (!root.prog || root.prog.state === "unseen")
@@ -132,17 +132,17 @@ MouseArea {
     Column {
         id: caption
         anchors { top: art.bottom; topMargin: (compact ? 11 : 11.7) * Tokens.u; left: parent.left; right: parent.right; leftMargin: 1.7 * Tokens.u }
-        spacing: 2.5 * Tokens.u
-        Label { renderType: Text.NativeRendering; id: titleLbl
+        spacing: 2.5 * Tokens.u + 2
+        PLabel { renderType: Text.NativeRendering; id: titleLbl
             width: parent.width
             text: work ? (work.deckTitle || work.title) : ""
             elide: Text.ElideRight
             color: root.firstInk ? (Tokens.dark ? "#ffffff" : "#000000") : Tokens.ink
             font.family: Tokens.family610   // web --card-title-weight: 610
-            font.letterSpacing: -0.0285 * 8.9 * Tokens.u - 0.1
-            font.pixelSize: Tokens.fs(8.9)
+            font.letterSpacing: -0.12
+            font.pixelSize: Tokens.fs(8.8)
         }
-        Label { renderType: Text.NativeRendering; id: subLbl
+        PLabel { renderType: Text.NativeRendering; id: subLbl
             visible: !root.compact
             width: parent.width
             text: work && work.deckSub ? work.deckSub : work ? kindLabel(work.kind) + (work.release_date ? " · " + work.release_date.substr(0, 4) : "") : ""

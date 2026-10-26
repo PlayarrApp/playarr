@@ -651,7 +651,8 @@ export const PlayerScreen = forwardRef<PlayerScreenHandle, PlayerScreenProps>(fu
 const styles = StyleSheet.create({
   root: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colour.bg,
+    // The web's player page is black behind the video.
+    backgroundColor: '#000000',
   },
   surface: {
     ...StyleSheet.absoluteFillObject,
