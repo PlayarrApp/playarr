@@ -9,6 +9,7 @@
 import { t } from '../core/Language';
 import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
+import { LengthMetrics } from '@kit.ArkUI';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
@@ -347,6 +348,7 @@ export struct SearchScreen {
         .borderRadius(0)
         .padding(0)
         .caretColor(toResourceColor(activeColors().ink))
+        .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
         .layoutWeight(1)
         .height(tv(60)) // web: the textbox fills the 76 px pill less its 8 px insets
         .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
@@ -457,6 +459,7 @@ export struct SearchScreen {
           .borderRadius(0)
           .padding(0)
           .caretColor(toResourceColor(activeColors().ink))
+        .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
           .layoutWeight(1)
           .height(44)
           .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
