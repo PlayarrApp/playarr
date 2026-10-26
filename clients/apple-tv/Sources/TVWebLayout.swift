@@ -152,7 +152,7 @@ struct TVPageHeader: View {
                         .foregroundStyle(DesignTokens.Color.textSecondary)
                         .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
                 )
-                .parityBox(backRole, text: backName, radius: 50, fill: DesignTokens.Stage.backLink)
+                .parityBox(backRole, text: backName, radius: 50, fill: DesignTokens.Stage.surface, alpha: 0.7)
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
@@ -603,7 +603,7 @@ struct TVDrawer<Content: View>: View {
         .padding(.leading, 46)
         .padding(.trailing, 46)
         .frame(width: 360, height: 1080, alignment: .topLeading)
-        .parityBox("dialog", fill: DesignTokens.Stage.drawer)
+        .parityBox("dialog", fill: DesignTokens.Stage.surfaceStrong, alpha: 0.94)
         .background {
             ZStack {
                 #if os(tvOS)
@@ -661,7 +661,7 @@ struct TVChoiceSection<Value: Hashable>: View {
                             .font(TVTheme.font(size: 10.56, css: title == "View" ? 900 : 680))
                             .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                             .frame(width: (268 - 8 * CGFloat(options.count - 1)) / CGFloat(options.count), height: 56)
-                            .parityBox("button", text: option.label, radius: 12, fill: active ? DesignTokens.Stage.ink : DesignTokens.Stage.controlFill)
+                            .parityBox("button", text: option.label, radius: 12, fill: active ? DesignTokens.Stage.ink : DesignTokens.Stage.surfaceSoft, alpha: active ? 1 : 0.64)
                             .background(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(active ? DesignTokens.Color.textPrimary : DesignTokens.Stage.surfaceSoft.opacity(0.64))
@@ -961,7 +961,7 @@ struct TVMultiSelectSection: View {
                     }
                     .padding(.horizontal, 19.4)
                     .frame(width: 268, height: 58.8)
-                    .parityBox("group", radius: 12, fill: DesignTokens.Stage.controlFill)
+                    .parityBox("group", radius: 12, fill: DesignTokens.Stage.surfaceSoft, alpha: 0.64)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceSoft.opacity(0.64)))
                 }
                 .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
@@ -1025,7 +1025,7 @@ struct TVStatusPill: View {
             .parityLayout(text: label, size: 13.28, weight: 750, color: DesignTokens.Color.textPrimary)
             .padding(.horizontal, 10.4)
             .frame(height: 26.6)
-            .parityBox("container", radius: 13.44, fill: Color.tvMix(DesignTokens.Stage.entryCard, colour, amount: 0.14))
+            .parityBox("container", radius: 13.44, fill: colour, alpha: 0.14)
             .background(Capsule().fill(colour.opacity(0.14)).background(Capsule().fill(DesignTokens.Stage.surface)))
             .overlay(Capsule().stroke(colour.opacity(0.6), lineWidth: 1))
             .fixedSize()

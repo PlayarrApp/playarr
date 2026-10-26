@@ -279,6 +279,8 @@ private struct TVParityBoxModifier: ViewModifier {
     let role: String
     let radius: CGFloat
     let fill: Color?
+    /// The opacity the fill is painted at: the box's colour is the fill composited over what is behind it.
+    var alpha: Double = 1
     var opacity: Double = 1
     /// A full-bleed box reports the whole screen, not the TV safe area.
     var bleed = false
@@ -301,14 +303,24 @@ private struct TVParityBoxModifier: ViewModifier {
                 }
                 .ignoresSafeArea(edges: bleed ? .all : [])
             )
-            .environment(\.parityBackdrop, fill ?? backdrop)
+            .environment(\.parityBackdrop, painted)
             .onDisappear { TVParityLayoutRegistry.shared.remove(id) }
+    }
+
+    /// The colour this box paints on screen: its fill at `alpha` composited over the backdrop (the page background by default).
+    private var painted: Color? {
+        guard let fill else { return backdrop }
+        let top = fill.resolve(in: environment)
+        guard alpha < 0.999 else { return Color(.sRGB, red: Double(top.red), green: Double(top.green), blue: Double(top.blue)) }
+        let base = (backdrop ?? DesignTokens.Stage.bg).resolve(in: environment)
+        let a = Float(alpha)
+        return Color(.sRGB, red: Double(top.red * a + base.red * (1 - a)), green: Double(top.green * a + base.green * (1 - a)), blue: Double(top.blue * a + base.blue * (1 - a)))
     }
 
     private func report(_ frame: CGRect) {
         var item = TVParityLayoutRegistry.Item(text: text, role: role, rect: frame)
-        if let fill = fill ?? backdrop {
-            let r = fill.resolve(in: environment)
+        if let painted {
+            let r = painted.resolve(in: environment)
             func byte(_ v: Float) -> Int { max(0, min(255, Int((v * 255).rounded()))) }
             item.background = String(format: "#%02x%02x%02x", byte(r.red), byte(r.green), byte(r.blue))
         } else {
@@ -345,9 +357,9 @@ extension View {
 
     /// Reports a box (card link, image, container with a fill and radius) to the parity layout export (debug builds only).
     @ViewBuilder
-    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil, opacity: Double = 1, bleed: Bool = false) -> some View {
+    func parityBox(_ role: String, text: String? = nil, radius: CGFloat = 0, fill: Color? = nil, alpha: Double = 1, opacity: Double = 1, bleed: Bool = false) -> some View {
         #if DEBUG && (os(tvOS) || os(macOS))
-        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill, opacity: opacity, bleed: bleed))
+        modifier(TVParityBoxModifier(text: text, role: role, radius: radius, fill: fill, alpha: alpha, opacity: opacity, bleed: bleed))
         #else
         self
         #endif

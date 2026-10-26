@@ -29,20 +29,6 @@ enum DesignTokens {
             })
         }
 
-        /// Composited flat colours of translucent web fills (what the CSS ancestors paint), used as layout-export backdrops.
-        static let navPanel = adaptive(light: 0xfbfaf9, dark: 0x1c191c)
-        static let navActive = adaptive(light: 0xe9e7e6, dark: 0x2f2c2f)
-        static let backLink = adaptive(light: 0xfefefd, dark: 0x1f1b1f)
-        static let controlFill = adaptive(light: 0xdfdcdd, dark: 0x2b252a)
-        static let calendarOutside = adaptive(light: 0xf0eeee, dark: 0x241f23)
-        static let calendarDot = adaptive(light: 0xf1a4a8, dark: 0xf1a4a8)
-        static let headerTile = adaptive(light: 0xfdfcfc, dark: 0x1e1b1e)
-        static let searchField = adaptive(light: 0xfffefe, dark: 0x201c20)
-        static let emptyBadge = adaptive(light: 0xfdfdfc, dark: 0x1e1b1e)
-        static let actionPill = adaptive(light: 0xfefefd, dark: 0x1f1c1f)
-        static let entryCard = adaptive(light: 0xffffff, dark: 0x211d21)
-        static let settingsChoice = adaptive(light: 0xe9e7e7, dark: 0x292428)
-        static let drawer = adaptive(light: 0xffffff, dark: 0x211d21)
 
         static let bg = adaptive(light: 0xf5f3f2, dark: 0x151315)
         static let surface = adaptive(light: 0xfbfaf9, dark: 0x1b181b)

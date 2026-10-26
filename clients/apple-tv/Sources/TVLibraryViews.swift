@@ -1414,7 +1414,7 @@ struct TVSearchView: View {
                 )
                 .shadow(color: DesignTokens.Color.brandPrimary.opacity(frozen ? 0.18 : 0), radius: 8)
                 .frame(width: 590, height: 76)
-                .parityBox("search", radius: 38, fill: DesignTokens.Stage.searchField)
+                .parityBox("search", radius: 38, fill: DesignTokens.Color.backgroundInputDisabled, alpha: 0.88)
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 18, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
@@ -1612,7 +1612,7 @@ struct TVSearchView: View {
                     .parityBox("image")
             }
             .frame(width: art, height: art)
-            .parityBox("container", radius: 66, fill: DesignTokens.Stage.emptyBadge)
+            .parityBox("container", radius: 66, fill: DesignTokens.Color.backgroundRaised, alpha: 0.28)
             Text("Start typing to search.")
                 .font(TVTheme.font(size: 16.9, css: 650))
                 .tracking(-0.3)

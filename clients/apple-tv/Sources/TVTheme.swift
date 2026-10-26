@@ -987,7 +987,7 @@ struct TVFloatingNav: View {
         }
         .padding(.vertical, DesignTokens.Shell.navGroupPadding)
         .padding(.horizontal, DesignTokens.Shell.navGroupPadding)
-        .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.navPanel)
+        .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface, alpha: 0.56)
         .modifier(TVNavPanelShadow())
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
@@ -1014,14 +1014,14 @@ struct TVFloatingNav: View {
                         .parityLayout(text: profile.name.split(separator: " ").first.map(String.init) ?? profile.name, size: 8.832, weight: 680, color: DesignTokens.Color.textDisabled, tracking: 0.31)
                 }
                 .frame(width: DesignTokens.Shell.navItemSize, height: DesignTokens.Shell.navItemSize)
-                .parityBox("link", text: "Signed in as \(profile.name). Open profiles.", radius: 16, fill: DesignTokens.Stage.navPanel)
+                .parityBox("link", text: "Signed in as \(profile.name). Open profiles.", radius: 16)
                 .modifier(TVNavItemFocusFill())
             }
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
             .padding(DesignTokens.Shell.navGroupPadding)
-            .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.navPanel)
+            .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface, alpha: 0.56)
             .modifier(TVNavPanelShadow())
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Shell.navGroupRadius, style: .continuous)
@@ -1086,7 +1086,7 @@ struct TVFloatingNav: View {
                 width: DesignTokens.Shell.navItemSize,
                 height: DesignTokens.Shell.navItemSize
             )
-            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Stage.navActive : DesignTokens.Stage.navPanel)
+            .parityBox("link", text: tab.title, radius: 16, fill: isActive || isFocused ? DesignTokens.Color.textPrimary : nil, alpha: 0.09)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
@@ -1361,7 +1361,7 @@ struct TVHeaderPill: View {
         }
         .foregroundStyle(DesignTokens.Stage.inkMuted)
         .frame(width: width, height: Self.height)
-        .parityBox("button", text: label, radius: 14, fill: DesignTokens.Stage.headerTile)
+        .parityBox("button", text: label, radius: 14, fill: DesignTokens.Color.backgroundInputDisabled, alpha: 0.78)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(DesignTokens.Color.backgroundInputDisabled.opacity(0.78))

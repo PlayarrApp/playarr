@@ -316,7 +316,7 @@ struct TVWorkDetailView: View {
     ) -> some View {
         Button { action?() } label: {
             pillBody(label, glyph: glyph, symbol: symbol, width: width)
-                .parityBox("button", text: name ?? (glyph.map { "\($0) \(label)" } ?? label), radius: 32, fill: DesignTokens.Stage.actionPill)
+                .parityBox("button", text: name ?? (glyph.map { "\($0) \(label)" } ?? label), radius: 32, fill: DesignTokens.Color.backgroundInputDisabled, alpha: 0.72)
         }
             .buttonStyle(TVFocusableCardButtonStyle())
             .accessibilityLabel(name ?? (glyph.map { "\($0) \(label)" } ?? label))

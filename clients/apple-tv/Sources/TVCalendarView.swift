@@ -318,7 +318,7 @@ struct TVCalendarView: View {
         .padding(.leading, 16)
         .padding(.trailing, 12)
         .frame(width: width, height: 106.9)
-        .parityBox("button", text: [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " "), radius: 12, fill: DesignTokens.Stage.entryCard)
+        .parityBox("button", text: [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " "), radius: 12, fill: DesignTokens.Stage.surfaceStrong)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceStrong))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Stage.line.opacity(0.3), lineWidth: 1))
         // The left border shows availability: we have it (playable) or not (owner rule).
@@ -423,7 +423,7 @@ struct TVCalendarView: View {
             ZStack(alignment: .topLeading) {
                 Rectangle()
                     .fill(outside ? DesignTokens.Stage.surfaceSoft.opacity(0.4) : Color.clear)
-                    .parityBox("container", fill: outside ? DesignTokens.Stage.calendarOutside : DesignTokens.Stage.surface)
+                    .parityBox("container", fill: outside ? DesignTokens.Stage.surfaceSoft : nil, alpha: 0.4)
                     .overlay(Rectangle().stroke(DesignTokens.Stage.line.opacity(0.25), lineWidth: 0.5))
                 VStack(alignment: .leading, spacing: 10.4) {
                     ForEach(shown, id: \.id) { item in

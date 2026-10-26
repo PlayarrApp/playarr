@@ -224,7 +224,7 @@ struct TVSettingsView: View {
                         .foregroundStyle(index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                         .parityLayout(text: label, size: 10.56, weight: 900, color: index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                         .frame(width: widths[index], height: 56.5)
-                        .parityBox("button", text: label, radius: 12, fill: index == selected ? DesignTokens.Stage.ink : DesignTokens.Stage.settingsChoice)
+                        .parityBox("button", text: label, radius: 12, fill: index == selected ? DesignTokens.Stage.ink : nil)
                         .background(index == selected ? DesignTokens.Color.textPrimary : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
