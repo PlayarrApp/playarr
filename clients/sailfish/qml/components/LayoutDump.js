@@ -221,7 +221,8 @@ function dump(root, u, weights, metrics, log) {
         var r = Math.min(item.radius, Math.min(item.width, item.height) / 2) * scale / u
         return r > 0.005 ? r2(r) : 0
     }
-    // `shown` is set for the offscreen source of an effect: it is not visible itself, but the effect draws it.
+    // `shown` is set for the offscreen source of an effect: Qt reports every item inside it as invisible (visibility is inherited), but the effect
+    // draws it. A part of it that should not be drawn must say so by opacity (see Artwork's fallback title).
     function isWithin(item, ancestor) { for (var n = item; n; n = n.parent) if (n === ancestor) return true; return false }
     // A painted shape that fills a control: the direct child Rectangle the control's own background is drawn with.
     function paintedShape(item) {
@@ -352,7 +353,7 @@ function dump(root, u, weights, metrics, log) {
         var order = []
         for (var oi = 0; oi < kids.length; ++oi) order.push(oi)
         order.sort(function (a, b) { return (kids[a].z - kids[b].z) || (a - b) })
-        for (var i = 0; i < order.length; ++i) walk(kids[order[i]], op, false, inMask, inPicture || holdsPicture(item))
+        for (var i = 0; i < order.length; ++i) walk(kids[order[i]], op, shown, inMask, inPicture || holdsPicture(item))
         if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, true, inPicture)
         // an element's background includes its own fill and its children's: settle it once the subtree has been painted
         // development aid: the QML type of each element (the suite driver drops it unless asked to keep it)

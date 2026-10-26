@@ -32,6 +32,7 @@ Item {
             }
             PText {
                 visible: img.status !== Image.Ready
+                opacity: img.status !== Image.Ready ? 1 : 0
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 8 * Tokens.u }
                 text: work ? work.title.toUpperCase() : ""
                 horizontalAlignment: Text.AlignHCenter
