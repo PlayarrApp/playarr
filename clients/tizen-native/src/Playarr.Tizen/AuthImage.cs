@@ -18,7 +18,7 @@ internal sealed class AuthImage(IPlayarrApiClient api, CaptureWork work)
         {
             var file = await GetAsync(path).ConfigureAwait(false);
             if (file is null) return;
-            await OnUiAsync(() => { var img = Ui.Remote(file, w, h); if (radius > 0) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ });
+            await OnUiAsync(() => { var img = Ui.Remote(file, w, h); if (radius > 0 && parent.ClippingMode != ClippingModeType.ClipChildren) img.CornerRadius = radius; parent.Add(img); img.LowerToBottom(); /* overlays (progress, focus ring) stay above a poster that loads later */ });
         });
     }
 

@@ -354,7 +354,7 @@ struct WMDetailPage: View {
                 .accessibilityIdentifier("detail-back")
                 .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
             // The web hides the header subtitle on phones (#1299), so only the page title shows here.
-            WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972)
+            WMText(work.kind == .movie ? "Movies" : work.kind.displayName, 21.6, 580, lh: 44, ls: -0.972, role: "heading")
             .offset(x: 70, y: WM.topInset + 2)
         }
     }

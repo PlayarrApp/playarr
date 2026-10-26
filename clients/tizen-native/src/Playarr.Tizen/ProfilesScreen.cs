@@ -75,7 +75,7 @@ internal sealed class ProfilesScreen : IPage
     {
         var box = Ui.Box(x, 49.7f, w, 48, _t.Bg, 0);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.23f);
-        Sem.Tag(box, "button", label == "theme" ? $"Theme: {text}" : text, radius: 0);
+        Sem.Tag(box, "button", label == "theme" ? $"Theme: {text}" : text);
         box.Add(Ui.Icon(label == "theme" ? "sun" : "sites", 19.4f, 16, 16, _t.InkMuted));
         box.Add(Ui.Text(text, 45, 15.3f, 11.52f, 700, _t.Ink, w - 80, 17.3f));
         box.Add(Ui.Icon("chevron-down", w - 32, 18, 12, _t.InkMuted));
@@ -95,14 +95,14 @@ internal sealed class ProfilesScreen : IPage
         var nameL = Ui.Text(name, 0, Circle + 8.4f, 17.28f, 700, _t.Ink, Circle, 25.92f, HorizontalAlignment.Center);
         var subL = Ui.Text(sub, 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f);
         var disc = new View { Size = new Size(Circle, Circle) };
-        Sem.Tag(disc, "container", radius: 50);
+        Sem.Tag(disc, "container");
         Sem.Tag(art, "none");
         // web: the picture keeps its size while the card scales and lifts around it
-        holder.Add(Sem.Tag(new View { Size = new Size(1, 1) }, "image", radius: 0, boxNow: () => cardFocused ? (9.45f, 0.1f, 225.1f, 225.1f) : (19.4f, 19.4f, 225.1f, 225.1f)));
+        holder.Add(Sem.Tag(new View { Size = new Size(1, 1) }, "image"));
         disc.Add(art); disc.Add(ring);
         nameBase = nameL.PositionY; subBase = subL.PositionY;
         holder.Add(disc); holder.Add(nameL); holder.Add(subL);
-        Sem.Tag(holder, "button", label, boxNow: () => cardFocused ? (-5.5f, -8f - 6.8f, Circle * 1.045f, (Circle + 57.6f) * 1.045f) : (0, 0, Circle, Circle + 57.6f));
+        Sem.Tag(holder, "button", label);
         _body.Add(holder);
         _focus.Items.Add(new Focusable
         {
@@ -129,13 +129,13 @@ internal sealed class ProfilesScreen : IPage
         wash.CornerRadius = Circle / 2;
         wash.BorderlineWidth = 1; wash.BorderlineColor = Ui.LineA(_t, 0.15f);
         var disc = new View { Size = new Size(Circle, Circle) };
-        Sem.Tag(disc, "container", radius: 50);
+        Sem.Tag(disc, "container");
         disc.Add(wash);
         disc.Add(Ui.Text("+", 0, 64.4f, 76.8f, 300, _t.InkSoft, Circle, 115.2f, HorizontalAlignment.Center));
         var ring = Ring.Make(Circle, Circle, Circle / 2, new Rgba(1, 1, 1)); ring.Show(false);
         disc.Add(ring);
         holder.Add(disc);
-        Sem.Tag(holder, "button", "+ Sign in ADD ANOTHER PROFILE", (0, 0, Circle, Circle + 57.6f));
+        Sem.Tag(holder, "button", "+ Sign in ADD ANOTHER PROFILE");
         holder.Add(Ui.Text("Sign in", 0, Circle + 8.4f, 17.28f, 700, _t.InkSoft, Circle, 25.92f, HorizontalAlignment.Center));
         holder.Add(Ui.Text("Add another profile", 0, Circle + 42.3f, 9.408f, 690, _t.InkMuted, Circle, 14.112f, HorizontalAlignment.Center, upper: true, spacing: 0.42f));
         _body.Add(holder);
@@ -151,13 +151,13 @@ internal sealed class ProfilesScreen : IPage
     {
         var box = Ui.Box(x, y, w, 44, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 22);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.075f);
-        if (y < 900) Sem.Tag(box, "button", icon == "signout" ? "Sign out " + label[..^" sign out".Length] : label, radius: 999);
+        if (y < 900) Sem.Tag(box, "button", icon == "signout" ? "Sign out " + label[..^" sign out".Length] : label);
         if (icon == "signout")
         {
             box.Add(Ui.Icon("log-out", 17, 13, 18, _t.InkSoft));
             box.Add(Ui.Text(text, 42, 13.9f, 10.752f, 700, _t.InkSoft, w - 42, 16.128f));
         }
-        else if (text.Length > 0) { var tl = Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center); box.Add(y >= 900 ? Sem.Tag(tl, "button", radius: 999) : tl); }
+        else if (text.Length > 0) { var tl = Ui.Text(text, 0, 13.9f, 10.752f, 700, _t.InkSoft, w, 16.128f, HorizontalAlignment.Center); box.Add(y >= 900 ? Sem.Tag(tl, "button") : tl); }
         else box.Add(Ui.Icon("settings", 13, 13, 18, _t.Brand));
         var ring = Ring.Make(w, 44, 22, new Rgba(1, 1, 1)); ring.Show(false);
         box.Add(ring);

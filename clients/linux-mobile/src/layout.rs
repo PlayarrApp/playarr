@@ -8,6 +8,9 @@ use gtk4::prelude::*;
 use gtk4::{gdk, graphene, gsk, pango};
 use serde_json::{json, Value};
 
+/// `PANGO_ANALYSIS_FLAG_IS_ELLIPSIS`: the run is the ellipsis Pango inserted for elided text.
+const PANGO_FLAG_IS_ELLIPSIS: u8 = 1 << 1;
+
 type Rect = [f32; 4];
 /// Axis start, axis end and (offset, rgba) stops.
 type Gradient = ([f32; 2], [f32; 2], Vec<(f32, [f32; 4])>);
@@ -382,7 +385,12 @@ impl Walk<'_> {
         } else {
             (false, parent_bg)
         };
-        let mut child = w.first_child();
+        // A scale or progress bar paints its trough and fills itself; they are listed once, from the widget.
+        let mut child = if w.is::<gtk4::Scale>() || w.is::<gtk4::ProgressBar>() {
+            None
+        } else {
+            w.first_child()
+        };
         while let Some(c) = child {
             self.visit(&c, clip, inherited * factor, bg);
             child = c.next_sibling();
@@ -463,29 +471,25 @@ impl Walk<'_> {
             loop {
                 let (_, lg) = it.line_extents();
                 let Some(line) = it.line_readonly() else { break };
-                let (st, len) = (line.start_index() as usize, line.length() as usize);
-                let mut shown = text.get(st..st + len).unwrap_or("").to_string();
+                // The drawn text is read from the shaped runs of this very layout: each run's own text, and the ellipsis glyph
+                // where Pango replaced the elided part (its run carries the ellipsis analysis flag).
+                let mut shown = String::new();
+                for run in line.runs() {
+                    let item = run.item();
+                    let an = item.analysis();
+                    if an.flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
+                        shown.push('\u{2026}');
+                    } else {
+                        let o = item.offset() as usize;
+                        shown.push_str(text.get(o..o + item.length() as usize).unwrap_or(""));
+                    }
+                }
                 let r = [
                     b[0] + ox as f32 + lg.x() as f32 / s,
                     b[1] + oy as f32 + lg.y() as f32 / s,
                     lg.width() as f32 / s,
                     lg.height() as f32 / s,
                 ];
-                if layout.is_ellipsized() {
-                    // The drawn text is the longest prefix that fits with the ellipsis.
-                    let fits = |n: usize| {
-                        let t: String = shown.chars().take(n).collect::<String>() + "\u{2026}";
-                        let pl = l.create_pango_layout(Some(&t));
-                        pl.set_attributes(layout.attributes().as_ref());
-                        (pl.extents().1.width() as f32 / s) <= r[2] + 0.5
-                    };
-                    let total = shown.chars().count();
-                    let mut n = total;
-                    while n > 0 && !fits(n) {
-                        n -= 1;
-                    }
-                    shown = shown.chars().take(n).collect::<String>() + "\u{2026}";
-                }
                 let shown = shown.split_whitespace().collect::<Vec<_>>().join(" ");
                 if !shown.is_empty() && self.shown(r, clip) {
                     let run = lp
@@ -528,11 +532,7 @@ impl Walk<'_> {
             }
             if u.is_some() || (pic && lp.other) {
                 rect = if pic { b } else { u.unwrap_or(b) };
-                role = if pic && lp.textures.is_empty() {
-                    "video"
-                } else {
-                    "image"
-                };
+                role = if w.has_css_class("pa-video") { "video" } else { "image" };
                 opacity = inherited * op;
                 opaque = pic && opacity >= 0.5;
                 emit = true;
@@ -569,6 +569,7 @@ impl Walk<'_> {
                 });
             emit = true;
         } else if own.is_some() || bordered {
+            text = a11y_name(w).unwrap_or_default();
             emit = true;
         } else if let Some(n) = a11y_name(w) {
             text = n;

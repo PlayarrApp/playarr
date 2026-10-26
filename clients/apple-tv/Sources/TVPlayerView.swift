@@ -73,7 +73,7 @@ struct TVPlayerView: View {
             // Parity route: the fixture clips are Matroska and the runner cannot transcode, so the video
             // layer is the server's frame of the clip at the paused position, scaled to the stage.
             ZStack(alignment: .topLeading) {
-                Color.black
+                Color.black.parityBox("container", fill: Color.black)
                 parityFrame
                 TVPlayerChrome(
                     state: TVPlayerChromeState(
@@ -103,6 +103,7 @@ struct TVPlayerView: View {
         }) { Color.black }
             .frame(width: 1920, height: 1080)
             .clipped()
+            .parityBox("video", fill: Color.black)
     }
 
     private var playerBody: some View {

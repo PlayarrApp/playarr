@@ -6,7 +6,7 @@
  * between pages.
  */
 
-import { nunito, arrowFont, nunitoAt } from '../Typography';
+import { nunito, arrowFont, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry } from '../Metrics';
@@ -116,40 +116,44 @@ export struct PageShell {
 
   @Builder
   private headerBack(): void {
-    Text('←').fontFamily(arrowFont(720))
-      .fontSize(17.28) // web dump: 17.28, Liberation Sans bold
-      .fontWeight(FontWeight.Normal)
-      .fontColor(toResourceColor(activeColors().inkSoft))
-      .textAlign(TextAlign.Center)
-      .width(tv(HEADER_SIZE))
-      .height(tv(HEADER_SIZE))
-      .borderRadius(tv(HEADER_SIZE / 2))
-      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-      // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
-      .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
-      .id('px:' + this.backRole + ':' + this.backLabel)
-      .focusable(true)
-      .onClick(() => {
-        popRoute(getNavStack());
-      })
+    // web: the link (ring, fill) holds the arrow glyph as its own text
+    Row() {
+      Text('←').fontFamily(arrowFont(720))
+        .fontSize(17.28).lineHeight(webLineHeight(17.28)).halfLeading(true) // web dump: 17.28, Liberation Sans bold
+        .fontWeight(FontWeight.Normal)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .textAlign(TextAlign.Center)
+    }
+    .justifyContent(FlexAlign.Center)
+    .width(tv(HEADER_SIZE))
+    .height(tv(HEADER_SIZE))
+    .borderRadius(tv(HEADER_SIZE / 2))
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
+    .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
+    .id('px:' + this.backRole + ':' + this.backLabel)
+    .focusable(true)
+    .onClick(() => {
+      popRoute(getNavStack());
+    })
   }
 
   @Builder
   private headerTitle(): void {
     Text(this.title).fontFamily(nunitoAt(580, tv(TITLE_SIZE)))
       .id('px:heading:' + this.title)
-      .fontSize(tv(TITLE_SIZE))
+      .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
       .fontWeight(FontWeight.Medium)
       .letterSpacing(tv(TITLE_LETTER_SPACING))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(HEADER_SIZE))
-      .translate({ y: -1.3 }) // web's title box sits 1.3 higher
+      .translate({ y: 0.2 }) // web's title box sits level with the web header's
   }
 
   @Builder
   private headerDetail(inline: boolean): void {
     Text(this.kicker).fontFamily(nunitoAt(700, tv(DETAIL_SIZE)))
-      .fontSize(tv(DETAIL_SIZE))
+      .fontSize(tv(DETAIL_SIZE)).lineHeight(webLineHeight(tv(DETAIL_SIZE))).halfLeading(true)
       .fontWeight(DETAIL_WEIGHT)
       .letterSpacing(tv(DETAIL_LETTER_SPACING))
       .textCase(TextCase.UpperCase)
@@ -249,30 +253,34 @@ export struct PageShell {
     Column() {
       Row({ space: 10 }) {
         if (this.showHeader) {
-          Text('←').fontFamily(arrowFont(720))
-            .fontSize(12.8) // web dump: 12.8 / 720
-            .fontWeight(FontWeight.Normal)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .textAlign(TextAlign.Center)
-            .width(44)
-            .height(44)
-            .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
-            .borderRadius(22)
-            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
-            .id('px:' + this.backRole + ':' + this.backLabel)
-            .onClick(() => {
-              popRoute(getNavStack());
-            })
+          // web: the link (ring, fill) holds the arrow glyph as its own text
+          Row() {
+            Text('←').fontFamily(arrowFont(720))
+              .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true) // web dump: 12.8 / 720
+              .fontWeight(FontWeight.Normal)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .textAlign(TextAlign.Center)
+          }
+          .justifyContent(FlexAlign.Center)
+          .width(44)
+          .height(44)
+          .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
+          .borderRadius(22)
+          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
+          .id('px:' + this.backRole + ':' + this.backLabel)
+          .onClick(() => {
+            popRoute(getNavStack());
+          })
           Column() {
             Text(this.title).fontFamily(nunitoAt(580, 21.6))
               .id('px:heading:' + this.title)
-              .fontSize(21.6) // web 1.35rem
+              .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true) // web 1.35rem
               .fontWeight(FontWeight.Medium)
               .letterSpacing(-0.972) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
-              .translate({ y: -1.3 }) // web's title box sits 1.3 higher
+              .translate({ y: 0 })
           }
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)

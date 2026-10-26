@@ -219,6 +219,7 @@ sub ThemeApplyNode(node as Object, tokens as Object)
     kind = node.subtype()
     if kind = "Poster"
         node.blendColor = colour
+        if Instr(1, node.id, "@") > 0 then A11yStamp(node, true)
     else
         node.color = colour
     end if
@@ -357,3 +358,39 @@ function Theme() as object
         }
     }
 end function
+
+' Semantics ride on node ids as `a11y|role|radius[@rrggbbaa[~baked]]|name` (ECP query/app-ui prints ids). The optional @rrggbbaa is the colour the
+' app tints the node's bitmap with, alpha included, so the export composites the colour the app declared instead of reading JPEG pixels
+' back. ~baked is the alpha (0 to 255) the bitmap itself carries (the dock panels are white masks at 143), multiplied in.
+sub A11yStamp(node as Object, force = false as Boolean, baked = -1 as Integer)
+    id = node.id
+    if Left(id, 5) <> "a11y|" then return
+    if not force and Instr(1, id, "@") = 0 then return
+    parts = id.Split("|")
+    if parts.Count() < 4 then return
+    seg = parts[2]
+    if baked < 0 and Instr(1, seg, "~") > 0 then baked = Val(seg.Split("~")[1], 10)
+    radius = seg.Split("@")[0]
+    ' RRGGBBAA as bytes: a colour with the top bit set is a negative Integer, so split it into bytes before formatting.
+    c& = node.blendColor
+    if c& < 0 then c& = c& + 4294967296&
+    alpha = c& mod 256
+    if baked >= 0 then alpha = Int(alpha * baked / 255 + 0.5)
+    hex = ""
+    for shift = 3 to 1 step -1
+        divisor& = 256&
+        for k = 2 to shift
+            divisor& = divisor& * 256&
+        end for
+        b = Int(c& / divisor&) mod 256
+        hex = hex + Right("0" + StrI(b, 16), 2)
+    end for
+    hex = hex + Right("0" + StrI(alpha, 16), 2)
+    suffix = ""
+    if baked >= 0 then suffix = "~" + baked.ToStr()
+    name = parts[3]
+    for i = 4 to parts.Count() - 1
+        name = name + "|" + parts[i]
+    end for
+    node.id = "a11y|" + parts[1] + "|" + radius + "@" + hex + suffix + "|" + name
+end sub

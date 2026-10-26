@@ -9,7 +9,7 @@ import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readFileSyn
 import { basename, dirname, join, resolve } from "node:path";
 import { PNG } from "pngjs";
 import { FIXTURE_FILM, staticRoute } from "../apple/static-route.mjs";
-import { mapRaw } from "../apple/layout-map.mjs";
+import { mapRaw, sampleBackgrounds } from "../apple/layout-map.mjs";
 
 // IDB (path of the idb client, with its companion running): headless keys as USB HID usages, no Simulator window, no host keyboard.
 const HID = { up: 82, down: 81, left: 80, right: 79, select: 40, back: 41 };
@@ -443,7 +443,7 @@ CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!.post(tap: .
         const rawDir = join(dirname(themeDir), "layout-raw", basename(themeDir)); // the unmapped tree, for local replay
         mkdirSync(rawDir, { recursive: true });
         writeFileSync(join(rawDir, `${id}.json`), JSON.stringify(layout));
-        writeFileSync(join(dir, `${id}.json`), JSON.stringify(mapRaw(layout, id, basename(themeDir))));
+        writeFileSync(join(dir, `${id}.json`), JSON.stringify(sampleBackgrounds(mapRaw(layout, id, basename(themeDir)), file)));
         rmSync(join(base, "parity-layout.json"), { force: true });
       } catch { /* a build without the exporter, a crop, or a screen that registers nothing */ }
     },

@@ -3,7 +3,7 @@
  * up / down, saved on every change, plus Reset to default.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import { tv } from '../Metrics';
 import type { RailPreferenceEntry } from '../../core/Types/Catalog';
@@ -60,7 +60,7 @@ export struct HomeRailsPanel {
   @Builder
   private pill(label: string, enabled: boolean, onTap: () => void): void {
     Text(label).fontFamily(nunitoAt(700, tv(12.5)))
-      .fontSize(tv(12.5))
+      .fontSize(tv(12.5)).lineHeight(webLineHeight(tv(12.5))).halfLeading(true)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(enabled ? activeColors().ink : activeColors().inkMuted))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceSoft, 0.64))
@@ -78,25 +78,25 @@ export struct HomeRailsPanel {
     Column({ space: tv(14) }) {
       if (this.status === 'loading') {
         Text('Loading your rails').fontFamily(nunitoAt(400, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
       } else if (this.status === 'error') {
         Text('Could not load your rails.').fontFamily(nunitoAt(400, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().danger))
         this.pill(t('pages.downloads.retry', 'Retry'), true, (): void => {
           this.load();
         })
       } else {
         Text('Choose which rails appear on Home and in what order.').fontFamily(nunitoAt(400, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
         Scroll() {
           Column({ space: tv(8) }) {
             ForEach(this.rails, (rail: RailPreferenceEntry, index: number) => {
               Row({ space: tv(10) }) {
                 Text(rail.title).fontFamily(nunitoAt(500, tv(16)))
-                  .fontSize(tv(16))
+                  .fontSize(tv(16)).lineHeight(webLineHeight(tv(16))).halfLeading(true)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(toResourceColorWithAlpha(activeColors().ink, rail.hidden ? 0.5 : 1))
                   .layoutWeight(1)
@@ -123,7 +123,7 @@ export struct HomeRailsPanel {
         .height(tv(700))
         if (this.saveError.length > 0) {
           Text(this.saveError).fontFamily(nunitoAt(400, tv(13.824)))
-            .fontSize(tv(13.824))
+            .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().danger))
         }
       }

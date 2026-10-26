@@ -17,7 +17,7 @@
  * 1920x1080, and must be scaled by `k = windowWidthVp / 1920` before use
  * on a real (differently sized) TV panel. `tv(n)` below is that scaling
  * function -- wrap every `TvGeometry` numeric field in it at the call
- * site, e.g. `Text().fontSize(tv(TvGeometry.railHeadingSize))`.
+ * site, e.g. `Text().fontSize(tv(TvGeometry.railHeadingSize)).lineHeight(webLineHeight(tv(TvGeometry.railHeadingSize))).halfLeading(true)`.
  *
  * `k` itself is read live from the AppStorage key named by
  * `TV_SCALE_FACTOR_STORAGE_KEY` ('tvScaleFactor'). That key name is NOT
@@ -33,6 +33,7 @@
 import type { DeviceProfile } from '../core/DeviceProfile';
 import { TvGeometry, TouchGeometry } from '../core/Tokens';
 import type { TvGeometryTokens, TouchGeometryTokens } from '../core/Tokens';
+import { webLineHeight } from './Typography';
 
 /** Published by `device/DeviceProfileService.ets`; read-only from here. */
 export const DEVICE_PROFILE_STORAGE_KEY: string = 'deviceProfile';

@@ -6,7 +6,7 @@
  * keys are not wired; add both with the shared scroll-fade work.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, tintFilter, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -90,7 +90,7 @@ export struct SelectField {
             .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
         }
         Text(this.labelOf(this.value)).fontFamily(nunitoAt(this.labelWeight, tv(this.labelSize)))
-          .fontSize(tv(this.labelSize))
+          .fontSize(tv(this.labelSize)).lineHeight(webLineHeight(tv(this.labelSize))).halfLeading(true)
           .fontWeight(this.labelWeight >= 700 ? FontWeight.Bold : FontWeight.Medium)
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .layoutWeight(1)
@@ -98,7 +98,7 @@ export struct SelectField {
           .translate({ y: isTvMetrics() ? -1.6 : 0 }) // web's label box sits 1.6 higher and 1.7 further in
         if (this.lead.length === 0) {
           Text('⌄').fontFamily(nunitoAt(400, tv(FONT)))
-            .fontSize(tv(FONT))
+            .fontSize(tv(FONT)).lineHeight(webLineHeight(tv(FONT))).halfLeading(true)
             .fontColor(this.textColor(this.highlighted === '#trigger'))
             .rotate({ angle: this.open ? 180 : 0 })
         } else {
@@ -137,12 +137,12 @@ export struct SelectField {
             ForEach(this.options, (option: Choice) => {
               Row({ space: tv(GAP) }) {
                 Text(option.label).fontFamily(nunitoAt(700, tv(FONT)))
-                  .fontSize(tv(FONT))
+                  .fontSize(tv(FONT)).lineHeight(webLineHeight(tv(FONT))).halfLeading(true)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.textColor(this.highlighted === option.value))
                   .layoutWeight(1)
                 Text(option.value === this.value ? '✓' : '').fontFamily(nunitoAt(400, tv(FONT)))
-                  .fontSize(tv(FONT))
+                  .fontSize(tv(FONT)).lineHeight(webLineHeight(tv(FONT))).halfLeading(true)
                   .fontColor(this.textColor(this.highlighted === option.value))
                   .width(tv(FONT))
                   .textAlign(TextAlign.Center)

@@ -8,7 +8,8 @@
 // The device must already be signed in as the Device Test profile and out of touch mode (a fresh emulator boot is).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { checkLayout, fillBackgrounds } from "../layout-sample.mjs";
 import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { guardAndroidDeviceAccount } from "../capture-state.mjs";
@@ -177,11 +178,14 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       if (json.startsWith("{")) {
         const dir = join(dirname(dirname(pngFile)), "layout", theme);
         mkdirSync(dir, { recursive: true });
-        writeFileSync(join(dir, `${screen}.json`), json);
+        const layout = fillBackgrounds(checkLayout(JSON.parse(json), theme), readFileSync(pngFile));
+        writeFileSync(join(dir, `${screen}.json`), JSON.stringify(layout));
         return;
       }
     }
-    console.log(`layout export skipped for ${theme}/${screen}`);
+    // No export for this capture: remove any file an earlier run left, and fail loudly.
+    rmSync(join(dirname(dirname(pngFile)), "layout", theme, `${screen}.json`), { force: true });
+    throw new Error(`layout export failed for ${theme}/${screen}`);
   };
   const tree = async () => {
     try {

@@ -71,7 +71,7 @@ parity server with the pinned clock (`2026-10-07T12:00:00Z`). Prerequisites: the
 (Xvfb, never a VNC server), the debug tpk (`clients/tizen-native/scripts/deploy.sh` with `PLAYARR_BUILD_ARGS=-p:PlayarrDebug=true`)
 installed and signed in as the static `parity` account (uninstall first for a fresh sign-in), `PARITY_LOCK_DIR` set to a scratch
 directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the tizen-webos lane. Output is `<out>/dark`, `<out>/light`
-`<out>/dpad.json` (the screens run includes the ref-only `calendar-link` through `--extra-screens`) and the layout documents `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md; the debug mirror's `POST /layout` walks the NUI view tree, the driver writes it with every screenshot; `PARITY_NO_LAYOUT=1` skips it); point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens and layout documents; the layout score is 100% on every screen in both themes.
+`<out>/dpad.json` (the screens run includes the ref-only `calendar-link` through `--extra-screens`) and the layout documents `<out>/layout/<theme>/<screen>.json` (docs/parity/LAYOUT.md; the debug mirror's `POST /layout` walks the NUI view tree, the driver writes it with every screenshot; `PARITY_NO_LAYOUT=1` skips it); point `<out>` at the legend's `tizen-native/dev`. Two back-to-back runs give byte-identical screens and layout documents. The layout export reads the live NUI tree only (view bounds with scale, clipping and occlusion, drawn colours, the labels' own text-layout line runs); it carries no web values.
 
 ### Tizen and webOS: how the shared runs work
 
@@ -83,8 +83,9 @@ directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the
   which the driver does), or the repeats cancel the long-press timer and the press becomes a click.
 - Light and dark captures go to `<cand>/dark` (or `<cand>` itself) and `<cand>/light`, with the web references in
   `web` and `web/light`, as the legend expects.
-- Search is captured with the on-screen keyboard dismissed and player-controls with the video plane hidden, on web and
-  device alike: the keyboard is platform UI and the video plane is a native overlay, neither is app output.
+- Search is captured with the on-screen keyboard dismissed (platform UI, not app output). The Samsung emulator draws the AVPlay
+  video as a layer above the browser, so its player-controls screenshot shows the paused clip without the controls; nothing in the
+  page is hidden or changed to work around that, and the pixel score of that one screen is an emulator limit (a real TV composites the plane under the page).
 - Playback is judged as playing when the playhead advances by `advanceSeconds` within `advanceSeconds + 6` s of wall
   clock; a fixed 3 s window of a stream that is still buffering fails even on web.
 - Home rails depend on the shared account's recent activity (other clients play and mark items), so run the web

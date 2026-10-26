@@ -123,8 +123,8 @@ class NavigationContractTests(unittest.TestCase):
         self.assertIn('id="profilesSettingsHit"', SCENE)
         self.assertIn('id="profilesSignOutHit"', SCENE)
         self.assertIn('id="profileActionsGroup"', SCENE)
-        self.assertIn("profiles-gear.png", SCENE)
-        self.assertIn("profiles-signout.png", SCENE)
+        self.assertIn("profiles-gear-glyph.png", SCENE)
+        self.assertIn("profiles-exit-glyph.png", SCENE)
         self.assertIn("sub applyProfilesChrome(", MAIN)
         self.assertIn("sub updateProfileActionsLayout(", MAIN)
         self.assertIn("sub focusProfilesRowOnCurrent(", MAIN)
@@ -684,7 +684,7 @@ class SecretSafetyTests(unittest.TestCase):
         self.assertIn("pollDeviceToken()", MAIN)
 
     def test_repository_contains_no_baked_server_or_token(self) -> None:
-        binary_suffixes = {".png", ".jpg", ".jpeg", ".zip", ".ico", ".ttf"}
+        binary_suffixes = {".png", ".jpg", ".jpeg", ".zip", ".ico", ".ttf", ".otf"}
         all_text = "\n".join(
             path.read_text(encoding="utf-8")
             for path in ROOT.rglob("*")
@@ -1044,7 +1044,7 @@ class RokuDeviceBugfixTests(unittest.TestCase):
         pages = (ROOT / "components" / "Pages.brs").read_text(encoding="utf-8")
         for name in ("renderCalendarMonth", "renderCalendarWeek", "renderCalendarAgenda", "calendarViewRange", "calendarStatusText"):
             self.assertIn(name, pages)
-        self.assertIn('pageBegin("Calendar", 0)', pages)
+        self.assertIn('pageBegin("Calendar", panelX)', pages)
         self.assertIn('dialog.buttons = ["Month", "Week", "Agenda"]', pages)
 
     def test_series_page_shows_no_lag_line_without_samples(self) -> None:

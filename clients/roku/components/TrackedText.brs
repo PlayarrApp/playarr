@@ -78,11 +78,35 @@ sub onSpecChange()
                 x = advanceOf(Left(line, j)) - advanceOf(piece) + tracking * (i - 1)
                 glyph = nextGlyph()
                 glyph.font = font
+                glyph.width = 0
+                if spec.symbol = true
+                    glyph.font = PlayarrSymbolFont(piece, size)
+                    glyph.width = PlayarrSymbolWidth(piece, size)
+                end if
                 ' The font actually set on this Label, readable through ECP query/app-ui (node names are printed; fonts are not).
                 glyph.id = "f" + Str(weight).Trim() + "s" + Str(size).Trim()
+                role = "text"
+                if spec.aria <> invalid and spec.aria <> "" then role = spec.aria
+                if role <> "text" or (spec.radius <> invalid and spec.radius > 0) then glyph.id = glyph.id + "|" + role
+                if spec.radius <> invalid and spec.radius > 0 then glyph.id = glyph.id + "|" + Str(spec.radius).Trim()
                 glyph.text = piece
+                if spec.symbol <> true
+                    ' The box is the web's run: its exact advance plus the letter spacing, but never narrower than Roku's own glyph run
+                    ' (a narrower box would clip the text).
+                    exactW = advanceOf(piece) + tracking * Len(piece)
+                    m.measure.text = piece
+                    glyph.width = exactW
+                    measured = m.measure.boundingRect().width
+                    if measured > exactW then glyph.width = measured
+                end if
+                ' The glyph box is the web's text rect: content area at whole pixels (round(1.011 em) + round(0.353 em)).
+                glyph.height = Int(size * 1.011 + 0.5) + Int(size * 0.353 + 0.5)
+                if spec.rectH <> invalid and spec.rectH > 0 then glyph.height = spec.rectH
                 if spec.color <> invalid
                     glyph.color = spec.color
+                    ' An explicit colour belongs to the owner (a WebLabel re-themes itself): keep the scene's theme pass off this glyph.
+                    if not glyph.hasField("themeRole") then glyph.addFields({ themeRole: "" })
+                    glyph.themeRole = "-"
                 else
                     glyph.color = ThemeColor(spec.role)
                     ThemeSetRole(glyph, spec.role)

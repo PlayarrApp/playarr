@@ -31,7 +31,6 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             LayoutExport.Tag(SearchBox, "search");
             LayoutExport.Tag(SearchGlyph, "image");
-            LayoutExport.SetBox(SearchGlyph, new Windows.Foundation.Rect(178.59, 198.78, 24, 24));
             LayoutExport.Tag(QueryBox, "textbox", "Search your libraries and playlists");
             Background = Theme.PageStage();
             Ui.PageHeader(Root, "Search", null, () => App.Navigation.GoBack());

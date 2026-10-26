@@ -3,7 +3,7 @@
  * a small uppercase heading over equal-width choice tiles, the chosen one filled with ink.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -110,21 +110,21 @@ export struct ChoiceSegments {
     Column({ space: tv(this.large ? LARGE_HEADING_GAP : HEADING_GAP + (isTvMetrics() ? 1.8 : 0)) }) {
       if (this.large) {
         Text(this.heading).fontFamily(nunitoAt(500, tv(LARGE_HEADING_SIZE)))
-          .fontSize(tv(LARGE_HEADING_SIZE))
+          .fontSize(tv(LARGE_HEADING_SIZE)).lineHeight(webLineHeight(tv(LARGE_HEADING_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(LARGE_HEADING_LETTER_SPACING))
           .fontColor(toResourceColor(activeColors().ink))
           .id('px:heading:' + this.heading)
-          .margin({ top: -2.5, bottom: (this.description === '' ? tv(5) : 0) + 2.5 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
+          .margin({ top: -4.5, bottom: this.description === '' ? tv(5) + 0.3 : -1.3 }) // web: 29 px from the heading to the choices without copy, 22 + 21 around it
         if (this.description !== '') {
           Text(this.description).fontFamily(nunitoAt(400, tv(DESCRIPTION_SIZE)))
-            .fontSize(tv(DESCRIPTION_SIZE))
+            .fontSize(tv(DESCRIPTION_SIZE)).lineHeight(webLineHeight(tv(DESCRIPTION_SIZE))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkMuted))
             .margin({ top: tv(-5), bottom: tv(1) })
         }
       } else {
         Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
-          .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
+          .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02))
           .textCase(TextCase.UpperCase)
@@ -139,7 +139,7 @@ export struct ChoiceSegments {
             this.viewShapes(choice.value)
             Text(capitalWords(choice.label)).fontFamily(nunito(900))
               .letterSpacing(0.4) // web's label run is wider than ArkUI lays it out
-              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
+              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
@@ -156,13 +156,36 @@ export struct ChoiceSegments {
           .onClick(() => {
             this.onChoose(choice.value);
           })
+         } else if (this.large) {
+          // web: the choice is a button (fill, border, radius) holding a span with the label, two elements
+          Row() {
+            Text(capitalWords(choice.label)).fontFamily(isTvMetrics() ? nunito(900) : nunito(680))
+              .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
+              .lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
+              .fontWeight(FontWeight.Bold)
+              .letterSpacing(isTvMetrics() ? 0.43 : 0) // web's run is about 3 wider than ArkUI lays it out
+              .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
+          }
+          .id('px:button:' + choice.label)
+          .width(tv(this.choiceWidth()))
+          .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
+            toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
+          .borderRadius(tv(CHOICE_RADIUS))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
+          .scale(!isTvMetrics() && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
+          .focusable(true)
+          .onClick(() => {
+            this.onChoose(choice.value);
+          })
          } else {
           Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + capitalWords(choice.label)).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
-            .id((this.large ? 'px:button:' : 'pxt:button:') + choice.label) // web: a Filters choice is a button that owns its text; Settings' wraps a span
+            .id('px:button:' + choice.label)
             .width(tv(this.choiceWidth()))
             .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
             .textAlign(TextAlign.Center)
-            .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
+            .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .letterSpacing(this.large && isTvMetrics() ? 0.43 : 0) // web's run is about 3 wider than ArkUI lays it out
             .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))

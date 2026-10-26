@@ -106,10 +106,10 @@ function PlayarrTypeFor(scope as String, id as String) as Dynamic
     g = GetGlobalAA()
     if g.typeTable = invalid
         g.typeTable = {
-            clockTime: { size: 17.28, weight: 760, tracking: -0.526, boxH: 25.92 }
-            clockDate: { size: 11.14, weight: 640, tracking: 0.435, boxH: 12.25 }
+            clockTime: { size: 17.28, weight: 760, tracking: -0.526 }
+            clockDate: { size: 11.14, weight: 640, tracking: 0.435 }
             profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
-            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink", boxH: 8 }
+            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink", boxH: 8.95 }
             "TvStage.stageMetaLabel": { size: 12.86, weight: 600, tracking: 0, role: "heroSoft" }
             "ProfileAvatar.name": { size: 17.28, weight: 680, tracking: 0 }
             "ProfileAvatar.status": { size: 9.41, weight: 690, tracking: 0.413, role: "inkMuted" }
@@ -205,4 +205,26 @@ end function
 function EpisodeCodeTracking(text as String, tracking as Float) as Float
     if Left(text, 2) = "S " and Instr(1, text, "·") > 0 then return tracking
     return 0
+end function
+
+' Symbol glyphs the web draws from its fallback fonts (Nunito Sans has none of them): arrows, play, check, the sort chevron and a
+' fullwidth plus. fonts/Symbols.ttf is a subset of DejaVu Sans (Bitstream Vera licence) and fonts/SymbolsCjk.otf one glyph of
+' Noto Sans CJK (SIL OFL). The advance is the web's own measured width per em, so the glyph box is the box the web reports.
+function PlayarrSymbolFont(ch as String, size as Float) as Object
+    path = "pkg:/fonts/Symbols.ttf"
+    if ch = "＋" then path = "pkg:/fonts/SymbolsCjk.otf"
+    key = "playarrSymbol_" + path + "_" + Str(size)
+    g = GetGlobalAA()
+    if g[key] <> invalid then return g[key]
+    font = CreateObject("roSGNode", "Font")
+    font.uri = path
+    font.size = Int(size + 0.5)
+    g[key] = font
+    return font
+end function
+
+function PlayarrSymbolWidth(ch as String, size as Float) as Float
+    em = { "←": 1.0, "→": 1.0, "▶": 0.7695, "⇩": 0.8378, "☷": 0.8962, "⌄": 0.8378, "✓": 0.8381, "○": 0.6045, "＋": 1.0, "×": 0.6004 }
+    if em[ch] = invalid then return size
+    return em[ch] * size
 end function

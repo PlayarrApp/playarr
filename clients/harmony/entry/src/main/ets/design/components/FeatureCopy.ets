@@ -22,7 +22,7 @@
  */
 
 import { LengthMetrics } from '@kit.ArkUI';
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, resolvedThemeMode } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -34,7 +34,7 @@ import { balanceTitle } from '../../core/TitleBalance';
 const KICKER_FONT_SIZE: number = 12.288;
 // ArkUI takes weights in steps of 100 (other values fall back to 400); web uses 860 and 560.
 const KICKER_FONT_WEIGHT: number = 900;
-const KICKER_LETTER_SPACING: number = KICKER_FONT_SIZE * 0.08 + 0.46; // web 0.08em; ArkUI lays the run out about 4 narrower
+const KICKER_LETTER_SPACING: number = KICKER_FONT_SIZE * 0.08 - 0.04; // web 0.08em; ArkUI lays the run out about 4 narrower
 // Dark theme kicker pink on web; light theme keeps the brand pink.
 // Web `--brand-ink` in the light theme (#821e36).
 const KICKER_COLOR_LIGHT: RgbaColor = { r: 130, g: 30, b: 54, a: 1 };
@@ -42,7 +42,7 @@ const KICKER_COLOR_DARK: RgbaColor = { r: 234, g: 166, b: 182, a: 1 };
 
 const HERO_TITLE_FONT_SIZE: number = 69.12;
 const HERO_TITLE_FONT_WEIGHT: number = 500; // web 560: nearest static instance below 600 is the closer width
-const HERO_TITLE_LETTER_SPACING: number = HERO_TITLE_FONT_SIZE * -0.0721; // web is 2.3% narrower on "7 Distant Harbour 30"
+const HERO_TITLE_LETTER_SPACING: number = HERO_TITLE_FONT_SIZE * -0.0721 - 0.55; // web is 2.3% narrower on "7 Distant Harbour 30"
 const HERO_TITLE_LINE_HEIGHT: number = 62;
 const HERO_TITLE_MAX_WIDTH: number = 373;
 // Web `.tv-detail-copy h2:not(.tv-detail-title)` at 1920x1080.
@@ -77,7 +77,7 @@ const LIBRARY_SYNOPSIS_MAX_WIDTH: number = 345;
 
 // Vertical gaps between kicker, title, meta and synopsis on web.
 const GAP_KICKER_TITLE: number = 26.3; // web title content box starts 6.4 higher (line box 62 inside a 94 content area)
-const GAP_TITLE_META: number = 31.0;
+const GAP_TITLE_META: number = 27.9; // web meta line box starts here under the title run
 const GAP_META_SYNOPSIS: number = 18.8;
 
 @Component
@@ -163,7 +163,7 @@ export struct FeatureCopy {
     Column() {
       if (this.kicker.length > 0) {
         Text(this.kicker).fontFamily(nunitoAt(KICKER_FONT_WEIGHT, tv(KICKER_FONT_SIZE)))
-          .fontSize(tv(KICKER_FONT_SIZE))
+          .fontSize(tv(KICKER_FONT_SIZE)).lineHeight(webLineHeight(tv(KICKER_FONT_SIZE))).halfLeading(true)
           .fontWeight(KICKER_FONT_WEIGHT)
           .letterSpacing(tv(KICKER_LETTER_SPACING))
           .fontColor(this.kickerColor())
@@ -172,14 +172,23 @@ export struct FeatureCopy {
       }
 
       if (this.title.length > 0) {
-        Text(this.balancedTitle()).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
-          .id('px:' + this.titleRole + ':' + this.title)
-          .fontSize(tv(HERO_TITLE_FONT_SIZE))
-          .fontWeight(HERO_TITLE_FONT_WEIGHT)
-          .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
-          .lineHeight(tv(HERO_TITLE_LINE_HEIGHT))
-          .constraintSize({ maxWidth: tv(HERO_TITLE_MAX_WIDTH) })
-          .fontColor(toResourceColor(activeColors().ink))
+        // web: each line of the title is a run as tall as the font's content area (94), the lines only 62 apart; ArkUI's line
+        // spacing cannot be negative, so each line is its own Text and the pitch comes from a negative margin.
+        Column() {
+          ForEach(this.balancedTitle().split('\n'), (line: string, index: number) => {
+            Text(line).fontFamily(nunitoAt(HERO_TITLE_FONT_WEIGHT, tv(HERO_TITLE_FONT_SIZE)))
+              .id('px:' + this.titleRole + ':' + line)
+              .fontSize(tv(HERO_TITLE_FONT_SIZE))
+              .fontWeight(HERO_TITLE_FONT_WEIGHT)
+              .letterSpacing(tv(HERO_TITLE_LETTER_SPACING))
+              .lineHeight(webLineHeight(tv(HERO_TITLE_FONT_SIZE))).halfLeading(true)
+              .fontColor(toResourceColor(activeColors().ink))
+              .margin({ top: index > 0 ? tv(HERO_TITLE_LINE_HEIGHT) - webLineHeight(tv(HERO_TITLE_FONT_SIZE)) : 0 })
+          }, (line: string, index: number) => `${index}-${line}`)
+        }
+        .alignItems(HorizontalAlign.Start)
+        .constraintSize({ maxWidth: tv(HERO_TITLE_MAX_WIDTH) })
+        .margin({ top: (tv(HERO_TITLE_LINE_HEIGHT) - webLineHeight(tv(HERO_TITLE_FONT_SIZE))) / 2, bottom: (tv(HERO_TITLE_LINE_HEIGHT) - webLineHeight(tv(HERO_TITLE_FONT_SIZE))) / 2 })
       }
 
       if (this.subtitle.length > 0) {
@@ -187,11 +196,11 @@ export struct FeatureCopy {
           .fontSize(tv(EPISODE_TITLE_FONT_SIZE))
           .fontWeight(EPISODE_TITLE_FONT_WEIGHT)
           .letterSpacing(tv(EPISODE_TITLE_LETTER_SPACING))
-          .lineHeight(tv(EPISODE_TITLE_LINE_HEIGHT))
+          .lineHeight(webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .constraintSize({ maxWidth: this.episodeSubtitleMaxWidth() })
           .id('px:heading:' + this.subtitle)
-          .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) })
+          .margin({ top: tv(EPISODE_TITLE_MARGIN_TOP) + (tv(EPISODE_TITLE_LINE_HEIGHT) - webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))) / 2, bottom: (tv(EPISODE_TITLE_LINE_HEIGHT) - webLineHeight(tv(EPISODE_TITLE_FONT_SIZE))) / 2 })
       }
 
       if (this.metaChips.length > 0) {
@@ -200,7 +209,7 @@ export struct FeatureCopy {
             this.metaChips,
             (chip: string, index: number) => {
               Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, tv(META_CHIP_FONT_SIZE)))
-                .fontSize(tv(META_CHIP_FONT_SIZE))
+                .fontSize(tv(META_CHIP_FONT_SIZE)).lineHeight(webLineHeight(tv(META_CHIP_FONT_SIZE))).halfLeading(true)
                 .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
                 .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
                 .margin({ right: index === 0 ? -2.7 : 0 }) // ArkUI lays the bold first chip 2.7 wider than web's
@@ -216,7 +225,7 @@ export struct FeatureCopy {
             this.metaRuns,
             (run: string) => {
               Text(run).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
-                .fontSize(tv(COPY_TEXT_FONT_SIZE))
+                .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
                 .letterSpacing(this.libraryCopy ? -0.14 : 0) // web's run is narrower than ArkUI lays it out
                 .fontColor(this.copyTextColor())
@@ -231,7 +240,7 @@ export struct FeatureCopy {
             this.metaLines,
             (line: string) => {
               Text(line).fontFamily(nunitoAt(COPY_TEXT_FONT_WEIGHT, tv(COPY_TEXT_FONT_SIZE)))
-                .fontSize(tv(COPY_TEXT_FONT_SIZE))
+                .fontSize(tv(COPY_TEXT_FONT_SIZE)).lineHeight(webLineHeight(tv(COPY_TEXT_FONT_SIZE))).halfLeading(true)
                 .fontWeight(this.libraryCopy ? 500 : COPY_TEXT_FONT_WEIGHT)
                 .fontColor(this.copyTextColor())
             },
@@ -247,7 +256,7 @@ export struct FeatureCopy {
         Text(this.synopsis).fontFamily(nunitoAt((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT, tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE)))
           .fontSize(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))
           .fontWeight((this.libraryCopy || this.strongSynopsis) ? LIBRARY_SYNOPSIS_FONT_WEIGHT : SYNOPSIS_FONT_WEIGHT)
-          .lineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT))
+          .lineHeight(webLineHeight(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).lineSpacing(webLineSpacing(tv(this.libraryCopy ? LIBRARY_SYNOPSIS_LINE_HEIGHT : SYNOPSIS_LINE_HEIGHT), tv(this.libraryCopy ? LIBRARY_SYNOPSIS_FONT_SIZE : COPY_TEXT_FONT_SIZE))).halfLeading(true)
           .letterSpacing(tv((this.libraryCopy || this.strongSynopsis) ? SYNOPSIS_LETTER_SPACING : -0.24))
           .fontColor((this.libraryCopy || this.strongSynopsis) ? this.copyTextColor() : toResourceColor(activeColors().inkMuted))
           .constraintSize({ maxWidth: tv(this.libraryCopy ? LIBRARY_SYNOPSIS_MAX_WIDTH : SYNOPSIS_MAX_WIDTH) })
