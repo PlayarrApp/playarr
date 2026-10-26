@@ -416,7 +416,7 @@ namespace Playarr.Xbox.Views
                     FontSize = 9.98,
                     FontWeight = FontWeights.Normal,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkMuted"],
-                    Margin = new Thickness(0, 3.4, 0, 36),
+                    Margin = new Thickness(0, 4.6, 0, 37.4),
                 });
                 section.Children.Add(list);
                 _castSection = section;
@@ -539,7 +539,7 @@ namespace Playarr.Xbox.Views
                     FontSize = 9.98,
                     FontWeight = FontWeights.Normal,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkMuted"],
-                    Margin = new Thickness(0, 3.4, 0, 36),
+                    Margin = new Thickness(0, 4.6, 0, 37.4),
                 });
                 section.Children.Add(list);
                 _similarSection = section;
@@ -660,7 +660,7 @@ namespace Playarr.Xbox.Views
                 }
             };
             CardFocus.Attach(list);
-            var section = new StackPanel { Margin = new Thickness(0, 195, 0, 0) };
+            var section = new StackPanel { Margin = new Thickness(0, 196.1, 0, 0) };
             section.Children.Add(DetailRailTitle("Chapters"));
             section.Children.Add(new TextBlock
             {
@@ -722,7 +722,7 @@ namespace Playarr.Xbox.Views
             var root = new StackPanel { Width = 268, Tag = chapter };
             root.Children.Add(art);
             root.Children.Add(caption);
-            LayoutExport.Tag(root, "link", $"Play {title} from {clockText}");
+            LayoutExport.Tag(root, "link", $"Play {title} from {chapter.Title ?? $"Chapter {chapter.Index + 1}"}");
             return root;
         }
 

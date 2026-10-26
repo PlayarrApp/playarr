@@ -130,6 +130,7 @@ namespace Playarr.Xbox.Views
             var button = RoundButton("", onClick);
             button.Margin = new Thickness(153.59, 56.16, 0, 0);
             LayoutExport.Tag(button, "link", "Back to Home");
+            LayoutExport.SetSplit(button, true);
             button.HorizontalAlignment = HorizontalAlignment.Left;
             button.VerticalAlignment = VerticalAlignment.Top;
             // The web draws Back as the text arrow, small and lightweight, not an icon-font arrow.

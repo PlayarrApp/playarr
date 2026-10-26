@@ -14,7 +14,7 @@ namespace Playarr.Xbox.Views
         /// keep the greedy line count at the 9ch box, then among the break sets with that many lines (each fitting the box)
         /// take the smallest sum of squared line widths, plus 5000 when the last line is one word. Breaks are after spaces only.
         /// </summary>
-        public static void Build(StackPanel host, string title, TextBlock template)
+        public static void Build(StackPanel host, string title, TextBlock template, string role = "heading")
         {
             double Width(string text) => MeasureWidth(text, template);
             // The web caps the title at max-width: 9ch (nine "0" advances) at its 3.6vw font size.
@@ -98,7 +98,7 @@ namespace Playarr.Xbox.Views
                     TextWrapping = TextWrapping.NoWrap,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInk"],
                 };
-                LayoutExport.SetRole(block, "heading");
+                LayoutExport.SetRole(block, role);
                 block.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
                 block.Margin = new Thickness(0, host.Children.Count == 0 ? 0 : TitlePitch - block.DesiredSize.Height, 0, 0);
                 host.Children.Add(block);

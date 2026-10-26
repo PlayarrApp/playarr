@@ -53,10 +53,10 @@ namespace Playarr.Xbox.Views
             var controls = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 12,
+                Spacing = 15.6,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 56, 77, 0),
+                Margin = new Thickness(0, 56.16, 76.8, 0),
             };
             _rangeButton = HeaderPill(string.Empty, null, 0);
             var picker = new MenuFlyout();
@@ -97,7 +97,8 @@ namespace Playarr.Xbox.Views
         private static Button HeaderPill(string text, Action? onClick, double minWidth)
         {
             var pill = Ui.Pill(text, onClick, minWidth);
-            pill.Padding = new Thickness(24.4, 0, 24.4, 0);
+            pill.Padding = new Thickness(21, 0, 21, 0);
+            LayoutExport.SetSplit(pill, true);
             pill.Background = new SolidColorBrush(Colors.Transparent);
             pill.Content = Ui.Text(text, 14.72, new FontWeight { Weight = 720 }, "PlayarrInkSoft");
             return pill;
@@ -475,12 +476,12 @@ namespace Playarr.Xbox.Views
         private UIElement Week(DateTime start, Dictionary<DateTime, List<CalendarEntry>> byDay)
         {
             // Web week: 440 px day columns 20 px apart; cards 106 px tall on a 121 px pitch; day heading 16.6 px.
-            var columns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20, Margin = new Thickness(154, 170, 48, 0) };
+            var columns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20, Margin = new Thickness(154, 175, 48, 0) };
             for (var d = 0; d < 7; d++)
             {
                 var day = start.AddDays(d);
-                var column = new StackPanel { Width = 440, Spacing = 15 };
-                var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+                var column = new StackPanel { Width = 440, Spacing = 8 };
+                var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Height = 25 };
                 heading.Children.Add(DayTitle(day));
                 if (day == ParityClock.Today)
                 {
@@ -494,6 +495,10 @@ namespace Playarr.Xbox.Views
                     {
                         column.Children.Add(EntryCard(entry, 440, null, web: true));
                     }
+                }
+                else
+                {
+                    column.Children.Add(Ui.Text("Nothing scheduled", 19.2, FontWeights.Normal, "PlayarrInkMuted", new Thickness(0, 0.4, 0, 0)));
                 }
 
                 columns.Children.Add(column);
@@ -513,7 +518,6 @@ namespace Playarr.Xbox.Views
         private static TextBlock DayTitle(DateTime day)
         {
             var title = Ui.Text(day.ToString("dddd d MMMM", Uk), 18.4, new FontWeight { Weight = 640 }, day == ParityClock.Today ? "PlayarrPillFill" : "PlayarrInk");
-            title.CharacterSpacing = 28;
             return title;
         }
 
@@ -591,8 +595,8 @@ namespace Playarr.Xbox.Views
             var eyebrow = Ui.Text($"{KindLabel(entry).ToUpperInvariant()} · {ReleaseLabel(entry).ToUpperInvariant()}", 12.29, new FontWeight { Weight = 860 }, "PlayarrBrandInk");
             eyebrow.CharacterSpacing = 100;
             detail.Children.Add(eyebrow);
-            var titleLines = new StackPanel { Margin = new Thickness(0, 11.33, 0, 0) };
-            TitleLayout.Build(titleLines, entry.Title, TitleTemplate);
+            var titleLines = new StackPanel { Margin = new Thickness(0, 9.83, 0, 0) };
+            TitleLayout.Build(titleLines, entry.Title, TitleTemplate, "text");
             detail.Children.Add(titleLines);
             var when = CalendarRules.LocalDay(entry).ToString("dddd, d MMMM yyyy", Uk) + (TimeLabel(entry) is var t && t != "All day" ? " at " + t : string.Empty);
             var metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 13.1, Margin = new Thickness(0, 11.2, 0, 0), Height = 18 };
@@ -628,7 +632,7 @@ namespace Playarr.Xbox.Views
 
             if (entry.WorkId is { } workId)
             {
-                var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9.6, Margin = new Thickness(0, overviewBottom > 0 ? 23.35 : 40, 0, 0) };
+                var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9.6, Margin = new Thickness(0, overviewBottom > 0 ? 24.65 : 40, 0, 0) };
                 var open = new Button
                 {
                     Height = 58,
@@ -642,6 +646,8 @@ namespace Playarr.Xbox.Views
                     FocusVisualSecondaryThickness = new Thickness(0),
                 };
                 open.Click += (s, e) => App.Navigation.Navigate(typeof(WorkDetailPage), workId);
+                LayoutExport.SetSplit(open, true);
+                LayoutExport.Tag(open, "button", entry.MediaKind == "movie" ? "Open movie" : "Open series");
                 actions.Children.Add(open);
                 var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9.6 };
                 label.Children.Add(Ui.Text("+", 14.72, new FontWeight { Weight = 720 }, "PlayarrInkSoft"));
@@ -649,7 +655,7 @@ namespace Playarr.Xbox.Views
                 var watch = new Button
                 {
                     Height = 58,
-                    Padding = new Thickness(21, 0, 21, 0),
+                    Padding = new Thickness(20, 0, 20, 0),
                     CornerRadius = new CornerRadius(29),
                     Background = new SolidColorBrush(Colors.Transparent),
                     BorderBrush = Ui.Res("PlayarrLineStrong"),
@@ -753,6 +759,7 @@ namespace Playarr.Xbox.Views
                 Canvas.SetLeft(metaRow, textX);
                 Canvas.SetTop(metaRow, (hasLine2 ? 71.38 : 41.31) - 0.6);
                 canvas.Children.Add(metaRow);
+                canvas.Margin = new Thickness(-1, 0, 0, 0); // the card's 1 px border must not move its contents
                 card.Content = canvas;
                 LayoutExport.Tag(card, "button", string.Join(" ", new[] { entry.Title, webLine2Text, TimeLabel(entry), ReleaseLabel(entry), KindLabel(entry), TonePillLabel(entry) }.Where(x => x.Length > 0)));
                 LayoutExport.SetSplit(card, true);
