@@ -3,6 +3,7 @@
 // colour, font size and weight, text, radius) is the app's own and is never adjusted towards the web.
 //   node scripts/parity/apple/layout-map.mjs <raw.json> <screen> <theme> > layout.json
 import { readFileSync } from "node:fs";
+import { PNG } from "pngjs";
 
 const round = (v) => Math.round(v * 100) / 100;
 
@@ -32,7 +33,46 @@ export function mapRaw(doc, screen, theme) {
     if (e.opacity != null && e.opacity !== 1) out.opacity = e.opacity;
     return out;
   });
-  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements };
+  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements: dropCovered(elements) };
+}
+
+// Covered content is not visible: an item fully inside a later-drawn dialog (the drawer over the library) is dropped. The
+// dialog is the app's own opaque panel; nothing here changes a measured value.
+function dropCovered(elements) {
+  const dialogs = elements.filter((e) => e.role === "dialog");
+  if (!dialogs.length) return elements;
+  const inside = (a, b) => a.x >= b.x - 0.5 && a.y >= b.y - 0.5 && a.x + a.w <= b.x + b.w + 0.5 && a.y + a.h <= b.y + b.h + 0.5;
+  const dIndex = (d) => elements.indexOf(d);
+  return elements.filter((e, i) => e.role === "dialog" || !dialogs.some((d) => i < dIndex(d) && inside(e.rect, d.rect)));
+}
+
+// `background` measured from the capture itself: the commonest pixel colour in a ring just outside a text, icon or image box (just
+// inside a filled box), taken only when that ring is one flat colour (>= 90 %). Over a gradient or artwork the app's declared fill
+// stays. A measurement of the device render, never a web value.
+export function sampleBackgrounds(layout, pngPath) {
+  const png = PNG.sync.read(readFileSync(pngPath));
+  const k = png.width / layout.viewport.w;
+  const at = (x, y) => {
+    const px = Math.min(png.width - 1, Math.max(0, Math.round(x * k))), py = Math.min(png.height - 1, Math.max(0, Math.round(y * k)));
+    const i = (py * png.width + px) * 4;
+    return (png.data[i] << 16) | (png.data[i + 1] << 8) | png.data[i + 2];
+  };
+  for (const e of layout.elements) {
+    const { x, y, w, h } = e.rect;
+    const inside = ["container", "button", "link", "slider", "dialog", "search", "group"].includes(e.role);
+    const m = inside ? 3 : -2;
+    const x0 = x + m, x1 = x + w - m, y0 = y + m, y1 = y + h - m;
+    if (inside && (x1 <= x0 || y1 <= y0)) continue;
+    const counts = new Map();
+    const add = (px, py) => { const c = at(px, py); counts.set(c, (counts.get(c) ?? 0) + 1); };
+    const step = Math.max(2, Math.min(w, h) / 12);
+    for (let px = x0; px <= x1; px += step) { add(px, y0); add(px, y1); }
+    for (let py = y0; py <= y1; py += step) { add(x0, py); add(x1, py); }
+    let best = null, n = 0, total = 0;
+    for (const [c, v] of counts) { total += v; if (v > n) { best = c; n = v; } }
+    if (best !== null && n / total >= 0.9) e.background = "#" + best.toString(16).padStart(6, "0");
+  }
+  return layout;
 }
 
 if (process.argv[1]?.endsWith("layout-map.mjs") && process.argv[2]) {
