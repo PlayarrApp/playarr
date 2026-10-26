@@ -100,6 +100,12 @@ namespace Playarr.Xbox.Views
 
             return new
             {
+                arrows = new[] { "Segoe UI", "Segoe UI Symbol", "Arial", "Cambria Math", "Consolas", "Calibri", "Times New Roman", "Segoe MDL2 Assets", "Verdana", "Tahoma" }.Select(face =>
+                {
+                    var arrow = new TextBlock { Text = "\u2192", FontSize = 20.8, FontFamily = new FontFamily(face) };
+                    arrow.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    return new { face, width = Math.Round(arrow.DesiredSize.Width, 2) };
+                }).ToList(),
                 strategies = new[] { Strategy(LineStackingStrategy.MaxHeight), Strategy(LineStackingStrategy.BlockLineHeight), Strategy(LineStackingStrategy.BaselineToBaseline) },
                 w400 = Width(400, 0), w600 = Width(600, 0), w680 = Width(680, 0), w700 = Width(700, 0), w720 = Width(720, 0), w760 = Width(760, 0), w800 = Width(800, 0), w900 = Width(900, 0),
                 s0 = Width(400, 0), s100 = Width(400, 100), s_100 = Width(400, -100),

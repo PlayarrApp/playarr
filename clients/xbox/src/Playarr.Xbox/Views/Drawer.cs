@@ -42,7 +42,7 @@ namespace Playarr.Xbox.Views
                 XYFocusKeyboardNavigation = XYFocusKeyboardNavigationMode.Enabled,
                 TabFocusNavigation = KeyboardNavigationMode.Cycle,
             };
-            var header = new StackPanel { Margin = new Thickness(0, 0, 48, 0), VerticalAlignment = VerticalAlignment.Top };
+            var header = new StackPanel { Margin = new Thickness(0), VerticalAlignment = VerticalAlignment.Top };
             var eyebrowText = Ui.Text(eyebrow.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted");
             eyebrowText.CharacterSpacing = 120;
             header.Children.Add(eyebrowText);
@@ -159,7 +159,7 @@ namespace Playarr.Xbox.Views
         {
             // A labelled group is a drawer's (web filter section); the unlabelled one is the Settings page's own control.
             var drawer = label.Length > 0;
-            var group = new StackPanel { Margin = new Thickness(0, 0, 0, drawer ? 30 : 24) };
+            var group = new StackPanel { Margin = new Thickness(0, 0, 0, drawer ? 28.8 : 24) };
             var caption = LayoutExport.Tag(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, drawer ? 14 : 10)), "heading");
             caption.CharacterSpacing = 120;
             if (drawer)
@@ -191,7 +191,7 @@ namespace Playarr.Xbox.Views
                 UIElement content = labelText;
                 if (icons != null && i < icons.Length)
                 {
-                    var stack = new StackPanel { Spacing = 7, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                    var stack = new StackPanel { Spacing = 5.8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
                     var viewIcon = ViewIcon(icons[i], tint);
                     viewIcon.Margin = new Thickness(0, 1.8, 0, 0);
                     stack.Children.Add(viewIcon);
@@ -221,7 +221,7 @@ namespace Playarr.Xbox.Views
 
                 LayoutExport.Tag(button, "button", options[i]);
                 // The Settings page's segments are a box with a separate label (web), the drawer's are their own text.
-                LayoutExport.SetSplit(button, !drawer || icons != null);
+                LayoutExport.SetSplit(button, true);
                 if (!string.IsNullOrWhiteSpace(automationIdPrefix))
                 {
                     AutomationProperties.SetAutomationId(button, $"{automationIdPrefix}.{i}");

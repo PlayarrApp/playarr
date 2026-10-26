@@ -981,7 +981,7 @@ namespace Playarr.Xbox.Views
                     }
                 };
                 // The web's episode ring sits 2.5 px outside the art (measured 280 x 160 on a 268 x 151 card).
-                CardFocus.Attach(list, true, 2.5);
+                CardFocus.Attach(list, true, 2.5, CardFocus.Lift, 1.0);
                 list.GotFocus += (s, e) =>
                 {
                     if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: EpisodeDetail episode } })
