@@ -276,6 +276,12 @@ function dump(root, u, weights, metrics, log) {
                     var textSample = polygonCenter(textPoly)
                     var el = { text: run.text, role: item.parityRole || "text", rect: rect(textBox.x, textBox.y, textBox.w, textBox.h),
                         color: hex(item.color), background: bgAt(textSample.x, textSample.y), fontSize: r2(item.font.pixelSize * textScale / u), fontWeight: weightOf(item, weights) }
+                    // A text that is the only content of a rounded plate (a chip or badge) is that plate's label: it carries the plate's corner radius.
+                    var plate = item.parent && item.parent.border !== undefined && item.parent.radius > 0 && item.parent.color !== undefined ? item.parent : null
+                    if (plate && (plate.color.a > 0 || drawnBorder(plate.border)) && plate.children.length === 1) {
+                        var plateScale = uniformRadiusScale(plate, root), plateRadius = radiusOf(plate, plateScale)
+                        if (plateRadius) el.radius = plateRadius
+                    }
                     if (op < 0.999) el.opacity = r2(op)
                     el._item = item; el._seq = ++seq; el._r = { x: textBox.x, y: textBox.y, w: textBox.w, h: textBox.h }
                     out.push(el)
