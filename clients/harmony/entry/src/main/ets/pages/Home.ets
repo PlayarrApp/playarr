@@ -203,7 +203,7 @@ const TOUCH_CARD_CAPTION_HEIGHT: number = 63;
 const TOUCH_GUTTER: number = 16;
 const TOUCH_CARD_GAP: number = 12;
 const TOUCH_RAIL_HEADING_SIZE: number = 16;
-const TOUCH_RAIL_HEADING_GAP: number = 22;
+const TOUCH_RAIL_HEADING_GAP: number = 18;
 
 /** Extra bottom clearance under the touch rails column so the last rail's
  * cards are never obscured by the floating `NavPill` (brief 9: "rails
@@ -1186,7 +1186,7 @@ export struct Home {
       // to the page surface over its first 8%. Keep this underlay aligned to
       // that viewport without changing the Scroll's content geometry.
       Column() {
-        Blank().height(58)
+        Blank().height(72)
         Column()
           .width('100%')
           .layoutWeight(1)

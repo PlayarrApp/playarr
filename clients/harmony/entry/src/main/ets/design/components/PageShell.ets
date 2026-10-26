@@ -277,7 +277,7 @@ export struct PageShell {
               
               .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true) // web 1.35rem
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-0.972) // web -0.045em
+              .letterSpacing((-0.972) + (!isTvMetrics() ? -0.144 : 0)) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
               .translate({ y: 0 })

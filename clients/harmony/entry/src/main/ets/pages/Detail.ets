@@ -1752,7 +1752,7 @@ struct Detail {
       Text(this.primaryLabel()).fontFamily(nunitoAt(700, isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11).lineHeight(webLineHeight(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)).halfLeading(true)
+        .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11).letterSpacing((!isTvMetrics() ? 0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.playInk())
     }
@@ -2635,7 +2635,7 @@ struct Detail {
               .fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true)
               .height(16)
               .fontWeight(FontWeight.Bolder)
-              .letterSpacing(0.8)
+              .letterSpacing((0.8) + (!isTvMetrics() ? -0.153 : 0))
               .textCase(TextCase.UpperCase)
               .fontColor(brandInk())
               .translate({ y: -1.1 }) // web's kicker box sits 1.1 higher
@@ -2644,12 +2644,13 @@ struct Detail {
               
               .fontSize(36) // measured against the static refs
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-2.59) // web -0.072em (fitted to the refs' run width)
+              .letterSpacing((-2.59) + (!isTvMetrics() ? -0.089 : 0)) // web -0.072em (fitted to the refs' run width)
               .lineHeight(webLineHeight(36)).lineSpacing(webLineSpacing(34, 36)).halfLeading(true)
               .fontColor(toResourceColor(activeColors().ink))
               // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
               .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
-              .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -4.9 : -3.2 }) // web's title box sits higher than ArkUI lays it out
+              .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -3.2 : -1.5 }) // web's title box sits higher than ArkUI lays it out
+              .margin({ top: (34 - webLineHeight(36)) / 2, bottom: (34 - webLineHeight(36)) / 2 }) // web: the run is 49 tall in a 34 line box
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
                 .fontSize(14.4).lineHeight(webLineHeight(14.4)).halfLeading(true)
@@ -2764,7 +2765,7 @@ struct Detail {
         Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
           
           .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
-          .letterSpacing(-0.972)
+          .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
           .translate({ y: -1.2 }) // web's title box sits 1.2 higher

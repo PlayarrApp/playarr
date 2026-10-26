@@ -438,6 +438,7 @@ export struct PlayerChrome {
   onToggleMute: () => void = () => {};
   onVisibilityChanged: (visible: boolean) => void = () => {};
 
+  @State private volumePercent: number = 100;
   @State private chromeOpacity: number = 1;
   @State private visible: boolean = true;
   @State private focusedCount: number = 0;
@@ -699,8 +700,28 @@ export struct PlayerChrome {
               
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
+          // web: the mute button and the volume slider sit together, 10 apart, after the time
+          Row({ space: tv(10) }) {
+            this.tvIcon($r('app.media.player_volume'), this.onToggleMute, false, 'Mute')
+            Slider({ value: this.volumePercent, min: 0, max: 100, style: SliderStyle.OutSet })
+              .width(tv(130))
+              .height(tv(44))
+              .trackColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.3))
+              .selectedColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              .blockColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              .accessibilityText('Volume').accessibilityRole(AccessibilityRoleType.SLIDER)
+              .onChange((value: number): void => {
+                this.volumePercent = value;
+              })
+          }
           Blank()
-          this.tvIcon($r('app.media.player_volume'), this.onToggleMute, false, '')
+          // web: the audio-track button, empty while the stream has no alternative track
+          Stack()
+            .width(tv(TV_SEEK_SIZE))
+            .height(tv(TV_SEEK_SIZE))
+            .borderRadius(tv(TV_SEEK_SIZE / 2))
+            .accessibilityText('Audio: Unavailable').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+            .focusable(true)
           this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true, 'Subtitles: Off')
           this.tvIcon($r('app.media.player_queue'), (): void => {}, true, 'Playlist: 1 item')
           if (this.qualityLabel.length > 0) {
@@ -721,6 +742,7 @@ export struct PlayerChrome {
           }
           this.tvIcon($r('app.media.player_info'), this.onOpenInfo, true, 'Info and playback health')
           this.tvIcon($r('app.media.player_cast'), (): void => {}, true, 'Play on another device')
+          this.tvIcon($r('app.media.player_fullscreen'), (): void => {}, true, 'Enter fullscreen')
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)

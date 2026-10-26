@@ -397,7 +397,7 @@ struct Profiles {
         .colorFilter(tintFilter(tint))
       if (label.length > 0) {
         Text(label).fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68))
-          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68).letterSpacing((isTvMetrics() ? -0.107 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)).halfLeading(true)
+          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68).letterSpacing(((isTvMetrics() ? -0.107 : 0)) + (!isTvMetrics() ? -0.08 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -495,7 +495,7 @@ struct Profiles {
         
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE)).lineHeight(webLineHeight(this.pick(80.64, PHONE_HEADING_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
-        .letterSpacing((this.pick(-5.15, -2.77)) + (isTvMetrics() ? -0.633 : 0))
+        .letterSpacing(((this.pick(-5.15, -2.77)) + (isTvMetrics() ? -0.633 : 0)) + (!isTvMetrics() ? -0.08 : 0))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
         .margin({ top: this.pick(-8, -0.75), bottom: this.pick(4.2, 0), left: isTvMetrics() ? 9.1 : PHONE_HEADING_LEFT }) // TV: the 110 vp line overflows its 77 vp frame; web's run starts 4.2 higher
@@ -522,7 +522,7 @@ struct Profiles {
             Text(profile.display_name).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
               .fontSize(this.pick(17.28, 13.12)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
               .fontWeight(FontWeight.Bold)
-              .letterSpacing((this.pick(0.35, 0.28)) + (isTvMetrics() ? -0.125 : 0))
+              .letterSpacing(((this.pick(0.35, 0.28)) + (isTvMetrics() ? -0.125 : 0)) + (!isTvMetrics() ? -0.114 : 0))
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: this.pick(16.78, profile.is_current ? 13.28 : 10.8) })  // web phone: the lifted current avatar pulls its name up
             Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
@@ -578,7 +578,7 @@ struct Profiles {
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
           Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
-            .fontSize(this.pick(17.28, 13.12)).letterSpacing((isTvMetrics() ? -0.136 : 0)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
+            .fontSize(this.pick(17.28, 13.12)).letterSpacing(((isTvMetrics() ? -0.136 : 0)) + (!isTvMetrics() ? -0.109 : 0)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: this.pick(10.85, 9.35) })

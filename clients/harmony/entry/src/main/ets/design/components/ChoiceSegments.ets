@@ -126,7 +126,7 @@ export struct ChoiceSegments {
         Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
           .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
-          .letterSpacing((tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02)) + (isTvMetrics() ? 0.11 : 0))
+          .letterSpacing(((tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02)) + (isTvMetrics() ? 0.11 : 0)) + (!isTvMetrics() ? -0.179 : 0))
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(activeColors().inkMuted))
           
@@ -138,7 +138,7 @@ export struct ChoiceSegments {
           Column({ space: isTvMetrics() ? 7.4 : 6.85 }) {
             this.viewShapes(choice.value)
             Text(capitalWords(choice.label)).fontFamily(nunito(900))
-              .letterSpacing((0.4) + (isTvMetrics() ? -0.465 : 0)) // web's label run is wider than ArkUI lays it out
+              .letterSpacing(((0.4) + (isTvMetrics() ? -0.465 : 0)) + (!isTvMetrics() ? -0.468 : 0)) // web's label run is wider than ArkUI lays it out
               .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bolder)
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
@@ -156,14 +156,14 @@ export struct ChoiceSegments {
           .onClick(() => {
             this.onChoose(choice.value);
           })
-         } else if (this.large) {
+         } else {
           // web: the choice is a button (fill, border, radius) holding a span with the label, two elements
           Row() {
-            Text(capitalWords(choice.label)).fontFamily(isTvMetrics() ? nunito(900) : nunito(680))
+            Text(capitalWords(choice.label)).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
               .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)
               .lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bold)
-              .letterSpacing((isTvMetrics() ? 0.43 : 0) + (isTvMetrics() ? -0.247 : 0)) // web's run is about 3 wider than ArkUI lays it out
+              .letterSpacing((this.large && isTvMetrics() ? 0.43 : 0) + (isTvMetrics() ? -0.247 : 0)) // web's run is about 3 wider than ArkUI lays it out
               .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
           }
           .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
@@ -179,25 +179,6 @@ export struct ChoiceSegments {
           .onClick(() => {
             this.onChoose(choice.value);
           })
-         } else {
-          Text((choice.icon !== undefined && choice.icon.length > 0 ? choice.icon + '\n' : '') + capitalWords(choice.label)).fontFamily(isTvMetrics() ? (this.large ? nunito(900) : nunitoAt(700, tv(CHOICE_LABEL_SIZE))) : nunito(680))
-            .accessibilityText(choice.label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
-            .width(tv(this.choiceWidth()))
-            .height(isTvMetrics() ? tv(CHOICE_HEIGHT) : TOUCH_CHOICE_HEIGHT)
-            .textAlign(TextAlign.Center)
-            .fontSize(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(CHOICE_LABEL_SIZE) : TOUCH_CHOICE_LABEL_SIZE)).halfLeading(true)
-            .fontWeight(FontWeight.Bold)
-            .letterSpacing(this.large && isTvMetrics() ? 0.43 : 0) // web's run is about 3 wider than ArkUI lays it out
-            .fontColor(toResourceColor(choice.value === this.selected ? activeColors().bg : activeColors().inkMuted))
-            .backgroundColor(choice.value === this.selected ? toResourceColor(activeColors().ink) :
-              toResourceColorWithAlpha(activeColors().surfaceSoft, INACTIVE_BG_ALPHA))
-            .borderRadius(tv(CHOICE_RADIUS))
-            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.083) })
-            .scale(!isTvMetrics() && choice.value === this.selected ? { x: 1.025, y: 1.025 } : { x: 1, y: 1 })
-            .focusable(true)
-            .onClick(() => {
-              this.onChoose(choice.value);
-            })
          }
         }, (choice: Choice): string => choice.value)
       }
