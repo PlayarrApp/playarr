@@ -177,6 +177,11 @@ namespace Playarr.Xbox.Views
                 {
                     MoveFrom(PlayPauseButton, direction);
                 }
+                else
+                {
+                    // OK on the video plays or pauses it and puts focus on play/pause (the web's check reads "Play" after it).
+                    PlayPauseButton_Click(PlayPauseButton, new RoutedEventArgs());
+                }
 
                 e.Handled = true;
                 return;
@@ -555,7 +560,7 @@ namespace Playarr.Xbox.Views
             _chromePinnedForTest = false;
             _viewModel?.Player.Play();
             ShowChrome();
-            PlayPauseButton.Focus(FocusState.Programmatic);
+            VideoSurface.Focus(FocusState.Programmatic); // the web hands focus to the video once it plays
             UpdateChrome();
         }
 
