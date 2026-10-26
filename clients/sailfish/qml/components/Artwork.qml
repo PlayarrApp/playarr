@@ -60,7 +60,9 @@ Item {
             mipmap: true
         }
     }
-    Rectangle { anchors.fill: parent; radius: root.radius; color: Tokens.surfaceSoft }   // the web's art container, under the picture
-    Rectangle { id: mask; anchors.fill: parent; radius: root.radius; visible: false }
-    OpacityMask { anchors.fill: parent; source: art; maskSource: mask; property string parityRole: img.status === Image.Ready ? "image" : ""; property var radiusSource: root.roundImage ? mask : null }
+    Rectangle {   // the web's art container, with the picture inside it
+        anchors.fill: parent; radius: root.radius; color: Tokens.surfaceSoft
+        Rectangle { id: mask; anchors.fill: parent; radius: root.radius; visible: false }
+        OpacityMask { anchors.fill: parent; source: art; maskSource: mask; property string parityRole: img.status === Image.Ready ? "image" : ""; property var radiusSource: root.roundImage ? mask : null }
+    }
 }

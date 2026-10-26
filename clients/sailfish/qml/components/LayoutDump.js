@@ -235,7 +235,15 @@ function dump(root, u, weights, metrics, log) {
         }
         return null
     }
-    function walk(item, opAcc, shown, inMask) {
+    // A composited layer that holds a picture (layer.enabled with an Image child, e.g. key art with its tint) is one drawn bitmap: flat tints
+    // inside it belong to the picture and are neither elements nor backdrop colours.
+    function holdsPicture(item) {
+        if (item.layer === undefined || item.layer.enabled !== true) return false
+        var k = item.children
+        for (var i = 0; i < k.length; ++i) if (k[i].source !== undefined && k[i].paintedWidth !== undefined) return true
+        return false
+    }
+    function walk(item, opAcc, shown, inMask, inPicture) {
         if (!item || (!item.visible && shown !== true) || item.layoutSkipTree === true) return
         var op = opAcc * item.opacity
         if (op <= 0.001) return
@@ -274,11 +282,12 @@ function dump(root, u, weights, metrics, log) {
                 var stops = item.gradient ? gradientStops(item.gradient) : null
                 var filled = item.color.a > 0 && !item.gradient
                 var mySeq = ++seq
-                if (filled) fills.push({ polygon: polygon, full: mappedRect(item, root, 0, 0, w, h), c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
-                if (filled && !stops && item.color.a * op >= 0.5) painters.push({ poly: polygon, seq: mySeq, item: item })
+                var pic = inPicture && !stops
+                if (filled && !pic) fills.push({ polygon: polygon, full: mappedRect(item, root, 0, 0, w, h), c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
+                if (filled && !pic && !stops && item.color.a * op >= 0.5) painters.push({ poly: polygon, seq: mySeq, item: item })
                 else if (stops) filled = true   // a gradient is a visible fill, but like the web's background-image it is not a backdrop colour
                 var bordered = drawnBorder(item.border)
-                if ((filled || bordered) && item.layoutNoEmit !== true) {
+                if ((filled || bordered) && !pic && item.layoutNoEmit !== true) {
                     var center = polygonCenter(polygon)
                     var rc = { text: "", role: item.parityRole || "container", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(center.x, center.y), fontSize: null, fontWeight: null, _at: [center.x, center.y], _box: mappedRect(item, root, 0, 0, w, h) }
                     var rectangleRadiusScale = uniformRadiusScale(item, root)
@@ -342,14 +351,14 @@ function dump(root, u, weights, metrics, log) {
         var order = []
         for (var oi = 0; oi < kids.length; ++oi) order.push(oi)
         order.sort(function (a, b) { return (kids[a].z - kids[b].z) || (a - b) })
-        for (var i = 0; i < order.length; ++i) walk(kids[order[i]], op, false, inMask)
-        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, true)
+        for (var i = 0; i < order.length; ++i) walk(kids[order[i]], op, false, inMask, inPicture || holdsPicture(item))
+        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, true, inPicture)
         // an element's background includes its own fill and its children's: settle it once the subtree has been painted
         // development aid: the QML type of each element (the suite driver drops it unless asked to keep it)
         for (var k = mark; k < out.length; ++k) if (out[k]._src === undefined) out[k]._src = String(item).replace(/\(0x.*$/, "")
         for (var j = mark; j < out.length; ++j) if (out[j]._at) { out[j].background = bgAt(out[j]._at[0], out[j]._at[1], fmark, out[j]._box); delete out[j]._at; delete out[j]._box }
     }
-    walk(root, 1, false, false)
+    walk(root, 1, false, false, false)
     // Elements covered by something painted later (opaque enough, not inside the element) are not visible: sample the visible box at 3 x 3 points.
     var kept = []
     for (var e = 0; e < out.length; ++e) {
