@@ -602,8 +602,9 @@ struct WMRailCard: View {
                         .frame(height: 3)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .parityBox("image", background: WM.artFill, radius: 10)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .parityBox("image", background: WM.artFill)
+                .parityBox("container", background: WM.artFill, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
@@ -614,6 +615,7 @@ struct WMRailCard: View {
         }
         .frame(height: art + 24.7, alignment: .top)
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
+        .parityBox("link", name: "\(work.title) \(work.singularKindYearLabel)", radius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(work.title) \(work.singularKindYearLabel)")
     }
@@ -684,8 +686,9 @@ struct WMLibraryCard: View {
             PlayarrArtwork(work: work, kind: cover ? .poster : .backdrop, apiClient: apiClient)
                 .frame(width: width, height: art)
                 .background(WM.artFill)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .parityBox("image", background: WM.artFill, radius: 10)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .parityBox("image", background: WM.artFill)
+                .parityBox("container", background: WM.artFill, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
                     if unseen { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
@@ -695,6 +698,7 @@ struct WMLibraryCard: View {
         }
         .frame(height: art + 24.7, alignment: .top)
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
+        .parityBox("link", name: "Open \(work.title)", radius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Open \(work.title)")
     }
@@ -712,6 +716,8 @@ struct WMSearchCard: View {
                 .frame(width: 173, height: 97.3)
                 .background(WM.chip)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .parityBox("image", background: WM.chip)
+                .parityBox("container", background: WM.chip, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }
                 .overlay { if focused { WMFocusRing(width: 173, height: 97.3, cornerRadius: 8) } }
