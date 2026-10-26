@@ -424,8 +424,8 @@ private struct AuthenticatedPlayarrShell: View {
         }
         .background(PlayarrStyle.background.ignoresSafeArea().parityBox("container", background: PlayarrStyle.background))
         // The shell colour, then the page colour every screen paints over it (each page draws WM.page full-bleed).
-        .parityFill(PlayarrStyle.background)
         .parityFill(PlayarrStyle.surface)
+        .parityFill(PlayarrStyle.background)
         .environment(visibleDetailRoutes)
         #if DEBUG
         .overlay(alignment: .topLeading) {
