@@ -487,7 +487,7 @@ function CopyColumn(props: {
       </View>
       {props.subtitle ? (
         <View style={{marginTop: u(19.5), width: u(304)}}>
-          <T size={21.12} weight={570} ls={-0.7392} lh={24.3} color={colour.inkSoft} lines={1}>
+          <T heading size={21.12} weight={570} ls={-0.7392} lh={24.3} color={colour.inkSoft} lines={1}>
             {props.subtitle}
           </T>
         </View>
@@ -565,7 +565,7 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
               <Icon name="play" size={u(10.1184)} color={glyphColour} />
             </View>
           ) : (
-            <T size={12.8064} weight={400} color={glyphColour}>
+            <T size={12.8064} weight={400} dy={-2} color={glyphColour}>
               {glyph}
             </T>
           )}

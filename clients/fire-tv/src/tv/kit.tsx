@@ -189,7 +189,7 @@ export function balanceLines(tokens: readonly string[], widths: readonly number[
   return ends;
 }
 
-export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout'> & {width: number}): React.ReactElement {
+export function BalancedT({width, children, heading = true, ...text}: Omit<TProps, 'onTextLayout'> & {width: number}): React.ReactElement {
   const group = React.useRef(`bt${Math.random().toString(36).slice(2)}`).current;
   const source = typeof children === 'string' ? children : '';
   const tokens = React.useMemo(() => titleTokens(source), [source]);
@@ -211,7 +211,7 @@ export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout
           const line = tokens.slice(from, to).join('').trim();
           from = to;
           return (
-            <T key={from} heading {...text} group={group} lines={1} style={[text.style, {width: u(width * 2)}]}>
+            <T key={from} heading={heading} {...text} group={group} lines={1} style={[text.style, {width: u(width * 2)}]}>
               {line}
             </T>
           );
@@ -221,7 +221,7 @@ export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout
   }
   return (
     <View style={{width: u(width)}}>
-      <T heading {...text} group={group}>{children}</T>
+      <T heading={heading} {...text} group={group}>{children}</T>
       {tokens.length > 1 && !ready ? (
         <View pointerEvents="none" style={{position: 'absolute', opacity: 0, width: u(width * 4)}}>
           {probes.map((probe, index) => (

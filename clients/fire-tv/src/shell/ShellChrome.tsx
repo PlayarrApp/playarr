@@ -337,7 +337,7 @@ function ProfileChip({profileId, name, version, onPress, onNode, up, navCount = 
         {...lf()}
         style={[
           textRun(8, 700, {letterSpacing: 0.32, mono: true}),
-          {position: 'absolute', left: sw(GROUP_X), width: sw(78), textAlign: 'center', top: sw(1038), color: colour.ink, fontSize: sw(8)},
+          {position: 'absolute', left: sw(GROUP_X), width: sw(78), textAlign: 'center', top: sw(1036.5), color: colour.ink, fontSize: sw(8)},
         ]}
       >
         {`v${version}`}

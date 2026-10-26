@@ -267,7 +267,7 @@ export function AgendaDetails({item, locale, today, onOpen}: {item: CalendarItem
         {`${t(KIND_KEYS[first.media_kind])} · ${t(RELEASE_KEYS[first.release_type])}`}
       </T>
       <View style={{marginTop: u(25.9)}}>
-        <BalancedT key={itemTitle(item)} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
+        <BalancedT heading={false} key={itemTitle(item)} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
           {itemTitle(item)}
         </BalancedT>
       </View>

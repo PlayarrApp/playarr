@@ -271,6 +271,24 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
   // element with its own text: the glyph run takes the box's fill and radius. Boxes with a role, an image or more text stay boxes.
   const end = (i: number): number => first[i + 1] ?? out.length;
   const dropped = new Set<number>();
+  // A control whose single text child carries the control's own role and name (`T control`) is that text in a browser's tree: the
+  // box is then just a painted container.
+  hosts.forEach((h, i) => {
+    const props = h.fiber.memoizedProps ?? {};
+    if (!props.accessibilityRole || out[first[i]!] === undefined || end(i) - first[i]! < 1) return;
+    for (let j = i + 1; j < hosts.length; j++) {
+      let k = hosts[j]!.parent;
+      while (k > i) k = hosts[k]!.parent;
+      if (k !== i || end(j) - first[j]! < 1) continue;
+      const child = hosts[j]!.fiber.memoizedProps ?? {};
+      const run = out[first[j]!]!;
+      if (end(i) - first[i]! === 2 && String(hosts[j]!.fiber.type) === 'RCTText' && child.accessibilityRole === props.accessibilityRole && run.text.trim() === (typeof props.accessibilityLabel === 'string' ? props.accessibilityLabel.trim() : '')) {
+        out[first[i]!]!.role = 'container';
+        out[first[i]!]!.text = '';
+      }
+      break;
+    }
+  });
   hosts.forEach((h, i) => {
     const props = h.fiber.memoizedProps ?? {};
     const own = StyleSheet.flatten(props.style) ?? {};

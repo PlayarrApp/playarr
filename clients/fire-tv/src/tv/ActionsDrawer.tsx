@@ -93,14 +93,15 @@ export function ActionsDrawer({work, onClose, onOpen, onAddToPlaylist}: {work: W
         {
           key: 'actions',
           label: '',
-          height: ROWS_TOP + actions.length * ROW_PITCH + (error ? 40 : 0),
+          // The web's Download row sits between Play and Add to Playlist; this app has no downloads, so its slot stays empty.
+          height: ROWS_TOP + (actions.length + 1) * ROW_PITCH + (error ? 40 : 0),
           render: (top, reveal) => (
             <>
               {actions.map((action, index) => (
-                <ActionRow key={action.id} glyph={action.glyph} label={action.label} y={top + ROWS_TOP + index * ROW_PITCH} first={index === 0} onPress={action.onPress} onReveal={reveal} />
+                <ActionRow key={action.id} glyph={action.glyph} label={action.label} y={top + ROWS_TOP + (index > 0 ? index + 1 : index) * ROW_PITCH} first={index === 0} onPress={action.onPress} onReveal={reveal} />
               ))}
               {error ? (
-                <View style={{position: 'absolute', left: u(46), top: u(top + ROWS_TOP + actions.length * ROW_PITCH), width: u(268)}}>
+                <View style={{position: 'absolute', left: u(46), top: u(top + ROWS_TOP + (actions.length + 1) * ROW_PITCH), width: u(268)}}>
                   <T size={11} weight={600} color="#cf3157" lines={2}>
                     {error}
                   </T>
