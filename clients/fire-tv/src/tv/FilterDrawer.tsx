@@ -219,7 +219,7 @@ export function CloseButton({label, onPress, onFocused, x = 1826 - DRAWER_X, tak
         top: u(54),
         width: u(48),
         height: u(50),
-        borderRadius: 999,
+        borderRadius: u(24),
         borderWidth: 1,
         borderColor: mix(colour.line, 0.76),
         alignItems: 'center',
@@ -227,7 +227,7 @@ export function CloseButton({label, onPress, onFocused, x = 1826 - DRAWER_X, tak
         backgroundColor: colour.surfaceSoft,
       }}
     >
-      <T size={26.88} weight={720} lh={40.32} color={colour.ink} dy={-1}>
+      <T size={26.88} weight={720} lh={40.32} color={colour.ink}>
         {'×'}
       </T>
       {focused ? <FocusRing /> : null}
@@ -297,7 +297,7 @@ function Chip({chip, x, y, w, onReveal, focusOwner}: {chip: DrawerChip; x: numbe
         </View>
       ) : null}
       <View style={chip.icon ? undefined : {flexShrink: 1}}>
-        <T wrole={chip.icon ? undefined : 'button'} size={10.56} weight={chip.icon ? 900 : 680} lh={chip.icon ? 11.6 : 15.84} color={ink} style={chip.icon ? undefined : {textAlign: 'center'}}>
+        <T size={10.56} weight={chip.icon ? 900 : 680} lh={chip.icon ? 11.6 : 15.84} color={ink} style={chip.icon ? undefined : {textAlign: 'center'}}>
           {capitalise(chip.label)}
         </T>
       </View>

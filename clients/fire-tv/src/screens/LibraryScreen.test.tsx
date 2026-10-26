@@ -189,7 +189,7 @@ describe('LibraryScreen', () => {
     expect(firstReadyText.indexOf('45 min')).toBeLessThan(firstReadyText.indexOf('Catalog overview A.'));
 
     await act(async () => {
-      renderer.root.findByProps({accessibilityLabel: 'Test Movie B'}).props.onFocus({nativeEvent: {target: 1}});
+      renderer.root.findByProps({accessibilityLabel: 'Open Test Movie B'}).props.onFocus({nativeEvent: {target: 1}});
     });
     expect(allText(renderer)).toContain('Test Movie B');
     expect(allText(renderer)).toContain('2022');
@@ -223,7 +223,7 @@ describe('LibraryScreen', () => {
 
     const renderer = await renderLibrary(navigation, 'movie');
     await act(async () => {
-      renderer.root.findByProps({accessibilityLabel: 'The First Film'}).props.onPress();
+      renderer.root.findByProps({accessibilityLabel: 'Open The First Film'}).props.onPress();
     });
 
     expect(navigation.navigate).toHaveBeenCalledWith(ROUTES.workDetail, {workId: 'w1'});
@@ -237,7 +237,7 @@ describe('LibraryScreen', () => {
 
     const renderer = await renderLibrary(navigation, 'artist');
     await act(async () => {
-      renderer.root.findByProps({accessibilityLabel: 'A Band'}).props.onPress();
+      renderer.root.findByProps({accessibilityLabel: 'Open A Band'}).props.onPress();
     });
 
     expect(navigation.navigate).toHaveBeenCalledWith(ROUTES.musicDetail, {workId: 'a1'});

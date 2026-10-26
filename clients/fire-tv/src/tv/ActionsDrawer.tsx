@@ -13,7 +13,7 @@ import {FilterDrawer} from './FilterDrawer';
 import {FocusRing} from './FocusRing';
 import {T, u} from './kit';
 import {reportFocus} from '../debug/parityControl';
-import {lt, lx} from '../debug/layoutMarks';
+import {lx} from '../debug/layoutMarks';
 
 export interface Leaf {
   mediaFileId: string;
@@ -93,14 +93,15 @@ export function ActionsDrawer({work, onClose, onOpen, onAddToPlaylist}: {work: W
         {
           key: 'actions',
           label: '',
-          height: ROWS_TOP + actions.length * ROW_PITCH + (error ? 40 : 0),
+          // The web's Download row sits between Play and Add to Playlist; this app has no downloads, so its slot stays empty.
+          height: ROWS_TOP + (actions.length + 1) * ROW_PITCH + (error ? 40 : 0),
           render: (top, reveal) => (
             <>
               {actions.map((action, index) => (
-                <ActionRow key={action.id} glyph={action.glyph} label={action.label} y={top + ROWS_TOP + index * ROW_PITCH} first={index === 0} onPress={action.onPress} onReveal={reveal} />
+                <ActionRow key={action.id} glyph={action.glyph} label={action.label} y={top + ROWS_TOP + (index > 0 ? index + 1 : index) * ROW_PITCH} first={index === 0} onPress={action.onPress} onReveal={reveal} />
               ))}
               {error ? (
-                <View style={{position: 'absolute', left: u(46), top: u(top + ROWS_TOP + actions.length * ROW_PITCH), width: u(268)}}>
+                <View style={{position: 'absolute', left: u(46), top: u(top + ROWS_TOP + (actions.length + 1) * ROW_PITCH), width: u(268)}}>
                   <T size={11} weight={600} color="#cf3157" lines={2}>
                     {error}
                   </T>
@@ -135,7 +136,7 @@ function ActionRow({glyph, label, y, first, onPress, onReveal}: {glyph: string; 
       <View style={{width: u(42)}}>
         {glyph === '▶' ? (
           // Vega draws U+25B6 as a colour emoji; a drawn triangle keeps web's pink text glyph.
-          <View {...lt('▶', 19.52, 400, '#cf3157')} style={{width: u(15.02), height: u(27), justifyContent: 'center'}}>
+          <View style={{width: u(15.02), height: u(27), justifyContent: 'center'}}>
             <View style={{width: 0, height: 0, marginLeft: u(1), borderTopWidth: u(8), borderBottomWidth: u(8), borderLeftWidth: u(13), borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#cf3157'}} />
           </View>
         ) : (

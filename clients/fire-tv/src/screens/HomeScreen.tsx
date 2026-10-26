@@ -76,11 +76,12 @@ export function homeLayout(view: 'thumbnail' | 'cover', size: ArtworkSize): Home
   return {railPitch: cardH + 138.7, firstHeadingY: LIBRARY_RAIL_TOP, centredHeadingY: 402 - (cardH - 227.2) / 2, cardPitch: cardW + HOME_CARD_GAP, cardW, artH, cardH, cover: view === 'cover'};
 }
 /**
- * The web snaps each card to a whole pixel from its fractional position (x = 783.36 + n * pitch); the device's row layout
- * rounds every card's width and margin separately and drifts by a pixel per card, so cards are placed one by one instead.
+ * The web snaps each card to a whole pixel from its fractional position (x = 783.36 + n * pitch). The device rounds every view's
+ * offset from its parent separately, so a card sits at the (rounded) rail origin plus a whole-pixel offset: the offset is the
+ * card's target pixel less that origin.
  */
 function cardLeft(index: number, pitch: number): number {
-  return Math.round(RAIL_X + index * pitch) - RAIL_X;
+  return Math.round(RAIL_X + index * pitch) - (Math.round(729.6) + Math.round(RAIL_X - 729.6));
 }
 const RAIL_X = 729.6 + RAIL_GUTTER;
 
@@ -363,11 +364,11 @@ function RailHeading({title, x, y, active, colour}: {title: string; x: number; y
       style={{
         position: 'absolute',
         left: u(x),
-        top: u(y),
+        top: u(y + 3.1),
         transform: active ? [{translateX: width * 0.08}, {translateY: -1}, {scale: 1.16}] : [],
       }}
     >
-      <T heading size={17.664} weight={610} ls={-0.53} lh={26.5} dy={3.1} color={colour}>
+      <T heading size={17.664} weight={610} ls={-0.53} lh={26.5} color={colour}>
         {title}
       </T>
     </View>
@@ -542,21 +543,21 @@ const HomeCard = memo(function HomeCard(props: {
       onPress={onPress}
       onLongPress={onLongPress}
       // The web link ends under the title line; the meta line below it hangs out of the box.
-      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(layout.cardW), height: u(layout.artH + 11.25 + 17.9)}}
+      style={{position: 'absolute', top: 0, left: u(cardLeft(index, layout.cardPitch)), width: u(Math.floor(layout.cardW)), height: u(layout.artH + 11.25 + 17.9)}}
     >
-      <MediaFocus variant="home" focused={selected} width={layout.cardW} height={layout.artH} radius={12.48}>
+      <MediaFocus variant="home" focused={selected} width={Math.floor(layout.cardW)} height={layout.artH} radius={12.48}>
         <View style={{width: '100%', height: '100%', backgroundColor: colour.surfaceSoft}}>
           <ArtworkImage uri={uri} accessToken={token} style={{width: '100%', height: '100%'}} resizeMode="cover" />
           <WatchState progress={progress} showUnwatched={progressReady} />
         </View>
       </MediaFocus>
-      <View style={{marginTop: u(11.25)}}>
+      <View style={{marginTop: u(11.25), paddingHorizontal: u(1.9)}}>
         <CardCaption focused={selected} variant="home" artH={layout.artH} gap={11.25}>
-          <T size={11.904} weight={610} ls={-0.17856} color={selected ? focusInk(scheme) : colour.ink} lh={17.9} lines={1} dy={-1}>
+          <T size={11.904} weight={610} ls={-0.17856} color={selected ? focusInk(scheme) : colour.ink} lh={17.9} lines={1}>
             {title}
           </T>
-          <View style={{marginTop: u(2.5)}}>
-            <T size={8.832} weight={400} color={selected ? focusInk(scheme) : colour.inkMuted} lh={11.5} lines={1} dy={-1}>
+          <View style={{marginTop: u(4)}}>
+            <T size={8.832} weight={400} color={selected ? focusInk(scheme) : colour.inkMuted} lh={11.5} lines={1}>
               {subtitle}
             </T>
           </View>

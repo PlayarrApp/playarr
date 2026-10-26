@@ -64,7 +64,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, StyleSheet, View} from 'react-native';
 import {GestureHandlerRootView} from '@amazon-devices/react-native-gesture-handler';
 import {SafeAreaProvider} from '@amazon-devices/react-native-safe-area-context';
-import {createNavigationContainerRef, NavigationContainer} from '@amazon-devices/react-navigation__native';
+import {createNavigationContainerRef, DefaultTheme, NavigationContainer} from '@amazon-devices/react-navigation__native';
 import {ParityControlHost} from './debug/ParityControlHost';
 import {PARITY_CONTROL} from './debug/parityControl';
 import {hydrate} from './bootstrap/hydrate';
@@ -106,6 +106,8 @@ function LoadingScreen(): JSX.Element {
 }
 
 const navigationRef = createNavigationContainerRef();
+/** Screens paint their own backgrounds: the navigator's default light scene fill would sit under every page. */
+const NAVIGATION_THEME = {...DefaultTheme, colors: {...DefaultTheme.colors, background: 'transparent'}};
 
 export default function App(): JSX.Element {
   // Synchronising with an external system (AsyncStorage, via the
@@ -160,7 +162,7 @@ export default function App(): JSX.Element {
           <ApiClientProvider>
             <PlayerHandleContext.Provider value={playerRef}>
               <View style={playerUp ? styles.hidden : styles.fill}>
-                <NavigationContainer ref={navigationRef}>
+                <NavigationContainer ref={navigationRef} theme={NAVIGATION_THEME}>
                   {PARITY_CONTROL ? <ParityControlHost navRef={navigationRef} playerRef={playerRef} /> : null}
                   <ThemeBoundary>
                     <RootNavigator />
