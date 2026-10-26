@@ -896,7 +896,7 @@ else:
         selection, absent = phone_core_manifest_selection(requested, captured, SKIP_PLAYER)
         missing = list(dict.fromkeys(MISSING + absent))
         manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": (int(os.environ["PARITY_PR"]) if os.environ.get("PARITY_PR", "").isdigit() else None), "server": "static server",
-                    "theme": THEME, "missing": missing, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "stage_origin": list(STAGE_ORIGIN), "theme": THEME, "missing": missing, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     "screen_selection": {**selection, "captured": {THEME: selection["captured"]}}}
         if PLAYER_FIXTURE_SOURCE is not None:
             manifest["screen_selection"]["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
