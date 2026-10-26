@@ -410,9 +410,11 @@ namespace Playarr.Xbox.Views
                         role,
                         rect = new { x = Math.Round(r.X * scale, 1), y = Math.Round(r.Y * scale, 1), w = Math.Round(r.Width * scale, 1), h = Math.Round(r.Height * scale, 1) },
                         color = Hex(block.Foreground),
-                        background = BackgroundBehind(block),
+                        background = BackgroundBehind(block, includeSelf: false),
                         fontSize = Math.Round(block.FontSize, 2),
                         fontWeight = WebFont.WeightOf(block),
+                        // A chip's label is the web element that draws the chip: it carries the chip's corner radius.
+                        radius = VisualTreeHelper.GetParent(block) is Border { CornerRadius: { TopLeft: > 0 } } chip && ReferenceEquals(chip.Child, block) ? (double?)Math.Round(chip.CornerRadius.TopLeft, 2) : null,
                     });
                 }
             }

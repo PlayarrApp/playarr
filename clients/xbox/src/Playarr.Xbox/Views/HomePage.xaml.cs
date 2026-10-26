@@ -245,8 +245,8 @@ namespace Playarr.Xbox.Views
                 list.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, cover: Appearance.HomeCover));
             }
 
-            var section = new StackPanel { Spacing = 37, Margin = new Thickness(53, 0, 0, 0) };
-            section.Children.Add(LayoutExport.Tag(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"], FontSize = 17.66, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), LineHeight = 24, Margin = new Thickness(0, 0, 0, 2), LineStackingStrategy = Windows.UI.Xaml.LineStackingStrategy.BlockLineHeight }, "heading"));
+            var section = new StackPanel { Spacing = 34.65, Margin = new Thickness(53, 0, 0, 0) };
+            section.Children.Add(LayoutExport.Tag(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"], FontSize = 17.66, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), CharacterSpacing = -31, LineHeight = 24, Margin = new Thickness(0, 0, 0, 2), LineStackingStrategy = Windows.UI.Xaml.LineStackingStrategy.BlockLineHeight }, "heading"));
             section.Children.Add(list);
             return section;
         }

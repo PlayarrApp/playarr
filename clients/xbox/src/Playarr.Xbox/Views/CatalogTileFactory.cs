@@ -278,7 +278,7 @@ namespace Playarr.Xbox.Views
                     Width = 13,
                     Height = 13,
                     CornerRadius = new CornerRadius(6.5),
-                    Margin = new Thickness(0, 10, 11, 0),
+                    Margin = new Thickness(0, 10.55, 10.54, 0),
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Top,
                     Background = (Brush)Application.Current.Resources["PlayarrBrand"],

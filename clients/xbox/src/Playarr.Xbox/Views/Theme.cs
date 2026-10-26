@@ -37,6 +37,9 @@ namespace Playarr.Xbox.Views
             // The hero text on the focused key art, and the caption of a focused card.
             ("PlayarrInkHero", "#DAD6D7", "#4F3F3B"),
             ("PlayarrFocusInk", "#FFFFFF", "#000000"),
+            // The strong pill (Open series) and the TODAY chip ink.
+            ("PlayarrPillFill", "#DFDCDD", "#4D4248"),
+            ("PlayarrPillInk", "#211D21", "#FFFFFF"),
             ("PlayarrLine", "#1CDFDCDD", "#24382621"),
             ("PlayarrLineStrong", "#3BDFDCDD", "#47382621"),
             ("PlayarrBrandInk", "#EAA6B6", "#821E36"),

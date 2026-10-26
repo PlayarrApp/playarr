@@ -30,6 +30,7 @@ namespace Playarr.Xbox.Views
             Background = Theme.PageStage();
             _header = Ui.PageHeader(Root, Lang.T("settings.index.title"), "APPEARANCE", () => App.Navigation.GoBack());
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(_header.Back, "Settings");
+            LayoutExport.SetRole(_header.Back, "button");
             _viewModel = new SettingsViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerConnection.ServerAddress;
             BuildSections();
@@ -69,7 +70,7 @@ namespace Playarr.Xbox.Views
                 var row = new Grid();
                 row.Children.Add(new TextBlock { Text = def.Number, FontSize = 9.92, FontFamily = WebFont.Face(760), FontWeight = WebFont.Weight(760), LineHeight = 14, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Margin = new Thickness(0, -23.4, 0, 0), VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(new TextBlock { Text = def.Title, FontSize = 29.6, FontFamily = WebFont.Face(480), FontWeight = WebFont.Weight(480), LineHeight = 40, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Margin = new Thickness(60, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-                var arrow = new TextBlock { Text = "\u2192", FontSize = 20.8, LineHeight = 28, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+                var arrow = new TextBlock { Text = "\u2192", FontSize = 20.8, LineHeight = 28, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInkMuted"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, CharacterSpacing = 135 };
                 row.Children.Add(arrow);
                 def.Arrow = arrow;
                 def.Tab = new Button

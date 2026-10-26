@@ -182,19 +182,19 @@ namespace Playarr.Xbox.Views
         }
 
         /// <summary>The web's gear (Settings) and Sign out pills under the selected profile.</summary>
-        private StackPanel BuildActions()
+        private StackPanel BuildActions(string profileName)
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8.8, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0), Visibility = Visibility.Collapsed };
             var gear = ChromeButton(Glyph("\uE713", 18, "PlayarrBrandInk"), 44, 44, 22);
             gear.Click += (s, e) => App.Navigation.Navigate(typeof(SettingsPage));
-            LayoutExport.Tag(gear, "button", (ShellChrome.ProfileName.Length == 0 ? "Profile" : ShellChrome.ProfileName) + " settings");
+            LayoutExport.Tag(gear, "button", profileName + " settings");
             LayoutExport.SetSplit(gear, true);
             var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7.2, Padding = new Thickness(0) };
             label.Children.Add(Glyph("\uE7E8", 14, "PlayarrInkSoft", 18));
             label.Children.Add(new TextBlock { Text = "Sign out", FontSize = 10.75, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"], VerticalAlignment = VerticalAlignment.Center });
             var signOut = ChromeButton(label, 101, 44, 22);
             signOut.Click += (s, e) => SignOut();
-            LayoutExport.Tag(signOut, "button", "Sign out " + (ShellChrome.ProfileName.Length == 0 ? "Profile" : ShellChrome.ProfileName));
+            LayoutExport.Tag(signOut, "button", "Sign out " + profileName);
             LayoutExport.SetSplit(signOut, true);
             row.Children.Add(gear);
             row.Children.Add(signOut);
@@ -275,7 +275,7 @@ namespace Playarr.Xbox.Views
                 Text = status,
                 FontSize = 9.41,
                 FontFamily = WebFont.Face(690), FontWeight = WebFont.Weight(690),
-                CharacterSpacing = 60,
+                CharacterSpacing = 43,
                 Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"],
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Margin = new Thickness(0, 10.72, 0, 0),
@@ -307,7 +307,7 @@ namespace Playarr.Xbox.Views
             StackPanel? actions = null;
             if (withActions)
             {
-                actions = BuildActions();
+                actions = BuildActions(name);
                 column.Children.Add(actions);
             }
 
