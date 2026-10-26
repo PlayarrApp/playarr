@@ -768,6 +768,7 @@ struct TVHomeView: View {
     private func liveHeroBackdrop(_ hero: Work?, wide: Bool = false) -> some View {
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             if let hero {
                 TVKeyArt(url: imageURL(for: hero, prefer: .backdrop, width: wide ? 1920 : nil))
             }
@@ -1021,24 +1022,27 @@ struct TVWebHomeCard: View {
             ZStack(alignment: .topTrailing) {
                 TVWorkArt(work: work, apiClient: apiClient, posterFirst: cover)
                     .frame(width: artWidth, height: artHeight)
-                    .parityBox("image", radius: 12.48, fill: DesignTokens.Stage.surfaceSoft)
+                    .parityBox("image", fill: DesignTokens.Stage.surfaceSoft)
+                    .parityBox("container", radius: 12.48, fill: DesignTokens.Stage.surfaceSoft)
                     .overlay(alignment: .bottomLeading) {
                         if let progress {
                             ZStack(alignment: .leading) {
                                 Color.white.opacity(0.2)
                                 DesignTokens.Color.brandPrimary.frame(width: max(3, artWidth * min(1, progress)))
+                                    .parityBox("container", fill: DesignTokens.Color.brandPrimary)
                             }
                             .frame(height: 3)
+                            .parityBox("img", fill: DesignTokens.Stage.surfaceSoft)
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12.48, style: .continuous))
                 if progress == nil {
                     Circle()
                         .fill(DesignTokens.Color.brandPrimary)
-                        .frame(width: 11.6, height: 11.6)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 1.6)) // web: the disc has a white ring (13.2 pt drawn)
+                        .frame(width: 13, height: 13)
+                        .overlay(Circle().strokeBorder(Color.white, lineWidth: 1.6)) // web: a 13 pt disc, its white ring inside the box
                         .parityBox("img", radius: 50, fill: DesignTokens.Color.brandPrimary)
-                        .padding(11.5)
+                        .padding(10.54)
                 }
             }
             .background(
@@ -1048,14 +1052,13 @@ struct TVWebHomeCard: View {
                     .shadow(color: Self.shadow.opacity(focused ? 0.22 : 0.10), radius: focused ? 11 : 4.5, y: focused ? 11 : 3)
             )
             .modifier(TVCardFocusGlow(focused: focused, cornerRadius: 12.48))
-            .parityTransformScope(scale: focused ? 1.025 : 1, lift: focused ? -6 : 0)
             .scaleEffect(focused ? 1.025 : 1)
             Text(work.title)
                 .font(TVTheme.font(size: 11.904, css: 610))
                 .tracking(-0.18)
-                .foregroundStyle(focused ? Color.white : DesignTokens.Color.textPrimary) // web: the focused card's text is white
+                .foregroundStyle(focused ? Color.white : DesignTokens.Color.textPrimary)
+                .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: focused ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
                 .lineLimit(1)
-                .parityLayout(text: work.title, size: 11.904, weight: Int(610), color: focused ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18)
                 .frame(width: artWidth - 1.91, height: 17.9, alignment: .leading)
                 .padding(.leading, 1.91) // web: the text sits 1.91 pt inside the card
                 .frame(width: artWidth, alignment: .leading)
@@ -1071,7 +1074,6 @@ struct TVWebHomeCard: View {
                 .padding(.top, 3.6)
         }
         .background(alignment: .top) { Color.clear.frame(width: artWidth, height: artHeight + 29.36).parityBox("link", text: Self.accessibleName(work), radius: 0, fill: DesignTokens.Stage.surface) }
-        .parityTransformScope(scale: 1, lift: focused ? -6 : 0)
         .offset(y: focused ? -6 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22), value: focused)
     }
@@ -1145,7 +1147,7 @@ struct TVHomeHeroCopy: View {
                 Text(meta)
                     .font(TVTheme.font(size: 12.864, css: 600))
                     .foregroundStyle(DesignTokens.Color.textPrimary.opacity(0.86))
-                    .parityLayout(text: meta, size: 12.864, weight: Int(600))
+                    .parityLayout(text: meta, size: 12.864, weight: Int(600), color: DesignTokens.Color.textPrimary.opacity(0.86))
                     .placed(x: 153.6, y: metaY, h: 18)
             }
             if let overview = work.overview, !overview.isEmpty {
@@ -1153,7 +1155,7 @@ struct TVHomeHeroCopy: View {
                     .font(TVTheme.font(size: 12.864, css: 600))
                     .foregroundStyle(DesignTokens.Color.textPrimary.opacity(0.86))
                     .lineLimit(5)
-                    .parityLayout(text: overview, size: 12.864, weight: Int(600))
+                    .parityLayout(text: overview, size: 12.864, weight: Int(600), color: DesignTokens.Color.textPrimary.opacity(0.86))
                     .frame(width: 336, alignment: .topLeading)
                     .placed(x: 153.6, y: overviewY, w: 336, h: 101.6, alignment: .topLeading)
             }
@@ -1296,6 +1298,7 @@ struct TVSearchView: View {
         ZStack(alignment: .topLeading) {
             // `.tv-search` uses surface (#1b181b), not pure stage base.
             DesignTokens.Color.backgroundElevated.ignoresSafeArea()
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             if let viewModel, let work = selectedWork(viewModel) {
                 TVKeyArt(url: searchArtURL(work))
             }
@@ -1411,15 +1414,21 @@ struct TVSearchView: View {
                 )
                 .shadow(color: DesignTokens.Color.brandPrimary.opacity(frozen ? 0.18 : 0), radius: 8)
                 .frame(width: 590, height: 76)
+                .parityBox("search", radius: 38, fill: DesignTokens.Stage.searchField)
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 18, weight: .regular))
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .placed(x: 28, y: 26, w: 24, h: 24)
+                .frame(width: 24, height: 24)
+                .parityBox("image")
+                .placed(x: 25, y: 26, w: 24, h: 24)
+            Color.clear.frame(width: 506, height: 60)
+                .parityBox("textbox", text: "Search your libraries and playlists")
+                .placed(x: 62, y: 8, w: 506, h: 60)
             if frozen {
                 Text(hasQuery ? query.wrappedValue : "Search your libraries and playlists")
                     .font(TVTheme.font(size: 17, weight: .medium))
                     .foregroundStyle(hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                    .parityLayout(text: hasQuery ? query.wrappedValue : "Search your libraries and playlists", size: 17, weight: Int(TVTheme.cssWeight(.medium)))
+                    .parityLayout(text: hasQuery ? query.wrappedValue : "Search your libraries and playlists", size: 17, weight: Int(TVTheme.cssWeight(.medium)), color: hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
                     .placed(x: 66, y: 0, w: 480, h: 76)
             } else {
                 TextField("Search your libraries and playlists", text: query)
@@ -1476,7 +1485,7 @@ struct TVSearchView: View {
                     .font(TVTheme.font(size: 13.824, css: 600))
                     .foregroundStyle(soft)
                     .lineLimit(4)
-                    .parityLayout(text: overview, size: 13.824, weight: Int(600))
+                    .parityLayout(text: overview, size: 13.824, weight: Int(600), color: soft)
                     .frame(width: 336, alignment: .topLeading)
                     .placed(x: 153.6, y: metaY + 19.6 + 21.6, w: 336, h: 87.4, alignment: .topLeading)
             }
@@ -1599,13 +1608,16 @@ struct TVSearchView: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 36, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.brandPrimary.opacity(0.78))
+                    .frame(width: 54, height: 36)
+                    .parityBox("image")
             }
             .frame(width: art, height: art)
+            .parityBox("container", radius: 66, fill: DesignTokens.Stage.emptyBadge)
             Text("Start typing to search.")
-                .font(TVTheme.font(size: 17, weight: .semibold))
+                .font(TVTheme.font(size: 16.9, css: 650))
                 .tracking(-0.3)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .parityLayout(text: "Start typing to search.", size: 17, weight: Int(TVTheme.cssWeight(.semibold)), color: DesignTokens.Color.textPrimary, tracking: -0.3)
+                .parityLayout(text: "Start typing to search.", size: 16.9, weight: 650, color: DesignTokens.Color.textPrimary, tracking: -0.3)
         }
         .placed(x: cx - art / 2, y: cy - art / 2)
     }
@@ -1909,10 +1921,10 @@ struct TVLibraryKindView: View {
             // native 3479 vs SPA 4996).
             // Wraps like the web heading (max-width 9ch), one 62.2 pt line box per line.
             TVHeroTitle(title: work.title)
-                .padding(.top, 29)
+                .padding(.top, 27.4)
             // SPA `.tv-preview-meta`: year then genres with soft separator.
             previewMeta(work)
-                .padding(.top, 26)
+                .padding(.top, 27.6)
                 .task(id: work.id) {
                     let detail = try? await environment.apiClient.fetchWork(id: work.id)
                     previewRuntime = (work.id, TVWebFormat.runtime(ms: detail?.runtimeMs))
@@ -1942,17 +1954,17 @@ struct TVLibraryKindView: View {
             if !year.isEmpty {
                 Text(year)
                     .foregroundStyle(DesignTokens.Color.textSecondary)
-                    .parityLayout(text: year, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
+                    .parityLayout(text: year, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
             }
             if !genreLine.isEmpty {
                 Text(genreLine)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .parityLayout(text: genreLine, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
+                    .parityLayout(text: genreLine, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
             }
             if let runtime = previewRuntime, runtime.id == work.id, let text = runtime.text {
                 Text(text)
                     .foregroundStyle(DesignTokens.Color.textDisabled)
-                    .parityLayout(text: text, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255), lineHeight: 18)
+                    .parityLayout(text: text, size: 13.06, weight: 600, color: Color(red: 0xda / 255, green: 0xd6 / 255, blue: 0xd7 / 255))
             }
         }
         .font(TVTheme.font(size: 13, weight: .medium))
@@ -2015,7 +2027,7 @@ struct TVLibraryKindView: View {
         let rowGap: CGFloat = 28.5
         #else
         let padL: CGFloat = 0
-        let rowGap: CGFloat = 27
+        let rowGap: CGFloat = 27.9 // web row pitch 240.4
         #endif
         let gridWidth = size.width - 783.4 + padL
         let padR: CGFloat = 0
@@ -2142,7 +2154,8 @@ struct TVLibraryKindView: View {
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous))
-                    .parityBox("image", radius: 12, fill: DesignTokens.Stage.surfaceSoft)
+                    .parityBox("image", fill: DesignTokens.Stage.surfaceSoft)
+                    .parityBox("container", radius: 12.48, fill: DesignTokens.Stage.surfaceSoft)
                     .modifier(TVCardFocusGlow(focused: isSelected && drawsFocusGlow, cornerRadius: DesignTokens.Radius.card))
                     // Pinned web values: rest 0 10 20 .14 + 0 3 8 .10; focused 0 24 48 .30 + 0 10 20 .20.
                     .shadow(
@@ -2161,29 +2174,30 @@ struct TVLibraryKindView: View {
                     if showsUnwatchedDisc(work), !artIncludesDot || TVParityArtwork.cardImage(forTitle: work.title) == nil {
                         Circle()
                             .fill(DesignTokens.Color.brandPrimary)
-                            .frame(width: 11.6, height: 11.6)
-                            .overlay(Circle().stroke(Color.white, lineWidth: 1.6))
-                            .padding(11.5) // same centre as the 13 pt disc; the stroke adds 1.6 pt, so the drawn disc is 13.2 pt like the web's
+                            .frame(width: 13, height: 13)
+                            .overlay(Circle().strokeBorder(Color.white, lineWidth: 1.6))
+                            .parityBox("img", radius: 50, fill: DesignTokens.Color.brandPrimary)
+                            .padding(10.54) // web: a 13 pt disc with its white ring inside, 10.5 pt from the art corner
                     }
                 }
+                .scaleEffect(isSelected ? 1.025 : 1) // web: the art grows beyond the card's own 1.015
                 if showTitle {
                     // Fixture SPA crops do not include the title line; draw it.
                     Text(work.title)
-                        .font(TVTheme.font(size: 11.9, weight: .semibold))
+                        .font(TVTheme.font(size: 11.9, css: 610))
                         .tracking(-0.18)
-                        .foregroundStyle(isSelected ? Color.white : DesignTokens.Color.textPrimary) // web: the focused card's text is white
+                        .foregroundStyle(isSelected ? Color.white : DesignTokens.Color.textPrimary)
+                        .parityLayout(text: work.title, size: 11.9, weight: 610, color: isSelected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
                         .lineLimit(1)
-                        .parityLayout(text: work.title, size: 11.9, weight: Int(TVTheme.cssWeight(.semibold)), color: isSelected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18)
                         .padding(.leading, 1.91) // web: the title sits 1.91 pt inside the card
                         .frame(width: width, alignment: .leading)
                 }
             }
             .frame(width: width, alignment: .leading)
             .parityBox("link", text: "Open \(work.title)", radius: 12, fill: DesignTokens.Stage.surface)
-            .parityTransformScope(scale: isSelected ? 1.025 : 1, lift: isSelected ? -7 : 0)
             // Pinned web library focus: translateY(-7px) scale(1.025) over 260 ms, cubic-bezier(0.2, 0.8, 0.2, 1); no ring.
-            .scaleEffect(isSelected ? 1.025 : 1)
-            .offset(y: isSelected ? -7 : 0)
+            .scaleEffect(isSelected ? 1.015 : 1)
+            .offset(y: isSelected ? -5 : 0)
             .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.26), value: isSelected)
         }
         .buttonStyle(TVFocusableCardButtonStyle(ignoresPress: actionsWorkID != nil))
@@ -2266,12 +2280,15 @@ struct TVLibraryKindView: View {
                 Text(letter)
                     .font(TVTheme.font(size: 9.2, weight: .regular))
                     .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                    .parityLayout(text: letter, size: 9.2, weight: Int(TVTheme.cssWeight(.regular)))
+                    .parityLayout(text: letter, size: 9.22, weight: 400, color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(active ? DesignTokens.Color.textSecondary : Color.clear))
+                    .frame(width: 44, height: 44)
+                    .parityBox("button", text: letter == "#" ? "Numbers and symbols" : letter, radius: 22, fill: DesignTokens.Stage.surface)
                     .frame(width: DesignTokens.Shell.libraryAlphabetWidth, height: 44)
             }
         }
+        .offset(x: 3.03) // web: the buttons sit 3 pt further right
         .frame(height: 1080 - 277, alignment: .top)
         .clipped()
         .mask(

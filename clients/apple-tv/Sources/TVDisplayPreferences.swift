@@ -219,6 +219,8 @@ struct TVAuthPalette {
     /// Web `--on-accent` (text on primary buttons). Dark: #211d21. Light: #fff.
     let onAccent: Color
     let brandPink: Color
+    /// Web `--brand-ink`: the kicker colour (#821e36 light, #eaa6b6 dark).
+    var brandInk: Color { isDark ? Color(red: 0xea / 255, green: 0xa6 / 255, blue: 0xb6 / 255) : Color(red: 0x82 / 255, green: 0x1e / 255, blue: 0x36 / 255) }
     let danger: Color
     let isDark: Bool
 
@@ -246,8 +248,8 @@ struct TVAuthPalette {
                 surface: Color(red: 0xfb / 255, green: 0xfa / 255, blue: 0xf9 / 255),
                 surfaceStrong: Color.white,
                 ink: Color(red: 0x38 / 255, green: 0x26 / 255, blue: 0x21 / 255),
-                inkSoft: Color(red: 0x67 / 255, green: 0x59 / 255, blue: 0x61 / 255),
-                inkMuted: Color(red: 0xa5 / 255, green: 0x96 / 255, blue: 0x9e / 255),
+                inkSoft: Color(red: 0x44 / 255, green: 0x3a / 255, blue: 0x40 / 255),
+                inkMuted: Color(red: 0x4d / 255, green: 0x42 / 255, blue: 0x48 / 255),
                 lineStrong: Color(red: 0x38 / 255, green: 0x26 / 255, blue: 0x21 / 255).opacity(0.28),
                 accent: Color(red: 0x67 / 255, green: 0x59 / 255, blue: 0x61 / 255),
                 onAccent: Color.white,
