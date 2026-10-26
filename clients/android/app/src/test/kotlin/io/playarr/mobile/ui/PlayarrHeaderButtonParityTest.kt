@@ -31,9 +31,10 @@ class PlayarrHeaderButtonParityTest {
             "widthIn(min = metrics.pillWidth).height(metrics.pillHeight)",
             "Modifier.size(metrics.pillWidth, metrics.pillHeight)",
             "RoundedCornerShape(metrics.pillRadius)",
-            "fontSize = 8.256.sp",
+            // Web `.ui-btn.action-pill`: label clamp(6.08, 0.43 vw, 8.32) css px (8.256 at 1920), icon clamp(18, 1.4 vw, 24) css px (24 at 1920).
+            "(0.43f * metrics.vw).coerceIn(6.08f, 8.32f)",
+            "(1.4f * metrics.vw).coerceIn(18f, 24f)",
             "FontWeight.Bold",
-            "size(24.dp)",
             "palette.surfaceStrong.copy(alpha = 0.78f)",
             "if (active) palette.ink",
             "palette.launcherBorder",
