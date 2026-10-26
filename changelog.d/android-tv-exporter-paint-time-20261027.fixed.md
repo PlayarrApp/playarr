@@ -1,0 +1,1 @@
+- Android layout export records fills at paint time, takes each text line's box from the typeface's own ascent and descent, ties radii and alpha to the drawn shape, and drops duplicate, clipped or covered records; the screenshot colour sampler is removed.
