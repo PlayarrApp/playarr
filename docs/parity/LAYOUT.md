@@ -126,3 +126,5 @@ from the app's own style values, not guess from pixels.
 ## Role aliases (per client, default off)
 
 Android (Compose) and Vega-style toolkits have no `link` role: a tappable text or card is a `button`. For those clients only, the scorer accepts a device `button` for a web `link`: `scoreLayout(..., { roleAliases: { link: ["button"] } })`, or `layout-score.mjs --role-alias link=button`. The alias is one way (web role to accepted device roles), applies to matching and to the role comparison, and is off unless the caller passes it. Pass it for android, android-phone, android-tablet and firetv (only if Vega cannot report a link). Every other client keeps the strict role match.
+
+HarmonyOS (ArkUI API 18, TV and phone) has no heading role either: a title is a `text`. For `harmony` and `harmony-phone` pass `{ roleAliases: { heading: ["text"] } }` (CLI `--role-alias heading=text`). Only the role check and role-based matching accept the device `text` for a web `heading`; box, text and style still score. Aliases can be combined (repeat the flag).
