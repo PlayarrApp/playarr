@@ -32,10 +32,11 @@ import { themeTextDrift } from "./layout-theme-drift.mjs";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const here = dirname(fileURLToPath(import.meta.url));
 const manifest = JSON.parse(readFileSync(join(here, "web-refs.json"), "utf8"));
+const PACKAGED = ["tv-webos", "tv-tizen"]; // packaged-TV platforms: need their own bundle (build-platform-web.mjs), hash routing
 // A group with "userAgents" ({ ua: [dirs] }) is captured once per UA, each copy publishing to its own dirs.
 for (const [name, g] of Object.entries(manifest.groups)) {
   if (!g.userAgents) continue;
-  for (const [ua, dirs] of Object.entries(g.userAgents)) manifest.groups[`${name}+${ua}`] = { ...g, userAgents: undefined, userAgent: ua, dirs };
+  for (const [ua, dirs] of Object.entries(g.userAgents)) manifest.groups[`${name}+${ua}`] = { ...g, userAgents: undefined, userAgent: ua, dirs, ...(PACKAGED.includes(ua) ? { platformBuild: ua } : {}) };
   delete manifest.groups[name];
 }
 const PLATFORM_UA = {
@@ -46,7 +47,7 @@ const suite = JSON.parse(readFileSync(join(here, "suite.json"), "utf8"));
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : d; };
 const root = opt("parity-root") && resolve(opt("parity-root"));
-const groups = opt("groups", Object.keys(manifest.groups).join(",")).split(",").flatMap((n) => { const k = Object.keys(manifest.groups).filter((x) => x === n || x.startsWith(`${n}+`)); return k.length ? k : [n]; }); // "tv" selects its per-UA copies
+const groups = opt("groups", Object.keys(manifest.groups).filter((k) => !manifest.groups[k].platformBuild).join(",")).split(",").flatMap((n) => { const k = Object.keys(manifest.groups).filter((x) => x === n || x.startsWith(`${n}+`)); return k.length ? k : [n]; }); // "tv" selects its per-UA copies
 const wantScreens = opt("screens", manifest.screens.join(",")).split(",");
 const work = resolve(opt("work", join(process.cwd(), "web-refs-work")));
 const bakName = opt("bak", `web.bak-${manifest.date}`); // --bak <name>: partial retake, backs up to that name and leaves build.json alone
@@ -127,7 +128,8 @@ for (const name of groups) {
   const g = manifest.groups[name];
   if (!g) throw new Error(`unknown group ${name}`);
   Object.assign(process.env, { PLAYARR_WEB_VIEWPORT_WIDTH: String(g.viewport[0]), PLAYARR_WEB_VIEWPORT_HEIGHT: String(g.viewport[1]), PLAYARR_WEB_VIEWPORT_DPR: String(g.dpr) });
-  if (g.userAgent && g.userAgent !== "android-tv") process.env.PLAYARR_WEB_USER_AGENT = PLATFORM_UA[g.userAgent] ?? (() => { throw new Error(`unknown userAgent ${g.userAgent}`); })(); else delete process.env.PLAYARR_WEB_USER_AGENT;
+  if (g.platformBuild) process.env.PLAYARR_WEB_HASH = "1"; else delete process.env.PLAYARR_WEB_HASH;
+  if (g.userAgent && g.userAgent !== "android-tv" && !g.platformBuild) process.env.PLAYARR_WEB_USER_AGENT = PLATFORM_UA[g.userAgent] ?? (() => { throw new Error(`unknown userAgent ${g.userAgent}`); })(); else delete process.env.PLAYARR_WEB_USER_AGENT;
   if (g.mobile) process.env.PLAYARR_WEB_MOBILE = "1"; else delete process.env.PLAYARR_WEB_MOBILE;
   if (g.noDownloads) process.env.PLAYARR_WEB_NO_DOWNLOADS = "1"; else delete process.env.PLAYARR_WEB_NO_DOWNLOADS;
   const driver = await (await import(`${driverUrl}?${name}`)).createDriver();
