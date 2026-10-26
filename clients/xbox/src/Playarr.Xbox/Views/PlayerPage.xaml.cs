@@ -58,7 +58,9 @@ namespace Playarr.Xbox.Views
             LayoutExport.SetRole(PlayerElement, "video");
             LayoutExport.SetRole(VideoSurface, "video");
             LayoutExport.SetRole(Scrubber, "slider");
-            foreach (var control in new[] { CloseButton, PrevButton, PlayPauseButton, NextButton, AudioButton, SubtitlesButton, QueueButton, InfoButton, DeviceButton })
+            LayoutExport.SetRole(VolumeSlider, "textbox");
+            LayoutExport.SetRole(TimeText, "container"); // the web's time readout wraps its spans in a container
+            foreach (var control in new[] { CloseButton, PrevButton, PlayPauseButton, NextButton, MuteButton, AudioButton, SubtitlesButton, QueueButton, InfoButton, DeviceButton, FullscreenButton })
             {
                 if (control.Content is Grid icon)
                 {
@@ -121,6 +123,39 @@ namespace Playarr.Xbox.Views
         }
 
         // A click on the video only reveals the controls (web: a hidden player ignores the first press).
+        private void MuteButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.Player.IsMuted = !_viewModel.Player.IsMuted;
+                MuteIcon.Glyph = _viewModel.Player.IsMuted ? "\uE74F" : "\uE767";
+                AutomationProperties.SetName(MuteButton, _viewModel.Player.IsMuted ? "Unmute" : "Mute");
+            }
+        }
+
+        private void VolumeSlider_ValueChanged(object sender, Windows.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.Player.Volume = e.NewValue / 100;
+            }
+        }
+
+        private void FullscreenButton_Click(object sender, RoutedEventArgs e)
+        {
+            var view = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView();
+            if (view.IsFullScreenMode)
+            {
+                view.ExitFullScreenMode();
+            }
+            else
+            {
+                view.TryEnterFullScreenMode();
+            }
+
+            AutomationProperties.SetName(FullscreenButton, view.IsFullScreenMode ? "Exit fullscreen" : "Enter fullscreen");
+        }
+
         private void VideoSurface_Click(object sender, RoutedEventArgs e) => ShowChrome();
 
         private bool IsInChrome(DependencyObject node)
@@ -137,7 +172,7 @@ namespace Playarr.Xbox.Views
         }
 
         // Control row in D-pad order: disabled controls are skipped, as on web.
-        private Button[] Row() => new[] { PrevButton, PlayPauseButton, NextButton, AudioButton, SubtitlesButton, QueueButton, QualityButton, InfoButton, DeviceButton }
+        private Button[] Row() => new[] { PrevButton, PlayPauseButton, NextButton, MuteButton, AudioButton, SubtitlesButton, QueueButton, QualityButton, InfoButton, DeviceButton, FullscreenButton }
             .Where(b => b.IsEnabled && b.Visibility == Visibility.Visible).ToArray();
 
         private static char DirectionOf(Windows.System.VirtualKey key) => key switch
