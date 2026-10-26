@@ -2064,7 +2064,7 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 6.5) - (isTvMetrics() ? 3.2 : 0) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 6.3 : tv(phoneSeasonHeading ? 7 : 6.5) - (isTvMetrics() ? 3.2 : 3.3) }) {
       Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
         
         .letterSpacing(((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) + (isTvMetrics() ? 0.237 : 0)) // web's rail heading tracking
@@ -2208,7 +2208,7 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: isTvMetrics() ? 0 : 36.8 })
+    .margin({ top: isTvMetrics() ? 0 : 35.2 })
   }
 
   @Builder
@@ -2676,7 +2676,7 @@ struct Detail {
                 
                 .maxLines(1)
                 .translate({ y: -1.85 })
-                .margin({ top: 5.7 })
+                .margin({ top: 2 })
             }
             this.touchMetaChips()
             Column() {
@@ -2684,7 +2684,7 @@ struct Detail {
                 .fontSize(11.52)
                 .fontColor(toResourceColor(activeColors().inkMuted))
                 .lineHeight(webLineHeight(11.52)).lineSpacing(webLineSpacing(16.7, 11.52)).halfLeading(true)
-                .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
+                .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 10.6 })
                 .maxLines(3)
                 // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -2698,7 +2698,7 @@ struct Detail {
             }
             .width('100%')
             .alignItems(HorizontalAlign.Start)
-            .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 12.5 : 12 })
+            .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 11.2 : 12 })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
