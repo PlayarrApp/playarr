@@ -558,7 +558,7 @@ struct WorkDetailView: View {
             .padding(.top, 22 * tabletVerticalScale)
             if let overview = work.overview, !overview.isEmpty {
                 Text(overview)
-                    .wm(9.28 * tabletScale, 400)
+                    .wm(9.28 * tabletScale, 400, text: overview)
                     .foregroundStyle(PlayarrStyle.inkSoft)
                     .lineSpacing(5 * tabletScale)
                     .lineLimit(5)
@@ -913,7 +913,7 @@ struct WorkDetailView: View {
             .padding(.top, subtitleToMetadataGap)
             if let synopsis, !synopsis.isEmpty {
                 Text(synopsis)
-                    .wm(synopsisFontSize, 400)
+                    .wm(synopsisFontSize, 400, text: synopsis)
                     .foregroundStyle(PlayarrStyle.muted)
                     .lineSpacing(synopsisLayout.lineSpacing)
                     .lineLimit(5)

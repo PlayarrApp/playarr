@@ -650,11 +650,8 @@ private struct AuthenticatedPlayarrShell: View {
                                 )
                                 .offset(x: 0.33, y: 0.5) // measured: web glyphs sit 1 px right and 1.5 px lower (3x)
                                 .frame(width: 44, height: 46)
-                                .parityBox("button", name: destination.title, background: phoneSelectedDestination == destination ? WM.ink : nil, radius: phoneSelectedDestination == destination ? 14 : 0)
-                                .background(
-                                    phoneSelectedDestination == destination ? WM.ink : .clear,
-                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                )
+                                .parityShape("button", name: destination.title, color: phoneSelectedDestination == destination ? WM.ink : nil,
+                                             in: RoundedRectangle(cornerRadius: 14, style: .continuous), radius: phoneSelectedDestination == destination ? 14 : 0)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(destination.title)
@@ -668,11 +665,7 @@ private struct AuthenticatedPlayarrShell: View {
                 .scrollIndicators(.hidden)
                 .frame(height: 58)
                 .padding(.horizontal, 0)
-                .parityBox("container", background: PlayarrStyle.surfaceStrong.opacity(0.88), radius: 20)
-                .background(
-                    PlayarrStyle.surfaceStrong.opacity(0.88),
-                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                )
+                .parityShape("container", color: PlayarrStyle.surfaceStrong.opacity(0.88), in: RoundedRectangle(cornerRadius: 20, style: .continuous), radius: 20)
                 .shadow(color: Color(red: 31 / 255, green: 14 / 255, blue: 20 / 255).opacity(0.2), radius: 20, y: 14)
                 .padding(.horizontal, 10)
                 .padding(.bottom, WM.bottomInset)
@@ -761,26 +754,18 @@ private struct AuthenticatedPlayarrShell: View {
                     }
                     .foregroundStyle(selected == destination ? PlayarrStyle.ink : PlayarrStyle.inkSoft)
                     .frame(width: 64, height: 64)
-                    .parityBox("button", name: destination.title, background: selected == destination ? PlayarrStyle.ink.opacity(0.09) : nil, radius: selected == destination ? 16 : 0)
-                    .background(
-                        selected == destination ? PlayarrStyle.ink.opacity(0.09) : .clear,
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    )
+                    .parityShape("button", name: destination.title, color: selected == destination ? PlayarrStyle.ink.opacity(0.09) : nil,
+                                 in: RoundedRectangle(cornerRadius: 16, style: .continuous), radius: selected == destination ? 16 : 0)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(destination.title)
                 .accessibilityAddTraits(.isLink)
             }
         }
-        .parityFill(PlayarrStyle.surfaceStrong)
         .padding(.vertical, 6)
         .padding(.horizontal, 6)
         // Web rail pills are solid surface-strong with a 1 px line border (the art never shows through).
-        .background(
-            PlayarrStyle.surfaceStrong,
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-        )
-        .parityBox("container", background: PlayarrStyle.surfaceStrong, radius: 22)
+        .parityShape("container", color: PlayarrStyle.surfaceStrong, in: RoundedRectangle(cornerRadius: 22, style: .continuous), radius: 22)
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(PlayarrStyle.line, lineWidth: 1)

@@ -37,6 +37,7 @@ private struct WMListPage<Content: View>: View {
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
         .background(WM.page.ignoresSafeArea())
+        .parityFill(WM.page)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
         .navigationBarHidden(true)
@@ -65,7 +66,7 @@ private struct WMListMeta: View {
 
     var body: some View {
         Text(parts.joined(separator: "   "))
-            .wm(12.3, 400, color: WM.muted)
+            .wm(12.3, 400, color: WM.muted, text: parts.joined(separator: "   "))
             .foregroundStyle(WM.muted)
             .lineLimit(1)
     }
@@ -102,7 +103,7 @@ private struct WMListEmpty: View {
                 .wm(17.6, 650, color: isError ? WM.pink : WM.ink)
                 .foregroundStyle(isError ? WM.pink : WM.ink)
             Text(description)
-                .wm(12.3, 400, color: WM.muted)
+                .wm(12.3, 400, color: WM.muted, text: description)
                 .foregroundStyle(WM.muted)
         }
         .multilineTextAlignment(.center)

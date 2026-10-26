@@ -115,6 +115,7 @@ struct ProfilesView: View {
                 stageContent(proxy: proxy)
             }
         }
+        .parityFill(WM.shell) // the shell colour the picker (and its gradients) sit on
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
     }

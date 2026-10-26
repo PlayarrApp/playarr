@@ -19,6 +19,8 @@ final class ParityLayoutRegistry {
         var tracking: CGFloat = 0
         var background: String?
         var radius: CGFloat = 0
+        /// Product of the ancestors' opacity and mask alpha at this element (docs/parity/LAYOUT.md `opacity`).
+        var opacity: Double = 1
     }
 
     private var items: [UUID: Item] = [:]
@@ -126,9 +128,16 @@ final class ParityLayoutRegistry {
             if let runs = textRuns[id] { return runs }
             return items[id].map { [$0] } ?? []
         }
-        // A plain accessibility entry is dropped when a styled one has the same text and nearly the same frame.
+        // A plain accessibility entry is dropped when a styled one has the same text and nearly the same frame, and a
+        // text entry is dropped when styled lines inside its frame draw its label (its lines are the export, not its box).
         let plain = accessibilityElements().filter { entry in
-            !styled.contains { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }
+            if styled.contains(where: { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }) { return false }
+            guard entry.role == "text" || entry.role == "heading", let label = entry.text else { return true }
+            let area = entry.rect.insetBy(dx: -3, dy: -3)
+            return !styled.contains { line in
+                guard let shown = line.text, line.size != nil, area.contains(line.rect) else { return false }
+                return label.contains(shown.hasSuffix("\u{2026}") ? String(shown.dropLast()) : shown)
+            }
         }
         // Only registered views and native accessibility elements exist in the export. A style on a parent with no
         // source string cannot identify a child text run, so keep the child's accessibility entry without guessed style.
@@ -149,6 +158,7 @@ final class ParityLayoutRegistry {
             ]
             if item.color == nil { element["color"] = NSNull() }
             if item.radius > 0 { element["radius"] = q(item.radius) }
+            if item.opacity < 0.995 { element["opacity"] = q(CGFloat(item.opacity)) }
             return element
         }
         let document: [String: Any] = [
@@ -166,6 +176,80 @@ final class ParityLayoutRegistry {
         guard let data else { return }
         let url = ParityLaunch.acceptanceStateURL.deletingLastPathComponent().appendingPathComponent("parity-layout.json")
         try? data.write(to: url, options: .atomic)
+    }
+}
+
+/// One scroll-edge mask: alpha stops (location, alpha) along an axis of the masked view's frame.
+struct ParityFade: Equatable {
+    var rect: CGRect
+    var horizontal: Bool
+    var stops: [SIMD2<Double>]
+
+    func alpha(at point: CGPoint) -> Double {
+        let length = horizontal ? rect.width : rect.height
+        guard length > 0, let first = stops.first, let last = stops.last else { return 1 }
+        let t = Double(((horizontal ? point.x - rect.minX : point.y - rect.minY) / length))
+        if t <= first.x { return first.y }
+        if t >= last.x { return last.y }
+        for index in 1..<stops.count where t <= stops[index].x {
+            let a = stops[index - 1], b = stops[index]
+            return b.x > a.x ? a.y + (b.y - a.y) * (t - a.x) / (b.x - a.x) : b.y
+        }
+        return last.y
+    }
+}
+
+/// What ancestors do to a view's pixels besides painting a fill: opacity, clip bounds and edge masks.
+struct ParityPaint: Equatable {
+    var opacity = 1.0
+    var clips: [CGRect] = []
+    var fades: [ParityFade] = []
+
+    /// Effective opacity at `rect`, or nil when an ancestor clip removes it entirely.
+    func effective(_ rect: CGRect) -> Double? {
+        for clip in clips {
+            let inside = clip.intersection(rect)
+            if inside.isNull || inside.width < 1 || inside.height < 1 { return nil }
+        }
+        let centre = CGPoint(x: rect.midX, y: rect.midY)
+        return fades.reduce(opacity) { $0 * $1.alpha(at: centre) }
+    }
+}
+
+private struct ParityPaintKey: EnvironmentKey { static let defaultValue = ParityPaint() }
+extension EnvironmentValues {
+    var parityPaint: ParityPaint {
+        get { self[ParityPaintKey.self] }
+        set { self[ParityPaintKey.self] = newValue }
+    }
+}
+
+/// Records opacity, a clip to this view's frame and/or an edge mask for the exports of everything inside.
+private struct ParityPaintModifier: ViewModifier {
+    var opacity = 1.0
+    var clip = false
+    var fade: ((CGSize) -> [Gradient.Stop])?
+    var horizontal = false
+    @Environment(\.self) private var environment
+    @State private var frame = CGRect.zero
+
+    func body(content: Content) -> some View {
+        var paint = environment.parityPaint
+        paint.opacity *= opacity
+        if frame.width > 0 {
+            if clip { paint.clips.append(frame) }
+            if let fade {
+                let stops = fade(frame.size).map { SIMD2(Double($0.location), Double($0.color.resolve(in: environment).opacity)) }
+                paint.fades.append(ParityFade(rect: frame, horizontal: horizontal, stops: stops))
+            }
+        }
+        return content
+            .environment(\.parityPaint, paint)
+            .background(GeometryReader { proxy in
+                Color.clear
+                    .onAppear { frame = proxy.frame(in: .global) }
+                    .onChange(of: proxy.frame(in: .global)) { _, value in frame = value }
+            })
     }
 }
 
@@ -223,6 +307,7 @@ private struct ParityLayoutModifier: ViewModifier {
     let radius: CGFloat
     @Environment(\.self) private var environment
     @State private var id = UUID()
+    @State private var frame = CGRect.zero
 
     private var hex: String? { color.map { Self.hex($0, environment) } }
     private var pageHex: String { (environment.parityBackdrop ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))).hex }
@@ -239,31 +324,55 @@ private struct ParityLayoutModifier: ViewModifier {
             .environment(\.parityBackdrop, box.map { ParityRGB.over($0, environment.parityBackdrop, environment) } ?? environment.parityBackdrop)
             .background(
                 GeometryReader { proxy in
-                    let frame = proxy.frame(in: .global)
                     Color.clear
-                        .onAppear { report(frame) }
-                        .onChange(of: frame) { _, new in report(new) }
+                        .onAppear { frame = proxy.frame(in: .global); report(frame) }
+                        .onChange(of: proxy.frame(in: .global)) { _, new in frame = new; report(new) }
                 }
             )
+            .onChange(of: environment.parityPaint) { _, _ in report(frame) }
+            .onChange(of: environment.parityBackdrop) { _, _ in report(frame) }
             .onDisappear { ParityLayoutRegistry.shared.remove(id) }
     }
 
     private func report(_ frame: CGRect) {
-        guard !environment.parityCovered else { ParityLayoutRegistry.shared.remove(id); return }
-        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { ParityRGB.over($0, environment.parityBackdrop, environment).hex } ?? pageHex, radius: radius))
+        guard frame.width > 0, !environment.parityCovered, let opacity = environment.parityPaint.effective(frame) else { ParityLayoutRegistry.shared.remove(id); return }
+        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { ParityRGB.over($0, environment.parityBackdrop, environment).hex } ?? pageHex, radius: radius, opacity: opacity))
     }
 }
 
+/// One laid-out line of a text view: its glyph-run bounds and the source-text offsets of the characters it draws.
+struct ParityRenderedLine: Equatable {
+    var rect: CGRect
+    var indices: [Int]
+}
+
 /// Observe the exact layout handed to SwiftUI's drawing context. Drawing is unchanged; no font metrics or line
-/// positions from another renderer are substituted. WMText contains one style and one laid-out line.
+/// positions from another renderer are substituted. One report entry per laid-out line.
 @available(iOS 18.0, *)
 struct ParityTextRenderer: TextRenderer {
-    let report: ([CGRect]) -> Void
+    let report: ([ParityRenderedLine]) -> Void
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
         for line in layout { context.draw(line) }
-        report(layout.map { $0.typographicBounds.rect })
+        report(layout.map { line in
+            ParityRenderedLine(rect: line.typographicBounds.rect, indices: line.flatMap { $0.characterIndices })
+        })
     }
+}
+
+/// The string a line really shows: the characters it draws, plus the ellipsis when text was cut after it.
+func parityDisplayedLines(_ text: String, _ lines: [ParityRenderedLine]) -> [String] {
+    let characters = Array(text)
+    let shown = lines.map { line -> String in
+        guard let low = line.indices.min(), let high = line.indices.max(), low >= 0, high < characters.count else { return "" }
+        return String(characters[low...high]).trimmingCharacters(in: .whitespaces)
+    }
+    guard shown.count == lines.count, !shown.isEmpty else { return [] }
+    var result = shown
+    let covered = lines.flatMap(\.indices).max() ?? -1
+    let trailing = characters.suffix(from: min(characters.count, covered + 1)).contains { !$0.isWhitespace }
+    if trailing, !result[result.count - 1].isEmpty { result[result.count - 1] += "\u{2026}" }
+    return result
 }
 
 @available(iOS 18.0, *)
@@ -273,43 +382,70 @@ private struct ParityRenderedTextModifier: ViewModifier {
     let size: CGFloat
     let weight: Int
     let color: Color
+    let scales: Bool
     @Environment(\.self) private var environment
     @State private var id = UUID()
     @State private var frame = CGRect.zero
+    @State private var natural: CGFloat = 0
+    @State private var lines: [ParityRenderedLine] = []
 
     func body(content: Content) -> some View {
-        let colour = ParityLayoutModifier.hex(color, environment)
-        let background = (environment.parityBackdrop ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))).hex
-        let covered = environment.parityCovered
         content
-            .textRenderer(ParityTextRenderer { bounds in
-                guard frame.width > 0, frame.height > 0, !covered else { return }
-                let runs = bounds.map { rect in
-                    ParityLayoutRegistry.Item(text: text, role: role, size: size, weight: weight, color: colour,
-                                              rect: rect.offsetBy(dx: frame.minX, dy: frame.minY), background: background)
-                }
-                Task { @MainActor in ParityLayoutRegistry.shared.setTextRuns(id, runs) }
+            .textRenderer(ParityTextRenderer { measured in
+                Task { @MainActor in lines = measured }
             })
             .background(GeometryReader { proxy in
                 Color.clear
                     .onAppear { ParityLayoutRegistry.shared.markAlive(id); frame = proxy.frame(in: .global) }
                     .onChange(of: proxy.frame(in: .global)) { _, value in frame = value }
             })
-            .onChange(of: covered, initial: true) { _, isCovered in
-                // A panel opened over this text: it is no longer visible, so its runs leave the export.
-                if isCovered { ParityLayoutRegistry.shared.remove(id) } else { ParityLayoutRegistry.shared.markAlive(id) }
+            .background {
+                // The same text laid out without compression: its line height is the unscaled reference for the size drawn.
+                if scales {
+                    content.fixedSize().opacity(0).allowsHitTesting(false).accessibilityHidden(true)
+                        .textRenderer(ParityTextRenderer { measured in
+                            Task { @MainActor in natural = measured.first?.rect.height ?? 0 }
+                        })
+                }
             }
+            .onChange(of: environment.parityCovered, initial: true) { _, isCovered in
+                // A panel opened over this text: it is no longer visible, so its runs leave the export.
+                if isCovered { ParityLayoutRegistry.shared.remove(id) } else { ParityLayoutRegistry.shared.markAlive(id); publish() }
+            }
+            .onChange(of: lines) { _, _ in publish() }
+            .onChange(of: environment.parityBackdrop) { _, _ in publish() }
+            .onChange(of: frame) { _, _ in publish() }
+            .onChange(of: natural) { _, _ in publish() }
+            .onChange(of: environment.parityPaint) { _, _ in publish() }
             .onDisappear { ParityLayoutRegistry.shared.remove(id) }
+    }
+
+    /// Turns the measured lines into registry items (displayed string, drawn size, effective opacity).
+    private func publish() {
+        guard frame.width > 0, frame.height > 0, !lines.isEmpty, !environment.parityCovered else { return }
+        let strings = parityDisplayedLines(text, lines)
+        let colour = ParityLayoutModifier.hex(color, environment)
+        let background = (environment.parityBackdrop ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))).hex
+        let paint = environment.parityPaint
+        let runs = lines.enumerated().compactMap { index, line -> ParityLayoutRegistry.Item? in
+            let rect = line.rect.offsetBy(dx: frame.minX, dy: frame.minY)
+            guard let opacity = paint.effective(rect) else { return nil }
+            let scale = scales && natural > 0 ? min(1, line.rect.height / natural) : 1
+            return ParityLayoutRegistry.Item(text: strings.count == lines.count && !strings[index].isEmpty ? strings[index] : text, role: role,
+                                              size: (size * scale * 100).rounded() / 100, weight: weight, color: colour, rect: rect,
+                                              background: background, opacity: opacity)
+        }
+        Task { @MainActor in ParityLayoutRegistry.shared.setTextRuns(id, runs) }
     }
 }
 #endif
 
 extension View {
     @ViewBuilder
-    func parityRenderedText(_ text: String, role: String, size: CGFloat, weight: Int, color: Color) -> some View {
+    func parityRenderedText(_ text: String, role: String, size: CGFloat, weight: Int, color: Color, scales: Bool = false) -> some View {
         #if DEBUG
         if #available(iOS 18.0, *) {
-            modifier(ParityRenderedTextModifier(text: text, role: role, size: size, weight: weight, color: color))
+            modifier(ParityRenderedTextModifier(text: text, role: role, size: size, weight: weight, color: color, scales: scales))
         } else {
             self
         }
@@ -331,9 +467,14 @@ extension View {
 
 extension View {
     /// The design font at a CSS size and weight, reported to the parity layout export with the text it draws.
-    func wm(_ size: CGFloat, _ weight: Int = 400, color: Color = PlayarrStyle.ink) -> some View {
-        font(DesignFont.font(size, weight))
-            .parityLayout(role: "text", size: size, weight: weight, color: color)
+    /// With `text:` the lines are read from the text's own layout (one export element per laid-out line, the string shown).
+    @ViewBuilder
+    func wm(_ size: CGFloat, _ weight: Int = 400, color: Color = PlayarrStyle.ink, text: String? = nil) -> some View {
+        if let text {
+            font(DesignFont.font(size, weight)).parityRenderedText(text, role: "text", size: size, weight: weight, color: color)
+        } else {
+            font(DesignFont.font(size, weight)).parityLayout(role: "text", size: size, weight: weight, color: color)
+        }
     }
 
     /// Reports a native control or a view that actually paints a background.
@@ -359,5 +500,50 @@ extension View {
         #else
         accessibilityHidden(covered)
         #endif
+    }
+}
+
+extension View {
+    /// `opacity`, also recorded so the exports of everything inside carry the product of their ancestors' opacity.
+    func parityOpacity(_ value: Double) -> some View {
+        #if DEBUG
+        opacity(value).modifier(ParityPaintModifier(opacity: value))
+        #else
+        opacity(value)
+        #endif
+    }
+
+    /// `clipped()`, also recorded: content outside this view's frame leaves the layout export.
+    func parityClipped() -> some View {
+        #if DEBUG
+        clipped().modifier(ParityPaintModifier(clip: true))
+        #else
+        clipped()
+        #endif
+    }
+
+    /// Records an edge-fade mask already applied to this view (alpha stops along `axis`), so inner exports carry its alpha.
+    func parityFade(_ axis: Axis, _ stops: @escaping (CGSize) -> [Gradient.Stop]) -> some View {
+        #if DEBUG
+        modifier(ParityPaintModifier(fade: stops, horizontal: axis == .horizontal))
+        #else
+        self
+        #endif
+    }
+
+    /// `background(_:in:)` for a plain colour: also records the fill, so text and controls inside report the composited colour.
+    func background<S: Shape>(_ color: Color, in shape: S) -> some View {
+        parityFill(color).background(AnyShapeStyle(color), in: shape)
+    }
+
+    /// `background(_:)` for a plain colour, recorded like `background(_:in:)`.
+    func background(_ color: Color) -> some View {
+        parityFill(color).background(AnyShapeStyle(color))
+    }
+
+    /// A native control or container that paints `color` in `shape`: exported with the real fill, and the fill
+    /// is the backdrop of everything inside. `nil` paints nothing.
+    func parityShape<S: Shape>(_ role: String, name: String? = nil, color: Color?, in shape: S, radius: CGFloat = 0) -> some View {
+        parityBox(role, name: name, background: color, radius: radius).background(AnyShapeStyle(color ?? .clear), in: shape)
     }
 }

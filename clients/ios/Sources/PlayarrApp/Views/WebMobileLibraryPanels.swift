@@ -11,8 +11,7 @@ private struct WMPanelCloseButton: View {
         Button(action: action) {
             WMText("×", size, 720, lh: 44)
                 .frame(width: 44, height: 44)
-                .background(WM.artFill, in: Circle())
-                .parityBox("button", name: "Close", background: WM.artFill, radius: 22)
+                .parityShape("button", name: "Close", color: WM.artFill, in: Circle(), radius: 22)
                 .overlay {
                     if focused {
                         Circle().stroke(WM.ink, lineWidth: 3).padding(-3.5)
@@ -84,6 +83,7 @@ private struct WMPanelFrame<Content: View>: View {
             }
             .scrollIndicators(.hidden)
             .webEdgeFade(.vertical, size: 38)
+            .parityClipped()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea(edges: .vertical)
@@ -296,11 +296,7 @@ struct WMTitleActionsPanel: View {
             }
             .padding(.horizontal, 18)
             .frame(height: 68)
-            .parityBox("button", name: label, background: WM.artFill, radius: 14)
-            .background(
-                WM.artFill,
-                in: RoundedRectangle(cornerRadius: 14, style: .circular)
-            )
+            .parityShape("button", name: label, color: WM.artFill, in: RoundedRectangle(cornerRadius: 14, style: .circular), radius: 14)
             .overlay {
                 if focused { RoundedRectangle(cornerRadius: 17.5, style: .circular).stroke(WM.ink, lineWidth: 3).padding(-3.5).allowsHitTesting(false) }
             }

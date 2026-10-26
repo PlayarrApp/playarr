@@ -310,7 +310,7 @@ struct HomeView: View {
 
                 if let overview = work.overview {
                     Text(overview)
-                        .wm(11.5, 500)
+                        .wm(11.5, 500, text: overview)
                         .foregroundStyle(PlayarrStyle.inkSoft)
                         .lineSpacing(2.5)
                         .lineLimit(4)
@@ -507,6 +507,7 @@ struct WMFadingRail<Content: View>: View {
                 // The mask must not clip the focused card's shadow above and below the track.
                 .padding(.vertical, -60)
             )
+            .parityFade(.horizontal) { _ in maskStops }
             .onChange(of: scrollTo) { _, new in
                 if let new { withAnimation(.easeInOut(duration: 0.6)) { proxy.scrollTo(new, anchor: scrollAnchor) } }
             }

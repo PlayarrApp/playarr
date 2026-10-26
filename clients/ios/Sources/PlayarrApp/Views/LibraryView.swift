@@ -325,6 +325,7 @@ struct LibraryView: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .background(PlayarrStyle.surface.ignoresSafeArea())
+        .parityFill(PlayarrStyle.surface)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
     }
@@ -654,6 +655,8 @@ struct LibraryView: View {
                 }
             }
             .frame(width: panelWidth, height: proxy.size.height)
+            // The rail panel's base fill (the gradient ends on it), for the letters drawn over it.
+            .parityFill(phone ? PlayarrStyle.surface.opacity(0.96) : (scheme == .dark ? PlayarrStyle.surface : Color(red: 239.64 / 255, green: 238.2 / 255, blue: 238.68 / 255)))
             .background {
                 if phone {
                     PlayarrStyle.surface.opacity(0.96)
@@ -714,6 +717,7 @@ struct LibraryView: View {
                             .font(WM.font(titleSize, titleWeight))
                             .tracking(titleTracking)
                             .foregroundStyle(PlayarrStyle.ink)
+                            .parityRenderedText(line, role: "heading", size: titleSize, weight: titleWeight, color: PlayarrStyle.ink)
                             .lineLimit(1)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(height: titleSize * 0.9, alignment: .top)
@@ -727,6 +731,7 @@ struct LibraryView: View {
                     .tracking(titleTracking)
                     .lineSpacing(pitchCorrection)
                     .foregroundStyle(PlayarrStyle.ink)
+                    .parityRenderedText(work.title, role: "heading", size: titleSize, weight: titleWeight, color: PlayarrStyle.ink)
                     .lineLimit(isPad ? nil : 3)
                     .frame(width: isPad ? titleWidth : nil, alignment: .leading)
                     .frame(maxWidth: isPad ? nil : 215, alignment: .leading)
@@ -754,6 +759,7 @@ struct LibraryView: View {
                     .font(isPad ? WM.font(overviewSize, 600) : WM.font(11.5, 500))
                     .foregroundStyle(isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
                     .lineSpacing(isPad ? max(0, overviewSize * 1.58 - overviewLineHeight) : 2.5)
+                    .parityRenderedText(overview, role: "text", size: isPad ? overviewSize : 11.5, weight: isPad ? 600 : 500, color: isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
                     .lineLimit(5)
                     .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
                     .padding(.top, 20)

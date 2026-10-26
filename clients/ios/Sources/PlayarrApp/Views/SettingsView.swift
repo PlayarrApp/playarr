@@ -107,6 +107,8 @@ struct SettingsView: View {
                 else { wideLayout(proxy: proxy) }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            // What the page paints: the page colour, or (phone sub-pages) the gradient that ends on the shell colour.
+            .parityFill(!phone || selected == nil ? WM.page : WM.shell)
         }
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
@@ -152,7 +154,7 @@ struct SettingsView: View {
                                     .frame(width: 257, alignment: .leading)
                                     .offset(x: 56, y: 24.4)
                                 Text(section.description)
-                                    .wm(10.88, color: WM.inkSoft)
+                                    .wm(10.88, color: WM.inkSoft, text: section.description)
                                     .foregroundStyle(WM.inkSoft)
                                     .lineLimit(1)
                                     .truncationMode(.tail)

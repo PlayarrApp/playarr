@@ -399,7 +399,7 @@ struct WMDetailPage: View {
             }
             if let synopsis, !synopsis.isEmpty {
                 Text(synopsis)
-                    .wm(11.52, color: WM.detailMuted)
+                    .wm(11.52, color: WM.detailMuted, text: synopsis)
                     .foregroundStyle(WM.detailMuted)
                     .lineLimit(3)
                     // Web line box 1.5 x 11.52 = 17.28; SwiftUI spacing is added to the native line height (about 15.7).
@@ -419,6 +419,7 @@ struct WMDetailPage: View {
             .tracking(-2.8296)
             .foregroundStyle(WM.ink)
             .lineLimit(1)
+            .parityRenderedText(text, role: "heading", size: 39.3, weight: 560, color: WM.ink)
             .frame(height: 36.66, alignment: .leading)
     }
 
@@ -469,8 +470,7 @@ struct WMDetailPage: View {
             WMText(label, labelSize, 700, color: labelColor, lh: labelSize * 1.5).fixedSize()
         }
         .frame(width: width, height: height)
-        .background(fill, in: Capsule())
-        .parityBox("container", background: fill, radius: min(width, height) / 2)
+        .parityShape("container", color: fill, in: Capsule(), radius: min(width, height) / 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(name ?? label)
         .wmPillShadow()
