@@ -31,7 +31,7 @@ const SECTION_GAP: number = 30;
 // Web phone drawer choices: 46.7 high, 11.5 type, sections 8 vp closer than the TV's.
 const TOUCH_CHOICE_HEIGHT: number = 48; // web: 144 px inactive; the selected choice is 1.025 scaled
 const TOUCH_CHOICE_LABEL_SIZE: number = 11.52;
-const TOUCH_SECTION_GAP: number = 23.2;
+const TOUCH_SECTION_GAP: number = 21.9;
 const LARGE_HEADING_SIZE: number = 26.4;
 const LARGE_HEADING_LETTER_SPACING: number = -0.924;
 const LARGE_HEADING_GAP: number = 16;

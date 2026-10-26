@@ -248,7 +248,7 @@ const PILL_SECONDARY_GAP: number = 8.8;
 const PILL_PRIMARY_MIN_WIDTH: number = 156;
 const PILL_SECONDARY_MIN_WIDTH: number = 142;
 const PILL_GAP: number = 16;
-const PILL_ROW_GAP: number = 14;
+const PILL_ROW_GAP: number = 12.8;
 const PILL_FILL_ALPHA: number = 0.09;
 const COPY_GAP: number = 36;
 const RIGHT_COLUMN_X: number = 882;
@@ -2076,6 +2076,7 @@ struct Detail {
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
+    .margin({ bottom: isTvMetrics() ? -2.4 : 0 }) // web's cards start 2.4 higher under the heading block than its web-height lines leave them
   }
 
   /** The right-hand column on web: the Chapters rail, then the Cast rail, straight on the page (no glass panel). */
@@ -2170,7 +2171,7 @@ struct Detail {
       ForEach(
         this.rails,
         (rail: DetailRail) => {
-          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 4.3) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
+          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 1.9) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
             this.railHeading(rail.heading, rail.items.length.toString() + ' episodes', true)
             MediaRail({
               railId: rail.id,
