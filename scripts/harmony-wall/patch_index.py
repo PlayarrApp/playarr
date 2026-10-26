@@ -59,12 +59,12 @@ s = s.replace("    .hideTitleBar(true)\n  }\n}", "    .hideTitleBar(true)\n    .
 assert '.navDestination(this.previewRoutes)' in s
 open(p, 'w').write(s)
 
-# The Previewer window is larger than the stage (TV 1920 x 1740 px, stage at (0, 60); phone 1440 x 2700 px, stage 360 x 780 vp at (60, 60) vp)
+# The Previewer window is larger than the stage (TV 2400 x 1740 px, stage at (240, 60); phone 1800 x 2700 px, stage 360 x 780 vp at (60, 60) vp)
 # so no box is clamped by the window; the stage keeps its fixed size and offset, the capture crops it out and the exporter subtracts the offset.
 s = open(p).read()
 if '.clip(false)' not in s:
     if os.environ.get('DEVICE', 'tv') == 'tv':
-        fixed = '.height(1080)\n    .margin({ top: 60 })'
+        fixed = '.width(1920)\n    .height(1080)\n    .margin({ left: 240, top: 60 })'
     else:
         fixed = '.width(360)\n    .height(780)\n    .margin({ left: 60, top: 60 })'
     s = s.replace('.mode(NavigationMode.Stack)', '.mode(NavigationMode.Stack)\n    ' + fixed + '\n    .clip(false)', 1)

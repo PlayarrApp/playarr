@@ -7,7 +7,7 @@ import layout_export
 
 dev, pulled, out = sys.argv[1:4]
 viewport = (360, 780, 3) if dev == "phone" else (1920, 1080, 1)
-origin = (180, 180) if dev == "phone" else (0, 60)  # the stage inside the larger capture window (capture.py STAGE)
+origin = (180, 180) if dev == "phone" else (240, 60)  # the stage inside the larger capture window (capture.py STAGE)
 for theme in ("dark", "light"):
     dest = os.path.join(out, "layout", theme)
     os.makedirs(dest, exist_ok=True)
