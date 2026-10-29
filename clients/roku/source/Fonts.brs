@@ -126,7 +126,7 @@ function PlayarrTypeFor(scope as String, id as String) as Dynamic
             profilesLangLabel: { size: 11.52, weight: 720, tracking: 0 }
             searchEmptyHint: { size: 13.82, weight: 400, tracking: 0, role: "inkMuted", lineHeight: 22.4 }
             searchEmptyLabel: { size: 16.9, weight: 650, tracking: -0.349, role: "ink" }
-            searchFieldLabel: { size: 15.4, weight: 400, tracking: 0, role: "inkMuted" }
+            searchFieldLabel: { size: 17.66, weight: 400, tracking: 0, role: "inkMuted" }
             "PosterCard.title": { size: 11.9, weight: 610, tracking: -0.183 }
             "PosterCard.kind": { size: 8.83, weight: 400, tracking: 0 }
         }

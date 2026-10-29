@@ -462,6 +462,8 @@ def main() -> None:
     for r in (6, 12, 25):
         nine_patch(f"round-r{r}", r)
         nine_patch(f"round-outline-r{r}", r, 1.2)
+    nine_patch("round-r38", 38)
+    nine_patch("round-outline-r38", 38, 1.2)  # the search pill
     nine_patch("round-r82", 82)
     nine_patch("round-outline-r82", 82, 1.2)
     nine_patch("round-ring-r12", 12, 3)

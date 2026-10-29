@@ -3241,6 +3241,7 @@ sub searchA11y()
     searchBg = m.top.findNode("searchFieldBg")
     searchBg.id = "a11y|search|999|"
     A11yStamp(searchBg, true)
+    m.top.findNode("searchFieldBox").id = "a11y|textbox|0|Search your libraries and playlists"
     m.top.findNode("searchEmptyIcon").id = "a11y|container|66|"
 end sub
 
