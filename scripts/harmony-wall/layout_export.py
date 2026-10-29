@@ -324,11 +324,11 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             if solid > 0.0 or fa > 0.0 or lin is not None:
                 def alpha(x, y, fa=fa, lin=lin, solid=solid, op=opacity):
                     return 1 - (1 - solid) * (1 - fa) * (1 - (lin(x, y) * op if lin else 0.0))
-                painter = [first, first, clip_box(box, clip), src[0], alpha, box, min(radius_of(a) * tkx, box[2] / 2, box[3] / 2)]
+                painter = [first, first, clip_box(box, clip), src[0], alpha, box, min(radius_of(a) * tkx * dpr, box[2] / 2, box[3] / 2)]  # painter boxes are physical px, the radius is vp
                 painters.append(painter)
         if kind == "Text" and not nohit:
             if fills and box is not None and visible(box, clip):  # a Text paints its fill and its glyph ranges, nothing else
-                painter = [first, first, clip_box(box, clip), src[0], lambda x, y, fa=fill[3] * opacity: fa, box, min(radius, box[2] / 2, box[3] / 2)]
+                painter = [first, first, clip_box(box, clip), src[0], lambda x, y, fa=fill[3] * opacity: fa, box, min(radius * dpr, box[2] / 2, box[3] / 2)]
                 painters.append(painter)
             for rect, al in glyphs:
                 painters.append([first, first, clip_box(rect, clip), src[0], lambda x, y, al=al: al, rect, 0.0])

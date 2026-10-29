@@ -213,6 +213,13 @@ class LayoutExportTest(unittest.TestCase):
         low = {"$type": "Button", "$rect": "[100.00, 2100.00],[300.00, 120.00]", "$attrs": {"accessibilityText": "Low"}}
         self.assertNotIn("button", self._roles([low, grad]))
 
+    def test_a_rounded_disc_in_vp_does_not_cover_the_ring_corner_it_misses(self):
+        # AlphabetRail: 90 px ring r15vp, 66 px disc r11vp, DPR 3: the ring's 20%/20% sample (1155,451) lies outside the disc's circle
+        ring = {"$type": "Column", "$rect": "[1137.00, 433.00],[90.00, 90.00]", "$attrs": {"accessibilityText": "Ring", "accessibilityTextHint": "pvrole:5", "borderRadius": "15.00vp", "borderWidth": "2.00vp", "borderColor": "#FFFFFFFF"}, "$children": []}
+        disc = {"$type": "Column", "$rect": "[1149.00, 445.00],[66.00, 66.00]", "$attrs": {"backgroundColor": "#FFF4F0F1", "borderRadius": "11.00vp"}, "$children": []}
+        doc = export(column([ring, disc], rect="[0.00, 0.00],[1440.00, 2340.00]"), "x", "dark", (480, 780, 3))
+        self.assertIn("button", [e["role"] for e in doc["elements"]])
+
     def test_a_spinner_and_a_surface_are_exported_and_limits_are_stated(self):
         spin = {"$type": "LoadingProgress", "$rect": "[500.00, 1000.00],[90.00, 90.00]", "$attrs": {}}
         surf = {"$type": "XComponent", "$rect": "[0.00, 0.00],[1080.00, 600.00]", "$attrs": {"content": "Preview not available for this component."}}
