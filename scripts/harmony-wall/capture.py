@@ -302,6 +302,8 @@ def probe_occlusion(name, theme, raw, viewport, layout_export):
     try:
         if todo and ctrl is not None:
             base = stable()
+            if base is None:
+                raise RuntimeError("the screen never settled for the probe")
             time.sleep(1.0)
             again = png()
             noise = ImageChops.difference(base, again).convert("L").point(lambda v: 255 if v else 0)
