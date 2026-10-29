@@ -171,8 +171,6 @@ internal object PlayarrLayoutExport {
             if (layout != null) {
                 val input = layout.layoutInput
                 val style = input.style
-                val o = coords.localToRoot(androidx.compose.ui.geometry.Offset.Zero); val ux = coords.localToRoot(androidx.compose.ui.geometry.Offset(1f, 0f))
-                val scale = Math.hypot((ux.x - o.x).toDouble(), (ux.y - o.y).toDouble()).toFloat()
                 val role = if (config.contains(SemanticsProperties.Heading)) "heading" else "text"
                 val raw = input.text.text
                 val measurer = androidx.compose.ui.text.TextMeasurer(input.fontFamilyResolver, input.density, input.layoutDirection)
@@ -188,7 +186,7 @@ internal object PlayarrLayoutExport {
                         if (rs >= re) continue
                         val runStyle = spans.filter { it.start <= rs && it.end > rs }.fold(style) { acc, sp -> acc.merge(sp.item) }
                         val colour = runStyle.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified } ?: continue
-                        val size = runStyle.fontSize.value * input.density.fontScale * input.density.density * scale
+                        val size = runStyle.fontSize.value * input.density.fontScale * input.density.density
                         val runText = raw.substring(rs, re)
                         // The run's content area, as the browser's Range rect gives it: baseline minus and plus the ascent and descent of the font
                         // that drew the run, read from the same text and style measured without a line height (the typeface's own metrics, in px).
@@ -218,8 +216,9 @@ internal object PlayarrLayoutExport {
         val editable = config.contains(SemanticsProperties.EditableText) || config.contains(SemanticsActions.SetText)
         val slider = config.contains(SemanticsProperties.ProgressBarRangeInfo) && config.contains(SemanticsActions.SetProgress)
         val clickable = config.contains(SemanticsActions.OnClick)
-        if ((clickable || role != null || editable || slider) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
+        if ((clickable || role != null || editable || slider || config.contains(SemanticsProperties.PaneTitle)) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
             val kind = when {
+                config.contains(SemanticsProperties.PaneTitle) -> "dialog"
                 editable -> "textbox"
                 slider -> "slider"
                 role == Role.Checkbox -> "checkbox"
