@@ -57,7 +57,7 @@ export class LayoutProbe extends React.Component<unknown, {wanted: string[]}> {
     const known = this.extents.get(key);
     if (known) return Promise.resolve(known);
     return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(null), 3000);
+      const timer = setTimeout(() => resolve(null), 15000);
       this.waiting.set(key, [...(this.waiting.get(key) ?? []), (e) => {
         clearTimeout(timer);
         resolve(e);
@@ -302,7 +302,10 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       const inst = publicInstance(f);
       const lines = textLines.get(inst);
       // No laid-out lines were reported (an unregistered Text): nothing is exported rather than a line made from the box.
-      if (!lines || !lines.length) return;
+      if (!lines || !lines.length) {
+        if (debug) emit({...(base as LayoutElement), text: textOf(f), role: 'debug-no-lines', rect, color: null, fontSize: null, fontWeight: null, src});
+        return;
+      }
       const text = textOf(f);
       if (!text) return;
       // One export entry per laid-out line, everything read from the renderer: the font file (family name) gives the weight, a probe
@@ -315,8 +318,13 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       const size = round2((style.fontSize ?? 0) / scale);
       const m = /-w(\d+)$/.exec(family);
       // Glyph runs sit on whole device pixels: the ascent and descent each count in whole pixels.
-      if (!extent) return; // the renderer gave no font extent: no glyph-run height is invented
-      const runH = Math.round(extent.ascender / scale) + Math.round(extent.descender / scale);
+      // The glyph run's height: the probe's ascender and descender for this font file and size; where the probe could not lay out
+      // (it never does while the player is up), each line's own reported ascender and descender.
+      const runHeight = (line: unknown): number | null => {
+        const own = line as {ascender?: number; descender?: number};
+        if (extent) return Math.round(extent.ascender / scale) + Math.round(extent.descender / scale);
+        return typeof own.ascender === 'number' && typeof own.descender === 'number' ? Math.round(Math.abs(own.ascender) / scale) + Math.round(Math.abs(own.descender) / scale) : null;
+      };
       // The renderer draws the transformed text; onTextLayout reports the source text.
       const transform = (value: string): string =>
         style.textTransform === 'uppercase'
@@ -338,6 +346,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
         above += (line.height * k) / scale;
         const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
         if (!lineText) return;
+        const runH = runHeight(line);
+        if (runH === null) return;
         emit({
           ...(base as LayoutElement),
           text: transform(lineText),

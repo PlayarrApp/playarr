@@ -13,7 +13,7 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {FocusRing} from '../tv/FocusRing';
 import {T, u} from '../tv/kit';
-import {lx} from '../debug/layoutMarks';
+import {lx, NATIVE_DRIVER} from '../debug/layoutMarks';
 
 export type ChromeControl = 'close' | 'scrubber' | 'play' | 'subtitles' | 'quality';
 
@@ -58,7 +58,7 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
   const {colour} = useTheme();
   const rise = useRef(new Animated.Value(props.visible ? 1 : 0)).current;
   useEffect(() => {
-    Animated.timing(rise, {toValue: props.visible ? 1 : 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true}).start();
+    Animated.timing(rise, {toValue: props.visible ? 1 : 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER}).start();
   }, [props.visible, rise]);
   const scrimShift = rise.interpolate({inputRange: [0, 1], outputRange: [u(340), 0]});
   const topFade = rise;
@@ -78,7 +78,7 @@ export function PlayerChrome(props: PlayerChromeProps): React.ReactElement {
         <LinearGradient style={StyleSheet.absoluteFill} start={{x: 0, y: 0}} end={{x: 0, y: 1}} colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']} />
       </Animated.View>
 
-      <Animated.View style={{...StyleSheet.absoluteFillObject, opacity: rise}} pointerEvents={props.visible ? 'box-none' : 'none'}>
+      <Animated.View key={props.visible ? 'shown' : 'hidden'} style={{...StyleSheet.absoluteFillObject, opacity: rise}} pointerEvents={props.visible ? 'box-none' : 'none'}>
         <RoundButton icon="close" label="Close" web="Close player" size={48} x={1814} y={37.8} iconSize={14} control="close" {...props} onPress={props.onClose} />
         <MinimisePill />
 
