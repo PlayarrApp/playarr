@@ -22,11 +22,16 @@ ApplicationWindow {
     Component.onCompleted: Tokens.u = Screen.width / 390
 
     FontMetrics { id: layoutFontMetrics }
+    FontMetrics { id: bigMetrics }
     // Parity layout export (docs/parity/LAYOUT.md); only a PLAYARR_STEPS `js:layoutDump()` step calls it.
     function layoutDump() {
         LayoutDump.dump(app.contentItem, Tokens.u, Tokens.weightOfFamily(), function (font) {
             layoutFontMetrics.font = font
-            return { ascent: layoutFontMetrics.ascent, descent: layoutFontMetrics.descent,
+            // Qt rounds a pixel size's ascent and descent up to whole pixels; the font's own content area is the same metric measured at 20 times
+            // the size and scaled back (the glyph run of a line is that tall, not the rounded box).
+            var big = Qt.font({ family: font.family, pixelSize: font.pixelSize * 20, weight: font.weight, italic: font.italic })
+            bigMetrics.font = big
+            return { qtAscent: layoutFontMetrics.ascent, ascent: bigMetrics.ascent / 20, descent: bigMetrics.descent / 20,
                 advance: function (text) { return layoutFontMetrics.advanceWidth(text) },
                 elide: function (text, mode, width) { return layoutFontMetrics.elidedText(text, mode, width) } }
         }, function (line) { console.log(line) })

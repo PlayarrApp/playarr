@@ -22,7 +22,6 @@ Item {
         visible: parent.back
         property string a11yName: parent.backLabel
         property string parityRole: parent.backRole
-        property real focusRadius: width / 2
         x: Tokens.pad
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: 1 * Tokens.u

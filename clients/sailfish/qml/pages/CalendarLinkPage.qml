@@ -59,8 +59,7 @@ PlayarrPage {
         PLabel { renderType: Text.NativeRendering; x: page.gut; y: 34 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; property string parityRole: "heading"; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22.4); font.letterSpacing: -1.25 * Tokens.u }
         MouseArea {
             property bool navigationFocusable: true
-            property string a11yName: qsTr("Close filters")
-            property real focusRadius: width / 2
+            property string a11yName: qsTr("Close")
             property bool navigationInitialFocus: true
             property int parityRail: 0
             property int parityIndex: 0
@@ -95,13 +94,19 @@ PlayarrPage {
             }
             Item {
                 visible: page.url !== ""; width: parent.width; height: 43 * Tokens.u
-                Rectangle { width: parent.width; height: 44 * Tokens.u; radius: 8 * Tokens.u; color: Tokens.bg; border.width: 1; border.color: Tokens.lineStrong; property string parityRole: "textbox" }
-                PLabel { renderType: Text.NativeRendering;
-                    x: 13 * Tokens.u; width: parent.width - 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter
-                    text: page.url; clip: true; wrapMode: Text.NoWrap
+                // The link is a real read-only text input (its text is selectable and is what Copy link copies), on its own painted plate.
+                TextInput {
+                    id: urlField
+                    width: parent.width; height: 44 * Tokens.u
+                    property string a11yName: ""
+                    property string parityRole: "textbox"
+                    readOnly: true; clip: true; selectByMouse: true
+                    leftPadding: 13 * Tokens.u; rightPadding: 5 * Tokens.u
+                    verticalAlignment: TextInput.AlignVCenter
+                    text: page.url
                     color: Tokens.ink; font.family: "monospace"; font.pixelSize: Tokens.fs(14.2)
+                    Rectangle { z: -1; anchors.fill: parent; radius: 8 * Tokens.u; color: Tokens.bg; border.width: 1; border.color: Tokens.lineStrong }
                 }
-                TextField { id: urlField; width: 1; height: 1; opacity: 0; readOnly: true; text: page.url }
             }
             PillButton {
                 visible: page.url !== ""

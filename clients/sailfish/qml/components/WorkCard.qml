@@ -18,7 +18,6 @@ MouseArea {
     property bool showUnwatched: true
     property string parityRole: "link"
     readonly property string a11yName: compact && work ? qsTr("Open %1").arg(titleLbl.text) : titleLbl.text + (subLbl.text !== "" ? " " + subLbl.text : "")
-    property real focusRadius: compact ? 12 * Tokens.u : 0
     property bool firstInk: false
     property bool ring: false           // web focuses the first library card at rest and draws its ring
     readonly property var prog: work ? Progress.byWork[work.id] : undefined

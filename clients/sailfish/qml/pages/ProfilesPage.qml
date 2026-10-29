@@ -199,7 +199,6 @@ PlayarrPage {
             property bool navigationFocusable: true
             property string parityLabel: qsTr("Settings")
             property string a11yName: qsTr("%1 settings").arg(Api.profileName)
-            property real focusRadius: width / 2
             property int parityRail: 1
             property int parityIndex: 0
             width: 44 * Tokens.u; height: width
@@ -223,13 +222,14 @@ PlayarrPage {
     // The web profiles page pins a Clients link 22 px from the bottom right corner.
     MouseArea {
         id: clients
+        property string a11yName: qsTr("Clients")
+        property string parityRole: "link"
         anchors { right: parent.right; rightMargin: 22 * Tokens.u; bottom: parent.bottom; bottomMargin: 22 * Tokens.u }
         width: 75.5 * Tokens.u; height: 43.7 * Tokens.u
         onClicked: Qt.openUrlExternally("https://playarr.app/clients")
         RectangularGlow { y: 14 * Tokens.u; width: parent.width; height: parent.height; glowRadius: 19 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius; color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12) }
         Rectangle { id: clientsBg; anchors.fill: parent; radius: height / 2; color: Tokens.dark ? "#1e1a1e" : "#fcfcfb"; border.width: 1; border.color: Tokens.line }
-        PLabel { id: clientsLbl; property var radiusSource: clientsBg; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
-                property string parityRole: "link";
+        PLabel { id: clientsLbl; property string parityRole: "link"; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
                 color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(7.68) }
         PLabel { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"
                

@@ -25,10 +25,14 @@ Page {
     // The web paints the shell, the app frame and the page one over another; each is a full-window surface here too.
     background: Component {
         Item {
-            Rectangle { visible: page.shellLayer; anchors.fill: parent; color: Tokens.shell }
-            Rectangle { anchors.fill: parent; color: Tokens.bg }
-            Rectangle { anchors.fill: parent; color: Tokens.bg }
-            Rectangle { y: page.contentTop; width: parent.width; height: parent.height - y; color: Tokens.bg }
+            // shell, app frame and page: each a surface inside the one before, as the web nests them
+            Rectangle { anchors.fill: parent; color: page.shellLayer ? Tokens.shell : Tokens.bg
+                Rectangle { anchors.fill: parent; color: Tokens.bg
+                    Rectangle { anchors.fill: parent; color: Tokens.bg
+                        Rectangle { visible: page.contentTop > 0; y: page.contentTop; width: parent.width; height: parent.height - y; color: Tokens.bg }
+                    }
+                }
+            }
         }
     }
 }

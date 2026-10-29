@@ -97,7 +97,6 @@ PlayarrPage {
                     objectName: "parity-actions-close"
                     property bool navigationFocusable: true
                     property string a11yName: qsTr("Close")
-                    property real focusRadius: width / 2
                     function navigationActivate() { pageStack.pop() }
                     anchors { right: parent.right; rightMargin: 20 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u }
                     width: 44 * Tokens.u; height: width

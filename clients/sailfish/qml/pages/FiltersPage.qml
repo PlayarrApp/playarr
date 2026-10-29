@@ -46,7 +46,6 @@ PlayarrPage {
             property int parityIndex: 0
             function navigationActivate() { pageStack.pop() }
             property string a11yName: qsTr("Close filters")
-            property real focusRadius: width / 2
             x: parent.width - page.gut - width; y: 20 * Tokens.u
             width: 44 * Tokens.u; height: width
             onClicked: pageStack.pop()
@@ -77,7 +76,6 @@ PlayarrPage {
                     readonly property bool active: (page.calendar ? page.calMode : page.view) === modelData.id
                     readonly property int slot: index
                     property string a11yName: modelData.label
-                    property real focusRadius: 12 * Tokens.u
                     scale: active ? 1.025 : 1
                     width: 111.33 * Tokens.u; height: 48 * Tokens.u
                     onClicked: navigationActivate()
@@ -114,8 +112,8 @@ PlayarrPage {
         // Sort and order: two wide pills each.
         Repeater {
             model: page.calendar ? [] : [
-                { row: 0, y: 207.7, id: "title", label: qsTr("Title") }, { row: 0, y: 207.7, id: "date_added", label: qsTr("Date Added") },
-                { row: 1, y: 300.6, id: "asc", label: page.sort === "title" ? qsTr("A-Z") : qsTr("Oldest") }, { row: 1, y: 300.6, id: "desc", label: page.sort === "title" ? qsTr("Z-A") : qsTr("Newest") } ]
+                { row: 0, y: 208.48, id: "title", label: qsTr("Title") }, { row: 0, y: 208.48, id: "date_added", label: qsTr("Date Added") },
+                { row: 1, y: 301.05, id: "asc", label: page.sort === "title" ? qsTr("A-Z") : qsTr("Oldest") }, { row: 1, y: 301.05, id: "desc", label: page.sort === "title" ? qsTr("Z-A") : qsTr("Newest") } ]
             MouseArea {
                 property bool navigationFocusable: true
                 property string parityLabel: modelData.label
@@ -129,15 +127,16 @@ PlayarrPage {
                         page.set("sort", modelData.id)
                     } else { page.order = modelData.id; page.set("order", modelData.id) }
                 }
-                property bool layoutNoEmit: true   // the label below is the web's button (its text run)
+                property string a11yName: modelData.label
                 readonly property bool isLeft: modelData.id === "title" || modelData.id === "asc"
                 readonly property bool active: modelData.row === 0 ? page.sort === modelData.id : page.order === modelData.id
-                x: isLeft ? 18.3 * Tokens.u : 199.6 * Tokens.u
+                x: isLeft ? 20 * Tokens.u : 199 * Tokens.u
                 y: modelData.y * Tokens.u
-                width: (isLeft ? 174.7 : 170.1) * Tokens.u; height: 47.7 * Tokens.u
+                width: 171 * Tokens.u; height: 48 * Tokens.u
+                scale: active ? 1.025 : 1
                 onClicked: navigationActivate()
                 Rectangle { id: pillBg; anchors.fill: parent; radius: 12 * Tokens.u; color: parent.active ? Tokens.primary : page.pill; border.width: parent.active ? 0 : 1; border.color: Tokens.line }
-                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label; property string parityRole: "button"; property var radiusSource: pillBg; color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
+                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: modelData.label;  color: parent.active ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft; font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(11.52) }
             }
         }
         // Language selects.
@@ -162,7 +161,6 @@ PlayarrPage {
                     function navigationActivate() { page.openSelect = parent.opened ? "" : modelData.key }
                     x: 7.39 * Tokens.u; y: 7.39 * Tokens.u; width: parent.width - 14.78 * Tokens.u; height: 44 * Tokens.u
                     property string a11yName: curLbl.text + " " + chevLbl.text
-                    property real focusRadius: 10 * Tokens.u
                     onClicked: navigationActivate()
                     PLabel { renderType: Text.NativeRendering; id: curLbl
                         x: 12 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -2

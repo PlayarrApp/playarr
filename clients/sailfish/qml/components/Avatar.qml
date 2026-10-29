@@ -15,14 +15,15 @@ Item {
     width: 44 * Tokens.u
     height: width
     property color plateColor: Tokens.surfaceSoft
-    Rectangle { visible: !root.drawn; anchors.fill: parent; radius: width / 2; color: parent.plateColor }
-    Image {
-        id: img
-        visible: !root.drawn
-        anchors.fill: parent
-        sourceSize: Qt.size(width * 2, height * 2)
-        smooth: true
-        asynchronous: true
+    Rectangle {   // the plate, with the picture inside it
+        visible: !root.drawn; anchors.fill: parent; radius: width / 2; color: root.plateColor
+        Image {
+            id: img
+            anchors.fill: parent
+            sourceSize: Qt.size(width * 2, height * 2)
+            smooth: true
+            asynchronous: true
+        }
     }
     // Qt 5.6 gradients run top to bottom only: a rotated, longer rectangle gives the 145deg line, masked to the disc.
     Item {
@@ -30,14 +31,12 @@ Item {
         visible: false
         width: root.width; height: root.width
         Rectangle {
-            property bool layoutNoEmit: true
-            anchors.centerIn: parent
+                        anchors.centerIn: parent
             width: root.width * 2; height: root.width * 1.3925; rotation: -35
             gradient: Gradient { GradientStop { position: 0; color: root.plateStart } GradientStop { position: 1; color: root.plateEnd } }
         }
         Canvas {   // the sheen: white at 28 % fading to nothing over 26.77 % of the plate
-            property bool layoutSkip: true
-            anchors.fill: parent
+                anchors.fill: parent
             renderTarget: Canvas.Image
             onPaint: {
                 var ctx = getContext("2d"), w = width
