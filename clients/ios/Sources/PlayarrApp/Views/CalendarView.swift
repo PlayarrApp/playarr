@@ -235,7 +235,7 @@ struct CalendarView: View {
             WMText(glyph, 7.7, 400, color: WM.inkSoft, lh: 17.28) // web arrow glyph: 0.67 times the fallback size
                 .offset(y: 1.8)
                 .frame(width: 44, height: 44)
-                .parityShape("button", name: label, color: WM.page, in: Circle(), radius: 22)
+                .parityShape("button", name: label, color: WM.page, in: Capsule(), radius: 22)
                 .overlay(Circle().stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
         .buttonStyle(.plain)
