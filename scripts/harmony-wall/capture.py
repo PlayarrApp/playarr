@@ -343,7 +343,7 @@ def probe_occlusion(name, theme, raw, viewport, layout_export):
                     result["results"] = {}  # the screen did not return to what it was: nothing measured can be trusted
                     result["note"] = "screen not restored after probing"
             else:
-                result["note"] = "the control text did not change when hidden: the hide hook is ineffective here"
+                result["note"] = "the control text did not change when hidden: the hide hook is ineffective here (" + str({k: v for k, v in (json.loads(get("/state")).get("dbgcount") or {}).items() if k.startswith("probe")}) + ")"
     except Exception as error:  # noqa: BLE001  (a failed probe leaves the geometry in charge; the export lists that in its limits)
         result["results"] = {}
         result["note"] = repr(error)

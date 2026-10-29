@@ -118,6 +118,7 @@ methods = """
       if (name === 'show:all') {
         for (const f of this.previewHidden) {
           f.commonAttribute.visibility(Visibility.Visible);
+          f.commonAttribute.opacity(1);
         }
         this.previewHidden = [];
       } else {
@@ -128,10 +129,11 @@ methods = """
               failed += id + ' ';
             } else {
               f.commonAttribute.visibility(Visibility.Hidden);
+              f.commonAttribute.opacity(0);
               this.previewHidden.push(f);
             }
           } catch (err) {
-            failed += id + ' ';
+            failed += id + ':' + String(err) + ' ';
           }
         }
       }
