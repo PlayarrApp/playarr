@@ -522,6 +522,8 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   };
   async function homeOnce() {
     await guard();
+    // Leave the previous app document first: the player writes its session to sessionStorage while it unloads, after the next document's init script has cleared it, and the next screen would open with a mini player.
+    await page.goto("about:blank");
     await page.goto(appUrl("/"), { waitUntil: "load" });
     await guard();
     await waitReady({ screen: "home", phase: "route" });
