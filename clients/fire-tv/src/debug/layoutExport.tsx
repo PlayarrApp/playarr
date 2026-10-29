@@ -237,12 +237,16 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       native.forEach((line, index) => {
         const lineTop = above;
         above += (line.height * k) / scale;
-        const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
+        // Vega reports some lines' text as the rest of the paragraph from the line start; the next line's own report is that rest's tail.
+        const said = (l: unknown): string => ((l as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
+        let lineText = said(line);
+        const following = native[index + 1] ? said(native[index + 1]) : '';
+        if (following && lineText.length > following.length && lineText.endsWith(following)) lineText = lineText.slice(0, lineText.length - following.length).trim();
         if (!lineText) return;
         out.push({
           ...(base as LayoutElement),
           text: transform(lineText),
-          role: webRole && webRole !== 'text' ? webRole : 'text',
+          role: webRole === 'none' ? 'container' : webRole && webRole !== 'text' ? webRole : 'text',
           rect: {x: round2(rect.x + (line.x * k) / scale), y: round2(rect.y + lineTop), w: round2((line.width * k) / scale), h: round2(runH * k)},
           color: hex(style.color),
           fontSize: size,

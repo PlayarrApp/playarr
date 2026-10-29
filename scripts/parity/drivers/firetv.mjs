@@ -246,7 +246,8 @@ export async function createDriver({ out } = {}) {
       for (let i = 0; i < 4; i++) {
         await settled(5000);
         const after = JSON.stringify((await state(8000).catch(() => ({}))).focus ?? null);
-        if (after !== before) return;
+        // An answer without a focus is a late answer, not a move.
+        if (after !== before && after !== "null") return;
         await sleep(1200);
       }
       await press(key);
