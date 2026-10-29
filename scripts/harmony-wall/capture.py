@@ -257,7 +257,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
 
 
 def player_held_at_2s(folder):
-    """The preview build holds the player paused at exactly 2.000 s (patch_player_still.py; docs/parity/DEVICES.md, 'Pausing the player at
+    """The preview build holds the player paused at exactly 2.000 s (patch_player_hold.py; docs/parity/DEVICES.md, 'Pausing the player at
     exactly 2.000 s'). Refuse the capture unless the app's own tree reports that position, paused (the Play button, not Pause)."""
     raw = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark", "player-controls.json")
     if not os.path.exists(raw):

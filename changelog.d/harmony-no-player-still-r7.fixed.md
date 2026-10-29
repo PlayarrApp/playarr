@@ -1,0 +1,1 @@
+- HarmonyOS parity capture: the TV player no longer gets an injected still-image surface in the preview build; the video frame is masked, not drawn.
