@@ -19,13 +19,15 @@ Item {
     property real bottomPadding: 0
     property int style: Text.Normal
     property color styleColor: "black"
-    property bool naturalLines: false           // every line item has its font's own height; `lineHeight` (a factor) then only sets the pitch between lines
+    property bool endAtLastLine: false          // the block ends at its last line's own bottom; otherwise it spans one `lineHeight` pitch per line
     property int lineRole: 0                    // the accessible role of each line (Accessible.Heading for a title)
     readonly property int lineCount: lines.length
     property var lines: []
     property bool laidOut: false
 
-    implicitHeight: topPadding + col.height + bottomPadding
+    // Every line item has its font's own height (so the export reads a natural glyph box); `lineHeight` only sets the pitch between lines.
+    readonly property real gap: lineHeightMode === Text.FixedHeight ? lineHeight - fm.height : (lineHeight - 1) * fm.height
+    implicitHeight: topPadding + col.height + (endAtLastLine || lines.length === 0 ? 0 : gap) + bottomPadding
     implicitWidth: widest
     property real widest: 0
 
@@ -71,7 +73,7 @@ Item {
         id: col
         y: root.topPadding
         width: root.width
-        spacing: root.naturalLines ? (root.lineHeight - 1) * fm.height : 0
+        spacing: root.gap
         Repeater {
             model: root.lines
             PLabel {
@@ -81,8 +83,6 @@ Item {
                 font: root.font
                 color: root.color
                 horizontalAlignment: root.horizontalAlignment
-                lineHeight: root.naturalLines ? 1 : root.lineHeight
-                lineHeightMode: root.naturalLines ? Text.ProportionalHeight : root.lineHeightMode
                 Accessible.role: root.lineRole
                 style: root.style
                 styleColor: root.styleColor

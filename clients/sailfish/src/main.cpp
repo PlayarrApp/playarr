@@ -19,6 +19,7 @@
 #include "calendar.h"
 #include "downloads.h"
 #include "downloadsdbus.h"
+#include "parityscreen.h"
 #include <QDBusConnection>
 
 // QML Image/Video requests to the signed-in server get the bearer token and an on-disk artwork cache.
@@ -86,6 +87,8 @@ int main(int argc, char *argv[])
     view->rootContext()->setContextProperty(QStringLiteral("Playback"), &playback);
     view->rootContext()->setContextProperty(QStringLiteral("Calendar"), &calendar);
     view->rootContext()->setContextProperty(QStringLiteral("Downloads"), &downloads);
+    ParityScreen parityScreen(view.data());
+    view->rootContext()->setContextProperty(QStringLiteral("ParityScreen"), &parityScreen);
     view->setSource(SailfishApp::pathToMainQml());
     view->showFullScreen();
     // Developer smoke runs (set by whoever launches the app, no runtime channel): PLAYARR_STEPS is a '|' list of

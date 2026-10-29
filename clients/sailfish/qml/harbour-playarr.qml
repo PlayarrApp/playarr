@@ -27,7 +27,7 @@ ApplicationWindow {
         LayoutDump.dump(app.contentItem, Tokens.u, Tokens.weightOfFamily(), function (line) { console.log(line) }, function (item) {
             var a = item.Accessible   // the item's real accessibility name and role
             return { name: a.name, role: a.role }
-        }, { width: borderProbe.border.width, color: borderProbe.border.color })
+        }, { width: borderProbe.border.width, color: borderProbe.border.color }, ParityScreen)
     }
 
     Connections {

@@ -66,7 +66,7 @@ Item {
             EnterKey.iconSource: "image://theme/icon-m-enter-close"
             EnterKey.onClicked: focus = false
             onTextChanged: debounce.restart()
-            FitText { visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
+            FitText { visible: input.text === ""; y: 12.64 * Tokens.u; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: -0.186; font.pixelSize: Tokens.fs(12.48); width: parent.width; elide: Text.ElideRight }   // the web draws the hint smaller than the typed text
         }
     }
     MouseArea {   // web: the Filters button at the end of the header row, as on the library pages

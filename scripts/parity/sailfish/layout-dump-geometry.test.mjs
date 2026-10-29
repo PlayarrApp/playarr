@@ -32,14 +32,31 @@ function attach(parent, child) {
   return child;
 }
 
-function dumpLines(root, u = 1) {
+// The rendered window. An element named in `coveredNames` has no visible pixel while the "plate" is shown; one named in `plainNames` has none
+// ever (it is the colour of its backdrop); every other element changes the screen when hidden.
+function fakeScreen(coveredNames = [], plainNames = []) {
+  const hidden = new Set();
+  return {
+    hiddenEver: [], snapshots: 0, snapshot() { this.snapshots += 1; },
+    hide(item) { hidden.add(item.objectName); this.hiddenEver.push(item.objectName); return item.objectName; },
+    restore(item, token) { hidden.delete(token); },
+    changed() {
+      const names = [...hidden];
+      const subject = names.find((name) => coveredNames.includes(name) || plainNames.includes(name));
+      if (!subject) return true;
+      return coveredNames.includes(subject) && hidden.has("plate");
+    },
+  };
+}
+
+function dumpLines(root, u = 1, screen = fakeScreen()) {
   const lines = [];
-  context.layout.dump(root, u, {}, (line) => lines.push(line), (item) => ({ name: item.accessName || "", role: item.accessRole || 0 }), { width: 1, color: { r: 0, g: 0, b: 0, a: 1 } });
+  context.layout.dump(root, u, {}, (line) => lines.push(line), (item) => ({ name: item.accessName || "", role: item.accessRole || 0 }), { width: 1, color: { r: 0, g: 0, b: 0, a: 1 } }, screen);
   return lines;
 }
 
-function dump(root, u = 1) {
-  const lines = dumpLines(root, u);
+function dump(root, u = 1, screen) {
+  const lines = dumpLines(root, u, screen);
   return lines.filter((line) => line.startsWith("LAYOUTEL|")).flatMap((line) => JSON.parse(line.slice(9)));
 }
 
@@ -146,13 +163,47 @@ test("takes a control's radius from the shape painted over it, never from a hint
   assert.equal(second.radius, 6);
 });
 
-test("drops an element that an opaque later sibling covers, keeps one beneath a translucent plate", () => {
+function coveredScene() {
   const root = makeItem("root", 100, 100);
   attach(root, focus("covered", 10, 10, { x: 10, y: 10 }));
   attach(root, makeItem("plate", 50, 50, { border: { width: 0 }, radius: 0, color: { r: 1, g: 1, b: 1, a: 0.9 } }));
   attach(root, focus("under-glass", 10, 10, { x: 60, y: 60 }));
   attach(root, makeItem("glass", 20, 20, { x: 55, y: 55, border: { width: 0 }, radius: 0, color: { r: 1, g: 1, b: 1, a: 0.2 } }));
-  assert.deepEqual(dump(root).filter((row) => row.role === "button").map((row) => row.text), ["under-glass"]);
+  attach(root, focus("free", 10, 10, { x: 80, y: 5 }));
+  return root;
+}
+const buttons = (rows) => rows.filter((row) => row.role === "button").map((row) => row.text);
+
+test("the geometry only flags an element that a later opaque plate may cover; the rendered screen decides", () => {
+  const screen = fakeScreen(["covered"]);
+  assert.deepEqual(buttons(dump(coveredScene(), 1, screen)), ["under-glass", "free"]);
+  assert.ok(screen.hiddenEver.includes("covered") && !screen.hiddenEver.includes("under-glass") && !screen.hiddenEver.includes("free"));   // glass and the uncovered button are never hidden
+});
+
+test("a flagged element whose hiding changes a pixel stays, even when the plate looks opaque", () => {
+  assert.deepEqual(buttons(dump(coveredScene(), 1, fakeScreen([]))), ["covered", "under-glass", "free"]);
+});
+
+test("a flagged element that is only the colour of its backdrop is not covered: it stays", () => {
+  assert.deepEqual(buttons(dump(coveredScene(), 1, fakeScreen([], ["covered"]))), ["covered", "under-glass", "free"]);
+});
+
+test("the document counts the elements the screen showed covered", () => {
+  const lines = dumpLines(coveredScene(), 1, fakeScreen(["covered"]));
+  assert.equal(lines.find((line) => line.startsWith("LAYOUTEND|")), "LAYOUTEND|100|100|1");
+  assert.ok(lines.some((line) => line.startsWith("LAYOUTWARN|occluded|button|covered|")));
+  assert.equal(dumpLines(coveredScene(), 1, fakeScreen([])).find((line) => line.startsWith("LAYOUTEND|")), "LAYOUTEND|100|100|0");
+});
+
+test("the hidden items are restored in reverse and their box is handed over in scene pixels", () => {
+  const seen = [];
+  const screen = { snapshot() { seen.push("snapshot"); }, hide: (item) => item.objectName, restore: (item, token) => seen.push(["restore", item.objectName, token]), changed: (...box) => { seen.push(box); return false; } };
+  dump(coveredScene(), 1, screen);
+  assert.deepEqual(seen, ["snapshot", [10, 10, 10, 10], ["restore", "covered", "covered"], "snapshot", [10, 10, 10, 10], ["restore", "covered", "covered"], ["restore", "plate", "plate"]]);
+});
+
+test("an export that needs the rendered screen and has none stops", () => {
+  assert.throws(() => dumpLines(coveredScene(), 1, null), /need the rendered screen/);
 });
 
 test("reports a text font size at the scale it is drawn", () => {
@@ -271,6 +322,15 @@ test("a text item that draws its own plate exports the plate's radius; a parent'
   const text = dump(root).filter((row) => row.role === "text");
   assert.equal(text[0].radius, 11);
   assert.equal(text[1].radius, undefined);
+});
+
+test("a text input's plate radius belongs to the control record, not to its separate text record", () => {
+  const root = makeItem("root", 100, 100);
+  const input = attach(root, makeItem("input", 60, 20, textItem({ text: "ab", contentWidth: 20, contentHeight: 11, readOnly: true, positionAt: (x) => (x > 0 ? 2 : 0), positionToRectangle: (n) => ({ x: n * 10, y: 0, height: 11 }), accessName: "link", accessRole: 42 })));
+  attach(input, makeItem("plate", 60, 20, { z: -1, border: { width: 0, color: { r: 0, g: 0, b: 0, a: 0 } }, radius: 8, color: { r: 0, g: 1, b: 0, a: 1 } }));
+  const rows = dump(root);
+  assert.equal(rows.find((row) => row.role === "textbox").radius, 8);
+  assert.equal(rows.find((row) => row.role === "text").radius, undefined);
 });
 
 test("does not export a Canvas that is not available or a transparent text", () => {

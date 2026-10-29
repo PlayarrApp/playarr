@@ -404,19 +404,10 @@ Page {
                 onReleased: page.seekTo(sliderValue)
             }
         }
-        // The time code: the web's player-time element, a container with its box and the text measured inside it.
-        Item {
-            x: 195 * Tokens.u - width / 2; y: 556.13 * Tokens.u
-            width: 54.19 * Tokens.u; height: 14.88 * Tokens.u
-            Accessible.role: Accessible.Pane; Accessible.name: timeLbl.text
-            PText {
-                id: timeLbl
-                anchors.fill: parent
-                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-                font.letterSpacing: 0.9
-                text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92)
-            }
-        }
+        // The time code: the web's three text runs (position, a dimmer slash, duration), each at its own place.
+        PText { x: 167.91 * Tokens.u; y: 556.13 * Tokens.u; text: page.mmss(page.positionMs); color: "#ffffff"; font.letterSpacing: -0.245; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
+        PText { x: 193.59 * Tokens.u; y: 556.13 * Tokens.u; text: "/"; color: "#a5969e"; font.letterSpacing: 0; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
+        PText { x: 202 * Tokens.u; y: 556.13 * Tokens.u; text: page.mmss(page.durationMs); color: "#ffffff"; font.letterSpacing: -0.245; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
         PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }
         PlayerButton {
             x: 58 * Tokens.u; y: 577 * Tokens.u; plate: "#242424"; label: qsTr("Play"); parityIndex: 2
@@ -432,7 +423,7 @@ Page {
             navigationActivate: function() { player.muted = !player.muted }
             onClicked: player.muted = !player.muted
         }
-        PlayerButton { x: 196 * Tokens.u; y: 577 * Tokens.u; icon: "pAudio"; iconCss: 0; label: ""; dimmed: true; parityIndex: 6 }
+        PlayerButton { x: 196 * Tokens.u; y: 577 * Tokens.u; icon: "pAudio"; label: qsTr("Audio: Unavailable"); dimmed: true; parityIndex: 6 }
         PlayerButton {
             x: 242 * Tokens.u; y: 577 * Tokens.u; icon: "pSubs"; label: qsTr("Subtitles: Off"); parityIndex: 7
             navigationActivate: function() { page.menuOpen = !page.menuOpen }

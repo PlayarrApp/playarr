@@ -163,7 +163,9 @@ function textRun(item, log) {
         y: va === 128 ? pt + (availH - ch) / 2 : va === 64 ? pt + availH - ch : pt, w: cw, h: ch }
 }
 
-function dump(root, u, weights, log, access, defaultBorder) {
+// `screen` (parity builds): the rendered window. snapshot() renders it, hide(item) returns a token after hiding the item with everything in it,
+// changed(x, y, w, h) renders again and says whether a pixel of that scene rectangle differs from the snapshot, restore(item, token) shows it again.
+function dump(root, u, weights, log, access, defaultBorder, screen) {
     unsetBorder = defaultBorder || null
     function roleOf(item, fallback) { var r = ROLE_NAMES[access(item).role]; return r || fallback }
     var fills = [], out = [], radiusLimitations = 0, painters = [], seq = 0
@@ -261,7 +263,7 @@ function dump(root, u, weights, log, access, defaultBorder) {
                     var textSample = polygonCenter(textPoly)
                     var el = { text: run.text, role: item.readOnly !== undefined ? "text" : roleOf(item, "text"), rect: rect(textBox.x, textBox.y, textBox.w, textBox.h),
                         color: hex(item.color), background: bgAt(textSample.x, textSample.y), fontSize: r2(item.font.pixelSize * textScale / u), fontWeight: weightOf(item, weights) }
-                    var ownPlate = paintedShape(item)   // a plate the text item itself draws (a child of it under its glyphs): its drawn radius
+                    var ownPlate = item.readOnly === undefined ? paintedShape(item) : null   // a plate the text item itself draws (a child of it under its glyphs): its drawn radius; a text input's plate belongs to its control record
                     if (ownPlate) { var plateRadius = radiusOf(ownPlate, uniformRadiusScale(ownPlate, root)); if (plateRadius) el.radius = plateRadius }
                     if (op < 0.999) el.opacity = r2(op)
                     el._item = item; el._seq = ++seq; el._r = polygonBounds(textPoly)
@@ -353,25 +355,70 @@ function dump(root, u, weights, log, access, defaultBorder) {
         for (var j = mark; j < out.length; ++j) if (out[j]._at) { out[j].background = bgAt(out[j]._at[0], out[j]._at[1], fmark, out[j]._box); delete out[j]._at; delete out[j]._box }
     }
     walk(root, 1, false)
-    // Elements covered by something painted later (opaque enough, not inside the element) are not visible: sample the visible box at 3 x 3 points.
-    var kept = []
+    // Visibility is decided on the rendered screen. The geometry only flags an element that something painted later (opaque enough, not inside
+    // the element) may cover: at 3 x 3 points of its visible box, one or more lie under such a painter. A flagged element is hidden through
+    // the parity screen hook (its item and everything in it, opacity 0, bindings untouched), the window is rendered again and the element's
+    // visible box compared with the render that had it. A pixel that changes: the element is visible. Nothing changes: it is covered, unless it
+    // is simply the colour of what lies under it, which a second pair of renders tells apart (the covering painters hidden too: now hiding the
+    // element must change a pixel). Every flagged element is tested on its own.
+    var kept = [], occluded = 0, flagged = []
     for (var e = 0; e < out.length; ++e) {
-        var el2 = out[e], r = el2._r, hidden = !!r, cover = null
-        for (var gy = 0; hidden && gy < 3; ++gy) for (var gx = 0; hidden && gx < 3; ++gx) {
-            var pt = { x: r.x + r.w * (0.2 + 0.3 * gx), y: r.y + r.h * (0.2 + 0.3 * gy) }, hit = false
-            for (var pi2 = 0; !hit && pi2 < painters.length; ++pi2) {
+        var el2 = out[e], r = el2._r, coverers = []
+        for (var gy = 0; r && gy < 3; ++gy) for (var gx = 0; gx < 3; ++gx) {
+            var pt = { x: r.x + r.w * (0.2 + 0.3 * gx), y: r.y + r.h * (0.2 + 0.3 * gy) }
+            for (var pi2 = 0; pi2 < painters.length; ++pi2) {
                 var pn = painters[pi2]
-                if (pn.seq > el2._seq && !isWithin(pn.item, el2._item) && polygonContainsPoint(pn.poly, pt)) { hit = true; cover = pn }
+                if (pn.seq > el2._seq && !isWithin(pn.item, el2._item) && polygonContainsPoint(pn.poly, pt) && coverers.indexOf(pn.item) < 0) coverers.push(pn.item)
             }
-            if (!hit) hidden = false
         }
-        if (!hidden) kept.push(el2)
-        else log("LAYOUTWARN|occluded|" + el2.role + "|" + el2.text.slice(0, 24) + "|" + r2(r.x / u) + "," + r2(r.y / u) + " " + r2(r.w / u) + "x" + r2(r.h / u) + "|by " + String(cover.item).replace(/\(0x.*$/, "") + " " + r2(cover.poly[0].x / u) + "," + r2(cover.poly[0].y / u))
+        if (coverers.length) { el2._coverers = coverers; flagged.push(el2) }
+    }
+    if (flagged.length && !(screen && screen.changed && screen.hide && screen.restore && screen.snapshot)) {
+        var noScreen = "LAYOUTERR|elements possibly covered need the rendered screen to decide|" + flagged.length
+        log(noScreen); throw new Error(noScreen)
+    }
+    function sceneBox(el) {
+        var fb = polygonBounds(mappedRect(root, null, el._r.x, el._r.y, el._r.w, el._r.h))
+        var sx = Math.floor(fb.x + GEOMETRY_EPSILON), sy = Math.floor(fb.y + GEOMETRY_EPSILON)
+        return [sx, sy, Math.max(1, Math.ceil(fb.x + fb.w - GEOMETRY_EPSILON) - sx), Math.max(1, Math.ceil(fb.y + fb.h - GEOMETRY_EPSILON) - sy)]
+    }
+    // Hide `items` in turn, run `check`, show them again (in reverse), whatever happens.
+    function withHidden(items, check) {
+        var tokens = []
+        try {
+            for (var hi = 0; hi < items.length; ++hi) tokens.push(screen.hide(items[hi]))
+            return check()
+        } finally {
+            for (var ri = items.length - 1; ri >= 0; --ri) if (ri < tokens.length) screen.restore(items[ri], tokens[ri])
+        }
+    }
+    var coveredEls = []
+    if (flagged.length) {
+        screen.snapshot()
+        var unchanged = []
+        for (var fi = 0; fi < flagged.length; ++fi) {
+            var box = sceneBox(flagged[fi])
+            if (!withHidden([flagged[fi]._item], function () { return screen.changed(box[0], box[1], box[2], box[3]) })) unchanged.push(flagged[fi])
+        }
+        for (var ui = 0; ui < unchanged.length; ++ui) {
+            var ue = unchanged[ui], ubox = sceneBox(ue)
+            var shows = withHidden(ue._coverers, function () {
+                screen.snapshot()
+                return withHidden([ue._item], function () { return screen.changed(ubox[0], ubox[1], ubox[2], ubox[3]) })
+            })
+            if (shows) coveredEls.push(ue)
+        }
+    }
+    for (var ke = 0; ke < out.length; ++ke) {
+        if (coveredEls.indexOf(out[ke]) < 0) { kept.push(out[ke]); continue }
+        var ce = out[ke]
+        occluded += 1
+        log("LAYOUTWARN|occluded|" + ce.role + "|" + ce.text.slice(0, 24) + "|" + r2(ce._r.x / u) + "," + r2(ce._r.y / u) + " " + r2(ce._r.w / u) + "x" + r2(ce._r.h / u))
     }
     out = kept
-    for (var q = 0; q < out.length; ++q) { delete out[q]._item; delete out[q]._seq; delete out[q]._r }
+    for (var q = 0; q < out.length; ++q) { delete out[q]._item; delete out[q]._seq; delete out[q]._r; delete out[q]._coverers }
     // journald rate-limits per message, so the elements go out in chunks.
     for (var c = 0; c < out.length; c += 10) log("LAYOUTEL|" + JSON.stringify(out.slice(c, c + 10)))
     if (radiusLimitations) log("LAYOUTWARN|nonuniform-rounded-radius|" + radiusLimitations)
-    log("LAYOUTEND|" + r2(root.width / u) + "|" + r2(root.height / u))
+    log("LAYOUTEND|" + r2(root.width / u) + "|" + r2(root.height / u) + "|" + occluded)
 }
