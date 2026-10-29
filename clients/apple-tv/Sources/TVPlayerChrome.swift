@@ -199,7 +199,7 @@ struct TVPlayerChrome: View {
             .frame(width: 58.39, height: 16.31, alignment: .leading)
             .parityBox("container", text: "\(Self.clock(state.position)) / \(Self.clock(state.duration))", fill: Color.black, textStyle: (10.88, 400, Color.white))
             .placed(x: 302.78, y: 981.84, w: 58.39, h: 16.31)
-            icon("speaker.wave.2.fill", x: 396.77, name: "Mute", opacity: 0.4)
+            icon("speaker.wave.2.fill", x: 396.77, opacity: 0.4, name: "Mute")
             // the volume control: a 130 x 44 hit area, drawn without a track as on the web reference
             Color.clear.frame(width: 130, height: 44)
                 .accessibilityLabel("Volume")
@@ -210,7 +210,7 @@ struct TVPlayerChrome: View {
 
     private var rightGroup: some View {
         ZStack(alignment: .topLeading) {
-            icon("speaker.wave.2.fill", x: 1245.9, name: "Audio: Unavailable", opacity: 0.4)
+            icon("speaker.wave.2.fill", x: 1245.9, opacity: 0.4, name: "Audio: Unavailable")
             icon("text.rectangle", x: 1323.5, name: "Subtitles: Off")
             icon("text.line.last.and.arrowtriangle.forward", x: 1401.1, name: "Playlist: 1 item")
             Button(action: onToggleQualityMenu) {
