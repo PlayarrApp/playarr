@@ -420,13 +420,12 @@ internal sealed class CalendarScreen : IPage
         var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, DetailsPanel.Soft(_t), 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
         var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);
-        open.Add(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center)); Sem.Tag(open, "button", "Open series");
+        open.Add(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center));
         _panel.Add(open);
         var wl = Ui.Box(287.2f, by, 177.6f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
         wl.BorderlineWidth = 1; wl.BorderlineColor = Ui.LineA(_t, 0.153f);
         wl.Add(Ui.Text("+", 21, 18, 14.72f, 720, _t.InkSoft, 14, 22.08f));
         wl.Add(Ui.Text("Add to watchlist", 38.52f, 17, 14.72f, 900, _t.InkSoft, 130, 22.08f));
-        Sem.Tag(wl, "button", "+ Add to watchlist");
         _panel.Add(wl);
     }
 

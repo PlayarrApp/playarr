@@ -521,6 +521,10 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+    env:
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+      DOTNET_NOLOGO: '1'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
     defaults:
       run:
         working-directory: clients/tizen-native
@@ -529,14 +533,18 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          # 8.0.426 (released 14 Oct) fails to create .NET's named NuGet-Migrations mutex on the runners (IOException before any test runs); 8.0.425 is fine
-          dotnet-version: '8.0.425'
+          # the runner image ships 8.0.427; pinning 8.0.425 (a second SDK alongside) now fails the named NuGet-Migrations mutex (IOException before any test runs)
+          dotnet-version: '8.0.427'
 
       - uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
           key: nuget-tizen-${{ runner.os }}-${{ hashFiles('clients/tizen-native/**/*.csproj') }}
           restore-keys: nuget-tizen-${{ runner.os }}-
+
+      # runs before the sudo workload install: afterwards the CLI's NuGet-Migrations mutex fails on the hosted runners
+      - name: dotnet test (Playarr.Tizen.Logic.Tests)
+        run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj
 
       - name: Install the Samsung Tizen workload (pinned)
         run: |
@@ -548,9 +556,6 @@ jobs:
             [ "$attempt" = 3 ] && exit 1
             echo "workload install failed (attempt $attempt), retrying"; sleep $((attempt * 15))
           done
-
-      - name: dotnet test (Playarr.Tizen.Logic.Tests)
-        run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj
 
       - name: Build debug hooks (compile validation only)
         run: dotnet build src/Playarr.Tizen/Playarr.Tizen.csproj -c Debug -p:PlayarrDebug=true
