@@ -123,7 +123,7 @@ export struct MultiSelect {
               .fontColor(toResourceColor(activeColors().inkMuted))
               .rotate({ angle: this.open ? 180 : 0 })
           }
-          .accessibilityText((this.selected.length === 0 ? this.noneLabel : this.addLabel) + ' ⌄').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .accessibilityText((this.selected.length === 0 ? this.noneLabel : this.addLabel)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           // Web `flex: 1 1 8rem`: shares a line with the tokens when it fits.
           .flexGrow(1)
           .flexBasis(tv(TRIGGER_BASIS))

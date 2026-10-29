@@ -594,7 +594,7 @@ struct Profiles {
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
         .margin({ top: this.pick(14.79, 12.33), right: this.pick(5.49, 0) })
-        .accessibilityText('+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+        .accessibilityText(t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .focusable(true)
         .onClick(() => {
           pushRoute(getNavStack(), ROUTES.Pairing);
