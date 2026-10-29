@@ -166,12 +166,12 @@
                 <Grid Width="20" Height="20"><FontIcon Glyph="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
             <TextBlock x:Name="TimeText" Margin="302.78,981.24,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="10.88" Foreground="White" />
-            <Button x:Name="MuteButton" Width="64" Height="64" Margin="374.77,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
+            <Button x:Name="MuteButton" IsTabStop="False" Width="64" Height="64" Margin="374.77,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Mute" Click="MuteButton_Click">
                 <Grid Width="20" Height="20"><FontIcon x:Name="MuteIcon" Glyph="&#xE767;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
             </Button>
-            <Slider x:Name="VolumeSlider" Width="130" Height="44" Margin="448.77,968,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Minimum="0" Maximum="100" Value="100"
+            <Slider x:Name="VolumeSlider" IsTabStop="False" Width="130" Height="44" Margin="448.77,968,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Minimum="0" Maximum="100" Value="100"
                 Foreground="White" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="2" FocusVisualSecondaryThickness="0"
                 IsThumbToolTipEnabled="False" AutomationProperties.Name="Volume" ValueChanged="VolumeSlider_ValueChanged" />
             <Button x:Name="AudioButton" Width="64" Height="64" Margin="1223.98,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
@@ -213,7 +213,7 @@
                     </Flyout>
                 </Button.Flyout>
             </Button>
-            <Button x:Name="FullscreenButton" Width="64" Height="64" Margin="1786,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
+            <Button x:Name="FullscreenButton" IsTabStop="False" Width="64" Height="64" Margin="1786,958,0,0" Padding="0" CornerRadius="32" HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="Transparent" BorderThickness="0" FocusVisualPrimaryBrush="White" FocusVisualPrimaryThickness="3" FocusVisualSecondaryThickness="0"
                 AutomationProperties.Name="Enter fullscreen" Click="FullscreenButton_Click">
                 <Grid Width="20" Height="20"><FontIcon Glyph="&#xE740;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid>
