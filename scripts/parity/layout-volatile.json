@@ -1,5 +1,5 @@
 {
-  "$comment": "Elements whose TEXT is expected to differ between web and a device but whose box and style must still match (docs/parity/LAYOUT.md). Keyed by screen id; \"*\" applies to every screen. selector: CSS selector run on the web DOM (the element and its descendants collapse into one layout element). textRegex: matches the element's own text instead. clock: true = text is scored (not volatile) for a device that declares clockPinned. maskOnly: never scored; its rect is blanked in the pixel scorer. omit: not exported at all.",
+  "$comment": "Elements whose TEXT is expected to differ between web and a device but whose box and style must still match (docs/parity/LAYOUT.md). Keyed by screen id; \"*\" applies to every screen. selector: CSS selector run on the page DOM (the matched element and every descendant are exported as ordinary elements with their own boxes and styles, each flagged volatile). textRegex: matches the element's own text instead. clock: true = text is scored (not volatile) for a device that declares clockPinned. maskOnly: never scored; its rect is blanked in the pixel scorer. omit: not exported at all.",
   "*": [
     { "name": "header-clock", "selector": ".app-clock-time", "clock": true },
     { "name": "header-date", "selector": ".app-clock-date", "clock": true },

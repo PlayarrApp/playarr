@@ -84,6 +84,9 @@ styling differences or bugs; a missing element that web draws and the product su
 
 ## Volatile content
 
+A volatile selector flags the matched element and each descendant `volatile`; none is merged into another, so every drawn text run and icon (the time code and its separator, the quality badge and label, the audio icon) keeps its own box and style.
+Text cut by `text-overflow: ellipsis` is exported with the kept characters from their real boxes and the ellipsis width read from a probe run laid out inside the element.
+
 `scripts/parity/layout-volatile.json` (keyed by screen, `*` = all): elements whose text is expected to differ while box and style
 must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player audio button (web Chromium shows "Audio: Unavailable" because it lacks `audioTracks` support, a native app shows the clip's real track); the player quality button (which stream the player picks is playback behaviour, out of scope: only its box, style, role and name presence are scored); the player buffered bar (`omit`: left out of the refs, its length follows download timing). An entry with `opacityVolatile` (the player audio button: web direct-play never loads tracks, so web shows it dimmed) is exported with
 `opacityVolatile: true` and no `opacity`; the scorer skips its opacity and still scores its box and style. The video

@@ -55,9 +55,18 @@ export function layoutPageFn(volatile) {
     for (var n = el; n && n.nodeType === 1; n = n.parentElement) z *= Number(getComputedStyle(n).zoom) || 1;
     return z;
   };
-  /* Direct text nodes join with no separator only when they are adjacent siblings; an element between them (flex gap, icon) draws a gap. */
+  /* Direct text nodes join with no separator unless something that draws a gap sits between them: a rendered, in-flow element (flex gap, icon) or collapsible white space. */
+  var gapBetween = function (a, b) {
+    for (var n = a.nextSibling; n && n !== b; n = n.nextSibling) {
+      if (n.nodeType === 3) return true;
+      if (n.nodeType !== 1) continue;
+      var s = getComputedStyle(n);
+      if (s.display !== "none" && s.position !== "absolute" && s.position !== "fixed") return true;
+    }
+    return false;
+  };
   var joinTexts = function (nodes) {
-    return nodes.map(function (n, i) { return (i > 0 && n.previousSibling !== nodes[i - 1] ? " " : "") + n.textContent; }).join("");
+    return nodes.map(function (n, i) { return (i > 0 && gapBetween(nodes[i - 1], n) ? " " : "") + n.textContent; }).join("");
   };
   var norm = function (s) { return String(s || "").replace(/\s+/g, " ").trim(); };
   /* Chromium has no text-transform: full-width (computed value is none). capitalize upper-cases the first letter of each word. */
@@ -80,7 +89,7 @@ export function layoutPageFn(volatile) {
     var lines = [], cur = null, range = document.createRange();
     for (var a = 0; a < nodes.length; a++) {
       var data = nodes[a].data;
-      if (a > 0 && cur && nodes[a].previousSibling !== nodes[a - 1]) cur.text += " ";
+      if (a > 0 && cur && gapBetween(nodes[a - 1], nodes[a])) cur.text += " ";
       for (var i = 0; i < data.length; i++) {
         range.setStart(nodes[a], i);
         range.setEnd(nodes[a], i + 1);
@@ -99,13 +108,20 @@ export function layoutPageFn(volatile) {
       return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left, h: x.l.bottom - x.l.top };
     });
   };
-  /* A single line cut by text-overflow: ellipsis shows the characters that fit before the ellipsis, then "…". Returns null when nothing is cut. */
+  /* A single line cut by text-overflow: ellipsis shows the characters that fit before the ellipsis, then "…". Returns null when nothing is cut.
+     The drawn ellipsis is not in the DOM: its width is the laid-out run of a probe "…" appended inside the element (same font, spacing and zoom),
+     the kept characters are the real per-character boxes that fit. shortcut: left-to-right text only. */
   var ellipsise = function (el, nodes, cs) {
     var box = el.getBoundingClientRect();
-    var limit = box.right - (parseFloat(cs.paddingRight) || 0) - (parseFloat(cs.borderRightWidth) || 0);
-    var cv = document.createElement("canvas").getContext("2d");
-    cv.font = cs.font;
-    var ellW = cv.measureText("\u2026").width;
+    var scale = el.offsetWidth ? box.width / el.offsetWidth : 1;
+    var limit = box.left + scale * (el.clientLeft + el.clientWidth - (parseFloat(cs.paddingRight) || 0));
+    var probe = document.createElement("span");
+    probe.textContent = "\u2026";
+    el.appendChild(probe);
+    var pr = document.createRange();
+    pr.selectNodeContents(probe);
+    var ellW = pr.getBoundingClientRect().width;
+    el.removeChild(probe);
     var range = document.createRange(), text = "", l = null;
     for (var a = 0; a < nodes.length; a++) {
       for (var i = 0; i < nodes[a].data.length; i++) {
@@ -121,7 +137,7 @@ export function layoutPageFn(volatile) {
   };
   var clipped = function (el, r) {
     var left = r.left, top = r.top, right = r.right, bottom = r.bottom;
-    for (var n = el.parentElement; n && n !== document.documentElement; n = n.parentElement) {
+    for (var n = el; n && n !== document.documentElement; n = n.parentElement) {
       var s = getComputedStyle(n);
       if (s.overflowX === "visible" && s.overflowY === "visible") continue;
       var c = n.getBoundingClientRect();
@@ -182,15 +198,27 @@ export function layoutPageFn(volatile) {
     }
     return false;
   };
+  /* Covered when, at every sample point, some layer above the element (any pointer-transparent one is skipped by the hit test) paints over it.
+     A pointer-events:none subject is made hit-testable for the test so its place in the stack is known. */
   var occluded = function (el, r) {
-    if (!document.elementFromPoint || getComputedStyle(el).pointerEvents === "none") return false;
-    var l = Math.max(r.left, 0), t = Math.max(r.top, 0), rt = Math.min(r.right, innerWidth), b = Math.min(r.bottom, innerHeight);
-    var fr = [0.2, 0.5, 0.8];
-    for (var a = 0; a < 3; a++) for (var c = 0; c < 3; c++) {
-      var hit = document.elementFromPoint(l + (rt - l) * fr[a], t + (b - t) * fr[c]);
-      if (!hit || el.contains(hit) || hit.contains(el) || !covers(hit, el)) return false;
+    if (!document.elementsFromPoint) return false;
+    var st = el.style, prev = st.getPropertyValue("pointer-events"), prio = st.getPropertyPriority("pointer-events");
+    st.setProperty("pointer-events", "auto", "important");
+    try {
+      var l = Math.max(r.left, 0), t = Math.max(r.top, 0), rt = Math.min(r.right, innerWidth), b = Math.min(r.bottom, innerHeight);
+      var fr = [0.2, 0.5, 0.8];
+      for (var a = 0; a < 3; a++) for (var c = 0; c < 3; c++) {
+        var hits = document.elementsFromPoint(l + (rt - l) * fr[a], t + (b - t) * fr[c]), hidden = false;
+        for (var h = 0; h < hits.length; h++) {
+          if (el.contains(hits[h]) || hits[h].contains(el)) break;
+          if (covers(hits[h], el)) { hidden = true; break; }
+        }
+        if (!hidden) return false;
+      }
+      return true;
+    } finally {
+      if (prev) st.setProperty("pointer-events", prev, prio); else st.removeProperty("pointer-events");
     }
-    return true;
   };
   var rows = [];
   var dropped = 0;
@@ -215,22 +243,17 @@ export function layoutPageFn(volatile) {
       if (stop) gradient = parse(stop[0]); else own = "";
     }
     var vol = matchVolatile(el, own);
-    if (vol && vol.host !== el) continue;
     if (vol && vol.entry.omit) continue;
     var control = /^(a|button|input|select|textarea)$/.test(tag) || /^(button|link|tab|switch|checkbox|menuitem|option|slider)$/.test(el.getAttribute("role") || "") || el.tabIndex >= 0 && el.hasAttribute("tabindex");
     var r = el.getBoundingClientRect();
-    if (vol && (own || vol.entry.selector && norm(el.innerText))) {
-      var range = document.createRange();
-      range.selectNodeContents(el);
-      var rr = range.getBoundingClientRect();
-      if (rr.width >= 1 && rr.height >= 1 && !control) r = rr; /* a control keeps its own box */
-    } else if (own) {
-      var rg = document.createRange();
-      rg.setStartBefore(texts[0]);
-      rg.setEndAfter(texts[texts.length - 1]);
-      var tr = rg.getBoundingClientRect();
-      if (tr.width >= 1 && tr.height >= 1) r = tr;
+    /* the glyph runs of the element's own text: one per rendered line, the union is the row box */
+    var runs = own ? lineRuns(texts, cs) : [];
+    if (runs.length) {
+      var ux = Math.min.apply(null, runs.map(function (q) { return q.left; })), uy = Math.min.apply(null, runs.map(function (q) { return q.top; }));
+      var ur = Math.max.apply(null, runs.map(function (q) { return q.left + q.w; })), ub = Math.max.apply(null, runs.map(function (q) { return q.top + q.h; }));
+      r = { left: ux, top: uy, right: ur, bottom: ub, width: ur - ux, height: ub - uy };
     }
+    if (vol && control) r = el.getBoundingClientRect(); /* a volatile control keeps its own box */
     var cut = own && !vol && cs.textOverflow === "ellipsis" && cs.overflowX !== "visible" && el.scrollWidth > el.clientWidth + 1 ? ellipsise(el, texts, cs) : null;
     if (cut) {
       own = cut.text;
@@ -242,7 +265,7 @@ export function layoutPageFn(volatile) {
     if (op <= 0) continue;
     var media = tag === "img" || tag === "svg" || tag === "canvas" || tag === "video";
     var painted = visibleFill(cs, el);
-    if (!vol && !own && !control && !media && !painted) continue;
+    if (!own && !control && !media && !painted) continue;
     if (occluded(el, r)) { dropped++; continue; }
     var label = el.getAttribute("aria-label") || el.getAttribute("alt") || "";
     var text = own || (control || media ? norm(label) : "") || (control ? norm(el.innerText || el.value) : "");
@@ -270,7 +293,7 @@ export function layoutPageFn(volatile) {
       rows.push(crow);
     }
     var row = {
-      text: vol && !vol.entry.selector ? own : vol ? norm(el.innerText) : text,
+      text: text,
       role: split ? "text" : roleOf(el, !!own),
       rect: { x: round(r.left), y: round(r.top), w: round(r.width), h: round(r.height) },
       color: own ? toHex(gradient || fill) : null,
@@ -278,18 +301,6 @@ export function layoutPageFn(volatile) {
       fontSize: own ? round(parseFloat(cs.fontSize) * zoom) : null,
       fontWeight: own ? Number(cs.fontWeight) || 400 : null
     };
-    if (vol && !own) {
-      /* volatile only waives the text content: keep the real text style (first text descendant) and a control's accessible name */
-      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), tn = walker.nextNode();
-      while (tn && !norm(tn.textContent)) tn = walker.nextNode();
-      if (tn && tn.parentElement) {
-        var tcs = getComputedStyle(tn.parentElement);
-        row.color = toHex(parse(tcs.webkitTextFillColor || tcs.color));
-        row.fontSize = round(parseFloat(tcs.fontSize) * zoom);
-        row.fontWeight = Number(tcs.fontWeight) || 400;
-      }
-      if (control && norm(label)) row.text = norm(label);
-    }
     if (gradient) row.colorGradient = true;
     if (radius > 0 && !split) { row.radius = round(radius); if (!painted) row.painted = false; }
     if (op < 1 && !(vol && vol.entry.opacityVolatile)) row.opacity = round(op);
@@ -299,11 +310,13 @@ export function layoutPageFn(volatile) {
       if (vol.entry.clock) row.clock = true;
       if (vol.entry.maskOnly) row.maskOnly = true;
     }
-    var runs = !vol && own ? lineRuns(texts, cs) : [];
-    if (runs.length > 1) {
+    if (!vol && !cut && runs.length > 1) {
       for (var q = 0; q < runs.length; q++) {
         var run = runs[q];
         if (run.w < 1 || run.h < 1) continue;
+        var lr = { left: run.left, top: run.top, right: run.left + run.w, bottom: run.top + run.h };
+        if (lr.right <= 0 || lr.bottom <= 0 || lr.left >= innerWidth || lr.top >= innerHeight || clipped(el, lr)) continue;
+        if (occluded(el, lr)) { dropped++; continue; }
         rows.push(Object.assign({}, row, { text: run.text, rect: { x: round(run.left), y: round(run.top), w: round(run.w), h: round(run.h) } }));
       }
     } else rows.push(row);

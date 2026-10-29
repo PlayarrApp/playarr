@@ -170,12 +170,34 @@ test("a volatile opacity is flagged, not exported", { skip }, async () => {
   assert.equal(d.elements[0].rect.w, 80);
 });
 
-test("a volatile host keeps the real text style of its content and a control's accessible name", { skip }, async () => {
-  const d = await dump(`<div class="app-clock-time" style="font:700 20px sans-serif;color:#ff0000"><span>12:00</span></div>
+test("a volatile host exports every visible descendant with its own style, the icon included, and a control's accessible name", { skip }, async () => {
+  const d = await dump(`<div class="app-clock-time" style="font:700 20px sans-serif;color:#ff0000"><span>12:00</span><span style="font-size:10px;color:#00ff00">/</span></div>
     <button class="abs" style="top:100px;font:600 12px sans-serif;color:#00ff00" aria-label="Audio: English"><svg width="10" height="10"></svg><span>1:00</span></button>`,
   [{ name: "header-clock", selector: ".app-clock-time" }, { name: "player-audio", selector: "button[aria-label^=Audio]" }]);
-  assert.deepEqual([d.elements[0].color, d.elements[0].fontSize, d.elements[0].fontWeight], ["#ff0000", 20, 700]);
-  assert.deepEqual([d.elements[1].role, d.elements[1].text, d.elements[1].color, d.elements[1].fontSize], ["button", "Audio: English", "#00ff00", 12]);
+  const by = (t) => d.elements.find((e) => e.text === t);
+  assert.deepEqual([by("12:00").color, by("12:00").fontSize, by("12:00").fontWeight, by("12:00").volatile], ["#ff0000", 20, 700, "header-clock"]);
+  assert.deepEqual([by("/").color, by("/").fontSize], ["#00ff00", 10]);
+  assert.deepEqual([by("Audio: English").role, by("Audio: English").fontSize], ["button", null]);
+  assert.ok(d.elements.some((e) => e.role === "image" && e.volatile === "player-audio"), "the icon is exported");
+  assert.deepEqual([by("1:00").color, by("1:00").fontSize], ["#00ff00", 12]);
+});
+
+test("a pointer-events:none subject under an opaque layer is occluded; a transparent hit layer does not hide the opaque one below", { skip }, async () => {
+  const d = await dump(`<span class="abs" style="left:10px;top:10px;pointer-events:none">under</span><span class="abs" style="left:10px;top:60px">below</span>
+    <aside class="abs" style="left:0;top:0;width:200px;height:100px;background:#222"></aside>
+    <a class="abs" href="#" style="left:0;top:0;width:200px;height:100px" aria-label="Layer"></a>`);
+  assert.deepEqual(texts(d).sort(), ["<container>", "Layer"]);
+  assert.equal(d.occluded, 2);
+});
+
+test("a line hidden by the element's own overflow is dropped", { skip }, async () => {
+  const d = await dump(`<p style="width:60px;height:20px;overflow:hidden;font:16px monospace;line-height:40px">aaaa bbbb cccc</p>`);
+  assert.deepEqual(texts(d), ["aaaa"]);
+});
+
+test("a hidden element between text nodes adds no separator", { skip }, async () => {
+  const d = await dump(`<div><span id="k"></span></div><script>const k = document.getElementById("k").parentElement; const h = document.createElement("i"); h.style.display = "none"; k.replaceChildren(document.createTextNode("Released"), h, document.createTextNode("1 Jun 1998"));</script>`);
+  assert.deepEqual(texts(d), ["Released1 Jun 1998"]);
 });
 
 test("color-mix fills resolve to the painted colour (opaque, translucent over the page, nested var)", { skip }, async () => {
