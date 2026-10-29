@@ -103,7 +103,7 @@ final class ParityLayoutRegistry {
         var found: [Item] = []
         var visited = 0
         func visit(_ object: NSObject, depth: Int, inCover: Bool = false) {
-            let inCover = inCover || object.accessibilityIdentifier == ParityLayoutRegistry.coverIdentifier
+            let inCover = inCover || (object as? UIAccessibilityIdentification)?.accessibilityIdentifier == ParityLayoutRegistry.coverIdentifier
             guard visited < 4000, depth < 40 else { return }
             if let view = object as? UIView, view.isHidden || view.alpha <= 0.001 { return }
             visited += 1
