@@ -145,13 +145,14 @@ export async function createDriver({ request = call, delay = sleep, env = proces
         const theme = basename(dirname(file)), screen = basename(file, ".png");
         // text geometry is read from the labels' own layout, which can lag a frame behind the first read: take the document once two reads agree
         let doc = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
-        for (let i = 0; i < 6; i++) {
+        let stable = false;
+        for (let i = 0; i < 6 && !stable; i++) {
           await delay(300);
           const again = await request("POST", `/layout?screen=${encodeURIComponent(screen)}&theme=${encodeURIComponent(theme)}`);
-          const same = again?.json === doc?.json;
+          stable = again?.json === doc?.json;
           doc = again;
-          if (same) break;
         }
+        if (!stable) throw new Error(`Tizen layout of ${theme}/${screen} never settled: two consecutive reads differ`);
         if (typeof doc?.json === "string") {
           const target = join(dirname(dirname(file)), "layout", theme, `${screen}.json`);
           if (writeLayout) writeLayout(target, doc.json);

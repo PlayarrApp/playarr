@@ -53,6 +53,7 @@ internal static class LayoutExport
         var bg = Window.Instance.BackgroundColor;
         Walk(ctx, root, 0, 0, 1, 1, (bg.R, bg.G, bg.B), 1f, new RectF(0, 0, ctx.VW, ctx.VH), Array.Empty<int>());
         var nodes = DropOccluded(ctx.Nodes, ctx.VW, ctx.VH);
+        var occluded = ctx.Nodes.Count - nodes.Count;
         var sb = new StringBuilder();
         string N(float v) => v.ToString("0.##", CultureInfo.InvariantCulture);
         sb.Append("{\"screen\":").Append(Q(screen)).Append(",\"theme\":").Append(Q(theme)).Append(",\"viewport\":{\"w\":").Append(N(ctx.VW)).Append(",\"h\":").Append(N(ctx.VH)).Append(",\"dpr\":1},\"clockPinned\":").Append(clockPinned ? "true" : "false").Append(",\"elements\":[");
@@ -67,7 +68,7 @@ internal static class LayoutExport
             if (n.Opacity < 0.99f) sb.Append(",\"opacity\":").Append(N(n.Opacity));
             sb.Append('}');
         }
-        return sb.Append("]}").ToString();
+        return sb.Append("],\"occluded\":").Append(occluded).Append('}').ToString();
     }
 
     private readonly record struct RectF(float X, float Y, float W, float H)
@@ -128,7 +129,7 @@ internal static class LayoutExport
                 {
                     if (!r.Overlaps(clip)) continue;
                     var c = label.TextColor; if (c.A * cop <= 0.01f) continue; // fully transparent text is not text
-                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * label.Scale.X, m.Weight, 0, cop, ctx.Order++, id, myChain, 0));
+                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * label.Scale.X /* glyph size in CSS px; an ancestor's focus scale is a transform, which the web export leaves out of fontSize (LAYOUT.md) while the rect carries it */, m.Weight, 0, cop, ctx.Order++, id, myChain, 0));
                 }
                 continue;
             }
