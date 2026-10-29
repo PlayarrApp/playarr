@@ -172,6 +172,8 @@ internal fun PhoneProfileChoice(
                 horizontalArrangement = Arrangement.spacedBy(8.8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val settingsName = playarrString(PlayarrString.ProfilesSettingsFor, "name" to profile.displayName)
+                val signOutName = playarrString(PlayarrString.ProfilesSignOutFor, "name" to profile.displayName)
                 Surface(
                     onClick = onSettings, enabled = enabled, shape = CircleShape,
                     color = WebSurfaceStrong.copy(alpha = 0.64f), border = BorderStroke(1.dp, WebPillBorder),

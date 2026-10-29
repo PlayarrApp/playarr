@@ -186,6 +186,11 @@ test("color-mix fills resolve to the painted colour (opaque, translucent over th
   assert.deepEqual(d.elements.map((e) => e.background), ["#ddc7cd", "#808080", "#4000bf"]);
 });
 
+test("text nodes split by an element keep a separator; adjacent ones do not", { skip }, async () => {
+  const d = await dump(`<div style="display:flex;gap:12px"><span id="k"></span></div><script>const k = document.getElementById("k").parentElement; k.replaceChildren(document.createTextNode("Released"), document.createElement("i"), document.createTextNode("1 Jun 1998"));</script>`);
+  assert.deepEqual(texts(d), ["Released 1 Jun 1998"]);
+});
+
 test("text cut by text-overflow: ellipsis is exported as drawn (visible characters, ellipsis, clipped rect)", { skip }, async () => {
   const d = await dump(`<div style="width:60px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace">abcdefghijklmnop</div>
     <div style="width:300px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace;margin-top:30px">fits</div>`);

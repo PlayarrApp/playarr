@@ -1,0 +1,1 @@
+- Android tablet: profiles and settings lists laid out in web CSS px, merged profile and add-profile buttons with real names, theme trigger accessible name.

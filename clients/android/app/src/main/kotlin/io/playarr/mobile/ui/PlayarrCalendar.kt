@@ -104,6 +104,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -1182,8 +1183,8 @@ private fun CalendarWeekBody(
                         if (true) {
                             Row(Modifier.then(if (isTelevision) Modifier.offset(y = 3.dp) else Modifier).height(if (isTelevision) 28.dp else if (webColumn == null) PHONE_WEEK_HEADING_ROW_DP.dp else 38.dp).then(if (isTelevision) Modifier else Modifier.padding(bottom = 1.dp)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    phoneCalendarDayHeading(group.date, locale), color = if (isTelevision && LocalStageScale.current == 1f) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.4.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
-                                    style = WebTextStyle, modifier = if (isTelevision && LocalStageScale.current == 1f) Modifier else Modifier.semantics { heading() },
+                                    phoneCalendarDayHeading(group.date, locale), color = if ((isTelevision && LocalStageScale.current == 1f) || (!isTelevision && group.date == today)) io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.accent else WebInk, fontSize = if (isTelevision) 18.4.sp else 14.4.sp, lineHeight = if (isTelevision) 28.sp else 21.6.sp, fontWeight = FontWeight(if (isTelevision && LocalStageScale.current != 1f) 560 else 640),
+                                    style = WebTextStyle, modifier = if (isTelevision) (if (LocalStageScale.current == 1f) Modifier else Modifier.semantics { heading() }) else Modifier,
                                 )
                                 if (group.date == today) CalendarTodayBadge(tv = isTelevision && LocalStageScale.current == 1f)
                             }

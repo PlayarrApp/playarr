@@ -108,10 +108,13 @@ fun PlayarrActionPill(
         ) {
             val vector = icon.vector
             if (tv) {
+                // Web `.ui-btn.action-pill`: padding .45rem .25rem, gap .35rem, label clamp(6.08, .43 vw, 8.32), icon clamp(18, 1.4 vw, 24), all css px.
+                val labelCss = (0.43f * metrics.vw).coerceIn(6.08f, 8.32f)
+                val iconCss = (1.4f * metrics.vw).coerceIn(18f, 24f)
                 Column(
-                    Modifier.padding(horizontal = 4.dp, vertical = 7.2.dp),
+                    Modifier.padding(horizontal = metrics.css(4f).dp, vertical = metrics.css(7.2f).dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterVertically),
+                    verticalArrangement = Arrangement.spacedBy(metrics.css(5.6f).dp, Alignment.CenterVertically),
                 ) {
                     if (vector != null) Icon(vector, contentDescription = null, modifier = Modifier.size(24.dp).parityBox("image"))
                     Text(label, fontSize = 8.256.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.165.sp, maxLines = 1, modifier = Modifier.offset(y = (-1).dp))

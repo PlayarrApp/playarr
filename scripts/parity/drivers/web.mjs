@@ -236,7 +236,10 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   const web = (env.PLAYARR_WEB_URL ?? localWeb?.url ?? "https://playarr.app").replace(/\/$/, "");
   // The static parity server hosts the web client under /tv: route checks below compare the path inside the app.
   const webBase = new URL(web).pathname.replace(/\/$/, "");
-  const appPath = (url) => { const p = new URL(url).pathname; return webBase && (p === webBase || p.startsWith(`${webBase}/`)) ? p.slice(webBase.length) || "/" : p; };
+  // Packaged TV platforms (PLAYARR_WEB_HASH=1, bundles built with their platform define) route through the URL hash: /tv/#/movies.
+  const hashMode = env.PLAYARR_WEB_HASH === "1";
+  const appUrl = (p) => (hashMode ? `${web}/#${p}` : web + p);
+  const appPath = (url) => { if (hashMode) { const h = new URL(url).hash; return h.startsWith("#/") ? h.slice(1).replace(/[?].*$/, "") : "/"; } const p = new URL(url).pathname; return webBase && (p === webBase || p.startsWith(`${webBase}/`)) ? p.slice(webBase.length) || "/" : p; };
   const configuredSecrets = secrets ?? (env.PLAYARR_DEVICE_TEST_SERVER_URL ? {
     PLAYARR_DEVICE_TEST_SERVER_URL: env.PLAYARR_DEVICE_TEST_SERVER_URL,
     PLAYARR_DEVICE_TEST_USERNAME: env.PLAYARR_DEVICE_TEST_USERNAME,
@@ -349,6 +352,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       ...(session ? { storageState: session } : {}) });
     await ctx.addInitScript((t) => localStorage.setItem("playarr-theme", t), theme);
     if (fixedNow) await ctx.addInitScript(installVisualDate, fixedNow);
+    if (hashMode) await ctx.addInitScript((u) => { window.PlayarrPackagedConfig = { apiBaseUrl: u }; }, String(trustedServerUrl).replace(/\/$/, "")); // what the packaged app reads from its runtime config
     if (disableAnimations) await ctx.addInitScript(() => {
       const css = "*,*::before,*::after{animation:none!important;scroll-behavior:auto!important;transition:none!important;caret-color:transparent!important}";
       const install = () => { if (!document.head || document.getElementById("parity-motion-off")) return; const style = document.createElement("style"); style.id = "parity-motion-off"; style.textContent = css; document.head.append(style); };
@@ -395,9 +399,9 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     manualLoginSucceeded = false;
     drainApiErrors = watchApiErrors(page, apiErrors, { manualLoginStarted: () => manualLoginStarted, manualLoginSucceeded: () => manualLoginSucceeded });
     // /login, not /: the deployed worker serves the marketing site at / to signed-out visitors, and a signed-in session redirects /login to the app.
-    await page.goto(web + "/login", { waitUntil: "load" });
+    await page.goto(appUrl("/login"), { waitUntil: "load" });
     try {
-      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"), null, { timeout: 30000 });
+      await page.waitForFunction(() => !!document.querySelector(".app-nav-link") || !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")), null, { timeout: 30000 });
     } catch (e) {
       if (e?.name !== "TimeoutError") throw e;
       throw new Error(`${web}/login did not show the Playarr web app (page "${await page.title().catch(() => "?")}" at ${page.url()}); set PLAYARR_WEB_URL to a web app build or build clients/tv-web/web/dist`);
@@ -409,7 +413,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       if (!loginPassword) throw new Error("signed out and PLAYARR_USERNAME/PLAYARR_PASSWORD not set");
       for (let attempt = 1; ; attempt++) {
         try {
-          await page.goto(web + "/login", { waitUntil: "load" });
+          await page.goto(appUrl("/login"), { waitUntil: "load" });
           const manual = page.getByText(/sign in manually|manual/i).first();
           if (await manual.count()) await manual.click();
           await page.fill('input[name="server-url"]', trustedServerUrl);
@@ -417,7 +421,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
           await page.fill('input[name="password"]', loginPassword);
           manualLoginStarted = true;
           await page.locator("button[type=submit]").click();
-          await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30000 });
+          await page.waitForURL((u) => !u.pathname.startsWith("/login") && !u.hash.startsWith("#/login"), { timeout: 30000 });
           await page.waitForSelector(".app-nav-link", { timeout: 30000 });
           break;
         } catch (e) {
@@ -518,7 +522,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
   };
   async function homeOnce() {
     await guard();
-    await page.goto(web + "/", { waitUntil: "load" });
+    await page.goto(appUrl("/"), { waitUntil: "load" });
     await guard();
     await waitReady({ screen: "home", phase: "route" });
     await settle();
@@ -558,7 +562,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     const series = () => page.locator("li.tv-download-group[data-level='1'] > .tv-download-group-row", { hasText: m.title });
     const season = () => page.locator("li.tv-download-group[data-level='2'] > .tv-download-group-row", { hasText: `Season ${m.season}` /* shortcut: also matches Season 20, fine for the one pinned season */ });
     const row = () => (m.episode ? series() : page.locator(".tv-download-row:not(.tv-download-group-row)", { hasText: m.title }));
-    const list = async () => { await guard(); await page.goto(web + "/downloads", { waitUntil: "load" }); await guard(); await page.waitForTimeout(2500); };
+    const list = async () => { await guard(); await page.goto(appUrl("/downloads"), { waitUntil: "load" }); await guard(); await page.waitForTimeout(2500); };
     const button = (loc, name) => loc.first().getByRole("button", { name: new RegExp(`^${name}$`, "i") });
     // Delete asks for confirmation in a drawer.
     const del = async (loc) => { await guard(); await button(loc, "delete").click(); await guard(); await page.locator(".download-quality-drawer .is-primary").click(); };
@@ -590,7 +594,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       await list();
       if (await row().count()) throw new Error("download already exists; refusing to claim it for this run");
       if (m.episode) {
-        await page.goto(`${web}/series/${m.work}`, { waitUntil: "load" });
+        await page.goto(appUrl(`/series/${m.work}`), { waitUntil: "load" });
         const card = page.locator(`a.tv-episode-card[href$="${m.file}"]`).first();
         await card.waitFor({ timeout: 20000 });
         await card.focus();
@@ -599,7 +603,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
         await page.waitForTimeout(600);
         await page.keyboard.press("ArrowDown"); await page.keyboard.press("Enter");
       } else {
-        await page.goto(`${web}/movies/${m.work}`, { waitUntil: "load" });
+        await page.goto(appUrl(`/movies/${m.work}`), { waitUntil: "load" });
         for (let i = 0; i < 4 && !(await page.locator(".download-quality-drawer").count()); i += 1) {
           await page.locator("button.tv-detail-download").first().click({ timeout: 20000 });
           await page.waitForSelector(".download-quality-drawer", { timeout: 5000 }).catch(() => {});
@@ -768,7 +772,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     // Player chrome for the refs: the clip paused at 2 s, controls revealed, focus dropped (same state as screens.json player-controls).
     async playerControls(file) {
       await guard();
-      await page.goto(web + "/player/" + file, { waitUntil: "load" });
+      await page.goto(appUrl("/player/" + file), { waitUntil: "load" });
       await waitReady({ screen: "player-controls", phase: "route" });
       // Headless has no user gesture: nudge playback until frames are buffered; play() is never awaited (it can stay pending).
       await page.waitForFunction(() => { const v = document.querySelector("video"); if (v?.paused) v.play().catch(() => {}); return (v?.readyState ?? 0) >= 2; }, null, { timeout: 60000, polling: 500 });
@@ -795,7 +799,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
     },
     async route(r, { requireHeroAction = false } = {}) {
       await guard();
-      await page.goto(web + r, { waitUntil: "load" });
+      await page.goto(appUrl(r), { waitUntil: "load" });
       await guard();
       detailActionRequired = requireHeroAction && /^\/(?:movies|series)\/[^/]+\/?(?:\?.*)?$/.test(r);
       await waitForDetailReady({ requireHeroAction: detailActionRequired });
@@ -876,7 +880,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
           // Per-server data on the calendar link panel (the URL field and the QR card encode the server address), in css px, so scorers can mask them.
           maskRects: [".calendar-subscription-url", ".calendar-link-secret > :last-child"].flatMap((q) => [...document.querySelectorAll(q)].map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((n) => Math.round(n * 10) / 10); })),
           fontsReady: document.fonts.status === "loaded",
-          signedOut: !!document.querySelector("input[name=password]") || location.pathname.startsWith("/login"),
+          signedOut: !!document.querySelector("input[name=password]") || (location.pathname.startsWith("/login") || location.hash.startsWith("#/login")),
         };
       });
       await guard();
@@ -904,7 +908,7 @@ export async function createDriver({ playwright = chromium, secrets } = {}) {
       };
       page.on("request", onReq); page.on("response", onRes);
       try {
-        await page.goto(web + "/player/" + c.file, { waitUntil: "load" });
+        await page.goto(appUrl("/player/" + c.file), { waitUntil: "load" });
         await guard();
         const r = await frames(expect);
         if (c.nowPlaying && r.state === "playing") r.nowPlaying = await nowPlaying();
