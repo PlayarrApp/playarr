@@ -11,6 +11,9 @@ enum WM {
     static let shell = PlayarrStyle.background
     static let page = PlayarrStyle.surface
     static let ink = PlayarrStyle.ink
+    /// Web library preview copy (year, genres, overview) and its kicker, measured on the tablet refs.
+    static let previewInk = adaptive(light: (79, 63, 59), dark: (218, 214, 215))
+    static let previewKicker = adaptive(light: (130, 30, 54), dark: (234, 166, 182))
     static let inkSoft = adaptive(light: (68, 58, 64), dark: (205, 193, 198)) // web --ink-soft
     static let muted = adaptive(light: (77, 66, 72), dark: (194, 181, 187)) // web --ink-muted
     static let detailMuted = adaptive(light: (77, 66, 72), dark: (194, 181, 187))
@@ -847,6 +850,7 @@ struct WMHeaderDetail: View {
             .font(WM.font(size, 680))
             .tracking(size * 0.045)
             .foregroundStyle(WM.ink)
+            .parityRenderedText(text.uppercased(), role: "text", size: size, weight: 680, color: WM.ink)
             .lineLimit(1)
             .truncationMode(.tail)
             .padding(.leading, divider ? gap : 0)
@@ -882,6 +886,7 @@ struct WMTitleWithDetail<Title: View>: View {
                         .font(WM.font(size, 680))
                         .tracking(size * 0.045)
                         .foregroundStyle(WM.ink)
+                        .parityRenderedText(detail.uppercased(), role: "text", size: size, weight: 680, color: WM.ink)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .padding(.top, 6)
