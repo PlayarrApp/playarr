@@ -91,6 +91,15 @@
             </intent-filter>
         </service>
 
+        <!-- Routes the system's media buttons (remote Play/Pause, headset) to the playback session. -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
