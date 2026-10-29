@@ -47,7 +47,7 @@ namespace Playarr.Xbox.Views
             eyebrowText.CharacterSpacing = 120;
             header.Children.Add(eyebrowText);
             var titleText = Ui.Text(title, 38.4, new FontWeight { Weight = 590 }, "PlayarrInk", new Thickness(0, 6, 0, 0));
-            LayoutExport.SetRole(titleText, "heading");
+            LayoutExport.Heading(titleText);
             titleText.TextWrapping = TextWrapping.WrapWholeWords;
             titleText.LineHeight = 57.6;
             titleText.LineStackingStrategy = LineStackingStrategy.BaselineToBaseline;
@@ -60,8 +60,7 @@ namespace Playarr.Xbox.Views
             close.CornerRadius = new CornerRadius(24);
             close.Height = 50;
             close.Content = new TextBlock { Text = "\u00d7", FontSize = 26.88, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 36, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Ui.Res("PlayarrInk"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            LayoutExport.Tag(close, "button", eyebrow == "Title actions" ? "Close" : "Close filters"); // the web labels every drawer's close this way
-            LayoutExport.SetSplit(close, true);
+            LayoutExport.Named(close, eyebrow == "Title actions" ? "Close" : "Close filters"); // the web labels every drawer's close this way
             close.Background = Ui.Res("PlayarrSurfaceStrong");
             close.HorizontalAlignment = HorizontalAlignment.Right;
             close.VerticalAlignment = VerticalAlignment.Top;
@@ -74,7 +73,6 @@ namespace Playarr.Xbox.Views
             header.SizeChanged += (s, e) => bodyHost.Margin = new Thickness(0, e.NewSize.Height + 36.9, 0, 0);
             panel.Children.Add(bodyHost);
 
-            LayoutExport.SetRole(panel, "dialog");
             _overlay = new Grid();
             // A click outside the panel closes it, like the web scrim.
             var outside = new Grid { Background = new SolidColorBrush(Color.FromArgb(0x01, 0, 0, 0)) };
@@ -160,7 +158,7 @@ namespace Playarr.Xbox.Views
             // A labelled group is a drawer's (web filter section); the unlabelled one is the Settings page's own control.
             var drawer = label.Length > 0;
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, drawer ? 28.8 : 24) };
-            var caption = LayoutExport.Tag(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, drawer ? 14 : 10)), "heading");
+            var caption = LayoutExport.Heading(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, drawer ? 14 : 10)));
             caption.CharacterSpacing = 120;
             if (drawer)
             {
@@ -219,9 +217,8 @@ namespace Playarr.Xbox.Views
                     button.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
                 }
 
-                LayoutExport.Tag(button, "button", options[i]);
+                LayoutExport.Named(button, options[i]);
                 // The Settings page's segments are a box with a separate label (web), the drawer's are their own text.
-                LayoutExport.SetSplit(button, true);
                 if (!string.IsNullOrWhiteSpace(automationIdPrefix))
                 {
                     AutomationProperties.SetAutomationId(button, $"{automationIdPrefix}.{i}");
@@ -263,7 +260,7 @@ namespace Playarr.Xbox.Views
         public static StackPanel Dropdown(string label, string current, Func<System.Threading.Tasks.Task<System.Collections.Generic.IList<Playarr.Core.Models.LanguageFacet>>> load, Action<string?> onSelect, System.Collections.Generic.ICollection<string> selected)
         {
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, 30) };
-            var caption = LayoutExport.Tag(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, 14)), "heading");
+            var caption = LayoutExport.Heading(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, 14)));
             caption.CharacterSpacing = 120;
             group.Children.Add(caption);
             var content = new Grid();
@@ -313,8 +310,7 @@ namespace Playarr.Xbox.Views
 
                 flyout.ShowAt(button);
             };
-            LayoutExport.Tag(button, "button", current + " \u2304");
-            LayoutExport.SetSplit(button, true);
+            LayoutExport.Named(button, current);
             var frame = new Border
             {
                 CornerRadius = new CornerRadius(12),
@@ -323,7 +319,7 @@ namespace Playarr.Xbox.Views
                 BorderThickness = new Thickness(1),
                 Child = button,
             };
-            LayoutExport.Tag(frame, "group", label);
+            LayoutExport.Named(frame, label);
             group.Children.Add(frame);
             return group;
         }
@@ -332,7 +328,7 @@ namespace Playarr.Xbox.Views
         public static StackPanel Choice(string label, string[] options, int selected, Action<int> onSelect)
         {
             var group = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
-            var caption = LayoutExport.Tag(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, 10)), "heading");
+            var caption = LayoutExport.Heading(Ui.Text(label.ToUpperInvariant(), 9.6, new FontWeight { Weight = 720 }, "PlayarrInkMuted", new Thickness(0, 0, 0, 10)));
             caption.CharacterSpacing = 120;
             group.Children.Add(caption);
             for (var i = 0; i < options.Length; i++)
@@ -401,8 +397,7 @@ namespace Playarr.Xbox.Views
                 FocusVisualSecondaryThickness = new Thickness(0),
             };
             button.Click += (s, e) => onClick();
-            LayoutExport.Tag(button, "button", glyph + " " + label);
-            LayoutExport.SetSplit(button, true);
+            LayoutExport.Named(button, label);
             return button;
         }
     }

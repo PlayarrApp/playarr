@@ -70,7 +70,7 @@ namespace Playarr.Xbox.Views
                         await PlayRequestedAsync(frame, folder);
                         OpenRequested(folder);
                         ResizeRequested(folder);
-                        LayoutRequested(folder);
+                        await LayoutRequestedAsync(folder);
                         await PauseRequestedAsync(frame, folder);
                         ResumeRequested(frame, folder);
                     }
@@ -185,7 +185,7 @@ namespace Playarr.Xbox.Views
 
         /// <summary>Desktop-window tests: a <c>parity.resize</c> file holding "1280x720" resizes the window.</summary>
         /// <summary>A <c>parity.layout</c> file holding <c>theme,screen,nonce</c> makes the app write <c>layout.json</c> (the layout-score export, see LayoutExport) with that nonce in <c>layoutNonce</c>.</summary>
-        private static void LayoutRequested(string folder)
+        private static async System.Threading.Tasks.Task LayoutRequestedAsync(string folder)
         {
             var file = System.IO.Path.Combine(folder, "parity.layout");
             try
@@ -196,8 +196,13 @@ namespace Playarr.Xbox.Views
                     System.IO.File.Delete(file);
                     if (parts.Length == 3)
                     {
-                        var json = LayoutExport.Build(parts[1], parts[0]);
+                        var json = await LayoutExport.BuildAsync(parts[1], parts[0]);
                         System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), json.Substring(0, json.Length - 1) + ",\"layoutNonce\":\"" + parts[2] + "\"}");
+                    }
+                    else if (parts.Length == 4 && parts[3] == "frame")
+                    {
+                        // Only the hash of the app's render: the driver brackets the screenshot with it.
+                        System.IO.File.WriteAllText(System.IO.Path.Combine(folder, "layout.json"), "{\"frame\":\"" + await LayoutExport.FrameHashAsync() + "\",\"layoutNonce\":\"" + parts[2] + "\"}");
                     }
                 }
             }

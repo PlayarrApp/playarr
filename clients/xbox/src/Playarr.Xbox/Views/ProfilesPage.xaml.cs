@@ -53,7 +53,7 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             WebFont.Apply(EyebrowText, 820);
             WebFont.Apply(TitleText, 500);
-            LayoutExport.SetRole(TitleText, "heading");
+            LayoutExport.Heading(TitleText);
             _viewModel = new ProfilesViewModel(App.Environment);
             CardFocus.ReserveFocusRoom(ProfilesScrollViewer);
             BuildTopControls();
@@ -177,7 +177,7 @@ namespace Playarr.Xbox.Views
         {
             var side = box ?? size;
             var icon = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = size, Foreground = (Brush)Application.Current.Resources[brushKey], HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            return LayoutExport.Tag(new Grid { Width = side, Height = side, VerticalAlignment = VerticalAlignment.Center, Children = { icon } }, "image");
+            return new Grid { Width = side, Height = side, VerticalAlignment = VerticalAlignment.Center, Children = { icon } };
         }
 
         /// <summary>The web's gear (Settings) and Sign out pills under the selected profile.</summary>
@@ -186,15 +186,13 @@ namespace Playarr.Xbox.Views
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8.8, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0), Visibility = Visibility.Collapsed };
             var gear = ChromeButton(Glyph("\uE713", 18, "PlayarrBrandInk"), 44, 44, 22);
             gear.Click += (s, e) => App.Navigation.Navigate(typeof(SettingsPage));
-            LayoutExport.Tag(gear, "button", profileName + " settings");
-            LayoutExport.SetSplit(gear, true);
+            LayoutExport.Named(gear, profileName + " settings");
             var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7.2, Padding = new Thickness(0) };
             label.Children.Add(Glyph("\uE7E8", 14, "PlayarrInkSoft", 18));
             label.Children.Add(new TextBlock { Text = "Sign out", FontSize = 10.75, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"], VerticalAlignment = VerticalAlignment.Center });
             var signOut = ChromeButton(label, 101, 44, 22);
             signOut.Click += (s, e) => SignOut();
-            LayoutExport.Tag(signOut, "button", "Sign out " + profileName);
-            LayoutExport.SetSplit(signOut, true);
+            LayoutExport.Named(signOut, "Sign out " + profileName);
             row.Children.Add(gear);
             row.Children.Add(signOut);
             gear.GotFocus += (s, e) => Select(row);
@@ -257,7 +255,7 @@ namespace Playarr.Xbox.Views
             avatarHost.Children.Add(plate);
             avatarHost.Children.Add(ring);
 
-            var nameBlock = LayoutExport.Tag(new TextBlock { Text = name, FontSize = 17.28, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"], HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 9.8, 0, 0) }, "text");
+            var nameBlock = new TextBlock { Text = name, FontSize = 17.28, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"], HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 9.8, 0, 0) };
             var nameRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center };
             nameRow.Children.Add(nameBlock);
             if (nameLock)
@@ -297,8 +295,7 @@ namespace Playarr.Xbox.Views
                 RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
             };
             tile.Click += click;
-            LayoutExport.Tag(tile, "button", status == "WATCHING NOW" ? name + ", current profile" : "+ " + name + " " + status);
-            LayoutExport.SetSplit(tile, true);
+            LayoutExport.Named(tile, status == "WATCHING NOW" ? name + ", current profile" : "+ " + name + " " + status);
             tile.GotFocus += (s, e) => Select(tile);
 
             var column = new StackPanel { VerticalAlignment = VerticalAlignment.Top };
@@ -412,8 +409,7 @@ namespace Playarr.Xbox.Views
             layout.Children.Add(chevron);
             var button = ChromeButton(layout, width, 48, 0);
             button.Background = new SolidColorBrush(Colors.Transparent);
-            LayoutExport.Tag(button, "button", accessibleName);
-            LayoutExport.SetSplit(button, true);
+            LayoutExport.Named(button, accessibleName);
             var flyout = new MenuFlyout();
             foreach (var (optionLabel, pick) in options)
             {

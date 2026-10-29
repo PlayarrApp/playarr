@@ -30,7 +30,6 @@ namespace Playarr.Xbox.Views
             Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             _header = Ui.PageHeader(Root, Lang.T("settings.index.title"), "APPEARANCE", () => App.Navigation.GoBack());
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(_header.Back, "Settings");
-            LayoutExport.SetRole(_header.Back, "button");
             _viewModel = new SettingsViewModel(App.Environment);
             ServerAddressBox.Text = _viewModel.ServerConnection.ServerAddress;
             BuildSections();
@@ -84,7 +83,7 @@ namespace Playarr.Xbox.Views
                     Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent),
                     Content = row,
                 };
-                LayoutExport.Tag(def.Tab, "link", $"{def.Number} {def.Title} \u2192");
+                LayoutExport.Named(def.Tab, $"{def.Number} {def.Title}");
                 def.Tab.Click += (s, e) => ShowSection(_sections.IndexOf(def));
                 TabsPanel.Children.Add(def.Tab);
             }
@@ -366,7 +365,7 @@ namespace Playarr.Xbox.Views
                 box.Height = 168.97;
             }
             var heading = Ui.Text(title, 26.4, new Windows.UI.Text.FontWeight { Weight = 560 }, "PlayarrInk");
-            LayoutExport.SetRole(heading, "heading");
+            LayoutExport.Heading(heading);
             group.Children.Add(heading);
             if (note != null)
             {

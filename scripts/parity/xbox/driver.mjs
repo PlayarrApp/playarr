@@ -281,26 +281,50 @@ export async function createDriver() {
       run("move", 1919, 600); await sleep(500);
       await requireTestAccount();
       mkdirSync(dirname(file), { recursive: true });
-      // Luminance guard (exit 4 from the helper): a light frame is refused in a dark run and the reverse. The player is black in both.
-      run("shot", file, ...(theme && t.screen !== "playback" ? [theme] : []));
-      writeFileSync(file.replace(/\.png$/i, ".trace.json"), `${JSON.stringify(focusCaptureSidecar(t), null, 2)}\n`);
-      // Layout export (docs/parity/LAYOUT.md): the app walks its visual tree for this exact state; <id>.layout.json sits beside the PNG.
-      if (theme) try {
+      // The app hashes its own render of the screen before the screenshot and again with the layout export; the layout belongs to the
+      // captured frame only when the hashes are equal (no animation, focus or data change between the two).
+      const request = async (screen, mode) => {
         const nonce = randomUUID().replaceAll("-", "");
         await requireTestAccount();
-        try { unlinkSync(file.replace(/\.png$/i, ".layout.json")); } catch { /* none yet */ }
-        run("write", "parity.layout", `${theme},${file.replace(/^.*[\\/]/, "").replace(/\.png$/i, "")},${nonce}`); // a comma: a pipe would reach cmd.exe
-        const deadline = Date.now() + 15000;
-        let done = false;
+        run("write", "parity.layout", `${theme},${screen},${nonce}${mode ? `,${mode}` : ""}`); // a comma: a pipe would reach cmd.exe
+        const deadline = Date.now() + 90000; // the full export renders the screen once per exported element
         while (Date.now() < deadline) {
           await sleep(500);
           try {
-            const layout = JSON.parse(run("read", "layout.json"));
-            if (layout.layoutNonce === nonce) { delete layout.layoutNonce; writeFileSync(file.replace(/\.png$/i, ".layout.json"), `${JSON.stringify(layout, null, 1)}\n`); done = true; break; }
+            const answer = JSON.parse(run("read", "layout.json"));
+            if (answer.layoutNonce === nonce) { delete answer.layoutNonce; return answer; }
           } catch { /* not written yet */ }
         }
-        if (!done) throw new Error("the app did not answer the layout request");
-      } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
+        throw new Error("the app did not answer the layout request");
+      };
+      const id = file.replace(/^.*[\\/]/, "").replace(/\.png$/i, "");
+      const layoutFile = file.replace(/\.png$/i, ".layout.json");
+      // Settle first (images still arriving or a focus animation change the render), then bracket the screenshot with the hash.
+      for (let attempt = 1; ; attempt++) {
+        let before = null;
+        if (theme) {
+          try { unlinkSync(layoutFile); } catch { /* none yet */ }
+          try {
+            before = (await request(id, "frame")).frame;
+            for (let i = 0; i < 20; i++) {
+              await sleep(700);
+              const again = (await request(id, "frame")).frame;
+              if (again === before) break;
+              before = again;
+            }
+          } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
+        }
+        // Luminance guard (exit 4 from the helper): a light frame is refused in a dark run and the reverse. The player is black in both.
+        run("shot", file, ...(theme && t.screen !== "playback" ? [theme] : []));
+        writeFileSync(file.replace(/\.png$/i, ".trace.json"), `${JSON.stringify(focusCaptureSidecar(t), null, 2)}\n`);
+        if (!theme) return;
+        // Layout export (docs/parity/LAYOUT.md): the app walks its visual tree for this exact state; <id>.layout.json sits beside the PNG.
+        try {
+          const layout = await request(id);
+          if (layout.frame === before) { writeFileSync(layoutFile, `${JSON.stringify(layout, null, 1)}\n`); return; }
+          if (attempt >= 3) throw new Error("the screen changed between the screenshot and the layout export");
+        } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
+      }
     },
     // Plays media file `c.file` through the app's parity.play request; judged from the player's own position.
     async play(c, expect) {

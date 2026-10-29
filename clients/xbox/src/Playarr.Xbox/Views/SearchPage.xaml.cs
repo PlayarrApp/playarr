@@ -29,12 +29,9 @@ namespace Playarr.Xbox.Views
         public SearchPage()
         {
             InitializeComponent();
-            LayoutExport.Tag(SearchBox, "search");
-            LayoutExport.Tag(SearchGlyph, "image");
-            LayoutExport.Tag(EmptyGlyph, "image");
             WebFont.Apply(EmptyStateText, 650);
             Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 151.19, OpenFilters));
-            LayoutExport.Tag(QueryBox, "textbox", "Search your libraries and playlists");
+            LayoutExport.Named(QueryBox, "Search your libraries and playlists");
             Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             Ui.PageHeader(Root, "Search", null, () => App.Navigation.GoBack());
             ResultsGrid.ItemContainerStyle = CatalogTileFactory.GridCardContainerStyle;
@@ -122,6 +119,7 @@ namespace Playarr.Xbox.Views
         // Web searches as you type.
         private void QueryBox_TextChanged(object sender, TextChangedEventArgs e)
         {
+            QueryHint.Visibility = string.IsNullOrEmpty(QueryBox.Text) ? Visibility.Visible : Visibility.Collapsed;
             _viewModel.Query = QueryBox.Text;
             _viewModel.Search();
         }
