@@ -139,7 +139,7 @@ struct TVPageHeader: View {
             let size: CGFloat = backFocused ? 58 : 50
             let origin: CGFloat = backFocused ? 149.6 : 153.6
             Circle()
-                .fill(DesignTokens.Color.backgroundElevated.opacity(0.7))
+                .fill(DesignTokens.Stage.surfaceStrong.opacity(0.7))
                 .overlay(
                     Circle().stroke(
                         backFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.borderDefault.opacity(0.35),
@@ -152,7 +152,12 @@ struct TVPageHeader: View {
                         .foregroundStyle(DesignTokens.Color.textSecondary)
                         .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
                 )
-                .parityBox(backRole, text: backName, radius: 50, fill: DesignTokens.Stage.surface, alpha: 0.7)
+                .overlay {
+                    // the control is 50 wide; a focused one draws its 2 pt ring outside it
+                    Color.clear.frame(width: 50, height: 50)
+                        .parityBox(backRole, text: backName, radius: 25, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7)
+                        .parityBackdrop(DesignTokens.Stage.surface)
+                }
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
@@ -527,6 +532,9 @@ struct TVDrawer<Content: View>: View {
     let onClose: () -> Void
     /// The content takes the first focus (web: the actions drawer opens on Play), not the close button.
     var focusesContent = false
+    #if os(macOS)
+    @State private var backHandlerID = UUID()
+    #endif
     @ViewBuilder var content: () -> Content
     /// Focus moves into the drawer when it opens (web: the panel takes focus; Back closes it).
     @FocusState private var closeFocused: Bool
@@ -621,6 +629,11 @@ struct TVDrawer<Content: View>: View {
         .macFocusLayer() // every drawer keeps keyboard focus inside it on the Mac (macOS/MacFocus.swift)
         #endif
         .onExitCommand(perform: onClose)
+        #if os(macOS)
+        // Escape closes the open drawer through the keyboard monitor itself (the responder chain dropped it on some pages).
+        .onAppear { MacKeyboard.shared.pushBackHandler(backHandlerID) { onClose(); return true } }
+        .onDisappear { MacKeyboard.shared.popBackHandler(backHandlerID) }
+        #endif
         .task {
             if !focusesContent { closeFocused = true }
             #if os(macOS)
