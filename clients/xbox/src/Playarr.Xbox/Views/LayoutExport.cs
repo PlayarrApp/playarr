@@ -481,8 +481,9 @@ namespace Playarr.Xbox.Views
 
                     // The glyph's right edge is where the displayed layout starts the next character on the same line.
                     // The caret rectangle looking back from the next offset sits on this character's trailing edge, also at a wrap or the end of the text.
-                    var next = block.ContentStart.GetPositionAtOffset(i + shift + 1, LogicalDirection.Backward)?.GetCharacterRect(LogicalDirection.Backward) ?? Rect.Empty;
-                    var edge = !next.IsEmpty && Math.Abs(next.Y - rect.Y) < 1 && next.Right >= rect.X ? Math.Max(next.Right, next.X) : rect.Right;
+                    // A character rectangle has no width: the right edge of a glyph is where the next character starts, and for the last one where the text ends.
+                    var next = (i + 1 < block.Text.Length ? block.ContentStart.GetPositionAtOffset(i + shift + 1, LogicalDirection.Forward) : block.ContentEnd)?.GetCharacterRect(i + 1 < block.Text.Length ? LogicalDirection.Forward : LogicalDirection.Backward) ?? Rect.Empty;
+                    var edge = !next.IsEmpty && Math.Abs(next.Y - rect.Y) < 1 && next.X >= rect.X ? next.X : rect.Right;
                     var at = lines.FindIndex(l => Math.Abs(l.Box.Y - rect.Y) < 1);
                     if (at < 0)
                     {
