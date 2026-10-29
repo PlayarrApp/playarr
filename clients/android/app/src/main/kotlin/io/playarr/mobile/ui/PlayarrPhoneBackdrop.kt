@@ -2,6 +2,7 @@ package io.playarr.mobile.ui
 
 import androidx.compose.foundation.layout.size
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityBackground
 import androidx.compose.ui.layout.layout
 import io.playarr.shared.designsystem.page.PlayarrCardShadows
 import io.playarr.shared.designsystem.page.PlayarrCardShadowLayer
@@ -265,7 +266,7 @@ internal fun PhonePill(
         modifier = modifier.webFocusRing(focused, radius = null, offset = 3.dp, width = 2.dp)
             
             .then(if (exportLabel != null) Modifier.semantics { contentDescription = exportLabel } else Modifier),
-        innerModifier = Modifier.background(container),
+        innerModifier = Modifier.parityBackground("container", container, androidx.compose.foundation.shape.CircleShape, radius = 999f),
         innerFill = false,
         innerWidthFill = fill,
     ) {
@@ -297,7 +298,7 @@ internal fun PhoneEpisodeArt(
         shadows = webCardRestShadows,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         modifier = modifier.fillMaxWidth().androidx_aspect16x9().parityBox("container", radius = 8f),
-        innerModifier = Modifier.background(WebSurfaceSoft),
+        innerModifier = Modifier.parityBackground("container", WebSurfaceSoft),
     ) {
         Box(
             Modifier.fillMaxSize().parityBox("image").graphicsLayer {

@@ -105,6 +105,19 @@ fun Modifier.parityPaint(kind: String, color: androidx.compose.ui.graphics.Color
 fun Modifier.background(color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape): Modifier =
     parityPaint("fill", color, shape).foundationBackground(color, shape)
 
+/**
+ * [parityBox] for a node that paints its own fill some other way (a Surface colour, a glass tint, a border-only shape): draws nothing, only records
+ * in the draw call the colour (alpha included) this node paints, so a control's own fill is exported and not the page behind it.
+ */
+fun Modifier.parityPainted(kind: String, color: androidx.compose.ui.graphics.Color, radius: Float = 0f, opacity: Float = 1f): Modifier =
+    if (!parityLayoutEnabled) this else composed {
+        val view = androidx.compose.ui.platform.LocalView.current
+        val box = remember { ParityBox(view, kind, radius, opacity, color.alpha) }
+        box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = color.alpha
+        DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
+        this.onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }.drawBehind { box.fill = color }
+    }
+
 /** The corner radius (dp) of the shape a control draws (999 for a CircleShape). Never merged into a parent: a descendant's shape is not the parent's. */
 val ParityRadiusKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("ParityRadius") { parent, _ -> parent }
 private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRadiusProp by ParityRadiusKey

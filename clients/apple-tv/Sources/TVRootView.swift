@@ -919,6 +919,7 @@ struct TVProfilesView: View {
                         .font(TVTheme.font(size: 10.37 * s, css: 820))
                         .tracking(1.35 * s)
                         .foregroundStyle(palette.brandInk)
+                        .offset(x: -2.5 * s) // the web centres the letter-spaced word with its trailing space
                         .parityLayout(text: "PROFILES", size: 10.37 * s, weight: 820, color: palette.brandInk, tracking: 1.35 * s)
                         .frame(height: 15.6 * s)
 
@@ -935,7 +936,7 @@ struct TVProfilesView: View {
                     // Never gate the empty household on isLoading — a spinner
                     // over the plate looked like a broken focus ornament.
                     profileRow(scale: s, avatarSize: size)
-                        .padding(.top, 120 * s)
+                        .padding(.top, 121.33 * s)
                         .opacity(isLoading && profiles.isEmpty ? 0.92 : 1)
 
                     if let loadError {

@@ -2,6 +2,7 @@ package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.mediaCardLift
 import io.playarr.shared.designsystem.page.PlayarrPageBody
 import io.playarr.shared.designsystem.page.PlayarrPageLayout
@@ -3886,7 +3887,7 @@ private fun SettingsServerSection(
             Column(Modifier.width(900.dp).background(line).padding(1.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 servers.forEach { server ->
                     Row(
-                        Modifier.fillMaxWidth().background(TvSettingsPalette.listBackground).padding(horizontal = 18.4.dp, vertical = 16.dp),
+                        Modifier.fillMaxWidth().parityBackground("container", TvSettingsPalette.listBackground).padding(horizontal = 18.4.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.2.dp)) {
@@ -4321,7 +4322,7 @@ private fun TvSettingsBody(
                         .height(rowHeight)
                         .then(if (index == 0) Modifier.focusRequester(firstRow) else Modifier)
                         // Web: the focused or selected section row takes the grey fill; the focus indicator is the fill, no outline.
-                        .background(if (selected || focused) TvSettingsPalette.selectedRow else TvSettingsPalette.listBackground)
+                        .parityBackground("container", if (selected || focused) TvSettingsPalette.selectedRow else TvSettingsPalette.listBackground)
                         
                         .onFocusChanged { focused = it.isFocused; if (it.isFocused) onPick(candidate) }
                         .clickable { onPick(candidate) },
