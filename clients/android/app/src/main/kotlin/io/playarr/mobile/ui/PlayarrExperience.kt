@@ -477,6 +477,7 @@ private fun Modifier.tabletHeroBackdrop(stage: Float): Modifier = layout { measu
     layout(width + start, constraints.maxHeight) { placeable.place(start, 0) }
 }
     .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
+    .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f)
     .heroBackdropFade(true)
 
 private fun Modifier.tvHeroBackdrop(): Modifier =
@@ -2450,7 +2451,7 @@ private fun ExperienceClock(modifier: Modifier = Modifier) {
             now = playarrNow()
         }
     }
-    Row(modifier.offset(1.dp, 0.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.2.dp)) {
+    Row(modifier.offset(1.dp, 0.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (LocalStageScale.current != 1f) (9.2f + 4.7f / LocalStageScale.current).dp else 9.2.dp)) {
         Text(
             now.format(DateTimeFormatter.ofPattern("HH:mm")),
             color = WebInk,
@@ -3252,7 +3253,7 @@ private fun ExperienceStage(
             Box(
                 // Television: web `.tv-home-rails` starts where the Library grid panel starts (--card-rail-vw, 62%).
                 // At 1280 x 800 it starts where the Library rail does (522 css px, 40.8% of the width).
-                Modifier.fillMaxHeight().then(if (LocalStageScale.current != 1f) Modifier.fillMaxWidth(0.5922f) else Modifier.fillMaxWidth(0.62f)).align(Alignment.CenterEnd).parityBox("container").background(
+                Modifier.fillMaxHeight().fillMaxWidth(0.62f).align(Alignment.CenterEnd).parityBox("container").background(
                     webRailSurfaceBrush(),
                 ),
             ) { rails() }
@@ -3537,13 +3538,15 @@ internal fun ExperienceMediaRail(
             // LazyColumn content top y=389.9dp. The TV context maps dp 1:1 to pixels, so translate the
             // heading's drawing by that measured difference without changing its line box or card origin.
             val headingInkOffset = 402.dp - 389.9.dp
+            // Web clamp(0.76rem, 0.92 vw, 1.18rem): 17.664 px at 1920, 12.16 css px on a 1280 tablet (stage units).
+            val headingSize = webVw(12.16f, 0.92f, 18.88f).value
             Text(
                 railTitle,
                 color = WebInk,
-                fontSize = 17.664.sp,
+                fontSize = headingSize.sp,
                 fontWeight = FontWeight(610),
-                letterSpacing = (-0.52992).sp,
-                lineHeight = 26.5.sp,
+                letterSpacing = (-0.03f * headingSize).sp,
+                lineHeight = (if (LocalStageScale.current != 1f) headingSize * 1.316f else headingSize * 1.5f).sp,
                 modifier = Modifier.graphicsLayer { translationY = headingInkOffset.toPx() - (if (railIndex > 0) 2.2.dp.toPx() else 0f) }.semantics { heading() },
             )
         } else {
@@ -3584,7 +3587,7 @@ internal fun ExperienceMediaRail(
         val trackModifier = if (isTelevision) {
             Modifier.fillMaxWidth().extendStart(trackGutter).padding(top = tvOuterTopPadding)
                 // Tablet static refs (1280 x 800): the cards sit 6.4 css px higher than the 1080 tuning gives.
-                .then(if (LocalStageScale.current != 1f) Modifier.offset(y = -(6.4f * cssDp).dp) else Modifier)
+                .then(if (LocalStageScale.current != 1f) Modifier.offset(y = -(7.4f * cssDp).dp) else Modifier)
         } else {
             Modifier.fillMaxWidth().layout { measurable, constraints ->
                 // Web `.tv-media-track-scroll` adds 24px above and 80px below the card for focus shadows, then uses
@@ -3650,6 +3653,9 @@ internal fun ExperienceMediaRail(
                     mediaFileId = episode?.mediaFileId ?: onDeck?.progress?.mediaFileId?.takeIf { work.kind == WorkKind.Artist },
                     stackCount = onDeck?.resumePlan?.takeIf { it.isStacked }?.options?.size ?: 0,
                     webTvStyle = isTelevision,
+                    contentLabel = (episode?.title?.takeIf(String::isNotBlank) ?: work.title) + " " + (episode?.let {
+                        playarrString(PlayarrString.HomeEpisodeProvider, "title" to work.title, "season" to it.seasonNumber.toString().padStart(2, '0'), "episode" to it.episodeNumber.toString().padStart(2, '0'))
+                    } ?: work.playarrKindYearLabel()),
                     displayTitle = episode?.title?.takeIf(String::isNotBlank)
                         ?: episode?.let {
                             playarrString(PlayarrString.HomeEpisodeLabel, "number" to it.episodeNumber)
@@ -3733,7 +3739,7 @@ internal fun ExperienceLandscapeCard(
         modifier = modifier
             .width(width)
             // The home card's box ends 29.36 px under its art while the caption hangs out; the rail's row pitch still needs the whole caption.
-            .padding(bottom = if (webTvStyle && !webTvLibrary) 15.9.dp else 0.dp)
+            .padding(bottom = if (webTvStyle && !webTvLibrary) (if (LocalStageScale.current != 1f) 15.9.dp - (4.57f / LocalStageScale.current).dp else 15.9.dp) else 0.dp)
             .then(
                 if (webPhone) {
                     Modifier.graphicsLayer { scaleX = scale; scaleY = scale; translationY = 0f }
@@ -3757,7 +3763,7 @@ internal fun ExperienceLandscapeCard(
                     )
                 },
             )
-            .then(if (contentLabel != null) Modifier.semantics { contentDescription = contentLabel } else Modifier),
+            .then(if (contentLabel != null) Modifier.clearAndSetSemantics { contentDescription = contentLabel } else Modifier),
     ) {
     // The lift is applied here, inside the focus target, so focus search keeps the unlifted bounds.
     val webPhoneMotion = when {
@@ -3826,8 +3832,9 @@ internal fun ExperienceLandscapeCard(
                 )
             }
             progress?.takeIf { it.state != WatchState.Unseen }?.let {
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) 3.08.dp else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.28f))) {
-                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", WebAccent))
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(if (webTvStyle) (if (LocalStageScale.current != 1f) (3f / LocalStageScale.current).dp else 3.08.dp) else 3.dp).parityBackground("img", Color.White.copy(alpha = 0.2f))) {
+                    // Web `.tv-watch-progress` (white 20%) and its `i` fill: `--brand` (#cf3157) in both themes.
+                    Box(Modifier.fillMaxWidth(it.fraction).fillMaxHeight().parityBackground("container", Color(0xFFCF3157)))
                 }
             }
             if (showUnwatched && stackCount <= 1 && shouldShowPlayarrUnwatchedDot(progress, progressLoaded = true)) {
@@ -3857,9 +3864,14 @@ internal fun ExperienceLandscapeCard(
             // Web `.tv-home-card` copy: strong 11.328 px / 630, small 8.64 px, 9.9 px under the art.
             // Static web refs: strong 11.904 px / 610 with -0.18 px tracking, small 8.832 px / 400 (both white under the focused card).
             // Web's card box ends 29.36 px under the art: the small line hangs out of it, so the link's box is that tall, not the copy's.
-            Column(Modifier.height(29.36.dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
-            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = 11.904.sp, fontWeight = FontWeight(610), letterSpacing = (-0.17856).sp, lineHeight = 17.856.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 9.9.dp, start = 1.9.dp))
-            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = 8.832.sp, lineHeight = 13.248.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.6.dp, start = 1.9.dp))
+            // A tablet takes the viewport's own clamps (title 0.55 rem min 8.8 css px, meta 6.88 css px, 0.72 rem and 0.16 rem gaps), in stage units.
+            val tabletHome = LocalStageScale.current != 1f
+            val homeScale = LocalStageScale.current
+            val homeTitle = if (tabletHome) webVw(8.8f, 0.62f, 12.48f).value else 11.904f
+            val homeMeta = if (tabletHome) webVw(6.88f, 0.46f, 8.96f).value else 8.832f
+            Column(Modifier.height(if (tabletHome) ((11.52f + homeTitle * homeScale * 1.504f) / homeScale).dp else 29.36.dp).wrapContentHeight(Alignment.Top, unbounded = true)) {
+            Text(displayTitle, color = if (focused) Color.White else WebInk, fontSize = homeTitle.sp, fontWeight = FontWeight(610), letterSpacing = (if (tabletHome) -0.015f * homeTitle else -0.17856f).sp, lineHeight = (if (tabletHome) homeTitle * 1.504f else 17.856f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (11.52f / homeScale).dp else 9.9.dp, start = 1.9.dp))
+            Text(resolvedSubtitle, color = if (focused) Color.White else WebInkMuted, fontSize = homeMeta.sp, lineHeight = (if (tabletHome) homeMeta * 1.3f else 13.248f).sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (tabletHome) (2.56f / homeScale).dp else 2.6.dp, start = 1.9.dp))
             }
         } else if (webPhone && webHome) {
             // Web `.tv-home-card > strong` (8.8 px / 610) and `> small` (6.88 px, 2.56 px below; it hangs under the card, so the rail gap below is shorter).
