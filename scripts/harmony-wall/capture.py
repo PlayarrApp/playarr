@@ -269,6 +269,91 @@ def player_held_at_2s(folder):
           "| play button" if re.search(r'"accessibilityText":\s*"Play"', tree) else "| pause button", flush=True)
 
 
+def probe_occlusion(name, theme, raw, viewport, layout_export):
+    """Measure occlusion on the rendered screen. The geometry only picks the elements that may be covered; each is then hidden in the running app
+    (patch_route.py: hide:<ids>), a second screenshot is taken, and the element's box is diffed exactly against the first. Pixels unchanged = nothing
+    of it was drawn on the screen. Noise (two unchanged shots) is subtracted, a control text must change when hidden, and any failure leaves the
+    geometry in charge (the export then states that in its limits). Saved as layout-probe/<theme>/<screen>.json for offline replay."""
+    from PIL import ImageChops  # noqa: PLC0415
+    cands = []
+    layout_export.export(json.loads(raw), name, theme, viewport, True, origin=STAGE_ORIGIN, candidates=cands)
+    todo = [c for c in cands if not c.get("control")]
+    ctrl = next((c for c in cands if c.get("control")), None)
+    result = {"method": "hide the node, second screenshot, exact box diff", "results": {}}
+
+    def changed(a, b, noise, box):
+        box = (max(box[0], 0), max(box[1], 0), min(box[2], a.size[0]), min(box[3], a.size[1]))
+        if box[2] <= box[0] or box[3] <= box[1]:
+            return None
+        d = ImageChops.difference(a.crop(box), b.crop(box)).convert("L").point(lambda v: 255 if v else 0)
+        d = ImageChops.subtract(d, noise.crop(box))
+        return d.getbbox() is not None
+
+    def stable():
+        prev = png()
+        for _ in range(4):
+            time.sleep(1.0)
+            cur = png()
+            if ImageChops.difference(prev, cur).getbbox() is None:
+                return cur
+            prev = cur
+        return None
+
+    try:
+        if todo and ctrl is not None:
+            base = stable()
+            time.sleep(1.0)
+            again = png()
+            noise = ImageChops.difference(base, again).convert("L").point(lambda v: 255 if v else 0)
+            get("/setroute", name="hide:" + str(ctrl["id"]))
+            time.sleep(4)
+            shot = png()
+            get("/setroute", name="show:all")
+            time.sleep(4)
+            if changed(base, shot, noise, ctrl["box"]):
+                groups = {}
+                for c in todo:
+                    groups.setdefault(c["id"], []).append(c)
+                batches = []  # nodes whose boxes do not touch share one hide: a hidden neighbour cannot change another's box
+                for nid_, items in groups.items():
+                    for b in batches:
+                        if all(i["box"][2] <= j["box"][0] or j["box"][2] <= i["box"][0] or i["box"][3] <= j["box"][1] or j["box"][3] <= i["box"][1]
+                               for i in items for other in b for j in other):
+                            b.append(items)
+                            break
+                    else:
+                        batches.append([items])
+                for b in batches:
+                    get("/state", resetdbg="1")
+                    get("/setroute", name="hide:" + ",".join(str(items[0]["id"]) for items in b))
+                    time.sleep(4)
+                    refused = [k for k in (json.loads(get("/state")).get("dbgcount") or {}) if k.startswith("probe:hide:failed=") and len(k) > 18]
+                    shot = None if refused else stable()  # a node the framework would not hide proves nothing: its box stays with the geometry
+                    get("/setroute", name="show:all")
+                    time.sleep(4)
+                    if shot is None:
+                        continue
+                    for items in b:
+                        for c in items:
+                            seen = changed(base, shot, noise, c["box"])
+                            if seen is not None:
+                                result["results"][str(c["index"])] = seen
+                back = stable()
+                if back is None or ImageChops.subtract(ImageChops.difference(base, back).convert("L").point(lambda v: 255 if v else 0), noise).getbbox() is not None:
+                    result["results"] = {}  # the screen did not return to what it was: nothing measured can be trusted
+                    result["note"] = "screen not restored after probing"
+            else:
+                result["note"] = "the control text did not change when hidden: the hide hook is ineffective here"
+    except Exception as error:  # noqa: BLE001  (a failed probe leaves the geometry in charge; the export lists that in its limits)
+        result["results"] = {}
+        result["note"] = repr(error)
+    pdir = os.path.join(out, "layout-probe", theme)
+    os.makedirs(pdir, exist_ok=True)
+    json.dump(result, open(os.path.join(pdir, name + ".json"), "w"))
+    print(f"layout {name}: probed {len(result['results'])} of {len(todo)} covered; {result.get('note', 'ok')}", flush=True)
+    return result
+
+
 def export_layout(name, image=None, theme=None):
     """Layout document next to the screenshot (same screen state): the app dumps its component tree, layout_export maps it to the schema.
     A failed dump is logged and listed as missing, never fatal: the pixel capture stays valid. The theme is the folder the screenshot went
@@ -297,8 +382,9 @@ def export_layout(name, image=None, theme=None):
         os.makedirs(rawdir, exist_ok=True)
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
+        probe = probe_occlusion(name, theme, raw, viewport, layout_export)
         count = layout_export.write(raw, name, theme, viewport, os.path.join(out, "layout"),
-                                    clock_pinned=True, origin=STAGE_ORIGIN)  # patch_clock.py pins the preview clock to the fixture instant
+                                    clock_pinned=True, origin=STAGE_ORIGIN, probe=probe)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
     except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)

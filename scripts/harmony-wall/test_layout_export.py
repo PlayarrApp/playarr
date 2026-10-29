@@ -220,6 +220,22 @@ class LayoutExportTest(unittest.TestCase):
         doc = export(column([ring, disc], rect="[0.00, 0.00],[1440.00, 2340.00]"), "x", "dark", (480, 780, 3))
         self.assertIn("button", [e["role"] for e in doc["elements"]])
 
+    def test_a_covered_element_is_dropped_only_if_hiding_it_changed_no_pixel(self):
+        btn = {"$type": "Row", "$ID": 7, "$rect": "[1846.00, 151.00],[62.00, 72.00]", "$attrs": {"accessibilityText": "Filters", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#33FFFFFF"}, "$children": []}
+        drawer = {"$type": "Column", "$ID": 8, "$rect": "[1560.00, 0.00],[360.00, 1080.00]", "$attrs": {"accessibilityTextHint": "pvrole:24", "backgroundColor": "#F0211D21"}, "$children": []}
+        tree = column([btn, drawer], rect="[0.00, 0.00],[1920.00, 1080.00]")
+        cands = []
+        geometry = export(tree, "x", "dark", (1920, 1080, 1), candidates=cands)
+        self.assertNotIn("button", [e["role"] for e in geometry["elements"]])
+        flagged = [c for c in cands if c["id"] == 7]
+        self.assertEqual([c["box"] for c in flagged], [[1846, 151, 1908, 223]])
+        i = str(flagged[0]["index"])
+        drawn = export(tree, "x", "dark", (1920, 1080, 1), probe={"results": {i: True}})
+        self.assertIn("button", [e["role"] for e in drawn["elements"]])
+        hidden = export(tree, "x", "dark", (1920, 1080, 1), probe={"results": {i: False}})
+        self.assertNotIn("button", [e["role"] for e in hidden["elements"]])
+        self.assertTrue(any("hiding it at run time" in l for l in hidden["limits"]))
+
     def test_a_spinner_and_a_surface_are_exported_and_limits_are_stated(self):
         spin = {"$type": "LoadingProgress", "$rect": "[500.00, 1000.00],[90.00, 90.00]", "$attrs": {}}
         surf = {"$type": "XComponent", "$rect": "[0.00, 0.00],[1080.00, 600.00]", "$attrs": {"content": "Preview not available for this component."}}
