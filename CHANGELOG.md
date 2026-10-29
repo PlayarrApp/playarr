@@ -3451,6 +3451,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- Update `rustls-webpki`, `webpki-roots`, `webpki-root-certs` and `tokio` to patched releases (RUSTSEC-2026-0381, -0382, -0383, -0386).
 - Require iOS parity runs to verify the authenticated profile against the approved Device Test account before routing, capture, or playback.
 - Abort iOS parity captures when resetting test-account playback progress fails, and fail the Apple wall job when its primary suite fails.
 - The iPad series-detail UI test now skips unless its workflow explicitly grants an exclusive fixture window, verifies the app identity before progress changes, checks the current profile before every progress write, and awaits guarded cleanup.
