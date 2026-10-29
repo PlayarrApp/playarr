@@ -2741,6 +2741,7 @@ struct Detail {
 
        }
        .width('100%')
+       .backgroundColor(toResourceColor(activeColors().surface)) // web: the page (bg) shows behind a scroll content that is painted with the surface colour
       }
       .id(TOUCH_SCROLL_ID)
       .width('100%')
@@ -2813,7 +2814,7 @@ struct Detail {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(toResourceColor(activeColors().surface))
+    .backgroundColor(toResourceColor(activeColors().bg))
   }
 
   @Builder
@@ -2850,7 +2851,7 @@ struct Detail {
       }
     }
     .hideTitleBar(true)
-    .backgroundColor(toResourceColor(isTvMetrics() ? activeColors().bg : activeColors().surface))
+    .backgroundColor(toResourceColor(activeColors().bg)) // web: the page root is bg on phone and TV; the content paints surface over it
     .onKeyEvent((event: KeyEvent): boolean => {
       if (event.type === KeyType.Down) {
         this.cancelInitialEpisodeFocus();
