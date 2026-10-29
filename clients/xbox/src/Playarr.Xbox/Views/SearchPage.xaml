@@ -41,10 +41,18 @@
                 FontSize="18"
                 Background="Transparent"
                 BorderThickness="0"
-                PlaceholderText="Search your libraries and playlists"
                 InputScope="Search"
                 TextChanged="QueryBox_TextChanged"
                 KeyUp="QueryBox_KeyUp" />
+            <TextBlock
+                x:Name="QueryHint"
+                Text="Search your libraries and playlists"
+                Margin="62,0,0,0"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                IsHitTestVisible="False"
+                FontSize="18"
+                Foreground="{StaticResource PlayarrInkMuted}" />
         </Grid>
         <TextBlock
             Text="Find any available movie, series, artist or playlist."

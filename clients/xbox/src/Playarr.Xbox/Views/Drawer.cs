@@ -310,7 +310,7 @@ namespace Playarr.Xbox.Views
 
                 flyout.ShowAt(button);
             };
-            LayoutExport.Named(button, current + " \u2304");
+            LayoutExport.Named(button, current);
             var frame = new Border
             {
                 CornerRadius = new CornerRadius(12),
@@ -397,7 +397,7 @@ namespace Playarr.Xbox.Views
                 FocusVisualSecondaryThickness = new Thickness(0),
             };
             button.Click += (s, e) => onClick();
-            LayoutExport.Named(button, glyph + " " + label);
+            LayoutExport.Named(button, label);
             return button;
         }
     }

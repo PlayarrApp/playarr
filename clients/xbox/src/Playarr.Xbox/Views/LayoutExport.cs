@@ -473,6 +473,12 @@ namespace Playarr.Xbox.Views
                         continue;
                     }
 
+                    // A trimmed block draws its ellipsis over the characters that do not fit: only the ones inside the block are shown.
+                    if (block.IsTextTrimmed && rect.Right > block.ActualWidth + 0.5)
+                    {
+                        continue;
+                    }
+
                     // The glyph's right edge is where the displayed layout starts the next character on the same line.
                     // The caret rectangle looking back from the next offset sits on this character's trailing edge, also at a wrap or the end of the text.
                     var next = block.ContentStart.GetPositionAtOffset(i + shift + 1, LogicalDirection.Backward)?.GetCharacterRect(LogicalDirection.Backward) ?? Rect.Empty;
@@ -497,7 +503,13 @@ namespace Playarr.Xbox.Views
                 {
                     var from = k == 0 ? offset : lines[k].From;
                     var to = k + 1 < lines.Count ? lines[k + 1].From : offset + length;
-                    var text = block.Text.Substring(from, to - from).Trim();
+                    var trimmed = block.IsTextTrimmed && k == lines.Count - 1;
+                    if (trimmed)
+                    {
+                        to = lines[k].To;
+                    }
+
+                    var text = block.Text.Substring(from, to - from).Trim() + (trimmed ? "\u2026" : string.Empty);
                     if (text.Length == 0)
                     {
                         continue;
@@ -505,7 +517,7 @@ namespace Playarr.Xbox.Views
 
                     // Left edge, line box height and right edge are all read from the displayed block's own character rectangles.
                     var first = lines[k].Box;
-                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Math.Max(0, rights[k] - first.X), first.Height));
+                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Math.Max(0, (trimmed ? block.ActualWidth : rights[k]) - first.X), first.Height));
                     if (r.Right * scale <= 0 || r.Bottom * scale <= 0 || r.X * scale >= 1920 || r.Y * scale >= 1080)
                     {
                         continue;

@@ -119,6 +119,7 @@ namespace Playarr.Xbox.Views
         // Web searches as you type.
         private void QueryBox_TextChanged(object sender, TextChangedEventArgs e)
         {
+            QueryHint.Visibility = string.IsNullOrEmpty(QueryBox.Text) ? Visibility.Visible : Visibility.Collapsed;
             _viewModel.Query = QueryBox.Text;
             _viewModel.Search();
         }

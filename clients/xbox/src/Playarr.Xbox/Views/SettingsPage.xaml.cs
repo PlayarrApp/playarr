@@ -83,7 +83,7 @@ namespace Playarr.Xbox.Views
                     Background = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.Transparent),
                     Content = row,
                 };
-                LayoutExport.Named(def.Tab, $"{def.Number} {def.Title} \u2192");
+                LayoutExport.Named(def.Tab, $"{def.Number} {def.Title}");
                 def.Tab.Click += (s, e) => ShowSection(_sections.IndexOf(def));
                 TabsPanel.Children.Add(def.Tab);
             }
