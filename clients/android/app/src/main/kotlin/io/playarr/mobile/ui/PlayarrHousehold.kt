@@ -3,7 +3,7 @@ package io.playarr.mobile.ui
 import io.playarr.shared.designsystem.icons.PlayarrWebIcons
 import io.playarr.shared.designsystem.component.PlayarrButton
 import io.playarr.shared.designsystem.component.PlayarrButtonVariant
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -195,7 +195,7 @@ internal fun HouseholdBlockedScreen(
 /** "N min left" pill for the last hour of a budget or schedule window. */
 @Composable
 internal fun HouseholdRemainingBadge(minutes: Int, modifier: Modifier = Modifier) {
-    androidx.compose.material3.Surface(
+    io.playarr.shared.designsystem.page.Surface(
         modifier = modifier.safeDrawingPadding().padding(top = 8.dp),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
         color = WebSurfaceStrong,
@@ -310,7 +310,7 @@ private fun TelevisionHouseholdBlocked(
 
 @Composable
 private fun TelevisionHouseholdPill(label: String, width: androidx.compose.ui.unit.Dp, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    androidx.compose.material3.Surface(
+    io.playarr.shared.designsystem.page.Surface(
         onClick = onClick, enabled = enabled, shape = androidx.compose.foundation.shape.CircleShape, color = Color.Transparent, contentColor = WebInk,
         border = androidx.compose.foundation.BorderStroke(1.dp, WebInk), modifier = modifier.size(width, 50.dp),
     ) {
@@ -322,7 +322,7 @@ private fun TelevisionHouseholdPill(label: String, width: androidx.compose.ui.un
 
 @Composable
 private fun PhoneHouseholdPill(label: String, width: androidx.compose.ui.unit.Dp, enabled: Boolean, onClick: () -> Unit) {
-    androidx.compose.material3.Surface(
+    io.playarr.shared.designsystem.page.Surface(
         onClick = onClick, enabled = enabled, shape = androidx.compose.foundation.shape.CircleShape, color = Color.Transparent, contentColor = WebInk,
         border = androidx.compose.foundation.BorderStroke(1.dp, WebInk), modifier = Modifier.size(width, 48.dp),
     ) {

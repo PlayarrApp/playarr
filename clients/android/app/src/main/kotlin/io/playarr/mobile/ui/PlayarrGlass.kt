@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityPaint
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -265,6 +266,7 @@ internal fun Modifier.glass(shape: Shape, spec: GlassSpec, dark: Boolean = webIs
                 Modifier
             },
         )
+        .parityPaint("fill", tintColor, shape)
         .clip(shape)
         .drawBehind {
             val image = backdrop?.blurred
