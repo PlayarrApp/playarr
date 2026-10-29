@@ -56,11 +56,6 @@ internal sealed class CalendarScreen : IPage
         if (view == CalendarView.Agenda) _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the agenda page has a section and a stage layer
         
         if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); } // web: the focused entry's backdrop under the agenda panel's frost
-        var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
-        back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
-        back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "link", "Back to home");
-        _root.Add(back);
         _root.Add(Ui.Heading("Calendar", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _root.Add(_panel);
         _root.Add(_body);
@@ -101,6 +96,7 @@ internal sealed class CalendarScreen : IPage
         // web: Down from the period navigation lands on Filters, not on Calendar link
         _focus.Overrides[(2, RemoteKey.Down)] = 5;
         _focus.Overrides[(5, RemoteKey.Up)] = 2;
+        _focus.Items.Add(new BackControl(_env, _t, _root, "link", "Back to home").Item); // last, so the pill and tile indices above stay fixed
         _first = _focus.Items.Count;
     }
 

@@ -39,6 +39,7 @@ internal sealed class LibraryScreen : IPage
     private readonly Dictionary<char, View> _letterDots = new();
     private readonly Dictionary<char, TextLabel> _letterLabels = new();
     private int _sideFocus = -1;
+    private BackControl _back = null!;
     private char _activeLetter = '\0';
 
     private Guid? _restoreId;
@@ -49,7 +50,7 @@ internal sealed class LibraryScreen : IPage
     public View Root => _root;
     private readonly string _baseRoute;
     public string Route => _filters is not null ? _baseRoute + "?panel=filters" : _baseRoute;
-    public string? FocusedLabel => _filters?.FocusedLabel ?? _drawer?.FocusedLabel ?? (_sideFocus >= 0 ? _side[_sideFocus].Label : _focus < 0 ? null : $"open {_items[_focus].Title}".ToLowerInvariant());
+    public string? FocusedLabel => _filters?.FocusedLabel ?? _drawer?.FocusedLabel ?? (_back.Focused ? "back" : _sideFocus >= 0 ? _side[_sideFocus].Label : _focus < 0 ? null : $"open {_items[_focus].Title}".ToLowerInvariant());
     public bool HasFocusTarget => _items.Count > 0;
     public float FocusCentreY => FirstRowY - _scroll + (_focus / Columns) * RowPitch + _layout.ArtHeight / 2;
 
@@ -79,11 +80,7 @@ internal sealed class LibraryScreen : IPage
 
     private void BuildHeader()
     {
-        var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
-        back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
-        back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "link", "Back to Home");
-        _root.Add(back);
+        _back = new BackControl(_env, _t, _root, "link", "Back to Home");
         _root.Add(Ui.Heading(_title, 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _subtitle = new PageSubtitle(_env, _root, _title);
     }
@@ -286,7 +283,8 @@ internal sealed class LibraryScreen : IPage
         if (_filters is not null) return _filters.OnKey(key);
         if (_drawer is not null) return _drawer.OnKey(key);
         if (key == RemoteKey.SelectLong && _sideFocus < 0) { OpenDrawer(); return true; }
-        if (_items.Count == 0) return key is not (RemoteKey.Left or RemoteKey.Back);
+        if (_back.Focused) return _back.OnKey(key, LeaveBack);
+        if (_items.Count == 0) { if (key == RemoteKey.Up) { _back.Show(true); return true; } return key is not (RemoteKey.Left or RemoteKey.Back); }
         if (_sideFocus >= 0) return SideKey(key);
         var col = _focus % Columns;
         switch (key)
@@ -294,11 +292,19 @@ internal sealed class LibraryScreen : IPage
             case RemoteKey.Right: if (col < Columns - 1 && _focus + 1 < _items.Count) SetFocus(_focus + 1); else EnterSide(); return true;
             case RemoteKey.Left: if (col > 0) { SetFocus(_focus - 1); return true; } return false;
             case RemoteKey.Down: if (_focus + Columns < _items.Count) SetFocus(_focus + Columns); else if (_focus + 1 < _items.Count && _focus / Columns < (_items.Count - 1) / Columns) SetFocus(_items.Count - 1); return true;
-            case RemoteKey.Up: if (_focus >= Columns) SetFocus(_focus - Columns); return true;
+            case RemoteKey.Up: if (_focus >= Columns) SetFocus(_focus - Columns); else EnterBack(); return true;
             case RemoteKey.Select: _env.Navigate(HomeScreen.DetailRoute(_items[_focus])); return true;
         }
         return false;
     }
+
+    private void EnterBack()
+    {
+        if (_focus >= 0 && _views.TryGetValue(_focus, out var v)) v.SetFocused(false, keepInk: true);
+        _back.Show(true);
+    }
+
+    private void LeaveBack() { _back.Show(false); if (_focus >= 0) SetFocus(_focus); }
 
     private void EnterSide()
     {
