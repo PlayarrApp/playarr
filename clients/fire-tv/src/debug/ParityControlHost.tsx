@@ -8,7 +8,7 @@ import {ROUTES} from '../navigation/routes';
 import {getSharedVegaPlaybackEngine} from '../platform/media/VegaPlaybackEngine';
 import type {PlayerScreenHandle} from '../screens/PlayerScreen';
 import {useTheme} from '../theme/ThemeProvider';
-import {exportLayout, LayoutProbe} from './layoutExport';
+import {exportLayout, LayoutProbe, setCover} from './layoutExport';
 import {currentQuery, installParityControl, PARITY_CONTROL, setPendingQuery} from './parityControl';
 
 /** The slice of the navigation container ref this host uses (the typed ref's route-name union is narrower than the strings it is given). */
@@ -97,6 +97,7 @@ export function ParityControlHost({navRef, playerRef}: {navRef: NavRefLike; play
         return {state: state.state, positionSeconds: state.currentTimeSeconds, durationSeconds: state.durationSeconds, error: state.error?.message};
       },
       theme: () => schemeRef.current,
+      cover: setCover,
       layout: async (debug) => {
         const elements = probeRef.current ? await exportLayout(probeRef.current, schemeRef.current === 'dark' ? '#151315' : '#f5f3f2', debug) : [];
         return JSON.stringify(elements);

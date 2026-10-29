@@ -105,6 +105,8 @@ export interface ParityHooks {
   theme(): string;
   /** The layout document of the screen as drawn now, as JSON text (cmd=layout). */
   layout?(debug: string): Promise<string>;
+  /** cmd=cover&on=1|0: hide or restore the views that cover flagged layout elements. */
+  cover?(on: boolean): void;
 }
 
 let layoutChunks: string[] = [];
@@ -154,6 +156,7 @@ export function installParityControl(hooks: ParityHooks): () => void {
         case 'open': hooks.open(command.kind ?? 'movies', command.id ?? ''); break;
         case 'play': hooks.play(command.file ?? ''); break;
         case 'stop': hooks.stop(); break;
+        case 'cover': hooks.cover?.(command.on === '1'); break;
         case 'armPause': hooks.armPause(command.ms ? Number(command.ms) : null); break;
         case 'theme': hooks.setTheme(command.name === 'light' ? 'light' : 'dark'); break;
         // `parityNow` is the campaign's name for the same freeze; both take now=<ISO> and the clock stays frozen (it does not tick).

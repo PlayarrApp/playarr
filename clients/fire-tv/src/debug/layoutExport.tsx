@@ -123,6 +123,8 @@ export interface LayoutElement {
   fontWeight: number | null;
   radius?: number;
   opacity?: number;
+  /** A later opaque view covers the whole box; the driver confirms against the screen and drops it. Not published. */
+  covered?: boolean;
   /** Debug only: the host type and key style entries, to map unnamed views. */
   src?: string;
 }
@@ -196,6 +198,13 @@ function drawnRects(hosts: Array<{fiber: Fiber; parent: number}>, measured: Arra
   return {boxes: out, scale};
 }
 /** Walks the fiber tree from the root and returns the document's elements in tree order. */
+let coverViews: Array<{fiber: Fiber; opacity: number}> = [];
+
+/** cmd=cover: hides (or restores) the views that cover flagged elements, so the driver can see what lies under them. */
+export function setCover(on: boolean): void {
+  for (const v of coverViews) publicInstance(v.fiber)?.setNativeProps?.({style: {opacity: on ? 0 : v.opacity}});
+}
+
 export async function exportLayout(probe: LayoutProbe, bg: string, level: string): Promise<LayoutElement[]> {
   const debug = level !== '0';
   let root: Fiber = probe.fiber();
@@ -230,7 +239,10 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
     return false;
   };
   const styleOf = (i: number): Record<string, any> => StyleSheet.flatten(hosts[i]!.fiber.memoizedProps?.style) ?? {};
-  // A view is hidden when a later, unrelated view paints an opaque background over its whole box (a drawer over the page).
+  // A view is a candidate for being hidden when a later, unrelated view paints an opaque background over its whole box (a drawer
+  // over the page). It is exported flagged `covered`; the driver confirms on the real screen (cmd=cover hides these covering
+  // views, the screen is captured again, and a box whose pixels changed was covered) and drops the confirmed ones.
+  coverViews = [];
   const covered = hosts.map((_, i) => {
     const r = rects[i];
     if (!r) return false;
@@ -238,7 +250,10 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       const c = rects[j];
       const bg = hex(styleOf(j).backgroundColor);
       if (!c || !bg || bg.length > 7 || hosts[j]!.opacity < 0.999 || isAncestor(i, j) || isAncestor(j, i)) continue;
-      if (r[0] >= c[0] - 0.5 && r[1] >= c[1] - 0.5 && r[0] + r[2] <= c[0] + c[2] + 0.5 && r[1] + r[3] <= c[1] + c[3] + 0.5) return true;
+      if (r[0] >= c[0] - 0.5 && r[1] >= c[1] - 0.5 && r[0] + r[2] <= c[0] + c[2] + 0.5 && r[1] + r[3] <= c[1] + c[3] + 0.5) {
+        if (!coverViews.some((v) => v.fiber === hosts[j]!.fiber)) coverViews.push({fiber: hosts[j]!.fiber, opacity: typeof styleOf(j).opacity === 'number' ? (styleOf(j).opacity as number) : 1});
+        return true;
+      }
     }
     return false;
   });
@@ -265,7 +280,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
     if (!r || r[2] < 0.5 || r[3] < 0.5) return;
     if (r[0] > 1920 * scale || r[1] > 1080 * scale || r[0] + r[2] < 0 || r[1] + r[3] < 0) return;
     // Nothing is drawn at zero opacity (the web export drops it too).
-    if (h.opacity <= 0.001 || covered[i] || clippedAway[i]) return;
+    if (h.opacity <= 0.001 || clippedAway[i]) return;
+    const emit = (element: LayoutElement): void => void out.push(covered[i] ? {...element, covered: true} : element);
     const f = h.fiber;
     const type = String(f.type);
     const props = f.memoizedProps ?? {};
@@ -322,7 +338,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
         above += (line.height * k) / scale;
         const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
         if (!lineText) return;
-        out.push({
+        emit({
           ...(base as LayoutElement),
           text: transform(lineText),
           role: webRole && webRole !== 'text' && webRole !== 'none' ? webRole : 'text',
@@ -336,17 +352,17 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       return;
     }
     if (type === 'RCTImageView' || type === 'Image' || type === 'RNSVGSvgView') {
-      out.push({...(base as LayoutElement), text: label ?? '', role: webRole ?? 'image', rect, color: null, fontSize: null, fontWeight: null, src});
+      emit({...(base as LayoutElement), text: label ?? '', role: webRole ?? 'image', rect, color: null, fontSize: null, fontWeight: null, src});
       return;
     }
     // A gradient view paints its box without a background colour.
     const painted = hex(style.backgroundColor) !== null || hasBorder(style) || /LinearGradient/.test(type);
     if (!role && !painted) {
       // Debug builds list the unexported views too (role `debug-view`), to see how the renderer placed a wrapper.
-      if (level === '2') out.push({...(base as LayoutElement), text: '', role: 'debug-view', rect, color: null, fontSize: null, fontWeight: null, src: `${type} ${JSON.stringify({l: style.left, t: style.top, w: style.width, h: style.height, m: [style.marginLeft, style.marginTop], tr: style.transform, pos: style.position})}`});
+      if (level === '2') emit({...(base as LayoutElement), text: '', role: 'debug-view', rect, color: null, fontSize: null, fontWeight: null, src: `${type} ${JSON.stringify({l: style.left, t: style.top, w: style.width, h: style.height, m: [style.marginLeft, style.marginTop], tr: style.transform, pos: style.position})}`});
       return;
     }
-    out.push({
+    emit({
       ...(base as LayoutElement),
       text: role ? label ?? '' : '',
       role: webRole ?? 'container',
