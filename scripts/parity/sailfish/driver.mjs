@@ -163,6 +163,8 @@ export async function createDriver() {
       await waitForPlayerLayoutAfterAck();
     }
     else await sleep((detail ? Math.max(settle, 24) : settle) * 1000);
+    // The export hides covered-looking elements one by one on the live screen: no capture until it has ended and shown them again.
+    if (pendingLayoutDump && screenId !== "player-controls") await waitForLayoutEnd();
     if (detail) requireRouteReady(readOwnedRouteLog(ssh, ownedProcess), ownedProcess.marker);
   }
   const vbox = (...args) => execFileSync(env.PLAYARR_SF_VBOXMANAGE ?? "VBoxManage", ["controlvm", env.PLAYARR_SF_VM ?? "sailfish", ...args], { stdio: "ignore", timeout: 30000 });
@@ -223,6 +225,14 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     }
     const observed = playerState();
     throw new Error(`Sailfish player capture did not acknowledge paused source position 2000 ms (observed source=${observed?.sourceMs ?? "unknown"} ms, engine=${observed?.engineMs ?? "unknown"} ms)`);
+  }
+  async function waitForLayoutEnd() {
+    const deadline = Date.now() + 120000;
+    while (Date.now() < deadline) {
+      if (readOwnedRouteLog(ssh, ownedProcess).includes("LAYOUTEND|")) return;
+      await sleep(500);
+    }
+    throw new Error("Sailfish layout export did not finish");
   }
   async function waitForPlayerLayoutAfterAck() {
     const deadline = Date.now() + 60000;
