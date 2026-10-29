@@ -191,7 +191,7 @@ Item {
     MouseArea {
         id: filterBtn
         property bool navigationFocusable: true
-        Accessible.name: qsTr("Filters")
+        Accessible.role: Accessible.Button; Accessible.name: qsTr("Filters")
         property int parityRail: 1
         property int parityIndex: 0
         function navigationActivate() { root.openFilters() }
@@ -205,7 +205,7 @@ Item {
     MouseArea {
         id: bellBtn
         property bool navigationFocusable: true
-        Accessible.name: qsTr("Calendar link")
+        Accessible.role: Accessible.Button; Accessible.name: qsTr("Calendar link")
         property int parityRail: 1
         property int parityIndex: 1
         function navigationActivate() { pageStack.push(Qt.resolvedUrl("CalendarLinkPage.qml")) }
@@ -220,9 +220,9 @@ Item {
         anchors { top: head.bottom; topMargin: (root.mode === "agenda" ? -2 : 15.5) * Tokens.u; right: parent.right; rightMargin: Tokens.pad }
         spacing: 8 * Tokens.u
         PillButton { id: rangePill; objectName: "calendar-range"; text: root.range.label; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 0; navigationActivate: function() { root.openPeriodPicker() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: (root.mode === "week" ? 96.89 : root.mode === "month" ? 91.78 : 114.38) * Tokens.u; onClicked: root.openPeriodPicker() }
-        PillButton { text: "←"; Accessible.name: qsTr("Previous"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 1; navigationActivate: function() { root.page-- }; labelFamily: Tokens.fam(720) + ",Liberation Sans"; fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page-- }
+        PillButton { text: "←"; Accessible.role: Accessible.Button; Accessible.name: qsTr("Previous"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 1; navigationActivate: function() { root.page-- }; labelFamily: Tokens.fam(720) + ",Liberation Sans"; fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page-- }
         PillButton { text: qsTr("Today"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 2; navigationInitialFocus: true; navigationActivate: function() { root.resetToday() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 74.22 * Tokens.u; onClicked: root.resetToday() }
-        PillButton { text: "→"; Accessible.name: qsTr("Next"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 3; navigationActivate: function() { root.page++ }; labelFamily: Tokens.fam(720) + ",Liberation Sans"; fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page++ }
+        PillButton { text: "→"; Accessible.role: Accessible.Button; Accessible.name: qsTr("Next"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 3; navigationActivate: function() { root.page++ }; labelFamily: Tokens.fam(720) + ",Liberation Sans"; fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page++ }
     }
     // Month: wide cells (a chip for the first title, the day number and "+N more"), scrolled sideways, as on the web phone.
     SilicaFlickable {
@@ -252,7 +252,7 @@ Item {
                         MouseArea {
                             id: cell
                             property bool navigationFocusable: true
-                            Accessible.name: String(modelData.day)
+                            Accessible.role: Accessible.Button; Accessible.name: String(modelData.day)
                             property int parityRail: 0
                             property int parityIndex: index
                             function navigationActivate() { root.openDay(modelData.date) }
@@ -270,7 +270,7 @@ Item {
                             MouseArea {   // the web's event chip inside the day cell
                                 visible: cell.es.length > 0
                                 x: 5.8 * Tokens.u; y: 1.8 * Tokens.u; width: 91.25 * Tokens.u; height: 34.05 * Tokens.u
-                                Accessible.name: cell.es.length ? cell.es[0].title + ", " + root.pill(cell.es[0]) + ", " + Qt.formatDate(new Date(modelData.date + "T00:00:00"), "dddd d MMMM") : ""
+                                Accessible.role: Accessible.Button; Accessible.name: cell.es.length ? cell.es[0].title + ", " + root.pill(cell.es[0]) + ", " + Qt.formatDate(new Date(modelData.date + "T00:00:00"), "dddd d MMMM") : ""
                                 onClicked: cell.navigationActivate()
                                 Rectangle { anchors.fill: parent; radius: 4 * Tokens.u; color: cell.past ? (Tokens.dark ? "#241f23" : "#efeeed") : Tokens.bg }   // the chip's own plate
                                 Rectangle {
@@ -330,7 +330,7 @@ Item {
                             property bool navigationFocusable: true
                             property int parityRail: 0
                             property int parityIndex: index
-                            Accessible.name: [modelData.title, subLbl.text, timeLbl.text, relLbl.text, kindLbl.text, badge.text].filter(function (x) { return !!x }).join(" ")
+                            Accessible.role: Accessible.Button; Accessible.name: [modelData.title, subLbl.text, timeLbl.text, relLbl.text, kindLbl.text, badge.text].filter(function (x) { return !!x }).join(" ")
                             function navigationActivate() { root.openEntry(modelData) }
                             x: dayCol.wk ? 0 : Tokens.pad
                             width: dayCol.cw - (dayCol.wk ? 0 : 2 * Tokens.pad)   // static-seed refs: the agenda card ends at the page padding
@@ -521,7 +521,7 @@ Item {
                 property int navigationList: 0
                 property int parityIndex: index
                 property int parityRail: 0
-                Accessible.name: model.name
+                Accessible.role: Accessible.Button; Accessible.name: model.name
                 property var navigationActivate: function() { root.chooseMonth(model.month) }
                 property var navigationTrapMove: function(key) { root.navigatePeriodPicker(monthChoice, key) }
                 Keys.priority: Keys.BeforeItem
@@ -555,7 +555,7 @@ Item {
                 property int navigationList: 1
                 property int parityIndex: index
                 property int parityRail: 0
-                Accessible.name: String(model.year)
+                Accessible.role: Accessible.Button; Accessible.name: String(model.year)
                 property var navigationActivate: function() { root.chooseYear(model.year) }
                 property var navigationTrapMove: function(key) { root.navigatePeriodPicker(yearChoice, key) }
                 Keys.priority: Keys.BeforeItem

@@ -112,7 +112,7 @@ function drawnBorder(border) {
         || border.color.b !== unsetBorder.color.b || border.color.a !== unsetBorder.color.a
 }
 // Qt's QAccessible::Role values (as the QML Accessible enum) in the web's role vocabulary. A role Qt has no word for stays unset.
-var ROLE_NAMES = { 16: "container", 18: "dialog", 20: "group", 30: "link", 40: "img", 41: "text", 42: "textbox", 43: "button", 51: "slider", 1040: "search", 1044: "heading" }
+var ROLE_NAMES = { 16: "container", 18: "dialog", 20: "group", 30: "link", 40: "img", 41: "text", 42: "textbox", 43: "button", 51: "slider", 1040: "form", 1044: "heading" }
 // The mask a composited layer is clipped to (layer.effect: OpacityMask), or null. `layer.effect` is only the Component: the instance Qt creates
 // sits next to the item in its parent, and its `source` is the layer's ShaderEffectSource of that item. The layer draws the item and everything in it through the mask.
 function layerMask(item) {
@@ -238,17 +238,6 @@ function dump(root, u, weights, log, access, defaultBorder) {
                 var textScale = uniformRadiusScale(item, root)
                 if (textScale === null) { log("LAYOUTERR|nonuniform text transform|" + item.text.slice(0, 30)); textScale = 1 }
                 var runs = [textRun(item, log)]
-                var ta = access(item), textRole = ROLE_NAMES[ta.role]
-                if (ta.role !== 0 && ta.role !== 41 && textRole && String(ta.name) !== "" && item.readOnly === undefined) {
-                    // a Text that exposes a role of its own (a control or container) is that one element: its box, its accessible name, its text style
-                    var oc = polygonCenter(polygon)
-                    var one = { text: String(ta.name), role: textRole, rect: rect(x, y, box.w, box.h), color: hex(item.color), background: bgAt(oc.x, oc.y),
-                        fontSize: r2(item.font.pixelSize * textScale / u), fontWeight: weightOf(item, weights) }
-                    if (op < 0.999) one.opacity = r2(op)
-                    one._item = item; one._seq = ++seq; one._r = polygonBounds(polygon)
-                    if (item.color.a > 0.001) out.push(one)
-                    runs = []
-                }
                 if (item.readOnly !== undefined && item.positionAt && item.positionToRectangle) {
                     // the characters between the input's padded edges, from Qt's own positions
                     var s0 = item.positionAt(item.leftPadding || 0), s1 = item.positionAt(item.width - (item.rightPadding || 0))
@@ -341,8 +330,10 @@ function dump(root, u, weights, log, access, defaultBorder) {
                 cv._item = item; cv._seq = ++seq; cv._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 out.push(cv)
             } else if ((access(item).name !== "" || access(item).role !== 0) && w > 0 && h > 0) {
+                // every named or roled item must carry a role the export knows: no role is guessed
+                if (!ROLE_NAMES[access(item).role]) { var bad = "LAYOUTERR|item without a mapped accessible role|" + access(item).role + "|" + String(access(item).name).slice(0, 40); log(bad); throw new Error(bad) }
                 var focusCenter = polygonCenter(polygon)
-                var fr = { text: String(access(item).name), role: roleOf(item, "button"), rect: rect(x, y, box.w, box.h),
+                var fr = { text: String(access(item).name), role: roleOf(item, "container"), rect: rect(x, y, box.w, box.h),
                     color: null, background: bgAt(focusCenter.x, focusCenter.y), fontSize: null, fontWeight: null, _at: [focusCenter.x, focusCenter.y], _box: mappedRect(item, root, 0, 0, w, h) }
                 var shape = paintedShape(item)
                 if (shape) {

@@ -16,7 +16,7 @@ MouseArea {
     property bool navigationInitialFocus: false
     property var navigationActivate: null
     Accessible.name: label
-    Accessible.role: icon === "" && label === "" ? Accessible.NoRole : Accessible.Button   // a plate that only frames a text item (the quality control) is not a control of its own
+    Accessible.role: Accessible.Button
     width: 44 * Tokens.u; height: width
     opacity: dimmed ? 0.28 : 1
     Rectangle { anchors.fill: parent; radius: width / 2; color: root.plate; border.width: 0 }

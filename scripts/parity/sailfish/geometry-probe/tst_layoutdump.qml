@@ -72,7 +72,7 @@ TestCase {
             width: 6
             height: 8
             property bool navigationFocusable: true
-            Accessible.name: "dump-target"
+            Accessible.name: "dump-target"; Accessible.role: Accessible.Button
         }
     }
 

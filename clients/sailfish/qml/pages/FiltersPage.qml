@@ -45,7 +45,7 @@ PlayarrPage {
             property int parityRail: 1
             property int parityIndex: 0
             function navigationActivate() { pageStack.pop() }
-            Accessible.name: qsTr("Close filters")
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("Close filters")
             x: parent.width - page.gut - width; y: 20 * Tokens.u
             width: 44 * Tokens.u; height: width
             onClicked: pageStack.pop()
@@ -66,7 +66,7 @@ PlayarrPage {
                                      : [ { id: "list", label: qsTr("List") }, { id: "screen", label: qsTr("Screen") }, { id: "cover", label: qsTr("Cover") } ]
                 MouseArea {
                     property bool navigationFocusable: true
-                    Accessible.name: modelData.label
+                    Accessible.role: Accessible.Button; Accessible.name: modelData.label
                     property int parityRail: 0
                     property int parityIndex: index
                     function navigationActivate() {
@@ -115,7 +115,7 @@ PlayarrPage {
                 { row: 1, y: 301.05, id: "asc", label: page.sort === "title" ? qsTr("A-Z") : qsTr("Oldest") }, { row: 1, y: 301.05, id: "desc", label: page.sort === "title" ? qsTr("Z-A") : qsTr("Newest") } ]
             MouseArea {
                 property bool navigationFocusable: true
-                Accessible.name: modelData.label
+                Accessible.role: Accessible.Button; Accessible.name: modelData.label
                 property int parityRail: 0
                 property int parityIndex: 3 + index
                 function navigationActivate() {
@@ -157,7 +157,7 @@ PlayarrPage {
                     property int parityIndex: 7 + index
                     function navigationActivate() { page.openSelect = parent.opened ? "" : modelData.key }
                     x: 7.39 * Tokens.u; y: 7.39 * Tokens.u; width: parent.width - 14.78 * Tokens.u; height: 44 * Tokens.u
-                    Accessible.name: curLbl.text + " " + chevLbl.text
+                    Accessible.role: Accessible.Button; Accessible.name: curLbl.text + " " + chevLbl.text
                     onClicked: navigationActivate()
                     PLabel { renderType: Text.NativeRendering; id: curLbl
                         x: 12 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -2
@@ -173,7 +173,7 @@ PlayarrPage {
                         model: page.languages
                         MouseArea {
                             property bool navigationFocusable: visible
-                            Accessible.name: modelData.label
+                            Accessible.role: Accessible.Button; Accessible.name: modelData.label
                             property int parityRail: 0
                             property int parityIndex: 9 + index
                             function navigationActivate() {

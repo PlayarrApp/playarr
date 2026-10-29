@@ -44,7 +44,7 @@ function dump(root, u = 1) {
 }
 
 function focus(name, width, height, props = {}) {
-  return makeItem(name, width, height, { navigationFocusable: true, accessName: name, ...props });
+  return makeItem(name, width, height, { navigationFocusable: true, accessName: name, accessRole: 43, ...props });
 }
 
 test("maps translated geometry to root-local CSS coordinates", () => {
@@ -245,11 +245,21 @@ test("exports the radius of the mask a layer is clipped to, and clips its childr
   assert.ok(round);
 });
 
-test("a Text that exposes a role is one element: its box, accessible name and text style", () => {
+test("a Text with a role of its own still exports its measured run, never its frame", () => {
   const root = makeItem("root", 100, 100);
-  attach(root, makeItem("quality", 44, 44, textItem({ text: "HD", accessName: "Quality: High", accessRole: 43, contentWidth: 12 })));
+  const box = attach(root, makeItem("time", 54, 15, { accessName: "0:02 / 1:00", accessRole: 16, navigationFocusable: true }));
+  attach(box, makeItem("run", 54, 15, textItem({ text: "0:02 / 1:00", contentWidth: 50, contentHeight: 11, horizontalAlignment: 4 })));
   const rows = dump(root);
-  assert.deepEqual(rows.map((row) => [row.role, row.text, row.rect, row.fontSize]), [["button", "Quality: High", { x: 0, y: 0, w: 44, h: 44 }, 10]]);
+  assert.deepEqual(rows.map((row) => [row.role, row.rect.w, row.rect.h]), [["container", 54, 15], ["text", 50, 11]]);
+});
+
+test("a named item with no mapped accessible role stops the export, and Form is exported as form", () => {
+  const root = makeItem("root", 100, 100);
+  attach(root, makeItem("nameless-role", 20, 10, { accessName: "Open", accessRole: 0 }));
+  assert.throws(() => dump(root), /LAYOUTERR/);
+  const root2 = makeItem("root", 100, 100);
+  attach(root2, makeItem("form", 20, 10, { accessName: "", accessRole: 1040 }));
+  assert.equal(dump(root2)[0].role, "form");
 });
 
 test("a text item that draws its own plate exports the plate's radius; a parent's radius is not copied", () => {
