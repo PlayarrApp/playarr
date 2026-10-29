@@ -184,7 +184,7 @@ export function EntryCard({item, width, wrap, selected, today, onFocus, onPress,
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: u(8),
-        paddingLeft: u(12),
+        paddingLeft: u(wrap ? 12 : 13),
         paddingRight: u(11),
         borderRadius: u(12),
         borderWidth: 1,
@@ -390,7 +390,7 @@ function WatchlistPill({listed, onPress}: {listed: boolean | null; onPress: () =
       onPress={onPress}
       style={{
         height: u(58),
-        paddingHorizontal: u(21),
+        paddingHorizontal: u(20),
         borderRadius: u(29),
         flexDirection: 'row',
         alignItems: 'center',

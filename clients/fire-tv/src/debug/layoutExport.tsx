@@ -237,11 +237,17 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       native.forEach((line, index) => {
         const lineTop = above;
         above += (line.height * k) / scale;
-        // Vega reports some lines' text as the rest of the paragraph from the line start; the next line's own report is that rest's tail.
+        // Vega reports some lines' text running on into the next line (as far as the rest of the paragraph, or part of the next line's
+        // words): a tail that is a prefix of the next line's own text, starting at a word, belongs to that line.
         const said = (l: unknown): string => ((l as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
         let lineText = said(line);
         const following = native[index + 1] ? said(native[index + 1]) : '';
-        if (following && lineText.length > following.length && lineText.endsWith(following)) lineText = lineText.slice(0, lineText.length - following.length).trim();
+        for (let k = Math.min(following.length, lineText.length - 1); following && k >= 3; k--) {
+          if (lineText.endsWith(following.slice(0, k)) && lineText[lineText.length - k - 1] === ' ') {
+            lineText = lineText.slice(0, lineText.length - k).trim();
+            break;
+          }
+        }
         if (!lineText) return;
         out.push({
           ...(base as LayoutElement),
