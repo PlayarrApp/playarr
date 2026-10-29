@@ -685,6 +685,7 @@ export struct SettingsScreen {
     NavDestination() {
       PageShell({
         railFrostWidthPct: 65,
+        railFrostFullBox: isTvMetrics(), // web TV draws the frost as a full-width box
         title: t('settings.index.title', 'Preferences'),
         backLabel: 'Settings',
         backRole: 'button',

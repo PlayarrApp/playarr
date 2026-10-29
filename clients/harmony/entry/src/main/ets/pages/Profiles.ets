@@ -499,7 +499,7 @@ struct Profiles {
         .letterSpacing(((this.pick(-5.15, -2.77)) + (isTvMetrics() ? -0.633 : 0)) + (!isTvMetrics() ? -0.08 : 0))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
-        .margin({ top: this.pick(-8, -0.75), bottom: this.pick(4.2, 0), left: isTvMetrics() ? 9.1 : PHONE_HEADING_LEFT }) // TV: the 110 vp line overflows its 77 vp frame; web's run starts 4.2 higher
+        .margin({ top: this.pick(-8, -0.75), bottom: this.pick(4.2, 0), left: isTvMetrics() ? 4.65 : PHONE_HEADING_LEFT }) // TV: the 110 vp line overflows its 77 vp frame; web's run starts 4.2 higher
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Row({ space: this.pick(36.74, PHONE_CHOICE_GAP) }) { // TV: the profile tile is 5.49 wider each side than its avatar
         ForEach(this.profiles, (profile: AvailableProfileResponse) => {
@@ -590,7 +590,7 @@ struct Profiles {
             .textCase(TextCase.UpperCase)
             .textAlign(TextAlign.Center)
             .fontColor(toResourceColor(activeColors().inkMuted))
-            .margin({ top: this.pick(13.72, 13.2), bottom: this.pick(5.6, 1.4) })
+            .margin({ top: this.pick(10.62, 13.2), bottom: this.pick(1.7, 1.4) })
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
         .margin({ top: this.pick(14.79, 12.33), right: this.pick(5.49, 0) })

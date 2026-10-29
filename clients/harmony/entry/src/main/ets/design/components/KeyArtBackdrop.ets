@@ -28,6 +28,18 @@ export function railFrostColors(): Array<[string, number]> {
       ['rgba(240, 238, 239, 0.96)', 0.62], ['rgba(240, 238, 239, 1)', 1]];
 }
 
+/** The same fade drawn by a box spanning the whole width (web's frost box is full width there): transparent up to `widthPct` from the right edge,
+ * then the stops of railFrostColors() squeezed into the rest, so the pixels equal those of a box that is only `widthPct` wide. */
+export function railFrostColorsFullWidth(widthPct: number): Array<[string, number]> {
+  const start: number = (100 - widthPct) / 100;
+  const stops: Array<[string, number]> = railFrostColors();
+  const out: Array<[string, number]> = [[stops[0][0], 0]];
+  for (const stop of stops) {
+    out.push([stop[0], start + stop[1] * (1 - start)]);
+  }
+  return out;
+}
+
 function pct100(pct: number): number {
   return pct / 100;
 }

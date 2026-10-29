@@ -1,0 +1,1 @@
+- HarmonyOS layout export: a Text paints only its fill and glyph ranges, painters use their rounded shape and the unclipped gradient box, recovered frame sizes are scaled, offstage frames keep visible glyph ranges, transparent text is dropped, a missing text style fails the export, and Divider rules are exported.

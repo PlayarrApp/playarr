@@ -579,6 +579,7 @@ export struct SearchScreen {
       Stack() {
       PageShell({
         railFrostWidthPct: 65,
+        railFrostFullBox: isTvMetrics(), // web TV draws the frost as a full-width box
         title: t('pages.search.title', 'Search'),
         touch: true,
         touchContent: (): void => {

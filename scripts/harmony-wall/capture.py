@@ -40,7 +40,8 @@ def get(path, **q):
             time.sleep(4)
 
 
-# The Previewer window is larger than the app's stage so no box is clamped by the window: the stage starts at STAGE_ORIGIN px inside it.
+# The Previewer window is larger than the app's stage, which starts at STAGE_ORIGIN px inside it. The inspector still clamps some boxes at the window's
+# trailing edge: layout_export.py restores those from the framework's measured size and states what it cannot restore in its limits.
 # TV: 3000 x 1740 px, stage 1920 x 1080 at (240, 60). Phone: 1800 x 3600 px (dpr 3), stage 1080 x 2340 at (180, 180).
 STAGE = {"tv": ((240, 60), (3000, 1740), (1920, 1080)), "phone": ((180, 180), (1800, 3600), (1080, 2340))}
 STAGE_DEVICE = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in STAGE else "tv"
