@@ -51,7 +51,6 @@ namespace Playarr.Xbox.Views
         public ProfilesPage()
         {
             InitializeComponent();
-            LayoutExport.SetShell(Root, true);
             WebFont.Apply(EyebrowText, 820);
             WebFont.Apply(TitleText, 500);
             LayoutExport.SetRole(TitleText, "heading");

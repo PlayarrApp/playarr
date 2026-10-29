@@ -50,7 +50,6 @@ namespace Playarr.Xbox.Views
             Root = new Grid { XYFocusKeyboardNavigation = Windows.UI.Xaml.Input.XYFocusKeyboardNavigationMode.Enabled, UseLayoutRounding = false };
             Root.PreviewKeyDown += EnterRailLevel;
             Root.Children.Add(frame);
-            LayoutExport.SetShell(_chrome, true);
             Root.Children.Add(_chrome);
             Build();
             _frame.Navigated += (s, e) => Sync(e);

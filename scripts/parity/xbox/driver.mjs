@@ -12,7 +12,7 @@
 // paths assume the web's filters panel; the D-pad checks themselves press real keys.
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -288,16 +288,19 @@ export async function createDriver() {
       if (theme) try {
         const nonce = randomUUID().replaceAll("-", "");
         await requireTestAccount();
+        try { unlinkSync(file.replace(/\.png$/i, ".layout.json")); } catch { /* none yet */ }
         run("write", "parity.layout", `${theme},${file.replace(/^.*[\\/]/, "").replace(/\.png$/i, "")},${nonce}`); // a comma: a pipe would reach cmd.exe
         const deadline = Date.now() + 15000;
+        let done = false;
         while (Date.now() < deadline) {
           await sleep(500);
           try {
             const layout = JSON.parse(run("read", "layout.json"));
-            if (layout.layoutNonce === nonce) { delete layout.layoutNonce; writeFileSync(file.replace(/\.png$/i, ".layout.json"), `${JSON.stringify(layout, null, 1)}\n`); break; }
+            if (layout.layoutNonce === nonce) { delete layout.layoutNonce; writeFileSync(file.replace(/\.png$/i, ".layout.json"), `${JSON.stringify(layout, null, 1)}\n`); done = true; break; }
           } catch { /* not written yet */ }
         }
-      } catch (e) { console.log(`layout export skipped: ${String(e.message).split("\n")[0]}`); }
+        if (!done) throw new Error("the app did not answer the layout request");
+      } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
     },
     // Plays media file `c.file` through the app's parity.play request; judged from the player's own position.
     async play(c, expect) {
