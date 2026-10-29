@@ -53,7 +53,7 @@ namespace Playarr.Xbox.Views
         public LibraryPage()
         {
             InitializeComponent();
-            Background = Theme.PageStage();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             _header = Ui.PageHeader(Root, "Library", null, () => App.Navigation.GoBack());
             Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 151.19, OpenFilters));
             _viewModel = new LibraryViewModel(App.Environment);

@@ -160,6 +160,22 @@ namespace Playarr.Xbox.Views
             };
         }
 
+        /// <summary>
+        /// The page ground as the web builds it: a flat surface colour on the page, with the tinted wash drawn as its own
+        /// layer behind the content (a separate element, so no element's background is the wash).
+        /// </summary>
+        public static void ApplyStage(Windows.UI.Xaml.Controls.Page page)
+        {
+            page.Background = new SolidColorBrush(Surface);
+            if (page.Content is Windows.UI.Xaml.Controls.Grid grid)
+            {
+                var wash = new Windows.UI.Xaml.Shapes.Rectangle { Fill = PageStage(), IsHitTestVisible = false };
+                Windows.UI.Xaml.Controls.Grid.SetRowSpan(wash, 99);
+                Windows.UI.Xaml.Controls.Grid.SetColumnSpan(wash, 99);
+                grid.Children.Insert(0, wash);
+            }
+        }
+
         /// <summary>The web image opacity, applied after the grayscale, contrast and brightness filters.</summary>
         public static double KeyArtGroupOpacity => IsLight ? 0.24 : 0.72;
 

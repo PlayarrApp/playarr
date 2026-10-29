@@ -48,7 +48,7 @@ namespace Playarr.Xbox.Views
         public WorkDetailPage()
         {
             InitializeComponent();
-            Background = Theme.PageStage();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             EdgeFade.AttachVertical(Root, RailsScroll, 833, true);
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;

@@ -35,7 +35,7 @@ namespace Playarr.Xbox.Views
             WebFont.Apply(EmptyStateText, 650);
             Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 151.19, OpenFilters));
             LayoutExport.Tag(QueryBox, "textbox", "Search your libraries and playlists");
-            Background = Theme.PageStage();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             Ui.PageHeader(Root, "Search", null, () => App.Navigation.GoBack());
             ResultsGrid.ItemContainerStyle = CatalogTileFactory.GridCardContainerStyle;
             CardFocus.Attach(ResultsGrid);

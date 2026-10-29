@@ -27,7 +27,7 @@ namespace Playarr.Xbox.Views
         public SettingsPage()
         {
             InitializeComponent();
-            Background = Theme.PageStage();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             _header = Ui.PageHeader(Root, Lang.T("settings.index.title"), "APPEARANCE", () => App.Navigation.GoBack());
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(_header.Back, "Settings");
             LayoutExport.SetRole(_header.Back, "button");

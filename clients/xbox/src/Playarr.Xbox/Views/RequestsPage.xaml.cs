@@ -18,7 +18,7 @@ namespace Playarr.Xbox.Views
         public RequestsPage()
         {
             InitializeComponent();
-            Background = Theme.PageStage(); // the web's page wash, as every page
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             Ui.PageHeader(RootGrid, "Requests", null, () => App.Navigation.GoBack());
             RootGrid.Children.Add(_rows);
             RootGrid.Children.Add(_status);
