@@ -208,7 +208,7 @@ PlayarrPage {
                 font.family: Tokens.fam(560)   // web .tv-detail-title: weight 560, letter-spacing -0.072em
                 font.letterSpacing: -2.82 * Tokens.u
                 font.pixelSize: Tokens.fs(39)   // web: clamp(2rem, 10vw, 3.5rem) at 384 px
-                naturalLines: true
+                endAtLastLine: true
                 lineHeight: 36.66 * Tokens.u / naturalHeight   // web: 36.66 css px between wrapped lines (measured on the web title)
                 topPadding: -3 * Tokens.u + 7.25 - 8.58   // the title sits where the web's does (measured on the drawn lines); the box below keeps its place
                 // the box below keeps the place it had when the lines were squeezed (0.92 of the font height, or 0.681 each when wrapped)

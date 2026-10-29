@@ -252,13 +252,13 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     // LAYOUTWARN lines are kept beside the layout for review; the QML type of each element only when asked for.
     const warnings = segment.filter((l) => l.includes("LAYOUTWARN|")).map((l) => l.slice(l.indexOf("LAYOUTWARN|") + 11));
     if (!env.PLAYARR_SF_LAYOUT_DEBUG) for (const e of elements) { delete e._src; delete e._dbg; }
-    const end = segment.at(-1).match(/LAYOUTEND\|([\d.]+)\|([\d.]+)/);
+    const end = segment.at(-1).match(/LAYOUTEND\|([\d.]+)\|([\d.]+)\|(\d+)/);
     if (!elements.length || !end) throw new Error("layout export produced no elements");
     const dir = join(dirname(dirname(file)), "layout", theme);
     mkdirSync(dir, { recursive: true });
     const clockDate = log.match(/PARITY_CLOCK (\d{4}-\d{2}-\d{2})/)?.[1];
     const expectedClockDate = screens.determinism.clock.slice(0, 10);
-    const doc = { screen: basename(file, ".png"), theme, viewport: { w: Math.round(Number(end[1])), h: Math.round(Number(end[2])), dpr: 768 / 390 }, clockPinned: clockDate === expectedClockDate, elements };
+    const doc = { screen: basename(file, ".png"), theme, viewport: { w: Math.round(Number(end[1])), h: Math.round(Number(end[2])), dpr: 768 / 390 }, clockPinned: clockDate === expectedClockDate, occluded: Number(end[3]), elements };
     writeFileSync(join(dir, `${doc.screen}.json`), `${JSON.stringify(doc)}\n`);
     if (warnings.length) writeFileSync(join(dir, `${doc.screen}.warnings.txt`), `${warnings.join("\n")}\n`);
   }

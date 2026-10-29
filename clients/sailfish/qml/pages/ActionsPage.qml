@@ -88,7 +88,7 @@ PlayarrPage {
                         id: titleLbl
                         lineRole: Accessible.Heading
                         width: parent.width; text: page.work.title; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
-                        naturalLines: true; lineHeight: 33 * Tokens.u / naturalHeight; topPadding: 3.94   // web: 33 px between lines, the title 2 css px below the box top
+                        endAtLastLine: true; lineHeight: 33 * Tokens.u / naturalHeight; topPadding: 3.94   // web: 33 px between lines, the title 2 css px below the box top
                         color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -1.25 * Tokens.u; font.pixelSize: Tokens.fs(22.4)
                     }
                 }
