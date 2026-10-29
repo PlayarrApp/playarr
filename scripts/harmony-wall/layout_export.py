@@ -132,13 +132,14 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
                 return k
         return 1.0
 
-    def emit(role, text, box, background, clip, radius=0.0, colour=None, size=None, weight=None, opacity=1.0):
+    def emit(role, text, box, background, clip, radius=0.0, colour=None, size=None, weight=None, opacity=1.0, painted=False):
         x, y, w, h = (px(v) for v in box)
         if w < 0.5 or h < 0.5:
             return
         el = {"text": shown(text), "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
               "color": colour, "background": hex_of(background), "fontSize": size, "fontWeight": weight}
-        radius = min(radius, w / 2, h / 2)  # a radius larger than half the box draws as half the box
+        if not painted:  # a radius larger than half the box draws as half the box; a text record of a pill carries its painted box's radius
+            radius = min(radius, w / 2, h / 2)
         if radius:
             el["radius"] = round(radius, 2)
         if opacity < 0.999:
@@ -171,16 +172,21 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         weight, size = weight_of(a), num(a.get("fontSize"), 16.0)
         col = argb(a.get("fontColor")) or (0, 0, 0, 1.0)
         colour = hex_of(over(col, under))
-        for line in runs:  # one element per laid-out line: its text, the glyph runs' horizontal extent and the line's own box
+        if node.get("$ellipsisError"):
+            raise ExportError(f"Text {content[:30]!r} is ellipsised and its ellipsis could not be measured ({node['$ellipsisError']})")
+        for n, line in enumerate(runs):  # one element per laid-out line: its text, the glyph runs' horizontal extent and the line's own box
             boxes = line["tight"]
             line_text = " ".join(shown(content[line["start"]:line["end"]]).split())
             if not boxes or not line_text:
                 continue
             l, r = min(b["l"] for b in boxes), max(b["r"] for b in boxes)
+            if n == len(runs) - 1 and node.get("$ellipsisW") is not None:  # the framework's ellipsis ends the last line: drawn, so part of its text and range
+                line_text = " ".join((shown(content[line["start"]:line["end"]]) + "\u2026").split())
+                r += float(node["$ellipsisW"])
             t, bt = min(b["t"] for b in boxes), max(b["b"] for b in boxes)
             rect = (ox + l * k, oy + t * k, (r - l) * k, (bt - t) * k)  # exactly the layout manager's range rectangles for this line
             if visible(rect, clip):
-                emit(role, line_text, rect, under, clip, radius, colour, round(size * k, 2), weight, opacity)
+                emit(role, line_text, rect, under, clip, radius, colour, round(size * k, 2), weight, opacity, painted=radius > 0)
 
     def walk(node, under, opacity, chain, clip):
         a = attrs_of(node)
@@ -195,6 +201,18 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         first = seq[0]
         src[0] = str(node.get("$debugLine", "")).split('"')[3].split("main/ets/")[-1] if with_src and '"' in str(node.get("$debugLine", "")) else ""
         raw = rect_of(node)
+        if raw is not None and kind != "Text":
+            # the inspector clamps a box at the window edge: where it does, the framework's measured size of the component stands in
+            win = (num(tree.get("width"), 0.0), num(tree.get("height"), 0.0))
+            frame = node.get("$frame")
+            for axis in (0, 1):
+                if win[axis] > 0 and raw[axis] > 0.5 and raw[axis] + raw[axis + 2] >= win[axis] - 0.5:
+                    got = frame.get("w" if axis == 0 else "h") if frame else None
+                    if got is None or got < raw[axis + 2] - 0.5:
+                        raise ExportError(f"{kind} at {raw} is clamped by the window edge and has no native measured size ({node.get('$frameError', 'no $frame')})")
+                    box = list(raw)
+                    box[axis + 2] = got
+                    raw = tuple(box)
         if raw is not None and origin != (0, 0):  # the stage sits at `origin` px in a larger window: report in the stage's own coordinates
             raw = (raw[0] - origin[0], raw[1] - origin[1], raw[2], raw[3])
         fill = argb(a.get("backgroundColor"))
@@ -224,7 +242,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
                 control = role not in (None, "text")
                 if control:  # the control's own border box and accessible name, then its glyph runs as a separate text record
                     emit(role, name or str(a.get("content") or a.get("text") or "").strip(), box, here, clip, radius, opacity=opacity)
-                text_lines(node, a, raw, here, opacity, mychain, clip, "text", 0.0)
+                painted = fills or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01
+                if painted and not control:  # a Text that paints its own pill: its painted box (with the native radius) stands as a container
+                    emit("container", "", box, here, clip, radius, opacity=opacity)
+                text_lines(node, a, raw, here, opacity, mychain, clip, "text", radius if painted and not control else 0.0)
             elif role not in (None, "text"):
                 emit("image" if kind == "Image" and role == "img" else role, name, box, here, clip, radius, opacity=opacity)
             elif kind in ("Image", "Button", "Toggle", "TextInput"):

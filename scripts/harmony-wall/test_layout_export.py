@@ -94,5 +94,28 @@ class LayoutExportTest(unittest.TestCase):
         self.assertEqual([e["role"] for e in doc["elements"]], ["container", "text"])
 
 
+    def test_a_box_clamped_by_the_window_takes_the_frames_measured_size_or_fails(self):
+        card = {"$type": "Row", "$rect": "[1174.00, 100.00],[626.00, 200.00]", "$attrs": {"accessibilityText": "Card", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#FF201C20"}}
+        tree = column([card], rect="[0.00, 0.00],[1800.00, 3600.00]")
+        tree["width"], tree["height"] = 1800.0, 3600.0
+        with self.assertRaises(ExportError):
+            export(tree, "x", "dark", (600, 1200, 3))
+        card["$frame"] = {"w": 885.0, "h": 200.0}
+        doc = export(tree, "x", "dark", (600, 1200, 3))
+        self.assertEqual([e["rect"]["w"] for e in doc["elements"] if e["role"] == "button"], [295.0])
+
+    def test_an_ellipsised_line_ends_with_the_measured_ellipsis(self):
+        node = text("[0.00, 0.00],[204.00, 51.00]", "Hollow Garden 3", [run(0, 7, 0.0, 3.0, 128.0, 47.0)], textOverflow="TextOverflow.Ellipsis")
+        node["$ellipsisW"] = 30.0
+        doc = export(column([node], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
+        t = [e for e in doc["elements"] if e["role"] == "text"][0]
+        self.assertEqual((t["text"], t["rect"]["w"]), ("Hollow \u2026", 158.0))
+
+    def test_a_text_that_paints_a_pill_keeps_its_radius(self):
+        pill = text("[10.00, 10.00],[70.00, 27.00]", "Missing", [run(0, 7, 5.0, 4.0, 60.0, 22.0)], backgroundColor="#FF392C30", borderRadius="13.50vp")
+        doc = export(column([pill], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
+        self.assertEqual([e["radius"] for e in doc["elements"] if e["role"] in ("text", "container") and e["rect"]["w"] < 100], [13.5, 13.5])
+
+
 if __name__ == "__main__":
     unittest.main()
