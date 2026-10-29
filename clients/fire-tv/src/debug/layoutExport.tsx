@@ -184,6 +184,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
     const r = rects[i];
     if (!r || r[2] < 0.5 || r[3] < 0.5) return;
     if (r[0] > 1920 * scale || r[1] > 1080 * scale || r[0] + r[2] < 0 || r[1] + r[3] < 0) return;
+    // Nothing is drawn at zero opacity (the web export drops it too).
+    if (h.opacity <= 0.001) return;
     const f = h.fiber;
     const type = String(f.type);
     const props = f.memoizedProps ?? {};
@@ -226,17 +228,22 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
               ? value.replace(/(^|\s)(\S)/g, (_m, space: string, letter: string) => `${space}${letter.toUpperCase()}`)
               : value;
       const native = lines && lines.length ? lines : [{x: 0, y: 0, width: r[2], height: r[3], text}];
+      // The view box is measured with the transforms of its ancestors, the line geometry of onTextLayout is not: the ratio of the
+      // measured height to the laid-out line heights is the scale the text is drawn at (a card scaled on focus).
+      let laidOut = 0;
+      for (const l of native) laidOut += l.height;
+      const k = laidOut > 0 && Math.abs(r[3] / laidOut - 1) > 0.01 && Math.abs(r[3] / laidOut - 1) < 0.25 ? r[3] / laidOut : 1;
       let above = 0;
       native.forEach((line, index) => {
         const lineTop = above;
-        above += line.height / scale;
+        above += (line.height * k) / scale;
         const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
         if (!lineText) return;
         out.push({
           ...(base as LayoutElement),
           text: transform(lineText),
           role: webRole && webRole !== 'text' ? webRole : 'text',
-          rect: {x: round2(rect.x + line.x / scale), y: round2(rect.y + lineTop), w: round2(line.width / scale), h: runH},
+          rect: {x: round2(rect.x + (line.x * k) / scale), y: round2(rect.y + lineTop), w: round2((line.width * k) / scale), h: round2(runH * k)},
           color: hex(style.color),
           fontSize: size,
           fontWeight: m ? Number(m[1]) : 400,
@@ -271,24 +278,6 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
   // element with its own text: the glyph run takes the box's fill and radius. Boxes with a role, an image or more text stay boxes.
   const end = (i: number): number => first[i + 1] ?? out.length;
   const dropped = new Set<number>();
-  // A control whose single text child carries the control's own role and name (`T control`) is that text in a browser's tree: the
-  // box is then just a painted container.
-  hosts.forEach((h, i) => {
-    const props = h.fiber.memoizedProps ?? {};
-    if (!props.accessibilityRole || out[first[i]!] === undefined || end(i) - first[i]! < 1) return;
-    for (let j = i + 1; j < hosts.length; j++) {
-      let k = hosts[j]!.parent;
-      while (k > i) k = hosts[k]!.parent;
-      if (k !== i || end(j) - first[j]! < 1) continue;
-      const child = hosts[j]!.fiber.memoizedProps ?? {};
-      const run = out[first[j]!]!;
-      if (end(i) - first[i]! === 2 && String(hosts[j]!.fiber.type) === 'RCTText' && child.accessibilityRole === props.accessibilityRole && run.text.trim() === (typeof props.accessibilityLabel === 'string' ? props.accessibilityLabel.trim() : '')) {
-        out[first[i]!]!.role = 'container';
-        out[first[i]!]!.text = '';
-      }
-      break;
-    }
-  });
   hosts.forEach((h, i) => {
     const props = h.fiber.memoizedProps ?? {};
     const own = StyleSheet.flatten(props.style) ?? {};

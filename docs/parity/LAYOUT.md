@@ -85,7 +85,7 @@ styling differences or bugs; a missing element that web draws and the product su
 ## Volatile content
 
 `scripts/parity/layout-volatile.json` (keyed by screen, `*` = all): elements whose text is expected to differ while box and style
-must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player audio button (web Chromium shows "Audio: Unavailable" because it lacks `audioTracks` support, a native app shows the clip's real track); the player buffered bar (`omit`: left out of the refs, its length follows download timing). An entry with `opacityVolatile` (the player audio button: web direct-play never loads tracks, so web shows it dimmed) is exported with
+must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player audio button (web Chromium shows "Audio: Unavailable" because it lacks `audioTracks` support, a native app shows the clip's real track); the player quality button (which stream the player picks is playback behaviour, out of scope: only its box, style, role and name presence are scored); the player buffered bar (`omit`: left out of the refs, its length follows download timing). An entry with `opacityVolatile` (the player audio button: web direct-play never loads tracks, so web shows it dimmed) is exported with
 `opacityVolatile: true` and no `opacity`; the scorer skips its opacity and still scores its box and style. The video
 frame is `maskOnly`: not scored, and the pixel scorer blanks its rect. OS bars are exported as role `system`. The web document marks
 such elements with `volatile`; the scorer matches them by role and overlap and skips their text.
@@ -126,3 +126,5 @@ from the app's own style values, not guess from pixels.
 ## Role aliases (per client, default off)
 
 Android (Compose) and Vega-style toolkits have no `link` role: a tappable text or card is a `button`. For those clients only, the scorer accepts a device `button` for a web `link`: `scoreLayout(..., { roleAliases: { link: ["button"] } })`, or `layout-score.mjs --role-alias link=button`. The alias is one way (web role to accepted device roles), applies to matching and to the role comparison, and is off unless the caller passes it. Pass it for android, android-phone, android-tablet and firetv (only if Vega cannot report a link). Every other client keeps the strict role match.
+
+HarmonyOS (ArkUI API 18, TV and phone) has no heading role either: a title is a `text`. For `harmony` and `harmony-phone` pass `{ roleAliases: { heading: ["text"] } }` (CLI `--role-alias heading=text`). Only the role check and role-based matching accept the device `text` for a web `heading`; box, text and style still score. Aliases can be combined (repeat the flag).

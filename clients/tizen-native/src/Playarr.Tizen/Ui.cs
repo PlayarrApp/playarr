@@ -20,6 +20,29 @@ internal static class Ui
     }
 
     /// <summary>NUI's own natural single-line height (the font's laid-out line) of a label of this size and weight, measured on the hidden label like <see cref="TextWidth"/>.</summary>
+    /// <summary>The ascent and descent (px per px of font size) FontClient reports for the font file a label of this family and weight draws with.</summary>
+    private static readonly Dictionary<(string, float), (float Asc, float Desc)> MetricsCache = new();
+
+    /// <summary>Ascent and descent in px of the font file FontClient resolves for this label font (family and weight) at this pixel size, as FontClient reports them.</summary>
+    internal static (float Asc, float Desc) FontAscentDescent(float size, int weight, string family, float pixelSize = 0)
+    {
+        (var fam, var w) = Face(family, weight, size);
+        var file = fam == Mono ? $"fonts/JetBrainsMono-{(w >= 600 ? 700 : 400)}.ttf" : fam.StartsWith(Font + " W", StringComparison.Ordinal) ? $"fonts/NunitoSans{fam.Substring(Font.Length + 1)}.ttf" : $"fonts/NunitoSans-{w}.ttf";
+        if (pixelSize <= 0) pixelSize = size; var key = (file, pixelSize);
+        if (MetricsCache.TryGetValue(key, out var hit)) return hit;
+        var fc = FontClient.Instance; var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+        var getId = typeof(FontClient).GetMethod("GetFontId", flags, null, new[] { typeof(string), typeof(uint), typeof(uint) }, null)!;
+        var getMetrics = typeof(FontClient).GetMethod("GetFontMetrics", flags)!;
+        var metricsType = getMetrics.GetParameters()[1].ParameterType;
+        var id = (uint)getId.Invoke(fc, new object[] { ResPath(file), (uint)Math.Round(pixelSize * 64), 0u })!;
+        var fm = Activator.CreateInstance(metricsType, flags, null, null, null)!;
+        getMetrics.Invoke(fc, new[] { (object)id, fm });
+        float Read(string n) => Convert.ToSingle(metricsType.GetProperty(n, flags)!.GetValue(fm));
+        return MetricsCache[key] = (Read("Ascender"), -Math.Abs(Read("Descender")));
+    }
+
+    internal static string FontMetricsProbe() => string.Join("; ", new[] { 12f, 24f, 48f }.Select(sz => { var (a, d) = FontAscentDescent(sz, 400, Font); return $"size {sz}: asc {a} desc {d}"; }));
+
     private static readonly Dictionary<(float, int, string), float> HeightCache = new();
     public static float TextHeight(float size, int weight, string family = Font)
     {

@@ -193,4 +193,12 @@ test("textCentreLine scores text on left, right and vertical centre only; other 
   assert.equal(lax.failures[0].ref.role, "container"); // the container still fails on its bottom edge
   dev.elements[0].rect.y += 3; // centre off by 3: fails even with the exception
   assert.equal(scoreLayout(ref, dev, { textCentreLine: true }).equal, 0);
+
+test("heading-to-text alias: a device text matches a web heading only when passed, box and style still scored", () => {
+  const el = (role, size) => ({ text: "Movies", role, rect: { x: 0, y: 0, w: 40, h: 20 }, color: "#000000", background: "#ffffff", fontSize: size, fontWeight: 400 });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  const alias = { roleAliases: { heading: ["text"] } };
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 20))).score, 0);
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 20)), alias).score, 100);
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 30)), alias).score, 0);
 });

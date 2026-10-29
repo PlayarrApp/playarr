@@ -197,7 +197,7 @@ struct TVPlayerChrome: View {
             }
             .fixedSize()
             .frame(width: 58.39, height: 16.31, alignment: .leading)
-            .parityBox("container", text: "\(Self.clock(state.position)) / \(Self.clock(state.duration))", fill: Color.black)
+            .parityBox("container", text: "\(Self.clock(state.position)) / \(Self.clock(state.duration))", fill: Color.black, textStyle: (10.88, 400, Color.white))
             .placed(x: 302.78, y: 981.84, w: 58.39, h: 16.31)
         }
     }

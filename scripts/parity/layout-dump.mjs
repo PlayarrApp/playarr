@@ -55,6 +55,10 @@ export function layoutPageFn(volatile) {
     for (var n = el; n && n.nodeType === 1; n = n.parentElement) z *= Number(getComputedStyle(n).zoom) || 1;
     return z;
   };
+  /* Direct text nodes join with no separator only when they are adjacent siblings; an element between them (flex gap, icon) draws a gap. */
+  var joinTexts = function (nodes) {
+    return nodes.map(function (n, i) { return (i > 0 && n.previousSibling !== nodes[i - 1] ? " " : "") + n.textContent; }).join("");
+  };
   var norm = function (s) { return String(s || "").replace(/\s+/g, " ").trim(); };
   /* Chromium has no text-transform: full-width (computed value is none). capitalize upper-cases the first letter of each word. */
   var isLetter = function (c) { return c.toLowerCase() !== c.toUpperCase(); };
@@ -76,6 +80,7 @@ export function layoutPageFn(volatile) {
     var lines = [], cur = null, range = document.createRange();
     for (var a = 0; a < nodes.length; a++) {
       var data = nodes[a].data;
+      if (a > 0 && cur && nodes[a].previousSibling !== nodes[a - 1]) cur.text += " ";
       for (var i = 0; i < data.length; i++) {
         range.setStart(nodes[a], i);
         range.setEnd(nodes[a], i + 1);
@@ -199,7 +204,7 @@ export function layoutPageFn(volatile) {
     if (srOnly(el)) continue;
     var texts = [];
     for (var k = 0; k < el.childNodes.length; k++) if (el.childNodes[k].nodeType === 3 && norm(el.childNodes[k].textContent)) texts.push(el.childNodes[k]);
-    var own = shown(norm(texts.map(function (n) { return n.textContent; }).join("")), cs);
+    var own = shown(norm(joinTexts(texts)), cs);
     var fill = parse(cs.webkitTextFillColor || cs.color);
     var gradient = null;
     if (own && fill[3] === 0) {

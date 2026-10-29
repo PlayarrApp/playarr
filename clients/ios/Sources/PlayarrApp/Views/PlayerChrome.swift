@@ -255,7 +255,7 @@ struct PlayerOptionRow: View {
                 }
                 Spacer(minLength: 0)
                 Text(selected ? "✓" : "")
-                    .wm(13.76, color: WM.pink)
+                    .wm(13.76, color: WM.pink, text: selected ? "✓" : "")
                     .foregroundStyle(WM.pink)
                     .frame(width: 24)
             }
@@ -323,7 +323,7 @@ struct PlayerQualityMatrix: View {
                                 choice(id: item.id, label: "\(item.mbps) Mbps", detail: item.level, width: choiceColumn)
                             } else {
                                 Text("—")
-                                    .wm(11.52, color: .white.opacity(0.28))
+                                    .wm(11.52, color: .white.opacity(0.28), text: "—")
                                     .foregroundStyle(.white.opacity(0.28))
                                     .frame(width: choiceColumn, height: 48)
                                     .overlay(
@@ -350,7 +350,7 @@ struct PlayerQualityMatrix: View {
                 .offset(y: -1.2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Text(selected ? "✓" : "")
-                    .wm(11.84, color: WM.pink)
+                    .wm(11.84, color: WM.pink, text: selected ? "✓" : "")
                     .foregroundStyle(WM.pink)
                     .frame(width: 16)
             }
