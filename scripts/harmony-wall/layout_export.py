@@ -4,6 +4,7 @@ Everything here comes from what the app drew: the inspector's boxes and fills, t
 the glyph runs the live Text component's layout manager reports (`$runs`, written by patch_route.py's dumplayout). Nothing is derived from
 the web references, no font file is read and no baseline is assumed: a Text without `$runs` fails the export."""
 import json
+import math
 import re
 
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
@@ -97,6 +98,33 @@ def has_gradient(attrs):
     return bool(gradient_stops(attrs))
 
 
+def linear_alpha(attrs, box):
+    """The alpha of the node's linear gradient at (x, y) inside `box`, as a function; None when there is no linear gradient or it cannot be
+    sampled from what the inspector reports (a `direction` keyword other than None, or a repeating gradient)."""
+    g = attrs.get("linearGradient")
+    if not isinstance(g, dict) or not g.get("colors"):
+        return None
+    if "None" not in str(g.get("direction", "None")) or str(g.get("repeating", "false")).lower() == "true":
+        return None
+    stops = sorted(((num(pos, 0.0), (argb(col) or (0, 0, 0, 0.0))[3]) for col, pos in g["colors"]), key=lambda t: t[0])
+    ang = math.radians(num(g.get("angle"), 0.0) or 0.0)  # CSS convention: 0 points up, clockwise
+    sx, sy = math.sin(ang), -math.cos(ang)
+    x0, y0, x1, y1 = box
+    length = abs((x1 - x0) * sx) + abs((y1 - y0) * sy)
+    if length <= 0:
+        return None
+
+    def at(x, y):
+        t = 0.5 + (((x - (x0 + x1) / 2) * sx) + ((y - (y0 + y1) / 2) * sy)) / length
+        if t <= stops[0][0]:
+            return stops[0][1]
+        for (ta, aa), (tb, ab) in zip(stops, stops[1:]):
+            if t <= tb:
+                return aa if tb <= ta else aa + (ab - aa) * (t - ta) / (tb - ta)
+        return stops[-1][1]
+    return at
+
+
 def declared_role(attrs):
     hint = str(attrs.get("accessibilityTextHint", ""))
     if not hint.startswith("pvrole:"):
@@ -112,6 +140,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
     meta = []  # per element: [first, last] node sequence of the node it came from, then its clipped box, for the occlusion pass
     painters = []  # (first, last, clipped box in px) of every node that paints over what is behind it
     seq = [0]
+    limits = set()  # facts the inspector cannot give, written into the export
     src = [""]
     px = lambda v: v / dpr  # noqa: E731  (inspector px -> CSS px of the app viewport)
 
@@ -186,7 +215,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             if visible(rect, clip):
                 emit(role, line_text, rect, under, clip, radius, colour, round(size * k, 2), weight, opacity, painted=radius > 0)
 
-    def walk(node, under, opacity, chain, clip):
+    def walk(node, under, opacity, chain, clip, nohit=False):
         a = attrs_of(node)
         kind = str(node.get("$type", ""))
         if str(a.get("visibility", "")).lower().endswith(("hidden", "none")):
@@ -246,8 +275,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
                 text_lines(node, a, raw, here, opacity, mychain, clip, "text", radius if painted and not control else 0.0)
             elif role not in (None, "text"):
                 emit("image" if kind == "Image" and role == "img" else role, name, box, here, clip, radius, opacity=opacity)
-            elif kind in ("Image", "Button", "Toggle", "TextInput"):
-                emit({"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox"}[kind], name, box, here, clip, radius, opacity=opacity)
+            elif kind in ("Image", "Button", "Toggle", "TextInput", "LoadingProgress", "XComponent"):
+                # intrinsic painted components: a spinner is drawn by the framework, a surface XComponent is the video's place
+                emit({"Image": "image", "Button": "button", "Toggle": "switch", "TextInput": "textbox", "LoadingProgress": "image", "XComponent": "video"}[kind],
+                     name, box, here, clip, radius, opacity=opacity)
             elif fills or has_gradient(a) or (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and argb(a.get("borderColor"))[3] > 0.01:
                 emit("container", "", box, here, clip, radius, opacity=opacity)
         own = list(range(mark, len(out)))
@@ -256,33 +287,52 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         nclip = clip
         if raw is not None and (kind in CLIP_KINDS or str(a.get("clip", "")).lower() == "true"):
             nclip = (max(clip[0], raw[0]), max(clip[1], raw[1]), min(clip[2], raw[0] + raw[2]), min(clip[3], raw[1] + raw[3]))
-        stops = gradient_stops(a)
-        paints = fill is not None and fill[3] >= 0.5 and opacity >= 0.5 or kind == "Image" or (bool(stops) and min(c[3] for c in stops) >= 0.5)
-        if box is not None and paints and kind != "Text" and visible(box, clip):
-            painters.append([first, first, clip_box(box, clip), src[0]])
-        for c in kids:
+        # HitTestMode.None: the component and everything under it is invisible to the hit test the occlusion model stands for
+        nohit = nohit or str(a.get("hitTestBehavior", "")).endswith("None")
+        painter = None
+        if box is not None and not nohit and visible(box, clip):
+            lin = linear_alpha(a, clip_box(box, clip))
+            if has_gradient(a) and lin is None and not (fill is not None and fill[3] >= 0.5):
+                # radial and sweep gradients (and linear ones the inspector cannot sample) are not modelled: they never occlude
+                limits.add("gradients other than a plain linear one do not occlude")
+            fa = (fill[3] if fill is not None else 0.0) * opacity
+            solid = kind in ("Image", "XComponent") or (kind == "Text" and role not in (None, "text"))  # an image covers with its opacity; a Text control covers its box
+            if kind == "Text" and not solid and fa <= 0.0:
+                pass
+            elif solid or fa > 0.0 or lin is not None:
+                def alpha(x, y, fa=fa, lin=lin, solid=solid, op=opacity):
+                    al = 1.0 if (solid and kind != "Image") else (op if solid else 0.0)
+                    la = lin(x, y) * op if lin else 0.0
+                    return 1 - (1 - al) * (1 - fa) * (1 - la)
+                painter = [first, first, clip_box(box, clip), src[0], alpha]
+                painters.append(painter)
+        # children paint in zIndex order (stable), so traversal order is paint order
+        for c in sorted(kids, key=lambda c: num(attrs_of(c).get("zIndex"), 0.0) or 0.0):
             if c.get("$type") == "NavDestination" and c is not pages[-1]:
                 continue  # a page below the top one stays in the tree while hidden
-            walk(c, here, opacity, list(mychain), nclip)
+            walk(c, here, opacity, list(mychain), nclip, nohit)
         for i in own:
             meta[i][0], meta[i][1] = first, seq[0]
-        if painters and painters[-1][0] == first and box is not None and kind != "Text":
-            painters[-1][1] = seq[0]
+        if painter is not None:
+            painter[1] = seq[0]
 
     walk(tree, (255, 255, 255, 1.0), 1.0, [], (0, 0, vw * dpr, vh * dpr))  # chain: (cx, cy, k) outermost first; clip: the app viewport in px
 
     def covered(box, first, last, by):
-        """True when every point of a 3 x 3 grid over the box lies inside something painted after the element's own subtree."""
+        """True when, at every point of a 3 x 3 grid over the box, what is painted after the element's own subtree adds up to alpha 0.5 or more."""
         x0, y0, x1, y1 = box
         if x1 <= x0 or y1 <= y0:
             return False
         for fx in (0.2, 0.5, 0.8):
             for fy in (0.2, 0.5, 0.8):
                 x, y = x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy
-                hit = next((p for p in painters if p[0] > last and p[2][0] <= x <= p[2][2] and p[2][1] <= y <= p[2][3]), None)
-                if hit is None:
+                hits = [p for p in painters if p[0] > last and p[2][0] <= x <= p[2][2] and p[2][1] <= y <= p[2][3]]
+                rest = 1.0
+                for p in hits:
+                    rest *= 1 - p[4](x, y)
+                if 1 - rest < 0.5:
                     return False
-                by.append(hit[3])
+                by.extend(p[3] for p in hits)
         return True
 
     kept, dropped = [], []
@@ -293,6 +343,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         else:
             kept.append(el)
     doc = {"screen": screen, "theme": theme, "viewport": {"w": vw, "h": vh, "dpr": dpr}, "occluded": len(dropped), "elements": kept}
+    limits |= {"occlusion samples a 3 x 3 grid per element and treats every painter as its clipped box: corner radii, image transparency and clip shapes are not known",
+               "the Previewer's XComponent placeholder text ('Preview not available for this component.') has no glyph runs, so it is not exported as text"}
+    doc["limits"] = sorted(limits)
     if with_src:
         doc["droppedBy"] = dropped
     if clock_pinned:
