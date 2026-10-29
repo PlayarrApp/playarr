@@ -132,9 +132,12 @@ def declared_role(attrs):
     return NATIVE_ROLES.get(int(hint[7:]))
 
 
-def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, origin=(0, 0)):
+def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, origin=(0, 0), probe=None, candidates=None):
     """tree: the parsed inspector JSON with `$runs` on its Text nodes; viewport: (w, h, dpr). Returns the schema document.
-    with_src adds each element's source line (the inspector's `$debugLine`) for analysis; published documents leave it out."""
+    with_src adds each element's source line (the inspector's `$debugLine`) for analysis; published documents leave it out.
+    probe: the capture's measurement of the rendered screen, {"results": {"<element index>": visible}}: an element the geometry says is covered
+    is dropped only when hiding its node changed no pixel of its box. candidates, a list, receives what the geometry flags (index, node id, box in
+    stage px, role) plus a "control" (a text that is certainly drawn) so the capture knows what to probe."""
     vw, vh, dpr = viewport
     out = []   # emitted elements, in paint order
     meta = []  # per element: [first, last] node sequence of the node it came from, then its clipped box, for the occlusion pass
@@ -143,6 +146,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
     glyphs = []  # the glyph ranges (px box, alpha) of the Text being walked, which paint over what is under them
     limits = set()  # facts the inspector cannot give, written into the export
     src = [""]
+    nid = [None]  # the inspector id of the node being walked: the capture hides it at run time to see whether it is drawn
     px = lambda v: v / dpr  # noqa: E731  (inspector px -> CSS px of the app viewport)
 
     def scale_k(chain):
@@ -178,7 +182,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         if with_src:
             el["src"] = src[0]
         out.append(el)
-        meta.append([seq[0], seq[0], clip_box(box, clip)])
+        meta.append([seq[0], seq[0], clip_box(box, clip), nid[0]])
 
     def clip_box(box, clip):
         x, y, w, h = box
@@ -236,6 +240,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             return
         seq[0] += 1
         first = seq[0]
+        nid[0] = node.get("$ID")
         src[0] = str(node.get("$debugLine", "")).split('"')[3].split("main/ets/")[-1] if with_src and '"' in str(node.get("$debugLine", "")) else ""
         raw = rect_of(node)
         kx, ky = scale_of(a)
@@ -324,11 +329,11 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             if solid > 0.0 or fa > 0.0 or lin is not None:
                 def alpha(x, y, fa=fa, lin=lin, solid=solid, op=opacity):
                     return 1 - (1 - solid) * (1 - fa) * (1 - (lin(x, y) * op if lin else 0.0))
-                painter = [first, first, clip_box(box, clip), src[0], alpha, box, min(radius_of(a) * tkx, box[2] / 2, box[3] / 2)]
+                painter = [first, first, clip_box(box, clip), src[0], alpha, box, min(radius_of(a) * tkx * dpr, box[2] / 2, box[3] / 2)]  # painter boxes are physical px, the radius is vp
                 painters.append(painter)
         if kind == "Text" and not nohit:
             if fills and box is not None and visible(box, clip):  # a Text paints its fill and its glyph ranges, nothing else
-                painter = [first, first, clip_box(box, clip), src[0], lambda x, y, fa=fill[3] * opacity: fa, box, min(radius, box[2] / 2, box[3] / 2)]
+                painter = [first, first, clip_box(box, clip), src[0], lambda x, y, fa=fill[3] * opacity: fa, box, min(radius * dpr, box[2] / 2, box[3] / 2)]
                 painters.append(painter)
             for rect, al in glyphs:
                 painters.append([first, first, clip_box(rect, clip), src[0], lambda x, y, al=al: al, rect, 0.0])
@@ -374,15 +379,30 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         return True
 
     kept, dropped = [], []
-    for el, (first, last, box) in zip(out, meta):
+    measured = (probe or {}).get("results") or {}
+    control = None
+    for i, (el, (first, last, box, node_id)) in enumerate(zip(out, meta)):
         by = []
         if covered(box, first, last, by):
-            dropped.append({"text": el["text"], "role": el["role"], "by": sorted(set(by))})
-        else:
-            kept.append(el)
+            seen = measured.get(str(i))
+            if candidates is not None and node_id is not None:
+                candidates.append({"index": i, "id": node_id, "box": [round(v * dpr) for v in (el["rect"]["x"], el["rect"]["y"], el["rect"]["x"] + el["rect"]["w"], el["rect"]["y"] + el["rect"]["h"])]})
+            if seen is not True:
+                dropped.append({"text": el["text"], "role": el["role"], "by": sorted(set(by)), "measured": seen is False})
+                continue
+        elif candidates is not None and node_id is not None and el["role"] == "text":
+            area = el["rect"]["w"] * el["rect"]["h"]
+            if control is None or area > control[0]:
+                control = (area, {"index": i, "id": node_id, "box": [round(v * dpr) for v in (el["rect"]["x"], el["rect"]["y"], el["rect"]["x"] + el["rect"]["w"], el["rect"]["y"] + el["rect"]["h"])]})
+        kept.append(el)
+    if candidates is not None and control is not None:
+        candidates.append(dict(control[1], control=True))
     doc = {"screen": screen, "theme": theme, "viewport": {"w": vw, "h": vh, "dpr": dpr}, "occluded": len(dropped), "elements": kept}
-    limits |= {"occlusion samples a 3 x 3 grid per element and treats every painter as its clipped box: image transparency, shaped clips and the topmost native hit are not known",
-               "the Previewer's XComponent placeholder text ('Preview not available for this component.') has no glyph runs, so it is not exported as text"}
+    if measured:
+        limits.add("a covered element is dropped only if hiding it at run time changed no pixel of its box (two screenshots, exact diff, noise between two unchanged shots ignored); the geometry only picks what to test")
+    if not measured:
+        limits.add("occlusion samples a 3 x 3 grid per element and treats every painter as its clipped box: image transparency, shaped clips and the topmost native hit are not known")
+    limits |= {"the Previewer's XComponent placeholder text ('Preview not available for this component.') has no glyph runs, so it is not exported as text"}
     doc["limits"] = sorted(limits)
     if with_src:
         doc["droppedBy"] = dropped
@@ -391,9 +411,9 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
     return doc
 
 
-def write(raw, screen, theme, viewport, dest_dir, clock_pinned=False, origin=(0, 0)):
+def write(raw, screen, theme, viewport, dest_dir, clock_pinned=False, origin=(0, 0), probe=None):
     import os
-    doc = export(json.loads(raw), screen, theme, viewport, clock_pinned, origin=origin)
+    doc = export(json.loads(raw), screen, theme, viewport, clock_pinned, origin=origin, probe=probe)
     os.makedirs(os.path.join(dest_dir, theme), exist_ok=True)
     with open(os.path.join(dest_dir, theme, screen + ".json"), "w") as f:
         json.dump(doc, f)

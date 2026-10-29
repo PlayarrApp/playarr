@@ -8,7 +8,7 @@ TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 gh run download "$RUN" -R PlayarrApp/playarr -p "harmony-wall-$DEVICE-$RUN*" -D "$TMP"
 mkdir -p "$DEST/dev/light"
 # the artifact root is the common parent of its files, so it may or may not hold a capture/ level: find the folders
-for d in $(find "$TMP" -type d -name dark -o -type d -name light | grep -v -e _debug -e "/layout/" -e "/layout-raw/"); do
+for d in $(find "$TMP" -type d -name dark -o -type d -name light | grep -v -e _debug -e "/layout/" -e "/layout-raw/" -e "/layout-probe/"); do
   case $(basename "$d") in
     dark) for f in "$d"/*.png; do cp "$f" "$DEST/dev/$(basename "$f")"; done ;;
     light) for f in "$d"/*.png; do cp "$f" "$DEST/dev/light/$(basename "$f")"; done ;;

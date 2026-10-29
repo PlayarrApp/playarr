@@ -240,6 +240,7 @@ jobs:
             capture/light
             capture/layout
             capture/layout-raw
+            capture/layout-probe
             capture/poster
             capture/motion
             capture/build.json
