@@ -553,13 +553,8 @@ jobs:
             echo "workload install failed (attempt $attempt), retrying"; sleep $((attempt * 15))
           done
 
-      - name: Drop root-owned .NET shared-memory dirs left by the sudo workload install
-        run: |
-          id; ls -la /tmp | head -30; ls -laR /tmp/.dotnet 2>&1 | head -20; df -h /tmp /dev/shm | cat; ls -ld /dev/shm
-          sudo rm -rf /tmp/.dotnet /tmp/.dotnet-sdk-lock
-          (command -v strace >/dev/null || sudo apt-get install -y -qq strace >/dev/null 2>&1); strace -f -e trace=file,openat -o "$RUNNER_TEMP/st.txt" dotnet --version >/dev/null 2>&1 || true
-          strace -f -o "$RUNNER_TEMP/st2.txt" -e trace=openat,open,mkdir,shm_open,flock dotnet new --list >/dev/null 2>&1 || true
-          grep -E "dotnet/(shm|lockfiles)|NuGet-Migrations|EACCES|EPERM" "$RUNNER_TEMP/st2.txt" | head -20 || true
+      - name: Drop root-owned NuGet scratch left in /tmp by the sudo workload install
+        run: sudo rm -rf /tmp/NuGetScratchroot /tmp/.dotnet
 
       - name: dotnet test (Playarr.Tizen.Logic.Tests)
         run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj
