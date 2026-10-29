@@ -510,12 +510,12 @@ struct Profiles {
               illustrationRatio: isTvMetrics() ? 0.853 : 0.848,
               initialFocus: profile.is_current,
               ringOn: profile.is_current && !isTvMetrics(),
+              lift: profile.is_current ? 1.0816 : 1,
               onSelect: () => {
                 this.selectProfile(profile);
               },
             })
               // web phone: the current profile's avatar is lifted and enlarged (measured 1.13x, 8.6 vp up on the pinned reference)
-              .scale(profile.is_current ? { x: 1.0816, y: 1.0816 } : { x: 1, y: 1 })
               .translate({ y: 0 })
               // web phone: the current avatar throws a wide crimson glow (0.28 at the ring, 0.11 at 17 vp out on the static ref, light theme; none above it)
               .borderRadius(this.pick(0, PHONE_CHOICE_WIDTH / 2)) // the glow follows the circle, not the square box
