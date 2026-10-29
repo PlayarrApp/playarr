@@ -277,7 +277,7 @@ export struct PageShell {
               
               .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true) // web 1.35rem
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-0.972) // web -0.045em
+              .letterSpacing((-0.972) + (!isTvMetrics() ? -0.144 : 0)) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
               .translate({ y: 0 })
@@ -309,6 +309,8 @@ export struct PageShell {
   build() {
     // `activeColors()` is not tracked by ArkUI, so a theme change rebuilds the shell (keyed by the theme) to repaint it.
     Stack() {
+    // web's DOM: the page base (`bg`) holds the page wrapper on `surface`, which holds the content and the phone's overlays
+    Stack() {
       ForEach([this.themeSetting], (_theme: string) => {
         if (this.touch && !isTvMetrics()) {
           this.touchChrome()
@@ -326,6 +328,10 @@ export struct PageShell {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().surface) : Color.Transparent) // the phone's bottom bar blends over the page
+    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().surface) : Color.Transparent)
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent) // the page base; the phone's bottom bar blends over the page
   }
 }

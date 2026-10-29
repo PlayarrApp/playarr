@@ -424,7 +424,7 @@ export struct ReleaseCalendar {
   private statusPill(tone: EntryPillTone, offset: number = 0): void {
     Text(pillLabel(tone)).fontFamily(nunitoAt(750, isTvMetrics() ? tv(PILL_SIZE) : 10.24))
        // web: the pill owns its text; its Range sits inside the padding
-      .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24).letterSpacing((isTvMetrics() ? -0.109 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(PILL_SIZE) : 10.24)).halfLeading(true)
+      .fontSize(isTvMetrics() ? tv(PILL_SIZE) : 10.24).letterSpacing(((isTvMetrics() ? -0.109 : 0)) + (!isTvMetrics() ? -0.085 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(PILL_SIZE) : 10.24)).halfLeading(true)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(activeColors().ink))
       .height(isTvMetrics() ? tv(PILL_HEIGHT) : PHONE_PILL_HEIGHT)
@@ -462,10 +462,10 @@ export struct ReleaseCalendar {
             .margin({ top: isTvMetrics() ? tv(8) : 0 }) // web: the title sits 5 px higher and the subtitle and meta rows 3 px lower than a flush stack
         }
         Row({ space: tv(ENTRY_META_GAP) }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? 0.24 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? 0.208 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).translate({ y: (isTvMetrics() ? -2.62 : 0) }).letterSpacing((isTvMetrics() ? 0.24 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).translate({ y: (isTvMetrics() ? -2.62 : 0) }).letterSpacing((isTvMetrics() ? 0.208 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).letterSpacing((isTvMetrics() ? -0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).fontSize(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE).translate({ y: (isTvMetrics() ? -2.62 : 0) }).letterSpacing((isTvMetrics() ? -0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(ENTRY_META_SIZE) : PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(isTvMetrics() ? activeColors().inkMuted : activeColors().inkSoft))
           }
           this.statusPill(itemPillTone(item, this.today), isTvMetrics() ? 6.4 : 0)
         }
@@ -516,7 +516,7 @@ export struct ReleaseCalendar {
   private dayHeader(day: string): void {
     Row({ space: tv(10) }) {
       Text(dayHeading(day)).fontFamily(nunitoAt(640, isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE))
-        .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE).letterSpacing((isTvMetrics() ? -0.124 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)).halfLeading(true)
+        .fontSize(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE).letterSpacing(((isTvMetrics() ? -0.124 : 0)) + (!isTvMetrics() ? -0.09 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(DAY_HEADING_SIZE) : PHONE_DAY_HEADING_SIZE)).halfLeading(true)
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(day === this.today ? activeColors().accent : activeColors().ink))
         .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
@@ -524,7 +524,7 @@ export struct ReleaseCalendar {
         Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, tv(TODAY_TAG_SIZE)))
           .fontSize(tv(TODAY_TAG_SIZE)).lineHeight(webLineHeight(tv(TODAY_TAG_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Medium)
-          .letterSpacing((tv(TODAY_TAG_LETTER_SPACING)) + (isTvMetrics() ? 0.344 : 0))
+          .letterSpacing(((tv(TODAY_TAG_LETTER_SPACING)) + (isTvMetrics() ? 0.344 : 0)) + (!isTvMetrics() ? 0.338 : 0))
           .textCase(TextCase.UpperCase)
           .fontColor(toResourceColor(activeColors().accent))
           .translate({ y: -2.2 })
@@ -656,7 +656,7 @@ export struct ReleaseCalendar {
               .borderRadius(tv(MONTH_DOT_SIZE / 2))
               .backgroundColor(toResourceColor(toneColor(itemPillTone(item, this.today))))
             Text(itemLineText(item)).fontFamily(nunitoAt(item.grouped ? 700 : 400, tv(MONTH_LINE_SIZE)))
-              .fontSize(tv(MONTH_LINE_SIZE)).lineHeight(webLineHeight(tv(MONTH_LINE_SIZE))).halfLeading(true)
+              .fontSize(tv(MONTH_LINE_SIZE)).translate({ y: (isTvMetrics() ? 1.38 : 0) }).lineHeight(webLineHeight(tv(MONTH_LINE_SIZE))).halfLeading(true)
               .fontWeight(item.grouped ? FontWeight.Bold : FontWeight.Normal)
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
@@ -907,7 +907,7 @@ export struct ReleaseCalendar {
             .constraintSize({ maxWidth: tv(OVERVIEW_WIDTH) })
             .maxLines(OVERVIEW_MAX_LINES)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .margin({ top: 4.8 })
+            .margin({ top: 6.1 })
         }
         this.panelActions()
       }
@@ -968,7 +968,7 @@ export struct ReleaseCalendar {
     } else {
     Stage({
       titleRole: 'text',
-      panelTopAdjust: 3.6, // web's agenda hero sits 3.6 lower than the library's
+      panelTopAdjust: 5.2, // web's agenda hero sits 3.6 lower than the library's
       keyArt: '',
       kicker: this.selected !== undefined ?
         `${mediaKindLabel(this.selected.media_kind)} · ${releaseTypeLabel(this.selected.release_type)}` : '',
@@ -1082,7 +1082,7 @@ export struct ReleaseCalendar {
     Row({ space: PHONE_CONTROL_GAP }) {
       Text(rangeLabel(this.view, this.anchor)).fontFamily(nunitoAt(720, 11.52))
         .accessibilityText(rangeLabel(this.view, this.anchor)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
-        .fontSize(11.52).lineHeight(webLineHeight(11.52)).halfLeading(true)
+        .fontSize(11.52).letterSpacing((!isTvMetrics() ? -0.196 : 0)).lineHeight(webLineHeight(11.52)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(44)
@@ -1116,7 +1116,7 @@ export struct ReleaseCalendar {
       // web: the arrows are thin, smaller glyphs than the bold labels
       Text(label).fontFamily(label.length === 1 ? arrowFont(720) : nunitoAt(720, 11.52))
         .accessibilityText(label.length === 1 ? '' : label).accessibilityRole(label.length === 1 ? AccessibilityRoleType.TEXT : AccessibilityRoleType.BUTTON)
-        .fontSize(11.52).lineHeight(webLineHeight(11.52)).halfLeading(true)
+        .fontSize(11.52).letterSpacing((!isTvMetrics() ? -0.116 : 0)).lineHeight(webLineHeight(11.52)).halfLeading(true)
         .fontWeight(label.length === 1 ? FontWeight.Normal : FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .textAlign(TextAlign.Center)
@@ -1193,23 +1193,23 @@ export struct ReleaseCalendar {
         .backgroundColor(toResourceColor(activeColors().surfaceSoft))
       Column({ space: fixedHeight > 0 ? 2.4 : PHONE_WEEK_TEXT_GAP }) { // agenda: web's title, subtitle and meta lines sit 26 / 25 vp apart
         Text(item.title).fontFamily(nunitoAt(600, PHONE_ENTRY_TITLE_SIZE)) // web 640: the 610 instance is the nearest
-          .fontSize(PHONE_ENTRY_TITLE_SIZE)
+          .fontSize(PHONE_ENTRY_TITLE_SIZE).translate({ y: (!isTvMetrics() ? 1.02 : 0) })
           .fontWeight(FontWeight.Medium)
           .lineHeight(webLineHeight(PHONE_ENTRY_TITLE_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_TITLE, PHONE_ENTRY_TITLE_SIZE)).halfLeading(true)
           .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
           .fontColor(toResourceColor(activeColors().ink))
         if (itemSubtitle(item).length > 0) {
           Text(itemSubtitle(item)).fontFamily(nunitoAt(400, PHONE_ENTRY_TITLE_SIZE))
-            .fontSize(PHONE_ENTRY_TITLE_SIZE)
+            .fontSize(PHONE_ENTRY_TITLE_SIZE).translate({ y: (!isTvMetrics() ? 1.06 : 0) }).letterSpacing((!isTvMetrics() ? -0.201 : 0))
             .lineHeight(webLineHeight(PHONE_ENTRY_TITLE_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_TITLE, PHONE_ENTRY_TITLE_SIZE)).halfLeading(true)
             .maxLines(wrap ? PHONE_WEEK_MAX_LINES : 1)
             .fontColor(toResourceColor(activeColors().inkSoft))
         }
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(ENTRY_META_GAP), cross: LengthMetrics.vp(PHONE_WEEK_META_ROW_GAP) } }) {
-          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
-          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(entryTimeLabel(item.entries[0])).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).letterSpacing((!isTvMetrics() ? 0.24 : 0)).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
+          Text(releaseTypeLabel(item.entries[0].release_type)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).letterSpacing((!isTvMetrics() ? 0.208 : 0)).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
           if (!item.grouped) {
-            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
+            Text(mediaKindLabel(item.entries[0].media_kind)).fontFamily(nunitoAt(400, PHONE_ENTRY_META_SIZE)).fontSize(PHONE_ENTRY_META_SIZE).letterSpacing((!isTvMetrics() ? -0.127 : 0)).lineHeight(webLineHeight(PHONE_ENTRY_META_SIZE)).lineSpacing(webLineSpacing(PHONE_LINE_META, PHONE_ENTRY_META_SIZE)).halfLeading(true).fontColor(toResourceColor(activeColors().inkMuted))
           }
           this.statusPill(itemPillTone(item, this.today))
         }
@@ -1258,14 +1258,14 @@ export struct ReleaseCalendar {
           Column({ space: tv(WEEK_HEADING_GAP) - 1.8 }) {
             Row({ space: 10 }) {
               Text(dayHeading(cell.day)).fontFamily(nunitoAt(640, PHONE_DAY_HEADING_SIZE))
-                .fontSize(PHONE_DAY_HEADING_SIZE).lineHeight(webLineHeight(PHONE_DAY_HEADING_SIZE)).halfLeading(true) // web phone: 14.4
+                .fontSize(PHONE_DAY_HEADING_SIZE).letterSpacing((!isTvMetrics() ? -0.071 : 0)).lineHeight(webLineHeight(PHONE_DAY_HEADING_SIZE)).halfLeading(true) // web phone: 14.4
                 .fontWeight(FontWeight.Medium)
                 .fontColor(cell.isToday ? toResourceColorWithAlpha(activeColors().ink, 0.9) : toResourceColor(activeColors().ink)) // web: today's heading is the dimmer one
               if (cell.isToday) {
                 Text(t('pages.calendar.today', 'Today')).fontFamily(nunitoAt(640, TODAY_TAG_SIZE))
                   .fontSize(TODAY_TAG_SIZE).lineHeight(webLineHeight(TODAY_TAG_SIZE)).halfLeading(true)
                   .fontWeight(FontWeight.Medium)
-                  .letterSpacing(TODAY_TAG_LETTER_SPACING)
+                  .letterSpacing((TODAY_TAG_LETTER_SPACING) + (!isTvMetrics() ? 0.338 : 0))
                   .textCase(TextCase.UpperCase)
                   .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.9))
               }

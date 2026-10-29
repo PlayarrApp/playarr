@@ -90,7 +90,7 @@ export struct SelectField {
             .colorFilter(tintFilter(this.highlighted === '#trigger' ? activeColors().bg : activeColors().ink))
         }
         Text(this.labelOf(this.value)).fontFamily(nunitoAt(this.labelWeight, tv(this.labelSize)))
-          .fontSize(tv(this.labelSize)).letterSpacing((isTvMetrics() ? -0.25 : 0)).lineHeight(webLineHeight(tv(this.labelSize))).halfLeading(true)
+          .fontSize(tv(this.labelSize)).letterSpacing(((isTvMetrics() ? -0.25 : 0)) + (!isTvMetrics() ? -0.258 : 0)).lineHeight(webLineHeight(tv(this.labelSize))).halfLeading(true)
           .fontWeight(this.labelWeight >= 700 ? FontWeight.Bold : FontWeight.Medium)
           .fontColor(this.textColor(this.highlighted === '#trigger'))
           .layoutWeight(1)
