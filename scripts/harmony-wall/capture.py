@@ -879,7 +879,8 @@ else:
 
     # the phone library refs have no card focus ring either (web touch layout), so no card is focused on the phone
     # the phone Home ref is taken without the On deck focus ring (web-refs.json noFocusRing), so Home is not focused here
-    guarded("appearance-probe", lambda: (route("settings", 12), click(540, 347), time.sleep(6), debug("phone-appearance-" + THEME)))  # where the phone's theme select sits
+    # web's reference has the theme chosen explicitly: choose it in the app's own Appearance panel (Light and Dark buttons at y 439 px)
+    guarded("theme-choice", lambda: (route("settings", 12), click(540, 347), time.sleep(6), click(540 if THEME == "light" else 875, 439), time.sleep(4)))
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
