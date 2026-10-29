@@ -938,10 +938,11 @@ else:
 
     # Round 3 poster mode: Settings > Appearance > Home screen artwork = Covers, then each artwork size, and Home in each (the setting
     # lives in the Previewer's in-memory preferences, so it takes effect for the Home routes that follow in this run). Buttons at 3 px per vp.
-    COVERS_BTN, SMALL_BTN, LARGE_BTN, MEDIUM_BTN, THUMBS_BTN = (792, 1134), (204, 1830), (876, 1830), (540, 1830), (288, 1134)
+    # The panel now starts with the Colour theme row, so its buttons sit lower than the 3 px per vp positions of the first round (read off the snapshot).
+    COVERS_BTN, SMALL_BTN, LARGE_BTN, MEDIUM_BTN, THUMBS_BTN = (792, 1065), (204, 1690), (875, 1690), (540, 1690), (288, 1065)
 
     def home_with(name, taps):
-        route("profiles", 8); route("settings", 12); click(540, 300); time.sleep(6)
+        route("profiles", 8); route("settings", 12); click(540, 347); time.sleep(6)
         for x, y in taps:
             click(x, y); time.sleep(2)
         route("home", 40); snap(name, folder, 100000)
@@ -986,7 +987,7 @@ else:
     COVER_VIEW_BTN = (868, 450)
 
     def library_covers(name, size_btn):
-        route("profiles", 8); route("settings", 12); click(540, 300); time.sleep(6)
+        route("profiles", 8); route("settings", 12); click(540, 347); time.sleep(6)
         click(*size_btn); time.sleep(2)
         route("library:movie", 15); settle()
         open_filters(name); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*CLOSE_DRAWER); time.sleep(5); settle()
