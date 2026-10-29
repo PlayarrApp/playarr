@@ -235,8 +235,7 @@ private struct TVParityTextRenderer: TextRenderer {
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
         for line in layout { context.draw(line) }
-        // the glyph runs' own bounds: the line's bounds carry the tracking's leading space, which no glyph occupies
-        report(layout.map { line in line.reduce(CGRect.null) { $0.union($1.typographicBounds.rect) }.standardized.isNull ? line.typographicBounds.rect : line.reduce(CGRect.null) { $0.union($1.typographicBounds.rect) } })
+        report(layout.map { $0.typographicBounds.rect })
     }
 }
 
