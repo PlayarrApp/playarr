@@ -47,7 +47,7 @@ PlayarrPage {
             MouseArea {
                 id: sel
                 property bool navigationFocusable: true
-                Accessible.name: index === 0 ? qsTr("Theme: ") + (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
+                Accessible.role: Accessible.Button; Accessible.name: index === 0 ? qsTr("Theme: ") + (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
                 property int parityRail: 1
                 property int parityIndex: index
                 function navigationActivate() { if (index === 0) Api.themeMode = Api.themeMode === "system" ? "dark" : Api.themeMode === "dark" ? "light" : "system" }
@@ -90,7 +90,7 @@ PlayarrPage {
             MouseArea {
                 id: card
                 property bool navigationFocusable: true
-                Accessible.name: modelData.name + (modelData.active ? qsTr(", current profile") : "")
+                Accessible.role: Accessible.Button; Accessible.name: modelData.name + (modelData.active ? qsTr(", current profile") : "")
                 // Prefer the signed-in profile, falling back when the saved active id is stale.
                 property bool navigationInitialFocus: modelData.active || (!page.hasActiveProfile && index === 0)
                 property int parityRail: 0
@@ -139,7 +139,7 @@ PlayarrPage {
         }
         MouseArea {
             property bool navigationFocusable: true
-            Accessible.name: "+ " + qsTr("Sign in") + " " + qsTr("ADD ANOTHER PROFILE")
+            Accessible.role: Accessible.Button; Accessible.name: "+ " + qsTr("Sign in") + " " + qsTr("ADD ANOTHER PROFILE")
             property bool navigationInitialFocus: Api.profiles.length === 0
             property int parityRail: 0
             property int parityIndex: Api.profiles.length
@@ -195,7 +195,7 @@ PlayarrPage {
         spacing: 8.8 * Tokens.u
         MouseArea {
             property bool navigationFocusable: true
-            Accessible.name: qsTr("%1 settings").arg(Api.profileName)
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("%1 settings").arg(Api.profileName)
             property int parityRail: 1
             property int parityIndex: 0
             width: 44 * Tokens.u; height: width
@@ -207,7 +207,7 @@ PlayarrPage {
         PillButton {
             parityRail: 1
             parityIndex: 1
-            Accessible.name: qsTr("Sign out %1").arg(Api.profileName)
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("Sign out %1").arg(Api.profileName)
             navigationActivate: function() { remorse.execute(qsTr("Signing out"), function () { Api.signOut() }) }
             iconImage: NavIcons.url("logout", Tokens.ink); iconSize: 18 * Tokens.u; labelFamily: Tokens.fam(720)
             text: qsTr("Sign out"); labelSpacing: 0.1; contentGap: 7.2; padCss: 17; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"

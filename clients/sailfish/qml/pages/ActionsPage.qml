@@ -96,7 +96,7 @@ PlayarrPage {
                     id: closeBtn
                     objectName: "parity-actions-close"
                     property bool navigationFocusable: true
-                    Accessible.name: qsTr("Close")
+                    Accessible.role: Accessible.Button; Accessible.name: qsTr("Close")
                     function navigationActivate() { pageStack.pop() }
                     anchors { right: parent.right; rightMargin: 20 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u }
                     width: 44 * Tokens.u; height: width

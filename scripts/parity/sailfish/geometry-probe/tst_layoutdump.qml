@@ -72,7 +72,7 @@ TestCase {
             width: 6
             height: 8
             property bool navigationFocusable: true
-            Accessible.name: "dump-target"
+            Accessible.name: "dump-target"; Accessible.role: Accessible.Button
         }
     }
 
@@ -121,7 +121,7 @@ TestCase {
 
     function test_dumpWalksRealQtItems() {
         var lines = []
-        LayoutDump.dump(viewport, 1, ({}), function(line) { lines.push(line) })
+        LayoutDump.dump(viewport, 1, ({}), function(line) { lines.push(line) }, function(item) { return { name: item.Accessible.name, role: item.Accessible.role } }, { width: 1, color: Qt.rgba(0, 0, 0, 1) })
         var elements = []
         for (var i = 0; i < lines.length; ++i) {
             if (lines[i].indexOf("LAYOUTEL|") === 0) elements = elements.concat(JSON.parse(lines[i].slice(9)))

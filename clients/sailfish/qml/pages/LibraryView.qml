@@ -99,7 +99,7 @@ Item {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter; verticalCenterOffset: -1.25 * Tokens.u }
         width: 44 * Tokens.u; height: width
-        Accessible.name: qsTr("Filters")
+        Accessible.role: Accessible.Button; Accessible.name: qsTr("Filters")
         onClicked: {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })

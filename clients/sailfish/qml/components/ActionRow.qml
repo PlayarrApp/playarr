@@ -13,7 +13,7 @@ MouseArea {
     property string glyph
     property alias text: label.text
     property bool primary: false
-    Accessible.name: glyph + " " + label.text
+    Accessible.role: Accessible.Button; Accessible.name: glyph + " " + label.text
     width: parent ? parent.width - 40 * Tokens.u : 0
     x: 20 * Tokens.u
     height: 68 * Tokens.u

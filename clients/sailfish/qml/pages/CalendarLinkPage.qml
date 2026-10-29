@@ -59,7 +59,7 @@ PlayarrPage {
         PLabel { renderType: Text.NativeRendering; x: page.gut; y: 34.5 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; Accessible.role: Accessible.Heading; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22.4); font.letterSpacing: -1.25 * Tokens.u }
         MouseArea {
             property bool navigationFocusable: true
-            Accessible.name: qsTr("Close filters")   // the web names this drawer button the same as the filters one
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("Close filters")   // the web names this drawer button the same as the filters one
             property bool navigationInitialFocus: true
             property int parityRail: 0
             property int parityIndex: 0
