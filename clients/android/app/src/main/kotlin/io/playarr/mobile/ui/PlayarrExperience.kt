@@ -3942,7 +3942,9 @@ internal fun WebDetailPill(
             .scale(scale)
             .parityShape(999f)
             .webFocusRing(focused, offset = 2.dp)
-            .onFocusChanged { focused = it.isFocused },
+            .onFocusChanged { focused = it.isFocused }
+            // The accessible name is the words alone: the decorative glyph beside them is not read.
+            .semantics { contentDescription = exportLabel ?: label },
     ) {
         Row(
             Modifier.padding(horizontal = if (primary) 21.6.dp else 16.dp),
@@ -4333,7 +4335,7 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
         ) {
             Row(
                 Modifier.fillMaxWidth().height(44.dp).parityShape(10f).clip(RoundedCornerShape(10.dp))
-                    .focusRequester(triggerFocus).clickable(interactionSource = triggerInteractions, indication = null) {
+                    .focusRequester(triggerFocus).semantics { contentDescription = summary }.clickable(interactionSource = triggerInteractions, indication = null) {
                         if (!open) focusedLanguageCode = orderedEntries.firstOrNull()?.code
                         open = !open
                     }.webFocusRing(triggerFocused, radius = 10.dp, offset = 2.dp).padding(horizontal = 12.dp),
@@ -5329,6 +5331,7 @@ private fun TelevisionSearchBody(
                 initialSearchFocusHandled = true
             }
         }
+        val searchPlaceholder = playarrString(PlayarrString.SearchPlaceholder)
         // Web `.tv-search`: a 590 x 76 pill at (153.6, 172.8) with the 3 px ink ring 2 px outside it while the field has focus.
         Row(
             Modifier
@@ -5353,6 +5356,7 @@ private fun TelevisionSearchBody(
                 keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
                 modifier = Modifier
                     // Web `.tv-search input`: 506 x 60, 13 px after the icon, the field's own box.
+                    .semantics { contentDescription = searchPlaceholder }
                     .padding(start = 13.dp).width(506.dp).height(60.dp)
                     
                     .focusRequester(searchFieldFocus)

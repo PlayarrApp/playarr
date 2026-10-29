@@ -4316,6 +4316,7 @@ private fun TvSettingsBody(
             itemsIndexed(rows) { index, (number, candidate) ->
                 var focused by remember { mutableStateOf(false) }
                 val selected = candidate == section
+                val rowName = settingsSectionNumber(number) + " " + playarrString(candidate.label)
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -4325,6 +4326,7 @@ private fun TvSettingsBody(
                         .parityBackground("container", if (selected || focused) TvSettingsPalette.selectedRow else TvSettingsPalette.listBackground)
                         
                         .onFocusChanged { focused = it.isFocused; if (it.isFocused) onPick(candidate) }
+                        .semantics { contentDescription = rowName }
                         .clickable { onPick(candidate) },
                 ) {
                     val u = if (tablet) 1f / stage else 1f
@@ -4773,7 +4775,7 @@ private fun PhoneSettingsIndex(isAdmin: Boolean, onOpen: (SettingsSection) -> Un
                 val active = index == 0
                 // Web numbers the sections by their place in the full list (an admin-only row leaves a gap: 07, 09).
                 val number = settingsSectionNumber(phoneSettingsIndex.indexOfFirst { it.first == candidate })
-                val rowLabel = number + " " + playarrString(candidate.label) + " " + playarrString(description) + " →"
+                val rowLabel = number + " " + playarrString(candidate.label) + " " + playarrString(description)
                 Row(
                     Modifier.fillMaxWidth().height(with(androidx.compose.ui.platform.LocalDensity.current) { phoneSettingsRowHeightPx(index, density).toDp() })
                         .then(if (active) Modifier.background(WebSurfaceSoft) else Modifier)
