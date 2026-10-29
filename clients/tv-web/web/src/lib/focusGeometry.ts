@@ -279,3 +279,15 @@ export function pickNearestByEdgeDistance<T>(
   }
   return best ? best.item : null;
 }
+
+/**
+ * LEFT from the shell action column: the nearest content item, else the nav rail, so an empty page (no playlists,
+ * no search results) never traps focus on the right-hand panel.
+ */
+export function pickShellColumnLeftTarget<T>(
+  from: FocusRect,
+  content: ReadonlyArray<{ item: T; rect: FocusRect }>,
+  rail: ReadonlyArray<{ item: T; rect: FocusRect }>
+): T | null {
+  return pickNearestByEdgeDistance(from, content) ?? pickNearestByEdgeDistance(from, rail);
+}

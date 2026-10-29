@@ -32,6 +32,7 @@ import {
   hasHorizontalNeighbourToRight,
   pickBestDirectionalTarget,
   pickNearestByEdgeDistance,
+  pickShellColumnLeftTarget,
   titleGridNeighbourIndex,
 } from "./focusGeometry";
 import { isBackKey, isVidaaBackKey } from "./backKey";
@@ -1043,7 +1044,7 @@ function scrollVerticalContainer(
  * above it, so plain "strictly below" geometry dead-ended on it. Rules, on every page:
  *   UP    previous button; from the first, the nearest header control (Today, the arrows, else Back).
  *   DOWN  next button; from the last, the Library alphabet when there is one, else the nearest content item.
- *   LEFT  the nearest content item.
+ *   LEFT  the nearest content item, else the nav rail (an empty page has no content to land on).
  *   RIGHT nothing (the column is the right edge).
  */
 function focusFromShellActionColumn(
@@ -1063,24 +1064,32 @@ function focusFromShellActionColumn(
     smoothScrollIntoView(target);
     return true;
   };
-  const nearest = (inHeader: boolean) =>
-    pickNearestByEdgeDistance(
-      currentRect,
-      entries
-        .filter(
-          (entry) =>
-            entry.element !== current &&
-            !column.contains(entry.element) &&
-            !entry.element.closest(".app-nav, .app-user-identity, .tv-alphabet") &&
-            Boolean(entry.element.closest(".page-header")) === inHeader
-        )
-        .map((entry) => ({ item: entry.element, rect: entry.rect }))
-    );
+  const contentCandidates = (inHeader: boolean) =>
+    entries
+      .filter(
+        (entry) =>
+          entry.element !== current &&
+          !column.contains(entry.element) &&
+          !entry.element.closest(".app-nav, .app-user-identity, .tv-alphabet") &&
+          Boolean(entry.element.closest(".page-header")) === inHeader
+      )
+      .map((entry) => ({ item: entry.element, rect: entry.rect }));
+  const nearest = (inHeader: boolean) => pickNearestByEdgeDistance(currentRect, contentCandidates(inHeader));
   switch (direction) {
     case "right":
       return true;
     case "left":
-      return focus(nearest(false)) || true;
+      return (
+        focus(
+          pickShellColumnLeftTarget(
+            currentRect,
+            contentCandidates(false),
+            entries
+              .filter((entry) => entry.element.closest(".app-nav"))
+              .map((entry) => ({ item: entry.element, rect: entry.rect }))
+          )
+        ) || true
+      );
     case "up":
       if (index > 0) return focus(buttons[index - 1]);
       return focus(nearest(true)) || true;
