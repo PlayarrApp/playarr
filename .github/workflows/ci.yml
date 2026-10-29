@@ -521,11 +521,21 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+    env:
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+      DOTNET_NOLOGO: '1'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      # job-private homes: the sudo workload install can leave root-owned dirs under /tmp/.dotnet, which breaks .NET's named NuGet-Migrations mutex
+      DOTNET_CLI_HOME: ${{ runner.temp }}/dotnet-home
+      TMPDIR: ${{ runner.temp }}/dotnet-tmp
     defaults:
       run:
         working-directory: clients/tizen-native
     steps:
       - uses: actions/checkout@v4
+
+      - name: Job-private dotnet dirs
+        run: mkdir -p "$DOTNET_CLI_HOME" "$TMPDIR"
 
       - uses: actions/setup-dotnet@v4
         with:
