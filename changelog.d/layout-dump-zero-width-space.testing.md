@@ -1,0 +1,1 @@
+- Parity layout export keeps the space between words when the engine reports the space with an empty box.

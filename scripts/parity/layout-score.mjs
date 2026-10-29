@@ -62,12 +62,18 @@ const iou = (a, b) => {
 const dist = (a, b) => { const [p, q] = [center(a), center(b)]; return Math.hypot(p[0] - q[0], p[1] - q[1]); };
 
 /** Field-by-field comparison of one matched pair; returns the list of differences. */
-function compare(w, d, { scoreText, edge = TOL.edge, sameRole = (a, b) => a === b }) {
+function compare(w, d, { scoreText, edge = TOL.edge, sameRole = (a, b) => a === b, textCentreLine = false }) {
   const out = [];
   const diff = (field, ref, dev, delta) => out.push({ field, ref, device: dev, delta: round(delta) });
   if (scoreText && normText(w.text) !== normText(d.text)) diff("text", w.text, d.text, 0);
   if (!sameRole(w.role, d.role)) diff("role", w.role, d.role, 0);
-  for (const [name, a, b] of [["left", w.rect.x, d.rect.x], ["top", w.rect.y, d.rect.y], ["right", w.rect.x + w.rect.w, d.rect.x + d.rect.w], ["bottom", w.rect.y + w.rect.h, d.rect.y + d.rect.h]]) {
+  // Owner exception 2026-10-29 (clients.json textCentreLine, Harmony only): a text element is scored on its left and right edges and its
+  // vertical centre, never on top, bottom or height (ArkUI's measured text range is 1.17 em tall, web's 1.36 em). Other elements stay strict.
+  const centreLine = textCentreLine && w.fontSize != null && normText(w.text) !== "";
+  const edges = centreLine
+    ? [["left", w.rect.x, d.rect.x], ["right", w.rect.x + w.rect.w, d.rect.x + d.rect.w], ["centre", w.rect.y + w.rect.h / 2, d.rect.y + d.rect.h / 2]]
+    : [["left", w.rect.x, d.rect.x], ["top", w.rect.y, d.rect.y], ["right", w.rect.x + w.rect.w, d.rect.x + d.rect.w], ["bottom", w.rect.y + w.rect.h, d.rect.y + d.rect.h]];
+  for (const [name, a, b] of edges) {
     if (Math.abs(a - b) > edge) diff(`rect.${name}`, round(a), round(b), b - a);
   }
   if (w.background != null) {
@@ -89,8 +95,8 @@ function compare(w, d, { scoreText, edge = TOL.edge, sameRole = (a, b) => a === 
 }
 
 /** Score `device` against the web layout `ref`. Pure and deterministic: same inputs, same output. */
-/** roleAliases: { <web role>: [<device roles accepted for it>] }, e.g. { link: ["button"] } for a platform without a link role. Default none. */
-export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions, roleAliases = {} } = {}) {
+/** textCentreLine: score text elements on left, right and vertical centre only (owner exception for Harmony). roleAliases: { <web role>: [<device roles accepted for it>] }, e.g. { link: ["button"] } for a platform without a link role. Default none. */
+export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions, roleAliases = {}, textCentreLine = false } = {}) {
   const sameRole = (webRole, devRole) => webRole === devRole || (roleAliases[webRole] ?? []).includes(devRole);
   const clockPinned = device.clockPinned === true;
   // "system" elements are OS chrome (status bar, home indicator): never matched, never reported.
@@ -142,7 +148,7 @@ export function scoreLayout(ref, device, { edge = TOL.edge, client, exclusions, 
     if (!d) { failures.push({ ref: brief, device: null, problems: [{ field: "missing", ref: null, device: null, delta: 0 }] }); continue; }
     const scoreText = !isVolatileText(w);
     if (w.clock) clockSeen.push(normText(w.text) === normText(d.text));
-    const problems = compare(w, d, { scoreText, edge, sameRole });
+    const problems = compare(w, d, { scoreText, edge, sameRole, textCentreLine });
     if (problems.length) failures.push({ ref: brief, device: { text: d.text, role: d.role, rect: d.rect }, problems });
     else equal += 1;
   }
@@ -178,6 +184,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const client = opt("client");
   const roleAliases = {};
   args.forEach((a, i) => { if (a === "--role-alias") { const [web, dev] = (args[i + 1] ?? "").split("="); if (!web || !dev) throw new Error("--role-alias needs <webRole>=<deviceRole>"); (roleAliases[web] ??= []).push(dev); } });
-  const result = scoreLayout(JSON.parse(readFileSync(opt("ref"), "utf8")), JSON.parse(readFileSync(opt("device"), "utf8")), { roleAliases, ...(client ? { client, exclusions: loadExclusions(opt("exclusions")) } : {}) });
+  const result = scoreLayout(JSON.parse(readFileSync(opt("ref"), "utf8")), JSON.parse(readFileSync(opt("device"), "utf8")), { roleAliases, textCentreLine: args.includes("--text-centre-line"), ...(client ? { client, exclusions: loadExclusions(opt("exclusions")) } : {}) });
   console.log(args.includes("--json") ? JSON.stringify(result, null, 2) : formatReport(result, Number(opt("max") ?? 40)));
 }

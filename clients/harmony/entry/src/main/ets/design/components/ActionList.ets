@@ -46,13 +46,13 @@ export struct ActionList {
               .width(tv(GLYPH_COLUMN))
               .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)).lineHeight(webLineHeight(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))).halfLeading(true)
               .fontColor(toResourceColor(BRAND_PINK))
-              .translate({ y: isTvMetrics() ? -1.5 : -1.9 }) // web's glyph box sits higher
+              .translate({ y: (isTvMetrics() ? -1.5 : -0.3) + (isTvMetrics() ? -1.11 : 0) }) // web's glyph box sits higher
             Text(action.label).fontFamily(nunitoAt(700, isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE))
               .fontSize(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(LABEL_SIZE) : PHONE_LABEL_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Bold)
-              .letterSpacing((0.3) + (isTvMetrics() ? -0.476 : 0)) // web's label run is a little wider than ArkUI lays it out
+              .letterSpacing(((0.3) + (isTvMetrics() ? -0.476 : 0)) + (!isTvMetrics() ? -0.368 : 0)) // web's label run is a little wider than ArkUI lays it out
               .fontColor(toResourceColor(activeColors().ink))
-              .translate({ y: isTvMetrics() ? -1.9 : -1.4 }) // web's label box sits higher
+              .translate({ y: isTvMetrics() ? -1.9 : 0 }) // web's label box sits higher
           }
           .width('100%')
           .height(tv(ROW_HEIGHT))

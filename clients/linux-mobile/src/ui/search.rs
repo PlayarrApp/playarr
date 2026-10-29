@@ -48,9 +48,11 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images) -> gtk4::Widget {
         .valign(gtk4::Align::Center)
         .build();
     ring.set_size_request(86, 86);
-    let icon = crate::icons::image("search-minus", 34, crate::icons::Tone::Brand);
+    // The web's svg box is the glyph's own bounds: 34 x 22.66 inside the 34 px drawing, 5.67 px down.
+    let icon = crate::icons::banded("search-minus", 34, 5.67, 22.66, crate::icons::Tone::Brand);
     // The web's svg box is the glyph's own bounds: 34 x 22.66 in the 34 px drawing.
     // Centred, not expanding: an expanding icon would stretch the ring to a pill and push it down the page.
+    icon.set_halign(gtk4::Align::Center);
     icon.set_hexpand(true);
     icon.set_valign(gtk4::Align::Center);
     ring.set_halign(gtk4::Align::Start);

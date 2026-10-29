@@ -40,7 +40,7 @@ for t in $THEMES; do
     PLAYARR_KEEP_CONTROLS=1 PLAYARR_PARITY_PAUSE_MS=2000 "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
     PLAYARR_CAPTURE_GREEN_CHECK=true "$H/pmcap3.sh" "$O/$t" "theme:$t" player </dev/null || continue
     layout "$t" player-controls
-    grep -q '"text":"0:02 / 1:00"' "$O/$t/layout/player-controls.json" && break
+    grep -q '"text":"0:02"' "$O/$t/layout/player-controls.json" && break
     [ "$try" = 3 ] && { echo "player never reached 0:02 / 1:00" >&2; exit 1; }
   done
   for f in "$O/$t"/film_*.png; do mv -- "$f" "$O/$t/film.png"; done

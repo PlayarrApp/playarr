@@ -1,14 +1,14 @@
 package io.playarr.shared.designsystem.component
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment

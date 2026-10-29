@@ -526,7 +526,7 @@ export struct SearchScreen {
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
           Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunitoAt(650, 11.52))
-            .fontSize(11.52).lineHeight(webLineHeight(11.52)).halfLeading(true)
+            .fontSize(11.52).letterSpacing((!isTvMetrics() ? -0.367 : 0)).lineHeight(webLineHeight(11.52)).halfLeading(true)
             .fontWeight(600)
             .fontColor(toResourceColor(activeColors().ink))
         }

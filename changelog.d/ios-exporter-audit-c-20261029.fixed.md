@@ -1,0 +1,1 @@
+- iOS parity: layout export reads real label colours, painted gradients, visible-region drawer coverage and per-line UIKit titles (audit C1 to C8).

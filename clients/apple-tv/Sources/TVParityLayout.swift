@@ -173,6 +173,12 @@ final class TVParityLayoutRegistry {
                 // which is not where the view or its glyphs are; later lines keep the layout's own pitch
                 line.rect = rect.offsetBy(dx: item.rect.minX, dy: item.rect.minY - rects[0].minY)
                 if let names = item.lines, names.count == rects.count { line.text = names[index] }
+                // SwiftUI exposes no string per line: split the string where the app's own wrapper breaks it at the laid-out width,
+                // and use it only when it agrees with the number of lines SwiftUI actually drew
+                else if item.lines == nil, rects.count > 1, let text = item.text, let size = item.size {
+                    let names = TVTextWrap.lines(text, weight: CGFloat(item.weight ?? 400), size: size, kern: item.tracking, width: item.rect.width)
+                    if names.count == rects.count { line.text = names[index] }
+                }
                 return line
             }
         }

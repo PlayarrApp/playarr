@@ -4,7 +4,8 @@
 
 ' The drawer panel, kicker, title and close button at the web's numbers (360 px panel, content from x 1606). Marks carry the web names.
 sub drawerChrome(g as Object, kicker as String, title as String, closeName as String, titleLines = 1 as Integer)
-    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
+    pgRect(g, 1560, 0, 360, 1080, "drawerBase")
+    pgTint(g, 1560, 0, 360, 1080, "drawerPanel")
     pgMark(g, "dialog", "", 1560, 0, 360, 1080, 0)
     pgLabel(g, 1606, 54, 190, 13, UCase(kicker), 9.6, 720, "inkMuted", { tracking: 0.669 })
     tt = pgTrackedText(g, 1606, 73.6, 214, title, 38.4, 590, -2.113, "ink", false, "left", 2, 57.6, "heading")

@@ -109,7 +109,7 @@ function PlayarrTypeFor(scope as String, id as String) as Dynamic
             clockTime: { size: 17.28, weight: 760, tracking: -0.526 }
             clockDate: { size: 11.14, weight: 640, tracking: 0.435 }
             profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
-            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink", boxH: 8.95 }
+            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink" }
             "TvStage.stageMetaLabel": { size: 12.86, weight: 600, tracking: 0, role: "heroSoft" }
             "ProfileAvatar.name": { size: 17.28, weight: 680, tracking: 0 }
             "ProfileAvatar.status": { size: 9.41, weight: 690, tracking: 0.413, role: "inkMuted" }
@@ -156,7 +156,6 @@ function PlayarrFontifyLabel(label as Object, scope = "" as String, weight = -1 
         size = typed.size
         weight = typed.weight
         tracking = typed.tracking
-        if typed.boxH <> invalid then web.rectH = typed.boxH
         if typed.lineHeight <> invalid then web.lineHeight = typed.lineHeight
     end if
     web.setFields({ size: size, weight: weight, tracking: tracking, width: newW, height: label.height * sx, horizAlign: label.horizAlign, vertAlign: label.vertAlign, wrap: label.wrap, maxLines: label.maxLines, visible: label.visible, opacity: label.opacity })
@@ -209,7 +208,7 @@ end function
 
 ' Symbol glyphs the web draws from its fallback fonts (Nunito Sans has none of them): arrows, play, check, the sort chevron and a
 ' fullwidth plus. fonts/Symbols.ttf is a subset of DejaVu Sans (Bitstream Vera licence) and fonts/SymbolsCjk.otf one glyph of
-' Noto Sans CJK (SIL OFL). The advance is the web's own measured width per em, so the glyph box is the box the web reports.
+' Noto Sans CJK (SIL OFL).
 function PlayarrSymbolFont(ch as String, size as Float) as Object
     path = "pkg:/fonts/Symbols.ttf"
     if ch = "＋" then path = "pkg:/fonts/SymbolsCjk.otf"
@@ -223,8 +222,17 @@ function PlayarrSymbolFont(ch as String, size as Float) as Object
     return font
 end function
 
-function PlayarrSymbolWidth(ch as String, size as Float) as Float
-    em = { "←": 1.0, "→": 1.0, "▶": 0.7695, "⇩": 0.8378, "☷": 0.8962, "⌄": 0.8378, "✓": 0.8381, "○": 0.6045, "＋": 1.0, "×": 0.6004 }
-    if em[ch] = invalid then return size
-    return em[ch] * size
+' Bottom edge (in the label's parent) of the glyph Labels a WebLabel laid out, as Roku reports their boxes.
+function PlayarrTextBottom(web as Object) as Float
+    runNode = web.findNode("run")
+    if runNode = invalid then return web.translation[1] + web.boundingRect().height
+    bottom = 0.0
+    for i = 0 to runNode.getChildCount() - 1
+        g = runNode.getChild(i)
+        if g.visible and g.text <> ""
+            gb = g.translation[1] + g.boundingRect().height
+            if gb > bottom then bottom = gb
+        end if
+    end for
+    return web.translation[1] + runNode.translation[1] + bottom
 end function

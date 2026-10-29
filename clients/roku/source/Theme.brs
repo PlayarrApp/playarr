@@ -64,6 +64,13 @@ function ThemeTokens(mode as String) as Object
             panel: &hEFEEEEFF
             ' Right-hand drawer fill (web Drawer panel over the page).
             drawerPanel: &hF3F3F4FF
+            ' Opaque base under the drawer wash (the web panel blends translucent white over the page; the wash bitmap carries the tint).
+            drawerBase: &hFEFEFEFF
+            agendaHead: &hFBFAF9FF
+            badgeDefault: &hEFEDEDFF
+            badgeAvailable: &hE2EFE8FF
+            badgeUpcoming: &hF5DEE2FF
+            badgeMissing: &hE8DEDDFF
             homeRailFrost: &hF0EEEFff
             ' Status chip tint (.calendar-badge): rgba(91,127,209,.24), the same in both themes.
             statusTint: &h5B7FD13D
@@ -114,6 +121,12 @@ function ThemeTokens(mode as String) as Object
         focusRing: &hFFFFFFFF
         panel: &h282227FF
         drawerPanel: &h221D22FF
+        drawerBase: &h221D22FF
+        agendaHead: &h151315FF
+        badgeDefault: &h2C2A2CFF
+        badgeAvailable: &h2A342EFF
+        badgeUpcoming: &h341B23FF
+        badgeMissing: &h392C2FFF
         homeRailFrost: &h282327FF
         statusTint: &h5B7FD13D
         ' Player chrome is the same over video in both themes: white ink on a dark scrim (global.css .player-*).
@@ -371,6 +384,14 @@ sub A11yStamp(node as Object, force = false as Boolean, baked = -1 as Integer)
     seg = parts[2]
     if baked < 0 and Instr(1, seg, "~") > 0 then baked = Val(seg.Split("~")[1], 10)
     radius = seg.Split("@")[0]
+    ' The corner radius is the mask the bitmap really is (round-r<R>.9.png), whatever radius the caller asked for.
+    if node.hasField("uri") and node.uri <> invalid
+        u = node.uri
+        k = Instr(1, u, "-r")
+        if k > 0 and Right(u, 6) = ".9.png"
+            radius = Mid(u, k + 2, Len(u) - k - 7)
+        end if
+    end if
     ' RRGGBBAA as bytes: a colour with the top bit set is a negative Integer, so split it into bytes before formatting.
     c& = node.blendColor
     if c& < 0 then c& = c& + 4294967296&

@@ -107,8 +107,7 @@ struct SettingsView: View {
                 else { wideLayout(proxy: proxy) }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
-            // What the page paints: the page colour, or (phone sub-pages) the gradient that ends on the shell colour.
-            .parityFill(!phone || selected == nil ? WM.page : WM.shell)
+            .modifier(SettingsPagePaint(subpage: phone && selected != nil))
         }
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
@@ -1047,5 +1046,20 @@ private struct WMQualityCell<Content: View>: View {
         .frame(width: width, height: height, alignment: .topLeading)
         .overlay(shape.stroke(selected && !bar ? WM.pink : WM.line.opacity(scheme == .dark ? 0.2 : 0.14), lineWidth: 1))
         .contentShape(Rectangle())
+    }
+}
+
+/// What the settings page paints: the flat page colour, or on phone sub-pages a surface-to-shell wash with a pink glow (see `settingsBackground`).
+private struct SettingsPagePaint: ViewModifier {
+    let subpage: Bool
+
+    func body(content: Content) -> some View {
+        if subpage {
+            content
+                .parityRadial([PlayarrStyle.pink.opacity(0.12), .clear], center: UnitPoint(x: 0.2, y: 0.4), endRadius: 420)
+                .parityGradient([.init(color: PlayarrStyle.surface, location: 0), .init(color: PlayarrStyle.background, location: 1)], from: .topLeading, to: .bottomTrailing)
+        } else {
+            content.parityFill(WM.page)
+        }
     }
 }

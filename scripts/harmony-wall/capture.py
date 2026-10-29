@@ -41,8 +41,8 @@ def get(path, **q):
 
 
 # The Previewer window is larger than the app's stage so no box is clamped by the window: the stage starts at STAGE_ORIGIN px inside it.
-# TV: 2400 x 1740 px, stage 1920 x 1080 at (240, 60). Phone: 1800 x 2700 px (dpr 3), stage 1080 x 2340 at (180, 180).
-STAGE = {"tv": ((240, 60), (2400, 1740), (1920, 1080)), "phone": ((180, 180), (1800, 2700), (1080, 2340))}
+# TV: 3000 x 1740 px, stage 1920 x 1080 at (240, 60). Phone: 1800 x 3600 px (dpr 3), stage 1080 x 2340 at (180, 180).
+STAGE = {"tv": ((240, 60), (3000, 1740), (1920, 1080)), "phone": ((180, 180), (1800, 3600), (1080, 2340))}
 STAGE_DEVICE = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in STAGE else "tv"
 STAGE_ORIGIN, WINDOW_SIZE, STAGE_SIZE = STAGE[STAGE_DEVICE]
 
@@ -367,7 +367,7 @@ def extra_screens(folder):
     """Screens a click cannot reach in one step: the actions drawer (long press on a card) and the player controls."""
     try:
         route("library:movie", 15)
-        get("/hold", x=1299, y=254); time.sleep(4); snap("actions", folder)  # the web ref holds the second card (Amber Cathedral 18)
+        get("/hold", x=1299 + STAGE_ORIGIN[0], y=254 + STAGE_ORIGIN[1]); time.sleep(4); snap("actions", folder)  # the web ref holds the second card (Amber Cathedral 18)
         key("back"); time.sleep(3)
     except SystemExit:
         print("actions not captured", flush=True)

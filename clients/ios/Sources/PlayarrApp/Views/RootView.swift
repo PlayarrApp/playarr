@@ -693,6 +693,7 @@ private struct AuthenticatedPlayarrShell: View {
                     Text(clockDate.formatted(headerDateStyle).uppercased())
                         .font(WM.font(8, 700)).tracking(0.6)
                         .foregroundStyle(PlayarrStyle.inkSoft)
+                        .parityRenderedText(clockDate.formatted(headerDateStyle).uppercased(), role: "text", size: 8, weight: 700, color: PlayarrStyle.inkSoft)
                 }
                 .foregroundStyle(PlayarrStyle.ink)
                 .offset(x: proxy.size.width * 0.24, y: chromeTop + 14)

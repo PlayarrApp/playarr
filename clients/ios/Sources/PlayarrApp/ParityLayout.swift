@@ -23,6 +23,10 @@ final class ParityLayoutRegistry {
         var opacity: Double = 1
         /// True when the view paints its own fill (so its `background` includes that fill).
         var painted = false
+        /// The region of an opaque layer drawn over this view; an item fully inside it is not visible.
+        var coveredBy: CGRect?
+        /// Accessibility entry that belongs to the covering layer itself (the drawer's own controls).
+        var inCover = false
     }
 
     private var items: [UUID: Item] = [:]
@@ -31,6 +35,11 @@ final class ParityLayoutRegistry {
     private var pending: Task<Void, Never>?
     /// Views currently on screen: a text run reported after its view left (queued draw callback) is dropped.
     private var alive: Set<UUID> = []
+
+    /// Identifier of the container that holds a covering layer's own content (see `parityCoverLayer`).
+    nonisolated static let coverIdentifier = "parity-cover-layer"
+    /// Regions currently covered by an opaque layer: accessibility entries of the covered content inside them are not visible.
+    var coverRegions: [UUID: CGRect] = [:]
 
     func markAlive(_ id: UUID) { alive.insert(id) }
 
@@ -58,6 +67,8 @@ final class ParityLayoutRegistry {
         textRuns[id] = runs
         schedule()
     }
+
+    func touch() { schedule() }
 
     func remove(_ id: UUID) {
         alive.remove(id)
@@ -91,7 +102,8 @@ final class ParityLayoutRegistry {
         guard let window = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return [] }
         var found: [Item] = []
         var visited = 0
-        func visit(_ object: NSObject, depth: Int) {
+        func visit(_ object: NSObject, depth: Int, inCover: Bool = false) {
+            let inCover = inCover || (object as? UIAccessibilityIdentification)?.accessibilityIdentifier == ParityLayoutRegistry.coverIdentifier
             guard visited < 4000, depth < 40 else { return }
             if let view = object as? UIView, view.isHidden || view.alpha <= 0.001 { return }
             visited += 1
@@ -106,18 +118,18 @@ final class ParityLayoutRegistry {
                 else if traits.contains(.tabBar) { role = "tab" }
                 let frame = object.accessibilityFrame
                 let label = object.accessibilityLabel ?? ""
-                found.append(Item(text: label.isEmpty ? nil : label, role: role, size: nil, weight: nil, color: nil, rect: frame))
+                found.append(Item(text: label.isEmpty ? nil : label, role: role, size: nil, weight: nil, color: nil, rect: frame, inCover: inCover))
                 return
             }
             let count = object.accessibilityElementCount()
             if count != NSNotFound, count > 0 {
-                for index in 0..<count { if let child = object.accessibilityElement(at: index) as? NSObject { visit(child, depth: depth + 1) } }
+                for index in 0..<count { if let child = object.accessibilityElement(at: index) as? NSObject { visit(child, depth: depth + 1, inCover: inCover) } }
                 return
             }
             if let elements = object.accessibilityElements as? [NSObject], !elements.isEmpty {
-                for child in elements { visit(child, depth: depth + 1) }
+                for child in elements { visit(child, depth: depth + 1, inCover: inCover) }
             }
-            if let view = object as? UIView { for sub in view.subviews { visit(sub, depth: depth + 1) } }
+            if let view = object as? UIView { for sub in view.subviews { visit(sub, depth: depth + 1, inCover: inCover) } }
         }
         visit(window, depth: 0)
         return found
@@ -133,13 +145,16 @@ final class ParityLayoutRegistry {
         // A plain accessibility entry is dropped when a styled one has the same text and nearly the same frame, and a
         // text entry is dropped when styled lines inside its frame draw its label (its lines are the export, not its box).
         let plain = accessibilityElements().filter { entry in
-            if styled.contains(where: { $0.text == entry.text && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }) { return false }
+            if styled.contains(where: { $0.text == entry.text && $0.role == entry.role && abs($0.rect.minX - entry.rect.minX) < 3 && abs($0.rect.minY - entry.rect.minY) < 12 }) { return false }
             guard entry.role == "text" || entry.role == "heading", let label = entry.text else { return true }
             let area = entry.rect.insetBy(dx: -3, dy: -3)
-            return !styled.contains { line in
-                guard let shown = line.text, line.size != nil, area.contains(line.rect) else { return false }
-                return label.contains(shown.hasSuffix("\u{2026}") ? String(shown.dropLast()) : shown)
-            }
+            // Dropped only when the styled lines inside its frame draw the whole label, line by line.
+            let lines = styled.filter { $0.size != nil && $0.text != nil && area.contains($0.rect) }
+                .sorted { ($0.rect.minY, $0.rect.minX) < ($1.rect.minY, $1.rect.minX) }
+            func words(_ text: String) -> [Substring] { text.split(whereSeparator: \.isWhitespace) }
+            let drawn = lines.flatMap { words($0.text ?? "") }.joined(separator: " ")
+            let wanted = words(label).joined(separator: " ")
+            return !(drawn == wanted || drawn.hasSuffix("\u{2026}") && wanted.hasPrefix(String(drawn.dropLast())))
         }
         // Only registered views and native accessibility elements exist in the export. A style on a parent with no
         // source string cannot identify a child text run, so keep the child's accessibility entry without guessed style.
@@ -153,7 +168,11 @@ final class ParityLayoutRegistry {
                 .min { $0.rect.width * $0.rect.height < $1.rect.width * $1.rect.height }?.background
             return entry
         }
-        var all = styled.filter { $0.text != nil || $0.size == nil } + backed
+        // Items under an opaque layer drawn over them are not visible (the AX duplicates were dropped above first).
+        let covers = Array(coverRegions.values)
+        let visibleStyled = styled.filter { item in item.coveredBy.map { !$0.contains(item.rect) } ?? true }
+        let uncovered = backed.filter { entry in entry.inCover || !covers.contains { $0.contains(entry.rect) } }
+        var all = (visibleStyled + uncovered).filter { $0.text != nil || $0.size == nil }
         let viewport = CGRect(origin: .zero, size: screen.size)
         all = all.filter { $0.rect.intersects(viewport) && $0.rect.width > 1 && $0.rect.height > 1 }
         all.sort { ($0.rect.minY, $0.rect.minX, $0.text ?? "", $0.role) < ($1.rect.minY, $1.rect.minX, $1.text ?? "", $1.role) }
@@ -219,12 +238,15 @@ struct ParityPaint: Equatable {
 
     /// Effective opacity at `rect`, or nil when an ancestor clip removes it entirely.
     func effective(_ rect: CGRect) -> Double? {
+        var visible = rect
         for clip in clips {
-            let inside = clip.intersection(rect)
-            if inside.isNull || inside.width < 1 || inside.height < 1 { return nil }
+            visible = visible.intersection(clip)
+            if visible.isNull || visible.width < 1 || visible.height < 1 { return nil }
         }
-        let centre = CGPoint(x: rect.midX, y: rect.midY)
-        return fades.reduce(opacity) { $0 * $1.alpha(at: centre) }
+        // The mask alpha is sampled in the visible part, not at the centre of an area that is clipped away.
+        let centre = CGPoint(x: visible.midX, y: visible.midY)
+        let alpha = fades.reduce(opacity) { $0 * $1.alpha(at: centre) }
+        return alpha < 0.01 ? nil : alpha
     }
 }
 
@@ -274,27 +296,76 @@ struct ParityRGB: Equatable {
         return String(format: "#%02x%02x%02x", byte(r), byte(g), byte(b))
     }
 
-    /// `color` painted over `base` (the colour resolved in `environment`, opacity included).
-    static func over(_ color: Color, _ base: ParityRGB?, _ environment: EnvironmentValues) -> ParityRGB {
-        let top = color.resolve(in: environment), under = base ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))
-        let a = Float(top.opacity)
-        return ParityRGB(r: top.red * a + under.r * (1 - a), g: top.green * a + under.g * (1 - a), b: top.blue * a + under.b * (1 - a))
+    /// `top` (r, g, b, alpha) painted over this colour.
+    func under(_ top: SIMD4<Float>) -> ParityRGB {
+        ParityRGB(r: top.x * top.w + r * (1 - top.w), g: top.y * top.w + g * (1 - top.w), b: top.z * top.w + b * (1 - top.w))
     }
 
     init(r: Float, g: Float, b: Float) { self.r = r; self.g = g; self.b = b }
     init(_ resolved: Color.Resolved) { r = resolved.red; g = resolved.green; b = resolved.blue }
 }
 
-private struct ParityBackdropKey: EnvironmentKey { static let defaultValue: ParityRGB? = nil }
-private struct ParityHiddenKey: EnvironmentKey { static let defaultValue = false }
+/// The fills painted behind a view, outermost first: flat colours and linear gradients the app really draws.
+struct ParityBackdrop: Equatable {
+    enum Layer: Equatable {
+        case flat(SIMD4<Float>)
+        /// Linear gradient over `rect`; stops are (r, g, b, alpha) at `locations`.
+        case gradient(rect: CGRect, start: CGPoint, end: CGPoint, stops: [SIMD4<Float>], locations: [Float])
+        /// Radial gradient centred at the unit point `center` of `rect`, from radius 0 to `radius` points.
+        case radial(rect: CGRect, center: CGPoint, radius: Float, stops: [SIMD4<Float>], locations: [Float])
+    }
+    var layers: [Layer] = []
+
+    func adding(_ color: Color, _ environment: EnvironmentValues) -> ParityBackdrop {
+        let c = color.resolve(in: environment)
+        var copy = self
+        copy.layers.append(.flat(SIMD4(c.red, c.green, c.blue, c.opacity)))
+        return copy
+    }
+
+    /// The composited colour at `point` (window coordinates); the theme surface where nothing is painted.
+    func rgb(at point: CGPoint, _ environment: EnvironmentValues) -> ParityRGB {
+        var result = ParityRGB(PlayarrStyle.surface.resolve(in: environment))
+        for layer in layers {
+            switch layer {
+            case .flat(let colour): result = result.under(colour)
+            case .gradient(let rect, let start, let end, let stops, let locations):
+                guard rect.width > 0, rect.height > 0, stops.count > 1, stops.count == locations.count else { continue }
+                let a = CGPoint(x: rect.minX + start.x * rect.width, y: rect.minY + start.y * rect.height)
+                let d = CGPoint(x: (end.x - start.x) * rect.width, y: (end.y - start.y) * rect.height)
+                let length = d.x * d.x + d.y * d.y
+                guard length > 0 else { continue }
+                let t = Float(max(0, min(1, ((point.x - a.x) * d.x + (point.y - a.y) * d.y) / length)))
+                var index = 1
+                while index < stops.count - 1, t > locations[index] { index += 1 }
+                let l0 = locations[index - 1], l1 = locations[index]
+                let f = l1 > l0 ? max(0, min(1, (t - l0) / (l1 - l0))) : 1
+                result = result.under(stops[index - 1] + (stops[index] - stops[index - 1]) * f)
+            case .radial(let rect, let center, let radius, let stops, let locations):
+                guard rect.width > 0, radius > 0, stops.count > 1, stops.count == locations.count else { continue }
+                let c = CGPoint(x: rect.minX + center.x * rect.width, y: rect.minY + center.y * rect.height)
+                let t = min(1, Float(hypot(point.x - c.x, point.y - c.y)) / radius)
+                var index = 1
+                while index < stops.count - 1, t > locations[index] { index += 1 }
+                let l0 = locations[index - 1], l1 = locations[index]
+                let f = l1 > l0 ? max(0, min(1, (t - l0) / (l1 - l0))) : 1
+                result = result.under(stops[index - 1] + (stops[index] - stops[index - 1]) * f)
+            }
+        }
+        return result
+    }
+}
+
+private struct ParityBackdropKey: EnvironmentKey { static let defaultValue = ParityBackdrop() }
+private struct ParityHiddenKey: EnvironmentKey { static let defaultValue: CGRect? = nil }
 extension EnvironmentValues {
     /// The composited colour behind this view, set by `parityFill` where a view really paints a background.
-    var parityBackdrop: ParityRGB? {
+    var parityBackdrop: ParityBackdrop {
         get { self[ParityBackdropKey.self] }
         set { self[ParityBackdropKey.self] = newValue }
     }
     /// True under content that another layer covers: it is not visible, so it is not exported.
-    var parityCovered: Bool {
+    var parityCovered: CGRect? {
         get { self[ParityHiddenKey.self] }
         set { self[ParityHiddenKey.self] = newValue }
     }
@@ -304,7 +375,7 @@ private struct ParityFillModifier: ViewModifier {
     let color: Color
     @Environment(\.self) private var environment
     func body(content: Content) -> some View {
-        content.environment(\.parityBackdrop, ParityRGB.over(color, environment.parityBackdrop, environment))
+        content.environment(\.parityBackdrop, environment.parityBackdrop.adding(color, environment))
     }
 }
 
@@ -322,7 +393,6 @@ private struct ParityLayoutModifier: ViewModifier {
     @State private var frame = CGRect.zero
 
     private var hex: String? { color.map { Self.hex($0, environment) } }
-    private var pageHex: String { (environment.parityBackdrop ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))).hex }
 
     static func hex(_ color: Color, _ environment: EnvironmentValues) -> String {
         let r = color.resolve(in: environment)
@@ -333,7 +403,7 @@ private struct ParityLayoutModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .environment(\.parityBackdrop, box.map { ParityRGB.over($0, environment.parityBackdrop, environment) } ?? environment.parityBackdrop)
+            .environment(\.parityBackdrop, box.map { environment.parityBackdrop.adding($0, environment) } ?? environment.parityBackdrop)
             .background(
                 GeometryReader { proxy in
                     Color.clear
@@ -343,14 +413,22 @@ private struct ParityLayoutModifier: ViewModifier {
             )
             .onChange(of: environment.parityPaint) { _, _ in report(frame) }
             .onChange(of: environment.parityBackdrop) { _, _ in report(frame) }
+            .onChange(of: environment.parityCovered) { _, _ in report(frame) }
+            .onChange(of: text) { _, _ in report(frame) }
+            .onChange(of: box) { _, _ in report(frame) }
+            .onChange(of: color) { _, _ in report(frame) }
+            .onChange(of: role) { _, _ in report(frame) }
             .onDisappear { ParityLayoutRegistry.shared.remove(id) }
     }
 
     private func report(_ frame: CGRect) {
-        guard frame.width > 0, !environment.parityCovered, let opacity = environment.parityPaint.effective(frame) else { ParityLayoutRegistry.shared.remove(id); return }
-        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: box.map { ParityRGB.over($0, environment.parityBackdrop, environment).hex } ?? pageHex, radius: radius, opacity: opacity, painted: box != nil))
+        guard frame.width > 0, let opacity = environment.parityPaint.effective(frame) else { ParityLayoutRegistry.shared.remove(id); return }
+        ParityLayoutRegistry.shared.set(id, .init(text: text, role: role, size: size, weight: weight, color: hex, rect: frame, tracking: tracking, background: (box.map { environment.parityBackdrop.adding($0, environment) } ?? environment.parityBackdrop).rgb(at: CGPoint(x: frame.midX, y: frame.midY), environment).hex, radius: radius, opacity: opacity, painted: box != nil, coveredBy: environment.parityCovered))
     }
 }
+
+/// `#rrggbb` (or `#rrggbbaa`) of `color` as resolved in `environment`.
+func parityHex(_ color: Color, _ environment: EnvironmentValues) -> String { ParityLayoutModifier.hex(color, environment) }
 
 /// One laid-out line of a text view: its glyph-run bounds and the source-text offsets of the characters it draws.
 struct ParityRenderedLine: Equatable {
@@ -426,10 +504,10 @@ private struct ParityRenderedTextModifier: ViewModifier {
                         })
                 }
             }
-            .onChange(of: environment.parityCovered, initial: true) { _, isCovered in
-                // A panel opened over this text: it is no longer visible, so its runs leave the export.
-                if isCovered { ParityLayoutRegistry.shared.remove(id) } else { ParityLayoutRegistry.shared.markAlive(id); publish() }
-            }
+            .onChange(of: environment.parityCovered) { _, _ in publish() }
+            .onChange(of: text) { _, _ in publish() }
+            .onChange(of: color) { _, _ in publish() }
+            .onChange(of: weight) { _, _ in publish() }
             .onChange(of: lines) { _, _ in publish() }
             .onChange(of: environment.parityBackdrop) { _, _ in publish() }
             .onChange(of: frame) { _, _ in publish() }
@@ -440,22 +518,71 @@ private struct ParityRenderedTextModifier: ViewModifier {
 
     /// Turns the measured lines into registry items (displayed string, drawn size, effective opacity).
     private func publish() {
-        guard frame.width > 0, frame.height > 0, !lines.isEmpty, !environment.parityCovered else { return }
+        guard frame.width > 0, frame.height > 0, !lines.isEmpty else { return }
         let strings = parityDisplayedLines(text, lines)
         let colour = ParityLayoutModifier.hex(color, environment)
-        let background = (environment.parityBackdrop ?? ParityRGB(PlayarrStyle.surface.resolve(in: environment))).hex
         let paint = environment.parityPaint
         let runs = lines.enumerated().compactMap { index, line -> ParityLayoutRegistry.Item? in
             let rect = line.rect.offsetBy(dx: frame.minX, dy: frame.minY)
+            let background = environment.parityBackdrop.rgb(at: CGPoint(x: rect.midX, y: rect.midY), environment).hex
             guard let opacity = paint.effective(rect) else { return nil }
             let scale = scales && natural > 0 ? min(1, line.rect.height / natural) : 1
-            return ParityLayoutRegistry.Item(text: strings.count == lines.count && !strings[index].isEmpty ? strings[index] : text, role: role,
+            // A line whose characters cannot be read back from the layout is not exported with the whole source string.
+            guard strings.count == lines.count, !strings[index].isEmpty else { return nil }
+            return ParityLayoutRegistry.Item(text: strings[index], role: role,
                                               size: (size * scale * 100).rounded() / 100, weight: weight, color: colour, rect: rect,
-                                              background: background, opacity: opacity)
+                                              background: background, opacity: opacity, coveredBy: environment.parityCovered)
         }
         Task { @MainActor in ParityLayoutRegistry.shared.setTextRuns(id, runs) }
     }
 }
+/// Records a linear gradient this view really paints, so text and controls over it report the colour at their own position.
+private struct ParityGradientModifier: ViewModifier {
+    let gradient: Gradient
+    let start: UnitPoint
+    let end: UnitPoint
+    var radius: CGFloat?
+    /// Where the drawn gradient lies in this view's own space, when it is not the whole view.
+    var local: CGRect?
+    @Environment(\.self) private var environment
+    @State private var frame = CGRect.zero
+
+    func body(content: Content) -> some View {
+        let placed = local.map { CGRect(x: frame.minX + $0.minX, y: frame.minY + $0.minY, width: $0.width, height: $0.height) } ?? frame
+        var backdrop = environment.parityBackdrop
+        let resolved = gradient.stops.map { $0.color.resolve(in: environment) }
+        let colours = resolved.map { SIMD4($0.red, $0.green, $0.blue, $0.opacity) }, locations = gradient.stops.map { Float($0.location) }
+        if let radius {
+            backdrop.layers.append(.radial(rect: placed, center: CGPoint(x: start.x, y: start.y), radius: Float(radius), stops: colours, locations: locations))
+        } else {
+            backdrop.layers.append(.gradient(rect: placed, start: CGPoint(x: start.x, y: start.y), end: CGPoint(x: end.x, y: end.y), stops: colours, locations: locations))
+        }
+        return content
+            .environment(\.parityBackdrop, backdrop)
+            .background(GeometryReader { proxy in
+                Color.clear
+                    .onAppear { frame = proxy.frame(in: .global) }
+                    .onChange(of: proxy.frame(in: .global)) { _, value in frame = value }
+            })
+    }
+}
+
+/// Registers the region an opaque layer covers, so accessibility entries of the covered content inside it can be dropped.
+private struct ParityCoverRegion: ViewModifier {
+    let region: CGRect?
+    @State private var id = UUID()
+    func body(content: Content) -> some View {
+        content
+            .onAppear { apply() }
+            .onChange(of: region) { _, _ in apply() }
+            .onDisappear { ParityLayoutRegistry.shared.coverRegions[id] = nil }
+    }
+    private func apply() {
+        ParityLayoutRegistry.shared.coverRegions[id] = region
+        ParityLayoutRegistry.shared.touch()
+    }
+}
+
 #endif
 
 extension View {
@@ -502,6 +629,37 @@ extension View {
 }
 
 extension View {
+    /// Marks a linear gradient painted over this view's frame (the same stops and points as the drawn `LinearGradient`).
+    func parityGradient(_ stops: [Gradient.Stop], from start: UnitPoint, to end: UnitPoint) -> some View {
+        #if DEBUG
+        modifier(ParityGradientModifier(gradient: Gradient(stops: stops), start: start, end: end))
+        #else
+        self
+        #endif
+    }
+}
+
+extension View {
+    /// Marks the root of a covering layer's own content, so its accessibility entries stay visible.
+    func parityCoverLayer() -> some View {
+        #if DEBUG
+        accessibilityElement(children: .contain).accessibilityIdentifier(ParityLayoutRegistry.coverIdentifier)
+        #else
+        self
+        #endif
+    }
+
+    /// Marks a radial gradient painted over this view's frame (the same colours, centre and end radius as the drawn `RadialGradient`).
+    func parityRadial(_ colors: [Color], center: UnitPoint, endRadius: CGFloat, in local: CGRect? = nil) -> some View {
+        #if DEBUG
+        let count = colors.count
+        let stops = colors.enumerated().map { Gradient.Stop(color: $1, location: count > 1 ? CGFloat($0) / CGFloat(count - 1) : 0) }
+        return modifier(ParityGradientModifier(gradient: Gradient(stops: stops), start: center, end: center, radius: endRadius, local: local))
+        #else
+        return self
+        #endif
+    }
+
     /// Marks the place where a view really paints `color`: text and controls inside report the composited colour behind them.
     func parityFill(_ color: Color) -> some View {
         #if DEBUG
@@ -511,12 +669,14 @@ extension View {
         #endif
     }
 
-    /// Content that a drawer or panel covers: hidden from the layout export (and from accessibility).
-    func parityCovered(_ covered: Bool) -> some View {
+    /// Content that an opaque drawer or panel covers over `region` (nil = all of it): items inside the region are not exported.
+    /// A full cover also hides the content from accessibility; a partial one leaves the visible part exported.
+    func parityCovered(_ covered: Bool, region: CGRect? = nil) -> some View {
         #if DEBUG
-        environment(\.parityCovered, covered).accessibilityHidden(covered)
+        modifier(ParityCoverRegion(region: covered ? (region ?? .infinite) : nil))
+            .environment(\.parityCovered, covered ? (region ?? .infinite) : nil).accessibilityHidden(covered && region == nil)
         #else
-        accessibilityHidden(covered)
+        accessibilityHidden(covered && region == nil)
         #endif
     }
 }

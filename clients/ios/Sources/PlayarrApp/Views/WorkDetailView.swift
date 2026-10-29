@@ -523,6 +523,12 @@ struct WorkDetailView: View {
 
     /// Web tablet film page (1366 pt): genre kicker, a two-line title, one meta line, the synopsis, then Download,
     /// Playback and Play in a row with the watchlist and playlist pills beneath.
+    /// One metadata run of the tablet detail header: muted 7.68-scale text that reports its own laid-out line.
+    private func metaItem(_ text: String, _ tabletScale: CGFloat) -> some View {
+        Text(text).fixedSize(horizontal: true, vertical: false)
+            .parityRenderedText(text, role: "text", size: 7.68 * tabletScale, weight: 400, color: PlayarrStyle.muted)
+    }
+
     private func tabletMovieCopy(_ detail: WorkDetail, tabletScale: CGFloat, tabletVerticalScale: CGFloat) -> some View {
         let work = detail.work
         let titleFont = min(80, max(35.2, 3.6 * 1366 / 100)) * tabletScale
@@ -543,6 +549,7 @@ struct WorkDetailView: View {
                 .font(DesignFont.font(8.75 * tabletScale, 820))
                 .tracking(0.08 * 8.75 * tabletScale)
                 .foregroundStyle(PlayarrStyle.brandInk)
+                .parityRenderedText((work.genres.first ?? "Movie").uppercased(), role: "text", size: 8.75 * tabletScale, weight: 820, color: PlayarrStyle.brandInk)
                 .padding(.bottom, 26 * tabletScale)
             TabletTitleLabel(
                 text: work.title, fontSize: titleFont, nativeLineHeight: titleNativeLineHeight,
@@ -551,6 +558,7 @@ struct WorkDetailView: View {
             HStack(spacing: 13.6 * tabletScale) {
                 ForEach(Array(meta.enumerated()), id: \.offset) { _, item in
                     Text(item).fixedSize(horizontal: true, vertical: false)
+                        .parityRenderedText(item, role: "text", size: 7.68 * tabletScale, weight: 400, color: PlayarrStyle.muted)
                 }
             }
             .font(metaFont)
@@ -586,7 +594,7 @@ struct WorkDetailView: View {
                             )
                         } label: {
                             Label("Play", systemImage: "play.fill")
-                                .wm(8.463 * tabletScale, 610)
+                                .wm(8.463 * tabletScale, 610, color: PlayarrStyle.background, text: "Play")
                                 .padding(.horizontal, 21.6 * tabletScale)
                                 .frame(minWidth: 116.109 * tabletScale, minHeight: 57.359 * tabletScale)
                                 .background(PlayarrStyle.ink, in: Capsule())
@@ -885,6 +893,7 @@ struct WorkDetailView: View {
                 .font(DesignFont.font(15.026 * tabletScale, 570))
                 .tracking(-0.035 * 15.026 * tabletScale)
                 .foregroundStyle(PlayarrStyle.inkSoft)
+                .parityRenderedText(episodeTitle, role: "text", size: 15.026 * tabletScale, weight: 570, color: PlayarrStyle.inkSoft)
                 .lineLimit(1)
                 .overlay {
                     TabletDetailFrameDiagnostic(element: "subtitle", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
@@ -895,17 +904,16 @@ struct WorkDetailView: View {
                     .wm(7.68 * tabletScale, 680, color: PlayarrStyle.inkSoft, text: selected.season.season.title ?? "Season \(seasonNumber)")
                     .foregroundStyle(PlayarrStyle.inkSoft)
                     .fixedSize(horizontal: true, vertical: false)
-                Text("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))")
-                    .fixedSize(horizontal: true, vertical: false)
-                if let runtime, runtime > 0 { Text(Self.runtimeLabel(runtime)).fixedSize(horizontal: true, vertical: false) }
-                if let yearRange { Text(yearRange).fixedSize(horizontal: true, vertical: false) }
-                if let dateLabel { Text("\(dateQualifier) \(dateLabel)").fixedSize(horizontal: true, vertical: false) }
+                metaItem("S\(String(format: "%02d", seasonNumber)) · E\(String(format: "%02d", episode.episodeNumber))", tabletScale)
+                if let runtime, runtime > 0 { metaItem(Self.runtimeLabel(runtime), tabletScale) }
+                if let yearRange { metaItem(yearRange, tabletScale) }
+                if let dateLabel { metaItem("\(dateQualifier) \(dateLabel)", tabletScale) }
                 ForEach(Array(detail.work.genres.prefix(3).enumerated()), id: \.offset) { _, genre in
-                    Text(genre).fixedSize(horizontal: true, vertical: false)
+                    metaItem(genre, tabletScale)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .wm(7.68 * tabletScale, 400, color: PlayarrStyle.muted)
+            .font(DesignFont.font(7.68 * tabletScale, 400))
             .foregroundStyle(PlayarrStyle.muted)
             .overlay {
                 TabletDetailFrameDiagnostic(element: "metadata", isSettled: tabletResumePlanLoaded, colorScheme: scheme)
@@ -943,7 +951,7 @@ struct WorkDetailView: View {
                         )
                     } label: {
                         Label(tabletResumeLabel, systemImage: "play.fill")
-                            .wm(8.463 * tabletScale, 610)
+                            .wm(8.463 * tabletScale, 610, color: PlayarrStyle.background, text: tabletResumeLabel)
                             .padding(.horizontal, 21.6 * tabletScale)
                             .frame(minWidth: 116.109 * tabletScale, minHeight: 57.359 * tabletScale)
                             .background(PlayarrStyle.ink, in: Capsule())
@@ -1796,14 +1804,23 @@ struct TabletTitleLabel: UIViewRepresentable {
     let nativeLineHeight: CGFloat
     let lineHeight: CGFloat
     let width: CGFloat?
+    #if DEBUG
+    @Environment(\.self) private var environment
+    #endif
 
     func makeUIView(context: Context) -> UILabel {
-        let label = UILabel()
+        let label = ParityMeasuredLabel()
         label.numberOfLines = 2
         label.lineBreakMode = .byTruncatingTail
         label.setContentHuggingPriority(.defaultLow, for: .horizontal)
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return label
+    }
+
+    static func dismantleUIView(_ label: UILabel, coordinator: ()) {
+        #if DEBUG
+        (label as? ParityMeasuredLabel)?.retire()
+        #endif
     }
 
     func updateUIView(_ label: UILabel, context: Context) {
@@ -1825,6 +1842,12 @@ struct TabletTitleLabel: UIViewRepresentable {
             .baselineOffset: (lineHeight - nativeLineHeight) / 2,
             .foregroundColor: UIColor(PlayarrStyle.ink),
         ])
+        #if DEBUG
+        (label as? ParityMeasuredLabel)?.configure(
+            weight: 560, size: fontSize, colour: PlayarrStyle.ink, backdrop: environment.parityBackdrop, environment: environment,
+            paint: environment.parityPaint, covered: environment.parityCovered
+        )
+        #endif
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UILabel, context: Context) -> CGSize? {
@@ -1834,3 +1857,70 @@ struct TabletTitleLabel: UIViewRepresentable {
         return CGSize(width: min(available, fit.width), height: fit.height)
     }
 }
+
+#if DEBUG
+/// A UILabel that reports its laid-out lines to the parity export: each line's glyph-run bounds (baseline, ascent and
+/// descent of the font), the characters it shows (with the ellipsis when cut), in window coordinates.
+final class ParityMeasuredLabel: UILabel {
+    private let id = UUID()
+    private var weight = 400
+    private var size: CGFloat = 0
+    private var colour = Color.primary
+    private var backdrop = ParityBackdrop()
+    private var environment = EnvironmentValues()
+    private var paint = ParityPaint()
+    private var covered: CGRect?
+
+    func configure(weight: Int, size: CGFloat, colour: Color, backdrop: ParityBackdrop, environment: EnvironmentValues, paint: ParityPaint, covered: CGRect?) {
+        self.weight = weight; self.size = size; self.colour = colour; self.backdrop = backdrop
+        self.environment = environment; self.paint = paint; self.covered = covered
+        setNeedsLayout()
+    }
+
+    func retire() { Task { @MainActor in ParityLayoutRegistry.shared.remove(id) } }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        publish()
+    }
+
+    private func publish() {
+        guard let attributed = attributedText, bounds.width > 0, window != nil else { return }
+        let storage = NSTextStorage(attributedString: attributed)
+        let manager = NSLayoutManager()
+        let container = NSTextContainer(size: CGSize(width: bounds.width, height: .greatestFiniteMagnitude))
+        container.lineFragmentPadding = 0
+        container.maximumNumberOfLines = numberOfLines
+        container.lineBreakMode = lineBreakMode
+        manager.addTextContainer(container)
+        storage.addLayoutManager(manager)
+        manager.ensureLayout(for: container)
+        let drawnFont = (attributed.attribute(.font, at: 0, effectiveRange: nil) as? UIFont) ?? .systemFont(ofSize: size)
+        let raise = (attributed.attribute(.baselineOffset, at: 0, effectiveRange: nil) as? CGFloat) ?? 0
+        let string = attributed.string as NSString
+        var lines: [ParityLayoutRegistry.Item] = []
+        let hex = parityHex(colour, environment)
+        manager.enumerateLineFragments(forGlyphRange: manager.glyphRange(for: container)) { fragment, _, _, glyphs, _ in
+            var shown = glyphs
+            let cut = manager.truncatedGlyphRange(inLineFragmentForGlyphAt: glyphs.location)
+            if cut.location != NSNotFound { shown = NSRange(location: glyphs.location, length: max(0, cut.location - glyphs.location)) }
+            let characters = manager.characterRange(forGlyphRange: shown, actualGlyphRange: nil)
+            var line = string.substring(with: characters).trimmingCharacters(in: .whitespacesAndNewlines)
+            if cut.location != NSNotFound { line += "\u{2026}" }
+            let drawn = manager.boundingRect(forGlyphRange: glyphs, in: container)
+            let baseline = fragment.minY + manager.location(forGlyphAt: glyphs.location).y - raise
+            let local = CGRect(x: drawn.minX, y: baseline - drawnFont.ascender, width: drawn.width, height: drawnFont.ascender - drawnFont.descender)
+            let rect = self.convert(local, to: nil)
+            let centre = CGPoint(x: rect.midX, y: rect.midY)
+            guard !line.isEmpty, let opacity = self.paint.effective(rect) else { return }
+            lines.append(.init(text: line, role: "heading", size: self.size, weight: self.weight, color: hex, rect: rect,
+                               background: self.backdrop.rgb(at: centre, self.environment).hex, opacity: opacity, coveredBy: self.covered))
+        }
+        let runs = lines
+        Task { @MainActor in
+            ParityLayoutRegistry.shared.markAlive(id)
+            ParityLayoutRegistry.shared.setTextRuns(id, runs)
+        }
+    }
+}
+#endif

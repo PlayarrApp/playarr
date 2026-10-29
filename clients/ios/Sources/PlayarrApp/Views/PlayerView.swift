@@ -266,10 +266,12 @@ struct PlayerView: View {
                 scrim(size: size)
                 controls(viewModel, size: size)
                     .parityOpacity(controlsVisible ? 1 : 0)
+                    .accessibilityHidden(!controlsVisible)
                     .offset(y: controlsVisible ? 0 : 12)
                     .allowsHitTesting(controlsVisible)
                 topButtons(size: size)
                     .parityOpacity(controlsVisible ? 1 : 0)
+                    .accessibilityHidden(!controlsVisible)
                     .offset(y: controlsVisible ? 0 : -10)
                     .allowsHitTesting(controlsVisible)
                 if let menu = activeMenu, controlsVisible {
@@ -508,6 +510,7 @@ struct PlayerView: View {
                     }
                 }
                 .scaleEffect(active ? 1.1 : 1)
+                .parityBox("button", name: label)
                 .parityOpacity(disabled ? 0.28 : 1)
         }
         .buttonStyle(.plain)

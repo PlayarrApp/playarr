@@ -357,11 +357,12 @@ struct Profiles {
       // web: a pill whose link text and arrow are two elements ("Clients", "→")
       Row({ space: 8.8 }) {
         Text('Clients').fontFamily(nunitoAt(720, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().inkSoft)).accessibilityText('Clients').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
+          .fontColor(toResourceColor(activeColors().inkSoft))
         Text('→').fontFamily(arrowFont(720)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
       .height(tv(TV_ACTION_HEIGHT))
+      .accessibilityText('Clients').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
       .padding({ left: 17, right: 17 })
       .borderRadius(tv(TV_ACTION_HEIGHT / 2))
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
@@ -397,7 +398,7 @@ struct Profiles {
         .colorFilter(tintFilter(tint))
       if (label.length > 0) {
         Text(label).fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68))
-          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68).letterSpacing((isTvMetrics() ? -0.107 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)).halfLeading(true)
+          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68).letterSpacing(((isTvMetrics() ? -0.107 : 0)) + (!isTvMetrics() ? -0.08 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -495,7 +496,7 @@ struct Profiles {
         
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE)).lineHeight(webLineHeight(this.pick(80.64, PHONE_HEADING_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
-        .letterSpacing((this.pick(-5.15, -2.77)) + (isTvMetrics() ? -0.633 : 0))
+        .letterSpacing(((this.pick(-5.15, -2.77)) + (isTvMetrics() ? -0.633 : 0)) + (!isTvMetrics() ? -0.08 : 0))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
         .margin({ top: this.pick(-8, -0.75), bottom: this.pick(4.2, 0), left: isTvMetrics() ? 9.1 : PHONE_HEADING_LEFT }) // TV: the 110 vp line overflows its 77 vp frame; web's run starts 4.2 higher
@@ -522,7 +523,7 @@ struct Profiles {
             Text(profile.display_name).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
               .fontSize(this.pick(17.28, 13.12)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
               .fontWeight(FontWeight.Bold)
-              .letterSpacing((this.pick(0.35, 0.28)) + (isTvMetrics() ? -0.125 : 0))
+              .letterSpacing(((this.pick(0.35, 0.28)) + (isTvMetrics() ? -0.125 : 0)) + (!isTvMetrics() ? -0.114 : 0))
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: this.pick(16.78, profile.is_current ? 13.28 : 10.8) })  // web phone: the lifted current avatar pulls its name up
             Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
@@ -531,7 +532,7 @@ struct Profiles {
               .letterSpacing((this.pick(1.12, 0.67)) + (isTvMetrics() ? -0.228 : 0))
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(activeColors().inkMuted))
-              .margin({ top: this.pick(15.8, profile.is_current ? 14 : 12) })
+              .margin({ top: this.pick(13.3, profile.is_current ? 11.5 : 9.5) })
             if (profile.is_current) {
               Row({ space: tv(9) }) {
                 this.tvActionButton($r('app.media.nav_settings'), '', BRAND_PINK, () => {
@@ -541,11 +542,11 @@ struct Profiles {
                   this.handleSignOut();
                 })
               }
-              .margin(isTvMetrics() ? { top: 23.74, bottom: -67.74 } : { top: tv(21) + 5.4, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
+              .margin(isTvMetrics() ? { top: 23.74 - 1.3, bottom: -67.74 + 1.3 } : { top: tv(21) + 5.4 - 1.1, bottom: -72.52 }) // web: the actions sit under the profile button, outside its box
             }
           }
           .width(this.pick(254.98, 150.48))
-          .padding({ top: this.pick(5.49, 3.25), bottom: this.pick(8.8, 6.5) })
+          .padding({ top: this.pick(4.09, 3.25), bottom: this.pick(1.0, 6.5) })
           .accessibilityText(profile.display_name + (profile.is_current ? ', current profile' : '')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
@@ -578,7 +579,7 @@ struct Profiles {
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
           Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
-            .fontSize(this.pick(17.28, 13.12)).letterSpacing((isTvMetrics() ? -0.136 : 0)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
+            .fontSize(this.pick(17.28, 13.12)).letterSpacing(((isTvMetrics() ? -0.136 : 0)) + (!isTvMetrics() ? -0.109 : 0)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: this.pick(10.85, 9.35) })

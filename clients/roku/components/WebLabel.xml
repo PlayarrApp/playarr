@@ -22,12 +22,9 @@
     <field id="lineSpacing" type="float" value="0" onChange="refresh" />
     <field id="lineHeight" type="float" value="0" onChange="refresh" />
     <field id="tracking" type="float" value="0" onChange="refresh" />
-    <field id="rectH" type="float" value="0" />
     <!-- A glyph from the symbol fonts (arrows, play, check) rather than Nunito Sans text. -->
     <field id="symbol" type="boolean" value="false" />
     <field id="aria" type="string" value="" />
-    <!-- Corner radius of the pill the text sits in when the web reports the text element with that radius (a status badge, a pill button). -->
-    <field id="radius" type="float" value="0" />
     <field id="fitWidth" type="float" value="0" onChange="refresh" />
     <field id="textWidth" type="float" value="0" />
     <field id="lineCount" type="integer" value="0" />

@@ -2,6 +2,7 @@ package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
+import io.playarr.shared.designsystem.page.parityRole
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityPainted
 import io.playarr.shared.designsystem.page.playarrEdgeFades
@@ -35,7 +36,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import io.playarr.shared.designsystem.theme.FocusMotion
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -122,7 +123,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -3966,13 +3967,12 @@ private fun PlayarrUnwatchedDot(modifier: Modifier = Modifier, size: Dp = 12.dp,
     Box(
         modifier
             .size(size)
-            .parityBox("img", radius = 999f)
             // Web `.tv-watch-unseen` box-shadow: `0 2px 9px rgba(31,14,20,.45), 0 0 0 1px brand 35%` (phone only for now).
             .then(if (halo) Modifier
                 .shadow(4.dp, CircleShape, clip = false, ambientColor = Color(0xFF1F0E14), spotColor = Color(0xFF1F0E14))
                 .drawBehind { drawCircle(UnwatchedDotColour.copy(alpha = 0.35f), radius = size.toPx() / 2f + 1.dp.toPx() * 0.5f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())) }
             else Modifier)
-            .background(UnwatchedDotColour, CircleShape)
+            .parityBackground("img", UnwatchedDotColour, CircleShape, radius = 999f)
             .border(2.dp, Color.White.copy(alpha = 0.94f), CircleShape)
             .semantics { contentDescription = label },
     )
@@ -5123,7 +5123,7 @@ private fun PhoneSearchContent(
                 Row(
                     // Web's 50px min-height grows to 60px from the 44px input plus 14px padding and 2px border.
                     Modifier.fillMaxWidth().height(60.dp)
-                        .parityShape(999f)
+                        .parityShape(999f).parityRole("search")
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
                         .border(1.dp, WebSearchBorder, pillShape)
                         .padding(horizontal = 17.dp), // the web box adds its 1 px border to the padding
@@ -5334,10 +5334,10 @@ private fun TelevisionSearchBody(
             Modifier
                 .offset(x = 153.6.dp, y = 172.8.dp)
                 .size(590.dp, 76.dp)
-                .parityShape(999f)
+                .parityShape(999f).parityRole("search")
                 .webFocusRing(focused, radius = 38.dp, offset = 2.dp)
                 .clip(CircleShape)
-                .background(WebSurfaceStrong.copy(alpha = 0.88f))
+                .background(WebSurfaceStrong.copy(alpha = 0.88f), CircleShape)
                 .border(1.dp, WebInkMuted.copy(alpha = 0.3f), CircleShape)
                 .padding(start = 25.dp, end = 22.dp),
             verticalAlignment = Alignment.CenterVertically,

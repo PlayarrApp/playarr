@@ -59,10 +59,20 @@ class LayoutExportTest(unittest.TestCase):
         b = [e for e in export(tree, "x", "dark", (1920, 1080, 1))["elements"] if e["role"] == "button"][0]
         self.assertEqual((b["text"], b["rect"]["w"], b["radius"]), ("Play", 64.0, 32.0))
 
-    def test_a_text_that_is_the_control_exports_its_lines_with_the_apps_role_and_radius(self):
-        t = text("[100.00, 100.00],[130.00, 56.00]", "Title", [run(0, 5, 10.0, 10.0, 33.0, 25.0)], accessibilityTextHint="pvrole:5", backgroundColor="#FFF4F0F1", borderRadius="12.00vp")
+    def test_a_text_that_draws_a_control_box_exports_the_box_and_its_runs(self):
+        t = text("[100.00, 100.00],[130.00, 56.00]", "Title", [run(0, 5, 10.0, 10.0, 33.0, 25.0)], accessibilityText="Title", accessibilityTextHint="pvrole:5", backgroundColor="#FFF4F0F1", borderRadius="12.00vp")
         els = export(column([t], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))["elements"]
-        self.assertEqual([(e["role"], e["text"], e.get("radius")) for e in els if e["role"] != "container"], [("button", "Title", 12.0)])
+        self.assertEqual([(e["role"], e["text"], e.get("radius")) for e in els if e["role"] != "container"], [("button", "Title", 12.0), ("text", "Title", None)])
+
+    def test_a_text_control_without_a_fill_still_gets_its_box_and_runs(self):
+        t = text("[100.00, 100.00],[130.00, 56.00]", "Title", [run(0, 5, 10.0, 10.0, 33.0, 25.0)], accessibilityTextHint="pvrole:5")
+        els = export(column([t], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))["elements"]
+        self.assertEqual([(e["role"], e["text"]) for e in els if e["role"] != "container"], [("button", "Title"), ("text", "Title")])
+
+    def test_text_height_is_the_native_range_height(self):
+        t = text("[0.00, 0.00],[200.00, 48.00]", "Hi", [run(0, 2, 0.0, 4.0, 20.0, 19.0)])
+        e = [e for e in export(column([t], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))["elements"] if e["role"] == "text"][0]
+        self.assertEqual((e["rect"]["y"], e["rect"]["h"]), (4.0, 15.0))
 
     def test_a_control_fully_behind_a_later_drawer_is_dropped(self):
         btn = {"$type": "Row", "$rect": "[1846.00, 151.00],[62.00, 72.00]", "$attrs": {"accessibilityText": "Filters", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#33FFFFFF"}, "$children": []}

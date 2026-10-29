@@ -9,7 +9,7 @@ import io.playarr.shared.designsystem.page.PlayarrErrorState
 import io.playarr.shared.designsystem.page.PlayarrLoadingState
 import io.playarr.shared.designsystem.component.PlayarrButton
 import io.playarr.shared.designsystem.component.PlayarrButtonVariant
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -26,7 +26,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
