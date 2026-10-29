@@ -104,12 +104,12 @@ class LayoutExportTest(unittest.TestCase):
         doc = export(tree, "x", "dark", (600, 1200, 3))
         self.assertEqual([e["rect"]["w"] for e in doc["elements"] if e["role"] == "button"], [295.0])
 
-    def test_an_ellipsised_line_ends_with_the_measured_ellipsis(self):
+    def test_a_text_truncated_by_the_frameworks_ellipsis_fails_the_export(self):
         node = text("[0.00, 0.00],[204.00, 51.00]", "Hollow Garden 3", [run(0, 7, 0.0, 3.0, 128.0, 47.0)], textOverflow="TextOverflow.Ellipsis")
-        node["$ellipsisW"] = 30.0
-        doc = export(column([node], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
-        t = [e for e in doc["elements"] if e["role"] == "text"][0]
-        self.assertEqual((t["text"], t["rect"]["w"]), ("Hollow \u2026", 158.0))
+        with self.assertRaises(ExportError):
+            export(column([node], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
+        node["$runs"] = [run(0, 15, 0.0, 3.0, 128.0, 47.0)]
+        export(column([node], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
 
     def test_a_text_that_paints_a_pill_keeps_its_radius(self):
         pill = text("[10.00, 10.00],[70.00, 27.00]", "Missing", [run(0, 7, 5.0, 4.0, 60.0, 22.0)], backgroundColor="#FF392C30", borderRadius="13.50vp")

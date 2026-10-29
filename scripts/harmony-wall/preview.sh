@@ -26,7 +26,6 @@ build() {
   if [ "$DEVICE" = phone ]; then sed -i "s/'deviceType': 'tv'/'deviceType': 'phone'/; s/Previewer TV/Previewer Phone/" entry/src/mock/deviceinfo.mock.ets; fi
   python3 "$HERE/patch_index.py" entry/src/main/ets/pages/Index.ets
   python3 "$HERE/patch_prefs.py" entry/src/main/ets/auth/SettingsStore.ets
-  python3 "$HERE/patch_theme.py" entry/src/main/ets/pages/Profiles.ets
   python3 "$HERE/patch_language.py" entry/src/main/ets/AppContainer.ets "${PREVIEW_LANGUAGE:-en}"
   if [ "$DEVICE" = phone ]; then python3 "$HERE/patch_drawer.py" entry/src/main/ets/design/components/Drawer.ets; fi
   python3 "$HERE/patch_clock.py" entry/src/main/ets/design/components/Clock.ets entry/src/main/ets/pages/Calendar.ets
@@ -35,10 +34,6 @@ build() {
   python3 "$HERE/patch_state.py" entry/src/main/ets
   python3 "$HERE/patch_player_hold.py" entry/src/main/ets/pages/Player.ets # the player is held paused at 2.000 s on both devices
   python3 "$HERE/patch_caret.py" entry/src/main/ets/pages/Search.ets entry/src/main/ets/pages/Player.ets # no blinking caret, no spinner in the pinned frame
-  if [ "$DEVICE" = tv ]; then # web's ref shows the paused static clip frame behind the controls; the Previewer's video is a black mock
-    cp "$HERE/../parity/fixtures/static-clip-2s.png" entry/src/main/resources/rawfile/parity-player-still.png
-    python3 "$HERE/patch_player_still.py" entry/src/main/ets/pages/Player.ets
-  fi
   [ "${RAIL_PATCH:-yes}" = no ] || python3 "$HERE/patch_rail.py" entry/src/main/ets/design/components/MediaRail.ets
   python3 "$HERE/patch_artwork.py" entry/src/main/ets/data/ArtworkRepository.ets "$CTL"
   python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets

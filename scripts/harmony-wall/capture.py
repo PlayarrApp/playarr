@@ -257,7 +257,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
 
 
 def player_held_at_2s(folder):
-    """The preview build holds the player paused at exactly 2.000 s (patch_player_still.py; docs/parity/DEVICES.md, 'Pausing the player at
+    """The preview build holds the player paused at exactly 2.000 s (patch_player_hold.py; docs/parity/DEVICES.md, 'Pausing the player at
     exactly 2.000 s'). Refuse the capture unless the app's own tree reports that position, paused (the Play button, not Pause)."""
     raw = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark", "player-controls.json")
     if not os.path.exists(raw):
@@ -318,18 +318,21 @@ else:
 
 # 1. sign in: point the app at the test server (typed through the bridge, never baked into the build), then the pairing page logs
 # its user code; approve it as the Device Test account (fresh device id each run)
-route("serversetup", 8)
-FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
-click(*FIELD); time.sleep(1)
-get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
-click(*CONNECT); time.sleep(8)
 code = None
-for _ in range(60):
-    found = re.findall(rb"PLAYARR_LINKCODE=([A-Z0-9-]+) END", open(log, "rb").read())
-    if len(found) >= 2:  # the first belongs to the hosted-link default pairing page, the last to the test server
-        code = found[-1].decode()
+for attempt in range(3):  # the Previewer's name lookup of the server can fail for a while (curl 6): connect again from the server page
+    route("serversetup", 8)
+    FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
+    click(*FIELD); time.sleep(1)
+    get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
+    click(*CONNECT); time.sleep(8)
+    for _ in range(60):
+        found = re.findall(rb"PLAYARR_LINKCODE=([A-Z0-9-]+) END", open(log, "rb").read())
+        if len(found) >= 2:  # the first belongs to the hosted-link default pairing page, the last to the test server
+            code = found[-1].decode()
+            break
+        time.sleep(2)
+    if code is not None:
         break
-    time.sleep(2)
 if code is None:
     abort("no link code for the test server in the Previewer log")
 approval = subprocess.run([sys.executable, os.path.join(HERE, "approve_link.py"), code,
@@ -784,6 +787,8 @@ if device == "tv":
         decoded_art = None
     folder = os.path.join(out, "light" if THEME == "light" else "dark")
     if TV_SELECTION is None:
+        # the app's own theme select (Settings, Appearance): choose the theme explicitly as web's reference does, so Profiles shows the stored choice
+        route("settings", 8); click(394, 207); time.sleep(3); click(1645 if folder.endswith("dark") else 1295, 285); time.sleep(4)
         route("profiles", 6); snap("profiles", folder)
         route("home", 20)
         walk(folder, "")
@@ -874,6 +879,8 @@ else:
 
     # the phone library refs have no card focus ring either (web touch layout), so no card is focused on the phone
     # the phone Home ref is taken without the On deck focus ring (web-refs.json noFocusRing), so Home is not focused here
+    # web's reference has the theme chosen explicitly: choose it in the app's own Appearance panel (Light and Dark buttons at y 439 px)
+    guarded("theme-choice", lambda: (route("settings", 12), click(540, 347), time.sleep(6), click(540 if THEME == "light" else 875, 439), time.sleep(4)))
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):

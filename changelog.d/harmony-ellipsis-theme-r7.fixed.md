@@ -1,0 +1,1 @@
+- HarmonyOS: month-calendar lines shorten themselves with a real ellipsis character measured in the app; the layout export refuses a Text the framework truncates, and the TV capture picks its theme through the app's own Settings select instead of a preview-only label patch.

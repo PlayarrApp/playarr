@@ -59,33 +59,12 @@ methods = """
         node.$runsError = String(err);
       }
     }
-    this.previewMeasureEllipsis(node);
     this.previewMeasureFrame(node);
     const kids: PvNode[] | undefined = node.$children;
     if (kids !== undefined) {
       for (const kid of kids) {
         this.previewMeasureNode(kid);
       }
-    }
-  }
-
-  // A Text that the framework ellipsises draws an ellipsis its line metrics and range boxes do not include: the platform's own measure of
-  // that glyph in the Text's font stack (and what the layout manager reports for the characters just after the line) completes the line.
-  private previewMeasureEllipsis(node: PvNode): void {
-    const a: PvAttrs | undefined = node.$attrs;
-    const runs: PvLine[] | undefined = node.$runs;
-    if (node.$type !== 'Text' || a === undefined || runs === undefined || runs.length === 0 || a.content === undefined ||
-      a.textOverflow === undefined || a.textOverflow.indexOf('Ellipsis') < 0) {
-      return;
-    }
-    if (runs[runs.length - 1].end >= a.content.trim().length) {
-      return;
-    }
-    try {
-      const opts: PvMeasureOptions = new PvMeasureOptions(a);
-      node.$ellipsisW = this.getUIContext().getMeasureUtils().measureTextSize(opts).width as number;
-    } catch (err) {
-      node.$ellipsisError = String(err);
     }
   }
 
@@ -164,7 +143,7 @@ methods = """
     }
   }
 """ % (port, port)
-s = s.replace("\n@Entry", "\ninterface PvAttrs {\n  accessibilityDescription?: string;\n  content?: string;\n  textOverflow?: string;\n  fontSize?: string;\n  fontFamily?: string;\n  fontWeight?: string;\n  letterSpacing?: string;\n}\n\nclass PvMeasureOptions {\n  textContent: string = '\\u2026';\n  fontSize?: string;\n  fontFamily?: string;\n  fontWeight?: string;\n  letterSpacing?: string;\n  constructor(a: PvAttrs) { this.fontSize = a.fontSize; this.fontFamily = a.fontFamily; this.fontWeight = a.fontWeight; this.letterSpacing = a.letterSpacing; }\n}\n\nclass PvFrame {\n  w: number;\n  h: number;\n  constructor(w: number, h: number) { this.w = w; this.h = h; }\n}\n\ninterface PvNode {\n  $type: string;\n  $ID?: number;\n  $frame?: PvFrame;\n  $frameError?: string;\n  $ellipsisW?: number;\n  $ellipsisError?: string;\n  $rect: string;\n  $attrs?: PvAttrs;\n  $children?: PvNode[];\n  $runs?: PvLine[];\n  $runsError?: string;\n}\n\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
+s = s.replace("\n@Entry", "\ninterface PvAttrs {\n  accessibilityDescription?: string;\n  content?: string;\n  textOverflow?: string;\n  fontSize?: string;\n  fontFamily?: string;\n  fontWeight?: string;\n  letterSpacing?: string;\n}\n\nclass PvFrame {\n  w: number;\n  h: number;\n  constructor(w: number, h: number) { this.w = w; this.h = h; }\n}\n\ninterface PvNode {\n  $type: string;\n  $ID?: number;\n  $frame?: PvFrame;\n  $frameError?: string;\n  $rect: string;\n  $attrs?: PvAttrs;\n  $children?: PvNode[];\n  $runs?: PvLine[];\n  $runsError?: string;\n}\n\nclass PreviewRouteParams {\n  kind: string;\n  constructor(kind: string) { this.kind = kind; }\n}\n\nclass PreviewDetailParams {\n  workId: string;\n  constructor(workId: string) { this.workId = workId; }\n}\n\nclass PreviewPlayerParams {\n  mediaFileId: string;\n  workId: string = '';\n  constructor(mediaFileId: string) { this.mediaFileId = mediaFileId; }\n}\n\n@Entry", 1)
 s = s.replace("\n  @Builder\n  previewRoutes(", methods + "\n  @Builder\n  previewRoutes(", 1)
 s = s.replace("import { ROUTES } from '../navigation/Routes';", "import { http } from '@kit.NetworkKit';\nimport { FrameNode } from '@kit.ArkUI';\nimport { PvLine, pvTextLines } from '../util/PreviewText';\nimport { isTvMetrics } from '../design/Metrics';\nimport { ROUTES } from '../navigation/Routes';", 1)
 s = s.replace("  aboutToAppear(): void {\n", "  aboutToAppear(): void {\n    this.startPreviewRoutePoll();\n", 1)

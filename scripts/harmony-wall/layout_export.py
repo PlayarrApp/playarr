@@ -172,17 +172,15 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         weight, size = weight_of(a), num(a.get("fontSize"), 16.0)
         col = argb(a.get("fontColor")) or (0, 0, 0, 1.0)
         colour = hex_of(over(col, under))
-        if node.get("$ellipsisError"):
-            raise ExportError(f"Text {content[:30]!r} is ellipsised and its ellipsis could not be measured ({node['$ellipsisError']})")
+        if "Ellipsis" in str(a.get("textOverflow", "")) and runs and runs[-1]["end"] < len(content.rstrip()):
+            # the framework draws its ellipsis outside the glyph runs it reports: the app must shorten the string itself (design/components/FitLine.ets)
+            raise ExportError(f"Text {content[:30]!r} is truncated by the framework's ellipsis, which no native run reports")
         for n, line in enumerate(runs):  # one element per laid-out line: its text, the glyph runs' horizontal extent and the line's own box
             boxes = line["tight"]
             line_text = " ".join(shown(content[line["start"]:line["end"]]).split())
             if not boxes or not line_text:
                 continue
             l, r = min(b["l"] for b in boxes), max(b["r"] for b in boxes)
-            if n == len(runs) - 1 and node.get("$ellipsisW") is not None:  # the framework's ellipsis ends the last line: drawn, so part of its text and range
-                line_text = " ".join((shown(content[line["start"]:line["end"]]) + "\u2026").split())
-                r += float(node["$ellipsisW"])
             t, bt = min(b["t"] for b in boxes), max(b["b"] for b in boxes)
             rect = (ox + l * k, oy + t * k, (r - l) * k, (bt - t) * k)  # exactly the layout manager's range rectangles for this line
             if visible(rect, clip):
