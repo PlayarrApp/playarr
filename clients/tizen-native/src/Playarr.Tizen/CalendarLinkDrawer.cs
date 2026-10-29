@@ -46,7 +46,7 @@ internal sealed class CalendarLinkDrawer
         Sem.Tag(qr, "img", "");
         var qrFile = global::Tizen.Applications.Application.Current.DirectoryInfo.Data + "cal-qr.png";
         File.WriteAllBytes(qrFile, QrImage.Png(link, 4));
-        qr.Add(new ImageView(qrFile) { PositionX = 20, PositionY = 20, Size = new Size(200, 200) });
+        qr.Add(new ImageView(qrFile) { PositionX = 12, PositionY = 12, Size = new Size(216, 216) });
         Root.Add(qr);
         Root.Add(Sem.Tag(Ui.Text("Add it to your calendar app", 1606, 631.5f, 9.6f, 720, t.InkMuted, 268, 14.4f, upper: true, spacing: 0.67f), "heading"));
         var steps = new[] { "Google Calendar: Other calendars (+) > From URL, then paste the link.", "Apple Calendar: File > New Calendar Subscription, then paste the link.", "Outlook: Add calendar > Subscribe from web, then paste the link." };
@@ -56,12 +56,12 @@ internal sealed class CalendarLinkDrawer
             Root.Add(Ui.Box(1609.6f, y + 8, 5, 5, t.Ink, 2.5f));
             Ui.Paragraph(Root, steps[i], 1623.6f, y, 13.824f, 400, t.Ink, 250, 19.85f);
         }
-        var reset = Ui.Box(1606, 812, 110, 54, new Rgba(0, 0, 0, 0), 27);
+        var reset = Ui.Box(1606, 810.34f, 110, 58, new Rgba(0, 0, 0, 0), 29);
         Sem.Tag(reset, "button", "Reset link");
-        reset.Add(Ui.Text("Reset link", 21, 17.3f, 14.72f, 720, t.Ink, 80, 20));
-        var rr = Ring.Make(110, 54, 27, new Rgba(1, 1, 1)); rr.Show(false); reset.Add(rr);
+        reset.Add(Ui.Text("Reset link", 21, 18.96f, 14.72f, 720, t.Ink, 80, 20));
+        var rr = Ring.Make(110, 58, 29, new Rgba(1, 1, 1)); rr.Show(false); reset.Add(rr);
         Root.Add(reset);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(1606, 812, 110, 54), Label = "reset link", Select = () => toast("Resetting the link is not available on this TV."), Style = f => rr.Show(f) });
+        _focus.Items.Add(new Focusable { Rect = () => new Box(1606, 810.34f, 110, 58), Label = "reset link", Select = () => toast("Resetting the link is not available on this TV."), Style = f => rr.Show(f) });
         _focus.Set(0);
     }
 

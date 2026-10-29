@@ -1,0 +1,1 @@
+- Tizen native: calendar link drawer QR image and Reset link button use web's box sizes.
