@@ -123,7 +123,6 @@ internal sealed class Shell : View
         pv.Tile = Ui.Box(0, 0, 64, 64, null, 16);
         _avatarIcon = new ImageView(Ui.ResPath("avatars/" + AvatarPresets.Default("")) + ".png") { PositionX = 22, PositionY = 15.1f, Size = new Size(20, 20), CornerRadius = 10 };
         pv.Icon = null!;
-        Sem.Tag(_avatarIcon, "container");
         pv.Label = Ui.Text(_env.Profile, -6.75f, 39.9f, 8.832f, 700, _theme.InkMuted, RailW, 8.832f, HorizontalAlignment.Center, spacing: 0.30912f);
         pv.Item64.Add(pv.Tile); pv.Item64.Add(_avatarIcon); pv.Item64.Add(pv.Label);
         Sem.Tag(pv.Item64, "link", $"Signed in as {_env.Profile}. Open profiles.");

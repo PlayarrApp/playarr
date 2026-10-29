@@ -47,6 +47,7 @@ internal sealed class PlaylistsScreen : IPage
     private readonly TextLabel _status;
     private readonly DetailsPanel _detailPanel;
     private readonly FocusSet _focus = new();
+    private readonly BackControl _back;
     private readonly List<MediaCard> _cards = new();
     private View? _fadeTop, _fadeBottom;
     private readonly List<DetailTrackState> _detailTracks = new();
@@ -83,7 +84,7 @@ internal sealed class PlaylistsScreen : IPage
     public View Root => _root;
     public string Route => _route.ToRoute();
     public bool IsReady => _ready;
-    public string? FocusedLabel => _management?.FocusedLabel ?? _createDrawer?.FocusedLabel ?? _filters?.FocusedLabel ?? (_actionFocus >= 0 ? _actionControls[_actionFocus].Target.Label : _focus.Item?.Label);
+    public string? FocusedLabel => _back.Focused ? "back" : _management?.FocusedLabel ?? _createDrawer?.FocusedLabel ?? _filters?.FocusedLabel ?? (_actionFocus >= 0 ? _actionControls[_actionFocus].Target.Label : _focus.Item?.Label);
     internal bool IsPlaylistNameEditing => _createDrawer?.IsNameEditing == true;
     internal void SetCreateName(string value) => _createDrawer?.SetName(value);
     internal void SubmitCreateFromName() => _createDrawer?.SubmitFromTextInput();
@@ -103,12 +104,7 @@ internal sealed class PlaylistsScreen : IPage
         _detailPanel.Root.Show(false);
         _root.Add(_detailPanel.Root);
 
-        var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_theme.SurfaceStrong.R, _theme.SurfaceStrong.G, _theme.SurfaceStrong.B, 0.7f), 25);
-        back.BorderlineWidth = 1;
-        back.BorderlineColor = Ui.LineA(_theme, 0.153f);
-        back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _theme.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "link", "Back to Home");
-        _root.Add(back);
+        _back = new BackControl(env, _theme, _root, "link", "Back to Home");
         _title = Ui.Heading("Playlists", 226.6f, 56.2f, 33.6f, 600, _theme.Ink, 600, 50, spacing: -1.51f);
         _root.Add(_title);
         _count = new PageSubtitle(env, _root, "Playlists");
@@ -1146,6 +1142,18 @@ internal sealed class PlaylistsScreen : IPage
     }
 
     public bool OnKey(RemoteKey key)
+    {
+        if (_back.Focused)
+            return _back.OnKey(key, () => { _back.Show(false); if (_actionFocus >= 0) FocusAction(_actionFocus); else if (_focus.Current >= 0) FocusAt(_focus.Current); });
+        if (_management is not null || !_ready || _createDrawer is not null || _filters is not null || key != RemoteKey.Up) return OnKeyCore(key);
+        // Up that moves nothing at the top of the page enters the header back arrow
+        var (cur, act) = (_focus.Current, _actionFocus);
+        var handled = OnKeyCore(key);
+        if (handled && _focus.Current == cur && _actionFocus == act) { _focus.Item?.Style(false); if (_actionFocus >= 0) _actionControls[_actionFocus].Target.Style(false); _back.Show(true); }
+        return handled;
+    }
+
+    private bool OnKeyCore(RemoteKey key)
     {
         if (_management is not null) return _management.OnKey(key);
         if (!_ready) return key is not (RemoteKey.Left or RemoteKey.Back);

@@ -33,9 +33,13 @@ internal sealed class CalendarLinkDrawer
         Ui.Paragraph(Root, "Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", 1606, 163.4f, 13.824f, 400, t.InkMuted, 267, 20.3f);
         var box = Ui.Box(1606, 258.4f, 268, 44, t.Surface, 8);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.C(t.Line);
-        box.ClippingMode = ClippingModeType.ClipChildren; // the link text overflows its box and is clipped there
-        box.Add(Ui.Text(link, 13, 12.5f, 12.8f, 400, t.Ink, 242, 19, family: Ui.Mono));
+        var clip = new View { Size = new Size(268, 44), CornerRadius = 8, ClippingMode = ClippingModeType.ClipChildren }; // the link text overflows its box and is clipped there; the ring sits outside the clip
+        clip.Add(Ui.Text(link, 13, 12.5f, 12.8f, 400, t.Ink, 242, 19, family: Ui.Mono));
+        box.Add(clip);
+        Sem.Tag(box, "textbox", "Subscription link"); // web: a read-only input; Select reads it like Copy link
+        var br = Ring.Make(268, 44, 8, new Rgba(1, 1, 1)); br.Show(false); box.Add(br);
         Root.Add(box);
+        _focus.Items.Add(new Focusable { Rect = () => new Box(1606, 258.4f, 268, 44), Label = "subscription link", Select = () => toast("Copying is not available on this TV."), Style = f => br.Show(f) });
         var copy = Ui.Box(1606, 312.9f, 106, 58, t.Accent, 29);
         Sem.Tag(copy, "button", "Copy link");
         copy.Add(Ui.Text("Copy link", 21, 17.9f, 14.72f, 720, t.OnAccent, 70, 20));

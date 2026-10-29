@@ -16,6 +16,7 @@ internal sealed class DownloadsScreen : IPage
     private readonly View _root = new();
     private readonly View _list = new();
     private readonly FocusSet _focus = new();
+    private readonly BackControl _back;
     private readonly global::Tizen.NUI.Timer _refresh = new(1000);
     private DownloadDrawer? _drawer;
     private float _scroll;
@@ -32,11 +33,7 @@ internal sealed class DownloadsScreen : IPage
         _env = env; _t = env.Theme;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
-        back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
-        back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "link", "Back to Home");
-        _root.Add(back);
+        _back = new BackControl(env, _t, _root, "link", "Back to Home");
         _root.Add(Ui.Heading("Downloads", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 600, 50, spacing: -1.51f));
         var clip = new View { PositionY = ViewTop, Size = new Size(TizenClient.DesignWidth, ViewH), ClippingMode = ClippingModeType.ClipChildren };
         clip.Add(_list);
@@ -56,6 +53,7 @@ internal sealed class DownloadsScreen : IPage
     {
         keepLabel ??= _focus.Item?.Label;
         _focus.Clear();
+        _focus.Items.Add(_back.Item); // index 0: the header back arrow, reachable by Up from the first row
         foreach (var c in _list.Children.ToArray()) { _list.Remove(c); c.Dispose(); }
         var all = _env.Downloads.Records.OrderBy(r => r.SeriesTitle ?? r.Title).ThenBy(r => r.Season).ThenBy(r => r.Episode).ToList();
         var active = all.Where(r => r.State is DownloadState.Queued or DownloadState.Processing or DownloadState.Downloading or DownloadState.Paused).ToList();
@@ -66,13 +64,13 @@ internal sealed class DownloadsScreen : IPage
         {
             _list.Add(Ui.Text("No downloads yet", 153.6f, 150, 30, 700, _t.Ink, 800, 44));
             _list.Add(Ui.Text("Download a title from its detail page to watch it without a connection.", 153.6f, 200, 16, 400, _t.InkMuted, 900, 24));
-            _drawer = _drawer; return;
+            _focus.Set(0); _drawer = _drawer; return;
         }
         y = Section("Active", active, y, "Nothing is downloading.");
         y = Section("Downloaded", done, y, "Nothing has finished downloading yet.");
         if (bad.Count > 0) y = Section("Needs attention", bad, y, "");
         var found = keepLabel is null ? -1 : _focus.Items.FindIndex(i => i.Label == keepLabel);
-        if (_focus.Items.Count > 0) _focus.Set(found >= 0 ? found : 0);
+        _focus.Set(found >= 0 ? found : _focus.Items.Count > 1 ? 1 : 0);
         Scroll();
     }
 

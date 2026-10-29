@@ -15,3 +15,4 @@ export PARITY_CLIENT=tizen-native
 run() { flock "${PARITY_EMULATOR_LOCK:-$PARITY_LOCK_DIR/emulator.lock}" node suite-run.mjs --driver ./drivers/tizen-native.mjs --out "$out" "$@"; }
 run --only screens --extra-screens calendar-link "$@"
 run --only dpad "$@"
+flock "${PARITY_EMULATOR_LOCK:-$PARITY_LOCK_DIR/emulator.lock}" node tizen-native/back-dpad.mjs "$out/back-dpad.json"

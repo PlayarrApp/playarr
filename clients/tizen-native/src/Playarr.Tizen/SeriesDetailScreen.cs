@@ -249,8 +249,8 @@ internal sealed class SeriesDetailScreen : IPage
         var px = 325.6f; var slot = 1;
         // web: "Ask again" only while the resume plan is something other than a plain start
         if (hasProgress) { Pill(slot++, _copy, "Ask again", "↺", px, yb, 142, false, "ask again", () => Toast("Resume choices are not available in this app yet."), "Ask again"); px += 158; }
-        Pill(slot++, _copy, "Add to watchlist", "+", px, yb, 142, false, "add to watchlist", () => _ = AddToWatchlistAsync(), "+ Add to watchlist");
-        Pill(slot, _copy, "Add to Playlist", "+", px + 158, yb, 142, false, "add to playlist", () => Toast("Playlists are not available in this app yet."), "+ Add to Playlist");
+        Pill(slot++, _copy, "Add to watchlist", "+", px, yb, 142, false, "add to watchlist", () => _ = AddToWatchlistAsync(), "Add to watchlist");
+        Pill(slot, _copy, "Add to Playlist", "+", px + 158, yb, 142, false, "add to playlist", () => Toast("Playlists are not available in this app yet."), "Add to Playlist");
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
     }
 
