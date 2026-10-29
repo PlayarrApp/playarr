@@ -129,9 +129,58 @@ class LayoutExportTest(unittest.TestCase):
         cover["$attrs"]["hitTestBehavior"] = "HitTestMode.Default"
         self.assertNotIn("button", self._roles([self._button(), cover]))
 
-    def test_a_covering_role_button_text_drops_the_button(self):
-        cover = text("[0.00, 0.00],[1080.00, 2340.00]", "", [], accessibilityTextHint="pvrole:5", accessibilityText="Cover")
-        self.assertNotIn("Quality", [e["text"] for e in export(column([self._button(), cover]), "x", "dark", (360, 780, 3))["elements"]])
+    def test_an_unpainted_text_control_covers_nothing_but_its_glyphs(self):
+        # audit counterexample 1: a role=button Text over the button with no fill and one glyph range far from it
+        btn = {"$type": "Button", "$rect": "[30.00, 30.00],[60.00, 60.00]", "$attrs": {"accessibilityText": "Under"}}
+        far = text("[0.00, 0.00],[300.00, 300.00]", "x", [run(0, 1, 210.0, 210.0, 240.0, 240.0)], accessibilityTextHint="pvrole:5", accessibilityText="Cover")
+        self.assertIn("Under", [e["text"] for e in export(column([btn, far]), "x", "dark", (360, 780, 3))["elements"]])
+        far["$attrs"]["opacity"] = "0.2"
+        self.assertIn("Under", [e["text"] for e in export(column([btn, far]), "x", "dark", (360, 780, 3))["elements"]])
+
+    def test_a_round_painter_does_not_cover_beyond_its_circle(self):
+        # audit counterexample 2: a 100 x 100 black component with radius 50 does not reach the corner of the button at (0, 0)
+        btn = {"$type": "Button", "$rect": "[0.00, 0.00],[30.00, 30.00]", "$attrs": {"accessibilityText": "Corner"}}
+        disc = {"$type": "Row", "$rect": "[0.00, 0.00],[300.00, 300.00]", "$attrs": {"backgroundColor": "#FF000000", "borderRadius": "50.00vp"}, "$children": []}
+        self.assertIn("button", [e["role"] for e in export(column([btn, disc]), "x", "dark", (360, 780, 3))["elements"]])
+        disc["$attrs"]["borderRadius"] = "0.00vp"
+        self.assertNotIn("button", [e["role"] for e in export(column([btn, disc]), "x", "dark", (360, 780, 3))["elements"]])
+
+    def test_a_clipped_gradient_keeps_the_alpha_of_its_whole_box(self):
+        # audit counterexample 3: a gradient 200 tall whose top half is clipped away; alpha at the button rows is that of the whole box
+        scroll = {"$type": "Scroll", "$rect": "[0.00, 0.00],[300.00, 300.00]", "$attrs": {}, "$children": [{"$type": "Column", "$rect": "[0.00, -300.00],[300.00, 600.00]",
+                  "$attrs": {"linearGradient": {"angle": "180.00px", "direction": "GradientDirection.None", "repeating": "false", "colors": [["#00000000", "0.000000"], ["#FF000000", "1.000000"]]}}, "$children": []}]}
+        low = {"$type": "Button", "$rect": "[30.00, 30.00],[60.00, 60.00]", "$attrs": {"accessibilityText": "Low"}}
+        # whole-box alpha at y 30..90 is 0.55..0.65 (covered); a gradient re-fitted to the clip would give 0.1..0.3 (kept)
+        self.assertNotIn("button", [e["role"] for e in export(column([low, scroll]), "x", "dark", (360, 780, 3))["elements"]])
+
+    def test_a_recovered_frame_size_is_scaled_like_the_box(self):
+        # audit: window 300 px, scale 2, inspector rect (240, 10, 60, 20) cut at the edge, measured pre-transform size (50, 10) is 100 wide
+        tile = {"$type": "Column", "$rect": "[240.00, 10.00],[60.00, 20.00]", "$attrs": {"accessibilityText": "Tile", "accessibilityTextHint": "pvrole:5", "scale": {"x": "2.000000", "y": "2.000000"}},
+                "$frame": {"w": 50.0, "h": 10.0}, "$children": []}
+        root = column([tile], rect="[0.00, 0.00],[300.00, 600.00]")
+        root["width"], root["height"] = 300, 600
+        doc = export(root, "x", "dark", (100, 200, 3))
+        self.assertEqual([e["rect"]["w"] for e in doc["elements"] if e["role"] == "button"], [round(100 / 3, 2)])
+
+    def test_glyph_ranges_inside_the_viewport_survive_an_offstage_frame(self):
+        t = text("[330.00, 100.00],[30.00, 40.00]", "ab", [run(0, 2, -90.0, 0.0, 0.0, 30.0)])
+        doc = export(column([t]), "x", "dark", (100, 200, 3))
+        self.assertEqual([e["text"] for e in doc["elements"] if e["role"] == "text"], ["ab"])
+
+    def test_transparent_text_is_not_exported_and_a_missing_style_raises(self):
+        t = text("[30.00, 100.00],[90.00, 40.00]", "ab", [run(0, 2, 0.0, 0.0, 60.0, 30.0)], fontColor="#00F4F0F1")
+        self.assertEqual([e for e in export(column([t]), "x", "dark", (360, 780, 3))["elements"] if e["role"] == "text"], [])
+        t2 = text("[30.00, 100.00],[90.00, 40.00]", "ab", [run(0, 2, 0.0, 0.0, 60.0, 30.0)])
+        del t2["$attrs"]["fontSize"]
+        with self.assertRaises(ExportError):
+            export(column([t2]), "x", "dark", (360, 780, 3))
+
+    def test_a_divider_is_exported_with_its_stroke_colour(self):
+        d = {"$type": "Divider", "$rect": "[100.00, 400.00],[600.00, 1.00]", "$attrs": {"color": "#15F4F0F1", "strokeWidth": "1.00vp", "backgroundColor": "#00000000"}}
+        doc = export(column([d]), "x", "dark", (1920, 1080, 1))
+        rules = [e for e in doc["elements"] if e["rect"]["h"] == 1.0]
+        self.assertEqual(len(rules), 1)
+        self.assertNotEqual(rules[0]["background"], "#151315")
 
     def test_a_painted_text_with_a_background_covers(self):
         cover = text("[0.00, 0.00],[1080.00, 2340.00]", "", [], backgroundColor="#FF000000")
