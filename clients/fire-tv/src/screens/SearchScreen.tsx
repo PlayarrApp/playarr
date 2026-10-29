@@ -209,7 +209,9 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           backgroundColor: mix(colour.surfaceStrong, 0.88),
           flexDirection: 'row',
           alignItems: 'center',
-          paddingLeft: u(24),
+          // The focus ring is drawn inside the border, so the content keeps the web's offsets whichever width the border has.
+          paddingLeft: u(25 - (inputFocused ? 2 : 1)),
+          paddingRight: u(22 - (inputFocused ? 2 : 1)),
         }}
       >
         <Icon name="search" size={u(24)} color={colour.inkMuted} strokeWidth={1.8} />
@@ -229,7 +231,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
         />
         {/* The placeholder is drawn as a native Text over the empty input, so the row is laid-out text the exporter can read. */}
         {query.length === 0 ? (
-          <View pointerEvents="none" style={{position: 'absolute', left: u(61), top: u(24.75)}}>
+          <View pointerEvents="none" style={{position: 'absolute', left: u(62 - (inputFocused ? 2 : 1)), top: u(25.75 - (inputFocused ? 2 : 1))}}>
             <T size={17.66} weight={400} lh={24} color={colour.inkMuted} lines={1}>
               {t('pages.search.searchPlaceholder')}
             </T>
