@@ -38,6 +38,8 @@ build() {
   python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets
   python3 "$HERE/patch_text.py" entry/src/main/ets # last: the other patches match the Text calls as written
   python3 "$HERE/patch_role.py" entry/src/main/ets # mirror each declared accessibilityRole into the hint the inspector reports
+  sed -i 's/LoadingProgress()$/LoadingProgress().enableLoading(false)/' entry/src/main/ets/pages/Player.ets # the mocked player buffers for ever: a spinning frame is never the same twice
+  python3 "$HERE/patch_hide.py" entry/src/main/ets # key every component and bind its visibility, for the occlusion probe
   sed -i "s/PREVIEW_PORT: number = 40017/PREVIEW_PORT: number = $CTL/" entry/src/main/ets/util/PreviewState.ets
   python3 -c "import json;p='entry/src/main/resources/base/profile/main_pages.json';d=json.load(open(p));d['src'].append('pages/PreviewBoot');json.dump(d,open(p,'w'),indent=2)"
   ohpm install --all

@@ -240,7 +240,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             return
         seq[0] += 1
         first = seq[0]
-        nid[0] = node.get("$ID")
+        nid[0] = a.get("id") if str(a.get("id", "")).startswith("pvh") else None  # patch_hide.py's key: the probe hides by it
         src[0] = str(node.get("$debugLine", "")).split('"')[3].split("main/ets/")[-1] if with_src and '"' in str(node.get("$debugLine", "")) else ""
         raw = rect_of(node)
         kx, ky = scale_of(a)
@@ -381,15 +381,18 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
     kept, dropped = [], []
     measured = (probe or {}).get("results") or {}
     control = None
+    unmeasured = 0
     for i, (el, (first, last, box, node_id)) in enumerate(zip(out, meta)):
         by = []
-        if covered(box, first, last, by):
+        if covered(box, first, last, by):  # the geometry only picks what to test
             seen = measured.get(str(i))
             if candidates is not None and node_id is not None:
                 candidates.append({"index": i, "id": node_id, "box": [round(v * dpr) for v in (el["rect"]["x"], el["rect"]["y"], el["rect"]["x"] + el["rect"]["w"], el["rect"]["y"] + el["rect"]["h"])]})
-            if seen is not True:
-                dropped.append({"text": el["text"], "role": el["role"], "by": sorted(set(by)), "measured": seen is False})
+            if seen is False:  # hiding it changed no pixel of its box: nothing of it is drawn
+                dropped.append({"text": el["text"], "role": el["role"], "by": sorted(set(by))})
                 continue
+            if seen is None:
+                unmeasured += 1  # no measurement, no decision: it stays
         elif candidates is not None and node_id is not None and el["role"] == "text":
             area = el["rect"]["w"] * el["rect"]["h"]
             if control is None or area > control[0]:
@@ -397,11 +400,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         kept.append(el)
     if candidates is not None and control is not None:
         candidates.append(dict(control[1], control=True))
-    doc = {"screen": screen, "theme": theme, "viewport": {"w": vw, "h": vh, "dpr": dpr}, "occluded": len(dropped), "elements": kept}
-    if measured:
-        limits.add("a covered element is dropped only if hiding it at run time changed no pixel of its box (two screenshots, exact diff, noise between two unchanged shots ignored); the geometry only picks what to test")
-    if not measured:
-        limits.add("occlusion samples a 3 x 3 grid per element and treats every painter as its clipped box: image transparency, shaped clips and the topmost native hit are not known")
+    doc = {"screen": screen, "theme": theme, "viewport": {"w": vw, "h": vh, "dpr": dpr}, "occluded": len(dropped), "unmeasured": unmeasured, "elements": kept}
+    limits.add("occlusion is measured on the rendered screen: an element the geometry flags as covered is dropped only if hiding it in the running app changed no pixel of its box (exact diff of two screenshots, noise between two unchanged shots ignored)")
+    if unmeasured:
+        limits.add("a flagged element the probe could not measure (no key, hide refused, unstable screen) is exported, never dropped on geometry")
     limits |= {"the Previewer's XComponent placeholder text ('Preview not available for this component.') has no glyph runs, so it is not exported as text"}
     doc["limits"] = sorted(limits)
     if with_src:

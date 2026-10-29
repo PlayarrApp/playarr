@@ -20,6 +20,11 @@ export function pvTcId(): string {
   return LAST;
 }
 
+// The visibility of a keyed node (patch_hide.py): hidden while its key is in the AppStorage string the route poll sets for the occlusion probe.
+export function pvVis(hidden: string, key: string): Visibility {
+  return hidden.indexOf('|' + key + '|') >= 0 ? Visibility.Hidden : Visibility.Visible;
+}
+
 export class PvBox {
   l: number = 0;
   t: number = 0;
