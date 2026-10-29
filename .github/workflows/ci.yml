@@ -560,6 +560,9 @@ jobs:
             echo "workload install failed (attempt $attempt), retrying"; sleep $((attempt * 15))
           done
 
+      - name: Drop root-owned .NET shared-memory dirs left by the sudo workload install
+        run: sudo rm -rf /tmp/.dotnet /tmp/.dotnet-sdk-lock
+
       - name: dotnet test (Playarr.Tizen.Logic.Tests)
         run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj
 
