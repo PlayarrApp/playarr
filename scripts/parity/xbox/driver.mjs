@@ -299,20 +299,32 @@ export async function createDriver() {
       };
       const id = file.replace(/^.*[\\/]/, "").replace(/\.png$/i, "");
       const layoutFile = file.replace(/\.png$/i, ".layout.json");
-      let before = null;
-      if (theme) {
-        try { unlinkSync(layoutFile); } catch { /* none yet */ }
-        try { before = (await request(id, "frame")).frame; } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
+      // Settle first (images still arriving or a focus animation change the render), then bracket the screenshot with the hash.
+      for (let attempt = 1; ; attempt++) {
+        let before = null;
+        if (theme) {
+          try { unlinkSync(layoutFile); } catch { /* none yet */ }
+          try {
+            before = (await request(id, "frame")).frame;
+            for (let i = 0; i < 20; i++) {
+              await sleep(700);
+              const again = (await request(id, "frame")).frame;
+              if (again === before) break;
+              before = again;
+            }
+          } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
+        }
+        // Luminance guard (exit 4 from the helper): a light frame is refused in a dark run and the reverse. The player is black in both.
+        run("shot", file, ...(theme && t.screen !== "playback" ? [theme] : []));
+        writeFileSync(file.replace(/\.png$/i, ".trace.json"), `${JSON.stringify(focusCaptureSidecar(t), null, 2)}\n`);
+        if (!theme) return;
+        // Layout export (docs/parity/LAYOUT.md): the app walks its visual tree for this exact state; <id>.layout.json sits beside the PNG.
+        try {
+          const layout = await request(id);
+          if (layout.frame === before) { writeFileSync(layoutFile, `${JSON.stringify(layout, null, 1)}\n`); return; }
+          if (attempt >= 3) throw new Error("the screen changed between the screenshot and the layout export");
+        } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
       }
-      // Luminance guard (exit 4 from the helper): a light frame is refused in a dark run and the reverse. The player is black in both.
-      run("shot", file, ...(theme && t.screen !== "playback" ? [theme] : []));
-      writeFileSync(file.replace(/\.png$/i, ".trace.json"), `${JSON.stringify(focusCaptureSidecar(t), null, 2)}\n`);
-      // Layout export (docs/parity/LAYOUT.md): the app walks its visual tree for this exact state; <id>.layout.json sits beside the PNG.
-      if (theme) try {
-        const layout = await request(id);
-        if (layout.frame !== before) throw new Error("the screen changed between the screenshot and the layout export");
-        writeFileSync(layoutFile, `${JSON.stringify(layout, null, 1)}\n`);
-      } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
     },
     // Plays media file `c.file` through the app's parity.play request; judged from the player's own position.
     async play(c, expect) {
