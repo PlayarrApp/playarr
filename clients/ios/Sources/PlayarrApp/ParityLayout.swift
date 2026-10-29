@@ -180,11 +180,11 @@ final class ParityLayoutRegistry {
         let remaining = styled.filter { item in !ownBoxes.contains { $0 == item } }
         // Content under an opaque layer drawn over it is not visible: the visible part of its frame lies inside a measured
         // cover (the covering layer's own content is exempt).
-        let window = CGRect(origin: .zero, size: screen.size)
+        let screenRect = CGRect(origin: .zero, size: screen.size)
         let covers = Array(coverRegions.values)
         func hidden(_ item: Item) -> Bool {
             if item.inCover { return false }
-            let visible = item.rect.intersection(window)
+            let visible = item.rect.intersection(screenRect)
             return !visible.isNull && covers.contains { $0.contains(visible) }
         }
         let visibleStyled = remaining.filter { !hidden($0) }
