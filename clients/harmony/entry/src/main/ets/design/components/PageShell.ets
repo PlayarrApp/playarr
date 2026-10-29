@@ -309,14 +309,8 @@ export struct PageShell {
   build() {
     // `activeColors()` is not tracked by ArkUI, so a theme change rebuilds the shell (keyed by the theme) to repaint it.
     Stack() {
-      if (this.touch && !isTvMetrics()) {
-        // web's DOM: the page base (`bg`), then the page wrapper and its content on `surface`
-        Column()
-          .width('100%')
-          .height('100%')
-          .backgroundColor(toResourceColor(activeColors().surface))
-          .hitTestBehavior(HitTestMode.None)
-      }
+    // web's DOM: the page base (`bg`) holds the page wrapper on `surface`, which holds the content and the phone's overlays
+    Stack() {
       ForEach([this.themeSetting], (_theme: string) => {
         if (this.touch && !isTvMetrics()) {
           this.touchChrome()
@@ -331,6 +325,10 @@ export struct PageShell {
           .markAnchor({ x: 0, y: touchNavBarBox(this.safeBottom) })
         this.touchForegroundOverlay()
       }
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().surface) : Color.Transparent)
     }
     .width('100%')
     .height('100%')
