@@ -100,7 +100,7 @@ once `ci-required` is green. Agents do not merge, and there is no `ready` label.
 
 - `TASKS.md` stays the live board, in the canonical "epic table" format: one `## <N>. <Epic name>` heading per epic (N unique and stable: never renumbered or reused;
   a new epic takes the highest + 1) and one table per epic with the header `| ID | Task | Status | Owner | Branch | Depends | ETA | Notes |`.
-  Status is one of `todo`, `in_progress`, `in_review`, `blocked`, `blocked_on_owner`, `parked`, `done`. **Do not
+  Status is one of `todo`, `in_progress`, `in_review`, `blocked`, `blocked_on_owner`, `parked`, `done`, `dropped` (Notes start "Dropped: <reason>.") or `superseded` (Notes start "Superseded by <epic>.<task>."). **Do not
   edit it directly in a PR** (CI rejects that). Add or update rows with fragment files
   `tasks.d/<row-number>.md` (a `section:` line, the bare epic name or `N. Name`, plus the complete eight-column row; an existing row
   number replaces that row in place and keeps its epic; `section:` must name a current epic heading
@@ -115,8 +115,9 @@ once `ci-required` is green. Agents do not merge, and there is no `ready` label.
 - Every `in_progress` and `in_review` row carries an ETA (`YYYY-MM-DD HH:MM ICT`; the board zone is
   ICT, Asia/Bangkok; for `in_review` it is the expected merge). `fold-fragments.mjs --check` fails on a
   missing ETA and warns on a past one: revise it as soon as it slips. Work nobody is doing is `todo`
-  (Owner empty), `blocked`, `blocked_on_owner` or `parked`, never a stale `in_progress`. The board mod computes
-  the epic ETA itself; do not add ETA lines under headings.
+  (Owner empty), `blocked`, `blocked_on_owner` or `parked`, never a stale `in_progress`. Each epic keeps an
+  `ETA: YYYY-MM-DD HH:MM <TZ>` line directly under its heading (roughly the latest ETA of its open rows). On open rows Task is at most
+  100 characters and Notes at most 400 (a few short facts separated by `<br>`); epic names describe the outcome, never position, status or date.
 - The `Fold board` workflow (`fold-board.yml`, `scripts/fold-main.sh`) folds any pending fragments on every
   push to `main`, committing with a `Board-Fold: yes` trailer (exempt in `check-fragments.sh`) and the deploy key. Fragments never sit unfolded for long.
 - When a PR merges, the `Board sync` workflow (`scripts/board-sync.mjs`) folds fragments straight onto `main`

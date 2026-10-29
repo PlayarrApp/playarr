@@ -203,7 +203,7 @@ if (check) {
     if (e.error) err(`tasks.d/${fr.f}: row ${fr.n}: ${e.error}`);
     if (e.warning) warnings.push(`warning: tasks.d/${fr.f}: row ${fr.n}: ${e.warning}`);
     if (fr.cells[2] === 'in_review' && !/(#|PR\s+)\d+/.test(fr.cells[7])) err(`tasks.d/${fr.f}: status is in_review but Notes name no PR number (write "PR open: #123")`);
-    const bareDeps = fr.cells[5].split(',').map((t) => t.trim()).filter((t) => /^(?:\d+|[A-Z]+-\d+)$/.test(t));
+    const bareDeps = fr.cells[5].split(',').map((t) => t.trim()).filter((t) => /^\d+$/.test(t));
     if (bareDeps.length) {
       const epics = fs.existsSync(boardFile) ? epicByRow(fs.readFileSync(boardFile, 'utf8').split('\n')) : new Map();
       for (const t of bareDeps) if (epics.has(t)) warnings.push(`warning: tasks.d/${fr.f}: row ${fr.n}: Depends "${t}" is a bare ID; write ${epics.get(t)}.${t} (the fold rewrites it)`);
@@ -212,7 +212,7 @@ if (check) {
   }
   // The board as it will be once the fragments fold, so a fragment may fix a row the current board gets wrong.
   if (fs.existsSync(boardFile)) {
-    const folded = applyTasks(fs.readFileSync(boardFile, 'utf8').split('\n'), (m, isSection) => { if (isSection) err(m); }).filter((l) => !/^ETA: /.test(l));
+    const folded = applyTasks(fs.readFileSync(boardFile, 'utf8').split('\n'), (m, isSection) => { if (isSection) err(m); });
     for (const m of checkBoard(folded.join('\n'))) err(`TASKS.md${tkFrags.length ? ' (after fold)' : ''}: ${m}`);
   }
 }
@@ -244,8 +244,7 @@ if (clFrags.length) {
 if (tkFrags.length) {
   const p = path.join(root, 'TASKS.md');
   const lines = applyTasks(fs.readFileSync(p, 'utf8').split('\n'), (m) => { console.error(m); process.exit(1); });
-  // One-off cleanup: drop the per-epic `ETA:` lines an earlier fold wrote under the headings (the board mod computes the epic ETA).
-  fs.writeFileSync(p, lines.filter((l) => !/^ETA: /.test(l)).join('\n'));
+  fs.writeFileSync(p, lines.join('\n'));
 }
 
 for (const f of clFiles) fs.unlinkSync(path.join(root, 'changelog.d', f));
