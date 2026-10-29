@@ -140,6 +140,62 @@ function textOf(fiber: Fiber): string {
   return out.join('').replace(/\s+/g, ' ').trim();
 }
 
+type Box = [number, number, number, number];
+
+/**
+ * Vega's measureInWindow puts a child at its parent's measured origin plus the child's untransformed layout offset, applies the
+ * child's own scale about its own centre, and scales only the size by every ancestor's scale. A child of a scaled view (a focused
+ * card) therefore reports its origin where an unscaled parent would put it, while the screen draws it at the scaled position.
+ * This rebuilds each box the screen draws: the layout offsets come from the measured origins with each view's own transform taken
+ * out (its style's scale and translate), then the transforms of the view and every ancestor are applied, each about its box centre.
+ */
+function drawnRects(hosts: Array<{fiber: Fiber; parent: number}>, measured: Array<Box | null>): Array<Box | null> {
+  const own = hosts.map((h) => {
+    const style = StyleSheet.flatten(h.fiber.memoizedProps?.style) ?? {};
+    let s = 1;
+    let tx = 0;
+    let ty = 0;
+    for (const t of Array.isArray(style.transform) ? (style.transform as Array<Record<string, number>>) : []) {
+      if (typeof t.scale === 'number') s *= t.scale;
+      if (typeof t.translateX === 'number') tx += t.translateX;
+      if (typeof t.translateY === 'number') ty += t.translateY;
+    }
+    return {s, tx, ty};
+  });
+  const scale: number[] = [];
+  const layout: Array<Box | null> = [];
+  const out: Array<Box | null> = [];
+  hosts.forEach((h, i) => {
+    const m = measured[i];
+    const p = h.parent;
+    scale[i] = (p >= 0 ? scale[p]! : 1) * own[i]!.s;
+    const pm = p >= 0 ? measured[p] : [0, 0, 0, 0];
+    const pl = p >= 0 ? layout[p] : [0, 0, 0, 0];
+    layout[i] = null;
+    out[i] = m;
+    if (!m || !pm || !pl) return;
+    const w = m[2] / scale[i]!;
+    const hh = m[3] / scale[i]!;
+    const o = own[i]!;
+    const x = pl[0] + (m[0] - w / 2 * (1 - o.s) - o.tx - pm[0]);
+    const y = pl[1] + (m[1] - hh / 2 * (1 - o.s) - o.ty - pm[1]);
+    layout[i] = [x, y, w, hh];
+    let [x0, y0, x1, y1] = [x, y, x + w, y + hh];
+    for (let n = i; n >= 0; n = hosts[n]!.parent) {
+      const l = layout[n];
+      if (!l) return;
+      const [cx, cy] = [l[0] + l[2] / 2, l[1] + l[3] / 2];
+      const t = own[n]!;
+      x0 = cx + t.s * (x0 - cx) + t.tx;
+      x1 = cx + t.s * (x1 - cx) + t.tx;
+      y0 = cy + t.s * (y0 - cy) + t.ty;
+      y1 = cy + t.s * (y1 - cy) + t.ty;
+    }
+    out[i] = [x0, y0, x1 - x0, y1 - y0];
+  });
+  return out;
+}
+
 /** Walks the fiber tree from the root and returns the document's elements in tree order. */
 export async function exportLayout(probe: LayoutProbe, bg: string, level: string): Promise<LayoutElement[]> {
   const debug = level !== '0';
@@ -169,7 +225,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
   visit(root, bg, 1, -1);
   const scale = Dimensions.get('window').width / 1920;
   const out: LayoutElement[] = [];
-  const rects = await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber))));
+  const rects = drawnRects(hosts, await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber)))));
   const extents = new Map<string, FontExtent | null>();
   const wanted = new Map<string, [string, number]>();
   for (const h of hosts) {
