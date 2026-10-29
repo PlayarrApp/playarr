@@ -175,6 +175,13 @@ class LayoutExportTest(unittest.TestCase):
         with self.assertRaises(ExportError):
             export(column([t2]), "x", "dark", (360, 780, 3))
 
+    def test_an_ellipsis_cut_only_fails_when_a_cut_line_is_visible(self):
+        cut = text("[330.00, 100.00],[30.00, 40.00]", "abcdef", [run(0, 3, 0.0, 0.0, 30.0, 30.0)], textOverflow="TextOverflow.Ellipsis")
+        self.assertEqual([e for e in export(column([cut]), "x", "dark", (100, 200, 3))["elements"] if e["role"] == "text"], [])  # offstage: nothing to refuse
+        cut["$rect"] = "[30.00, 100.00],[30.00, 40.00]"
+        with self.assertRaises(ExportError):
+            export(column([cut]), "x", "dark", (100, 200, 3))
+
     def test_a_divider_is_exported_with_its_stroke_colour(self):
         d = {"$type": "Divider", "$rect": "[100.00, 400.00],[600.00, 1.00]", "$attrs": {"color": "#15F4F0F1", "strokeWidth": "1.00vp", "backgroundColor": "#00000000"}}
         doc = export(column([d]), "x", "dark", (1920, 1080, 1))

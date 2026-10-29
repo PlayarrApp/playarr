@@ -209,9 +209,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         colour = hex_of(over(col, under))
         if abs(kx - ky) > 1e-6:
             limits.add("a Text under a non-uniform scale: its font size is reported at the horizontal factor")
-        if "Ellipsis" in str(a.get("textOverflow", "")) and runs and runs[-1]["end"] < len(content.rstrip()):
-            # the framework draws its ellipsis outside the glyph runs it reports: the app must shorten the string itself (design/components/FitLine.ets)
-            raise ExportError(f"Text {content[:30]!r} is truncated by the framework's ellipsis, which no native run reports")
+        truncated = "Ellipsis" in str(a.get("textOverflow", "")) and runs and runs[-1]["end"] < len(content.rstrip())
         for n, line in enumerate(runs):  # one element per laid-out line: its text, the glyph runs' horizontal extent and the line's own box
             boxes = line["tight"]
             line_text = " ".join(shown(content[line["start"]:line["end"]]).split())
@@ -221,6 +219,8 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             t, bt = min(b["t"] for b in boxes), max(b["b"] for b in boxes)
             rect = (ox + l * kx, oy + t * ky, (r - l) * kx, (bt - t) * ky)  # exactly the layout manager's range rectangles for this line
             if visible(rect, clip):
+                if truncated:  # the framework draws its ellipsis outside the glyph runs it reports: the app must shorten the string itself (design/components/FitLine.ets)
+                    raise ExportError(f"Text {content[:30]!r} is truncated by the framework's ellipsis, which no native run reports")
                 emit(role, line_text, rect, under, clip, radius, colour, round(size * kx, 2), weight, opacity, painted=radius > 0)
                 if col[3] * opacity > 0.0:  # the glyph range paints over what is under it
                     glyphs.append((rect, col[3] * opacity))
