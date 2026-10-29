@@ -3,6 +3,7 @@ package io.playarr.mobile.ui
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityPainted
 import io.playarr.shared.designsystem.page.playarrEdgeFades
 import io.playarr.shared.designsystem.page.PlayarrRingShape
 import io.playarr.shared.designsystem.page.playarrFocusRing
@@ -2145,7 +2146,7 @@ private fun ExperienceNavigation(
         modifier = Modifier
             .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
             .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav)
-            .parityBox("container", radius = if (isTelevision) 0f else 20f),
+            .parityPainted("container", WebSurfaceStrong.copy(alpha = if (isTelevision) WebGlass.NavGroup.tintAlpha else WebGlass.PhoneNav.tintAlpha), radius = if (isTelevision) 0f else 20f),
         color = Color.Transparent,
         shape = phoneNavShape,
         tonalElevation = 0.dp,
@@ -2356,7 +2357,7 @@ internal fun tvProfileTileLabel(displayName: String): String =
 private fun TvNavGroup(padding: PaddingValues, content: @Composable ColumnScope.() -> Unit) {
     val groupShape = RoundedCornerShape(22.dp)
     Surface(
-        modifier = Modifier.glass(groupShape, WebGlass.NavGroup).parityBox("container", radius = 22f),
+        modifier = Modifier.glass(groupShape, WebGlass.NavGroup).parityPainted("container", WebSurfaceStrong.copy(alpha = WebGlass.NavGroup.tintAlpha), radius = 22f),
         color = Color.Transparent,
         shape = groupShape,
     ) {

@@ -3,6 +3,7 @@ package io.playarr.mobile.ui
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.page.parityBox
+import io.playarr.shared.designsystem.page.parityPainted
 import io.playarr.shared.designsystem.page.PlayarrBack
 import io.playarr.shared.designsystem.page.PlayarrEmptySpec
 import io.playarr.shared.designsystem.page.PlayarrErrorSpec
@@ -508,6 +509,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
             border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
             // Web `.tv-filter-choice-grid button`: min-height clamp(44, 3.6 vw, 56) and font clamp(7.68, 0.55 vw, 10.88) css px (56 / 10.56 at 1920).
             modifier = modifier.height(webVw(44f, 3.6f, 56f)).graphicsLayer { scaleX = if (selected) activeScale else 1f; scaleY = scaleX }
+                .parityPainted("container", if (selected) WebInk else WebSurfaceSoft.copy(alpha = 0.64f), radius = 12f)
                 .then(if (boxed) Modifier.parityShape(12f) else Modifier)
                 .webFocusRing(focused, radius = 12.dp, offset = 2.dp),
         ) {
@@ -535,6 +537,7 @@ internal fun PlayarrChoice(label: String, selected: Boolean, modifier: Modifier 
         shape = shape,
         border = BorderStroke(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.hairline(0.10f, 0.12f)),
         modifier = modifier.height(48.dp).graphicsLayer { scaleX = if (selected) 1.025f else 1f; scaleY = scaleX }
+            .parityPainted("container", if (selected) WebInk else WebSurfaceSoft.copy(alpha = 0.64f), radius = 12f)
             .then(if (boxed) Modifier.parityShape(12f) else Modifier)
             .webFocusRing(focused, radius = 12.dp, offset = 0.dp),
     ) {
