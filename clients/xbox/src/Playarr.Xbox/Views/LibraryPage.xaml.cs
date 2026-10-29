@@ -53,9 +53,9 @@ namespace Playarr.Xbox.Views
         public LibraryPage()
         {
             InitializeComponent();
-            Background = Theme.PageStage();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             _header = Ui.PageHeader(Root, "Library", null, () => App.Navigation.GoBack());
-            Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 152, OpenFilters));
+            Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 151.19, OpenFilters));
             _viewModel = new LibraryViewModel(App.Environment);
             WorksGridView.ItemContainerStyle = Appearance.LibraryList ? CatalogTileFactory.ListCardContainerStyle : Appearance.LibraryCover ? CatalogTileFactory.CoverGridCardContainerStyle : CatalogTileFactory.GridCardContainerStyle;
             WorksGridView.GotFocus += WorksGridView_GotFocus;
@@ -424,7 +424,7 @@ namespace Playarr.Xbox.Views
                         Height = 24,
                         CornerRadius = new CornerRadius(12),
                         Background = ink,
-                        Child = new TextBlock { Text = letter.ToString(), FontSize = 10, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = surface },
+                        Child = new TextBlock { Text = letter.ToString(), FontSize = 9.22, FontWeight = FontWeights.Normal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Foreground = Ui.Res("PlayarrBg") },
                     },
                 }
                 : new TextBlock { Text = letter.ToString(), FontSize = 9.22, FontWeight = FontWeights.Normal, Foreground = Ui.Res("PlayarrInkMuted"), Margin = new Thickness(0, 0, 0, 2.2) };

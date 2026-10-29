@@ -31,8 +31,11 @@ namespace Playarr.Xbox.Views
             InitializeComponent();
             LayoutExport.Tag(SearchBox, "search");
             LayoutExport.Tag(SearchGlyph, "image");
+            LayoutExport.Tag(EmptyGlyph, "image");
+            WebFont.Apply(EmptyStateText, 650);
+            Root.Children.Add(Ui.ActionTile(Ui.FiltersIcon(), "Filters", 151.19, OpenFilters));
             LayoutExport.Tag(QueryBox, "textbox", "Search your libraries and playlists");
-            Background = Theme.PageStage();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             Ui.PageHeader(Root, "Search", null, () => App.Navigation.GoBack());
             ResultsGrid.ItemContainerStyle = CatalogTileFactory.GridCardContainerStyle;
             CardFocus.Attach(ResultsGrid);
@@ -69,7 +72,7 @@ namespace Playarr.Xbox.Views
                 ? Visibility.Collapsed
                 : Visibility.Visible;
 
-            var results = _viewModel.Results;
+            var results = _viewModel.Results.Where(MatchesType).ToList();
             EmptyStatePanel.Visibility = results.Count == 0 && !_viewModel.IsSearching
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -82,6 +85,29 @@ namespace Playarr.Xbox.Views
             {
                 ResultsGrid.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, caption: false));
             }
+        }
+
+        private int _type; // 0 all, 1 movies, 2 series, 3 music
+
+        private bool MatchesType(Playarr.Core.Models.Work work) => _type switch
+        {
+            1 => work.Kind == Playarr.Core.Models.WorkKind.Movie,
+            2 => work.Kind == Playarr.Core.Models.WorkKind.Series,
+            3 => work.Kind == Playarr.Core.Models.WorkKind.Artist,
+            _ => true,
+        };
+
+        /// <summary>The web's search filters: the type of title to show.</summary>
+        private void OpenFilters()
+        {
+            var body = new StackPanel();
+            body.Children.Add(Drawer.Segmented("Type", new[] { "All", "Movies", "Series", "Music" }, _type, i =>
+            {
+                _type = i;
+                Render();
+                Drawer.TryCloseCurrent();
+            }));
+            Drawer.Open(Root, "Library controls", "Filters", body);
         }
 
         private void ResultsGrid_ItemClick(object sender, ItemClickEventArgs e)

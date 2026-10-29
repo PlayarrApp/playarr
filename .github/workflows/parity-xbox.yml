@@ -26,6 +26,16 @@ on:
         type: string
         default: home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters,profiles,actions,player-controls
 
+      parts:
+        description: Which suite part to run; "all" is the full run, the others re-run one part (screens-dark, screens-light or dpad)
+        type: choice
+        options: [all, screens-dark, screens-light, dpad]
+        default: all
+      checks:
+        description: Comma-separated D-pad check ids for a partial dpad run (empty runs every check)
+        type: string
+        default: ""
+
 concurrency:
   group: xbox-wall-device-test-account
   cancel-in-progress: false
@@ -92,7 +102,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        part: ${{ fromJSON(inputs.playback && '["screens-dark","screens-light","dpad","playback"]' || '["screens-dark","screens-light","dpad"]') }}
+        part: ${{ fromJSON(inputs.parts != 'all' && format('["{0}"]', inputs.parts) || (inputs.playback && '["screens-dark","screens-light","dpad","playback"]' || '["screens-dark","screens-light","dpad"]')) }}
     defaults:
       run:
         shell: bash
@@ -149,6 +159,7 @@ jobs:
           PLAYARR_DEVICE_TEST_SERVER_URL: ${{ env.PARITY_SERVER_URL }}
           PLAYARR_DEVICE_TEST_USERNAME: ${{ env.PARITY_USERNAME }}
           PART: ${{ matrix.part }}
+          CHECKS_INPUT: ${{ inputs.checks }}
           SCREENS_INPUT: ${{ inputs.screens || 'home,movies,series,music,search,settings,calendar-agenda,calendar-week,calendar-month,film-detail,series-detail,filters,profiles,actions,player-controls' }}
           PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID: ${{ secrets.PLAYARR_DEVICE_TEST_DIRECT_PLAY_MEDIA_ID }}
           XBOX_DEBUG_DIR: ${{ github.workspace }}/out/debug
@@ -174,8 +185,9 @@ jobs:
               mkdir -p "$OUT/dev/crops/$T"; cp "$OUT"/run/"$T"/crops/*.png "$OUT/dev/crops/$T/" || true ;;
             dpad)
               # --player runs the player checks on the paused direct-play fixture, on web and on the app alike.
-              node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --player --out "$OUT/web"
-              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --player --via keys --out "$OUT/run" --expected "$OUT/web/expected.json" || DPAD_FAILED=1
+              CHECKS=(); [ -n "$CHECKS_INPUT" ] && CHECKS=(--checks "$CHECKS_INPUT")
+              node suite-run.mjs --driver ./drivers/web.mjs --reference --only dpad --player "${CHECKS[@]}" --out "$OUT/web"
+              node suite-run.mjs --driver ./xbox/driver.mjs --only dpad --player --via keys "${CHECKS[@]}" --out "$OUT/run" --expected "$OUT/web/expected.json" || DPAD_FAILED=1
               mkdir -p "$OUT/dev"; cp "$OUT/run/dpad.json" "$OUT/dev/" ;;
             playback)
               echo '{"suite":1,"dpad":{},"playback":{"a":{"state":"playing"},"b":{"state":"playing"},"c":{"state":"playing"}}}' > "$OUT/exp.json"

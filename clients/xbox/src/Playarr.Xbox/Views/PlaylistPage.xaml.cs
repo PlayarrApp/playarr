@@ -28,6 +28,7 @@ namespace Playarr.Xbox.Views
         public PlaylistPage()
         {
             InitializeComponent();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             _grid.ItemContainerStyle = CatalogTileFactory.GridCardContainerStyle;
             ScrollViewer.SetVerticalScrollBarVisibility(_grid, ScrollBarVisibility.Hidden);
             CardFocus.ReserveFocusRoom(_grid, top: 0, right: 0, bottom: 0);

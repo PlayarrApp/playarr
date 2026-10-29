@@ -51,7 +51,6 @@ namespace Playarr.Xbox.Views
         public ProfilesPage()
         {
             InitializeComponent();
-            LayoutExport.SetShell(Root, true);
             WebFont.Apply(EyebrowText, 820);
             WebFont.Apply(TitleText, 500);
             LayoutExport.SetRole(TitleText, "heading");
@@ -128,18 +127,22 @@ namespace Playarr.Xbox.Views
         // Web .profile-avatar: 244 px circle; the selected tile lifts 8 px and scales 1.08 (tile 1.045 times avatar 1.035) with a ring.
         private const double AvatarSize = 244;
 
-        private readonly List<(FrameworkElement Owner, FrameworkElement? Actions, Border Lift, Ellipse Ring, Canvas Halo)> _tiles =
-            new List<(FrameworkElement, FrameworkElement?, Border, Ellipse, Canvas)>();
+        private readonly List<(FrameworkElement Owner, FrameworkElement? Actions, Grid Plate, Ellipse Ring, Canvas Halo, TextBlock Name)> _tiles =
+            new List<(FrameworkElement, FrameworkElement?, Grid, Ellipse, Canvas, TextBlock)>();
 
         /// <summary>Shows the web's selected look (lift, ring, the gear and Sign out row) on the tile that owns <paramref name="owner"/>.</summary>
         private void Select(FrameworkElement owner)
         {
-            foreach (var (tile, actions, lift, ring, halo) in _tiles)
+            foreach (var (tile, actions, plate, ring, halo, name) in _tiles)
             {
                 var on = ReferenceEquals(tile, owner) || (actions != null && ReferenceEquals(actions, owner));
-                var move = (CompositeTransform)lift.RenderTransform;
+                // Web: the selected tile lifts 8 px and scales 1.045 about its centre; its avatar scales a further 1.035.
+                var move = (CompositeTransform)tile.RenderTransform;
                 move.TranslateY = on ? -8 : 0;
-                move.ScaleX = move.ScaleY = on ? 1.08 : 1; // web: tile 1.045 times avatar 1.035
+                move.ScaleX = move.ScaleY = on ? 1.045 : 1;
+                var grow = (CompositeTransform)plate.RenderTransform;
+                grow.ScaleX = grow.ScaleY = on ? 1.035 : 1;
+                name.Foreground = (Brush)Application.Current.Resources[on ? "PlayarrInk" : "PlayarrInkSoft"];
                 ring.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
                 halo.Visibility = ring.Visibility;
                 if (actions != null)
@@ -169,23 +172,28 @@ namespace Playarr.Xbox.Views
             };
         }
 
-        private static FontIcon Glyph(string glyph, double size, string brushKey) =>
-            LayoutExport.Tag(new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = size, Foreground = (Brush)Application.Current.Resources[brushKey], VerticalAlignment = VerticalAlignment.Center }, "image");
+        /// <summary>An icon drawn centred in a <paramref name="box"/> px square, which is the box the web's SVG occupies (exported as the image).</summary>
+        private static Grid Glyph(string glyph, double size, string brushKey, double? box = null)
+        {
+            var side = box ?? size;
+            var icon = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = size, Foreground = (Brush)Application.Current.Resources[brushKey], HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            return LayoutExport.Tag(new Grid { Width = side, Height = side, VerticalAlignment = VerticalAlignment.Center, Children = { icon } }, "image");
+        }
 
         /// <summary>The web's gear (Settings) and Sign out pills under the selected profile.</summary>
-        private StackPanel BuildActions()
+        private StackPanel BuildActions(string profileName)
         {
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 11, 0, 0), Visibility = Visibility.Collapsed };
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8.8, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0), Visibility = Visibility.Collapsed };
             var gear = ChromeButton(Glyph("\uE713", 18, "PlayarrBrandInk"), 44, 44, 22);
             gear.Click += (s, e) => App.Navigation.Navigate(typeof(SettingsPage));
-            LayoutExport.Tag(gear, "button", (ShellChrome.ProfileName.Length == 0 ? "Profile" : ShellChrome.ProfileName) + " settings");
+            LayoutExport.Tag(gear, "button", profileName + " settings");
             LayoutExport.SetSplit(gear, true);
-            var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Thickness(0) };
-            label.Children.Add(Glyph("\uE7E8", 14, "PlayarrInkSoft"));
+            var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7.2, Padding = new Thickness(0) };
+            label.Children.Add(Glyph("\uE7E8", 14, "PlayarrInkSoft", 18));
             label.Children.Add(new TextBlock { Text = "Sign out", FontSize = 10.75, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"], VerticalAlignment = VerticalAlignment.Center });
             var signOut = ChromeButton(label, 101, 44, 22);
             signOut.Click += (s, e) => SignOut();
-            LayoutExport.Tag(signOut, "button", "Sign out " + (ShellChrome.ProfileName.Length == 0 ? "Profile" : ShellChrome.ProfileName));
+            LayoutExport.Tag(signOut, "button", "Sign out " + profileName);
             LayoutExport.SetSplit(signOut, true);
             row.Children.Add(gear);
             row.Children.Add(signOut);
@@ -244,20 +252,21 @@ namespace Playarr.Xbox.Views
                 halo.Children.Add(glow);
             }
 
-            var avatarHost = new Grid { Width = AvatarSize, Height = AvatarSize };
+            var avatarHost = new Grid { Width = AvatarSize, Height = AvatarSize, RenderTransform = new CompositeTransform(), RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5) };
             avatarHost.Children.Add(halo);
             avatarHost.Children.Add(plate);
             avatarHost.Children.Add(ring);
 
+            var nameBlock = LayoutExport.Tag(new TextBlock { Text = name, FontSize = 17.28, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"], HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 9.8, 0, 0) }, "text");
             var nameRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center };
-            nameRow.Children.Add(LayoutExport.Tag(new TextBlock { Text = name, FontSize = 17.28, FontFamily = WebFont.Face(680), FontWeight = WebFont.Weight(680), LineHeight = 24, LineStackingStrategy = LineStackingStrategy.BlockLineHeight }, "text"));
+            nameRow.Children.Add(nameBlock);
             if (nameLock)
             {
                 // Segoe MDL2 Assets's lock glyph: a built-in PIN-lock indicator with no image asset.
                 nameRow.Children.Add(new TextBlock { Text = "\uE72E", FontFamily = new FontFamily("Segoe MDL2 Assets"), Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center });
             }
 
-            var content = new StackPanel { Spacing = 10, HorizontalAlignment = HorizontalAlignment.Center };
+            var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
             content.Children.Add(avatarHost);
             content.Children.Add(nameRow);
             content.Children.Add(new TextBlock
@@ -265,24 +274,27 @@ namespace Playarr.Xbox.Views
                 Text = status,
                 FontSize = 9.41,
                 FontFamily = WebFont.Face(690), FontWeight = WebFont.Weight(690),
-                CharacterSpacing = 60,
-                Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"],
+                CharacterSpacing = 43,
+                Foreground = (Brush)Application.Current.Resources["PlayarrInkMuted"],
                 HorizontalAlignment = HorizontalAlignment.Center,
-                MinHeight = 14,
+                Margin = new Thickness(0, 10.72, 0, 0),
             });
 
-            // The lift moves the visual only, so no other tile or text shifts.
-            var lift = new Border { Child = content, RenderTransform = new CompositeTransform(), RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5) };
+            // The web tile is the link: 244 x 301.63, lifted and scaled as a whole when selected.
             var tile = new Button
             {
-                Content = lift,
+                Content = content,
                 Tag = tag,
+                Width = AvatarSize,
+                Height = 301.63,
                 Background = new SolidColorBrush(Colors.Transparent),
                 BorderThickness = new Thickness(0),
-                Padding = new Thickness(8),
-                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(0),
+                CornerRadius = new CornerRadius(0),
                 VerticalAlignment = VerticalAlignment.Top,
                 UseSystemFocusVisuals = false,
+                RenderTransform = new CompositeTransform(),
+                RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
             };
             tile.Click += click;
             LayoutExport.Tag(tile, "button", status == "WATCHING NOW" ? name + ", current profile" : "+ " + name + " " + status);
@@ -294,11 +306,11 @@ namespace Playarr.Xbox.Views
             StackPanel? actions = null;
             if (withActions)
             {
-                actions = BuildActions();
+                actions = BuildActions(name);
                 column.Children.Add(actions);
             }
 
-            _tiles.Add((tile, actions, lift, ring, halo));
+            _tiles.Add((tile, actions, avatarHost, ring, halo, nameBlock));
             return column;
         }
 
@@ -379,30 +391,29 @@ namespace Playarr.Xbox.Views
                 Foreground = (Brush)Application.Current.Resources["PlayarrInkSoft"],
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 12),
             });
 
             return BuildTile(plate, "Sign in", "ADD ANOTHER PROFILE", false, (s, e) => ConfirmAddProfile(), false, null);
         }
 
-        private Button BuildSelector(string glyph, string text, IEnumerable<(string Label, System.Action Pick)> options, double width)
+        private Button BuildSelector(string glyph, string text, IEnumerable<(string Label, System.Action Pick)> options, double width, string accessibleName)
         {
-            var layout = new Grid { Width = width - 2 };
-            layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
-            layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(44) });
-            var icon = Glyph(glyph, 16, "PlayarrInkSoft");
-            icon.HorizontalAlignment = HorizontalAlignment.Right;
-            icon.Margin = new Thickness(0, 0, 14, 0);
+            // Web selector: a 16 px icon 19.4 px in, the label 45 px in, a 12 px chevron 19.4 px from the right edge.
+            var layout = new Grid { Width = width - 2, Height = 46 };
+            var icon = Glyph(glyph, 14, "PlayarrInkSoft", 16);
+            icon.HorizontalAlignment = HorizontalAlignment.Left;
+            icon.Margin = new Thickness(18.39, 0, 0, 0);
             layout.Children.Add(icon);
-            var label = new TextBlock { Text = text, FontSize = 11.52, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetColumn(label, 1);
+            var label = new TextBlock { Text = text, FontSize = 11.52, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(44, 0, 0, 0) };
             layout.Children.Add(label);
-            var chevron = Glyph("\uE70D", 10, "PlayarrInkMuted");
-            Grid.SetColumn(chevron, 2);
+            var chevron = Glyph("\uE70D", 8, "PlayarrInkMuted", 12);
+            chevron.HorizontalAlignment = HorizontalAlignment.Right;
+            chevron.Margin = new Thickness(0, 0, 18.4, 0);
             layout.Children.Add(chevron);
-            var button = ChromeButton(layout, width, 47, 2);
+            var button = ChromeButton(layout, width, 48, 0);
             button.Background = new SolidColorBrush(Colors.Transparent);
+            LayoutExport.Tag(button, "button", accessibleName);
+            LayoutExport.SetSplit(button, true);
             var flyout = new MenuFlyout();
             foreach (var (optionLabel, pick) in options)
             {
@@ -418,20 +429,20 @@ namespace Playarr.Xbox.Views
         /// <summary>Web TvStageChrome controls: Theme and Language selectors at the top right.</summary>
         private void BuildTopControls()
         {
-            var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 15, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 50, 43, 0) };
+            var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 49.67, 42.23, 0) };
             var themes = new[] { (Theme.System, "System"), (Theme.Light, "Light"), (Theme.Dark, "Dark") };
             var themeName = themes.First(t => t.Item1 == Theme.Choice).Item2;
             panel.Children.Add(BuildSelector("\uE706", themeName, themes.Select(t => (t.Item2, (System.Action)(() =>
             {
                 Theme.Set(t.Item1);
                 App.Navigation.NavigateReplacingCurrent(typeof(ProfilesPage), null!);
-            }))), 143));
+            }))), 144, "Theme: " + themeName));
             var langChoices = new[] { Lang.SystemChoice }.Concat(Lang.Supported.Select(l => l.Key)).ToArray();
             panel.Children.Add(BuildSelector("\uE774", Lang.NameOf(Lang.Preference), langChoices.Select(c => (Lang.NameOf(c), (System.Action)(() =>
             {
                 LanguageSetting.Save(c);
                 App.Navigation.NavigateReplacingCurrent(typeof(ProfilesPage), null!);
-            }))), 167));
+            }))), 168, Lang.NameOf(Lang.Preference)));
             Root.Children.Add(panel);
 
             var arrow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 9 };

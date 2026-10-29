@@ -34,6 +34,7 @@ namespace Playarr.Xbox.Views
         public HomePage()
         {
             InitializeComponent();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             _viewModel = new HomeViewModel(App.Environment);
             // The rails' scroller would swallow Up/Down to scroll; D-pad Up/Down must move focus to the card above or below.
             RailsScroll.PreviewKeyDown += RailsScroll_PreviewKeyDown;
@@ -228,7 +229,7 @@ namespace Playarr.Xbox.Views
                 "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
             list.ItemContainerStyle = CatalogTileFactory.HomeCardContainerStyle;
             list.ItemClick += RailItem_Click;
-            CardFocus.Attach(list, true, 2.5);
+            CardFocus.Attach(list, true, 2.5, -6, 1.0); // the web Home card only lifts 6 px; its art alone scales
             CardActions.Attach(list, id => rail.Items.FirstOrDefault(w => w.Id == id));
             list.GotFocus += (s, e) =>
             {
@@ -244,8 +245,13 @@ namespace Playarr.Xbox.Views
                 list.Items.Add(CatalogTileFactory.CreateLandscapeCard(work, cover: Appearance.HomeCover));
             }
 
-            var section = new StackPanel { Spacing = 37, Margin = new Thickness(53, 0, 0, 0) };
-            section.Children.Add(LayoutExport.Tag(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"], FontSize = 17.66, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), LineHeight = 24, Margin = new Thickness(0, 0, 0, 2), LineStackingStrategy = Windows.UI.Xaml.LineStackingStrategy.BlockLineHeight }, "heading"));
+            var section = new StackPanel { Spacing = 34.65, Margin = new Thickness(53, 0, 0, RailsPanel.Children.Count == 0 ? -0.15 : 0) };
+            section.Children.Add(LayoutExport.Tag(new TextBlock { Text = rail.Title, Style = (Style)Application.Current.Resources["PlayarrRailTitle"], FontSize = 17.66, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), CharacterSpacing = -31, LineHeight = 24, Margin = new Thickness(0, 0, 0, 2), LineStackingStrategy = Windows.UI.Xaml.LineStackingStrategy.BlockLineHeight }, "heading"));
+            if (RailsPanel.Children.Count == 0)
+            {
+                list.Margin = new Thickness(list.Margin.Left, list.Margin.Top + 1.15, list.Margin.Right, list.Margin.Bottom); // the first rail's cards sit 1.15 px lower on the web
+            }
+
             section.Children.Add(list);
             return section;
         }
