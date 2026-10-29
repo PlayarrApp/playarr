@@ -34,7 +34,7 @@ function attach(parent, child) {
 
 function dumpLines(root, u = 1) {
   const lines = [];
-  context.layout.dump(root, u, {}, () => ({ ascent: 8, descent: 2, advance: (text) => text.length * 5, elide: (text, mode, width) => text.slice(0, Math.max(0, Math.floor(width / 5) - 1)) + "…" }), (line) => lines.push(line));
+  context.layout.dump(root, u, {}, () => ({ ascent: 8, descent: 2, advance: (text) => text.length * 5, elide: (text, mode, width) => text.slice(0, Math.max(0, Math.floor(width / 5) - 1)) + "…" }), (line) => lines.push(line), (item) => ({ name: item.accessName || "", role: item.accessRole || 0 }), { width: 1, color: { r: 0, g: 0, b: 0, a: 1 } });
   return lines;
 }
 
@@ -44,7 +44,7 @@ function dump(root, u = 1) {
 }
 
 function focus(name, width, height, props = {}) {
-  return makeItem(name, width, height, { navigationFocusable: true, a11yName: name, ...props });
+  return makeItem(name, width, height, { navigationFocusable: true, accessName: name, ...props });
 }
 
 test("maps translated geometry to root-local CSS coordinates", () => {
@@ -172,7 +172,6 @@ test("keeps image item bounds exact and normalises them by the supplied layout s
   const root = makeItem("root", 100, 100);
   attach(root, makeItem("image", 20, 10, {
     source: "test-image", status: 1, paintedWidth: 16, paintedHeight: 8, x: 30, y: 40,
-    parityRole: "image",
   }));
   assert.deepEqual(dump(root, 2)[0].rect, { x: 15, y: 20, w: 10, h: 5 });
 });
@@ -241,4 +240,24 @@ test("clips overflowing local content by the item's own clip and its parent clip
   attach(clipped, overflowing);
   const polygon = context.layout.clippedItemPolygon(overflowing, root, -4, 0, 20, 8);
   assert.deepEqual(JSON.parse(JSON.stringify(context.layout.polygonBounds(polygon))), { x: 25, y: 14, w: 5, h: 8 });
+});
+
+test("reads the accessible name and role the item exposes, not a custom hint", () => {
+  const root = makeItem("root", 100, 100);
+  attach(root, makeItem("pill", 20, 10, { navigationFocusable: true, accessName: "Close filters", accessRole: 43 }));
+  assert.deepEqual(dump(root).map((row) => [row.text, row.role]), [["Close filters", "button"]]);
+});
+
+test("a border equal to Qt's unset default draws nothing; any other pen does", () => {
+  const root = makeItem("root", 100, 100);
+  attach(root, makeItem("unset", 20, 10, { border: { width: 1, color: { r: 0, g: 0, b: 0, a: 1 } }, radius: 0, color: { r: 0, g: 0, b: 0, a: 0 } }));
+  attach(root, makeItem("outlined", 20, 10, { x: 30, border: { width: 1, color: { r: 0.5, g: 0, b: 0, a: 1 } }, radius: 0, color: { r: 0, g: 0, b: 0, a: 0 } }));
+  assert.deepEqual(dump(root).map((row) => row.rect.x), [30]);
+});
+
+test("QML sets no 1 px pure black border that would read as Qt's unset default", async () => {
+  const { readdirSync, readFileSync, statSync } = await import("node:fs");
+  const dir = new URL("../../../clients/sailfish/qml/", import.meta.url);
+  const files = (d) => readdirSync(d).flatMap((n) => { const p = new URL(n + (statSync(new URL(n, d)).isDirectory() ? "/" : ""), d); return n.endsWith(".qml") ? [p] : statSync(p).isDirectory() ? files(p) : []; });
+  for (const f of files(dir)) assert.doesNotMatch(readFileSync(f, "utf8"), /border\.color:\s*("#000(000)?"|"black")/, f.pathname);
 });

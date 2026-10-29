@@ -23,7 +23,7 @@ Column {
         x: Tokens.pad
         text: root.title
         color: Tokens.ink
-        property string parityRole: "heading"
+        Accessible.role: Accessible.Heading
         font.family: Tokens.family580
         font.pixelSize: Tokens.fsFit(16); font.letterSpacing: -0.33 * Tokens.u; height: 21.33 * Tokens.u
     }

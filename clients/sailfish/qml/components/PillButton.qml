@@ -23,8 +23,8 @@ MouseArea {
     property real padCss: 16
     property real contentDy: 0
     property real iconDy: 0
-    property string parityRole: "button"
-    property string a11yName: text          // the accessible name; a page sets it where it differs from the visible label
+    Accessible.role: Accessible.Button
+    Accessible.name: text          // the accessible name; a page sets it where it differs from the visible label
     property real fontSize: 15 * Tokens.u
     // Web detail buttons: a small accent icon, a gap, then the label, centred and sized to their content.
     property string icon: ""

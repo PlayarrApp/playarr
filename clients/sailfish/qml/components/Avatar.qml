@@ -52,8 +52,6 @@ Item {
         visible: root.drawn
         width: root.width; height: root.width
         source: plateSource; maskSource: plateMask
-        property string parityRole: "container"
-        property var radiusSource: plateMask
     }
     Image {
         visible: root.drawn
@@ -62,6 +60,5 @@ Item {
         sourceSize: Qt.size(width * 2, height * 2)
         smooth: true
         asynchronous: true
-        property string parityRole: "image"
     }
 }

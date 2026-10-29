@@ -191,8 +191,7 @@ Item {
     MouseArea {
         id: filterBtn
         property bool navigationFocusable: true
-        property string parityLabel: qsTr("Filters")
-        property string a11yName: qsTr("Filters")
+        Accessible.name: qsTr("Filters")
         property int parityRail: 1
         property int parityIndex: 0
         function navigationActivate() { root.openFilters() }
@@ -206,8 +205,7 @@ Item {
     MouseArea {
         id: bellBtn
         property bool navigationFocusable: true
-        property string parityLabel: qsTr("Calendar link")
-        property string a11yName: qsTr("Calendar link")
+        Accessible.name: qsTr("Calendar link")
         property int parityRail: 1
         property int parityIndex: 1
         function navigationActivate() { pageStack.push(Qt.resolvedUrl("CalendarLinkPage.qml")) }
@@ -220,11 +218,11 @@ Item {
     Row {
         id: nav
         anchors { top: head.bottom; topMargin: (root.mode === "agenda" ? -2 : 15.5) * Tokens.u; right: parent.right; rightMargin: Tokens.pad }
-        spacing: 10 * Tokens.u
-        PillButton { id: rangePill; objectName: "calendar-range"; text: root.range.label; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 0; navigationActivate: function() { root.openPeriodPicker() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: (root.mode === "week" ? 93.0 : root.mode === "month" ? 88.4 : 110.4) * Tokens.u; onClicked: root.openPeriodPicker() }
-        PillButton { text: "←"; a11yName: qsTr("Previous"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 1; navigationActivate: function() { root.page-- }; labelFamily: Tokens.fam(720) + ",Liberation Sans"; fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page-- }
-        PillButton { text: qsTr("Today"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 2; navigationInitialFocus: true; navigationActivate: function() { root.resetToday() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 70.2 * Tokens.u; onClicked: root.resetToday() }
-        PillButton { text: "→"; a11yName: qsTr("Next"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 3; navigationActivate: function() { root.page++ }; labelFamily: Tokens.fam(720) + ",Liberation Sans"; fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page++ }
+        spacing: 8 * Tokens.u
+        PillButton { id: rangePill; objectName: "calendar-range"; text: root.range.label; outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 0; navigationActivate: function() { root.openPeriodPicker() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: (root.mode === "week" ? 96.89 : root.mode === "month" ? 91.78 : 114.38) * Tokens.u; onClicked: root.openPeriodPicker() }
+        PillButton { text: "←"; Accessible.name: qsTr("Previous"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 1; navigationActivate: function() { root.page-- }; labelFamily: Tokens.fam(720) + ",Liberation Sans"; fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page-- }
+        PillButton { text: qsTr("Today"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 2; navigationInitialFocus: true; navigationActivate: function() { root.resetToday() }; labelFamily: Tokens.fam(720); fontSize: 11.52 * Tokens.u; implicitHeight: 44 * Tokens.u; implicitWidth: 74.22 * Tokens.u; onClicked: root.resetToday() }
+        PillButton { text: "→"; Accessible.name: qsTr("Next"); outlineOnly: true; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"; parityRail: 0; parityIndex: 3; navigationActivate: function() { root.page++ }; labelFamily: Tokens.fam(720) + ",Liberation Sans"; fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 44 * Tokens.u; onClicked: root.page++ }
     }
     // Month: wide cells (a chip for the first title, the day number and "+N more"), scrolled sideways, as on the web phone.
     SilicaFlickable {
@@ -254,7 +252,7 @@ Item {
                         MouseArea {
                             id: cell
                             property bool navigationFocusable: true
-                            property string parityLabel: String(modelData.day)
+                            Accessible.name: String(modelData.day)
                             property int parityRail: 0
                             property int parityIndex: index
                             function navigationActivate() { root.openDay(modelData.date) }
@@ -272,7 +270,7 @@ Item {
                             MouseArea {   // the web's event chip inside the day cell
                                 visible: cell.es.length > 0
                                 x: 5.8 * Tokens.u; y: 1.8 * Tokens.u; width: 91.25 * Tokens.u; height: 34.05 * Tokens.u
-                                property string a11yName: cell.es.length ? cell.es[0].title + ", " + root.pill(cell.es[0]) + ", " + Qt.formatDate(new Date(modelData.date + "T00:00:00"), "dddd d MMMM") : ""
+                                Accessible.name: cell.es.length ? cell.es[0].title + ", " + root.pill(cell.es[0]) + ", " + Qt.formatDate(new Date(modelData.date + "T00:00:00"), "dddd d MMMM") : ""
                                 onClicked: cell.navigationActivate()
                                 Rectangle { anchors.fill: parent; radius: 4 * Tokens.u; color: cell.past ? (Tokens.dark ? "#241f23" : "#efeeed") : Tokens.bg }   // the chip's own plate
                                 Rectangle {
@@ -282,7 +280,7 @@ Item {
                                          : cell.es[0].has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a")
                                          : root.tone(cell.es[0]) === "missing" ? (Tokens.dark ? "#f1a4a8" : "#722f34") : String(Tokens.brandPink)
                                 }
-                                PLabel { renderType: Text.NativeRendering; x: 21.58 * Tokens.u; y: 6.4 * Tokens.u + 2.2; width: month.cellW - 34 * Tokens.u; text: cell.es.length ? cell.es[0].title : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
+                                CutLabel { renderType: Text.NativeRendering; x: 21.58 * Tokens.u; y: 6.4 * Tokens.u + 2.2; width: month.cellW - 37.8 * Tokens.u; webCut: cell.es.length ? cell.es[0].title : ""; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
                             }
                             PLabel { renderType: Text.NativeRendering; x: 8.8 * Tokens.u; y: 49.1 * Tokens.u + 2.5; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.fam(640); font.pixelSize: Tokens.fs(12.8) }
                             PLabel { renderType: Text.NativeRendering; visible: cell.es.length > 1; x: 43 * Tokens.u; y: 49.5 * Tokens.u; text: qsTr("+%1 more").arg(cell.es.length - 1); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(12.5) }
@@ -326,10 +324,9 @@ Item {
                         MouseArea {
                             id: card
                             property bool navigationFocusable: true
-                            property string parityLabel: modelData.title
                             property int parityRail: 0
                             property int parityIndex: index
-                            property string a11yName: [modelData.title, subLbl.text, timeLbl.text, relLbl.text, kindLbl.text, badge.text].filter(function (x) { return !!x }).join(" ")
+                            Accessible.name: [modelData.title, subLbl.text, timeLbl.text, relLbl.text, kindLbl.text, badge.text].filter(function (x) { return !!x }).join(" ")
                             function navigationActivate() { root.openEntry(modelData) }
                             x: dayCol.wk ? 0 : Tokens.pad
                             width: dayCol.cw - (dayCol.wk ? 0 : 2 * Tokens.pad)   // static-seed refs: the agenda card ends at the page padding
@@ -424,11 +421,11 @@ Item {
     // plus a brighter left edge (about +15 at x=0) easing out over ~70 px down to ~340 px.
     Rectangle {
         z: -1; visible: Tokens.dark && root.mode === "agenda"
-        anchors { left: parent.left; right: parent.right; top: parent.top }
-        height: 360 * Tokens.u
+        anchors.fill: parent   // the web's wash fills the page; its tint is gone by 360 px (0.527 of 682.5)
         gradient: Gradient {
             GradientStop { position: 0; color: "#272227" }
-            GradientStop { position: 0.83; color: "#272227" }
+            GradientStop { position: 0.4375; color: "#272227" }
+            GradientStop { position: 0.527; color: Tokens.bg }
             GradientStop { position: 1; color: Tokens.bg }
         }
     }
@@ -516,7 +513,7 @@ Item {
                 property int navigationList: 0
                 property int parityIndex: index
                 property int parityRail: 0
-                property string parityLabel: model.name
+                Accessible.name: model.name
                 property var navigationActivate: function() { root.chooseMonth(model.month) }
                 property var navigationTrapMove: function(key) { root.navigatePeriodPicker(monthChoice, key) }
                 Keys.priority: Keys.BeforeItem
@@ -550,7 +547,7 @@ Item {
                 property int navigationList: 1
                 property int parityIndex: index
                 property int parityRail: 0
-                property string parityLabel: String(model.year)
+                Accessible.name: String(model.year)
                 property var navigationActivate: function() { root.chooseYear(model.year) }
                 property var navigationTrapMove: function(key) { root.navigatePeriodPicker(yearChoice, key) }
                 Keys.priority: Keys.BeforeItem

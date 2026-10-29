@@ -195,7 +195,7 @@ PlayarrPage {
                 height: implicitHeight - 6.5 * Tokens.u
                 color: Tokens.brandInk
                 font.family: Tokens.family820
-                font.letterSpacing: 0.9 * Tokens.u
+                font.letterSpacing: (epMode ? 0.9 : 0.66) * Tokens.u
                 font.pixelSize: Tokens.fsFit(10.56)
             }
             PLabel { renderType: Text.NativeRendering;
@@ -204,7 +204,7 @@ PlayarrPage {
                 text: work.title
                 wrapMode: Text.Wrap
                 color: Tokens.ink
-                property string parityRole: "heading"
+                Accessible.role: Accessible.Heading
                 font.family: Tokens.fam(560)   // web .tv-detail-title: weight 560, letter-spacing -0.072em
                 font.letterSpacing: -2.82 * Tokens.u
                 font.pixelSize: Tokens.fs(39)   // web: clamp(2rem, 10vw, 3.5rem) at 384 px
@@ -238,7 +238,7 @@ PlayarrPage {
                 font.family: Tokens.family400; font.letterSpacing: 0.31
                 font.pixelSize: Tokens.fsFit(11.52)
                 lineHeight: 0.98
-                bottomPadding: 1.5 * Tokens.u
+                topPadding: -1.12 * Tokens.u; bottomPadding: 2.62 * Tokens.u   // the web's first line sits 1 px higher in the same band
             }
             Row {
                 x: Tokens.pad
@@ -251,7 +251,7 @@ PlayarrPage {
                     id: dlBtn
                     visible: !!detail && !!detail.media_file_id
                     icon: "\u21E9"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); padCss: 24.53; contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
-                    a11yName: qsTr("Download %1").arg(work.title)
+                    Accessible.name: qsTr("Download %1").arg(work.title)
                     text: qsTr("Download")
                     parityRail: 0; parityIndex: 0; navigationActivate: function() { page.requestDownload() }
                     fontSize: Tokens.fs(8)
@@ -260,7 +260,7 @@ PlayarrPage {
                 PillButton {
                     lift: true
                     icon: "\u2637"; iconSize: Tokens.fs(12.88); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
-                    a11yName: qsTr("Playback settings for %1").arg(work.title)
+                    Accessible.name: qsTr("Playback settings for %1").arg(work.title)
                     text: qsTr("Playback")
                     parityRail: 0; parityIndex: 1; navigationActivate: function() { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work }) }
                     width: parent.fillW
@@ -271,7 +271,7 @@ PlayarrPage {
                     lift: true
                     primary: true
                     icon: "\u25B6"; iconSize: Tokens.fs(9.52); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0
-                    parityRole: "link"; iconDy: 0.57; a11yName: qsTr("Play %1").arg(work.title)
+                    Accessible.role: Accessible.Link; iconDy: 0.57; Accessible.name: qsTr("Play %1").arg(work.title)
                     fontSize: Tokens.fs(11.2)
                     implicitHeight: 44 * Tokens.u
                     width: parent.fillW
@@ -287,7 +287,7 @@ PlayarrPage {
                 PillButton {
                     lift: true
                     icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
-                    a11yName: (page.inWatchlist ? "\u2713 " : "+ ") + text; labelSpacing: -0.13
+                    Accessible.name: (page.inWatchlist ? "\u2713 " : "+ ") + text; labelSpacing: -0.13
                     text: page.inWatchlist ? qsTr("Remove from watchlist") : qsTr("Add to watchlist")
                     parityRail: 0; parityIndex: 3; navigationActivate: function() { page.toggleWatchlist() }
                     fontSize: Tokens.fs(8)
@@ -296,7 +296,7 @@ PlayarrPage {
                 PillButton {
                     lift: true
                     icon: "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; implicitHeight: 44 * Tokens.u
-                    a11yName: "+ " + qsTr("Add to Playlist"); labelSpacing: -0.2; padCss: 17
+                    Accessible.name: "+ " + qsTr("Add to Playlist"); labelSpacing: -0.2; padCss: 17
                     text: qsTr("Add to Playlist")
                     parityRail: 0; parityIndex: 4; navigationActivate: function() { pageStack.push(Qt.resolvedUrl("ActionsPage.qml"), { work: page.work }) }
                     fontSize: Tokens.fs(8)
@@ -323,7 +323,7 @@ PlayarrPage {
                     x: Tokens.pad; width: parent.width - 2 * Tokens.pad
                     text: page.target && page.target.episode ? (page.target.episode.episode.title || qsTr("Episode")) : ""
                     elide: Text.ElideRight
-                    color: Tokens.dark ? "#cdc1c6" : "#443a40"; property string parityRole: "heading"; font.family: Tokens.fam(580); font.letterSpacing: -0.85; font.pixelSize: Tokens.fs(14.4)
+                    color: Tokens.dark ? "#cdc1c6" : "#443a40"; Accessible.role: Accessible.Heading; font.family: Tokens.fam(580); font.letterSpacing: -0.85; font.pixelSize: Tokens.fs(14.4)
                     height: implicitHeight - 1.0 * Tokens.u
                 }
                 Row {
@@ -370,7 +370,7 @@ PlayarrPage {
                             lift: true
                             primary: true
                             icon: "\u25B6"; iconSize: Tokens.fs(9.52); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0
-                            parityRole: "button"; a11yName: text + " " + page.work.title
+                            Accessible.role: Accessible.Button; Accessible.name: text + " " + page.work.title
                             fontSize: Tokens.fs(11.2)
                             implicitHeight: 44 * Tokens.u
                             width: col.width - 2 * Tokens.pad - (askBtn.visible ? 3 : 2) * parent.spacing - wlBtn.width - plBtn.width - (askBtn.visible ? askBtn.width : 0)
@@ -394,7 +394,7 @@ PlayarrPage {
                             id: wlBtn
                             
                             icon: page.inWatchlist ? "\u2713" : "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; iconDy: -0.8; labelSpacing: -0.22
-                            a11yName: (page.inWatchlist ? "\u2713 " : "+ ") + text
+                            Accessible.name: (page.inWatchlist ? "\u2713 " : "+ ") + text
                             fontSize: Tokens.fs(8)
                             implicitHeight: 44 * Tokens.u
                             text: page.inWatchlist ? qsTr("Remove from watchlist") : qsTr("Add to watchlist")
@@ -406,7 +406,7 @@ PlayarrPage {
                             id: plBtn
                             
                             icon: "+"; iconSize: Tokens.fsFit(9.2); labelFamily: Tokens.fam(700); contentGap: 8.8; contentDy: 0; iconDy: -0.8; labelSpacing: -0.22; padCss: 17
-                            a11yName: "+ " + qsTr("Add to Playlist")
+                            Accessible.name: "+ " + qsTr("Add to Playlist")
                             fontSize: Tokens.fs(8)
                             implicitHeight: 44 * Tokens.u
                             text: qsTr("Add to Playlist")
@@ -452,7 +452,7 @@ PlayarrPage {
                                 y: 24 * Tokens.u
                                 id: epCard
                                 property bool navigationFocusable: enabled
-                                property string parityLabel: modelData.episode.title || qsTr("Episode %1").arg(modelData.episode.episode_number)
+                                Accessible.name: modelData.episode.title || qsTr("Episode %1").arg(modelData.episode.episode_number)
                                 property int parityRail: 1 + index
                                 property int parityIndex: index
                                 function navigationActivate() { page.play(modelData.media_file_id, work.title + " \u00B7 " + (modelData.episode.title || "")) }
@@ -582,7 +582,7 @@ PlayarrPage {
                 Column {
                     width: parent.width; visible: chapters.length > 0; spacing: 6 * Tokens.u
                     topPadding: 26.1 * Tokens.u
-                    PLabel { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("Chapters"); color: Tokens.ink; property string parityRole: "heading"; font.family: Tokens.family610; font.letterSpacing: -0.6 * Tokens.u; font.pixelSize: Tokens.fs(16) }
+                    PLabel { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("Chapters"); color: Tokens.ink; Accessible.role: Accessible.Heading; font.family: Tokens.family610; font.letterSpacing: -0.6 * Tokens.u; font.pixelSize: Tokens.fs(16) }
                     PLabel { renderType: Text.NativeRendering; x: Tokens.pad; text: chaptersFromServer ? qsTr("%1 chapters").arg(chapters.length) : qsTr("%1 scene markers").arg(chapters.length); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(10.6) }
                     Item { width: 1; height: 6 * Tokens.u }
                     ListView {
@@ -592,8 +592,8 @@ PlayarrPage {
                         model: chapters
                         delegate: Item {
                             width: 179.39 * Tokens.u; height: 131.14 * Tokens.u
-                            property string a11yName: qsTr("Play %1 from %2").arg(page.work.title).arg(modelData.title || qsTr("Chapter %1").arg(index + 1))
-                            property string parityRole: "link"
+                            Accessible.name: qsTr("Play %1 from %2").arg(page.work.title).arg(modelData.title || qsTr("Chapter %1").arg(index + 1))
+                            Accessible.role: Accessible.Link
                             Rectangle {
                                 id: chThumb
                                 width: parent.width; height: 100.91 * Tokens.u; radius: 8 * Tokens.u; color: Tokens.surfaceSoft; clip: true
@@ -633,7 +633,7 @@ PlayarrPage {
                         model: modelData.tracks
                         MouseArea {
                             property bool navigationFocusable: enabled
-                            property string parityLabel: modelData.track.track_number + ". " + modelData.track.title
+                            Accessible.name: modelData.track.track_number + ". " + modelData.track.title
                             property int parityRail: 2
                             property int parityIndex: index
                             function navigationActivate() { page.play(modelData.media_file_id, modelData.track.title) }

@@ -385,8 +385,8 @@ Page {
         Item {
             id: seekArea
             x: 12 * Tokens.u; y: 518.13 * Tokens.u; width: 366 * Tokens.u; height: 44 * Tokens.u
-            property string a11yName: qsTr("Seek")
-            property string parityRole: "slider"
+            Accessible.name: qsTr("Seek")
+            Accessible.role: Accessible.Slider
             Rectangle { y: 19 * Tokens.u; width: parent.width; height: 6 * Tokens.u; color: "#2b2b2b" }
             Rectangle { y: 19 * Tokens.u; width: 0.8 * parent.width; height: 6 * Tokens.u; color: "#6e6e6e" }
             Rectangle { y: 19 * Tokens.u; width: Math.max(1, parent.width * Math.min(1, page.positionMs / Math.max(1, page.durationMs))); height: 6 * Tokens.u; color: Tokens.brandPink }
@@ -404,10 +404,11 @@ Page {
                 onReleased: page.seekTo(sliderValue)
             }
         }
-        // The time code is one volatile text run (the web's player-time).
+        // The time code: the web's player-time element, a container hugging its one text run.
         Item {
-            x: 12 * Tokens.u; y: 556.13 * Tokens.u; width: 366 * Tokens.u; height: 16.88 * Tokens.u
-            PLabel { renderType: Text.NativeRendering; id: timeLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: -2.4; font.letterSpacing: 0.27; text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.56) }
+            width: timeLbl.implicitWidth; height: 14.88 * Tokens.u
+            x: 195 * Tokens.u - width / 2; y: 556.13 * Tokens.u
+            PLabel { renderType: Text.NativeRendering; id: timeLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: -0.43; font.letterSpacing: 0.27; text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.56) }
         }
         PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }
         PlayerButton {

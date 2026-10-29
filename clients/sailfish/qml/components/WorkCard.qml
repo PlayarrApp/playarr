@@ -16,8 +16,8 @@ MouseArea {
     property bool poster: false
     property bool compact: false        // library grids: title only
     property bool showUnwatched: true
-    property string parityRole: "link"
-    readonly property string a11yName: compact && work ? qsTr("Open %1").arg(titleLbl.text) : titleLbl.text + (subLbl.text !== "" ? " " + subLbl.text : "")
+    Accessible.role: Accessible.Link
+    Accessible.name: compact && work ? qsTr("Open %1").arg(titleLbl.text) : titleLbl.text + (subLbl.text !== "" ? " " + subLbl.text : "")
     property bool firstInk: false
     property bool ring: false           // web focuses the first library card at rest and draws its ring
     readonly property var prog: work ? Progress.byWork[work.id] : undefined
@@ -104,7 +104,7 @@ MouseArea {
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: 3 * Tokens.u
-            property string parityRole: "img"
+            Accessible.role: Accessible.Graphic
             color: Tokens.dark ? "#5a5559" : "#e5e3e4"
         }
         Rectangle {

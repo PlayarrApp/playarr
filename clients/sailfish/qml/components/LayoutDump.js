@@ -1,7 +1,7 @@
 // Diagnostic parity layout exporter (docs/parity/LAYOUT.md). Walks the item tree under `root` and reports mapped item geometry,
-// estimated text, item colours and opacity, and sampled backgrounds. Text is not measured from rendered line or glyph ranges; paint,
-// accessibility and clipping semantics are incomplete. Output must not be treated as a clean layout audit. Nothing is declared per
-// screen: selection hooks exist (layoutSkip, layoutNoEmit, layoutSkipTree) with semantic hints (parityRole, a11yName).
+// estimated text, item colours and opacity, and sampled backgrounds. Text is not measured from rendered glyph ranges. Output must not be
+// treated as a clean layout audit. Nothing is declared per screen: selection hooks exist (layoutSkip, layoutNoEmit, layoutSkipTree), and
+// names and roles are read from the items' real Accessible.name and Accessible.role (passed in as `access`).
 // Lines: `LAYOUTEL|<json array>` in chunks of 10, then `LAYOUTEND|w|h`. Parity builds only: called from a PLAYARR_STEPS step.
 .pragma library
 
@@ -105,11 +105,32 @@ function uniformRadiusScale(item, root) {
     if (Math.abs(sx - sy) > 0.0001 || Math.abs(dot) > 0.0001) return null
     return (sx + sy) / 2
 }
-// A Rectangle that never set a border still reports width 1 and a black colour in Qt 5.6, but draws none. shortcut: a deliberate 1 px pure
-// black border reads as no border; the app has none, revisit if it gains one.
+// A Rectangle that never set a border reports Qt's default pen (read from a fresh Rectangle by dump(), `unsetBorder`) but draws none; any
+// other pen is drawn. shortcut: a deliberate pen equal to the default (1 px pure black) reads as none; a source test keeps the QML free of one.
+var unsetBorder = null
 function drawnBorder(border) {
     if (!(border.width > 0) || border.color.a <= 0) return false
-    return border.width !== 1 || border.color.r !== 0 || border.color.g !== 0 || border.color.b !== 0
+    return !unsetBorder || border.width !== unsetBorder.width || border.color.r !== unsetBorder.color.r || border.color.g !== unsetBorder.color.g
+        || border.color.b !== unsetBorder.color.b || border.color.a !== unsetBorder.color.a
+}
+// Qt's QAccessible::Role values (as the QML Accessible enum) in the web's role vocabulary. A role Qt has no word for stays unset.
+var ROLE_NAMES = { 16: "container", 18: "dialog", 20: "group", 30: "link", 40: "img", 41: "text", 42: "textbox", 43: "button", 51: "slider", 1040: "search", 1044: "heading" }
+// What an effect draws from its source, within the effect's own box `box` (a mapped polygon in `root`): "image" when a loaded Image there covers
+// it, "container" when a fill, gradient or canvas covers it (95 % or more), null when the source paints less (a thin bar is not the box).
+function effectKind(item, root, box) {
+    if (!item) return null
+    var covers = item.width > 0 && item.height > 0 && polygonCoverage(mappedRect(item, root, 0, 0, item.width, item.height), box) >= 0.95
+    var kind = null
+    if (item.paintedWidth !== undefined && item.status === 1) kind = covers ? "image" : null
+    else if ((item.border !== undefined && item.color !== undefined && item.color.a > 0) || (item.gradient && gradientStops(item.gradient)) || item.renderTarget !== undefined) kind = covers ? "container" : null
+    if (kind === "image") return kind
+    var kids = item.children
+    for (var i = 0; kids && i < kids.length; ++i) {
+        var k = effectKind(kids[i], root, box)
+        if (k === "image") return k
+        kind = kind || k
+    }
+    return kind
 }
 // A vertical gradient (the only kind Qt 5.6 draws) as stops; null when none of its stops is visible. Colours interpolate premultiplied, as Qt does.
 function gradientStops(gradient) {
@@ -121,6 +142,7 @@ function gradientStops(gradient) {
     }
     return visible ? stops : null
 }
+function opaqueStops(stops, op) { for (var i = 0; i < stops.length; ++i) if (stops[i].a * op < 0.5) return false; return stops.length > 0 }
 function weightOf(item, weights) {
     var w = weights[String(item.font.family).split(",")[0]]   // a family list: the first is the primary font
     if (w !== undefined) return w
@@ -183,7 +205,11 @@ function lineRuns(item, metrics, log) {
         var last = i === texts.length - 1
         var room = widthOf(i)
         // The last line is exported as drawn: when Qt cut it (item.truncated), the visible text with Qt's own elision.
-        if (elides && last && item.truncated === true) t = m.elide(t, textElideMode(item.elide), room)
+        if (elides && last && item.truncated === true) {
+            t = m.elide(t, textElideMode(item.elide), room)
+            // the elided string must be what Qt drew: its width is Qt's own content width
+            if (texts.length === 1 && Math.abs(m.advance(t) - item.contentWidth) > 1.5) fail("elided text width " + m.advance(t) + " against content width " + item.contentWidth)
+        }
         // One line: Qt's own content width. Several: each line's advance (checked against the content width below).
         var wdt = texts.length === 1 ? item.contentWidth : m.advance(t)
         widest = Math.max(widest, wdt)
@@ -198,7 +224,9 @@ function lineRuns(item, metrics, log) {
 }
 
 // metrics(font) -> { ascent, descent, advance(text), elide(text, mode, width) } in device pixels, from Qt's FontMetrics.
-function dump(root, u, weights, metrics, log) {
+function dump(root, u, weights, metrics, log, access, defaultBorder) {
+    unsetBorder = defaultBorder || null
+    function roleOf(item, fallback) { var r = ROLE_NAMES[access(item).role]; return r || fallback }
     var fills = [], out = [], radiusLimitations = 0, painters = [], seq = 0
     // Backdrop at a point: the fills painted before `limit` (ancestors and earlier siblings), plus, from `limit` on, only the plates that
     // cover (95 % or more of) `cover` ({x, y, w, h}): the element's own background, drawn as a child rectangle.
@@ -224,14 +252,14 @@ function dump(root, u, weights, metrics, log) {
     // `shown` is set for the offscreen source of an effect: Qt reports every item inside it as invisible (visibility is inherited), but the effect
     // draws it. A part of it that should not be drawn must say so by opacity (see Artwork's fallback title).
     function isWithin(item, ancestor) { for (var n = item; n; n = n.parent) if (n === ancestor) return true; return false }
-    // A painted shape that fills a control: the direct child Rectangle the control's own background is drawn with.
+    // A painted shape that fills a control: the direct child Rectangle (covering 95 % or more of the control) its own background is drawn with.
     function paintedShape(item) {
         var kids = item.children
         for (var i = 0; i < kids.length; ++i) {
             var k = kids[i]
             if (!k.visible || k.border === undefined || k.radius === undefined || k.color === undefined || k.layoutSkip === true) continue
             if (!(k.color.a > 0 || drawnBorder(k.border)) || k.radius <= 0) continue
-            if (polygonCoverage(mappedRect(item, root, 0, 0, item.width, item.height), mappedRect(k, root, 0, 0, k.width, k.height)) < 0.95) continue
+            if (polygonCoverage(mappedRect(k, root, 0, 0, k.width, k.height), mappedRect(item, root, 0, 0, item.width, item.height)) < 0.95) continue
             return k
         }
         return null
@@ -244,15 +272,29 @@ function dump(root, u, weights, metrics, log) {
         for (var i = 0; i < k.length; ++i) if (k[i].source !== undefined && k[i].paintedWidth !== undefined) return true
         return false
     }
-    function walk(item, opAcc, shown, inMask, inPicture) {   // inMask: the item that draws the effect this subtree is the source of
+    function walk(item, opAcc, shown, inMask, inPicture, maskClip) {   // inMask: the item that draws the effect this subtree is the source of
         var painter = inMask || item
         if (!item || (!item.visible && shown !== true) || item.layoutSkipTree === true) return
         var op = opAcc * item.opacity
         if (op <= 0.001) return
         var w = item.width, h = item.height
         // An element counts when some of it is visible after the viewport and the clipping ancestors; its box is the whole transformed border box.
-        var polygon = clippedItemPolygon(item, root, 0, 0, w, h), clippedBox = polygonBounds(polygon)
+        var polygon = clippedItemPolygon(item, root, 0, 0, w, h)
+        // An effect's source shows only through the effect's mask: clip to the mask's box, and leave out what covers the whole mask (the mask stands for it).
+        if (maskClip && polygon.length) {
+            var representedByMask = polygonCoverage(polygon, maskClip) >= 0.95
+            polygon = clipPolygon(polygon, maskClip)
+            if (representedByMask) polygon = []
+        }
+        var clippedBox = polygonBounds(polygon)
         var box = clippedBox ? polygonBounds(mappedRect(item, root, 0, 0, w, h)) : null
+        var kids = item.children
+        // Qt paints children in z order, then declaration order; those below zero are painted under the item's own content.
+        var order = []
+        for (var oi = 0; oi < kids.length; ++oi) order.push(oi)
+        order.sort(function (a, b) { return (kids[a].z - kids[b].z) || (a - b) })
+        var below = 0
+        for (; below < order.length && kids[order[below]].z < 0; ++below) walk(kids[order[below]], op, shown, inMask, inPicture || holdsPicture(item), maskClip)
         var mark = out.length, fmark = fills.length
         if (box && item.layoutSkip !== true) {
             var x = box.x, y = box.y
@@ -260,14 +302,20 @@ function dump(root, u, weights, metrics, log) {
                 var textScale = uniformRadiusScale(item, root)
                 if (textScale === null) { log("LAYOUTERR|nonuniform text transform|" + item.text.slice(0, 30)); textScale = 1 }
                 var runs = lineRuns(item, metrics, log)
+                if (item.readOnly !== undefined && item.positionAt && item.positionToRectangle && runs.length === 1) {
+                    // the characters between the input's padded edges, from Qt's own positions
+                    var s0 = item.positionAt(item.leftPadding || 0), s1 = item.positionAt(item.width - (item.rightPadding || 0))
+                    var r0 = item.positionToRectangle(s0), r1 = item.positionToRectangle(s1)
+                    runs = [{ text: item.text.slice(s0, s1), x: r0.x, y: runs[0].y, w: r1.x - r0.x, h: runs[0].h }]
+                }
                 if (!runs.length) log("LAYOUTERR|text without runs|" + item.text.slice(0, 30))
-                if (item.a11yName !== undefined && item.readOnly !== undefined) {
+                if (item.readOnly !== undefined) {   // a real text input: TextInput or TextField
                     // a real (read-only) text input: its own box is the control, its text is drawn inside
                     var inCentre = polygonCenter(polygon)
-                    var inp = { text: String(item.a11yName), role: item.parityRole || "textbox", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(inCentre.x, inCentre.y), fontSize: null, fontWeight: null, _at: [inCentre.x, inCentre.y], _box: mappedRect(item, root, 0, 0, w, h) }
+                    var inp = { text: String(access(item).name), role: roleOf(item, "textbox"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(inCentre.x, inCentre.y), fontSize: null, fontWeight: null, _at: [inCentre.x, inCentre.y], _box: mappedRect(item, root, 0, 0, w, h) }
                     var inShape = paintedShape(item)
                     if (inShape) { var inScale = uniformRadiusScale(inShape, root), inRadius = radiusOf(inShape, inScale); if (inRadius) inp.radius = inRadius }
-                    inp._item = item; inp._seq = ++seq; inp._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                    inp._item = item; inp._seq = ++seq; inp._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                     out.push(inp)
                 }
                 for (var li = 0; li < runs.length; ++li) {
@@ -276,16 +324,10 @@ function dump(root, u, weights, metrics, log) {
                     if (!textPoly.length || run.text === "") continue
                     var textBox = polygonBounds(mappedRect(item, root, run.x, run.y, run.w, run.h))
                     var textSample = polygonCenter(textPoly)
-                    var el = { text: run.text, role: item.parityRole || "text", rect: rect(textBox.x, textBox.y, textBox.w, textBox.h),
+                    var el = { text: run.text, role: item.readOnly !== undefined ? "text" : roleOf(item, "text"), rect: rect(textBox.x, textBox.y, textBox.w, textBox.h),
                         color: hex(item.color), background: bgAt(textSample.x, textSample.y), fontSize: r2(item.font.pixelSize * textScale / u), fontWeight: weightOf(item, weights) }
-                    // A text that is the only content of a rounded plate (a chip or badge) is that plate's label: it carries the plate's corner radius.
-                    var plate = item.parent && item.parent.border !== undefined && item.parent.radius > 0 && item.parent.color !== undefined ? item.parent : null
-                    if (plate && (plate.color.a > 0 || drawnBorder(plate.border)) && plate.children.length === 1) {
-                        var plateScale = uniformRadiusScale(plate, root), plateRadius = radiusOf(plate, plateScale)
-                        if (plateRadius) el.radius = plateRadius
-                    }
                     if (op < 0.999) el.opacity = r2(op)
-                    el._item = item; el._seq = ++seq; el._r = { x: textBox.x, y: textBox.y, w: textBox.w, h: textBox.h }
+                    el._item = item; el._seq = ++seq; el._r = polygonBounds(textPoly)
                     out.push(el)
                 }
             } else if (item.border !== undefined && item.radius !== undefined && item.color !== undefined && w > 0 && h > 0) {
@@ -293,30 +335,43 @@ function dump(root, u, weights, metrics, log) {
                 var filled = item.color.a > 0 && !item.gradient
                 var mySeq = ++seq
                 var pic = inPicture && !stops
+                var behindFill = bgAt(polygonCenter(polygon).x, polygonCenter(polygon).y)   // what is painted under this item, before its own fill
                 if (filled && !pic) fills.push({ polygon: polygon, full: mappedRect(item, root, 0, 0, w, h), c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
                 if (filled && !pic && !stops && item.color.a * op >= 0.5) painters.push({ poly: polygon, seq: mySeq, item: painter })
-                else if (stops) filled = true   // a gradient is a visible fill, but like the web's background-image it is not a backdrop colour
+                else if (stops) {   // a gradient is a visible fill, but like the web's background-image it is not a backdrop colour
+                    filled = true
+                    if (opaqueStops(stops, op)) painters.push({ poly: polygon, seq: mySeq, item: painter })
+                }
                 var bordered = drawnBorder(item.border)
-                if ((filled || bordered) && !pic && item.layoutNoEmit !== true) {
-                    var center = polygonCenter(polygon)
-                    var rc = { text: "", role: item.parityRole || "container", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(center.x, center.y), fontSize: null, fontWeight: null, }
+                var center = polygonCenter(polygon)
+                var sameAsBehind = filled && !stops && !drawnBorder(item.border) && item.color.a * op >= 0.999
+                    && behindFill === "#" + [item.color.r, item.color.g, item.color.b].map(function (v) { var h = Math.round(v * 255).toString(16); return h.length < 2 ? "0" + h : h }).join("")
+                if ((filled || bordered) && !pic && !sameAsBehind && item.layoutNoEmit !== true) {
+                    var rc = { text: "", role: roleOf(item, "container"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(center.x, center.y), fontSize: null, fontWeight: null, }
                     var rectangleRadiusScale = uniformRadiusScale(item, root)
                     var rr = radiusOf(item, rectangleRadiusScale)
                     if (item.radius > 0 && rectangleRadiusScale === null) radiusLimitations += 1
                     if (rr) rc.radius = rr
                     if (op < 0.999) rc.opacity = r2(op)
-                    rc._item = item; rc._seq = mySeq; rc._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                    rc._item = item; rc._seq = mySeq; rc._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                     out.push(rc)
                 }
+            } else if (item.gradient !== undefined && item.start !== undefined && item.end !== undefined && w > 0 && h > 0 && gradientStops(item.gradient)) {
+                // a QtGraphicalEffects LinearGradient (the horizontal gradients a Rectangle cannot draw): a visible fill, like the web's background-image
+                var lgCenter = polygonCenter(polygon)
+                var lg = { text: "", role: roleOf(item, "container"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(lgCenter.x, lgCenter.y), fontSize: null, fontWeight: null }
+                if (op < 0.999) lg.opacity = r2(op)
+                lg._item = item; lg._seq = ++seq; if (opaqueStops(gradientStops(item.gradient), op)) painters.push({ poly: polygon, seq: lg._seq, item: painter }); lg._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
+                out.push(lg)
             } else if (item.source !== undefined && item.status !== undefined && item.paintedWidth !== undefined && w > 0 && h > 0 && item.status === 1) {
                 var imgSeq = ++seq
                 // only a picture that covers its whole box (cover fill mode) hides what is under it; a stretched PNG may be transparent
                 if (op >= 0.5 && item.fillMode === 2) painters.push({ poly: polygon, seq: imgSeq, item: painter })
                 if (!inMask) {   // the mask item already stands for this picture
                 var imageCenter = polygonCenter(polygon)
-                var im = { text: "", role: item.parityRole || "image", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(imageCenter.x, imageCenter.y), fontSize: null, fontWeight: null }
+                var im = { text: "", role: roleOf(item, "image"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(imageCenter.x, imageCenter.y), fontSize: null, fontWeight: null }
                 if (op < 0.999) im.opacity = r2(op)
-                im._item = item; im._seq = imgSeq; im._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                im._item = item; im._seq = imgSeq; im._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 out.push(im)
                 }
             } else if (item.source !== undefined && item.status !== undefined && item.paintedWidth !== undefined && w > 0 && h > 0) {
@@ -325,26 +380,30 @@ function dump(root, u, weights, metrics, log) {
             } else if (item.available !== undefined && item.renderTarget !== undefined && w > 0 && h > 0) {
                 // Canvas: a drawn icon
                 var canvasCenter = polygonCenter(polygon)
-                var cv = { text: "", role: item.parityRole || "image", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(canvasCenter.x, canvasCenter.y), fontSize: null, fontWeight: null }
+                var cv = { text: "", role: roleOf(item, "image"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(canvasCenter.x, canvasCenter.y), fontSize: null, fontWeight: null }
                 if (op < 0.999) cv.opacity = r2(op)
-                cv._item = item; cv._seq = ++seq; cv._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                cv._item = item; cv._seq = ++seq; cv._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 out.push(cv)
-            } else if (item.maskSource !== undefined && item.parityRole && w > 0 && h > 0) {
+            } else if (item.maskSource !== undefined && effectKind(item.source, root, mappedRect(item, root, 0, 0, w, h)) && w > 0 && h > 0) {
                 // a masked picture (rounded artwork): the visible drawing of an image
                 var maskCenter = polygonCenter(polygon)
-                var mk = { text: "", role: item.parityRole, rect: rect(x, y, box.w, box.h), color: null, background: bgAt(maskCenter.x, maskCenter.y), fontSize: null, fontWeight: null }
-                if (item.radiusSource) {
-                    var maskScale = uniformRadiusScale(item.radiusSource, root), maskRadius = radiusOf(item.radiusSource, maskScale)
+                var mk = { text: "", role: roleOf(item, effectKind(item.source, root, mappedRect(item, root, 0, 0, w, h))), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(maskCenter.x, maskCenter.y), fontSize: null, fontWeight: null,
+                    _at: [maskCenter.x, maskCenter.y], _box: mappedRect(item, root, 0, 0, w, h) }   // settled once its source (a fill under the picture) is walked
+                // A picture inside a rounded container of its own size is clipped by that container (the web's overflow clip): the rounding is the container's.
+                var holder = item.parent
+                var clippedByHolder = holder && holder.radius !== undefined && holder.radius > 0 && Math.abs(holder.width - w) < 0.5 && Math.abs(holder.height - h) < 0.5
+                if (!clippedByHolder && item.maskSource && item.maskSource.radius !== undefined) {
+                    var maskScale = uniformRadiusScale(item.maskSource, root), maskRadius = radiusOf(item.maskSource, maskScale)
                     if (maskRadius) mk.radius = maskRadius
                     else if (maskScale === null) radiusLimitations += 1
                 }
                 if (op < 0.999) mk.opacity = r2(op)
-                mk._item = item; mk._seq = ++seq; mk._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                mk._item = item; mk._seq = ++seq; mk._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 if (op >= 0.5) painters.push({ poly: polygon, seq: mk._seq, item: item })
                 out.push(mk)
-            } else if ((item.navigationFocusable === true || item.a11yName !== undefined) && item.layoutNoEmit !== true && w > 0 && h > 0) {
+            } else if ((access(item).name !== "" || access(item).role !== 0) && item.layoutNoEmit !== true && w > 0 && h > 0) {
                 var focusCenter = polygonCenter(polygon)
-                var fr = { text: String(item.a11yName !== undefined ? item.a11yName : item.parityLabel || ""), role: item.parityRole || "button", rect: rect(x, y, box.w, box.h),
+                var fr = { text: String(access(item).name), role: roleOf(item, "button"), rect: rect(x, y, box.w, box.h),
                     color: null, background: bgAt(focusCenter.x, focusCenter.y), fontSize: null, fontWeight: null, _at: [focusCenter.x, focusCenter.y], _box: mappedRect(item, root, 0, 0, w, h) }
                 var shape = paintedShape(item)
                 if (shape) {
@@ -353,17 +412,12 @@ function dump(root, u, weights, metrics, log) {
                     else if (frScale === null) radiusLimitations += 1
                 }
                 if (op < 0.999) fr.opacity = r2(op)
-                fr._item = item; fr._seq = ++seq; fr._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                fr._item = item; fr._seq = ++seq; fr._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 out.push(fr)
             }
         }
-        var kids = item.children
-        // Qt paints children in z order, then declaration order.
-        var order = []
-        for (var oi = 0; oi < kids.length; ++oi) order.push(oi)
-        order.sort(function (a, b) { return (kids[a].z - kids[b].z) || (a - b) })
-        for (var i = 0; i < order.length; ++i) walk(kids[order[i]], op, shown, inMask, inPicture || holdsPicture(item))
-        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, item, inPicture)
+        for (var i = below; i < order.length; ++i) walk(kids[order[i]], op, shown, inMask, inPicture || holdsPicture(item), maskClip)
+        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, item, inPicture, polygon)
         // an element's background includes its own fill and its children's: settle it once the subtree has been painted
         // development aid: the QML type of each element (the suite driver drops it unless asked to keep it)
         for (var k = mark; k < out.length; ++k) if (out[k]._src === undefined) out[k]._src = String(item).replace(/\(0x.*$/, "")
@@ -373,17 +427,17 @@ function dump(root, u, weights, metrics, log) {
     // Elements covered by something painted later (opaque enough, not inside the element) are not visible: sample the visible box at 3 x 3 points.
     var kept = []
     for (var e = 0; e < out.length; ++e) {
-        var el2 = out[e], r = el2._r, hidden = !!r
+        var el2 = out[e], r = el2._r, hidden = !!r, cover = null
         for (var gy = 0; hidden && gy < 3; ++gy) for (var gx = 0; hidden && gx < 3; ++gx) {
             var pt = { x: r.x + r.w * (0.2 + 0.3 * gx), y: r.y + r.h * (0.2 + 0.3 * gy) }, hit = false
             for (var pi2 = 0; !hit && pi2 < painters.length; ++pi2) {
                 var pn = painters[pi2]
-                if (pn.seq > el2._seq && !isWithin(pn.item, el2._item) && polygonContainsPoint(pn.poly, pt)) hit = true
+                if (pn.seq > el2._seq && !isWithin(pn.item, el2._item) && polygonContainsPoint(pn.poly, pt)) { hit = true; cover = pn }
             }
             if (!hit) hidden = false
         }
         if (!hidden) kept.push(el2)
-        else log("LAYOUTWARN|occluded|" + el2.role + "|" + el2.text.slice(0, 24) + "|" + r2(r.x / u) + "," + r2(r.y / u) + " " + r2(r.w / u) + "x" + r2(r.h / u))
+        else log("LAYOUTWARN|occluded|" + el2.role + "|" + el2.text.slice(0, 24) + "|" + r2(r.x / u) + "," + r2(r.y / u) + " " + r2(r.w / u) + "x" + r2(r.h / u) + "|by " + String(cover.item).replace(/\(0x.*$/, "") + " " + r2(cover.poly[0].x / u) + "," + r2(cover.poly[0].y / u))
     }
     out = kept
     for (var q = 0; q < out.length; ++q) { delete out[q]._item; delete out[q]._seq; delete out[q]._r }
