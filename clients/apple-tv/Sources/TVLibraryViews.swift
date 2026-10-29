@@ -1371,8 +1371,10 @@ struct TVSearchView: View {
                 .foregroundStyle(DesignTokens.Color.textDisabled)
                 .parityLayout(text: "Find any available movie, series, artist or playlist.", size: 13.82, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                 .frame(maxWidth: 280, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2.4)
-                .placed(x: 153.6, y: 268.2 + 56 + DesignTokens.Shell.searchPromptTopGap, w: 280)
+                // below the 76 pt field (172.8 to 248.8) and the 54 pt margin plus the line's own 1 pt
+                .placed(x: 153.6, y: 172.8 + 76 + DesignTokens.Shell.searchPromptTopGap + 1, w: 280)
             idleEmptyState
         case .loading:
             ProgressView("Searching…")
@@ -1424,19 +1426,24 @@ struct TVSearchView: View {
             Color.clear.frame(width: 506, height: 60)
                 .parityBox("textbox", text: "Search your libraries and playlists")
                 .placed(x: 62, y: 8, w: 506, h: 60)
-            if frozen {
+            // The placeholder is a native label (web: a text row inside the field); the field itself is transparent.
+            if !hasQuery || frozen {
                 Text(hasQuery ? query.wrappedValue : "Search your libraries and playlists")
-                    .font(TVTheme.font(size: 17, weight: .medium))
+                    .font(TVTheme.font(size: 17.66, weight: .regular))
                     .foregroundStyle(hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                    .parityLayout(text: hasQuery ? query.wrappedValue : "Search your libraries and playlists", size: 17, weight: Int(TVTheme.cssWeight(.medium)), color: hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                    .placed(x: 66, y: 0, w: 480, h: 76)
-            } else {
-                TextField("Search your libraries and playlists", text: query)
-                    .font(TVTheme.font(size: 17, weight: .medium))
+                    .lineLimit(1)
+                    .parityLayout(text: hasQuery ? query.wrappedValue : "Search your libraries and playlists", size: 17.66, weight: Int(TVTheme.cssWeight(.regular)), color: hasQuery ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
+                    .allowsHitTesting(false)
+                    .placed(x: 62, y: 0, w: 480, h: 76)
+            }
+            if !frozen {
+                TextField("", text: query)
+                    .font(TVTheme.font(size: 17.66, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textPrimary)
+                    .accessibilityLabel("Search your libraries and playlists")
                     .focused($searchFieldFocused)
                     .onSubmit(onSubmit)
-                    .placed(x: 66, y: 0, w: 480, h: 76)
+                    .placed(x: 62, y: 0, w: 480, h: 76)
             }
             if hasQuery {
                 Text("Clear")

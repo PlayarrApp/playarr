@@ -74,14 +74,16 @@ struct TVSettingsView: View {
                             .font(TVTheme.font(size: 20.8, weight: .regular))
                             .foregroundStyle(selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
                             .parityLayout(text: "\u{2192}", size: 20.8, weight: 400, color: selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
+                            .accessibilityHidden(true) // web: aria-hidden
                             .placed(x: selected ? 422.6 : 417.6, y: 30.3, w: 20.8, h: 31.2)
                     }
                     .frame(width: 470.41, height: 91.9, alignment: .topLeading)
-                    .parityBox("link", text: "\(section.number) \(section.title) \u{2192}", fill: selected ? DesignTokens.Color.backgroundRaised : DesignTokens.Stage.surface)
+                    .parityBox("link", text: "\(section.number) \(section.title)", fill: selected ? DesignTokens.Color.backgroundRaised : DesignTokens.Stage.surface)
                     .modifier(TVNavItemFocusFill(fill: DesignTokens.Color.backgroundRaised, cornerRadius: 0))
                 }
                 // Web settings menu: the focused row gets the selected fill and opens its panel; no system platter.
                 .buttonStyle(TVFocusableCardButtonStyle())
+                .accessibilityLabel("\(section.number) \(section.title)")
                 .focused($focusedSection, equals: index)
                 .disabled(TVParityLaunch.frozen) // not .focusable: on a Button it adds a second, inert focus target
                 .focusEffectDisabled()
