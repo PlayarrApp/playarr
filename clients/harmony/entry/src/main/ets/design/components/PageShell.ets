@@ -20,7 +20,7 @@ import { atLeast } from '../../core/SafeInsets';
 
 import { getCatalogKinds } from '../../data/CatalogRepository';
 import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../../navigation/NavItems';
-import { railFrostColors } from './KeyArtBackdrop';
+import { railFrostColors, railFrostColorsFullWidth } from './KeyArtBackdrop';
 import { getNavStack, popRoute } from '../../navigation/NavStack';
 
 // Web back button and title (the shared header look).
@@ -50,6 +50,8 @@ export struct PageShell {
   @Prop showHeader: boolean = true;
   /** TV: 0 or more paints web's `surface` page base instead of `bg`, plus the right-hand frost of that width in % (0 for none). */
   @Prop railFrostWidthPct: number = -1;
+  /** Web draws this page's frost as a full-width box whose fade starts `railFrostWidthPct` from the right edge (Settings, Search). */
+  @Prop railFrostFullBox: boolean = false;
 
   /** The page's own content, laid out in 1920x1080 coordinates, below the chrome. */
   @BuilderParam content: () => void = this.emptyContent;
@@ -203,10 +205,10 @@ export struct PageShell {
       Stack() {
         if (this.railFrostWidthPct > 0) {
           Row()
-            .width(`${this.railFrostWidthPct}%`)
+            .width(this.railFrostFullBox ? '100%' : `${this.railFrostWidthPct}%`)
             .height('100%')
-            .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
-            .linearGradient({ angle: 90, colors: railFrostColors() })
+            .position({ x: this.railFrostFullBox ? 0 : `${100 - this.railFrostWidthPct}%`, y: 0 })
+            .linearGradient({ angle: 90, colors: this.railFrostFullBox ? railFrostColorsFullWidth(this.railFrostWidthPct) : railFrostColors() })
             .hitTestBehavior(HitTestMode.None)
         }
         this.content()
