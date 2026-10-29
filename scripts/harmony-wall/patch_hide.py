@@ -1,6 +1,6 @@
 # Preview-only, run after patch_role.py (never committed): an app-side hide hook the declarative tree honours. FrameNode.commonAttribute on a
 # node fetched by unique id does not re-render a declarative node (run 40891856565 and the three before it), so the hook lives in the tree:
-# every component call gets a stable key (`.id('pvhN')`, N counts in sorted file order, so a build always gives the same keys) and
+# every component call gets a stable key (`.id('pvhN')` plus, off Text, `.accessibilityDescription('pvhN')`; N counts in sorted file order, so a build always gives the same keys) and
 # `.visibility(pvVis(this.pvHid, 'pvhN'))`; every struct holding such a call gets `@StorageLink('pvHid') pvHid`, which the route poll sets
 # (hide:<keys> / show:all). Visibility.Hidden keeps the layout, so only the pixels change. Calls outside a struct (global builders) have no
 # `this` and cannot be hidden: the probe reports them as unmeasured. An `.id()` the app sets itself later in the chain wins over the key.
@@ -39,7 +39,10 @@ def patch(s, counter):
         counter[0] += 1
         key = "pvh%d" % counter[0]
         owner = next((k for k, (a, b) in enumerate(spans) if a <= m.start() < b), None)
-        inserts.append((after, ".id('%s').visibility(pvVis(%s, '%s'))" % (key, "this.pvHid" if owner is not None else "''", key)))
+        # a later `.id()` (the app's own, or a modifier's) replaces the key: a non-Text node repeats it in accessibilityDescription, which the app never sets
+        # (a Text's carries its glyph-run id), so the export can still name the node to hide
+        also = "" if m.group(1) == "Text" else ".accessibilityDescription('%s')" % key
+        inserts.append((after, ".id('%s')%s.visibility(pvVis(%s, '%s'))" % (key, also, "this.pvHid" if owner is not None else "''", key)))
         if owner is not None:
             used.add(owner)
     n = len(inserts)

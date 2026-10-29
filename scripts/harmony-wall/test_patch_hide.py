@@ -29,8 +29,8 @@ class PatchHideTest(unittest.TestCase):
             out = open(os.path.join(d, "Card.ets")).read()
         self.assertIn("@StorageLink('pvHid') pvHid: string = '';", out)
         self.assertIn("Text('a').id('pvh2').visibility(pvVis(this.pvHid, 'pvh2'))", out)
-        self.assertIn("}.id('pvh1').visibility(pvVis(this.pvHid, 'pvh1'))\n    .width(10)", out)  # after the closure, before the app's own attributes
-        self.assertIn("}.id('pvh3').visibility(pvVis('', 'pvh3'))", out)  # a global builder has no state: never hidden
+        self.assertIn("}.id('pvh1').accessibilityDescription('pvh1').visibility(pvVis(this.pvHid, 'pvh1'))\n    .width(10)", out)  # after the closure, before the app's own attributes
+        self.assertIn("}.id('pvh3').accessibilityDescription('pvh3').visibility(pvVis('', 'pvh3'))", out)  # a global builder has no state: never hidden
         self.assertEqual(out.count("@StorageLink"), 1)
 
 

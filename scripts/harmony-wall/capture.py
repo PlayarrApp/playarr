@@ -296,8 +296,9 @@ def keys_hidden(raw):
 
     def walk(node):
         a = node.get("$attrs") or node
-        if str(a.get("visibility", "")).lower().endswith("hidden") and str(a.get("id", "")).startswith("pvh"):
-            found.add(a["id"])
+        key = next((k for k in (a.get("id"), a.get("accessibilityDescription")) if str(k).startswith("pvh")), None)
+        if key is not None and str(a.get("visibility", "")).lower().endswith("hidden"):
+            found.add(key)
         for kid in node.get("$children") or []:
             walk(kid)
     walk(json.loads(raw))
@@ -336,13 +337,18 @@ def probe_occlusion(name, theme, raw, viewport, layout_export, base):
         d = ImageChops.subtract(d, noise.crop(box))
         return d.getbbox() is not None
 
+    noise = None
+
     def hidden_shot(keys):
         """Hide the keys, return (screenshot, the keys the app reports hidden), show everything again."""
         get("/setroute", name="hide:" + ",".join(sorted(keys)))
         time.sleep(4)
         shot, tree = stable(), fetch_tree(name, theme)
-        get("/setroute", name="show:all")
+        get("/setroute", name="show:all")  # every keyed node's visibility binding goes back to Visible (the string is empty)
         time.sleep(4)
+        back = stable()  # and the screen must be the base frame again after each probe, not only at the end
+        if back is None or ImageChops.subtract(ImageChops.difference(base, back).convert("L").point(lambda v: 255 if v else 0), noise).getbbox() is not None:
+            raise RuntimeError("the screen did not return to its base frame after a probe")
         return shot, (keys_hidden(tree) if tree else set())
 
     try:
