@@ -116,6 +116,55 @@ class LayoutExportTest(unittest.TestCase):
         doc = export(column([pill], rect="[0.00, 0.00],[1920.00, 1080.00]"), "x", "dark", (1920, 1080, 1))
         self.assertEqual([e["radius"] for e in doc["elements"] if e["role"] in ("text", "container") and e["rect"]["w"] < 100], [13.5, 13.5])
 
+    # occlusion contract: the audit's probes and the painter rules
+    def _button(self):
+        return {"$type": "Button", "$rect": "[100.00, 100.00],[300.00, 120.00]", "$attrs": {"accessibilityText": "Quality"}}
+
+    def _roles(self, children):
+        return [e["role"] for e in export(column(children), "x", "dark", (360, 780, 3))["elements"]]
+
+    def test_a_hit_test_none_row_does_not_drop_the_button_under_it(self):
+        cover = {"$type": "Row", "$rect": "[0.00, 0.00],[1080.00, 2340.00]", "$attrs": {"backgroundColor": "#FF000000", "hitTestBehavior": "HitTestMode.None"}, "$children": []}
+        self.assertIn("button", self._roles([self._button(), cover]))
+        cover["$attrs"]["hitTestBehavior"] = "HitTestMode.Default"
+        self.assertNotIn("button", self._roles([self._button(), cover]))
+
+    def test_a_covering_role_button_text_drops_the_button(self):
+        cover = text("[0.00, 0.00],[1080.00, 2340.00]", "", [], accessibilityTextHint="pvrole:5", accessibilityText="Cover")
+        self.assertNotIn("Quality", [e["text"] for e in export(column([self._button(), cover]), "x", "dark", (360, 780, 3))["elements"]])
+
+    def test_a_painted_text_with_a_background_covers(self):
+        cover = text("[0.00, 0.00],[1080.00, 2340.00]", "", [], backgroundColor="#FF000000")
+        self.assertNotIn("button", self._roles([self._button(), cover]))
+
+    def test_z_index_decides_paint_order(self):
+        cover = {"$type": "Row", "$rect": "[0.00, 0.00],[1080.00, 2340.00]", "$attrs": {"backgroundColor": "#FF000000"}, "$children": []}
+        self.assertNotIn("button", self._roles([self._button(), cover]))  # listed after the button: paints over it
+        cover["$attrs"]["zIndex"] = "-1"
+        self.assertIn("button", self._roles([self._button(), cover]))  # a lower zIndex paints under it although listed later
+
+    def test_image_opacity_counts(self):
+        img = {"$type": "Image", "$rect": "[0.00, 0.00],[1080.00, 2340.00]", "$attrs": {"opacity": "0.2"}}
+        self.assertIn("button", self._roles([self._button(), img]))
+        img["$attrs"]["opacity"] = "1"
+        self.assertNotIn("button", self._roles([self._button(), img]))
+
+    def test_a_gradient_covers_only_where_it_is_opaque(self):
+        grad = {"$type": "Column", "$rect": "[0.00, 0.00],[1080.00, 2340.00]", "$attrs": {"linearGradient": {"angle": "0.00px", "direction": "GradientDirection.None", "repeating": "false",
+                "colors": [["#FF000000", "0.000000"], ["#FF000000", "0.340000"], ["#00000000", "0.680000"], ["#00000000", "1.000000"]]}}, "$children": []}
+        # angle 0 points up: the opaque end is at the bottom, so a button near the top is not covered, one near the bottom is
+        self.assertIn("button", self._roles([self._button(), grad]))
+        low = {"$type": "Button", "$rect": "[100.00, 2100.00],[300.00, 120.00]", "$attrs": {"accessibilityText": "Low"}}
+        self.assertNotIn("button", self._roles([low, grad]))
+
+    def test_a_spinner_and_a_surface_are_exported_and_limits_are_stated(self):
+        spin = {"$type": "LoadingProgress", "$rect": "[500.00, 1000.00],[90.00, 90.00]", "$attrs": {}}
+        surf = {"$type": "XComponent", "$rect": "[0.00, 0.00],[1080.00, 600.00]", "$attrs": {"content": "Preview not available for this component."}}
+        doc = export(column([surf, spin]), "x", "dark", (360, 780, 3))
+        self.assertEqual([e["role"] for e in doc["elements"] if e["role"] in ("image", "video")].count("image"), 1)
+        self.assertIn("video", [e["role"] for e in doc["elements"]])
+        self.assertTrue(any("placeholder text" in l for l in doc["limits"]))
+
 
 if __name__ == "__main__":
     unittest.main()

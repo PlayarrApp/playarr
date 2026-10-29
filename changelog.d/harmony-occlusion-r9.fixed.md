@@ -1,0 +1,1 @@
+- HarmonyOS layout export: occlusion honours HitTestMode.None, zIndex, image opacity, per-position gradient alpha and painted Text controls; the player's spinner and surface are exported; the export lists what the inspector cannot report.
