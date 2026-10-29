@@ -1726,7 +1726,7 @@ struct Detail {
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
   @Builder
   private playTriangle(): void {
-    Text('\u25B6').fontFamily(nunito(400)) // web draws the glyph (7.3 x 13 at 9.5 vp)
+    Text('\u25B6').fontFamily(nunito(400) + ',PlayarrGlyphs') // web draws the glyph (7.3 x 13 at 9.5 vp)
       .fontSize(9.5).lineHeight(webLineHeight(9.5)).halfLeading(true)
       .fontColor(this.playInk())
   }
@@ -1744,7 +1744,7 @@ struct Detail {
 
     Row({ space: Spacing.sm }) {
       if (isTvMetrics()) {
-        Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE))
+        Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE) + ',PlayarrGlyphs')
           .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
           .fontColor(this.playInk())
       } else {
@@ -1865,7 +1865,7 @@ struct Detail {
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
-      Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)))
+      Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)) + ',PlayarrGlyphs')
         .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))).halfLeading(true)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
         .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })

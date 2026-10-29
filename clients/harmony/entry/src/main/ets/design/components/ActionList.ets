@@ -42,7 +42,8 @@ export struct ActionList {
       ForEach(this.actions, (action: ActionItem) => {
         Column() {
           Row() {
-            Text(action.glyph).fontFamily(nunitoAt(400, isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)))
+            // web draws these glyphs with DejaVu Sans and Liberation Sans fallbacks (PlayarrGlyphs); the Previewer would use its emoji font
+            Text(action.glyph).fontFamily(nunitoAt(400, isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)) + ',PlayarrGlyphs')
               .width(tv(GLYPH_COLUMN))
               .fontSize(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1)).lineHeight(webLineHeight(isTvMetrics() ? tv(GLYPH_SIZE) : GLYPH_SIZE * (PHONE_GLYPH_SCALE[action.glyph] ?? 1))).halfLeading(true)
               .fontColor(toResourceColor(BRAND_PINK))
@@ -66,7 +67,7 @@ export struct ActionList {
         .padding(isTvMetrics() ? 0 : 2)
         .margin(isTvMetrics() ? 0 : { left: -2, right: -2, top: -2, bottom: -2 })
         .borderRadius(tv(ROW_RADIUS + (isTvMetrics() ? 0 : 2)))
-        .outline(action.id === this.actions[0].id ? { width: isTvMetrics() ? tv(3) : 2, color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) + (isTvMetrics() ? 0 : 2) } : { width: 0 }) // web: the first action starts focused
+        .outline(action.id === this.actions[0].id && isTvMetrics() ? { width: isTvMetrics() ? tv(3) : 2, color: toResourceColor(activeColors().ink), radius: tv(ROW_RADIUS + 3) + (isTvMetrics() ? 0 : 2) } : { width: 0 }) // web: the first action starts focused
         .opacity(this.busyId.length > 0 && this.busyId !== action.id ? 0.5 : 1)
         .focusable(this.busyId.length === 0)
         .defaultFocus(action.id === this.actions[0].id)

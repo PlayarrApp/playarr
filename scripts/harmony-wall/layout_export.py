@@ -138,6 +138,7 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             return
         el = {"text": shown(text), "role": role, "rect": {"x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)},
               "color": colour, "background": hex_of(background), "fontSize": size, "fontWeight": weight}
+        radius = min(radius, w / 2, h / 2)  # a radius larger than half the box draws as half the box
         if radius:
             el["radius"] = round(radius, 2)
         if opacity < 0.999:
