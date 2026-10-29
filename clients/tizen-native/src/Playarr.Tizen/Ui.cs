@@ -80,10 +80,13 @@ internal static class Ui
     {
         var lines = WrapLines(text, size, weight, spacing, width, maxLines, balance: balance);
         if (lines.Count == 0) return 0;
-        // one multi-line label (the web has one element for a wrapped block); the app wraps, NUI lays the lines out
-        var label = Text(string.Join("\n", lines), x, y + (lh - ((float)Math.Round(1.011 * size) + (float)Math.Round(0.353 * size))) / 2f, size, weight, color, width, lh, multiline: true, spacing: spacing, maxLines: lines.Count, exactLines: true);
-        if (role != "text") Sem.Tag(label, role);
-        parent.Add(label);
+        // one single-line label per wrapped line: the web exports one glyph run per rendered line, each as tall as the font's content area
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var label = Text(lines[i], x, y + i * lh, size, weight, color, 0, lh, spacing: spacing);
+            if (role != "text") Sem.Tag(label, role);
+            parent.Add(label);
+        }
         return lines.Count;
     }
 

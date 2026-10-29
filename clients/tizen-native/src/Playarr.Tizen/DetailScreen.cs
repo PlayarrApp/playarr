@@ -120,7 +120,7 @@ internal sealed class DetailScreen : IPage
         var textW = Ui.TextWidth(text, tsize, 700, 0);
         var startX = (w - (gw + 8.8f + textW)) / 2;
         var glyphLabel = Ui.Text(glyph, startX, 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.Bg : _t.BrandInk, gw + 4, 19.2f);
-        var textLabel = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, fg, textW + 20, 16.7f);
+        var textLabel = Ui.Text(text, startX + gw + 8.8f, 22.83f, tsize, 700, fg, textW + 20, 16.7f);
         box.Add(glyphLabel); box.Add(textLabel);
         if (name is not null) Sem.Tag(box, role, name);
         var ring = Ring.Make(w, 64, 32, new Rgba(1, 1, 1));

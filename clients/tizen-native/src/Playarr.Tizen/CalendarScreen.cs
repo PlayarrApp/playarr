@@ -419,15 +419,15 @@ internal sealed class CalendarScreen : IPage
         var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, DetailsPanel.Soft(_t), 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
         var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);
-        open.Add(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center));
+        open.Add(Ui.Text("Open series", 0, 17.1f, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center));
         Sem.Tag(open, "button", "Open series");
         var openRing = Ring.Make(124, 58, 29, new Rgba(1, 1, 1)); openRing.Show(false); open.Add(openRing);
         _panelItems.Add(new Focusable { Rect = () => new Box(153.6f, by, 124, 58), Label = "open series", Style = f => openRing.Show(f), Select = () => { if (e.WorkId is { } wid) _env.Navigate(HomeScreen.DetailRoute(new WorkCard(wid, e.MediaKind == "movie" ? WorkKind.Movie : WorkKind.Series, e.Title, "", "", "", null, null, null, 0, false))); } });
         _panel.Add(open);
-        var wl = Ui.Box(286.28f, by, 179.31f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
+        var wl = Ui.Box(286.28f, by - 0.83f, 179.31f, 58, new Rgba(_t.Surface.R, _t.Surface.G, _t.Surface.B, 0.78f), 29);
         wl.BorderlineWidth = 1; wl.BorderlineColor = Ui.LineA(_t, 0.153f);
-        wl.Add(Ui.Text("+", 21.0f, 18, 14.72f, 720, _t.InkSoft, 14, 22.08f));
-        wl.Add(Ui.Text("Add to watchlist", 39.44f, 17, 14.72f, 900, _t.InkSoft, 130, 22.08f));
+        wl.Add(Ui.Text("+", 21.0f, 18.0f, 14.72f, 720, _t.InkSoft, 14, 22.08f));
+        wl.Add(Ui.Text("Add to watchlist", 39.44f, 17.9f, 14.72f, 900, _t.InkSoft, 130, 22.08f));
         Sem.Tag(wl, "button", "Add to watchlist");
         var wlRing = Ring.Make(179.31f, 58, 29, new Rgba(1, 1, 1)); wlRing.Show(false); wl.Add(wlRing);
         _panelItems.Add(new Focusable { Rect = () => new Box(286.28f, by, 179.31f, 58), Label = "add to watchlist", Style = f => wlRing.Show(f), Select = () => Toast("The watchlist is not available in this app yet.") });

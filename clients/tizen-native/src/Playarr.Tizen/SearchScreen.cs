@@ -125,7 +125,7 @@ internal sealed class SearchScreen : IPage
         _field = new TextField { PositionX = 62, PositionY = 8, Size = new Size(506, 60), Padding = new Extents(4, 0, 10, 10), PixelSize = 17f, TextColor = Ui.C(_t.Ink), FontFamily = Ui.Font,
             EnableCursorBlink = true };
         // web: the placeholder is its own text row; a real label (not the field's internal placeholder) so it is laid out and measured like every other text
-        var placeholder = Ui.Text("Search your libraries and playlists", 62, 25.2f, 17.66f, 400, _t.InkMuted, 506, 24);
+        var placeholder = Ui.Text("Search your libraries and playlists", 62, 26.2f, 17.664f, 400, _t.InkMuted, 506, 24);
         _field.TextChanged += (_, e) => { placeholder.Show(string.IsNullOrEmpty(_field.Text)); OnText(_field.Text); };
         Sem.Tag(_field, "textbox", "Search your libraries and playlists");
         form.Add(_field);
@@ -160,10 +160,10 @@ internal sealed class SearchScreen : IPage
 
     private void BuildEmpty()
     {
-        _empty.Add(Ui.Text("Find any available movie, series, artist or playlist.", 153.6f, 302.8f, 13.824f, 400, _t.InkMuted, 272, 21.43f, multiline: true, maxLines: 3));
-        var art = Ui.Box(1125f, 311.8f, 132, 132, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 66);
+        Ui.Paragraph(_empty, "Find any available movie, series, artist or playlist.", 153.6f, 302.8f, 13.824f, 400, _t.InkMuted, 272, 21.43f, 0, 3);
+        var art = Ui.Box(1124.59f, 311.78f, 132, 132, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.5f), 66);
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
-        art.Add(Ui.Icon("search-empty", 37.6f, 47f, 57.6f, 38.4f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
+        art.Add(Ui.Icon("search-empty", 39f, 48f, 54f, 36f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
         Sem.Tag(art, "container");
         _empty.Add(art);
         _empty.Add(Ui.Text("Start typing to search.", 1298.6f, 365.1f, 16.896f, 700, _t.Ink, 400, 25.344f, spacing: -0.44f));
