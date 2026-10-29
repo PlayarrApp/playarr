@@ -183,7 +183,7 @@ export async function createDriver() {
     }
   }
   // Player chrome for the refs (web driver playerControls): the clip paused on its 2 s frame, controls revealed, focus dropped.
-  // Chromium 94 presents the frame before an exact 2.000 s seek target (burned-in 1.933), so the pin aims one frame later (2.02 s) to show the 2.000 s frame.
+  // Chromium 94 presents the frame before an exact 2.000 s seek target (burned-in 1.933), so the pin aims 2.03 s, which presents the 2.000 s frame (2.02 s still shows frame 29, measured).
   async function pinPlayerFrame() {
     const pin = (t) => ev(`(async () => {
       const v = document.querySelector("video");
@@ -224,7 +224,7 @@ export async function createDriver() {
     }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
     let held = device === "tizen" ? 2 : 0;
-    for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.02)) ? held + 1 : 0; await sleep(700); }
+    for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.03)) ? held + 1 : 0; await sleep(700); }
     if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
     await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
     await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
