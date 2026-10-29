@@ -67,6 +67,7 @@ MouseArea {
         kinds: root.poster ? ["poster", "backdrop"] : ["backdrop", "thumb", "poster"]
         height: Math.round(width * (root.poster ? 3 / 2 : 9 / 16) + (root.poster ? 0 : 0.2))
         opacity: root.pressed ? 0.7 : 1
+        prog: root.prog
     }
     // Web's focused card (page-layout.css --card-shadow-focus): 0 24px 48px .3 and 0 10px 20px .2 of the ink tone, then the
     // ring's own glow, 0 0 20px 4px at 45 %. The ring colour is what the web captures measure (141,37,60 light, 197,138,151 dark).
@@ -95,35 +96,6 @@ MouseArea {
         radius: Tokens.radius + 3 * Tokens.u; color: "transparent"
         border.width: 3 * Tokens.u; border.color: root.ringColor
     }
-    // Keep the offscreen source and mask explicitly sized: Qt 5.6 does not
-    // resolve anchors on inline OpacityMask source objects to the art item.
-    Item {
-        id: progressSource
-        x: art.x; y: art.y; width: art.width; height: art.height
-        visible: false
-        Rectangle {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            height: 3 * Tokens.u
-            Accessible.role: Accessible.Graphic
-            color: Tokens.dark ? "#5a5559" : "#e5e3e4"
-        }
-        Rectangle {
-            anchors { left: parent.left; bottom: parent.bottom }
-            height: 3 * Tokens.u
-            width: root.prog && root.prog.duration_ms > 0
-                ? parent.width * Math.max(0, Math.min(1, root.prog.position_ms / root.prog.duration_ms)) : 0
-            color: Tokens.brandPink
-        }
-    }
-    Rectangle { id: progressMask; x: art.x; y: art.y; width: art.width; height: art.height; radius: art.radius; visible: false; color: "white" }
-    // Watch state: mask both progress plates to the same rounded art silhouette.
-    // Without this, the three-pixel bar paints square pixels into the card's rounded bottom corners.
-    OpacityMask {
-        x: art.x; y: art.y; width: art.width; height: art.height
-        visible: !!root.prog && root.prog.state === "part_watched" && root.prog.duration_ms > 0
-        source: progressSource
-        maskSource: progressMask
-    }
     UnseenDot {
         visible: root.showUnwatched && (!root.prog || root.prog.state === "unseen")
         anchors { top: art.top; right: art.right; topMargin: 7 * Tokens.u; rightMargin: 7 * Tokens.u }
@@ -132,7 +104,7 @@ MouseArea {
         id: caption
         anchors { top: art.bottom; topMargin: (compact ? 11 : 11.7) * Tokens.u; left: parent.left; right: parent.right; leftMargin: 1.7 * Tokens.u }
         spacing: 2.5 * Tokens.u + 2
-        PLabel { renderType: Text.NativeRendering; id: titleLbl
+        FitText { id: titleLbl
             width: parent.width
             text: work ? (work.deckTitle || work.title) : ""
             elide: Text.ElideRight
@@ -141,7 +113,7 @@ MouseArea {
             font.letterSpacing: -0.12
             font.pixelSize: Tokens.fs(8.8)
         }
-        PLabel { renderType: Text.NativeRendering; id: subLbl
+        FitText { id: subLbl
             visible: !root.compact
             width: parent.width
             text: work && work.deckSub ? work.deckSub : work ? kindLabel(work.kind) + (work.release_date ? " · " + work.release_date.substr(0, 4) : "") : ""

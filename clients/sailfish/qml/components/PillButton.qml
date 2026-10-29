@@ -79,7 +79,7 @@ MouseArea {
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : Tokens.brandInk
             font.pixelSize: root.iconSize
         }
-        PLabel { renderType: Text.NativeRendering;
+        FitText { 
             id: label2
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(Math.ceil(tm.implicitWidth) + 1, root.width - 2 * root.padCss * Tokens.u - root.iconW - root.contentGap * Tokens.u)
@@ -92,7 +92,7 @@ MouseArea {
             color: root.fill.a > 0 ? root.fillInk : root.primary ? Tokens.primaryInk : root.textInk
         }
     }
-    PLabel { renderType: Text.NativeRendering;
+    FitText { 
         id: label
         visible: root.icon === "" && root.iconImage === ""
         anchors.centerIn: parent

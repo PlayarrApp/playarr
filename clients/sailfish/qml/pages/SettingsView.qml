@@ -52,9 +52,9 @@ Item {
                 Column {
                     x: 56 * Tokens.u; y: 22.92 * Tokens.u; width: 325.2 * Tokens.u - x - 12 * Tokens.u   // the web lays the text out against the resting arrow position
                     spacing: 2.39 * Tokens.u
-                    PLabel { id: titleLbl; width: parent.width; height: 22 * Tokens.u; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.fam(480); font.letterSpacing: -1.35; font.pixelSize: Tokens.fs(16); renderType: Text.NativeRendering }
+                    FitText { id: titleLbl; width: parent.width; height: 22 * Tokens.u; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.fam(480); font.letterSpacing: -1.35; font.pixelSize: Tokens.fs(16); }
                     // the web cuts at the width and puts the ellipsis straight after the last letter, no space before it
-                    CutLabel { id: hintLbl; width: parent.width; height: 15 * Tokens.u; webCut: modelData.hint; color: Tokens.ink; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(10.88); renderType: Text.NativeRendering }
+                    FitText { id: hintLbl; width: parent.width; height: 15 * Tokens.u; elide: Text.ElideRight; text: modelData.hint; color: Tokens.ink; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(10.88); }
                 }
                 // The web's arrow is a system-font glyph; the active row's is ink and 5 px further right.
                 PLabel { id: arrowLbl; renderType: Text.NativeRendering

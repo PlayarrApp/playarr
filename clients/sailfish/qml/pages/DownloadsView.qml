@@ -212,9 +212,9 @@ Item {
                 onClicked: root.toggle(r.key)
                 Column {
                     anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: parent.right; verticalCenter: parent.verticalCenter }
-                    PLabel { renderType: Text.NativeRendering; width: parent.width; text: (root.expanded[r.key] ? "▾  " : "▸  ") + (r.title || ""); elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(15) }
-                    PLabel { renderType: Text.NativeRendering; width: parent.width; text: r.meta || ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(11) }
-                    PLabel { renderType: Text.NativeRendering; width: parent.width; text: r.agg ? root.groupStatus(r.agg) : ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(11) }
+                    FitText { width: parent.width; text: (root.expanded[r.key] ? "▾  " : "▸  ") + (r.title || ""); elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(15) }
+                    FitText { width: parent.width; text: r.meta || ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(11) }
+                    FitText { width: parent.width; text: r.agg ? root.groupStatus(r.agg) : ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(11) }
                 }
             }
             Row {
@@ -247,8 +247,8 @@ Item {
             Column {
                 visible: r.kind === "item"
                 anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; top: parent.top; topMargin: 12 * Tokens.u }
-                PLabel { renderType: Text.NativeRendering; width: parent.width; text: row.t ? root.titleOf(row.t) : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
-                PLabel { renderType: Text.NativeRendering; width: parent.width; text: row.t ? root.statusText(row.t) : ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(13) }
+                FitText { width: parent.width; text: row.t ? root.titleOf(row.t) : ""; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
+                FitText { width: parent.width; text: row.t ? root.statusText(row.t) : ""; elide: Text.ElideRight; color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(13) }
             }
             Row {
                 id: actions

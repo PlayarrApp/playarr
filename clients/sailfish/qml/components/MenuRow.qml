@@ -21,7 +21,7 @@ MouseArea {
         color: Tokens.brandPinkSoft
         font.pixelSize: Tokens.fs(16)
     }
-    PLabel { renderType: Text.NativeRendering;
+    FitText { 
         anchors { left: check.right; right: parent.right; verticalCenter: parent.verticalCenter }
         text: parent.text
         elide: Text.ElideRight

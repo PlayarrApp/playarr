@@ -75,12 +75,12 @@ PlayarrPage {
             x: page.gut; y: 92 * Tokens.u + 2.7
             width: flick.width - 2 * page.gut
             spacing: 11 * Tokens.u
-            PLabel { renderType: Text.NativeRendering;
+            FitText { 
                 width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.0
                 text: qsTr("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.125; font.pixelSize: Tokens.fs(10); bottomPadding: 2.5 * Tokens.u - 3
             }
-            PLabel { renderType: Text.NativeRendering;
+            FitText { 
                 visible: page.failure !== ""; width: parent.width; wrapMode: Text.Wrap
                 text: page.failure; color: Tokens.danger; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10)
             }
@@ -137,7 +137,7 @@ PlayarrPage {
                 }
               }
             }
-            PLabel { renderType: Text.NativeRendering; visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
+            FitText { visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Your link was created on another device and is not stored here. Reset it to get a new link to copy.")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10) }
             PLabel { renderType: Text.NativeRendering; text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; Accessible.role: Accessible.Heading; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.47; topPadding: 0; bottomPadding: 2 * Tokens.u }
@@ -150,11 +150,11 @@ PlayarrPage {
                 Row {
                     spacing: 11 * Tokens.u; x: 4 * Tokens.u; width: body.width - 4 * Tokens.u   // web list indent
                     PLabel { renderType: Text.NativeRendering; text: "•"; color: Tokens.ink; font.pixelSize: Tokens.fs(10) }
-                    PLabel { renderType: Text.NativeRendering; width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10) }
+                    FitText { width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10) }
                 }
               }
             }
-            PLabel { renderType: Text.NativeRendering;
+            FitText { 
                 visible: page.confirming; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Resetting makes a new link and the current link stops working straight away. Calendars using it will need the new link.")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10)
