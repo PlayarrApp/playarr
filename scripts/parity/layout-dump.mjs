@@ -85,7 +85,7 @@ export function layoutPageFn(volatile) {
         range.setStart(nodes[a], i);
         range.setEnd(nodes[a], i + 1);
         var cr = range.getBoundingClientRect();
-        // A space the engine reports with an empty box (some Chromium builds do this for a space before an inline boundary) still separates words on the line.
+        /* A space the engine reports with an empty box (some Chromium builds do this before an inline boundary) still separates words on the line. */
         if ((cr.width <= 0 || cr.height <= 0) && cur && /\s/.test(data.charAt(i))) { cur.text += " "; continue; }
         if (cr.width <= 0 || cr.height <= 0) continue;
         if (!cur || (cr.top + cr.bottom) / 2 > cur.bottom) { cur = { text: "", bottom: cr.bottom, l: null }; lines.push(cur); }
