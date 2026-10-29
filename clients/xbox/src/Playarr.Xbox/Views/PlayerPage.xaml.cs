@@ -172,8 +172,8 @@ namespace Playarr.Xbox.Views
             return false;
         }
 
-        // Control row in D-pad order: disabled controls are skipped, as on web (where the mute and fullscreen buttons are not D-pad stops on a TV).
-        private Button[] Row() => new[] { PrevButton, PlayPauseButton, NextButton, AudioButton, SubtitlesButton, QueueButton, QualityButton, InfoButton, DeviceButton }
+        // Control row in D-pad order (audio tracks are chosen in the audio and subtitles panel, so the audio icon is no stop): disabled controls are skipped, as on web (where the mute and fullscreen buttons are not D-pad stops on a TV).
+        private Button[] Row() => new[] { PrevButton, PlayPauseButton, NextButton, SubtitlesButton, QueueButton, QualityButton, InfoButton, DeviceButton }
             .Where(b => b.IsEnabled && b.Visibility == Visibility.Visible).ToArray();
 
         private static char DirectionOf(Windows.System.VirtualKey key) => key switch
@@ -596,7 +596,7 @@ namespace Playarr.Xbox.Views
             _chromePinnedForTest = true; // the checks must not race the 5 s auto-hide
             _viewModel?.Player.Play();
             ShowChrome();
-            VideoSurface.Focus(FocusState.Programmatic); // the web hands focus to the video once it plays
+            PlayPauseButton.Focus(FocusState.Programmatic); // the checks start on play/pause, as the web's
             UpdateChrome();
         }
 
