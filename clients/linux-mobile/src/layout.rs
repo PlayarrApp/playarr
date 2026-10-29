@@ -371,7 +371,14 @@ impl Walk<'_> {
             f64::from(paintable.intrinsic_height()),
         );
         if let Some(node) = snap.to_node() {
-            let m = graphene::Matrix::new_translate(&graphene::Point3D::new(b[0], b[1], 0.0));
+            // Paint is in the widget's own coordinates; a CSS transform on it (a scale) is read back from its bounds.
+            let (iw, ih) = (
+                paintable.intrinsic_width().max(1) as f32,
+                paintable.intrinsic_height().max(1) as f32,
+            );
+            let m = graphene::Matrix::new_scale(b[2] / iw, b[3] / ih, 1.0).multiply(&graphene::Matrix::new_translate(
+                &graphene::Point3D::new(b[0], b[1], 0.0),
+            ));
             collect(&node, &m, 1.0, None, None, &mut lp);
             factor = root_factor(&node);
         }
@@ -466,53 +473,63 @@ impl Walk<'_> {
             let (ox, oy) = (ox + i32::from(pad.left()), oy + i32::from(pad.top()));
             let s = pango::SCALE as f32;
             let (px, weight) = font_px(l);
+            // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
+            // colour are one record. Text is each run's own, the ellipsis run reading as the ellipsis.
+            let mut recs: Vec<(Rect, String, [f32; 4], f32)> = Vec::new();
             let mut it = layout.iter();
-            let mut any = false;
             loop {
-                let (_, lg) = it.line_extents();
-                let Some(line) = it.line_readonly() else { break };
-                // The drawn text is read from the shaped runs of this very layout: each run's own text, and the ellipsis glyph
-                // where Pango replaced the elided part (its run carries the ellipsis analysis flag).
-                let mut shown = String::new();
-                for run in line.runs() {
+                if let Some(run) = it.run_readonly() {
+                    let (_, lg) = it.run_extents();
                     let item = run.item();
-                    let an = item.analysis();
-                    if an.flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
-                        shown.push('\u{2026}');
+                    let piece = if item.analysis().flags() & PANGO_FLAG_IS_ELLIPSIS != 0 {
+                        "\u{2026}".to_string()
                     } else {
                         let o = item.offset() as usize;
-                        shown.push_str(text.get(o..o + item.length() as usize).unwrap_or(""));
-                    }
-                }
-                let r = [
-                    b[0] + ox as f32 + lg.x() as f32 / s,
-                    b[1] + oy as f32 + lg.y() as f32 / s,
-                    lg.width() as f32 / s,
-                    lg.height() as f32 / s,
-                ];
-                let shown = shown.split_whitespace().collect::<Vec<_>>().join(" ");
-                if !shown.is_empty() && self.shown(r, clip) {
-                    let run = lp
+                        text.get(o..o + item.length() as usize).unwrap_or("").to_string()
+                    };
+                    // An ancestor's CSS scale shows as the label's bounds differing from its allocation.
+                    let (sx, sy) = (b[2] / (w.width().max(1) as f32), b[3] / (w.height().max(1) as f32));
+                    let r = [
+                        b[0] + (ox as f32 + lg.x() as f32 / s) * sx,
+                        b[1] + (oy as f32 + lg.y() as f32 / s) * sy,
+                        lg.width() as f32 / s * sx,
+                        lg.height() as f32 / s * sy,
+                    ];
+                    let m = lp
                         .runs
                         .iter()
                         .filter(|u| overlap(u.b, r) > 0.0)
                         .max_by(|a, c| overlap(a.b, r).total_cmp(&overlap(c.b, r)));
-                    let (col, op) = run.map_or((rgba(&l.color()), factor), |u| (u.color, u.opacity));
-                    let mut el = base(role_of(w), &shown, r, inherited * op, bg);
-                    el["color"] = json!(hex(col, true));
-                    el["fontSize"] = json!((px * 100.0).round() / 100.0);
-                    el["fontWeight"] = json!(weight);
-                    self.items.push(Item {
-                        json: el,
-                        rect: r,
-                        opaque: false,
-                        end: self.items.len() + 1,
-                    });
-                    any = true;
+                    let (col, op) = m.map_or((rgba(&l.color()), factor), |u| (u.color, u.opacity));
+                    match recs.last_mut() {
+                        Some(last) if (last.0[1] - r[1]).abs() < 0.5 && last.2 == col => {
+                            last.1.push_str(&piece);
+                            last.0 = union(Some(last.0), r);
+                        }
+                        _ => recs.push((r, piece, col, op)),
+                    }
                 }
-                if !it.next_line() {
+                if !it.next_run() {
                     break;
                 }
+            }
+            let mut any = false;
+            for (r, shown, col, op) in recs {
+                let shown = shown.split_whitespace().collect::<Vec<_>>().join(" ");
+                if shown.is_empty() || !self.shown(r, clip) {
+                    continue;
+                }
+                let mut el = base(role_of(w), &shown, r, inherited * op, bg);
+                el["color"] = json!(hex(col, true));
+                el["fontSize"] = json!((px * 100.0).round() / 100.0);
+                el["fontWeight"] = json!(weight);
+                self.items.push(Item {
+                    json: el,
+                    rect: r,
+                    opaque: false,
+                    end: self.items.len() + 1,
+                });
+                any = true;
             }
             return (any, bg);
         }

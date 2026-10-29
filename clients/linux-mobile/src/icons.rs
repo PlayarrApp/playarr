@@ -110,6 +110,26 @@ pub fn texture(name: &str, color: &str, px: i32) -> Option<gdk::Texture> {
     Some(gdk::Texture::for_pixbuf(&pb))
 }
 
+/// An icon cropped to the vertical band `top..top+height` (css px) of its `px` square drawing, drawn crisply into a
+/// non-square area: the web draws such glyphs in an svg box of the glyph's own aspect.
+pub fn banded(name: &str, px: i32, top: f64, height: f64, tone: Tone) -> gtk4::DrawingArea {
+    let bytes = glib::Bytes::from_owned(svg(name, color(tone)).into_bytes());
+    let stream = gio::MemoryInputStream::from_bytes(&bytes);
+    let pb = gdk_pixbuf::Pixbuf::from_stream_at_scale(&stream, px * 2, px * 2, true, gio::Cancellable::NONE).ok();
+    let area = gtk4::DrawingArea::builder()
+        .content_width(px)
+        .content_height(height.round() as i32)
+        .build();
+    area.set_draw_func(move |_, cr, _, _| {
+        if let Some(pb) = &pb {
+            cr.scale(0.5, 0.5);
+            gtk4::prelude::GdkCairoContextExt::set_source_pixbuf(cr, pb, 0.0, -top * 2.0);
+            let _ = cr.paint();
+        }
+    });
+    area
+}
+
 /// The brand mark (the web's playarr-icon.svg), drawn at `px` css pixels.
 pub fn brand_mark(px: i32) -> gtk4::Image {
     let bytes = glib::Bytes::from_static(include_bytes!("../data/playarr-mark.svg"));

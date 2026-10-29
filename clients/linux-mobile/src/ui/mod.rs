@@ -325,13 +325,7 @@ impl App {
                 .css_classes(["pa-close-glyph"])
                 .build(),
         ));
-        // The web's dialog, its close button and the page behind: names as the web labels them.
-        let dialog = match (kicker, title) {
-            ("Title actions", t) => format!("{t} actions"),
-            ("Library controls", "Filters") => "Movies display filters".to_string(),
-            (_, t) => t.to_string(),
-        };
-        crate::layout::name(&panel, &dialog);
+        // The web's dialog carries no label of its own.
         crate::layout::name(&close, if filters { "Close filters" } else { "Close" });
 
         let me = self.clone();
