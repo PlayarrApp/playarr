@@ -212,7 +212,7 @@ PlayarrPage {
                 lineHeight: 0.95 * font.pixelSize / naturalHeight   // web: 0.95 of the font size between wrapped lines
                 topPadding: -3 * Tokens.u + 7.25 - 8.58   // the title sits where the web's does (measured on the drawn lines); the box below keeps its place
                 // the box below keeps the place it had when the lines were squeezed (0.92 of the font height, or 0.681 each when wrapped)
-                height: topPadding + (lineCount > 1 ? lineCount * 0.681 : 0.92) * naturalHeight - (lineCount > 1 ? 8.8 * Tokens.u : 0) - 4.7 * Tokens.u - 7 - (lineCount > 1 ? 20.2 : 0) + (lineCount > 1 ? 32.7 : 8.58)
+                height: topPadding + (lineCount > 1 ? lineCount * 0.681 : 0.92) * naturalHeight - 4.7 * Tokens.u - 7 - (lineCount > 1 ? 20.2 : 0) + (lineCount > 1 ? 32.7 : 8.58)
             }
             Row {
                 x: Tokens.pad
