@@ -1,0 +1,1 @@
+- Parity webOS driver pins the player at 2.03 s so Chromium 94 presents the 2.000 s frame, and the layout dump rule for volatile input values is documented.
