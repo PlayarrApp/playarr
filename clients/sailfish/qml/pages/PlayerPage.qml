@@ -408,7 +408,6 @@ Page {
         Item {
             width: timeLbl.implicitWidth; height: 14.88 * Tokens.u
             x: 195 * Tokens.u - width / 2; y: 556.13 * Tokens.u
-            Accessible.role: Accessible.Pane; Accessible.name: timeLbl.text
             PLabel { renderType: Text.NativeRendering; id: timeLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: -0.43; font.letterSpacing: 0.27; text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.56) }
         }
         PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }

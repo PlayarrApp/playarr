@@ -45,11 +45,6 @@ Item {
                 font.pixelSize: Tokens.fs(20)
             }
         }
-        Rectangle {   // the picture's own placeholder fill, under it and inside its rounded silhouette
-            anchors.fill: parent
-            color: Tokens.surfaceSoft
-            visible: root.roundImage
-        }
         Rectangle {
             anchors.fill: parent
             color: root.emptyColor
@@ -68,6 +63,7 @@ Item {
     }
     Rectangle {   // the web's art container, with the picture inside it
         anchors.fill: parent; radius: root.roundImage ? 0 : root.radius; color: root.roundImage ? "transparent" : Tokens.surfaceSoft
+        Rectangle { anchors.fill: parent; radius: root.radius; color: Tokens.surfaceSoft; visible: root.roundImage }   // the picture's placeholder plate, drawn under it
         Rectangle { id: mask; anchors.fill: parent; radius: root.radius; visible: false }
         OpacityMask { anchors.fill: parent; source: art; maskSource: mask; }
     }

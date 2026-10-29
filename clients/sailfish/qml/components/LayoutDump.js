@@ -132,6 +132,98 @@ function effectKind(item, root, box) {
     }
     return kind
 }
+// A vertical gradient (the only kind Qt 5.6 draws) as stops; null when none of its stops is visible. Colours interpolate premultiplied, as Qt does.
+function gradientStops(gradient) {
+    var list = gradient && gradient.stops, stops = [], visible = false
+    for (var i = 0; list && i < list.length; ++i) {
+        var c = list[i].color
+        stops.push({ p: list[i].position, r: c.r, g: c.g, b: c.b, a: c.a })
+        if (c.a > 0) visible = true
+    }
+    return visible ? stops : null
+}
+function opaqueStops(stops, op) { for (var i = 0; i < stops.length; ++i) if (stops[i].a * op < 0.5) return false; return stops.length > 0 }
+function weightOf(item, weights) {
+    var w = weights[String(item.font.family).split(",")[0]]   // a family list: the first is the primary font
+    if (w !== undefined) return w
+    var f = item.font.weight
+    return f >= 75 ? 700 : f >= 63 ? 600 : f <= 25 ? 300 : 400
+}
+
+// Text as laid out: one run per rendered line, in item coordinates. Qt 5.6 reports each line's box through Text.lineLaidOut (kept by PLabel
+// and PText in `laidLines`) but not its characters, so the characters of a wrapped line are found by fitting the words into the width Qt gave
+// that line, and the result is checked against Qt's own line count and widest line.
+// Text.ElideLeft 0, ElideRight 1, ElideMiddle 2 and ElideNone 3 match Qt::TextElideMode, with None added.
+function textElideMode(e) { return e }
+function breakParagraph(para, widthOf, advance, wrapMode, startLine, room) {
+    var tokens = para.match(/\S+\s*/g) || [""], lines = [], cur = ""
+    function fits(s) { return advance(s.replace(/\s+$/, "")) <= widthOf(startLine + lines.length) + 0.01 }
+    for (var i = 0; i < tokens.length; ++i) {
+        var token = tokens[i]
+        if (cur === "" || fits(cur + token)) { cur += token; continue }
+        lines.push(cur); cur = token
+        if (room !== undefined && lines.length >= room) break
+    }
+    if (room === undefined || lines.length < room) lines.push(cur)
+    else {
+        // the room ran out: the rest of the paragraph is what an elided last line stands for
+        lines.rest = tokens.slice(i).join("")
+    }
+    return lines
+}
+function lineRuns(item, metrics, log) {
+    var shown = item.font.capitalization === 1 ? item.text.toUpperCase() : item.text
+    shown = shown.replace(/\r/g, "")
+    var m = metrics(item.font), rec = item.laidLines, count = Math.max(1, item.lineCount || 1)
+    var ha = item.horizontalAlignment, avail = item.width - (item.leftPadding || 0) - (item.rightPadding || 0)
+    var wrap = item.wrapMode !== undefined && item.wrapMode !== 0
+    var recorded = rec && rec.length === count
+    var elides = item.elide !== undefined && item.elide !== 3
+    function fail(what) { log("LAYOUTERR|" + what + "|" + shown.slice(0, 40)) }
+    // Qt reports the width a wrapping line may use; an unwrapped line has no limit of its own (its width is the item's).
+    function widthOf(i) { return recorded && wrap ? rec[Math.min(i, rec.length - 1)].w : avail }
+    if (wrap && count > 1 && !recorded) fail("wrapped text without recorded line boxes")
+    var texts = []
+    if (!wrap || count === 1) {
+        var paras = wrap ? [shown] : shown.split("\n")
+        for (var pi = 0; pi < paras.length; ++pi) texts.push(paras[pi])
+        if (!wrap && texts.length !== count) { fail("line count " + texts.length + " of " + count); texts = [shown] }
+    } else {
+        var split = shown.split("\n")
+        for (var si = 0; si < split.length; ++si) {
+            var left = count - texts.length
+            if (left <= 0) break
+            var got = breakParagraph(split[si], widthOf, m.advance, item.wrapMode, texts.length, si === split.length - 1 ? left : undefined)
+            for (var gi = 0; gi < got.length; ++gi) texts.push(got[gi])
+            if (got.rest !== undefined && got.rest !== "") { if (elides) texts[texts.length - 1] += got.rest; break }
+        }
+    }
+    if (texts.length !== count) fail("wrapped lines " + texts.length + " of " + count)
+    var out = [], base0 = item.baselineOffset, widest = 0
+    for (var i = 0; i < texts.length; ++i) {
+        var t = texts[i].replace(/\s+$/, "").replace(/^\s+/, "")
+        var last = i === texts.length - 1
+        var room = widthOf(i)
+        // The last line is exported as drawn: when Qt cut it (item.truncated), the visible text with Qt's own elision.
+        if (elides && last && item.truncated === true) {
+            t = m.elide(t, textElideMode(item.elide), room)
+            // the elided string must be what Qt drew: its width is Qt's own content width
+            if (texts.length === 1 && Math.abs(m.advance(t) - item.contentWidth) > 1.5) fail("elided text width " + m.advance(t) + " against content width " + item.contentWidth)
+        }
+        // One line: Qt's own content width. Several: each line's advance (checked against the content width below).
+        var wdt = texts.length === 1 ? item.contentWidth : m.advance(t)
+        widest = Math.max(widest, wdt)
+        var lx = recorded ? rec[i].x : (item.leftPadding || 0)
+        var x = ha === 4 ? lx + (room - wdt) / 2 : ha === 2 ? lx + room - wdt : lx
+        // Qt places a line's glyphs at its recorded y (already shifted by a proportional line height) plus the ascent, below the top padding.
+        var baseline = recorded ? (item.topPadding || 0) + rec[i].y + (m.qtAscent !== undefined ? m.qtAscent : m.ascent) : base0
+        out.push({ text: t.replace(/\s+/g, " "), x: x, y: baseline - m.ascent, w: wdt, h: m.ascent + m.descent })
+    }
+    if (texts.length > 1 && Math.abs(widest - item.contentWidth) > 1.5) fail("widest line " + widest + " against content width " + item.contentWidth)
+    return out
+}
+
+// metrics(font) -> { ascent, descent, advance(text), elide(text, mode, width) } in device pixels, from Qt's FontMetrics.
 function dump(root, u, weights, metrics, log, access, defaultBorder) {
     unsetBorder = defaultBorder || null
     function roleOf(item, fallback) { var r = ROLE_NAMES[access(item).role]; return r || fallback }
@@ -180,15 +272,29 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
         for (var i = 0; i < k.length; ++i) if (k[i].source !== undefined && k[i].paintedWidth !== undefined) return true
         return false
     }
-    function walk(item, opAcc, shown, inMask, inPicture) {   // inMask: the item that draws the effect this subtree is the source of
+    function walk(item, opAcc, shown, inMask, inPicture, maskClip) {   // inMask: the item that draws the effect this subtree is the source of
         var painter = inMask || item
         if (!item || (!item.visible && shown !== true) || item.layoutSkipTree === true) return
         var op = opAcc * item.opacity
         if (op <= 0.001) return
         var w = item.width, h = item.height
         // An element counts when some of it is visible after the viewport and the clipping ancestors; its box is the whole transformed border box.
-        var polygon = clippedItemPolygon(item, root, 0, 0, w, h), clippedBox = polygonBounds(polygon)
+        var polygon = clippedItemPolygon(item, root, 0, 0, w, h)
+        // An effect's source shows only through the effect's mask: clip to the mask's box, and leave out what covers the whole mask (the mask stands for it).
+        if (maskClip && polygon.length) {
+            var representedByMask = polygonCoverage(polygon, maskClip) >= 0.95
+            polygon = clipPolygon(polygon, maskClip)
+            if (representedByMask) polygon = []
+        }
+        var clippedBox = polygonBounds(polygon)
         var box = clippedBox ? polygonBounds(mappedRect(item, root, 0, 0, w, h)) : null
+        var kids = item.children
+        // Qt paints children in z order, then declaration order; those below zero are painted under the item's own content.
+        var order = []
+        for (var oi = 0; oi < kids.length; ++oi) order.push(oi)
+        order.sort(function (a, b) { return (kids[a].z - kids[b].z) || (a - b) })
+        var below = 0
+        for (; below < order.length && kids[order[below]].z < 0; ++below) walk(kids[order[below]], op, shown, inMask, inPicture || holdsPicture(item), maskClip)
         var mark = out.length, fmark = fills.length
         if (box && item.layoutSkip !== true) {
             var x = box.x, y = box.y
@@ -196,6 +302,12 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                 var textScale = uniformRadiusScale(item, root)
                 if (textScale === null) { log("LAYOUTERR|nonuniform text transform|" + item.text.slice(0, 30)); textScale = 1 }
                 var runs = lineRuns(item, metrics, log)
+                if (item.readOnly !== undefined && item.positionAt && item.positionToRectangle && runs.length === 1) {
+                    // the characters between the input's padded edges, from Qt's own positions
+                    var s0 = item.positionAt(item.leftPadding || 0), s1 = item.positionAt(item.width - (item.rightPadding || 0))
+                    var r0 = item.positionToRectangle(s0), r1 = item.positionToRectangle(s1)
+                    runs = [{ text: item.text.slice(s0, s1), x: r0.x, y: runs[0].y, w: r1.x - r0.x, h: runs[0].h }]
+                }
                 if (!runs.length) log("LAYOUTERR|text without runs|" + item.text.slice(0, 30))
                 if (item.readOnly !== undefined) {   // a real text input: TextInput or TextField
                     // a real (read-only) text input: its own box is the control, its text is drawn inside
@@ -203,7 +315,7 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                     var inp = { text: String(access(item).name), role: roleOf(item, "textbox"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(inCentre.x, inCentre.y), fontSize: null, fontWeight: null, _at: [inCentre.x, inCentre.y], _box: mappedRect(item, root, 0, 0, w, h) }
                     var inShape = paintedShape(item)
                     if (inShape) { var inScale = uniformRadiusScale(inShape, root), inRadius = radiusOf(inShape, inScale); if (inRadius) inp.radius = inRadius }
-                    inp._item = item; inp._seq = ++seq; inp._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                    inp._item = item; inp._seq = ++seq; inp._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                     out.push(inp)
                 }
                 for (var li = 0; li < runs.length; ++li) {
@@ -214,14 +326,8 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                     var textSample = polygonCenter(textPoly)
                     var el = { text: run.text, role: item.readOnly !== undefined ? "text" : roleOf(item, "text"), rect: rect(textBox.x, textBox.y, textBox.w, textBox.h),
                         color: hex(item.color), background: bgAt(textSample.x, textSample.y), fontSize: r2(item.font.pixelSize * textScale / u), fontWeight: weightOf(item, weights) }
-                    // A text that is the only content of a rounded plate (a chip or badge) is that plate's label: it carries the plate's corner radius.
-                    var plate = item.parent && item.parent.border !== undefined && item.parent.radius > 0 && item.parent.color !== undefined ? item.parent : null
-                    if (plate && (plate.color.a > 0 || drawnBorder(plate.border)) && plate.children.length === 1) {
-                        var plateScale = uniformRadiusScale(plate, root), plateRadius = radiusOf(plate, plateScale)
-                        if (plateRadius) el.radius = plateRadius
-                    }
                     if (op < 0.999) el.opacity = r2(op)
-                    el._item = item; el._seq = ++seq; el._r = { x: textBox.x, y: textBox.y, w: textBox.w, h: textBox.h }
+                    el._item = item; el._seq = ++seq; el._r = polygonBounds(textPoly)
                     out.push(el)
                 }
             } else if (item.border !== undefined && item.radius !== undefined && item.color !== undefined && w > 0 && h > 0) {
@@ -229,19 +335,25 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                 var filled = item.color.a > 0 && !item.gradient
                 var mySeq = ++seq
                 var pic = inPicture && !stops
+                var behindFill = bgAt(polygonCenter(polygon).x, polygonCenter(polygon).y)   // what is painted under this item, before its own fill
                 if (filled && !pic) fills.push({ polygon: polygon, full: mappedRect(item, root, 0, 0, w, h), c: [item.color.r * 255, item.color.g * 255, item.color.b * 255], a: item.color.a * op })
                 if (filled && !pic && !stops && item.color.a * op >= 0.5) painters.push({ poly: polygon, seq: mySeq, item: painter })
-                else if (stops) filled = true   // a gradient is a visible fill, but like the web's background-image it is not a backdrop colour
+                else if (stops) {   // a gradient is a visible fill, but like the web's background-image it is not a backdrop colour
+                    filled = true
+                    if (opaqueStops(stops, op)) painters.push({ poly: polygon, seq: mySeq, item: painter })
+                }
                 var bordered = drawnBorder(item.border)
-                if ((filled || bordered) && !pic && item.layoutNoEmit !== true) {
-                    var center = polygonCenter(polygon)
+                var center = polygonCenter(polygon)
+                var sameAsBehind = filled && !stops && !drawnBorder(item.border) && item.color.a * op >= 0.999
+                    && behindFill === "#" + [item.color.r, item.color.g, item.color.b].map(function (v) { var h = Math.round(v * 255).toString(16); return h.length < 2 ? "0" + h : h }).join("")
+                if ((filled || bordered) && !pic && !sameAsBehind && item.layoutNoEmit !== true) {
                     var rc = { text: "", role: roleOf(item, "container"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(center.x, center.y), fontSize: null, fontWeight: null, }
                     var rectangleRadiusScale = uniformRadiusScale(item, root)
                     var rr = radiusOf(item, rectangleRadiusScale)
                     if (item.radius > 0 && rectangleRadiusScale === null) radiusLimitations += 1
                     if (rr) rc.radius = rr
                     if (op < 0.999) rc.opacity = r2(op)
-                    rc._item = item; rc._seq = mySeq; rc._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                    rc._item = item; rc._seq = mySeq; rc._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                     out.push(rc)
                 }
             } else if (item.gradient !== undefined && item.start !== undefined && item.end !== undefined && w > 0 && h > 0 && gradientStops(item.gradient)) {
@@ -249,7 +361,7 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                 var lgCenter = polygonCenter(polygon)
                 var lg = { text: "", role: roleOf(item, "container"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(lgCenter.x, lgCenter.y), fontSize: null, fontWeight: null }
                 if (op < 0.999) lg.opacity = r2(op)
-                lg._item = item; lg._seq = ++seq; lg._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                lg._item = item; lg._seq = ++seq; if (opaqueStops(gradientStops(item.gradient), op)) painters.push({ poly: polygon, seq: lg._seq, item: painter }); lg._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 out.push(lg)
             } else if (item.source !== undefined && item.status !== undefined && item.paintedWidth !== undefined && w > 0 && h > 0 && item.status === 1) {
                 var imgSeq = ++seq
@@ -259,7 +371,7 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                 var imageCenter = polygonCenter(polygon)
                 var im = { text: "", role: roleOf(item, "image"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(imageCenter.x, imageCenter.y), fontSize: null, fontWeight: null }
                 if (op < 0.999) im.opacity = r2(op)
-                im._item = item; im._seq = imgSeq; im._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                im._item = item; im._seq = imgSeq; im._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 out.push(im)
                 }
             } else if (item.source !== undefined && item.status !== undefined && item.paintedWidth !== undefined && w > 0 && h > 0) {
@@ -270,7 +382,7 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                 var canvasCenter = polygonCenter(polygon)
                 var cv = { text: "", role: roleOf(item, "image"), rect: rect(x, y, box.w, box.h), color: null, background: bgAt(canvasCenter.x, canvasCenter.y), fontSize: null, fontWeight: null }
                 if (op < 0.999) cv.opacity = r2(op)
-                cv._item = item; cv._seq = ++seq; cv._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                cv._item = item; cv._seq = ++seq; cv._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 out.push(cv)
             } else if (item.maskSource !== undefined && effectKind(item.source, root, mappedRect(item, root, 0, 0, w, h)) && w > 0 && h > 0) {
                 // a masked picture (rounded artwork): the visible drawing of an image
@@ -286,10 +398,10 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                     else if (maskScale === null) radiusLimitations += 1
                 }
                 if (op < 0.999) mk.opacity = r2(op)
-                mk._item = item; mk._seq = ++seq; mk._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                mk._item = item; mk._seq = ++seq; mk._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 if (op >= 0.5) painters.push({ poly: polygon, seq: mk._seq, item: item })
                 out.push(mk)
-            } else if ((item.navigationFocusable === true || access(item).name !== "" || access(item).role !== 0) && item.layoutNoEmit !== true && w > 0 && h > 0) {
+            } else if ((access(item).name !== "" || access(item).role !== 0) && item.layoutNoEmit !== true && w > 0 && h > 0) {
                 var focusCenter = polygonCenter(polygon)
                 var fr = { text: String(access(item).name), role: roleOf(item, "button"), rect: rect(x, y, box.w, box.h),
                     color: null, background: bgAt(focusCenter.x, focusCenter.y), fontSize: null, fontWeight: null, _at: [focusCenter.x, focusCenter.y], _box: mappedRect(item, root, 0, 0, w, h) }
@@ -300,17 +412,12 @@ function dump(root, u, weights, metrics, log, access, defaultBorder) {
                     else if (frScale === null) radiusLimitations += 1
                 }
                 if (op < 0.999) fr.opacity = r2(op)
-                fr._item = item; fr._seq = ++seq; fr._r = { x: box.x, y: box.y, w: box.w, h: box.h }
+                fr._item = item; fr._seq = ++seq; fr._r = { x: clippedBox.x, y: clippedBox.y, w: clippedBox.w, h: clippedBox.h }
                 out.push(fr)
             }
         }
-        var kids = item.children
-        // Qt paints children in z order, then declaration order.
-        var order = []
-        for (var oi = 0; oi < kids.length; ++oi) order.push(oi)
-        order.sort(function (a, b) { return (kids[a].z - kids[b].z) || (a - b) })
-        for (var i = 0; i < order.length; ++i) walk(kids[order[i]], op, shown, inMask, inPicture || holdsPicture(item))
-        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, item, inPicture)
+        for (var i = below; i < order.length; ++i) walk(kids[order[i]], op, shown, inMask, inPicture || holdsPicture(item), maskClip)
+        if (item.maskSource !== undefined && item.source && item.source.children !== undefined) walk(item.source, op, true, item, inPicture, polygon)
         // an element's background includes its own fill and its children's: settle it once the subtree has been painted
         // development aid: the QML type of each element (the suite driver drops it unless asked to keep it)
         for (var k = mark; k < out.length; ++k) if (out[k]._src === undefined) out[k]._src = String(item).replace(/\(0x.*$/, "")
