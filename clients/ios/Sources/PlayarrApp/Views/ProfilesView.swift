@@ -298,8 +298,7 @@ struct ProfilesView: View {
                             WMText("Sign out", 7.68, 720, color: WM.inkSoft, lh: 11.52).fixedSize()
                         }
                         .frame(width: 92, height: 44)
-                        .parityFill(WM.chip)
-                        .background(WM.chip, in: Capsule())
+                        .parityShape("button", color: WM.chip, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.08), lineWidth: 1))
                         .wmChipShadow()
                     }

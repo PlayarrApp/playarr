@@ -300,12 +300,14 @@ struct HomeView: View {
                     .font(WM.font(8.6, 800))
                     .tracking(1.1)
                     .foregroundStyle(PlayarrStyle.pink)
+                    .parityRenderedText(([work.kind.displayName] + work.genres.prefix(1)).joined(separator: " · ").uppercased(), role: "text", size: 8.6, weight: 800, color: PlayarrStyle.pink)
 
                 Text(work.title)
                     .font(WM.font(46, 400))
                     .tracking(-1.6)
                     .lineSpacing(-4)
                     .foregroundStyle(PlayarrStyle.ink)
+                    .parityRenderedText(work.title, role: "heading", size: 46, weight: 400, color: PlayarrStyle.ink)
                     .lineLimit(3)
 
                 if let overview = work.overview {

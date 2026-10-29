@@ -143,7 +143,7 @@ struct WMText: View {
             .foregroundStyle(color)
             .lineLimit(1)
             .truncationMode(.tail)
-            .parityRenderedText(text, role: role, size: size, weight: weight, color: color, scales: true)
+            .parityRenderedText(text, role: role, size: size, weight: weight, color: color)
             .frame(height: lineHeight, alignment: .leading)
             .accessibilityAddTraits(role == "heading" ? .isHeader : [])
     }
@@ -606,7 +606,6 @@ struct WMRailCard: View {
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .parityBox("image", background: WM.artFill)
                 .parityBox("container", background: WM.artFill, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
@@ -689,7 +688,6 @@ struct WMLibraryCard: View {
                 .frame(width: width, height: art)
                 .background(WM.artFill)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .parityBox("image", background: WM.artFill)
                 .parityBox("container", background: WM.artFill, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) {
@@ -717,7 +715,6 @@ struct WMSearchCard: View {
                 .frame(width: 173, height: 97.3)
                 .background(WM.chip)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .parityBox("image", background: WM.chip)
                 .parityBox("container", background: WM.chip, radius: 8)
                 .wmCardShadow()
                 .overlay(alignment: .topTrailing) { WMUnseenDot().padding(.top, 7).padding(.trailing, 7) }

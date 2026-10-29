@@ -89,7 +89,6 @@ struct LibraryView: View {
         #if DEBUG
         .parityScreenLoad(parityLoadState)
         #endif
-        .parityCovered(showingFilters || actionsWork != nil, region: isPhoneIdiom ? nil : CGRect(x: UIScreen.main.bounds.width - 360, y: 0, width: 360, height: UIScreen.main.bounds.height))
         .overlay {
             // Phones: a full-page panel; iPad: the web tablet's 360 pt drawer on the right.
             HStack(spacing: 0) {
@@ -158,8 +157,9 @@ struct LibraryView: View {
                     HStack(spacing: 12) {
                         WMIconView(icon: .search, color: WM.muted, size: 16)
                         TextField("", text: $viewModel.searchText, prompt: Text("Search").foregroundColor(WM.muted))
-                            .wm(16, color: WM.ink)
+                            .font(WM.font(16, 400))
                             .foregroundStyle(WM.ink)
+                            .accessibilityAddTraits(.isSearchField)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .submitLabel(.search)
@@ -368,6 +368,7 @@ struct LibraryView: View {
                     ZStack {
                         if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
                         Text(letter).wm(8.8, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                            .parityFill(WM.ink.opacity(0.78), when: letter == activeLetter) // the circle behind the active letter
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -972,7 +973,7 @@ private struct RailPaint: ViewModifier {
 
     func body(content: Content) -> some View {
         if phone {
-            content.background(PlayarrStyle.surface.opacity(0.96)).parityFill(PlayarrStyle.surface.opacity(0.96))
+            content.background(PlayarrStyle.surface.opacity(0.96))
         } else {
             content
                 .background(LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing))
