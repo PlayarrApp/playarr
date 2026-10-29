@@ -1,0 +1,1 @@
+- HarmonyOS layout export: a box the inspector clamps at the window edge takes the framework's measured size, an ellipsised line includes its measured ellipsis, and a Text that paints a rounded pill keeps its native radius and painted box.

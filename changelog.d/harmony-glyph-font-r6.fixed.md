@@ -1,0 +1,1 @@
+- HarmonyOS: the action glyphs use web's DejaVu and Liberation fallback shapes, the phone actions drawer no longer shows a focus ring, and the layout export caps a radius at half the box.
