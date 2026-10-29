@@ -1,0 +1,1 @@
+- Sailfish: the week calendar's card accent stripe is a third strong for missing cards too, as on the web.
