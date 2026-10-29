@@ -463,6 +463,7 @@ struct TVStageWash: View {
 struct TVHeroTitle: View {
     var title: String
     var cssWeight: CGFloat = 560
+    var role = "heading"
 
     var body: some View {
         #if os(macOS)
@@ -477,7 +478,7 @@ struct TVHeroTitle: View {
                     .tracking(-4.98)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
-                    .parityLayout(text: line, role: "heading", size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98)
+                    .parityLayout(text: line, role: role, size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98)
                     .fixedSize()
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
             }
