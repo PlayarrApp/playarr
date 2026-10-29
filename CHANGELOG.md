@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- TV web: pressing Left on the right-hand action panel (Filters, Create) of an empty page, such as Playlists with no playlists, now moves focus to the nav rail instead of trapping it.
 - Android phone: agenda entry lines sit at the web's pitch, and the agenda panel reaches the top of the screen.
 - Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.
 - Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
