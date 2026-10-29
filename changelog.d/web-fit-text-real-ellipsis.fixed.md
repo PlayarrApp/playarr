@@ -1,0 +1,1 @@
+- Web: text that does not fit its box (Server connection, settings card descriptions, calendar entry titles on narrow layouts) is drawn as real text ending in "…" by one shared fit-text helper, so layout exports and assistive tech read what is shown.
