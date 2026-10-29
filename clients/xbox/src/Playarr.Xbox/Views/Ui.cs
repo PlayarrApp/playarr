@@ -137,22 +137,21 @@ namespace Playarr.Xbox.Views
             return button;
         }
 
-        public static Button RoundButton(string glyph, Action onClick)
+        public static Button RoundButton(string glyph, Action onClick, bool link = false)
         {
-            var button = new Button
-            {
-                Width = 50,
-                Height = 50,
-                Padding = new Thickness(0),
-                CornerRadius = new CornerRadius(25),
-                Background = new SolidColorBrush(Colors.Transparent),
-                BorderBrush = Res("PlayarrLineStrong"),
-                BorderThickness = new Thickness(1),
-                Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14 },
-                FocusVisualPrimaryBrush = Theme.FocusRing,
-                FocusVisualPrimaryThickness = new Thickness(3),
-                FocusVisualSecondaryThickness = new Thickness(0),
-            };
+            // Back navigates, so it is an anchor on the web: its peer reports a Hyperlink.
+            Button button = link ? new LinkButton() : new Button();
+            button.Width = 50;
+            button.Height = 50;
+            button.Padding = new Thickness(0);
+            button.CornerRadius = new CornerRadius(25);
+            button.Background = new SolidColorBrush(Colors.Transparent);
+            button.BorderBrush = Res("PlayarrLineStrong");
+            button.BorderThickness = new Thickness(1);
+            button.Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14 };
+            button.FocusVisualPrimaryBrush = Theme.FocusRing;
+            button.FocusVisualPrimaryThickness = new Thickness(3);
+            button.FocusVisualSecondaryThickness = new Thickness(0);
             button.Click += (s, e) => onClick();
             return button;
         }

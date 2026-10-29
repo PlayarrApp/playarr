@@ -1,0 +1,1 @@
+- Xbox: navigation buttons, cards, settings tabs and a film's Play report a Hyperlink automation role (LinkButton and item containers with their own peers), as the web's anchors do.

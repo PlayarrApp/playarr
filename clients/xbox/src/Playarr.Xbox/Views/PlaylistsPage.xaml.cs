@@ -14,7 +14,7 @@ namespace Playarr.Xbox.Views
     /// <summary>The web Playlists page: the viewer's own and the system playlists as cards; a card opens its titles.</summary>
     public sealed partial class PlaylistsPage : Page
     {
-        private readonly GridView _grid = new GridView
+        private readonly GridView _grid = new LinkGridView
         {
             Width = 1080,
             Margin = new Thickness(783, 0, 0, 0),

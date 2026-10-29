@@ -227,6 +227,7 @@ namespace Playarr.Xbox.Views
         /// <summary>The primary action's accessible name and role as the web names them: a film's "Play <title>" is a link, a series' "Start <title>" a button.</summary>
         private void NamePlay()
         {
+            PlayButton.IsLink = !_viewModel.IsSeries;
             Windows.UI.Xaml.Automation.AutomationProperties.SetName(PlayButton, PlayLabel.Text + " " + _viewModel.Title);
         }
 
@@ -386,7 +387,7 @@ namespace Playarr.Xbox.Views
                     return;
                 }
 
-                var list = new ListView
+                var list = new LinkListView
                 {
                     SelectionMode = ListViewSelectionMode.None,
                     Height = 190,
@@ -501,7 +502,7 @@ namespace Playarr.Xbox.Views
                     return;
                 }
 
-                var list = new ListView
+                var list = new LinkListView
                 {
                     SelectionMode = ListViewSelectionMode.None,
                     IsItemClickEnabled = true,
@@ -630,7 +631,7 @@ namespace Playarr.Xbox.Views
             }
 
             SeriesPanel.Children.Clear();
-            var list = new ListView
+            var list = new LinkListView
             {
                 SelectionMode = ListViewSelectionMode.None,
                 IsItemClickEnabled = true,
@@ -949,7 +950,7 @@ namespace Playarr.Xbox.Views
             SeriesPanel.Children.Clear();
             foreach (var season in _viewModel.Seasons)
             {
-                var list = new ListView
+                var list = new LinkListView
                 {
                     SelectionMode = ListViewSelectionMode.None,
                     IsItemClickEnabled = true,

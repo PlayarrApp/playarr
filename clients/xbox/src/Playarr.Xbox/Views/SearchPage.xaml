@@ -88,7 +88,7 @@
             <TextBlock x:Name="EmptyStateText" Text="Start typing to search." FontSize="16.9" VerticalAlignment="Center" />
         </StackPanel>
 
-        <GridView
+        <local:LinkGridView
             x:Name="ResultsGrid"
             Width="1128"
             Margin="735,0,0,0"
