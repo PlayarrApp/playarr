@@ -1,1 +1,1 @@
-Harmony layout export: the occlusion painters now use the native radius in physical pixels (the phone alphabet-rail ring is no longer dropped), and an element the geometry flags as covered is dropped only if hiding it in the running app changed no pixel of its box.
+- Harmony layout export: the occlusion painters now use the native radius in physical pixels (the phone alphabet-rail ring is no longer dropped), and an element the geometry flags as covered is dropped only if hiding it in the running app changed no pixel of its box.
