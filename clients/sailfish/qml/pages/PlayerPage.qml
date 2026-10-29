@@ -405,9 +405,9 @@ Page {
             }
         }
         // The time code: the web's three text runs (position, a dimmer slash, duration), each at its own place.
-        PText { x: 167.91 * Tokens.u; y: 556.13 * Tokens.u; text: page.mmss(page.positionMs); color: "#ffffff"; font.letterSpacing: 0.9; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
-        PText { x: 193.59 * Tokens.u; y: 556.13 * Tokens.u; text: "/"; color: "#a5969e"; font.letterSpacing: 0.9; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
-        PText { x: 202 * Tokens.u; y: 556.13 * Tokens.u; text: page.mmss(page.durationMs); color: "#ffffff"; font.letterSpacing: 0.9; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
+        PText { x: 167.91 * Tokens.u; y: 556.13 * Tokens.u; text: page.mmss(page.positionMs); color: "#ffffff"; font.letterSpacing: 0.44; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
+        PText { x: 193.59 * Tokens.u; y: 556.13 * Tokens.u; text: "/"; color: "#a5969e"; font.letterSpacing: 0; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
+        PText { x: 202 * Tokens.u; y: 556.13 * Tokens.u; text: page.mmss(page.durationMs); color: "#ffffff"; font.letterSpacing: 0.44; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92) }
         PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }
         PlayerButton {
             x: 58 * Tokens.u; y: 577 * Tokens.u; plate: "#242424"; label: qsTr("Play"); parityIndex: 2

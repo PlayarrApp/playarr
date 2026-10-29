@@ -280,7 +280,7 @@ Item {
                                          : cell.es[0].has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a")
                                          : root.tone(cell.es[0]) === "missing" ? (Tokens.dark ? "#f1a4a8" : "#722f34") : String(Tokens.brandPink)
                                 }
-                                FitText { x: 21.58 * Tokens.u; y: 6.4 * Tokens.u + 2.2; width: month.cellW - 37.8 * Tokens.u; elide: Text.ElideRight; text: cell.es.length ? cell.es[0].title : ""; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
+                                FitText { x: 21.58 * Tokens.u; y: 6.4 * Tokens.u + 2.2; width: month.cellW - 35.3 * Tokens.u; elide: Text.ElideRight; text: cell.es.length ? cell.es[0].title : ""; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
                             }
                             PLabel { renderType: Text.NativeRendering; x: 8.8 * Tokens.u; y: 49.1 * Tokens.u + 2.5; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.fam(640); font.pixelSize: Tokens.fs(12.8) }
                             PLabel { renderType: Text.NativeRendering; visible: cell.es.length > 1; x: 43 * Tokens.u; y: 49.5 * Tokens.u; text: qsTr("+%1 more").arg(cell.es.length - 1); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(12.5) }
