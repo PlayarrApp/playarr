@@ -94,7 +94,7 @@ sub buildTiles()
                 if m.top.layoutKind = "series" then rectH = 14.0
             end if
             ic = CreateObject("roSGNode", "WebLabel")
-            ic.setFields({ size: glyphSize, weight: 400, symbol: true, rectH: rectH })
+            ic.setFields({ size: glyphSize, weight: 400, symbol: true })
             ic.text = ch
             ic.color = ThemeColor(glyphRole)
             ThemeSetRole(ic, glyphRole)

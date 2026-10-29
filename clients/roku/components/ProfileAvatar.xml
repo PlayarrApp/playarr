@@ -22,9 +22,7 @@
       <!-- The profile button's own box (avatar, name, status): the web's link-like button named for the profile. -->
       <Rectangle id="profileButton" translation="[62,53]" width="244" height="301.6" color="0x00000000" />
       <Group id="circleGroup" translation="[62,53]" scaleRotateCenter="[122,122]">
-        <Rectangle id="profileCircle" width="244" height="244" color="0x00000000" />
-        <!-- The mascot's own box inside the disc (web: the img inset 18 px), and the add profile's plus as text. -->
-        <Rectangle id="profileArt" translation="[17.95,17.95]" width="208.1" height="208.1" color="0x00000000" />
+        <!-- The add profile's plus is text over its disc bitmap. -->
         <Poster id="focusShadow" translation="[-45,-15]" width="336" height="336" uri="pkg:/images/avatar-shadow.png" opacity="0" loadDisplayMode="scaleToFit" />
         <!-- Thin outline and the 20 px, 45% card glow, centred on the avatar. -->
         <Poster id="focusRing" translation="[-29,-29]" width="304" height="304" uri="pkg:/images/avatar-ring.png" opacity="0" loadDisplayMode="scaleToFit" />

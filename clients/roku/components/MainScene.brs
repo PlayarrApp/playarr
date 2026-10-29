@@ -3245,9 +3245,7 @@ sub searchA11y()
     searchBg = m.top.findNode("searchFieldBg")
     searchBg.id = "a11y|search|999|"
     A11yStamp(searchBg, true)
-    pgMark(m.searchGroup, "textbox", "Search your libraries and playlists", 215.6, 180.8, 506, 60, 0)
-    m.top.findNode("searchEmptyIcon").id = "a11y|container|50|"
-    pgMark(m.searchEmptyState, "image", "", 1163.6, 359.8, 54, 36, 0)
+    m.top.findNode("searchEmptyIcon").id = "a11y|container|66|"
 end sub
 
 sub searchChromeInit()
@@ -6607,6 +6605,8 @@ sub updatePlayerProgress()
     end if
     m.playerProgressFill.width = m.playerProgressTrack.width * fraction
     m.playerBufferedFill.width = m.playerProgressTrack.width * bufferedFraction
+    ' The buffered bar shows only past the played part; where it ends with it there is nothing extra to draw.
+    m.playerBufferedFill.visible = bufferedFraction > fraction + 0.001
     m.playerTimeLabel.text = formatPlaybackTime(position) + " / " + formatPlaybackTime(duration)
     playerChromeUpdate(position, duration, fraction)
 end sub
