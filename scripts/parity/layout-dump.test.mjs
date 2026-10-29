@@ -213,14 +213,43 @@ test("text nodes split by an element keep a separator; adjacent ones do not", { 
   assert.deepEqual(texts(d), ["Released 1 Jun 1998"]);
 });
 
-test("text cut by text-overflow: ellipsis is exported as drawn (visible characters, ellipsis, clipped rect)", { skip }, async () => {
-  const d = await dump(`<div style="width:60px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace">abcdefghijklmnop</div>
-    <div style="width:300px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace;margin-top:30px">fits</div>`);
-  const cut = d.elements[0];
-  // monospace 16px is 9.6 px per character: five characters (48 px) plus the ellipsis (9.6 px) fit in 60 px
-  assert.equal(cut.text, "abcde…");
-  assert.ok(cut.rect.x + cut.rect.w <= 60.01 && cut.rect.w > 50);
-  assert.equal(d.elements[1].text, "fits");
+test("text still cut by text-overflow: ellipsis is refused, never reconstructed; text that fits and real-text ellipsis export as is", { skip }, async () => {
+  await assert.rejects(dump(`<div style="width:60px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace">abcdefghijklmnop</div>`), /not measurable/);
+  const d = await dump(`<div style="width:300px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace">fits</div><div style="width:300px;font:16px monospace;margin-top:30px">abcde\u2026</div>`);
+  assert.deepEqual(texts(d), ["fits", "abcde\u2026"]);
+});
+
+test("a native video plane is an opaque occluder: covered controls are dropped and counted, uncovered ones stay", { skip }, async () => {
+  const body = `<object id="p" type="application/avplayer" style="position:fixed;left:0;top:0;width:200px;height:100px"></object>
+    <button class="abs" style="left:10px;top:10px;width:80px;height:20px">Play</button><button class="abs" style="left:10px;top:150px;width:80px;height:20px">Below</button>`;
+  const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
+    await page.setContent(`<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#fff;font:16px sans-serif}.abs{position:absolute}</style>${body}`);
+    const withPlane = await page.evaluate(`(${layoutPageFn.toString()})([], ${JSON.stringify({ opaquePlanes: ["object[type='application/avplayer']"] })})`);
+    assert.deepEqual(texts(withPlane), ["Below", "Below"]);
+    assert.equal(withPlane.occluded, 1);
+    assert.deepEqual(texts(await page.evaluate(layoutPageFn, [])).filter((t) => t === "Play").length, 2);
+  } finally { await browser.close(); }
+});
+
+test("accessible names resolve aria-labelledby, wrapping and associated labels; checkbox and radio keep their own roles", { skip }, async () => {
+  const d = await dump(`<span id="n" class="abs" style="top:200px">Named</span>
+    <input type="checkbox" class="abs" style="top:0;width:20px;height:20px" aria-labelledby="n">
+    <label class="abs" style="top:30px"><input type="radio" name="r" style="width:20px;height:20px"> Wrap</label>
+    <input id="c" type="checkbox" class="abs" style="top:60px;width:20px;height:20px"><label for="c" class="abs" style="top:90px">Assoc</label>`);
+  const ctl = d.elements.filter((e) => e.role === "checkbox" || e.role === "radio");
+  assert.deepEqual(ctl.map((e) => [e.role, e.text]), [["checkbox", "Named"], ["radio", "Wrap"], ["checkbox", "Assoc"]]);
+});
+
+test("volatile multi-line text is one element per line", { skip }, async () => {
+  const d = await dump(`<div class="calendar-subscription-url" style="width:60px;word-break:break-all">abcdefghijklmnopqrstuvwxyz</div>`, volatileFor("home"));
+  assert.ok(d.elements.length > 1 && d.elements.every((e) => e.volatile === "calendar-link-url"));
+});
+
+test("an element with no width between text nodes adds no separator", { skip }, async () => {
+  const d = await dump(`<div><span id="k"></span></div><script>const k = document.getElementById("k").parentElement; k.replaceChildren(document.createTextNode("S01"), document.createElement("i"), document.createTextNode("E01"));</script>`);
+  assert.deepEqual(texts(d), ["S01E01"]);
 });
 
 test("a computed colour in another space (color-mix in oklab) resolves to sRGB", { skip }, async () => {

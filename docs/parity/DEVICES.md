@@ -89,7 +89,7 @@ directory, and `PARITY_EMULATOR_LOCK` pointing at the flock file shared with the
   `web` and `web/light`, as the legend expects.
 - Search is captured with the on-screen keyboard dismissed (platform UI, not app output). The Samsung emulator draws the AVPlay
   video as a layer above the browser, so its player-controls screenshot shows the paused clip without the controls; nothing in the
-  page is hidden or changed to work around that, and the pixel score of that one screen is an emulator limit (a real TV composites the plane under the page).
+  page is hidden or changed to work around that. The layout export treats the AVPlay `<object>` (its real rect, synced by the app to the player shell) as an opaque occluder, so controls under the plane are not exported as visible; the pixel score and the layout of that one screen are an emulator limit (a real TV composites the plane under the page).
 - Playback is judged as playing when the playhead advances by `advanceSeconds` within `advanceSeconds + 6` s of wall
   clock; a fixed 3 s window of a stream that is still buffering fails even on web.
 - Home rails depend on the shared account's recent activity (other clients play and mark items), so run the web

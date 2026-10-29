@@ -778,7 +778,6 @@ export function SearchPage() {
             }}
             onKeyDown={handleInputKeyDown}
             onKeyUp={handleInputKeyUp}
-            placeholder={t("pages.search.searchPlaceholder")}
             autoComplete="off"
             aria-label={t("pages.search.searchPlaceholder")}
             data-tv-focus-default={
@@ -790,6 +789,11 @@ export function SearchPage() {
                 : undefined
             }
           />
+          {query ? null : (
+            <span className="tv-search-placeholder" aria-hidden="true">
+              {t("pages.search.searchPlaceholder")}
+            </span>
+          )}
           {query ? (
             <button
               type="button"

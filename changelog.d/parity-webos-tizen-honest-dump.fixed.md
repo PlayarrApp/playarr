@@ -1,0 +1,1 @@
+- Parity layout dump for the web-based TV clients no longer reconstructs ellipsised text, treats the Tizen AVPlay plane as an opaque occluder, measures separators and resolves accessible names and implicit roles; Search draws its hint as real text.
