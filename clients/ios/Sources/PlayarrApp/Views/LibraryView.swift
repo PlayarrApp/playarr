@@ -89,6 +89,7 @@ struct LibraryView: View {
         #if DEBUG
         .parityScreenLoad(parityLoadState)
         #endif
+        .parityCovered(showingFilters || actionsWork != nil, region: isPhoneIdiom ? nil : CGRect(x: UIScreen.main.bounds.width - 360, y: 0, width: 360, height: UIScreen.main.bounds.height))
         .overlay {
             // Phones: a full-page panel; iPad: the web tablet's 360 pt drawer on the right.
             HStack(spacing: 0) {
@@ -96,6 +97,7 @@ struct LibraryView: View {
                 if showingFilters {
                     WMLibraryFiltersPanel(viewModel: viewModel) { showingFilters = false; Task { await viewModel.load() } }
                         .frame(maxWidth: isPhoneIdiom ? .infinity : 360)
+                        .parityCoverLayer()
                 } else if let work = actionsWork {
                     WMTitleActionsPanel(
                         work: work, apiClient: apiClient,
@@ -104,6 +106,7 @@ struct LibraryView: View {
                         onClose: { actionsWork = nil }
                     )
                     .frame(maxWidth: isPhoneIdiom ? .infinity : 360)
+                    .parityCoverLayer()
                 }
             }
         }
@@ -257,7 +260,7 @@ struct LibraryView: View {
             ZStack(alignment: .topLeading) {
                 PlayarrBackButton(action: goHome)
                     .offset(x: PlayarrPageTokens.gutter, y: PlayarrPageTokens.headerTop)
-                WMText("Search", 21.6, 580, lh: 32.4, ls: -0.972)
+                WMText("Search", 21.6, 580, lh: 32.4, ls: -0.972, role: "heading")
                     .offset(x: 70, y: WM.topInset + 7.8)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -324,6 +327,7 @@ struct LibraryView: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .background(PlayarrStyle.surface.ignoresSafeArea())
+        .parityFill(PlayarrStyle.surface)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
     }
@@ -363,7 +367,7 @@ struct LibraryView: View {
                 ForEach(displayedLetters, id: \.self) { letter in
                     ZStack {
                         if letter == activeLetter { Circle().fill(WM.ink.opacity(0.78)).frame(width: 20, height: 20) }
-                        Text(letter).wm(8.8, 700).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                        Text(letter).wm(8.8, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter).foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -397,7 +401,7 @@ struct LibraryView: View {
                             Circle().stroke(PlayarrStyle.background, lineWidth: 2).frame(width: 24, height: 24).offset(y: 1)
                             Circle().stroke(WM.pink, lineWidth: 2.2).frame(width: 28, height: 28).offset(y: 1)
                         }
-                        Text(letter).wm(8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted)
+                        Text(letter).wm(8.96, 700, color: letter == activeLetter ? PlayarrStyle.background : WM.muted, text: letter)
                             .foregroundStyle(letter == activeLetter ? PlayarrStyle.background : WM.muted)
                     }
                     .frame(width: 44).frame(height: 25.27)
@@ -452,6 +456,8 @@ struct LibraryView: View {
                     }
                     .id(work.id)
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Open \(work.title)")
+                    .accessibilityAddTraits(.isLink)
                     .focusable()
                     .focused($focusedWork, equals: work.id)
                     .focusEffectDisabled()
@@ -618,6 +624,8 @@ struct LibraryView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Open \(work.title)")
+                        .accessibilityAddTraits(.isLink)
                         .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in actionsWork = work })
                         .task {
                             if work.id == viewModel.works.last?.id { await viewModel.loadMore() }
@@ -651,30 +659,7 @@ struct LibraryView: View {
                 }
             }
             .frame(width: panelWidth, height: proxy.size.height)
-            .background {
-                if phone {
-                    PlayarrStyle.surface.opacity(0.96)
-                } else if scheme == .dark {
-                    LinearGradient(
-                        colors: [.clear, PlayarrStyle.surface.opacity(0.92), PlayarrStyle.surface],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                } else {
-                    let railFrost = Color(red: 239.64 / 255, green: 238.2 / 255, blue: 238.68 / 255)
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: railFrost.opacity(0.68), location: 0.12),
-                            .init(color: railFrost.opacity(0.88), location: 0.34),
-                            .init(color: railFrost.opacity(0.96), location: 0.62),
-                            .init(color: railFrost, location: 1)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                }
-            }
+            .modifier(RailPaint(phone: phone, scheme: scheme))
             .offset(x: phone ? 0 : proxy.size.width * 0.35)
             .onDisappear {
                 alphabetJumpTask?.cancel()
@@ -711,6 +696,7 @@ struct LibraryView: View {
                             .font(WM.font(titleSize, titleWeight))
                             .tracking(titleTracking)
                             .foregroundStyle(PlayarrStyle.ink)
+                            .parityRenderedText(line, role: "heading", size: titleSize, weight: titleWeight, color: PlayarrStyle.ink)
                             .lineLimit(1)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(height: titleSize * 0.9, alignment: .top)
@@ -718,17 +704,20 @@ struct LibraryView: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(work.title)
+                .accessibilityAddTraits(.isHeader)
             } else {
                 Text(work.title)
                     .font(WM.font(titleSize, titleWeight))
                     .tracking(titleTracking)
                     .lineSpacing(pitchCorrection)
                     .foregroundStyle(PlayarrStyle.ink)
+                    .parityRenderedText(work.title, role: "heading", size: titleSize, weight: titleWeight, color: PlayarrStyle.ink)
                     .lineLimit(isPad ? nil : 3)
                     .frame(width: isPad ? titleWidth : nil, alignment: .leading)
                     .frame(maxWidth: isPad ? nil : 215, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: isPad)
                     .padding(.bottom, pitchCorrection)
+                    .accessibilityAddTraits(.isHeader)
             }
             WMText(meta, 10, 600, color: PlayarrStyle.inkSoft, lh: 15)
                 .padding(.top, 26)
@@ -751,6 +740,7 @@ struct LibraryView: View {
                     .font(isPad ? WM.font(overviewSize, 600) : WM.font(11.5, 500))
                     .foregroundStyle(isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
                     .lineSpacing(isPad ? max(0, overviewSize * 1.58 - overviewLineHeight) : 2.5)
+                    .parityRenderedText(overview, role: "text", size: isPad ? overviewSize : 11.5, weight: isPad ? 600 : 500, color: isPad ? WM.detailMuted : PlayarrStyle.inkSoft)
                     .lineLimit(5)
                     .frame(maxWidth: isPad ? overviewWidth : nil, alignment: .leading)
                     .padding(.top, 20)
@@ -956,5 +946,35 @@ private struct LibraryWorkFrameKey: PreferenceKey {
     let apiClient = PreviewAPIClient()
     NavigationStack {
         LibraryView(kind: .movie, apiClient: apiClient, downloadRepository: DownloadRepository(apiClient: apiClient))
+    }
+}
+
+/// The alphabet rail's backing: opaque on a phone, a fade into the page on iPad. One stop list draws it and is recorded for the export.
+private struct RailPaint: ViewModifier {
+    let phone: Bool
+    let scheme: ColorScheme
+
+    private var stops: [Gradient.Stop] {
+        if scheme == .dark {
+            return [.init(color: .clear, location: 0), .init(color: PlayarrStyle.surface.opacity(0.92), location: 0.5), .init(color: PlayarrStyle.surface, location: 1)]
+        }
+        let frost = Color(red: 239.64 / 255, green: 238.2 / 255, blue: 238.68 / 255)
+        return [
+            .init(color: .clear, location: 0),
+            .init(color: frost.opacity(0.68), location: 0.12),
+            .init(color: frost.opacity(0.88), location: 0.34),
+            .init(color: frost.opacity(0.96), location: 0.62),
+            .init(color: frost, location: 1),
+        ]
+    }
+
+    func body(content: Content) -> some View {
+        if phone {
+            content.background(PlayarrStyle.surface.opacity(0.96)).parityFill(PlayarrStyle.surface.opacity(0.96))
+        } else {
+            content
+                .background(LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing))
+                .parityGradient(stops, from: .leading, to: .trailing)
+        }
     }
 }

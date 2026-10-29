@@ -35,8 +35,8 @@ function captureInputPaths() {
     "scripts/parity/package.json", "scripts/parity/package-lock.json",
   ];
   const paths = [...new Set([...listed, ...fixed])].sort();
-  if (paths.filter((path) => path.startsWith("clients/sailfish/qml/")).length !== 55) {
-    throw new Error("Expected 55 committed Sailfish QML files in the capture source");
+  if (paths.filter((path) => path.startsWith("clients/sailfish/qml/")).length !== 58) {
+    throw new Error("Expected 58 committed Sailfish QML files in the capture source");
   }
   return paths;
 }
@@ -135,6 +135,22 @@ export function validateRun(runDir) {
   return files;
 }
 
+// One layout document per screen and theme, written by the driver in the same run as the screenshot.
+export function validateLayouts(runDir) {
+  const docs = {};
+  for (const theme of THEMES) for (const screen of SCREENS) {
+    const path = join(resolve(runDir), "layout", theme, `${screen}.json`);
+    if (!existsSync(path) || !lstatSync(path).isFile()) throw new Error(`Missing layout document: ${theme}/${screen}`);
+    const bytes = readFileSync(path);
+    let doc;
+    try { doc = JSON.parse(bytes.toString("utf8")); } catch { throw new Error(`Layout document is not JSON: ${theme}/${screen}`); }
+    if (doc.screen !== screen || doc.theme !== theme || !Array.isArray(doc.elements) || doc.elements.length === 0) throw new Error(`Layout document does not match its screen and theme: ${theme}/${screen}`);
+    if (doc.elements.some((element) => element._src !== undefined || element._dbg !== undefined)) throw new Error(`Layout document carries development fields: ${theme}/${screen}`);
+    docs[`${theme}/${screen}`] = { bytes, sha256: hash(bytes) };
+  }
+  return docs;
+}
+
 export function assertSafeScratch(scratchPath, legendRootPath) {
   const scratch = resolve(scratchPath);
   const legendRoot = resolve(legendRootPath);
@@ -218,18 +234,6 @@ function assertSafeDestination(legendRoot, destination) {
   return candidate;
 }
 
-function assertNoLayoutJson(destination) {
-  const walk = (dir, insideLayout = false) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join(dir, entry.name);
-      if (entry.isSymbolicLink()) throw new Error("Symlinks are not allowed in the candidate layout directory");
-      if (entry.isDirectory()) walk(path, insideLayout || entry.name === "layout");
-      else if (insideLayout && entry.isFile() && entry.name.toLowerCase().endsWith(".json")) throw new Error("Candidate contains native layout JSON; refusing to leave stale/unaccepted layout data visible");
-    }
-  };
-  walk(destination);
-}
-
 function cloneTree(source, destination) {
   mkdirSync(destination, { mode: statSync(source).mode & 0o777 });
   for (const entry of readdirSync(source, { withFileTypes: true })) {
@@ -257,8 +261,8 @@ export function publishRun({ runDir, legendRoot, destination, source, guestBefor
     throw new Error("Installed guest QML or executable changed during capture");
   }
   if (!source?.manifestSha256 || !source?.sha || !source?.branch) throw new Error("Capture source attestation is incomplete");
-  assertNoLayoutJson(dest);
   const captures = validateRun(runDir);
+  const layouts = validateLayouts(runDir);
   const sourceRun = resolve(runDir);
   const parent = dirname(dest), staged = mkdtempSync(join(parent, ".sailfish-dev-stage-"));
   let backup = null;
@@ -270,6 +274,7 @@ export function publishRun({ runDir, legendRoot, destination, source, guestBefor
     if (!lstatSync(light).isDirectory() || lstatSync(light).isSymbolicLink()) throw new Error("Candidate light path must be a real directory");
     removePngs(staged);
     removePngs(light);
+    rmSync(join(staged, "layout"), { recursive: true, force: true });
     const imageHashes = {};
     for (const theme of THEMES) for (const screen of SCREENS) {
       const capture = captures[`${theme}/${screen}`];
@@ -277,14 +282,23 @@ export function publishRun({ runDir, legendRoot, destination, source, guestBefor
       writeFileSync(target, capture.bytes);
       imageHashes[`${theme}/${screen}`] = capture.sha256;
     }
+    const layoutHashes = {};
+    for (const theme of THEMES) {
+      mkdirSync(join(staged, "layout", theme), { recursive: true });
+      for (const screen of SCREENS) {
+        writeFileSync(join(staged, "layout", theme, `${screen}.json`), layouts[`${theme}/${screen}`].bytes);
+        layoutHashes[`${theme}/${screen}`] = layouts[`${theme}/${screen}`].sha256;
+      }
+    }
     const build = {
       branch: source.branch, sha: source.sha, pr, captured_at: capturedAt, server: "static server",
       capture_source: { qml_manifest_sha256: guestBefore.qmlManifestSha256, source_manifest_sha256: source.manifestSha256 },
       guest_native_executable_sha256: guestBefore.executableSha256,
       capture_scope: { screens: SCREENS, themes: THEMES, png_count: 32, dimensions: "768x1344" },
       capture_sha256: imageHashes,
-      layouts_published: false,
-      layout_status: "DIAGNOSTIC_NOT_ACCEPTED",
+      layouts_published: true,
+      layout_sha256: layoutHashes,
+      layout_status: "EXPORTER_AUDIT_PENDING",
     };
     writeFileSync(join(staged, "build.json"), `${JSON.stringify(build, null, 2)}\n`);
     writeFileSync(join(light, "build.json"), `${JSON.stringify({ ...build, theme: "light" }, null, 2)}\n`);
@@ -297,7 +311,7 @@ export function publishRun({ runDir, legendRoot, destination, source, guestBefor
     catch (error) { renameSync(backup, dest); backup = null; throw error; }
     rmSync(backup, { recursive: true });
     backup = null;
-    return { destination: dest, sha: source.sha, branch: source.branch, screenshots: Object.keys(imageHashes).length, layoutsPublished: false, captureSourceSha256: source.manifestSha256, guestQmlSha256: guestBefore.qmlManifestSha256, guestExecutableSha256: guestBefore.executableSha256, run: sourceRun };
+    return { destination: dest, sha: source.sha, branch: source.branch, screenshots: Object.keys(imageHashes).length, layoutsPublished: true, captureSourceSha256: source.manifestSha256, guestQmlSha256: guestBefore.qmlManifestSha256, guestExecutableSha256: guestBefore.executableSha256, run: sourceRun };
   } finally {
     if (backup && existsSync(backup) && !existsSync(dest)) renameSync(backup, dest);
     if (existsSync(staged)) rmSync(staged, { recursive: true });
@@ -350,7 +364,7 @@ async function captureLegend() {
         if (pr !== null && (!Number.isInteger(pr) || pr < 1)) throw new Error("PARITY_PR must be a positive integer or null");
         const capturedAt = isoNow();
         const imageHashes = Object.fromEntries(Object.entries(images).map(([name, image]) => [name, image.sha256]));
-        writeFileSync(join(runDir, "build.json"), `${JSON.stringify({ branch: sourceAfter.branch, sha: sourceAfter.sha, pr, captured_at: capturedAt, run: relative(scratch, runDir), server: "static server", capture_source: { qml_manifest_sha256: guestBefore.qmlManifestSha256, source_manifest_sha256: sourceAfter.manifestSha256 }, guest_native_executable_sha256: guestBefore.executableSha256, capture_sha256: imageHashes, layouts_published: false, layout_status: "DIAGNOSTIC_NOT_ACCEPTED" }, null, 2)}\n`);
+        writeFileSync(join(runDir, "build.json"), `${JSON.stringify({ branch: sourceAfter.branch, sha: sourceAfter.sha, pr, captured_at: capturedAt, run: relative(scratch, runDir), server: "static server", capture_source: { qml_manifest_sha256: guestBefore.qmlManifestSha256, source_manifest_sha256: sourceAfter.manifestSha256 }, guest_native_executable_sha256: guestBefore.executableSha256, capture_sha256: imageHashes, layouts_published: true, layout_status: "EXPORTER_AUDIT_PENDING" }, null, 2)}\n`);
         const publication = publishRun({ runDir, legendRoot: root, destination, source: sourceAfter, guestBefore, guestAfter, pr, capturedAt });
         return { publication, captures: images };
       },
@@ -358,7 +372,7 @@ async function captureLegend() {
       cleanup: () => run(["python3", "-I", cleanupScript, "--apply"], { env: { ...env, PLAYARR_SF_OUT: runDir } }),
       remove: removeValidatedPngs,
     });
-    console.log(JSON.stringify({ ...result, run: "archived", status: "published PNG captures only" }, null, 2));
+    console.log(JSON.stringify({ ...result, run: "archived", status: "published captures and layout documents" }, null, 2));
   } catch (error) {
     if (captureAttempted) {
       throw new Error(`${error.message}; raw run retained in scratch: ${relative(scratch, runDir)}`);

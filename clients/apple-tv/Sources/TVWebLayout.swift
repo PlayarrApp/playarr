@@ -46,7 +46,7 @@ struct TVRailPanelGradient: View {
         LinearGradient(stops: stops, startPoint: .leading, endPoint: .trailing)
             .frame(width: width)
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface) }
+            .overlay(alignment: .trailing) { Color.clear.frame(width: width).parityBox("container", fill: DesignTokens.Stage.surface, bleed: true) }
     }
 
     private var stops: [Gradient.Stop] {
@@ -120,6 +120,9 @@ struct TVPageHeader: View {
     var detail: String? = nil
     /// Settings shows the back button focused (web: a white ring round the same disc).
     var backFocused = false
+    /// The back control's accessible name and role as the web has them (a link home, or a button back to the list).
+    var backName = "Back to Home"
+    var backRole = "link"
     @Environment(\.colorScheme) private var scheme
     /// Web `--line-strong`: rgba(223, 220, 221, .23) in dark, rgba(56, 38, 33, .28) in light.
     private var lineStrong: Color { scheme == .dark ? Color(red: 223 / 255, green: 220 / 255, blue: 221 / 255).opacity(0.23) : Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(0.28) }
@@ -149,7 +152,7 @@ struct TVPageHeader: View {
                         .foregroundStyle(DesignTokens.Color.textSecondary)
                         .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
                 )
-                .parityBox("link", text: "Back to Home", radius: 50, fill: Color(red: 0x1f / 255, green: 0x1b / 255, blue: 0x1f / 255))
+                .parityBox(backRole, text: backName, radius: 50, fill: DesignTokens.Stage.surface, alpha: 0.7)
                 .placed(x: origin, y: backFocused ? 52.2 : 56.2, w: size, h: size)
             // Web `.page-header`: the title, a hairline divider and the subtitle in one row, centred on the title. Only when
             // the row would run into the clock (x 466) does the subtitle drop under the title.
@@ -158,7 +161,7 @@ struct TVPageHeader: View {
                 .tracking(-1.5)
                 .foregroundStyle(DesignTokens.Color.textPrimary)
                 .fixedSize()
-                .parityLayout(text: title, role: "heading", size: 33.6, weight: 580, color: DesignTokens.Color.textPrimary, tracking: -1.5, lineHeight: 46)
+                .parityLayout(text: title, role: "heading", size: 33.6, weight: 580, color: DesignTokens.Color.textPrimary, tracking: -1.5)
             let subtitle = detail.map {
                 Text($0.uppercased())
                     .font(TVTheme.font(size: 11.14, css: 680))
@@ -364,6 +367,7 @@ struct TVWebProfileChip: View {
 /// plus its `::after` wash (surface from the left and bottom edges).
 struct TVKeyArt: View {
     var url: URL?
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -376,8 +380,9 @@ struct TVKeyArt: View {
                         Color.clear
                     }
                 }
-                .frame(width: 1038.3, height: 1190.6)
+                .frame(width: 899.97, height: 1190.59)
                 .clipped()
+                .parityBox("image", fill: DesignTokens.Stage.surface, opacity: scheme == .light ? 0.24 : DesignTokens.Shell.keyArtOpacity)
                 .modifier(TVKeyArtFilter())
                 .mask(
                     LinearGradient(
@@ -390,7 +395,7 @@ struct TVKeyArt: View {
                         endPoint: .trailing
                     )
                 )
-                .offset(x: -20, y: -22.9)
+                .offset(x: 133.03, y: -22.9) // web: the key art box starts 133 pt in and is 900 wide
             }
             keyArtAfter.frame(width: 1920, height: 1080)
         }
@@ -430,6 +435,7 @@ struct TVKeyArt: View {
 struct TVStageWash: View {
     var body: some View {
         ZStack {
+            Color.clear.parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             LinearGradient(
                 stops: [
                     // Web `.tv-stage-wash`: surface 94% at 0, 90% at 36%, clear at 52%.
@@ -457,6 +463,7 @@ struct TVStageWash: View {
 struct TVHeroTitle: View {
     var title: String
     var cssWeight: CGFloat = 560
+    var role = "heading"
 
     var body: some View {
         #if os(macOS)
@@ -471,11 +478,11 @@ struct TVHeroTitle: View {
                     .tracking(-4.98)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .lineLimit(1)
+                    .parityLayout(text: line, role: role, size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98)
                     .fixedSize()
                     .frame(width: 379.5, height: 62.2, alignment: .leading)
             }
         }
-        .parityLayout(text: title, role: "heading", size: 69.12, weight: Int(cssWeight), color: DesignTokens.Color.textPrimary, tracking: -4.98, lines: lines, pitch: 62.2)
     }
 }
 
@@ -546,13 +553,19 @@ struct TVDrawer<Content: View>: View {
                         .foregroundStyle(DesignTokens.Color.textDisabled)
                         .parityLayout(text: kicker.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                         .frame(height: 14.4)
-                    Text(title)
-                        .font(TVTheme.font(size: 38.4, css: 590))
-                        .tracking(-2.1)
-                        .foregroundStyle(DesignTokens.Color.textPrimary)
-                        .lineLimit(2)
-                        .parityLayout(text: title, size: 38.4, weight: Int(590), color: DesignTokens.Color.textPrimary, tracking: -2.1)
-                        .frame(width: 204, alignment: .leading)
+                    // Web: the title wraps in 204 pt and each line is its own heading, 57.6 pt apart.
+                    VStack(alignment: .leading, spacing: 5.2) {
+                        ForEach(Array(TVTextWrap.lines(title, weight: 590, size: 38.4, kern: -2.1, width: 204).prefix(2).enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(TVTheme.font(size: 38.4, css: 590))
+                                .tracking(-2.1)
+                                .foregroundStyle(DesignTokens.Color.textPrimary)
+                                .lineLimit(1)
+                                .fixedSize()
+                                .parityLayout(text: line, role: "heading", size: 38.4, weight: 590, color: DesignTokens.Color.textPrimary, tracking: -2.1)
+                        }
+                    }
+                    .frame(width: 204, alignment: .leading)
                 }
                 Spacer(minLength: 0)
                 Button(action: onClose) {
@@ -561,6 +574,7 @@ struct TVDrawer<Content: View>: View {
                         .foregroundStyle(DesignTokens.Color.textPrimary)
                         .parityLayout(text: "\u{00D7}", size: 26.88, weight: Int(720), color: DesignTokens.Color.textPrimary)
                         .frame(width: 48, height: 50)
+                        .parityBox("button", text: title == "Filters" ? "Close filters" : "Close", radius: Self.closeRadius, fill: DesignTokens.Stage.surfaceSoft)
                         .background(RoundedRectangle(cornerRadius: Self.closeRadius, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
                         #if os(macOS)
                         // Web `.drawer-close`: a round button with the shared dark focus ring; the frozen capture draws the ring of
@@ -590,6 +604,7 @@ struct TVDrawer<Content: View>: View {
         .padding(.leading, 46)
         .padding(.trailing, 46)
         .frame(width: 360, height: 1080, alignment: .topLeading)
+        .parityBox("dialog", fill: DesignTokens.Stage.surfaceStrong, alpha: 0.94)
         .background {
             ZStack {
                 #if os(tvOS)
@@ -637,16 +652,17 @@ struct TVChoiceSection<Value: Hashable>: View {
                 .font(TVTheme.font(size: 9.6, css: 720))
                 .tracking(0.672)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .parityLayout(text: title.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
+                .parityLayout(text: title.uppercased(), role: "heading", size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                 .frame(height: 14.4)
             HStack(spacing: 8) {
                 ForEach(options, id: \.value) { option in
                     let active = option.value == selection
                     Button { selection = option.value } label: {
                         choiceLabel(option, active: active)
-                            .font(TVTheme.font(size: 10.56, css: 680))
+                            .font(TVTheme.font(size: 10.56, css: title == "View" ? 900 : 680))
                             .foregroundStyle(active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                             .frame(width: (268 - 8 * CGFloat(options.count - 1)) / CGFloat(options.count), height: 56)
+                            .parityBox("button", text: option.label, radius: 12, fill: active ? DesignTokens.Stage.ink : DesignTokens.Stage.surfaceSoft, alpha: active ? 1 : 0.64)
                             .background(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(active ? DesignTokens.Color.textPrimary : DesignTokens.Stage.surfaceSoft.opacity(0.64))
@@ -671,9 +687,11 @@ struct TVChoiceSection<Value: Hashable>: View {
             VStack(spacing: 7) {
                 TVViewGlyph(kind: key)
                 Text(option.label)
+                    .parityLayout(text: option.label, size: 10.56, weight: 900, color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
             }
         } else {
             Text(option.label)
+                .parityLayout(text: option.label, size: 10.56, weight: 680, color: active ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
         }
     }
 }
@@ -686,12 +704,12 @@ struct TVViewGlyph: View {
         Group {
             if kind == "list" {
                 VStack(spacing: 1.5) {
-                    ForEach(0..<3, id: \.self) { _ in RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: 20, height: 3.6) }
+                    ForEach(0..<3, id: \.self) { _ in RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: 20, height: 3.6).parityBox("container", radius: 1) }
                 }
             } else {
                 HStack(spacing: kind == "cover" ? 1.5 : 2) {
                     ForEach(0..<3, id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: kind == "cover" ? 4.5 : 6, height: 13)
+                        RoundedRectangle(cornerRadius: 1).stroke(lineWidth: 1.2).frame(width: kind == "cover" ? 4.5 : 6, height: 13).parityBox("container", radius: 1)
                     }
                 }
             }
@@ -886,10 +904,12 @@ struct TVActionRow: View {
             }
             .padding(.leading, 18)
             .frame(width: 268, height: 68)
+            .parityBox("button", text: "\(glyph) \(label)", radius: 14, fill: DesignTokens.Stage.surfaceSoft)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(DesignTokens.Stage.surfaceSoft))
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 14))
         .focusEffectDisabled()
+        .accessibilityLabel("\(glyph) \(label)")
         .focused($focused)
         #if DEBUG && (os(tvOS) || os(macOS))
         .onChange(of: focused) { _, now in TVParityState.setFocus(label, now) }
@@ -917,7 +937,7 @@ struct TVMultiSelectSection: View {
                 .font(TVTheme.font(size: 9.6, css: 720))
                 .tracking(0.672)
                 .foregroundStyle(DesignTokens.Color.textDisabled)
-                .parityLayout(text: title.uppercased(), size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
+                .parityLayout(text: title.uppercased(), role: "heading", size: 9.6, weight: Int(720), color: DesignTokens.Color.textDisabled, tracking: 0.672)
                 .frame(height: 14.4)
             if !loaded {
                 RoundedRectangle(cornerRadius: 12).fill(DesignTokens.Stage.surfaceSoft.opacity(0.5)).frame(width: 268, height: 58.8)
@@ -942,6 +962,7 @@ struct TVMultiSelectSection: View {
                     }
                     .padding(.horizontal, 19.4)
                     .frame(width: 268, height: 58.8)
+                    .parityBox("group", radius: 12, fill: DesignTokens.Stage.surfaceSoft, alpha: 0.64)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceSoft.opacity(0.64)))
                 }
                 .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
@@ -1000,17 +1021,20 @@ struct TVStatusPill: View {
     var body: some View {
         let colour = TVCalendarView.toneColour(tone)
         Text(label)
-            .font(TVTheme.font(size: 13.44, css: 750))
+            .font(TVTheme.font(size: 13.28, css: 750))
             .foregroundStyle(DesignTokens.Color.textPrimary)
-            .parityLayout(text: label, size: 13.44, weight: Int(750), color: DesignTokens.Color.textPrimary)
+            .parityLayout(text: label, size: 13.28, weight: 750, color: DesignTokens.Color.textPrimary)
             .padding(.horizontal, 10.4)
             .frame(height: 26.6)
+            .parityBox("container", radius: 13.44, fill: colour, alpha: 0.14)
             .background(Capsule().fill(colour.opacity(0.14)).background(Capsule().fill(DesignTokens.Stage.surface)))
             .overlay(Capsule().stroke(colour.opacity(0.6), lineWidth: 1))
             .fixedSize()
     }
 
-    private var label: String {
+    private var label: String { Self.label(tone) }
+
+    static func label(_ tone: Tone) -> String {
         switch tone {
         case .available: return "Available"
         case .upcoming: return "Upcoming"

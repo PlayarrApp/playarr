@@ -95,9 +95,9 @@ internal sealed class SearchScreen : IPage
         _mediaType = requestedOption.Value is not null ? requestedType : "all";
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        Sem.Tag(_root, "container", "Search Playarr");
+        _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
+        
         _root.Add(Ui.PanelWash(_t, 1248));
-        _root.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", "Search results")); // web .tv-search: the right 65 % carries the library panel frost
         _keyArt = new KeyArt(env);
         _panel = new DetailsPanel(env, library: true, flow: true);
         _root.Add(_keyArt.Root);
@@ -105,9 +105,9 @@ internal sealed class SearchScreen : IPage
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "link", "Back to Home", radius: 50);
+        Sem.Tag(back, "link", "Back to Home");
         _root.Add(back);
-        _root.Add(Ui.Text("Search", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
+        _root.Add(Ui.Heading("Search", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _count = new PageSubtitle(env, _root, "Search");
         _notice = Ui.Text("", 153.6f, 266, 13.5f, 500, _t.InkMuted, 590, 54, multiline: true, maxLines: 2);
         _notice.Show(false);
@@ -123,12 +123,12 @@ internal sealed class SearchScreen : IPage
         // query pill
         var form = Ui.Box(153.6f, 172.8f, 590, 76, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 38);
         form.BorderlineWidth = 1; form.BorderlineColor = Ui.LineA(_t, 0.15f);
-        Sem.Tag(form, "search", radius: 999);
-        form.Add(Sem.Tag(new View { PositionX = 62, PositionY = 8, Size = new Size(506, 60) }, "textbox", "Search your libraries and playlists"));
+        Sem.Tag(form, "search");
         form.Add(Ui.Icon("search", 25, 26, 24, _t.InkMuted));
-        _field = new TextField { PositionX = 66, PositionY = 18, Size = new Size(440, 40), PixelSize = 17f, TextColor = Ui.C(_t.Ink), FontFamily = Ui.Font,
+        _field = new TextField { PositionX = 62, PositionY = 8, Size = new Size(506, 60), Padding = new Extents(4, 0, 10, 10), PixelSize = 17f, TextColor = Ui.C(_t.Ink), FontFamily = Ui.Font,
             PlaceholderText = "Search your libraries and playlists", PlaceholderTextColor = Ui.C(_t.InkMuted), EnableCursorBlink = true };
         _field.TextChanged += (_, e) => OnText(_field.Text);
+        Sem.Tag(_field, "textbox", "Search your libraries and playlists");
         form.Add(_field);
         _clear = Ui.Box(514, 11, 67, 54, null, 27);
         _clear.Add(Ui.Text("Clear", 0, 18.8f, 10.944f, 800, _t.InkMuted, 67, 16.4f, HorizontalAlignment.Center));
@@ -164,7 +164,7 @@ internal sealed class SearchScreen : IPage
         var art = Ui.Box(1125f, 311.8f, 132, 132, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 66);
         art.BorderlineWidth = 1; art.BorderlineColor = Ui.LineA(_t, 0.15f);
         art.Add(Ui.Icon("search-empty", 37.6f, 47f, 57.6f, 38.4f, _t.Name == "dark" ? Rgba.Hex(0xd75a79) : Rgba.Hex(0xae2f4b))); // web TvEmptyState "search" graphic (zoom-out, 1.2x)
-        Sem.Tag(art, "container", radius: 50, childImageBox: (38.59f, 47.98f, 54f, 36f));
+        Sem.Tag(art, "container");
         _empty.Add(art);
         _empty.Add(Ui.Text("Start typing to search.", 1298.6f, 365.1f, 16.896f, 700, _t.Ink, 400, 25.344f, spacing: -0.44f));
     }
@@ -174,7 +174,7 @@ internal sealed class SearchScreen : IPage
         var tile = Ui.Box(1845.5f, 151.2f, 62, 72, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
         _filterTile = tile;
         tile.Focusable = true;
-        Sem.Tag(tile, "button", "Filters", radius: 14);
+        Sem.Tag(tile, "button", "Filters");
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
         tile.Add(Ui.Icon("filters", 19, 15, 24, _t.InkMuted));
         tile.Add(Ui.Text("Filters", 0, 44.6f, 8.256f, 700, _t.InkMuted, 62, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));

@@ -55,6 +55,7 @@ struct TVSettingsPanel: View {
             .tracking(tracking)
             .lineSpacing(max(0, (lineHeight ?? natural) - natural))
             .foregroundStyle(color)
+            .parityLayout(text: string, size: size, weight: Int(css), color: color, tracking: tracking)
             .lineLimit(lines)
             .multilineTextAlignment(alignment == .center ? .center : .leading)
             .padding(.top, lines > 1 ? max(0, ((lineHeight ?? natural) - natural) / 2) : 0)
@@ -98,7 +99,7 @@ struct TVSettingsPanel: View {
                 .font(TVTheme.font(size: h >= 50 ? 14.72 : 11.52, css: 720))
                 .tracking(h >= 50 ? 0.147 : 0.115)
                 .foregroundStyle(primary ? Stage.onAccent : soft)
-                .parityLayout(text: title, size: h >= 50 ? 14.72 : 11.52, weight: Int(720), tracking: h >= 50 ? 0.147 : 0.115)
+                .parityLayout(text: title, size: h >= 50 ? 14.72 : 11.52, weight: Int(720), color: primary ? Stage.onAccent : soft, tracking: h >= 50 ? 0.147 : 0.115)
         }
         .frame(width: snap(x, y, w, h).width, height: snap(x, y, w, h).height)
         .opacity(opacity)
@@ -112,7 +113,7 @@ struct TVSettingsPanel: View {
             Text(value ?? placeholder)
                 .font(TVTheme.font(size: 19.2, css: 400))
                 .foregroundStyle(value == nil ? muted : ink)
-                .parityLayout(text: value ?? placeholder, size: 19.2, weight: Int(400))
+                .parityLayout(text: value ?? placeholder, size: 19.2, weight: Int(400), color: value == nil ? muted : ink)
                 .padding(.leading, 17.2)
         }
         .frame(width: snap(x, y, w, h).width, height: snap(x, y, w, h).height)
@@ -270,7 +271,7 @@ struct TVSettingsPanel: View {
                 Button { isOn.wrappedValue = index == 1 } label: {
                     ZStack {
                         choiceBox(x: 0, y: 0, w: 239.7, h: 62, selected: selected, radius: 0, bar: 4)
-                        Text(label).font(TVTheme.font(size: 14.08, css: 700)).foregroundStyle(selected ? ink : soft).parityLayout(text: label, size: 14.08, weight: Int(700))
+                        Text(label).font(TVTheme.font(size: 14.08, css: 700)).foregroundStyle(selected ? ink : soft).parityLayout(text: label, size: 14.08, weight: Int(700), color: selected ? ink : soft)
                     }
                     .frame(width: 239.7, height: 62)
                 }

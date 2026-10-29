@@ -8,7 +8,7 @@
  * live-updates revalidation web does.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
 import { tv } from '../design/Metrics';
@@ -90,7 +90,7 @@ export struct WatchlistScreen {
   @Builder
   private pill(label: string, onTap: () => void): void {
     Text(label).fontFamily(nunitoAt(400, tv(PILL_SIZE)))
-      .fontSize(tv(PILL_SIZE))
+      .fontSize(tv(PILL_SIZE)).lineHeight(webLineHeight(tv(PILL_SIZE))).halfLeading(true)
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(PILL_HEIGHT))
       .padding({ left: tv(PILL_PADDING), right: tv(PILL_PADDING) })
@@ -105,7 +105,7 @@ export struct WatchlistScreen {
     Row({ space: tv(PILL_GAP) }) {
       Column({ space: tv(COPY_GAP) }) {
         Text(entry.title.title).fontFamily(nunitoAt(700, tv(TITLE_SIZE_ROW)))
-          .fontSize(tv(TITLE_SIZE_ROW))
+          .fontSize(tv(TITLE_SIZE_ROW)).lineHeight(webLineHeight(tv(TITLE_SIZE_ROW))).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().ink))
           .maxLines(1)
@@ -113,18 +113,18 @@ export struct WatchlistScreen {
         Row({ space: tv(META_GAP) }) {
           if (entry.title.year !== undefined && entry.title.year !== null) {
             Text(String(entry.title.year)).fontFamily(nunitoAt(400, tv(META_SIZE)))
-              .fontSize(tv(META_SIZE))
+              .fontSize(tv(META_SIZE)).lineHeight(webLineHeight(tv(META_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().inkMuted))
           }
           ForEach(sourceChips(entry.title.sources), (chip: string) => {
             Text(chip).fontFamily(nunitoAt(400, tv(META_SIZE)))
-              .fontSize(tv(META_SIZE))
+              .fontSize(tv(META_SIZE)).lineHeight(webLineHeight(tv(META_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().inkMuted))
           }, (chip: string): string => chip)
         }
         ForEach(explainedReasons(entry.actions), (line: string) => {
           Text(line).fontFamily(nunitoAt(400, tv(META_SIZE)))
-            .fontSize(tv(META_SIZE))
+            .fontSize(tv(META_SIZE)).lineHeight(webLineHeight(tv(META_SIZE))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkMuted))
         }, (line: string): string => line)
       }
@@ -169,12 +169,12 @@ export struct WatchlistScreen {
     } else if (this.entries.length === 0) {
       Column({ space: tv(8) }) {
         Text('Your watchlist is empty').fontFamily(nunitoAt(500, tv(26.4)))
-          .fontSize(tv(26.4))
+          .fontSize(tv(26.4)).lineHeight(webLineHeight(tv(26.4))).halfLeading(true)
           .fontWeight(FontWeight.Medium)
           .letterSpacing(tv(-0.924))
           .fontColor(toResourceColor(activeColors().ink))
         Text('Add titles from search or a title page to keep them here on every device.').fontFamily(nunitoAt(400, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
       .alignItems(HorizontalAlign.Start)
@@ -189,7 +189,7 @@ export struct WatchlistScreen {
         if (this.removeError.length > 0) {
           ListItem() {
             Text(this.removeError).fontFamily(nunitoAt(400, tv(META_SIZE)))
-              .fontSize(tv(META_SIZE))
+              .fontSize(tv(META_SIZE)).lineHeight(webLineHeight(tv(META_SIZE))).halfLeading(true)
               .fontColor(toResourceColor(activeColors().danger))
           }
         }

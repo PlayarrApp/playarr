@@ -21,7 +21,7 @@
  * `SPINNER_ROTATION_MS`.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { INTERACTION_CURVE, INTERACTION_CARD_MS, SPINNER_ROTATION_MS } from '../Motion';
@@ -99,12 +99,12 @@ export struct AsyncState {
           .rotate({ x: 0, y: 0, z: 1, angle: (this.spinnerAngle) })
       } else if (this.kind === AsyncStateKind.Empty) {
         Text(this.message).fontFamily(nunitoAt(400, 15))
-          .fontSize(15)
+          .fontSize(15).lineHeight(webLineHeight(15)).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .textAlign(TextAlign.Center)
       } else {
         Text(this.message).fontFamily(nunitoAt(400, 15))
-          .fontSize(15)
+          .fontSize(15).lineHeight(webLineHeight(15)).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .textAlign(TextAlign.Center)
 

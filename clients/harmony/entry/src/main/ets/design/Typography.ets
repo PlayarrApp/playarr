@@ -4,6 +4,7 @@
  * Instances: 400 body, the exact web weights.
  */
 
+import { LengthMetrics } from '@kit.ArkUI';
 import type { UIContext } from '@kit.ArkUI';
 import { WEB_SIZES, WEB_WEIGHTS } from '../core/WebWeights';
 
@@ -28,6 +29,7 @@ export function registerNunito(ui: UIContext): void {
   font.registerFont({ familyName: 'NunitoSansW900', familySrc: $rawfile('fonts/NunitoSans-W900.ttf') });
   font.registerFont({ familyName: 'PlayarrArrows', familySrc: $rawfile('fonts/PlayarrArrows.ttf') });
   font.registerFont({ familyName: 'PlayarrArrowsRegular', familySrc: $rawfile('fonts/PlayarrArrowsRegular.ttf') });
+  font.registerFont({ familyName: 'PlayarrGlyphs', familySrc: $rawfile('fonts/PlayarrGlyphs.ttf') });
 }
 
 /** The family for a weight: the nearest static instance. Call sites pass the web CSS weight; the nominal ArkUI weights
@@ -64,4 +66,16 @@ export function nunitoAt(weight: number, size: number): string {
     return nunito(best);
   }
   return nunito(weight);
+}
+
+/** The line height that makes a Text line the same box a browser reports for the run: the font's content area, ascent
+ * (1.011 em) and descent (0.353 em) rounded separately as Chromium does. ArkUI otherwise lays Nunito Sans out with
+ * its own, shorter ascent and descent (1.172 em), so every line box would be 0.19 em short. Pair it with `halfLeading(true)`. */
+export function webLineHeight(size: number): number {
+  return Math.round(1.011 * size) + Math.round(0.353 * size);
+}
+
+/** The extra space between lines that keeps a paragraph's web line pitch once each line is `webLineHeight` tall. */
+export function webLineSpacing(pitch: number, size: number): LengthMetrics {
+  return LengthMetrics.vp(Math.max(0, pitch - webLineHeight(size)));
 }

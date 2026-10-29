@@ -6,25 +6,43 @@ import { readFileSync } from "node:fs";
 
 const round = (v) => Math.round(v * 100) / 100;
 
+// An accessibility entry and a styled item are one element when they carry the same text and cover mostly the same area
+// (the accessibility frame of a focusable control includes its focus margin).
+function overlaps(a, b) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 && (w * h) / Math.min(a.w * a.h, b.w * b.h) >= 0.6;
+}
+
 export function mapRaw(doc, screen, theme) {
   const styled = doc.raw.filter((e) => e.source !== "ax");
-  const plain = doc.raw.filter((e) => e.source === "ax" && !styled.some((s) => s.text === e.text && Math.abs(s.rect.x - e.rect.x) < 3 && Math.abs(s.rect.y - e.rect.y) < 12));
+  // an accessibility text entry has no style (font, size, weight, colour): where the view reports none it is dropped, not exported bare
+  const plain = doc.raw.filter((e) => e.source === "ax" && !((e.role === "text" || e.role === "heading") && e.fontSize == null) && !styled.some((s) => s.text === e.text && s.role === e.role && overlaps(s.rect, e.rect)));
   const elements = [...styled, ...plain].map((e) => {
-    const single = e.fontSize != null && e.text && !e.lines && e.width != null && e.width <= e.rect.w + 0.5;
-    const rect = { x: e.rect.x, y: e.rect.y, w: single ? e.width : e.rect.w, h: e.rect.h }; // the text run's measured width
     const out = {
       text: e.text ?? "",
       role: e.role,
-      rect: Object.fromEntries(Object.entries(rect).map(([k, v]) => [k, round(v)])),
+      rect: Object.fromEntries(Object.entries(e.rect).map(([k, v]) => [k, round(v)])),
       color: e.color ?? null,
       background: e.background ?? null,
       fontSize: e.fontSize ?? null,
       fontWeight: e.fontWeight ?? null,
     };
     if (e.radius > 0) out.radius = e.radius;
+    if (e.opacity != null && e.opacity !== 1) out.opacity = e.opacity;
     return out;
   });
-  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements };
+  return { screen, theme, viewport: doc.viewport, clockPinned: doc.clockPinned, elements: dropCovered(elements) };
+}
+
+// Covered content is not visible: an item fully inside a later-drawn dialog (the drawer over the library) is dropped. The
+// dialog is the app's own opaque panel; nothing here changes a measured value.
+function dropCovered(elements) {
+  const dialogs = elements.filter((e) => e.role === "dialog");
+  if (!dialogs.length) return elements;
+  const inside = (a, b) => a.x >= b.x - 0.5 && a.y >= b.y - 0.5 && a.x + a.w <= b.x + b.w + 0.5 && a.y + a.h <= b.y + b.h + 0.5;
+  const dIndex = (d) => elements.indexOf(d);
+  return elements.filter((e, i) => e.role === "dialog" || !dialogs.some((d) => i < dIndex(d) && inside(e.rect, d.rect)));
 }
 
 if (process.argv[1]?.endsWith("layout-map.mjs") && process.argv[2]) {

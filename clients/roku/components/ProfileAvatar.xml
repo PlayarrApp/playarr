@@ -19,7 +19,10 @@
     -->
     <!-- The web scales the whole profile button 1.045 and lifts it 8 px when focused, the circle a further 1.035. Item box is 368 x 392. -->
     <Group id="itemGroup" scaleRotateCenter="[184,203.8]">
+      <!-- The profile button's own box (avatar, name, status): the web's link-like button named for the profile. -->
+      <Rectangle id="profileButton" translation="[62,53]" width="244" height="301.6" color="0x00000000" />
       <Group id="circleGroup" translation="[62,53]" scaleRotateCenter="[122,122]">
+        <!-- The add profile's plus is text over its disc bitmap. -->
         <Poster id="focusShadow" translation="[-45,-15]" width="336" height="336" uri="pkg:/images/avatar-shadow.png" opacity="0" loadDisplayMode="scaleToFit" />
         <!-- Thin outline and the 20 px, 45% card glow, centred on the avatar. -->
         <Poster id="focusRing" translation="[-29,-29]" width="304" height="304" uri="pkg:/images/avatar-ring.png" opacity="0" loadDisplayMode="scaleToFit" />
@@ -28,6 +31,7 @@
         <MaskGroup id="customMask" maskUri="pkg:/images/avatar-mask.png" maskSize="[244,244]" visible="false">
           <Poster id="customImage" translation="[0,0]" width="244" height="244" loadDisplayMode="scaleToZoom" />
         </MaskGroup>
+        <WebLabel id="plusGlyph" translation="[99,69.4]" text="+" size="76.8" weight="300" visible="false" />
         <Label id="initial" translation="[0,0]" width="244" height="244" horizAlign="center" vertAlign="center" scale="[2.2,2.2]" scaleRotateCenter="[122,122]" color="0xFFFFFFFF" visible="false" />
       </Group>
       <Label id="name" translation="[62,298.8]" width="244" height="34" horizAlign="center" numLines="1" scale="[0.54,0.54]" scaleRotateCenter="[122,17]" color="0xF4F0F1FF" />

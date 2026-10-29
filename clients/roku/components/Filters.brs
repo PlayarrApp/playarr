@@ -70,7 +70,7 @@ end function
 sub filtersRender()
     g = m.filtersGroup
     g.removeChildrenIndex(g.getChildCount(), 0)
-    drawerChrome(g, "Library controls", "Filters", "c:211d21:ffffff", "Close filters")
+    drawerChrome(g, "Library controls", "Filters", "Close filters")
     if m.filtersPicker <> ""
         filtersRenderPicker(g)
         return
@@ -84,7 +84,7 @@ sub filtersRender()
     end for
     filtersHeading(g, 276.1, "SORT BY")
     filtersChoice(g, 1605.5, 302, 131, "Title", 22.8, m.browseSort = "title", 1, 0)
-    filtersChoice(g, 1744, 302, 130, "Date added", 58.7, m.browseSort = "date_added", 1, 1)
+    filtersChoice(g, 1744, 302, 130, "Date Added", 58.7, m.browseSort = "date_added", 1, 1)
     filtersHeading(g, 388.7, "ORDER")
     ascText = "A-Z"
     descText = "Z-A"
@@ -130,16 +130,15 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
     by = cy + s * (189.8 - cy)
     bw = 84 * s
     bh = 56 * s
-    bg = "c:2b252a:eae8e9"
     if chosen
         pgRound(g, bx, by, bw, bh, 12, "ink")
-        bg = "ink"
     else
         pgRound(g, bx, by, bw, bh, 12, "surfaceSoft", 170)
         pgRound(g, bx, by, bw, bh, 12, "line", -1, true)
     end if
     role = "inkMuted"
     if chosen then role = "bg"
+    pgMark(g, "button", name, bx, by, bw, bh, 12)
     for i = 0 to 2
         if kind = "list"
             ux = x + 32
@@ -159,7 +158,7 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
         end if
         gx = cx + s * (ux - cx)
         gy = cy + s * (uy - cy)
-        pgRound(g, gx, gy, uw * s, uh * s, 1, role)
+        pgTag(pgRound(g, gx, gy, uw * s, uh * s, 1, role), "container", 1)
     end for
     tw = 18.8
     if kind = "screen" then tw = 34.5
@@ -168,7 +167,7 @@ sub filtersViewTile(g as Object, x as Float, name as String, chosen as Boolean, 
     ty = 220.8
     tgx = cx + s * (tx - cx)
     tgy = cy + s * (ty - cy)
-    l = pgLabel(g, tgx, tgy, tw * s + 4, 15 * s, LCase(name), 10.56 * s, 900, role, { fitWidth: tw * s })
+    l = pgLabel(g, tgx, tgy, tw * s + 4, 15 * s, name, 10.56 * s, 900, role, { fitWidth: tw * s })
     m.filtersFocus.Push({ row: 0, col: col, x: x, y: 189.8, w: 84, h: 56 })
 end sub
 
@@ -180,16 +179,14 @@ sub filtersChoice(g as Object, x as Float, y as Float, w as Float, text as Strin
     bx = cx + s * (x - cx)
     by = cy + s * (y - cy)
     if chosen
-        pgRound(g, bx, by, w * s, 56 * s, 12, "ink")
+        pgTag(pgRound(g, bx, by, w * s, 56 * s, 12, "ink"), "button", 12, text)
     else
-        pgRound(g, bx, by, w * s, 56 * s, 12, "surfaceSoft", 170)
+        pgTag(pgRound(g, bx, by, w * s, 56 * s, 12, "surfaceSoft", 170), "button", 12, text)
         pgRound(g, bx, by, w * s, 56 * s, 12, "line", -1, true)
     end if
     role = "inkMuted"
-    bg = "c:2b252a:eae8e9"
     if chosen
         role = "bg"
-        bg = "ink"
     end if
     tx = cx - tw * s / 2
     ty = y + 20.4 - 7.5 * (s - 1)
@@ -212,12 +209,12 @@ sub filtersTile(g as Object, x as Float, y as Float, w as Float, h as Float, tex
 end sub
 
 sub filtersSelect(g as Object, y as Float, text as String, row as Integer)
-    tok = "c:2b252a:eae8e9"
     pgRound(g, 1606, y, 268, 58.8, 12, "surfaceSoft", 170)
     pgRound(g, 1606, y, 268, 58.8, 12, "line", -1, true)
+    pgMark(g, "button", text, 1606, y, 268, 58.8, 12)
     tw = PlayarrTextWidth(text, 11.84, 680, 0)
     l = pgLabel(g, 1625.4, y + 20.5, 215, 16, text, 11.84, 680, "ink", { maxLines: 1 })
-    pgIcon(g, 1844, y + 22, 14, "chevron-down.png", "inkSoft")
+    pgGlyph(g, "⌄", 1844.7, y + 20.5, 11.84, 680, "inkMuted")
     m.filtersFocus.Push({ row: row, col: 0, x: 1606, y: y, w: 268, h: 58.8 })
 end sub
 
@@ -246,7 +243,7 @@ sub filtersEmitFocus()
         parityEmit("focus", "language " + m.filtersPickerIndex.ToStr())
         return
     end if
-    labels = [["List", "Screen", "Cover"], ["Title", "Date added"], ["A-Z", "Z-A"], ["Audio language"], ["Subtitle language"], ["Clear languages"]]
+    labels = [["List", "Screen", "Cover"], ["Title", "Date Added"], ["A-Z", "Z-A"], ["Audio language"], ["Subtitle language"], ["Clear languages"]]
     parityEmit("focus", labels[m.filtersRow][m.filtersCol])
 end sub
 
@@ -487,12 +484,13 @@ end sub
 sub calFiltersRender()
     g = m.filtersGroup
     g.removeChildrenIndex(g.getChildCount(), 0)
-    pgRect(g, 1560, 0, 360, 1080, "drawerPanel")
+    pgRect(g, 1560, 0, 360, 1080, "drawerBase")
+    pgTint(g, 1560, 0, 360, 1080, "drawerPanel")
     pgLabel(g, 1606, 52, 190, 16, "CALENDAR", 11, 700, "inkMuted")
     pgLabel(g, 1606, 75, 200, 56, "Filters", 36, 600, "ink")
     pgRound(g, 1826.5, 54.5, 49, 49, 25, "surfaceSoft")
     pgRound(g, 1826.5, 54.5, 49, 49, 25, "line", -1, true)
-    pgIcon(g, 1839, 67, 24, "player-close.png", "ink")
+    pgGlyph(g, "×", 1841.9, 60.84, 26.88, 720, "ink", false)
     m.filtersFocus = []
     pgLabel(g, 1606, 162, 250, 16, "VIEW", 10, 700, "inkMuted")
     views = ["month", "week", "agenda"]

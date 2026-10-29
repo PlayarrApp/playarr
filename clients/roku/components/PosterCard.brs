@@ -1,6 +1,7 @@
 sub init()
     PlayarrFontifyTree(m.top, "PosterCard")
-    ThemeSetRole(m.top.findNode("posterBg"), "surfaceSoft")
+    m.posterBg = m.top.findNode("posterBg")
+    ThemeSetRole(m.posterBg, "surfaceSoft")
     for each id in ["cornerTL", "cornerTR", "cornerBL", "cornerBR"]
         ThemeSetRole(m.top.findNode(id), "surface")
     end for
@@ -12,6 +13,7 @@ sub init()
     m.focusRingInset = 0
     m.cardContentInsetX = 0
     m.cardContentInsetY = 0
+    m.cardLink = m.top.findNode("cardLink")
     m.focusRing = m.top.findNode("focusRing")
     m.focusGlow = m.top.findNode("focusGlow")
     m.poster = m.top.findNode("poster")
@@ -22,6 +24,8 @@ sub init()
     m.titleFont0 = m.title.font
     m.kindFont0 = m.kind.font
     m.unwatchedBadge = m.top.findNode("unwatchedBadge")
+    ThemeSetRole(m.unwatchedBadge, "brand")
+    m.unwatchedBadge.blendColor = ThemeColor("brand")
     m.progressTrack = m.top.findNode("progressTrack")
     m.progressFill = m.top.findNode("progressFill")
     m.cardRoot = m.top.findNode("cardRoot")
@@ -83,6 +87,9 @@ sub onContentChanged()
         m.cardContentInsetY = 15
     end if
     m.cardRoot.translation = [m.cardContentInsetX, m.padTop + m.cardContentInsetY]
+    ' Numbered cards (chapters, episodes) round their art a little more than the library cards (web 13.44 px against 12).
+    m.cornerR = 12.0
+    if content.overlayNumber <> invalid and content.overlayNumber <> "" then m.cornerR = 13.44
     layoutCard(cardScale, artW, artH, listMode)
     ' A recycled grid card keeps its laid-out title position (layoutCard returns early for an unchanged scale).
     m.titleY = m.cardTitleY
@@ -119,6 +126,7 @@ sub onContentChanged()
         m.title.translation = [m.cardTitleX, m.titleY]
     end if
     clampCardTitle(content.title, hasPrefix)
+    nameCard(content, circle, hasNumber)
     applyCaptionFocus()
     watchState = ""
     if content.watchState <> invalid then watchState = content.watchState
@@ -145,7 +153,8 @@ sub onContentChanged()
     m.poster.SetHttpAgent(agent)
     ' Library art is 4K: ask for a bitmap decoded at 2x the card (4K textures overflow the GPU budget and some fail to load).
     m.top.findNode("circleMask").visible = circle
-    for each id in ["posterBg", "poster", "cornerTL", "cornerTR", "cornerBL", "cornerBR"]
+    m.posterBg.visible = not circle
+    for each id in ["poster", "cornerTL", "cornerTR", "cornerBL", "cornerBR"]
         m.top.findNode(id).visible = not circle
     end for
     if circle
@@ -242,6 +251,14 @@ sub onFocusChanged()
     m.focusRing.visible = ringOn
     m.focusGlow.opacity = 0
     if ringOn then m.focusGlow.opacity = shadowOpacity
+    ' Web grid card: the card (link box) scales 1.015 on focus, the art a further 1.025.
+    linkScale = 1.0
+    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then linkScale = 1 + 0.015 * effective
+    m.cardLink.scale = [linkScale, linkScale]
+    ' The card's link box lifts with its art and caption (the same 5 px).
+    linkLift = 0
+    if not m.homeCardFocusStyle and m.cardScaleValue > 1 then linkLift = -5 * effective
+    m.cardLink.translation = [0, linkLift]
     liftY = -cardFocusLift() * effective
     artScale = 1 + (effective * cardFocusScale())
     m.liftInterp.key = [0, 1]
@@ -330,22 +347,28 @@ sub layoutCard(cardScale as Float, ovW = 0.0 as Float, ovH = 0.0 as Float, listM
         artW = ovW
         artH = ovH
     end if
-    key = artW.ToStr() + ":" + artH.ToStr() + ":" + listMode.ToStr()
+    key = artW.ToStr() + ":" + artH.ToStr() + ":" + listMode.ToStr() + ":" + m.cornerR.ToStr()
     if m.laidOutScale = key then return
     m.laidOutScale = key
     m.cardListMode = listMode
-    m.top.findNode("posterBg").width = artW
-    m.top.findNode("posterBg").height = artH
+    m.posterBg.width = artW
+    m.posterBg.height = artH
     m.poster.width = artW
     m.poster.height = artH
     m.top.findNode("chapterWash").width = artW
     m.top.findNode("chapterWash").height = artH
     m.artGroup.scaleRotateCenter = [artW / 2, artH / 2]
+    cr = m.cornerR
+    for each id in ["cornerTL", "cornerTR", "cornerBL", "cornerBR"]
+        corner = m.top.findNode(id)
+        corner.width = cr
+        corner.height = cr
+    end for
     m.top.findNode("cornerTL").translation = [0, 0]
-    m.top.findNode("cornerTR").translation = [artW - 12, 0]
-    m.top.findNode("cornerBL").translation = [0, artH - 12]
-    m.top.findNode("cornerBR").translation = [artW - 12, artH - 12]
-    m.unwatchedBadge.translation = [artW - 24.5, 9.56]
+    m.top.findNode("cornerTR").translation = [artW - cr, 0]
+    m.top.findNode("cornerBL").translation = [0, artH - cr]
+    m.top.findNode("cornerBR").translation = [artW - cr, artH - cr]
+    m.unwatchedBadge.translation = [artW - 23.5, 10.56]
     m.progressTrack.translation = [0, artH - 3]
     m.progressTrack.width = artW
     ' Home RowList items reserve a 3 px inset around the art so this outer ring stays inside the item viewport.
@@ -451,11 +474,39 @@ sub applyCaptionFocus()
     if m.cardScaleValue > 1 and m.homeCardFocusStyle <> true and m.cardListMode <> true and m.cardArtW <> invalid and m.cardArtW > 0 and effective > 0
         k = 1 + 0.015 * effective
         cx = m.cardArtW / 2
-        cy = (m.top.findNode("posterBg").height + 29.38) / 2
+        cy = (m.posterBg.height + 29.38) / 2
         lift = -5 * effective
         m.title.scale = [k, k]
         m.title.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY - cy) * k + lift]
         m.kind.scale = [k, k]
         m.kind.translation = [cx + (m.cardTitleX - cx) * k, cy + (m.titleY + 19.5 - cy) * k + lift]
     end if
+end sub
+
+' What the card is for assistive tech: the link over art and caption, the art container (corner radius of the drawn masks), the
+' unwatched dot and the progress track. ECP query/app-ui prints a node's id, so the semantics ride on it as `a11y|role|radius|name`.
+sub nameCard(content as Object, circle as Boolean, hasNumber as Boolean)
+    if circle then return
+    linkName = ""
+    if content.linkName <> invalid and content.linkName <> ""
+        linkName = content.linkName
+    else if m.homeCardFocusStyle and m.kind.visible
+        linkName = content.title + " " + m.kind.text
+    else
+        linkName = "Open " + content.title
+    end if
+    m.cardLink.width = m.cardArtW
+    ' The link spans the art down to the end of the last caption line as Roku lays it out.
+    last = m.title
+    if m.kind.visible then last = m.kind
+    m.cardLink.height = PlayarrTextBottom(last)
+    if m.cardLink.height < m.posterBg.height then m.cardLink.height = m.posterBg.height
+    m.cardLink.scaleRotateCenter = [m.cardArtW / 2, m.cardLink.height / 2]
+    linkRadius = 0
+    if content.gridCard = true then linkRadius = 12
+    m.cardLink.id = "a11y|link|" + linkRadius.ToStr() + "|" + linkName
+    m.posterBg.id = "a11y|container|" + m.top.findNode("cornerTL").width.ToStr() + "|"
+    m.unwatchedBadge.id = "a11y|img|6.5|"
+    A11yStamp(m.unwatchedBadge, true)
+    m.progressTrack.id = "a11y|img|0|"
 end sub

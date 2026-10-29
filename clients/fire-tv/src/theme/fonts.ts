@@ -44,3 +44,12 @@ export function textRun(size: number, weight: number, opts: {letterSpacing?: num
     ...(opts.lineHeight ? {lineHeight: opts.lineHeight} : null),
   };
 }
+
+/**
+ * The height of a text run's content area in CSS px: the font's own hhea ascent and descent (Nunito Sans 1.011 and 0.353 em,
+ * JetBrains Mono 1.02 and 0.3 em, read from the files in `assets/fonts`), each rounded to whole pixels as a browser does.
+ */
+export function contentHeight(size: number, isMono = false): number {
+  const [ascent, descent] = isMono ? [1.02, 0.3] : [1.011, 0.353];
+  return Math.round(ascent * size) + Math.round(descent * size);
+}

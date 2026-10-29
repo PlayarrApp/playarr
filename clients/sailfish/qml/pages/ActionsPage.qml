@@ -6,6 +6,7 @@ import "../components"
 PlayarrPage {
     id: page
     objectName: "actions"
+    shellLayer: false
     property var work
     property var detail: null
     property var playlists: []
@@ -15,8 +16,8 @@ PlayarrPage {
     readonly property bool playlistActionVisible: !!work && (work.kind === "movie" || work.kind === "series" || work.kind === "site" || work.kind === "artist")
     property bool showPlaylists: false
     property string note: ""
-    // The web drawer: a full-screen dialog surface over the page.
-    Rectangle { parent: page; z: -1; anchors.fill: parent; color: Tokens.dark ? "#201c20" : "#fefefe"; property string parityRole: "dialog" }
+    // The web drawer: a full-screen dialog surface inside the page layers.
+    dialogColor: Tokens.dark ? "#201c20" : "#fefefe"
 
     // Every playable file under the title with its length.
     function leaves() {
@@ -75,19 +76,19 @@ PlayarrPage {
         Column {
             id: col
             width: parent.width
-            spacing: 13.5 * Tokens.u
+            spacing: 14 * Tokens.u
             Item {
                 width: parent.width
                 height: 46.4 * Tokens.u + Math.min(2, titleLbl.lineCount) * 33 * Tokens.u
                 Column {
                     anchors { left: parent.left; leftMargin: 20.3 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u; right: closeBtn.left; rightMargin: 8 * Tokens.u }
-                    spacing: 5 * Tokens.u
-                    Label { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkMuted; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.4 }
-                    Label { renderType: Text.NativeRendering;
+                    spacing: 5 * Tokens.u - 3.7
+                    PLabel { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkMuted; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.4 }
+                    FitText { 
                         id: titleLbl
-                        property string parityRole: "heading"
+                        lineRole: Accessible.Heading
                         width: parent.width; text: page.work.title; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
-                        lineHeightMode: Text.FixedHeight; lineHeight: 33 * Tokens.u
+                        naturalLines: true; lineHeight: 33 * Tokens.u / naturalHeight; topPadding: 3.94   // web: 33 px between lines, the title 2 css px below the box top
                         color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -1.25 * Tokens.u; font.pixelSize: Tokens.fs(22.4)
                     }
                 }
@@ -95,27 +96,26 @@ PlayarrPage {
                     id: closeBtn
                     objectName: "parity-actions-close"
                     property bool navigationFocusable: true
-                    property string a11yName: qsTr("Close")
-                    property real focusRadius: width / 2
+                    Accessible.role: Accessible.Button; Accessible.name: qsTr("Close")
                     function navigationActivate() { pageStack.pop() }
                     anchors { right: parent.right; rightMargin: 20 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u }
                     width: 44 * Tokens.u; height: width
                     onClicked: pageStack.pop()
                     Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.surfaceSoft; border.width: 1; border.color: Tokens.lineStrong }
-                    Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u00D7"; color: Tokens.ink; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(16) }
+                    PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u00D7"; color: Tokens.ink; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(16) }
                 }
             }
             ActionRow { glyph: "▶"; text: qsTr("Play"); primary: true; navigationInitialFocus: true; parityIndex: 0; navigationActivate: function() { page.play() }; onClicked: page.play() }
             ActionRow { glyph: "\u21E9"; text: qsTr("Download"); visible: page.downloadActionVisible; parityIndex: 1; navigationActivate: function() { page.download() }; onClicked: page.download() }
             ActionRow { glyph: "+"; text: qsTr("Add to Playlist"); visible: page.playlistActionVisible; parityIndex: 2; navigationActivate: function() { page.showPlaylists = !page.showPlaylists }; onClicked: page.showPlaylists = !page.showPlaylists }
-            Label { renderType: Text.NativeRendering; x: Tokens.pad * 2; visible: page.showPlaylists && page.playlists.length === 0; text: qsTr("No personal playlists yet. Create one from the Playlists page."); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(14); wrapMode: Text.Wrap; width: col.width - 3 * Tokens.pad }
+            FitText { x: Tokens.pad * 2; visible: page.showPlaylists && page.playlists.length === 0; text: qsTr("No personal playlists yet. Create one from the Playlists page."); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(14); wrapMode: Text.Wrap; width: col.width - 3 * Tokens.pad }
             Repeater {
                 model: page.showPlaylists ? page.playlists : []
                 ActionRow { glyph: "♪"; text: modelData.name; x: Tokens.pad * 2; width: col.width - 3 * Tokens.pad; parityIndex: 3 + index; navigationActivate: function() { page.addTo(modelData) }; onClicked: page.addTo(modelData) }
             }
             ActionRow { glyph: "✓"; text: qsTr("Mark as Watched"); parityIndex: 3 + (page.showPlaylists ? page.playlists.length : 0); navigationActivate: function() { page.mark(true) }; onClicked: page.mark(true) }
             ActionRow { glyph: "○"; text: qsTr("Mark as Unwatched"); parityIndex: 4 + (page.showPlaylists ? page.playlists.length : 0); navigationActivate: function() { page.mark(false) }; onClicked: page.mark(false) }
-            Label { renderType: Text.NativeRendering; x: Tokens.pad; visible: page.note !== ""; text: page.note; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(14) }
+            PLabel { renderType: Text.NativeRendering; x: Tokens.pad; visible: page.note !== ""; text: page.note; color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(14) }
         }
         EdgeFade { target: flick }
         VerticalScrollDecorator {}

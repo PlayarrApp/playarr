@@ -61,6 +61,24 @@
       },
       "reason": "Roku channel updates come from the Roku Channel Store, there is no in-app updater",
       "doc": "docs/parity/DEVICES.md#check-for-updates-which-clients-have-an-in-app-updater"
+    },
+    {
+      "screen": "film-detail",
+      "match": {
+        "role": "text",
+        "text": "⇩"
+      },
+      "reason": "Roku has no offline downloads (real platform limit); the Download tile and the Download row are left out on purpose",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
+    },
+    {
+      "screen": "actions",
+      "match": {
+        "role": "text",
+        "text": "⇩"
+      },
+      "reason": "Roku has no offline downloads (real platform limit); the Download tile and the Download row are left out on purpose",
+      "doc": "docs/parity/DEVICES.md#downloads-which-platforms-support-them"
     }
   ],
   "firetv": [

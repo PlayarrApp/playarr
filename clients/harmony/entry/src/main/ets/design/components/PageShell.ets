@@ -6,7 +6,7 @@
  * between pages.
  */
 
-import { nunito, arrowFont, nunitoAt } from '../Typography';
+import { nunito, arrowFont, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv, TvGeometry } from '../Metrics';
@@ -20,7 +20,7 @@ import { atLeast } from '../../core/SafeInsets';
 
 import { getCatalogKinds } from '../../data/CatalogRepository';
 import { buildNavRailItems, buildPrimaryNavItems, buildSecondaryNavItems, navigateFromRail } from '../../navigation/NavItems';
-import { railFrostColors } from './KeyArtBackdrop';
+import { railFrostColors, railFrostColorsFullWidth } from './KeyArtBackdrop';
 import { getNavStack, popRoute } from '../../navigation/NavStack';
 
 // Web back button and title (the shared header look).
@@ -50,6 +50,8 @@ export struct PageShell {
   @Prop showHeader: boolean = true;
   /** TV: 0 or more paints web's `surface` page base instead of `bg`, plus the right-hand frost of that width in % (0 for none). */
   @Prop railFrostWidthPct: number = -1;
+  /** Web draws this page's frost as a full-width box whose fade starts `railFrostWidthPct` from the right edge (Settings, Search). */
+  @Prop railFrostFullBox: boolean = false;
 
   /** The page's own content, laid out in 1920x1080 coordinates, below the chrome. */
   @BuilderParam content: () => void = this.emptyContent;
@@ -116,40 +118,44 @@ export struct PageShell {
 
   @Builder
   private headerBack(): void {
-    Text('←').fontFamily(arrowFont(720))
-      .fontSize(17.28) // web dump: 17.28, Liberation Sans bold
-      .fontWeight(FontWeight.Normal)
-      .fontColor(toResourceColor(activeColors().inkSoft))
-      .textAlign(TextAlign.Center)
-      .width(tv(HEADER_SIZE))
-      .height(tv(HEADER_SIZE))
-      .borderRadius(tv(HEADER_SIZE / 2))
-      .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-      // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
-      .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
-      .id('px:' + this.backRole + ':' + this.backLabel)
-      .focusable(true)
-      .onClick(() => {
-        popRoute(getNavStack());
-      })
+    // web: the link (ring, fill) holds the arrow glyph as its own text
+    Row() {
+      Text('←').fontFamily(arrowFont(720))
+        .fontSize(17.28).lineHeight(webLineHeight(17.28)).halfLeading(true) // web dump: 17.28, Liberation Sans bold
+        .fontWeight(FontWeight.Normal)
+        .fontColor(toResourceColor(activeColors().inkSoft))
+        .textAlign(TextAlign.Center)
+    }
+    .justifyContent(FlexAlign.Center)
+    .width(tv(HEADER_SIZE))
+    .height(tv(HEADER_SIZE))
+    .borderRadius(tv(HEADER_SIZE / 2))
+    .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+    // Web `.tv-page-back`: a 1px ring in a faint ink tone, and a regular-weight arrow.
+    .border({ width: tv(1), color: toResourceColorWithAlpha(activeColors().ink, 0.14) })
+    .accessibilityText(this.backLabel).accessibilityRole(this.backRole === 'button' ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
+    .focusable(true)
+    .onClick(() => {
+      popRoute(getNavStack());
+    })
   }
 
   @Builder
   private headerTitle(): void {
     Text(this.title).fontFamily(nunitoAt(580, tv(TITLE_SIZE)))
-      .id('px:heading:' + this.title)
-      .fontSize(tv(TITLE_SIZE))
+      
+      .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
       .fontWeight(FontWeight.Medium)
-      .letterSpacing(tv(TITLE_LETTER_SPACING))
+      .letterSpacing((tv(TITLE_LETTER_SPACING)) + (isTvMetrics() ? -0.23 : 0))
       .fontColor(toResourceColor(activeColors().ink))
       .height(tv(HEADER_SIZE))
-      .translate({ y: -1.3 }) // web's title box sits 1.3 higher
+      .translate({ y: 0.2 }) // web's title box sits level with the web header's
   }
 
   @Builder
   private headerDetail(inline: boolean): void {
     Text(this.kicker).fontFamily(nunitoAt(700, tv(DETAIL_SIZE)))
-      .fontSize(tv(DETAIL_SIZE))
+      .fontSize(tv(DETAIL_SIZE)).lineHeight(webLineHeight(tv(DETAIL_SIZE))).halfLeading(true)
       .fontWeight(DETAIL_WEIGHT)
       .letterSpacing(tv(DETAIL_LETTER_SPACING))
       .textCase(TextCase.UpperCase)
@@ -199,10 +205,10 @@ export struct PageShell {
       Stack() {
         if (this.railFrostWidthPct > 0) {
           Row()
-            .width(`${this.railFrostWidthPct}%`)
+            .width(this.railFrostFullBox ? '100%' : `${this.railFrostWidthPct}%`)
             .height('100%')
-            .position({ x: `${100 - this.railFrostWidthPct}%`, y: 0 })
-            .linearGradient({ angle: 90, colors: railFrostColors() })
+            .position({ x: this.railFrostFullBox ? 0 : `${100 - this.railFrostWidthPct}%`, y: 0 })
+            .linearGradient({ angle: 90, colors: this.railFrostFullBox ? railFrostColorsFullWidth(this.railFrostWidthPct) : railFrostColors() })
             .hitTestBehavior(HitTestMode.None)
         }
         this.content()
@@ -249,30 +255,34 @@ export struct PageShell {
     Column() {
       Row({ space: 10 }) {
         if (this.showHeader) {
-          Text('←').fontFamily(arrowFont(720))
-            .fontSize(12.8) // web dump: 12.8 / 720
-            .fontWeight(FontWeight.Normal)
-            .fontColor(toResourceColor(activeColors().inkSoft))
-            .textAlign(TextAlign.Center)
-            .width(44)
-            .height(44)
-            .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
-            .borderRadius(22)
-            .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
-            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
-            .id('px:' + this.backRole + ':' + this.backLabel)
-            .onClick(() => {
-              popRoute(getNavStack());
-            })
+          // web: the link (ring, fill) holds the arrow glyph as its own text
+          Row() {
+            Text('←').fontFamily(arrowFont(720))
+              .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true) // web dump: 12.8 / 720
+              .fontWeight(FontWeight.Normal)
+              .fontColor(toResourceColor(activeColors().inkSoft))
+              .textAlign(TextAlign.Center)
+          }
+          .justifyContent(FlexAlign.Center)
+          .width(44)
+          .height(44)
+          .padding({ bottom: 2.9 }) // web's glyph box sits 1.45 higher than the centred one
+          .borderRadius(22)
+          .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.2) })
+      .accessibilityText(this.backLabel).accessibilityRole(this.backRole === 'button' ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
+          .onClick(() => {
+            popRoute(getNavStack());
+          })
           Column() {
             Text(this.title).fontFamily(nunitoAt(580, 21.6))
-              .id('px:heading:' + this.title)
-              .fontSize(21.6) // web 1.35rem
+              
+              .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true) // web 1.35rem
               .fontWeight(FontWeight.Medium)
-              .letterSpacing(-0.972) // web -0.045em
+              .letterSpacing((-0.972) + (!isTvMetrics() ? -0.144 : 0)) // web -0.045em
               .fontColor(toResourceColor(activeColors().ink))
               .maxLines(1)
-              .translate({ y: -1.3 }) // web's title box sits 1.3 higher
+              .translate({ y: 0 })
           }
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)
@@ -301,6 +311,8 @@ export struct PageShell {
   build() {
     // `activeColors()` is not tracked by ArkUI, so a theme change rebuilds the shell (keyed by the theme) to repaint it.
     Stack() {
+    // web's DOM: the page base (`bg`) holds the page wrapper on `surface`, which holds the content and the phone's overlays
+    Stack() {
       ForEach([this.themeSetting], (_theme: string) => {
         if (this.touch && !isTvMetrics()) {
           this.touchChrome()
@@ -318,6 +330,10 @@ export struct PageShell {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().surface) : Color.Transparent) // the phone's bottom bar blends over the page
+    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().surface) : Color.Transparent)
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.touch && !isTvMetrics() ? toResourceColor(activeColors().bg) : Color.Transparent) // the page base; the phone's bottom bar blends over the page
   }
 }

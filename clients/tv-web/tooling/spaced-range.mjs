@@ -5,7 +5,8 @@
  * @param {string} text
  */
 export function spacedRange(text) {
-  return text.replace(/(\d)–(\d)/g, "$1 – $2");
+  // Newer TV ICU data puts thin or no-break spaces around the dash; the web draws plain spaces.
+  return text.replace(/(\d)\u2013(\d)/g, "$1 \u2013 $2").replace(/[\u2009\u202f\u00a0]\u2013[\u2009\u202f\u00a0]/g, " \u2013 ");
 }
 
 /** @param {typeof globalThis} win */

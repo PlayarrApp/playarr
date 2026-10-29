@@ -40,8 +40,19 @@ def get(path, **q):
             time.sleep(4)
 
 
+# The Previewer window is larger than the app's stage, which starts at STAGE_ORIGIN px inside it. The inspector still clamps some boxes at the window's
+# trailing edge: layout_export.py restores those from the framework's measured size and states what it cannot restore in its limits.
+# TV: 3000 x 1740 px, stage 1920 x 1080 at (240, 60). Phone: 1800 x 3600 px (dpr 3), stage 1080 x 2340 at (180, 180).
+STAGE = {"tv": ((240, 60), (3000, 1740), (1920, 1080)), "phone": ((180, 180), (1800, 3600), (1080, 2340))}
+STAGE_DEVICE = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] in STAGE else "tv"
+STAGE_ORIGIN, WINDOW_SIZE, STAGE_SIZE = STAGE[STAGE_DEVICE]
+
+
 def png() -> Image.Image:
-    return Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    img = Image.open(io.BytesIO(guarded_frame(IDENTITY_VERIFIED, lambda: get("/shot.png")))).convert("RGB")
+    if img.size == WINDOW_SIZE:  # the legend frame is the stage
+        img = img.crop((STAGE_ORIGIN[0], STAGE_ORIGIN[1], STAGE_ORIGIN[0] + STAGE_SIZE[0], STAGE_ORIGIN[1] + STAGE_SIZE[1]))
+    return img
 
 
 def key(*names):
@@ -51,11 +62,11 @@ def key(*names):
 
 
 def click(x, y):
-    get("/click", x=x, y=y)
+    get("/click", x=x + STAGE_ORIGIN[0], y=y + STAGE_ORIGIN[1])
 
 
 def longclick(x, y):
-    get("/longclick", x=x, y=y)
+    get("/longclick", x=x + STAGE_ORIGIN[0], y=y + STAGE_ORIGIN[1])
 
 
 def route(name, wait=12):
@@ -238,7 +249,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
         abort(f"{name} is too plain: an error or signed-out screen")
     img.save(os.path.join(folder, name + ".png"))
-    export_layout(name, img)
+    export_layout(name, img, os.path.basename(folder))
     try:
         get("/state", resetdbg="1")  # the next frame's dump counts only what happens after this one
     except (OSError, SystemExit):
@@ -247,39 +258,47 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
 
 
 def player_held_at_2s(folder):
-    """The preview build holds the player paused at exactly 2.000 s (patch_player_still.py; docs/parity/DEVICES.md, 'Pausing the player at
-    exactly 2.000 s'). Refuse the capture unless the app's own tree reports that position, paused (the Play button, not Pause)."""
+    """Record what the app itself reports on the player page; nothing is injected and nothing is refused. The Previewer mocks AVPlayer, so the
+    position stays 0:00 and the quality label empty: that is a platform limit, reported here and in the PR, never faked."""
     raw = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark", "player-controls.json")
     if not os.path.exists(raw):
         raise SystemExit("player did not report its state: no layout tree")
     tree = open(raw, encoding="utf-8").read()
-    if not re.search(r"0:02\s+/\s+1:00", tree) or "px:button:Play" not in tree:
-        raise SystemExit("player is not held paused at 2.000 s")
+    time_label = re.search(r"\d+:\d\d\s+/\s+\d+:\d\d", tree)
+    print("player state as the app reports it:", time_label.group(0) if time_label else "no time label",
+          "| play button" if re.search(r'"accessibilityText":\s*"Play"', tree) else "| pause button", flush=True)
 
 
-def export_layout(name, image=None):
+def export_layout(name, image=None, theme=None):
     """Layout document next to the screenshot (same screen state): the app dumps its component tree, layout_export maps it to the schema.
-    A failed dump is logged, never fatal: the pixel capture stays valid."""
+    A failed dump is logged and listed as missing, never fatal: the pixel capture stays valid. The theme is the folder the screenshot went
+    into, and the request carries a fresh id, so a late answer to an earlier request can never be taken for this frame's tree."""
+    theme = theme or ("light" if THEME == "light" else "dark")
+    stale = os.path.join(out, "layout", theme, name + ".json")
+    if os.path.exists(stale):
+        os.remove(stale)  # a surviving file must be a fresh measurement
     try:
         import layout_export  # noqa: PLC0415
-        get("/setroute", name="dumplayout:" + name)
+        request = f"{name}.{theme}.{time.time_ns()}"
+        get("/setroute", name="dumplayout:" + request)
         raw = None
         for _ in range(10):
             time.sleep(1.5)
             try:
-                raw = get("/layoutget", id=name)
+                raw = get("/layoutget", id=request)
                 break
             except urllib.error.HTTPError:
                 continue
         if raw is None:
             print(f"layout {name}: the app sent no tree", flush=True)
+            MISSING.append("layout:" + name)
             return
-        rawdir = os.path.join(out, "layout-raw", "light" if THEME == "light" else "dark")  # the unconverted tree: exporter fixes replay offline
+        rawdir = os.path.join(out, "layout-raw", theme)  # the unconverted tree: exporter fixes replay offline
         os.makedirs(rawdir, exist_ok=True)
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
-        count = layout_export.write(raw, name, "light" if THEME == "light" else "dark", viewport, os.path.join(out, "layout"),
-                                    clock_pinned=True, image=image)  # patch_clock.py pins the preview clock to the fixture instant
+        count = layout_export.write(raw, name, theme, viewport, os.path.join(out, "layout"),
+                                    clock_pinned=True, origin=STAGE_ORIGIN)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
     except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)
@@ -301,18 +320,21 @@ else:
 
 # 1. sign in: point the app at the test server (typed through the bridge, never baked into the build), then the pairing page logs
 # its user code; approve it as the Device Test account (fresh device id each run)
-route("serversetup", 8)
-FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
-click(*FIELD); time.sleep(1)
-get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
-click(*CONNECT); time.sleep(8)
 code = None
-for _ in range(60):
-    found = re.findall(rb"PLAYARR_LINKCODE=([A-Z0-9-]+) END", open(log, "rb").read())
-    if len(found) >= 2:  # the first belongs to the hosted-link default pairing page, the last to the test server
-        code = found[-1].decode()
+for attempt in range(3):  # the Previewer's name lookup of the server can fail for a while (curl 6): connect again from the server page
+    route("serversetup", 8)
+    FIELD, CONNECT = {"tv": ((960, 549), (960, 627)), "phone": ((540, 1290), (540, 1483))}[device]
+    click(*FIELD); time.sleep(1)
+    get("/type", text=os.environ["SERVER_URL"].strip()); time.sleep(1)
+    click(*CONNECT); time.sleep(8)
+    for _ in range(60):
+        found = re.findall(rb"PLAYARR_LINKCODE=([A-Z0-9-]+) END", open(log, "rb").read())
+        if len(found) >= 2:  # the first belongs to the hosted-link default pairing page, the last to the test server
+            code = found[-1].decode()
+            break
+        time.sleep(2)
+    if code is not None:
         break
-    time.sleep(2)
 if code is None:
     abort("no link code for the test server in the Previewer log")
 approval = subprocess.run([sys.executable, os.path.join(HERE, "approve_link.py"), code,
@@ -350,7 +372,7 @@ def extra_screens(folder):
     """Screens a click cannot reach in one step: the actions drawer (long press on a card) and the player controls."""
     try:
         route("library:movie", 15)
-        get("/hold", x=1299, y=254); time.sleep(4); snap("actions", folder)  # the web ref holds the second card (Amber Cathedral 18)
+        get("/hold", x=1299 + STAGE_ORIGIN[0], y=254 + STAGE_ORIGIN[1]); time.sleep(4); snap("actions", folder)  # the web ref holds the second card (Amber Cathedral 18)
         key("back"); time.sleep(3)
     except SystemExit:
         print("actions not captured", flush=True)
@@ -422,7 +444,7 @@ def motion_walk(folder):
     """Round 3 motion: Home scrolled down through the rails and back up, then along a rail, then Filters scrolled, by pointer swipes
     (the Previewer drops keys). Frames to capture/motion/<theme>/."""
     def swipe(x1, y1, x2, y2):
-        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2); time.sleep(0.7)
+        get("/swipe", x1=x1 + STAGE_ORIGIN[0], y1=y1 + STAGE_ORIGIN[1], x2=x2 + STAGE_ORIGIN[0], y2=y2 + STAGE_ORIGIN[1]); time.sleep(0.7)
 
     route("home", 30); focus_first_card(); burst(folder, "home-00-top")
     for i in range(1, 5):
@@ -767,6 +789,8 @@ if device == "tv":
         decoded_art = None
     folder = os.path.join(out, "light" if THEME == "light" else "dark")
     if TV_SELECTION is None:
+        # the app's own theme select (Settings, Appearance): choose the theme explicitly as web's reference does, so Profiles shows the stored choice
+        route("settings", 8); click(394, 207); time.sleep(3); click(1645 if folder.endswith("dark") else 1295, 285); time.sleep(4)
         route("profiles", 6); snap("profiles", folder)
         route("home", 20)
         walk(folder, "")
@@ -826,7 +850,7 @@ else:
                         raise Skip(f"{name}: the episode cards still show grey placeholders after 120 s")
                 # the web refs are taken at page top; the app scrolls to the next-up episode, so drag back up before the frame
                 for _ in range(3):
-                    get("/swipe", x1=540, y1=500, x2=540, y2=2200, steps=12, ms=300); time.sleep(1.5)
+                    get("/swipe", x1=540 + STAGE_ORIGIN[0], y1=500 + STAGE_ORIGIN[1], x2=540 + STAGE_ORIGIN[0], y2=2200 + STAGE_ORIGIN[1], steps=12, ms=300); time.sleep(1.5)
                 time.sleep(2)
                 snap(name, folder, 100000)
                 if kind == "series":  # the saved frame itself must show art (the page may have moved since the last check)
@@ -857,6 +881,8 @@ else:
 
     # the phone library refs have no card focus ring either (web touch layout), so no card is focused on the phone
     # the phone Home ref is taken without the On deck focus ring (web-refs.json noFocusRing), so Home is not focused here
+    # web's reference has the theme chosen explicitly: choose it in the app's own Appearance panel (Light and Dark buttons at y 439 px)
+    guarded("theme-choice", lambda: (route("settings", 12), click(540, 347), time.sleep(6), click(540 if THEME == "light" else 875, 439), time.sleep(4)))
     for name, r, floor in (("home", "home", 100000), ("movies", "library:movie", 100000), ("series", "library:series", 100000),
                            ("music", "library:artist", 100000), ("calendar-agenda", "calendar", 60000), ("search", "search", 40000),
                            ("settings", "settings", 40000), ("profiles", "profiles", 40000)):
@@ -879,7 +905,7 @@ else:
         selection, absent = phone_core_manifest_selection(requested, captured, SKIP_PLAYER)
         missing = list(dict.fromkeys(MISSING + absent))
         manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get("SHA", "unknown"), "pr": (int(os.environ["PARITY_PR"]) if os.environ.get("PARITY_PR", "").isdigit() else None), "server": "static server",
-                    "theme": THEME, "missing": missing, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "stage_origin": list(STAGE_ORIGIN), "theme": THEME, "missing": missing, "captured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     "screen_selection": {**selection, "captured": {THEME: selection["captured"]}}}
         if PLAYER_FIXTURE_SOURCE is not None:
             manifest["screen_selection"]["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
@@ -913,10 +939,11 @@ else:
 
     # Round 3 poster mode: Settings > Appearance > Home screen artwork = Covers, then each artwork size, and Home in each (the setting
     # lives in the Previewer's in-memory preferences, so it takes effect for the Home routes that follow in this run). Buttons at 3 px per vp.
-    COVERS_BTN, SMALL_BTN, LARGE_BTN, MEDIUM_BTN, THUMBS_BTN = (792, 1134), (204, 1830), (876, 1830), (540, 1830), (288, 1134)
+    # The panel now starts with the Colour theme row, so its buttons sit lower than the 3 px per vp positions of the first round (read off the snapshot).
+    COVERS_BTN, SMALL_BTN, LARGE_BTN, MEDIUM_BTN, THUMBS_BTN = (792, 1065), (204, 1690), (875, 1690), (540, 1690), (288, 1065)
 
     def home_with(name, taps):
-        route("profiles", 8); route("settings", 12); click(540, 300); time.sleep(6)
+        route("profiles", 8); route("settings", 12); click(540, 347); time.sleep(6)
         for x, y in taps:
             click(x, y); time.sleep(2)
         route("home", 40); snap(name, folder, 100000)
@@ -927,7 +954,7 @@ else:
             debug("motion-%s-%d" % (name, i), png()); time.sleep(gap)
 
     def swipe(x1, y1, x2, y2):
-        get("/swipe", x1=x1, y1=y1, x2=x2, y2=y2, steps=12, ms=300)
+        get("/swipe", x1=x1 + STAGE_ORIGIN[0], y1=y1 + STAGE_ORIGIN[1], x2=x2 + STAGE_ORIGIN[0], y2=y2 + STAGE_ORIGIN[1], steps=12, ms=300)
 
     def motion_home():
         route("home", 40); burst("home-00-top")
@@ -960,14 +987,16 @@ else:
     # Library in Covers mode at each artwork size: set the size in Settings, open Library > Filters, choose the Cover view, close, capture.
     COVER_VIEW_BTN = (868, 450)
 
-    def library_covers(name, size_btn):
-        route("profiles", 8); route("settings", 12); click(540, 300); time.sleep(6)
+    def library_covers(name, size_btn, capture=True):
+        route("profiles", 8); route("settings", 12); click(540, 347); time.sleep(6)
         click(*size_btn); time.sleep(2)
         route("library:movie", 15); settle()
         open_filters(name); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*COVER_VIEW_BTN); time.sleep(3); click(*CLOSE_DRAWER); time.sleep(5); settle()
-        snap(name, folder, 100000)
+        if capture:
+            snap(name, folder, 100000)
 
     # The first Library visit may ignore the Cover tap, so medium goes first and the saved view carries forward.
+    guarded("library-covers-warmup", lambda: library_covers("library-covers-warmup", MEDIUM_BTN, capture=False))  # medium is the default size: without this pass its frame equals the Thumbnails library
     for nm, btn in (("library-covers-medium", MEDIUM_BTN), ("library-covers-small", SMALL_BTN), ("library-covers-large", LARGE_BTN)):
         guarded(nm, lambda nm=nm, btn=btn: library_covers(nm, btn))
     # the pinned 1080p file; the Previewer mocks AVPlayer, so this is the player page's chrome, never a playing picture
@@ -977,6 +1006,7 @@ manifest = {"branch": os.environ.get("BRANCH", "unknown"), "sha": os.environ.get
             "theme": THEME, "missing": MISSING, "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
 if PLAYER_FIXTURE_SOURCE is not None:
     manifest["player_fixture_source"] = PLAYER_FIXTURE_SOURCE
+manifest["stage_origin"] = list(STAGE_ORIGIN)  # px: the raw layout trees hold window coordinates, the stage starts here
 if device == "tv" and (TV_SELECTION is not None or SKIP_PLAYER):
     suite_screens = json.load(open(os.path.join(HERE, "..", "parity", "suite.json")))["screens"]
     requested = TV_SELECTION if TV_SELECTION is not None else [

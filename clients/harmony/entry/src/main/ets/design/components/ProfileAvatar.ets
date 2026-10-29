@@ -142,6 +142,8 @@ export struct ProfileAvatar {
   @Prop initialFocus: boolean = false;
   /** Phone: show the focus ring and glow without real focus (the Previewer never reports it); web rings the current profile on open. */
   @Prop ringOn: boolean = false;
+  /** Extra scale the picker applies on top of the focus lift (web phone enlarges the current profile). Kept here, not on the caller, so the node's own scale is the one drawn. */
+  @Prop lift: number = 1;
 
   onSelect: () => void = () => {};
 
@@ -171,7 +173,7 @@ export struct ProfileAvatar {
   }
 
   private avatarScale(): number {
-    return 1 + (FOCUS_LIFT.profileAvatar.scale - 1) * this.effective();
+    return (1 + (FOCUS_LIFT.profileAvatar.scale - 1) * this.effective()) * this.lift;
   }
 
   /** "ring opacity → 1" -- rest is fully transparent (`0`), focus is fully
@@ -227,7 +229,7 @@ export struct ProfileAvatar {
     }
     .width(this.diameter)
     .height(this.diameter)
-    .id('px:container:')
+    
     .borderRadius(this.diameter / 2)
     .clip(true)
     // A circle clip: the rounded-rect clip left the drawing's sides flat in the Previewer.

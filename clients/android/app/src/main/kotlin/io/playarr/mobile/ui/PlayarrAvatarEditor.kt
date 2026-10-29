@@ -274,7 +274,7 @@ internal fun PlayarrAvatarSettings(
             playarrProfileAvatarPresetIds.forEach { preset ->
                 val selected = resolved.kind == ProfileAvatarKind.Preset && resolved.value == preset
                 val presetDescription = playarrString(playarrAvatarPresetLabelKey(preset))
-                androidx.compose.material3.Surface(
+                io.playarr.shared.designsystem.page.Surface(
                     onClick = { onSaveAvatar(ProfileAvatarPreference(ProfileAvatarKind.Preset, preset)) },
                     modifier = Modifier
                         .size(146.dp)
@@ -309,7 +309,7 @@ internal fun PlayarrAvatarSettings(
         items(playarrProfileAvatarPresetIds) { preset ->
             val selected = resolved.kind == ProfileAvatarKind.Preset && resolved.value == preset
             val presetDescription = playarrString(playarrAvatarPresetLabelKey(preset))
-            androidx.compose.material3.Surface(
+            io.playarr.shared.designsystem.page.Surface(
                 onClick = { onSaveAvatar(ProfileAvatarPreference(ProfileAvatarKind.Preset, preset)) },
                 modifier = Modifier
                     .size(76.dp)

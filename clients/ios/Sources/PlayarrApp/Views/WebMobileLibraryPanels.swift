@@ -11,8 +11,7 @@ private struct WMPanelCloseButton: View {
         Button(action: action) {
             WMText("×", size, 720, lh: 44)
                 .frame(width: 44, height: 44)
-                .background(WM.artFill, in: Circle())
-                .parityBox("button", name: "Close", background: WM.artFill, radius: 22)
+                .parityShape("button", name: "Close", color: WM.artFill, in: Circle(), radius: 22)
                 .overlay {
                     if focused {
                         Circle().stroke(WM.ink, lineWidth: 3).padding(-3.5)
@@ -40,10 +39,7 @@ private struct WMPanelFrame<Content: View>: View {
     @ViewBuilder
     private var panelBackground: some View {
         if isPad {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(WM.chip.opacity(0.94))
-                .ignoresSafeArea()
+            WM.chip.ignoresSafeArea() // web tablet drawer: one opaque surface, so the export reads the colour it draws
         } else {
             WM.page.ignoresSafeArea() // web phone panels are opaque: the library behind does not show through
         }
@@ -84,11 +80,13 @@ private struct WMPanelFrame<Content: View>: View {
             }
             .scrollIndicators(.hidden)
             .webEdgeFade(.vertical, size: 38)
+            .parityClipped()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
-        .parityBackground(PlayarrStyle.surfaceStrong.opacity(0.94)) // the web drawer: surface-strong at 94% over the page
+        // What the panel really paints: opaque page colour on the phone, opaque chip on iPad.
+        .parityFill(isPad ? WM.chip : WM.page)
     }
 }
 
@@ -106,7 +104,7 @@ private struct WMChoice: View {
         Button(action: action) {
             VStack(spacing: 5) {
                 if let symbol { Image(systemName: symbol).font(.system(size: 13, weight: .semibold)) }
-                Text(label).wm(wmIsPad ? 11.5 : 11.52, wmIsPad ? (selected ? 700 : 600) : 680)
+                Text(label).wm(wmIsPad ? 11.5 : 11.52, wmIsPad ? (selected ? 700 : 600) : 680, color: selected ? WM.page : WM.inkSoft, text: label)
             }
             .foregroundStyle(selected ? WM.page : WM.inkSoft)
             .frame(maxWidth: .infinity).frame(height: height)
@@ -150,7 +148,7 @@ private struct WMLanguageSelector: View {
         VStack(spacing: 8) {
             Button { isExpanded.toggle() } label: {
                 HStack {
-                    Text(selectedNames).wm(wmIsPad ? 10.5 : 9.3, wmIsPad ? 600 : 680, color: WM.inkSoft).foregroundStyle(WM.inkSoft).lineLimit(1)
+                    Text(selectedNames).wm(wmIsPad ? 10.5 : 9.3, wmIsPad ? 600 : 680, color: WM.inkSoft, text: selectedNames).foregroundStyle(WM.inkSoft).lineLimit(1)
                     Spacer(minLength: 8)
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 7, weight: .bold)).foregroundStyle(WM.muted)
@@ -169,27 +167,27 @@ private struct WMLanguageSelector: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if error != nil && options.isEmpty {
                         Text("Languages could not be loaded")
-                            .wm(11, 500, color: WM.muted).foregroundStyle(WM.muted).padding(12)
+                            .wm(11, 500, color: WM.muted, text: "Languages could not be loaded").foregroundStyle(WM.muted).padding(12)
                             .accessibilityLabel("\(label): languages could not be loaded")
                     } else if isLoading && facets == nil {
                         ProgressView().frame(maxWidth: .infinity).padding(14)
                             .accessibilityLabel("Loading \(label.lowercased())")
                     } else if options.isEmpty && error == nil {
                         Text("No languages available")
-                            .wm(11, 500, color: WM.muted).foregroundStyle(WM.muted).padding(12)
+                            .wm(11, 500, color: WM.muted, text: "No languages available").foregroundStyle(WM.muted).padding(12)
                     } else if !options.isEmpty {
                         ForEach(options) { facet in
                             Button { onToggle(facet.code) } label: {
                                 HStack(spacing: 10) {
                                     Image(systemName: selectedCodes.contains(facet.code) ? "checkmark.square.fill" : "square")
                                         .foregroundStyle(selectedCodes.contains(facet.code) ? WM.pink : WM.muted)
-                                    Text(facet.displayName).foregroundStyle(WM.ink)
+                                    Text(facet.displayName).wm(11, 500, color: WM.ink, text: facet.displayName).foregroundStyle(WM.ink)
                                     Spacer()
                                     if let count = facet.count {
-                                        Text(count.formatted()).foregroundStyle(WM.muted)
+                                        Text(count.formatted()).wm(11, 500, color: WM.muted, text: count.formatted()).foregroundStyle(WM.muted)
                                     }
                                 }
-                                .wm(11, 500)
+                                .font(WM.font(11, 500))
                                 .padding(.horizontal, 13).frame(minHeight: 42)
                                 .contentShape(Rectangle())
                             }
@@ -295,11 +293,7 @@ struct WMTitleActionsPanel: View {
             }
             .padding(.horizontal, 18)
             .frame(height: 68)
-            .parityBox("button", name: label, background: WM.artFill, radius: 14)
-            .background(
-                WM.artFill,
-                in: RoundedRectangle(cornerRadius: 14, style: .circular)
-            )
+            .parityShape("button", name: label, color: WM.artFill, in: RoundedRectangle(cornerRadius: 14, style: .circular), radius: 14)
             .overlay {
                 if focused { RoundedRectangle(cornerRadius: 17.5, style: .circular).stroke(WM.ink, lineWidth: 3).padding(-3.5).allowsHitTesting(false) }
             }

@@ -20,9 +20,8 @@ Item {
         property bool navigationFocusable: true
         function navigationActivate() { parent.backClicked() }
         visible: parent.back
-        property string a11yName: parent.backLabel
-        property string parityRole: parent.backRole
-        property real focusRadius: width / 2
+        Accessible.name: parent.backLabel
+        Accessible.role: parent.backRole === "button" ? Accessible.Button : Accessible.Link
         x: Tokens.pad
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: 1 * Tokens.u
@@ -35,19 +34,19 @@ Item {
             border.width: 1; border.color: Qt.rgba(Tokens.lineStrong.r, Tokens.lineStrong.g, Tokens.lineStrong.b, Tokens.lineStrong.a * 0.66)
         }
         Rectangle { visible: btn.parent.navigationActive ? btn.activeFocus : btn.parent.restRing; anchors { fill: parent; margins: -4.75 * Tokens.u } radius: width / 2; color: "transparent"; border.width: 2 * Tokens.u; border.color: Tokens.primary }
-        Label { renderType: Text.NativeRendering   // the web's arrow is a system-font glyph (Nunito has none)
+        PLabel { renderType: Text.NativeRendering   // the web's arrow is a system-font glyph (Nunito has none)
             anchors.centerIn: parent
             text: "\u2190"; color: Tokens.dark ? "#cdc1c6" : "#443a40"
-            anchors.verticalCenterOffset: -2.2 * Tokens.u
-            font.family: "Liberation Sans"; font.weight: Font.Bold; font.pixelSize: Tokens.fs(12.8)
+            anchors.verticalCenterOffset: -2.2 * Tokens.u + 3
+            font.family: Tokens.fam(720) + ",Liberation Sans"; font.pixelSize: Tokens.fs(12.8)
         }
     }
-    Label { renderType: Text.NativeRendering;
+    FitText { 
         id: label
         anchors { left: parent.back ? btn.right : parent.left; leftMargin: parent.back ? 10 * Tokens.u : Tokens.pad; right: parent.right; verticalCenter: parent.verticalCenter }
         elide: Text.ElideRight
         color: Tokens.ink
-        property string parityRole: "heading"
+        lineRole: Accessible.Heading
         font.family: Tokens.family580
         font.pixelSize: Tokens.fs(21.6)
         font.letterSpacing: -1.05 * Tokens.u

@@ -9,8 +9,8 @@ WORK=${WORK:-$RUNNER_TEMP/harmony-wall}
 CACHE=${OHOS_SDK_CACHE:-$HOME/.cache/ohos-sdk}
 DEVICE=${2:-tv}
 case $DEVICE in
-  tv) CTL=40017; WS=40007; DBG=40027; DEV_ARGS=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape) ;;
-  phone) CTL=40117; WS=40107; DBG=40127; DEV_ARGS=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait) ;;
+  tv) CTL=40017; WS=40007; DBG=40027; DEV_ARGS=(-device tv -sd 160 -or 3000 1740 -cr 3000 1740 -o landscape) ;;
+  phone) CTL=40117; WS=40107; DBG=40127; DEV_ARGS=(-device phone -sd 480 -or 1800 3600 -cr 1800 3600 -o portrait) ;;
   *) echo "device must be tv or phone" >&2; exit 2 ;;
 esac
 if [ "$1" = build ]; then
@@ -26,21 +26,18 @@ build() {
   if [ "$DEVICE" = phone ]; then sed -i "s/'deviceType': 'tv'/'deviceType': 'phone'/; s/Previewer TV/Previewer Phone/" entry/src/mock/deviceinfo.mock.ets; fi
   python3 "$HERE/patch_index.py" entry/src/main/ets/pages/Index.ets
   python3 "$HERE/patch_prefs.py" entry/src/main/ets/auth/SettingsStore.ets
-  python3 "$HERE/patch_theme.py" entry/src/main/ets/pages/Profiles.ets
   python3 "$HERE/patch_language.py" entry/src/main/ets/AppContainer.ets "${PREVIEW_LANGUAGE:-en}"
   if [ "$DEVICE" = phone ]; then python3 "$HERE/patch_drawer.py" entry/src/main/ets/design/components/Drawer.ets; fi
   python3 "$HERE/patch_clock.py" entry/src/main/ets/design/components/Clock.ets entry/src/main/ets/pages/Calendar.ets
   python3 "$HERE/patch_pairing.py" entry/src/main/ets/pages/Pairing.ets
   python3 "$HERE/patch_route.py" entry/src/main/ets/pages/Index.ets "$CTL"
   python3 "$HERE/patch_state.py" entry/src/main/ets
-  python3 "$HERE/patch_player_hold.py" entry/src/main/ets/pages/Player.ets # the player is held paused at 2.000 s on both devices
-  if [ "$DEVICE" = tv ]; then # web's ref shows the paused static clip frame behind the controls; the Previewer's video is a black mock
-    cp "$HERE/../parity/fixtures/static-clip-2s.png" entry/src/main/resources/rawfile/parity-player-still.png
-    python3 "$HERE/patch_player_still.py" entry/src/main/ets/pages/Player.ets
-  fi
+  python3 "$HERE/patch_caret.py" entry/src/main/ets/pages/Search.ets # no blinking caret in the pinned frame
   [ "${RAIL_PATCH:-yes}" = no ] || python3 "$HERE/patch_rail.py" entry/src/main/ets/design/components/MediaRail.ets
   python3 "$HERE/patch_artwork.py" entry/src/main/ets/data/ArtworkRepository.ets "$CTL"
   python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets
+  python3 "$HERE/patch_text.py" entry/src/main/ets # last: the other patches match the Text calls as written
+  python3 "$HERE/patch_role.py" entry/src/main/ets # mirror each declared accessibilityRole into the hint the inspector reports
   sed -i "s/PREVIEW_PORT: number = 40017/PREVIEW_PORT: number = $CTL/" entry/src/main/ets/util/PreviewState.ets
   python3 -c "import json;p='entry/src/main/resources/base/profile/main_pages.json';d=json.load(open(p));d['src'].append('pages/PreviewBoot');json.dump(d,open(p,'w'),indent=2)"
   ohpm install --all

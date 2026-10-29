@@ -107,14 +107,14 @@
       <!-- TvStageChrome theme + language (same square triggers as pairing / web). -->
       <Group id="profilesChromeControls" translation="[1552,50]">
         <Poster id="profilesThemePill" translation="[0,0]" width="144" height="48" uri="pkg:/images/pairing-chrome-dd-theme.png" />
-        <Poster id="profilesThemeIcon" translation="[14,16]" width="16" height="16" uri="pkg:/images/pairing-icon-theme.png" />
+        <Poster id="profilesThemeIcon" translation="[19.4,16]" width="16" height="16" uri="pkg:/images/pairing-icon-theme.png" />
         <Label id="profilesThemeLabel" translation="[44.75,15.03]" width="84" height="20" text="Dark" horizAlign="left" vertAlign="top" scale="[0.42,0.42]" scaleRotateCenter="[0,0]" color="0xF4F0F1FF" />
-        <Poster id="profilesThemeChevron" translation="[118,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
+        <Poster id="profilesThemeChevron" translation="[112.6,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
         <Rectangle id="profilesThemeHit" translation="[0,0]" width="144" height="48" color="0x00000000" focusable="true" />
         <Poster id="profilesLangPill" translation="[158,0]" width="168" height="48" uri="pkg:/images/pairing-chrome-dd.png" />
-        <Poster id="profilesLangIcon" translation="[172,16]" width="16" height="16" uri="pkg:/images/pairing-icon-lang.png" />
+        <Poster id="profilesLangIcon" translation="[177.4,16]" width="16" height="16" uri="pkg:/images/pairing-icon-lang.png" />
         <Label id="profilesLangLabel" translation="[202.75,15.03]" width="100" height="20" text="Auto" horizAlign="left" vertAlign="top" scale="[0.42,0.42]" scaleRotateCenter="[0,0]" color="0xF4F0F1FF" />
-        <Poster id="profilesLangChevron" translation="[300,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
+        <Poster id="profilesLangChevron" translation="[294.6,18]" width="12" height="12" uri="pkg:/images/pairing-icon-chevron.png" />
         <Rectangle id="profilesLangHit" translation="[158,0]" width="168" height="48" color="0x00000000" focusable="true" />
       </Group>
 
@@ -131,9 +131,15 @@
 
       <!-- .profile-actions under focused/current avatar: gear + Sign out (always above row). -->
       <Group id="profileActionsGroup" translation="[852,655]" visible="true">
-        <Poster id="profilesSettingsBtn" translation="[0,0]" width="44" height="44" uri="pkg:/images/profiles-gear.png" loadDisplayMode="scaleToFit" />
+        <!-- Gear and Sign out: a tinted pill, its outline, a glyph bitmap and (for Sign out) the label as text, as the web builds them. -->
+        <Poster id="profilesSettingsBtn" translation="[0,0]" width="44" height="44" uri="pkg:/images/round-r25.9.png" />
+        <Poster id="profilesSettingsRing" translation="[0,0]" width="44" height="44" uri="pkg:/images/round-outline-r25.9.png" />
+        <Poster id="profilesSettingsIcon" translation="[13,13]" width="18" height="18" uri="pkg:/images/profiles-gear-glyph.png" />
         <Rectangle id="profilesSettingsHit" translation="[0,0]" width="44" height="44" color="0x00000000" focusable="true" />
-        <Poster id="profilesSignOutBtn" translation="[52.8,0]" width="101.2" height="44" uri="pkg:/images/profiles-signout.png" loadDisplayMode="scaleToFill" />
+        <Poster id="profilesSignOutBtn" translation="[52.8,0]" width="101.2" height="44" uri="pkg:/images/round-r25.9.png" />
+        <Poster id="profilesSignOutRing" translation="[52.8,0]" width="101.2" height="44" uri="pkg:/images/round-outline-r25.9.png" />
+        <Poster id="profilesSignOutIcon" translation="[69.8,13]" width="18" height="18" uri="pkg:/images/profiles-exit-glyph.png" />
+        <WebLabel id="profilesSignOutLabel" translation="[95,14]" text="Sign out" size="10.75" weight="720" />
         <Rectangle id="profilesSignOutHit" translation="[52.8,0]" width="101.2" height="44" color="0x00000000" focusable="true" />
       </Group>
       <!-- Web .profile-clients-link: independent footer action, not part of avatar actions. -->
@@ -258,11 +264,15 @@
       overlapping the preview column.
     -->
     <Group id="browseGroup" visible="false">
+      <Rectangle id="browseSurface" width="1920" height="1080" color="0x1B181BFF" />
       <!-- Full-bleed key art (web TvStageShell) behind chrome; washed for text. -->
       <Poster id="browseKeyArt" translation="[133.03,-22.9]" width="900" height="1190.6"
         loadDisplayMode="scaleToZoom" visible="false" />
+      <Rectangle id="browseKeyArtVeil" translation="[133.03,-22.9]" width="900" height="1190.6" color="0x1B181B00" />
       <Poster id="browseKeyArtFade" translation="[781.03,-22.9]" width="252" height="1190.6" uri="pkg:/images/stage-key-art-fade.png" loadDisplayMode="scaleToFill" />
       <StageScrims id="browseScrims" />
+      <Rectangle id="washBrowse" width="1920" height="1080" color="0x00000000" />
+      <Rectangle id="browsePanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
       <!-- Web .tv-library-heading: back is dock Home; h1 + "1,730 TITLES". -->
       <TrackedText id="browseTitle" translation="[226.6,58.2]" />
       <TrackedText id="browseCountLabel" translation="[226.6,112]" />
@@ -341,6 +351,9 @@
       session).
     -->
     <Group id="searchGroup" visible="false">
+      <Rectangle id="searchSurface" width="1920" height="1080" color="0x1B181BFF" />
+      <Rectangle id="washSearch" width="1920" height="1080" color="0x00000000" />
+      <Rectangle id="searchPanel" translation="[729.6,0]" width="1190.4" height="1080" color="0x1B181BFF" />
       <!-- Native Search shell only. No web-freeze crop Posters (those painted
            solid dark/blue panel slabs over the UI). -->
       <Label id="searchTitle" translation="[220,95]" width="900" height="60" text="Search" scale="[1.35,1.35]" color="0xFFFFFFFF" />
@@ -423,6 +436,7 @@
           focusBitmapBlendColor="0x00000000" vertFocusAnimationStyle="floatingFocus" visible="false" />
       </Group>
       <Group id="playlistDetailGroup" visible="false">
+        <Rectangle id="playlistDetailSurface" width="1920" height="1080" color="0x1B181BFF" />
         <TvStage id="playlistDetailStage" />
         <MarkupGrid id="playlistItemsGrid" translation="[0,0]" itemComponentName="PosterCard"
           numColumns="2" numRows="3" itemSize="[330,216]" itemSpacing="[27,27]"
@@ -469,6 +483,7 @@
       content panel (translation [983,259], ~864px wide).
     -->
     <Group id="detailGroup" visible="false">
+      <Rectangle id="detailSurface" width="1920" height="1080" color="0x1B181BFF" />
       <TvStage id="detailStage" />
       <!-- height=182 pre-scale * 0.81 scale = 147px visual bottom edge. detailEpisodes'
            own row label sits 30px ABOVE its row (rowLabelOffset), so at y=180 that label
@@ -575,9 +590,12 @@
     <!-- Web page shell screens (Watchlist, Requests, Calendar, Preferences): built in Pages.brs and Settings.brs. -->
     <Group id="pageGroup" visible="false">
       <Rectangle id="pageBg" width="1920" height="1080" color="0x1B181BFF" />
+      <Rectangle id="washPage" width="1920" height="1080" color="0x00000000" />
       <Poster id="clientsStageBg" width="1920" height="1080" uri="pkg:/images/profiles-bg.png" visible="false" />
+      <!-- The web panel is a surface-coloured box (the Rectangle) with a lighter gradient laid over it (the bitmaps). -->
+      <Rectangle id="pagePanel" translation="[730,0]" width="1190" height="1080" color="0x1B181BFF" visible="false" />
       <Poster id="pagePanelFade" translation="[730,0]" width="260" height="1080" uri="pkg:/images/page-fade.png" visible="false" />
-      <Rectangle id="pagePanel" translation="[990,0]" width="930" height="1080" color="0x1B181BFF" visible="false" />
+      <Poster id="pagePanelTint" translation="[990,0]" width="930" height="1080" uri="pkg:/images/solid.png" loadDisplayMode="scaleToFill" visible="false" />
       <Group id="pageBody" />
       <Group id="pageHead" />
       <Group id="clientsStageChrome" visible="false">

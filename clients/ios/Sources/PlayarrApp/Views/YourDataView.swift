@@ -46,11 +46,11 @@ struct YourDataView: View {
             Button { pickingFile = true } label: {
                 HStack(spacing: 4) {
                     Text("Choose File")
-                        .wm(11, 400, color: WM.ink).foregroundStyle(WM.ink)
+                        .wm(11, 400, color: WM.ink, text: "Choose File").foregroundStyle(WM.ink)
                         .padding(.horizontal, 6).frame(height: 16)
                         .background(WM.artFill)
                         .overlay(RoundedRectangle(cornerRadius: 2).stroke(WM.muted, lineWidth: 1))
-                    Text("No file chosen").wm(11, 400, color: WM.ink).foregroundStyle(WM.ink)
+                    Text("No file chosen").wm(11, 400, color: WM.ink, text: "No file chosen").foregroundStyle(WM.ink)
                     Spacer()
                 }
                 .padding(.horizontal, 8).padding(.top, 4)
@@ -66,7 +66,7 @@ struct YourDataView: View {
             } label: {
                 HStack {
                     Text(model.keepExistingProgress ? "Always keep what is here" : "Keep whichever is newer")
-                        .wm(11, 400, color: WM.muted).foregroundStyle(WM.muted)
+                        .wm(11, 400, color: WM.muted, text: model.keepExistingProgress ? "Always keep what is here" : "Keep whichever is newer").foregroundStyle(WM.muted)
                     Spacer()
                     Image(systemName: "chevron.down").font(.system(size: 9)).foregroundStyle(WM.muted)
                 }

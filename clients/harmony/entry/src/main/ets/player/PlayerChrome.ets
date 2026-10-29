@@ -144,7 +144,7 @@
  *   for brief literals with no home in `core/Tokens.ts`.
  */
 
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight } from '../design/Typography';
 import { isTvMetrics, tv, activeGeometry } from '../design/Metrics';
 import { TvGeometry, TouchGeometry, BRAND_PINK, Spacing } from '../core/Tokens';
 import type { RgbaColor } from '../core/Tokens';
@@ -307,8 +307,8 @@ struct PlayPauseGlyph {
 @Component
 struct ChromeButton {
   label: string = '';
-  /** The layout export's node id (`px:button:<accessible name>`), empty for none. */
-  nodeId: string = '';
+  /** The control's accessible name (it is a button), empty for none. */
+  nodeName: string = '';
   buttonWidth: number = 44;
   buttonHeight: number = 44;
   fontSize: number = BUTTON_LABEL_FONT_SIZE;
@@ -358,13 +358,13 @@ struct ChromeButton {
         Image(this.icon).width(this.iconSize).height(this.iconSize)
       } else {
         Text(this.label).fontFamily(nunitoAt(700, this.fontSize))
-          .fontSize(this.fontSize)
+          .fontSize(this.fontSize).lineHeight(webLineHeight(this.fontSize)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
           .maxLines(1)
       }
     }
-    .id(this.nodeId)
+    .accessibilityText(this.nodeName).accessibilityRole(this.nodeName.length > 0 ? AccessibilityRoleType.BUTTON : AccessibilityRoleType.ROLE_NONE)
     .width(this.buttonWidth)
     .height(this.buttonHeight)
     .borderRadius(this.circle ? Math.min(this.buttonWidth, this.buttonHeight) / 2 : 0)
@@ -438,6 +438,7 @@ export struct PlayerChrome {
   onToggleMute: () => void = () => {};
   onVisibilityChanged: (visible: boolean) => void = () => {};
 
+  @State private volumePercent: number = 100;
   @State private chromeOpacity: number = 1;
   @State private visible: boolean = true;
   @State private focusedCount: number = 0;
@@ -576,7 +577,7 @@ export struct PlayerChrome {
       label: '',
       icon: icon,
       iconSize: tv(20),
-      nodeId: isTvMetrics() ? 'px:button:' + name : '',
+      nodeName: isTvMetrics() ? name : '',
       circle: true,
       fillAlpha: 0,
       ringAlpha: 0,
@@ -598,7 +599,7 @@ export struct PlayerChrome {
     }
     .width(tv(TV_SEEK_SIZE))
     .height(tv(TV_SEEK_SIZE))
-    .id('px:button:' + (previous ? 'Previous episode' : 'Next episode'))
+    .accessibilityText((previous ? 'Previous episode' : 'Next episode')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .borderRadius(tv(TV_SEEK_SIZE / 2))
     .opacity(active ? 1 : 0.28)
     .focusable(active)
@@ -625,11 +626,11 @@ export struct PlayerChrome {
         // web: the Minimise pill (glass, hairline) beside the round close button
         Row({ space: tv(10) }) {
           Image($r('app.media.player_minimize')).width(tv(20)).height(tv(20))
-          Text('Minimise').fontFamily(nunitoAt(700, tv(11.2))).fontSize(tv(11.2)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+          Text('Minimise').fontFamily(nunitoAt(700, tv(11.2))).fontSize(tv(11.2)).letterSpacing((isTvMetrics() ? 0.146 : 0)).lineHeight(webLineHeight(tv(11.2))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
         }
         .width(tv(124))
         .height(tv(TV_CLOSE_SIZE))
-        .id('px:button:Minimise player')
+        .accessibilityText('Minimise player').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .justifyContent(FlexAlign.Center)
         .alignItems(VerticalAlign.Center)
         .borderRadius(tv(TV_CLOSE_SIZE / 2))
@@ -650,7 +651,7 @@ export struct PlayerChrome {
           buttonWidth: tv(TV_CLOSE_SIZE),
           buttonHeight: tv(TV_CLOSE_SIZE),
           fontSize: tv(22),
-          nodeId: 'px:button:Close player',
+          nodeName: 'Close player',
           onActivate: this.onBack,
           notifyFocusChanged: ((focused: boolean): void => {
             this.setChildFocused(focused);
@@ -671,7 +672,7 @@ export struct PlayerChrome {
           .width('100%')
           .height(tv(44))
           .justifyContent(FlexAlign.Center)
-          .id('px:slider:Seek')
+          .accessibilityText('Seek').accessibilityRole(AccessibilityRoleType.SLIDER)
         }
         Row({ space: tv(TV_ROW_GAP) }) {
           this.tvSkip(true, this.canPrevious, this.onPrevious)
@@ -682,7 +683,7 @@ export struct PlayerChrome {
             ringAlpha: 0,
             isPlaying: this.isPlaying,
             glyphSize: tv(20), // web: the 20 px icon
-            nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
+            nodeName: (this.isPlaying ? 'Pause' : 'Play'),
             buttonWidth: tv(TV_PLAY_SIZE),
             buttonHeight: tv(TV_PLAY_SIZE),
             onActivate: this.onTogglePlayPause,
@@ -692,27 +693,47 @@ export struct PlayerChrome {
           })
           this.tvSkip(false, this.canNext, this.onNext)
           if (this.isLive()) {
-            Text('LIVE').fontFamily(nunitoAt(700, tv(TV_TIME_FONT_SIZE))).fontSize(tv(TV_TIME_FONT_SIZE)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
+            Text('LIVE').fontFamily(nunitoAt(700, tv(TV_TIME_FONT_SIZE))).fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(BRAND_PINK))
           } else {
             Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, tv(TV_TIME_FONT_SIZE)))
-              .fontSize(tv(TV_TIME_FONT_SIZE))
-              .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+              .fontSize(tv(TV_TIME_FONT_SIZE)).lineHeight(webLineHeight(tv(TV_TIME_FONT_SIZE))).halfLeading(true)
+              
               .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           }
+          // web: the mute button and the volume slider sit together, 10 apart, after the time
+          Row({ space: tv(10) }) {
+            this.tvIcon($r('app.media.player_volume'), this.onToggleMute, false, 'Mute')
+            Slider({ value: this.volumePercent, min: 0, max: 100, style: SliderStyle.OutSet })
+              .width(tv(130))
+              .height(tv(44))
+              .trackColor(toResourceColorWithAlpha(CHROME_TEXT_PRIMARY, 0.3))
+              .selectedColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              .blockColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              .accessibilityText('Volume').accessibilityRole(AccessibilityRoleType.SLIDER)
+              .onChange((value: number): void => {
+                this.volumePercent = value;
+              })
+          }
           Blank()
-          this.tvIcon($r('app.media.player_volume'), this.onToggleMute, false, '')
+          // web: the audio-track button, empty while the stream has no alternative track
+          Stack()
+            .width(tv(TV_SEEK_SIZE))
+            .height(tv(TV_SEEK_SIZE))
+            .borderRadius(tv(TV_SEEK_SIZE / 2))
+            .accessibilityText('Audio: Unavailable').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+            .focusable(true)
           this.tvIcon($r('app.media.player_subtitles'), (): void => { if (this.hasTracks) { this.onOpenTracks(); } }, true, 'Subtitles: Off')
           this.tvIcon($r('app.media.player_queue'), (): void => {}, true, 'Playlist: 1 item')
           if (this.qualityLabel.length > 0) {
             // web: the HD badge and the negotiated quality's name, between the queue and info buttons
             Row({ space: tv(12) }) {
-              Text('HD').fontFamily(nunitoAt(700, tv(7.68))).fontSize(tv(7.68)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-              Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
+              Text('HD').fontFamily(nunitoAt(700, tv(7.68))).fontSize(tv(7.68)).lineHeight(webLineHeight(tv(7.68))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+              Text(this.qualityLabel).fontFamily(nunitoAt(700, tv(10.56))).fontSize(tv(10.56)).letterSpacing((isTvMetrics() ? -0.103 : 0)).lineHeight(webLineHeight(tv(10.56))).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).maxLines(1)
             }
             .width(tv(160.45))
             .height(tv(56))
             .borderRadius(tv(28))
-            .id('px:button:Quality: ' + this.qualityLabel)
+            .accessibilityText('Quality: ' + this.qualityLabel).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
             .padding({ left: tv(10) })
             .justifyContent(FlexAlign.Center)
             .onClick(() => {
@@ -721,6 +742,7 @@ export struct PlayerChrome {
           }
           this.tvIcon($r('app.media.player_info'), this.onOpenInfo, true, 'Info and playback health')
           this.tvIcon($r('app.media.player_cast'), (): void => {}, true, 'Play on another device')
+          this.tvIcon($r('app.media.player_fullscreen'), (): void => {}, true, 'Enter fullscreen')
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)
@@ -748,7 +770,7 @@ export struct PlayerChrome {
       fillAlpha: circle ? 0.04 : 0,
       ringAlpha: circle ? 0.3 : 0,
       active: !faded,
-      nodeId: 'px:button:' + name,
+      nodeName: name,
       buttonWidth: 44,
       buttonHeight: 44,
       onActivate: onTap,
@@ -767,7 +789,7 @@ export struct PlayerChrome {
     }
     .width(44)
     .height(44)
-    .id('px:button:' + (previous ? 'Previous episode' : 'Next episode'))
+    .accessibilityText((previous ? 'Previous episode' : 'Next episode')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .borderRadius(22)
     .opacity(active ? 1 : 0.28)
     .focusable(active)
@@ -794,15 +816,15 @@ export struct PlayerChrome {
         .width(336)
         .height(44)
         .justifyContent(FlexAlign.Center)
-        .id('px:slider:Seek')
+        .accessibilityText('Seek').accessibilityRole(AccessibilityRoleType.SLIDER)
         .position({ x: 12, y: 615.13 })
         Text(formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs)).fontFamily(nunitoAt(400, PHONE_TIME_FONT_SIZE))
-          .fontSize(PHONE_TIME_FONT_SIZE)
+          .fontSize(PHONE_TIME_FONT_SIZE).lineHeight(webLineHeight(PHONE_TIME_FONT_SIZE)).halfLeading(true)
           .fontColor(toResourceColor(CHROME_TEXT_SECONDARY))
           .textAlign(TextAlign.Center)
           .width(336)
           .height(16.88)
-          .id('px:container:' + formatClockMs(this.positionMs) + ' / ' + formatClockMs(this.durationMs))
+          
           .position({ x: 12, y: 653.13 })
       }
       this.phoneSkip(true, this.canPrevious, this.onPrevious, 20, 674)
@@ -814,7 +836,7 @@ export struct PlayerChrome {
         ringWidth: 0,
         isPlaying: this.isPlaying,
         glyphSize: 20, // web: the 20 px icon
-        nodeId: 'px:button:' + (this.isPlaying ? 'Pause' : 'Play'),
+        nodeName: (this.isPlaying ? 'Pause' : 'Play'),
         buttonWidth: PHONE_PLAY_SIZE,
         buttonHeight: PHONE_PLAY_SIZE,
         onActivate: this.onTogglePlayPause,
@@ -829,13 +851,13 @@ export struct PlayerChrome {
       this.phoneButton('Subtitles: Off', $r('app.media.player_subtitles'), 20, this.onOpenTracks, false, 250, 674)
       this.phoneButton('Playlist: 1 item', $r('app.media.player_queue'), 20, (): void => {}, false, 296, 674)
       Row() {
-        Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
-        Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).fontWeight(FontWeight.Bold)
+        Text('HD').fontFamily(nunitoAt(700, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold).fontColor(toResourceColor(CHROME_TEXT_PRIMARY))
+        Text(this.qualityLabel).fontFamily(nunitoAt(700, 10.56)).fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true).fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(CHROME_TEXT_PRIMARY)).width(40.31).maxLines(3).textAlign(TextAlign.Center)
       }
       .width(44)
       .height(44)
-      .id('px:button:Quality: ' + this.qualityLabel)
+      .accessibilityText('Quality: ' + this.qualityLabel).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
       .borderRadius(22)
       .justifyContent(FlexAlign.Center)
       .position({ x: 89, y: 722 })

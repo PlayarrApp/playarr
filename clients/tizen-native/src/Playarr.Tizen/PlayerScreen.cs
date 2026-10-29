@@ -27,6 +27,7 @@ internal sealed class PlayerScreen : IPage
     private readonly View _root = new();
     private readonly View _controls = new();
     private readonly View _progress;
+    private readonly View _seek;
     private readonly TextLabel _now, _total;
     private readonly TextLabel _qualityBadge, _qualityLabel;
     private readonly View _qualityRing;
@@ -57,18 +58,18 @@ internal sealed class PlayerScreen : IPage
         _env = env; _t = env.Theme; _file = file; _startMs = startMs; _local = local;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _controls.Size = _root.Size;
-        for (var layer = 0; layer < 4; layer++) _root.Add(Sem.Tag(new View { Size = _root.Size }, "container", backdrop: new Rgba(0, 0, 0))); // web: the black page layers behind the video
-        Sem.Tag(_controls, "none", backdrop: new Rgba(0, 0, 0));
+        Sem.Tag(_controls, "none");
         _root.Add(_controls);
 
         var white = new Rgba(1, 1, 1);
         // web: the control bar sits on a bottom scrim, black at 92 % along the last 520 px
-        _controls.Add(Sem.Tag(Ui.Gradient(0, 561.6f, 1920, 518.4f, false, (0f, new Rgba(0, 0, 0, 0)), (1f, new Rgba(0, 0, 0, 0.92f))), "container", backdrop: new Rgba(0, 0, 0)));
-        _controls.Add(Sem.Tag(new View { PositionX = TrackX, PositionY = TrackY - 19, Size = new Size(TrackW, 44) }, "slider", "Seek", backdrop: new Rgba(0, 0, 0)));
-        // seek track
-        _controls.Add(Ui.Box(TrackX, TrackY, TrackW, 6, new Rgba(1, 1, 1, 0.18f), 3));
-        _progress = Ui.Box(TrackX, TrackY, 0, 6, _t.Brand, 0);
-        _controls.Add(_progress);
+        _controls.Add(Sem.Tag(Ui.Gradient(0, 561.6f, 1920, 518.4f, false, (0f, new Rgba(0, 0, 0, 0)), (1f, new Rgba(0, 0, 0, 0.92f))), "container"));
+        // seek: a 44 px high target holding the 6 px track and its fill (web's slider)
+        _seek = Sem.Tag(new View { PositionX = TrackX, PositionY = TrackY - 19, Size = new Size(TrackW, 44) }, "slider", "Seek");
+        _controls.Add(_seek);
+        _seek.Add(Ui.Box(0, 19, TrackW, 6, new Rgba(1, 1, 1, 0.18f), 3));
+        _progress = Ui.Box(0, 19, 0, 6, _t.Brand, 0);
+        _seek.Add(_progress);
 
         // top-right: minimise, close
         AddTopButton(1678, 124, "minimise", "Minimise", "minimise", () => CloseSelf());
@@ -77,7 +78,7 @@ internal sealed class PlayerScreen : IPage
         // transport row
         AddIcon("prev", 92, 980, "previous", dim: true);
         var play = Ui.Box(147.6f, 958, 64, 64, new Rgba(1, 1, 1, 0.14f), 32);
-        Sem.Tag(play, "button", "Play", radius: 50); _playButton = play;
+        Sem.Tag(play, "button", "Play"); _playButton = play;
         _playIcon = Sem.Tag(Ui.Icon("pause", 22, 22, 20, white), "none");
         play.Add(_playIcon);
         var playRing = Ring.Make(64, 64, 32, white, themed: false); playRing.Show(false); play.Add(playRing);
@@ -85,9 +86,8 @@ internal sealed class PlayerScreen : IPage
         _playRing = playRing;
         _focus.Items.Add(PlayFocusable("pause"));
         // web: Up from the transport row lands on the seek bar
-        _focus.Items.Add(new Focusable { Rect = () => new Box(TrackX, TrackY - 14, TrackW, 34), Label = "seek", Select = () => { }, Style = f => _progress.Size = new Size(_progress.Size.Width, f ? 10 : 6) });
+        _focus.Items.Add(new Focusable { Rect = () => new Box(TrackX, TrackY - 19, TrackW, 44), Label = "seek", Select = () => { }, Style = f => _progress.Size = new Size(_progress.Size.Width, f ? 10 : 6) });
         AddIcon("next", 247.2f, 980, "next", dim: true);
-        _controls.Add(Sem.Tag(new View { PositionX = 302.8f, PositionY = 981.8f, Size = new Size(58.4f, 16.3f) }, "container", "0:02 / 1:00", backdrop: new Rgba(0, 0, 0)));
         _now = Ui.Text("0:00", 302.8f, 981.8f, 10.88f, 400, white, 60, 16.32f);
         _controls.Add(_now);
         _controls.Add(Ui.Text("/", 331.4f, 981.8f, 10.88f, 400, new Rgba(0.647f, 0.588f, 0.62f), 10, 16.32f));
@@ -95,18 +95,23 @@ internal sealed class PlayerScreen : IPage
         _controls.Add(_total);
 
         // tools
-        AddIcon("volume", 1323.6f, 980, "audio", dim: false);
-        AddIcon("captions", 1401.2f, 980, "subtitles", dim: false, select: OpenSubtitles);
-        AddIcon("queue", 1478.8f, 980, "playlist", dim: false);
-        _qualityBadge = Ui.Text("HD", 1556.5f, 984.5f, 7.68f, 700, white, 28, 11.52f, spacing: 0.3f);
-        _qualityLabel = Ui.Text("Original", 1580.3f, 982.1f, 10.56f, 700, white, 138, 15.84f, spacing: 0.1f);
+        AddIcon("volume", 397, 980, "mute", dim: false); // web: mute, then the volume slider
+        var volume = new View { PositionX = 449, PositionY = 968, Size = new Size(130, 44) };
+        volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.18f), 2)); volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.9f), 2));
+        _controls.Add(volume);
+        _focus.Items.Add(new Focusable { Rect = () => new Box(449, 968, 130, 44), Label = "volume", Select = () => { }, Style = f => volume.Opacity = f ? 1f : 0.8f });
+        AddIcon("volume", 1246, 980, "audio", dim: false);
+        AddIcon("captions", 1323.6f, 980, "subtitles", dim: false, select: OpenSubtitles);
+        AddIcon("queue", 1401.2f, 980, "playlist", dim: false);
+        _qualityBadge = Ui.Text("HD", 22.1f, 22.5f, 7.68f, 700, white, 28, 11.52f, spacing: 0.3f);
+        _qualityLabel = Ui.Text("Original", 51.1f, 20.1f, 10.56f, 700, white, 138, 15.84f, spacing: 0.1f);
+        _qualityHost.Add(_qualityBadge); _qualityHost.Add(_qualityLabel); // web: the quality button holds its badge and label
         _controls.Add(_qualityHost);
-        _controls.Add(_qualityBadge);
-        _controls.Add(_qualityLabel);
-        _qualityRing = Ring.Make(180, 36, 18, new Rgba(1, 1, 1), themed: false); _qualityRing.PositionX = _qualityButtonX; _qualityRing.PositionY = 968; _qualityRing.Show(false); _controls.Add(_qualityRing);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(_qualityButtonX, 972, _qualityButtonWidth, 36), Label = "quality", Select = () => { }, Style = f => _qualityRing.Show(f) });
-        AddIcon("info", 1730.4f, 980, "info", dim: false);
-        AddIcon("cast", 1808, 980, "play on another device", dim: false);
+        _qualityRing = Ring.Make(180, 56, 28, new Rgba(1, 1, 1), themed: false); _qualityRing.Show(false); _qualityHost.Add(_qualityRing);
+        _focus.Items.Add(new Focusable { Rect = () => new Box(_qualityButtonX, 962, _qualityButtonWidth, 56), Label = "quality", Select = () => { }, Style = f => _qualityRing.Show(f) });
+        AddIcon("info", 1652.8f, 980, "info", dim: false);
+        AddIcon("cast", 1730.4f, 980, "play on another device", dim: false);
+        AddIcon("fullscreen", 1808, 980, "fullscreen", dim: false);
 
         _tick = new global::Tizen.NUI.Timer(500); _tick.Tick += (_, _) => { OnTick(); return !_stopped; };
         _hide = new global::Tizen.NUI.Timer(5000); _hide.Tick += (_, _) => { if (_panel is null && _player?.State == PlayerState.Playing) SetControls(false); return false; };
@@ -117,7 +122,7 @@ internal sealed class PlayerScreen : IPage
     private void AddTopButton(float x, float w, string icon, string? text, string label, Action select)
     {
         var box = Ui.Box(x, 37.8f, w, 48, new Rgba(0.047f, 0.039f, 0.043f, 0.7f), 24);
-        Sem.Tag(box, "button", text is null ? "Close player" : "Minimise player", radius: 999, ignoreOwnBg: true, backdrop: text is null ? new Rgba(0.027f, 0.024f, 0.024f) : new Rgba(0.039f, 0.031f, 0.035f));
+        Sem.Tag(box, "button", text is null ? "Close player" : "Minimise player");
         box.BorderlineWidth = 1; box.BorderlineColor = new Color(1, 1, 1, 0.28f);
         box.Add(text is null ? Ui.Icon(icon, 17, 13, 14, 22, new Rgba(1, 1, 1)) : Ui.Icon(icon, 23.6f, 14, 20, new Rgba(1, 1, 1)));
         if (text is not null) box.Add(Ui.Text(text, 52.4f, 13, 11.2f, 700, new Rgba(1, 1, 1), 70, 22, spacing: 0.22f));
@@ -129,17 +134,17 @@ internal sealed class PlayerScreen : IPage
     private void AddIcon(string icon, float x, float y, string label, bool dim, Action? select = null)
     {
         var disabledLook = dim || label == "audio"; // web: a disabled control (no previous, no next, no audio track) draws at 28 %
-        var iconView = Ui.Icon(icon, x, y, 20, new Rgba(1, 1, 1, disabledLook ? 1f : 0.8f));
-        if (disabledLook) iconView.Opacity = 0.28f;
-        Sem.Tag(iconView, "none", exportOpacity: disabledLook ? 0.28f : 1f);
-        _controls.Add(iconView);
-        var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", _ => "Play on another device" };
-        var tagged = Sem.Tag(new View { PositionX = x - 22, PositionY = y - 22, Size = new Size(64, 64), Opacity = disabledLook ? 0.28f : 1f }, "button", buttonName, radius: 50, backdrop: new Rgba(0, 0, 0));
-        _controls.Add(tagged);
+        // web: each tool is a 64 px round button holding its 20 px icon; a disabled one (no previous, no next, no audio track) draws at 28 %
+        var host = Ui.Box(x - 22, y - 22, 64, 64, null, 32);
+        host.Opacity = disabledLook ? 0.28f : 1f;
+        var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", "mute" => "Mute", "fullscreen" => "Enter fullscreen", _ => "Play on another device" };
+        Sem.Tag(host, "button", buttonName);
+        host.Add(Ui.Icon(icon, 22, 22, 20, new Rgba(1, 1, 1)));
+        _controls.Add(host);
         if (dim) return; // web: previous and next are disabled (not focusable) when nothing precedes or follows
         var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
         _controls.Add(ring);
-        _focus.Items.Add(new Focusable { Rect = () => new Box(x - 8, y - 8, 36, 36), Label = label, Select = select ?? (() => { }), Style = f => ring.Show(f) });
+        _focus.Items.Add(new Focusable { Rect = () => new Box(x - 22, y - 22, 64, 64), Label = label, Select = select ?? (() => { }), Style = f => ring.Show(f) });
     }
 
     private async Task StartAsync()
@@ -305,7 +310,7 @@ internal sealed class PlayerScreen : IPage
     private Focusable PlayFocusable(string label) => new() { Rect = () => new Box(147.6f, 958, 64, 64), Label = label, Select = TogglePause, Style = f => _playRing.Show(f) };
 
     private View? _playButton;
-    private readonly View _qualityHost = new() { PositionY = 962 };
+    private readonly View _qualityHost = new() { PositionY = 962, CornerRadius = 28 };
     private bool _pendingToggle;
 
     private void TogglePause()
@@ -325,7 +330,7 @@ internal sealed class PlayerScreen : IPage
     {
         var i = _focus.Items.FindIndex(x => x.Label is "pause" or "play");
         if (i >= 0) _focus.Items[i] = PlayFocusable(label);
-        if (_playButton is not null) Sem.Tag(_playButton, "button", label == "play" ? "Play" : "Pause", radius: 50);
+        if (_playButton is not null) Sem.Tag(_playButton, "button", label == "play" ? "Play" : "Pause");
     }
 
     // ---- subtitles panel (web: a list over the player; Back closes it and focus returns to the subtitles button) ----
@@ -400,14 +405,11 @@ internal sealed class PlayerScreen : IPage
         var measuredWidth = Ui.TextWidth(display.Label, 10.56f, 700, 0.1f) + 2;
         var labelW = Ui.TextWidth(display.Label, 10.56f, 700, 0.1f);
         // web: the button is 65.5 px wider than its label and ends at x 1694.8
-        _qualityButtonWidth = 65.5f + labelW; _qualityButtonX = 1694.8f - _qualityButtonWidth;
+        _qualityButtonWidth = 65.5f + labelW; _qualityButtonX = 1616.8f - _qualityButtonWidth;
         var shift = 0f;
-        _qualityRing.PositionX = _qualityButtonX;
-        _qualityRing.Size = new Size(_qualityButtonWidth + 10, 46);
-        _qualityBadge.PositionX = _qualityButtonX + 22.1f;
-        _qualityLabel.PositionX = _qualityButtonX + 51.1f;
-        Sem.Tag(_qualityHost, "button", "Quality: " + display.Label, radius: 999, backdrop: new Rgba(0, 0, 0)); _qualityHost.PositionX = _qualityButtonX; _qualityHost.Size = new Size(_qualityButtonWidth, 56);
-        _qualityLabel.Size = new Size(Math.Max(138, measuredWidth), _qualityLabel.Size.Height);
+        _qualityRing.Size = new Size(_qualityButtonWidth, 56);
+        Sem.Tag(_qualityHost, "button", "Quality: " + display.Label); _qualityHost.PositionX = _qualityButtonX; _qualityHost.Size = new Size(_qualityButtonWidth, 56);
+        _qualityLabel.Size = new Size((Math.Max(138, measuredWidth) + 3) * Ui.TextScale, _qualityLabel.Size.Height); // label units are TextScale times design px
         _qualityLabel.Text = display.Label;
         _qualityBadge.Text = display.Badge;
     }
@@ -453,7 +455,7 @@ internal sealed class PlayerScreen : IPage
         var frame = new ImageView(path) { Size = _root.Size };
         _root.Add(frame); frame.LowerToBottom();
         // the web capture shows the clip buffered to about 16 s: a lighter segment on the seek track, under the played part
-        _controls.Add(Ui.Box(TrackX, TrackY, 475, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
+        _seek.Add(Ui.Box(0, 19, 475, 6, new Rgba(1, 1, 1, 0.35f), 3)); _progress.RaiseToTop();
     }
 
     public (bool Playing, long PositionMs) Status

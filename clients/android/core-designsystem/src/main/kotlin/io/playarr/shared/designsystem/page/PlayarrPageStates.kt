@@ -1,7 +1,6 @@
 package io.playarr.shared.designsystem.page
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -76,8 +75,7 @@ fun PlayarrEmptyState(spec: PlayarrEmptySpec) {
         ) {
             val glyph = androidx.compose.ui.graphics.lerp(palette.ink, androidx.compose.ui.graphics.Color(0xFFCF3157), 0.78f)
             Box(
-                Modifier.size(132.dp).parityBox("container", "", 50f)
-                    .background(palette.surfaceStrong.copy(alpha = 0.54f), CircleShape)
+                Modifier.size(132.dp).parityBackground("container", palette.surfaceStrong.copy(alpha = 0.54f), CircleShape, radius = 999f)
                     .border(1.dp, palette.hairline(0.15f, 0.18f).copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {

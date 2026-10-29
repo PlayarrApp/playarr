@@ -201,7 +201,7 @@ jobs:
         run: |
           W=$(cygpath -m "$GITHUB_WORKSPACE"); I="$W/harmony-wall-work/app/entry/.preview/default/intermediates"
           if [ "$DEVICE" = phone ]; then CTL=40117; WS=40107; DBG=40127; else CTL=40017; WS=40007; DBG=40027; fi
-          if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait); else D=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape); fi
+          if [ "$DEVICE" = phone ]; then D=(-device phone -sd 480 -or 1800 3600 -cr 1800 3600 -o portrait); else D=(-device tv -sd 160 -or 3000 1740 -cr 3000 1740 -o landscape); fi
           if [ "$THEME" = light ]; then CM=light; else CM=dark; fi
           cp scripts/sim-vnc/sim_vnc.py scripts/harmony-wall/
           python scripts/harmony-wall/backend_preflight.py --output backend-preflight.json

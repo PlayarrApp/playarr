@@ -21,7 +21,8 @@ for (const theme of ["dark", "light"]) {
     const id = file.slice(0, -5);
     if (only.length && !only.includes(id)) continue;
     const out = join(root, dev[1], "layout", theme, file);
-    writeFileSync(out, JSON.stringify(mapRaw(JSON.parse(readFileSync(join(rawDir, file), "utf8")), id, theme)));
+    const mapped = mapRaw(JSON.parse(readFileSync(join(rawDir, file), "utf8")), id, theme);
+    writeFileSync(out, JSON.stringify(mapped));
     const ref = join(root, dev[0], "web", "layout", theme, file);
     const line = execFileSync("node", [score, "--ref", ref, "--device", out], { encoding: "utf8" }).split("\n")[0];
     const pct = Number(/layout ([\d.]+)%/.exec(line)?.[1] ?? 0);

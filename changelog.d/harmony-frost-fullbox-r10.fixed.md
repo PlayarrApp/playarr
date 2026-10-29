@@ -1,0 +1,1 @@
+- HarmonyOS TV Settings and Search draw their frost as a full-width box with the same fade, as web does.

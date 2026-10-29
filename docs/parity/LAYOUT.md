@@ -17,6 +17,9 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
 - `rect`: CSS px of the layout viewport (device px divided by dpr), origin at the top left of the app viewport, excluding system bars.
   For text elements it is the glyph-run bounds (the drawn glyphs of one rendered line, from `Range.getBoundingClientRect` per character; a wrapped paragraph is one element per line, each with that line's text; volatile text elements use the glyph run too), never the
   widget or view box: exporters must emit the bounds of the laid-out text, not a stretched label frame. Other elements use the border box.
+  A focusable control (button, link, tab, input) is two elements when it has its own text: the control with its CSS border box (`text` = its
+  accessible name, no text style) and, as a separate `text` element, the label with glyph-run bounds, colour, font size and weight.
+  A volatile control keeps its border box too.
 - `color`: text colour, `#rrggbb` or `#rrggbbaa`; `null` for elements without text. `background`: the colour behind and including
   the element, every ancestor background composited over white. `fontSize` (CSS px, after any zoom) and `fontWeight` (100 to 900):
   `null` without text. `radius` (top-left corner, px; web elements that draw no fill, border or shadow carry `painted: false` and their radius is not scored) and `opacity` (product with the ancestors) only when not 0 and not 1.
@@ -81,8 +84,12 @@ styling differences or bugs; a missing element that web draws and the product su
 
 ## Volatile content
 
+A volatile selector flags the matched element and each descendant `volatile`; none is merged into another, so every drawn text run and icon (the time code and its separator, the quality badge and label, the audio icon) keeps its own box and style.
+Text cut by `text-overflow: ellipsis` is exported with the kept characters from their real boxes and the ellipsis width read from a probe run laid out inside the element.
+
 `scripts/parity/layout-volatile.json` (keyed by screen, `*` = all): elements whose text is expected to differ while box and style
-must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player audio button (web Chromium shows "Audio: Unavailable" because it lacks `audioTracks` support, a native app shows the clip's real track); the player buffered bar (`omit`: left out of the refs, its length follows download timing). The video
+must still match: header clock and date, the nav-rail app version ("v 0.1.0"; native builds carry their own), calendar-link URL and QR, the settings-server address, the player time code; the player audio button (web Chromium shows "Audio: Unavailable" because it lacks `audioTracks` support, a native app shows the clip's real track); the player quality button (which stream the player picks is playback behaviour, out of scope: only its box, style, role and name presence are scored); the player buffered bar (`omit`: left out of the refs, its length follows download timing). An entry with `opacityVolatile` (the player audio button: web direct-play never loads tracks, so web shows it dimmed) is exported with
+`opacityVolatile: true` and no `opacity`; the scorer skips its opacity and still scores its box and style. The video
 frame is `maskOnly`: not scored, and the pixel scorer blanks its rect. OS bars are exported as role `system`. The web document marks
 such elements with `volatile`; the scorer matches them by role and overlap and skips their text.
 
@@ -118,3 +125,9 @@ DOM dump as the web refs through their drivers (`layoutDump` in `drivers/tizen-w
 
 Fonts, weights and colours are mandatory in the schema: where a platform tree lacks them the lane's debug build must export them
 from the app's own style values, not guess from pixels.
+
+## Role aliases (per client, default off)
+
+Android (Compose) and Vega-style toolkits have no `link` role: a tappable text or card is a `button`. For those clients only, the scorer accepts a device `button` for a web `link`: `scoreLayout(..., { roleAliases: { link: ["button"] } })`, or `layout-score.mjs --role-alias link=button`. The alias is one way (web role to accepted device roles), applies to matching and to the role comparison, and is off unless the caller passes it. Pass it for android, android-phone, android-tablet and firetv (only if Vega cannot report a link). Every other client keeps the strict role match.
+
+HarmonyOS (ArkUI API 18, TV and phone) has no heading role either: a title is a `text`. For `harmony` and `harmony-phone` pass `{ roleAliases: { heading: ["text"] } }` (CLI `--role-alias heading=text`). Only the role check and role-based matching accept the device `text` for a web `heading`; box, text and style still score. Aliases can be combined (repeat the flag).

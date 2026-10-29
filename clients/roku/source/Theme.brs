@@ -64,6 +64,13 @@ function ThemeTokens(mode as String) as Object
             panel: &hEFEEEEFF
             ' Right-hand drawer fill (web Drawer panel over the page).
             drawerPanel: &hF3F3F4FF
+            ' Opaque base under the drawer wash (the web panel blends translucent white over the page; the wash bitmap carries the tint).
+            drawerBase: &hFEFEFEFF
+            agendaHead: &hFBFAF9FF
+            badgeDefault: &hEFEDEDFF
+            badgeAvailable: &hE2EFE8FF
+            badgeUpcoming: &hF5DEE2FF
+            badgeMissing: &hE8DEDDFF
             homeRailFrost: &hF0EEEFff
             ' Status chip tint (.calendar-badge): rgba(91,127,209,.24), the same in both themes.
             statusTint: &h5B7FD13D
@@ -114,6 +121,12 @@ function ThemeTokens(mode as String) as Object
         focusRing: &hFFFFFFFF
         panel: &h282227FF
         drawerPanel: &h221D22FF
+        drawerBase: &h221D22FF
+        agendaHead: &h151315FF
+        badgeDefault: &h2C2A2CFF
+        badgeAvailable: &h2A342EFF
+        badgeUpcoming: &h341B23FF
+        badgeMissing: &h392C2FFF
         homeRailFrost: &h282327FF
         statusTint: &h5B7FD13D
         ' Player chrome is the same over video in both themes: white ink on a dark scrim (global.css .player-*).
@@ -219,6 +232,7 @@ sub ThemeApplyNode(node as Object, tokens as Object)
     kind = node.subtype()
     if kind = "Poster"
         node.blendColor = colour
+        if Instr(1, node.id, "@") > 0 then A11yStamp(node, true)
     else
         node.color = colour
     end if
@@ -357,3 +371,47 @@ function Theme() as object
         }
     }
 end function
+
+' Semantics ride on node ids as `a11y|role|radius[@rrggbbaa[~baked]]|name` (ECP query/app-ui prints ids). The optional @rrggbbaa is the colour the
+' app tints the node's bitmap with, alpha included, so the export composites the colour the app declared instead of reading JPEG pixels
+' back. ~baked is the alpha (0 to 255) the bitmap itself carries (the dock panels are white masks at 143), multiplied in.
+sub A11yStamp(node as Object, force = false as Boolean, baked = -1 as Integer)
+    id = node.id
+    if Left(id, 5) <> "a11y|" then return
+    if not force and Instr(1, id, "@") = 0 then return
+    parts = id.Split("|")
+    if parts.Count() < 4 then return
+    seg = parts[2]
+    if baked < 0 and Instr(1, seg, "~") > 0 then baked = Val(seg.Split("~")[1], 10)
+    radius = seg.Split("@")[0]
+    ' The corner radius is the mask the bitmap really is (round-r<R>.9.png), whatever radius the caller asked for.
+    if node.hasField("uri") and node.uri <> invalid
+        u = node.uri
+        k = Instr(1, u, "-r")
+        if k > 0 and Right(u, 6) = ".9.png"
+            radius = Mid(u, k + 2, Len(u) - k - 7)
+        end if
+    end if
+    ' RRGGBBAA as bytes: a colour with the top bit set is a negative Integer, so split it into bytes before formatting.
+    c& = node.blendColor
+    if c& < 0 then c& = c& + 4294967296&
+    alpha = c& mod 256
+    if baked >= 0 then alpha = Int(alpha * baked / 255 + 0.5)
+    hex = ""
+    for shift = 3 to 1 step -1
+        divisor& = 256&
+        for k = 2 to shift
+            divisor& = divisor& * 256&
+        end for
+        b = Int(c& / divisor&) mod 256
+        hex = hex + Right("0" + StrI(b, 16), 2)
+    end for
+    hex = hex + Right("0" + StrI(alpha, 16), 2)
+    suffix = ""
+    if baked >= 0 then suffix = "~" + baked.ToStr()
+    name = parts[3]
+    for i = 4 to parts.Count() - 1
+        name = name + "|" + parts[i]
+    end for
+    node.id = "a11y|" + parts[1] + "|" + radius + "@" + hex + suffix + "|" + name
+end sub

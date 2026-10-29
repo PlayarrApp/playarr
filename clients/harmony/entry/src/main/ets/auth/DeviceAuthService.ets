@@ -343,7 +343,15 @@ export class DeviceAuthService {
   /** The pairing screen's code request: the hosted broker's when no server is configured, else the server's. */
   public async requestPairingCode(hosted: boolean): Promise<ApiResult<DeviceCodeResponse>> {
     if (!hosted) {
-      return this.requestDeviceCode();
+      // A first lookup of the server's name can fail once (curl 6, status 0) on a cold resolver; a few quick retries ride it out.
+      let result = await this.requestDeviceCode();
+      for (let attempt = 0; attempt < 3 && result.kind === 'network_failure'; attempt++) {
+        await new Promise<void>((resolve: () => void): void => {
+          setTimeout(resolve, 1500);
+        });
+        result = await this.requestDeviceCode();
+      }
+      return result;
     }
     const code = await this.requestHostedLink();
     if (code === null) {

@@ -9,7 +9,9 @@ import "../components/Qr.js" as Qr
 PlayarrPage {
     id: page
     objectName: "calendar-link"
-    readonly property real gut: 20.3 * Tokens.u
+    readonly property real gut: 20 * Tokens.u
+    // The web drawer: a full-screen dialog surface inside the page layers.
+    dialogColor: Tokens.dark ? "#211d21" : "#ffffff"
     readonly property string storeKey: "cal.link." + Api.serverUrl + "|" + Api.profileId
     property string url: Api.setting(storeKey, "")
     property bool busy: true
@@ -53,57 +55,63 @@ PlayarrPage {
         anchors { fill: parent; bottomMargin: 106 * Tokens.u }
         contentHeight: body.y + body.height + 24 * Tokens.u
         clip: true
-        Label { renderType: Text.NativeRendering; x: page.gut; y: 19 * Tokens.u; text: qsTr("CALENDAR"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: Tokens.fs(6.6); font.letterSpacing: 1 * Tokens.u }
-        Label { renderType: Text.NativeRendering; x: page.gut; y: 35.5 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: Tokens.fs(21.5); font.letterSpacing: -1 * Tokens.u }
+        PLabel { renderType: Text.NativeRendering; x: page.gut; y: 19 * Tokens.u; text: qsTr("CALENDAR"); color: Tokens.inkSoft; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.5 }
+        PLabel { renderType: Text.NativeRendering; x: page.gut; y: 34.5 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; Accessible.role: Accessible.Heading; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22.4); font.letterSpacing: -1.25 * Tokens.u }
         MouseArea {
             property bool navigationFocusable: true
-            property string parityLabel: qsTr("Close")
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("Close filters")   // the web names this drawer button the same as the filters one
             property bool navigationInitialFocus: true
             property int parityRail: 0
             property int parityIndex: 0
             function navigationActivate() { pageStack.pop() }
             x: parent.width - page.gut - width; y: 20 * Tokens.u
-            width: 43.7 * Tokens.u; height: width
+            width: 44 * Tokens.u; height: width
             onClicked: pageStack.pop()
-            Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.dark ? Tokens.surfaceStrong : "#e6e4e5"; border.width: 1; border.color: Tokens.lineStrong }
-            Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "✕"; color: Tokens.ink; font.family: Tokens.family820; font.pixelSize: Tokens.fs(10) }
+            Rectangle { anchors.fill: parent; radius: width / 2; color: Tokens.surfaceSoft; border.width: 1; border.color: Tokens.lineStrong }
+            PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "\u00D7"; color: Tokens.ink; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(16) }
         }
         Column {
             id: body
-            x: page.gut; y: 92 * Tokens.u
+            x: page.gut; y: 92 * Tokens.u + 2.7
             width: flick.width - 2 * page.gut
             spacing: 11 * Tokens.u
-            Label { renderType: Text.NativeRendering;
+            FitText { 
                 width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.0
                 text: qsTr("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10); bottomPadding: 2.5 * Tokens.u
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.125; font.pixelSize: Tokens.fs(10); bottomPadding: 2.5 * Tokens.u - 3
             }
-            Label { renderType: Text.NativeRendering;
+            FitText { 
                 visible: page.failure !== ""; width: parent.width; wrapMode: Text.Wrap
-                text: page.failure; color: Tokens.danger; font.family: Tokens.family; font.pixelSize: Tokens.fs(10)
+                text: page.failure; color: Tokens.danger; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10)
             }
             PillButton {
                 visible: page.failure !== ""; text: qsTr("Try again"); labelFamily: Tokens.family610; fontSize: 10.5 * Tokens.u
                 parityIndex: 1; navigationActivate: function() { page.open() }; implicitHeight: 36 * Tokens.u; onClicked: page.open()
             }
-            Label { renderType: Text.NativeRendering;
+            PLabel { renderType: Text.NativeRendering;
                 visible: page.busy && page.url === ""; text: qsTr("Getting your link…")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10)
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10)
             }
             Item {
                 visible: page.url !== ""; width: parent.width; height: 43 * Tokens.u
-                Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.dark ? "#1e1b1e" : Tokens.surface; border.width: 1; border.color: Tokens.lineStrong }
-                Label { renderType: Text.NativeRendering;
-                    x: 13 * Tokens.u; width: parent.width - 18 * Tokens.u; anchors.verticalCenter: parent.verticalCenter
-                    text: page.url; clip: true; wrapMode: Text.NoWrap
+                // The link is a real read-only text input (its text is selectable and is what Copy link copies), on its own painted plate.
+                TextInput {
+                    id: urlField
+                    width: parent.width; height: 44 * Tokens.u
+                    Accessible.name: qsTr("Subscription link")
+                    Accessible.role: Accessible.EditableText
+                    readOnly: true; clip: true; selectByMouse: true
+                    leftPadding: 13 * Tokens.u; rightPadding: 5 * Tokens.u
+                    verticalAlignment: TextInput.AlignVCenter
+                    text: page.url
                     color: Tokens.ink; font.family: "monospace"; font.pixelSize: Tokens.fs(14.2)
+                    Rectangle { z: -1; anchors.fill: parent; radius: 8 * Tokens.u; color: Tokens.bg; border.width: 1; border.color: Tokens.lineStrong }
                 }
-                TextField { id: urlField; width: 1; height: 1; opacity: 0; readOnly: true; text: page.url }
             }
             PillButton {
                 visible: page.url !== ""
                 text: page.copied ? qsTr("Copied") : qsTr("Copy link")
-                labelFamily: Tokens.family820; fontSize: 10.8 * Tokens.u; implicitHeight: 43.7 * Tokens.u; implicitWidth: 92 * Tokens.u
+                labelFamily: Tokens.fam(720); fontSize: Tokens.fs(11.52); implicitHeight: 44 * Tokens.u; implicitWidth: 92 * Tokens.u
                 fill: Tokens.dark ? "#dfdcdd" : "#4d4248"; fillInk: Tokens.dark ? "#211d21" : "#ffffff"
                 parityIndex: 1; navigationActivate: function() { urlField.selectAll(); urlField.copy(); urlField.deselect(); page.copied = true }
                 onClicked: { urlField.selectAll(); urlField.copy(); urlField.deselect(); page.copied = true }
@@ -111,7 +119,7 @@ PlayarrPage {
             Item {   // web: the code sits 3 px closer to Copy link and 1 px further from the steps heading
                 visible: page.url !== ""; width: 240 * Tokens.u; height: width - 2
               Rectangle {
-                y: -3; width: 240 * Tokens.u; height: width; radius: 14 * Tokens.u; color: "#ffffff"
+                y: -3; width: 240 * Tokens.u; height: width; radius: 18 * Tokens.u; color: "#ffffff"; Accessible.role: Accessible.Graphic
                 Canvas {
                     id: qrCanvas
                     anchors { fill: parent; margins: 20 * Tokens.u }
@@ -129,10 +137,10 @@ PlayarrPage {
                 }
               }
             }
-            Label { renderType: Text.NativeRendering; visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
+            FitText { visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Your link was created on another device and is not stored here. Reset it to get a new link to copy.")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
-            Label { renderType: Text.NativeRendering; text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; font.family: Tokens.family820; font.pixelSize: Tokens.fs(6.6); font.letterSpacing: 1 * Tokens.u; topPadding: 0; bottomPadding: 2 * Tokens.u }
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10) }
+            PLabel { renderType: Text.NativeRendering; text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; Accessible.role: Accessible.Heading; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.47; topPadding: 0; bottomPadding: 2 * Tokens.u }
             Column {
               spacing: 8.25 * Tokens.u
               Repeater {
@@ -141,15 +149,15 @@ PlayarrPage {
                          qsTr("Outlook: Add calendar > Subscribe from web, then paste the link.") ]
                 Row {
                     spacing: 11 * Tokens.u; x: 4 * Tokens.u; width: body.width - 4 * Tokens.u   // web list indent
-                    Label { renderType: Text.NativeRendering; text: "•"; color: Tokens.ink; font.pixelSize: Tokens.fs(10) }
-                    Label { renderType: Text.NativeRendering; width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(10) }
+                    PLabel { renderType: Text.NativeRendering; text: "•"; color: Tokens.ink; font.pixelSize: Tokens.fs(10) }
+                    FitText { width: parent.width - 20 * Tokens.u; wrapMode: Text.Wrap; text: modelData; color: Tokens.ink; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10) }
                 }
               }
             }
-            Label { renderType: Text.NativeRendering;
+            FitText { 
                 visible: page.confirming; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Resetting makes a new link and the current link stops working straight away. Calendars using it will need the new link.")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(10)
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10)
             }
             Row {
                 spacing: 8 * Tokens.u; visible: page.url !== "" || page.needsReset

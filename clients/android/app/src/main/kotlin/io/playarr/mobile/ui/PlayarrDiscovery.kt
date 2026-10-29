@@ -1,6 +1,5 @@
 package io.playarr.mobile.ui
 
-import io.playarr.shared.designsystem.page.parityText
 import androidx.compose.ui.graphics.compositeOver
 import io.playarr.shared.designsystem.page.PlayarrPageBody
 import io.playarr.shared.designsystem.page.PlayarrPageLayout
@@ -10,7 +9,7 @@ import io.playarr.shared.designsystem.page.PlayarrErrorState
 import io.playarr.shared.designsystem.page.PlayarrLoadingState
 import io.playarr.shared.designsystem.component.PlayarrButton
 import io.playarr.shared.designsystem.component.PlayarrButtonVariant
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -27,7 +26,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -309,12 +308,12 @@ internal fun WatchlistToggleButton(
             enabled = listed != null,
             exportLabel = (if (listed == true) "✓ " else "+ ") + playarrString(if (listed == true) PlayarrString.WatchlistRemove else PlayarrString.WatchlistAdd),
         ) {
-            Text(if (listed == true) "✓" else "+", color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)))
+            Text(if (listed == true) "✓" else "+", color = io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.brandInk, fontSize = 9.2.sp, lineHeight = 13.8.sp, style = WebTextStyle, modifier = Modifier)
             Spacer(Modifier.width(7.6.dp))
             Text(
                 playarrString(if (listed == true) PlayarrString.WatchlistRemove else PlayarrString.WatchlistAdd),
                 color = WebInk, fontSize = 8.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold, style = WebTextStyle, maxLines = 1,
-                modifier = Modifier.parityText(background = WebSurfaceStrong.copy(alpha = 0.72f).compositeOver(WebSurface)),
+                modifier = Modifier,
             )
         }
         return

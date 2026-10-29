@@ -7,8 +7,9 @@
  */
 
 import { t } from '../core/Language';
-import { nunito, nunitoAt } from '../design/Typography';
+import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
+import { LengthMetrics } from '@kit.ArkUI';
 
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../design/Theme';
 import type { ThemeModeSetting } from '../design/Theme';
@@ -270,8 +271,8 @@ export struct SearchScreen {
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
       Text(message).fontFamily(nunitoAt(500, tv(EMPTY_TEXT_SIZE)))
-        .fontSize(tv(EMPTY_TEXT_SIZE))
-        .letterSpacing(-0.28) // web's run is 6 narrower
+        .fontSize(tv(EMPTY_TEXT_SIZE)).lineHeight(webLineHeight(tv(EMPTY_TEXT_SIZE))).halfLeading(true)
+        .letterSpacing((-0.28) + (isTvMetrics() ? -0.128 : 0)) // web's run is 6 narrower
         .translate({ y: -1.2 })
         .fontWeight(FontWeight.Medium)
         .fontColor(toResourceColor(activeColors().ink))
@@ -347,16 +348,17 @@ export struct SearchScreen {
         .borderRadius(0)
         .padding(0)
         .caretColor(toResourceColor(activeColors().ink))
+        .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
         .layoutWeight(1)
         .height(tv(60)) // web: the textbox fills the 76 px pill less its 8 px insets
-        .id('px:textbox:' + t('pages.search.searchPlaceholder', 'Search your libraries and playlists'))
+        .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
         .defaultFocus(true)
         .onChange((value: string) => {
           this.onQueryChange(value);
         })
       if (this.query.length > 0) {
         Text(t('pages.search.clear', 'Clear')).fontFamily(nunitoAt(700, tv(CLEAR_SIZE)))
-          .fontSize(tv(CLEAR_SIZE))
+          .fontSize(tv(CLEAR_SIZE)).lineHeight(webLineHeight(tv(CLEAR_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .focusable(true)
@@ -367,7 +369,7 @@ export struct SearchScreen {
     }
     .width(tv(FORM_WIDTH))
     .height(tv(FORM_HEIGHT))
-    .id('px:search:')
+    .accessibilityRole(AccessibilityRoleType.SEARCH)
     .padding({ left: tv(FORM_PADDING_LEFT), right: tv(FORM_PADDING_LEFT - 3.6) })
     .borderRadius(tv(FORM_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
@@ -421,7 +423,7 @@ export struct SearchScreen {
       Text(t('pages.search.emptyPrompt', 'Find any available movie, series, artist or playlist.')).fontFamily(nunitoAt(400, tv(PROMPT_SIZE)))
         .fontSize(tv(PROMPT_SIZE))
         .fontColor(toResourceColor(activeColors().inkMuted))
-        .lineHeight(tv(21.6))
+        .lineHeight(webLineHeight(tv(PROMPT_SIZE))).lineSpacing(webLineSpacing(tv(21.6), tv(PROMPT_SIZE))).halfLeading(true)
         .width(tv(PROMPT_WIDTH))
         .position({ x: tv(TvGeometry.titlePanelLeft), y: tv(PROMPT_TOP) })
     }
@@ -457,9 +459,10 @@ export struct SearchScreen {
           .borderRadius(0)
           .padding(0)
           .caretColor(toResourceColor(activeColors().ink))
+        .focusBox({ strokeWidth: LengthMetrics.vp(0) }) // the pill is the field: no system focus box inside it (web draws none)
           .layoutWeight(1)
           .height(44)
-          .id('px:textbox:' + t('pages.search.searchPlaceholder', 'Search your libraries and playlists'))
+          .accessibilityText(t('pages.search.searchPlaceholder', 'Search your libraries and playlists')).accessibilityRole(AccessibilityRoleType.TEXT_INPUT)
           .defaultFocus(true)
           .onFocus(() => { this.fieldFocused = true; })
           .onBlur(() => { this.fieldFocused = false; })
@@ -470,7 +473,7 @@ export struct SearchScreen {
       .width('100%')
       .height(60) // web phone field: 60 vp, 18 vp below the header
       .padding({ left: 16, right: 16 })
-      .id('px:search:')
+      .accessibilityRole(AccessibilityRoleType.SEARCH)
       .borderRadius(30)
       .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, FORM_BG_ALPHA))
       .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.176) })
@@ -523,7 +526,7 @@ export struct SearchScreen {
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.54))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.115) })
           Text(this.searched ? t('pages.search.noResultsTitle', 'No matching titles or playlists.') : t('pages.search.idleTitle', 'Start typing to search.')).fontFamily(nunitoAt(650, 11.52))
-            .fontSize(11.52)
+            .fontSize(11.52).letterSpacing((!isTvMetrics() ? -0.367 : 0)).lineHeight(webLineHeight(11.52)).halfLeading(true)
             .fontWeight(600)
             .fontColor(toResourceColor(activeColors().ink))
         }
@@ -576,6 +579,7 @@ export struct SearchScreen {
       Stack() {
       PageShell({
         railFrostWidthPct: 65,
+        railFrostFullBox: isTvMetrics(), // web TV draws the frost as a full-width box
         title: t('pages.search.title', 'Search'),
         touch: true,
         touchContent: (): void => {

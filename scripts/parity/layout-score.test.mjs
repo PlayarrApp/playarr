@@ -155,3 +155,58 @@ test("a radius on a web element that draws nothing is not scored; a painted one 
   assert.equal(radiusFails(el(14, false), el(0)), 0);
   assert.equal(radiusFails(el(14), el(0)), 1);
 });
+
+test("an opacity marked volatile on the web element is not scored", () => {
+  const el = (op, vol) => ({ text: "", role: "button", rect: { x: 0, y: 0, w: 40, h: 40 }, color: null, background: "#ffffff", fontSize: null, fontWeight: null, ...(op ? { opacity: op } : {}), ...(vol ? { opacityVolatile: true } : {}) });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  const fails = (w, d) => scoreLayout(doc(w), doc(d)).failures.flatMap((f) => f.problems).filter((x) => x.field === "opacity").length;
+  assert.equal(fails(el(0.5, true), el()), 0);
+  assert.equal(fails(el(0.5), el()), 1);
+});
+
+test("a volatile element skips only its text: colour, font size and weight are still scored", () => {
+  const el = (text, color, fontSize) => ({ text, role: "text", rect: { x: 0, y: 0, w: 40, h: 20 }, color, background: "#ffffff", fontSize, fontWeight: 400, volatile: "player-time" });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  const fields = (w, d) => scoreLayout(doc(w), doc(d)).failures.flatMap((f) => f.problems).map((x) => x.field);
+  assert.deepEqual(fields(el("0:02", "#000000", 14), el("9:99", "#000000", 14)), []);
+  assert.deepEqual(fields(el("0:02", "#000000", 14), el("9:99", "#ff0000", 20)).sort(), ["color", "fontSize"]);
+});
+
+test("a role alias lets a device button match a web link; off by default", () => {
+  const el = (role) => ({ text: "Open Film", role, rect: { x: 0, y: 0, w: 40, h: 20 }, color: null, background: "#ffffff", fontSize: null, fontWeight: null });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  assert.equal(scoreLayout(doc(el("link")), doc(el("button"))).score, 0);
+  assert.equal(scoreLayout(doc(el("link")), doc(el("button")), { roleAliases: { link: ["button"] } }).score, 100);
+  assert.equal(scoreLayout(doc(el("button")), doc(el("link")), { roleAliases: { link: ["button"] } }).score, 0);
+});
+
+test("textCentreLine scores text on left, right and vertical centre only; other elements stay strict", () => {
+  const el = (rect, extra = {}) => ({ text: "Hi", role: "text", rect, color: null, background: null, fontSize: 16, fontWeight: 400, ...extra });
+  const ref = { screen: "s", theme: "dark", viewport: { w: 100, h: 100, dpr: 1 }, elements: [el({ x: 10, y: 10, w: 20, h: 24 }), { text: "", role: "container", rect: { x: 0, y: 0, w: 50, h: 50 }, color: null, background: null, fontSize: null, fontWeight: null }] };
+  // text 20.7 tall centred on the same line as the 24 tall web one (top +1.65, bottom -1.65); container 3 px short
+  const dev = { elements: [el({ x: 10, y: 11.65, w: 20, h: 20.7 }), { ...ref.elements[1], rect: { x: 0, y: 0, w: 50, h: 47 } }] };
+  const strict = scoreLayout(ref, dev);
+  assert.equal(strict.equal, 0);
+  const lax = scoreLayout(ref, dev, { textCentreLine: true });
+  assert.equal(lax.equal, 1); // the text passes
+  assert.equal(lax.failures.length, 1);
+  assert.equal(lax.failures[0].ref.role, "container"); // the container still fails on its bottom edge
+  dev.elements[0].rect.y += 3; // centre off by 3: fails even with the exception
+  assert.equal(scoreLayout(ref, dev, { textCentreLine: true }).equal, 0);
+});
+
+test("textCentreLine never relaxes a button that carries text: a shrunk height still fails", () => {
+  const el = (h) => ({ text: "Quality", role: "button", rect: { x: 10, y: 10, w: 60, h }, color: "#000000", background: "#ffffff", fontSize: 12, fontWeight: 400 });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  assert.equal(scoreLayout(doc(el(44)), doc(el(40)), { textCentreLine: true }).equal, 0);
+  assert.equal(scoreLayout(doc(el(44)), doc(el(44)), { textCentreLine: true }).equal, 1);
+});
+
+test("heading-to-text alias: a device text matches a web heading only when passed, box and style still scored", () => {
+  const el = (role, size) => ({ text: "Movies", role, rect: { x: 0, y: 0, w: 40, h: 20 }, color: "#000000", background: "#ffffff", fontSize: size, fontWeight: 400 });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  const alias = { roleAliases: { heading: ["text"] } };
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 20))).score, 0);
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 20)), alias).score, 100);
+  assert.equal(scoreLayout(doc(el("heading", 20)), doc(el("text", 30)), alias).score, 0);
+});

@@ -38,9 +38,10 @@ internal sealed class DetailScreen : IPage
         _env = env; _t = env.Theme; _id = id;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
+        _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the page section and its stage are two full-viewport layers
         _keyArt = new KeyArt(env, armed: true);
         _root.Add(_keyArt.Root);
-        Sem.Tag(_root, "container");
+        
         _root.Add(Sem.Tag(Ui.PanelWash(_t), "container")); // web: the right rail panel frosts the key art (the page top is not a surface fade)
         _root.Add(_content);
         _root.Add(Ui.HorizontalEdgeFade(TizenClient.DesignWidth, 0, TizenClient.DesignHeight, _t.Surface, atLeft: false)); // web scroll-edge fades of the rail panel, as on series detail
@@ -65,7 +66,7 @@ internal sealed class DetailScreen : IPage
         _detail = detail; _progress = progress; _file = detail.MediaFileId;
         var w = detail.Work;
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
-        Sem.Tag(_root, "container", w.Title);
+        
         BuildHeader(w);
         BuildCopy(w, detail);
         _env.Images.Track(() => LoadChaptersThenCastAsync(detail));
@@ -79,9 +80,9 @@ internal sealed class DetailScreen : IPage
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "button", "Back to Movies", radius: 50);
+        Sem.Tag(back, "button", "Back to Movies");
         _content.Add(back);
-        _content.Add(Ui.Text("Movies", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
+        _content.Add(Ui.Heading("Movies", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         new PageSubtitle(_env, _content, "Movies").Set(w.Title, wrapIfClockBlocks: true);
     }
 
@@ -125,7 +126,7 @@ internal sealed class DetailScreen : IPage
         var glyphLabel = Ui.Text(glyph, startX, 22.4f, primary ? 10.12f : 12.8f, 400, primary ? _t.Bg : _t.BrandInk, gw + 4, 19.2f);
         var textLabel = Ui.Text(text, startX + gw + 8.8f, 23.7f, tsize, 700, fg, textW + 20, 16.7f);
         box.Add(glyphLabel); box.Add(textLabel);
-        if (name is not null) Sem.Tag(box, role, name, radius: 999);
+        if (name is not null) Sem.Tag(box, role, name);
         var ring = Ring.Make(w, 64, 32, new Rgba(1, 1, 1));
         ring.Show(false);
         box.Add(ring);
@@ -177,15 +178,14 @@ internal sealed class DetailScreen : IPage
         var stack = _stack = new View { PositionX = -ClipX };
         clip.Add(stack);
         _content.Add(clip);
-        stack.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", d.Work.Title + " chapters and people"));
-        stack.Add(Ui.Text("Chapters", RailX, ChaptersHeadingY, 17.664f, 610, _t.Ink, 400, 26.496f, spacing: -0.53f));
+        stack.Add(Ui.Heading("Chapters", RailX, ChaptersHeadingY, 17.664f, 610, _t.Ink, 400, 26.496f, spacing: -0.53f));
         stack.Add(Ui.Text($"{chapters.Count} {(generated ? "scene markers" : "chapters")}", RailX, ChaptersHeadingY + 30.5f, 9.984f, 400, _t.InkMuted, 400, 14.976f));
         _chapterRow.PositionY = 620.7f; _chapterRow.Size = new Size(6000, 230);
         stack.Add(_chapterRow);
         foreach (var c in chapters)
         {
             var x = RailX + c.Index * ChapterPitch;
-            var box = new View { PositionX = x, Size = new Size(268, 200) };
+            var box = new View { PositionX = x, Size = new Size(268, 179.5f) }; // web: the link is the art and its caption row
             var rest = Ui.Box(0, 0, 268, 150.8f, _t.SurfaceSoft, 13.44f); // web .tv-episode-art resting shadow
             rest.BoxShadow = new Shadow(20, new Color(56 / 255f, 38 / 255f, 33 / 255f, 0.14f), new Vector2(0, 10), new Vector2(0, 0));
             box.Add(rest);
@@ -198,7 +198,7 @@ internal sealed class DetailScreen : IPage
             art.Add(Ui.Text((c.Index + 1).ToString("00"), 268 - 11.5f - 28, 150.8f - 8.8f - 28.8f, 19.2f, 560, new Rgba(1, 1, 1), 28, 28.8f, HorizontalAlignment.End));
             var (ring, glow) = Widgets.RailRing(_t, 268, 150.8f, 13.44f); art.Add(ring);
             box.Add(glow); box.Add(art);
-            Sem.Tag(box, "link", $"Play {d.Work.Title} from {c.Title}", (0, 0, 268, 179.5f));
+            Sem.Tag(box, "link", $"Play {d.Work.Title} from {c.Title}");
             var first = c.Index == 0; // web: the first rail item reads as the selected one (full-contrast ink)
             var maxInk = _t.Name == "dark" ? new Rgba(1, 1, 1) : new Rgba(0, 0, 0);
             box.Add(Ui.Text(DetailModel.Clock(c.StartMs), 0, 165.3f, 8.832f, 700, first ? maxInk : _t.InkMuted, 40, 13.248f));

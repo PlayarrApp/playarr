@@ -1,0 +1,1 @@
+- Web refs: every screen starts from a fresh document, so the player's unload-time session write no longer opens the next screen with a mini player.

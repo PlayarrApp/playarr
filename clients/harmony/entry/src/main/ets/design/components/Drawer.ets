@@ -5,7 +5,7 @@
  */
 
 import { atLeast } from '../../core/SafeInsets';
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight, webLineSpacing } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -28,7 +28,7 @@ const CLOSE_GLYPH_SIZE: number = 26.88;
 // Phone (web phone drawer): the full page width, 20 padding, a 24 px title, a 43 round close button.
 const TOUCH_PADDING_H: number = 20;
 const TOUCH_HEADER_TOP: number = 20.7;
-const TOUCH_BODY_GAP: number = 29;
+const TOUCH_BODY_GAP: number = 24; // web: the first action starts 24 under the header
 // Web phone: the kicker sits 7.3 above the title; the close button's 3 vp ring is outside it, 2.3 vp clear, and the button 1.4 higher.
 const TOUCH_KICKER_GAP: number = 7.3;
 const TOUCH_CLOSE_RING_OUTSET: number = 5.3;
@@ -66,40 +66,45 @@ export struct Drawer {
       Row() {
         Column({ space: isTvMetrics() ? tv(6.5) : TOUCH_KICKER_GAP }) {
           Text(this.kicker).fontFamily(nunitoAt(700, isTvMetrics() ? tv(KICKER_SIZE) : 7.2))
-            .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)
+            .fontSize(isTvMetrics() ? tv(KICKER_SIZE) : 7.2).lineHeight(webLineHeight(isTvMetrics() ? tv(KICKER_SIZE) : 7.2)).halfLeading(true)
             .fontWeight(FontWeight.Bold)
-            .letterSpacing(tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05))
+            .letterSpacing(((tv(KICKER_LETTER_SPACING) + (isTvMetrics() ? 0.33 : -0.05)) + (isTvMetrics() ? -0.279 : 0)) + (!isTvMetrics() ? -0.191 : 0))
             .textCase(TextCase.UpperCase)
             .fontColor(toResourceColor(activeColors().inkMuted))
           Text(this.title).fontFamily(nunitoAt(500, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE))
             .fontSize(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)
             .fontWeight(FontWeight.Medium)
-            .letterSpacing(isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING)
-            .lineHeight(isTvMetrics() ? tv(57) : 0) // web: 1.5 line height, two-line titles keep a 57 px pitch
+            .letterSpacing((isTvMetrics() ? tv(TITLE_LETTER_SPACING) : TOUCH_TITLE_LETTER_SPACING) + (!isTvMetrics() ? -0.078 : 0))
+            .lineHeight(webLineHeight(isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).lineSpacing(webLineSpacing(isTvMetrics() ? tv(57) : 0, isTvMetrics() ? tv(TITLE_SIZE) : TOUCH_TITLE_SIZE)).halfLeading(true) // web: 1.5 line height, two-line titles keep a 57 px pitch
             .fontColor(toResourceColor(activeColors().ink))
-            .translate({ y: isTvMetrics() ? -2 : 0 }) // web's heading box sits 2 higher on the TV
-            .id('px:heading:' + this.title)
+            .translate({ y: (isTvMetrics() ? -2 : -3.2) + (isTvMetrics() ? 1.58 : 0) }) // web's heading box sits higher than ArkUI lays it out
+            
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
         Stack() {
-          Text('×').fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE))
-            .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)
-            .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
-            .fontColor(toResourceColor(activeColors().ink))
-            .id('px:button:' + (this.title === 'Filters' ? 'Close filters' : 'Close'))
-            .padding({ bottom: isTvMetrics() ? 0 : 3.4 }) // web phone: the glyph box sits 1.7 higher than the centred one
-            .textAlign(TextAlign.Center)
-            .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
-            .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
-            .borderRadius(isTvMetrics() ? tv(CLOSE_SIZE / 2) : TOUCH_CLOSE_SIZE / 2)
-            .backgroundColor(toResourceColor(activeColors().surfaceSoft))
-            .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
-            .focusable(true)
-            .defaultFocus(true)
-            .onClick(() => {
-              this.onClose();
-            })
+          // web: the close button (fill, ring) holds the × glyph as its own text
+          Row() {
+            Text('×').fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE))
+              .fontSize(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(CLOSE_GLYPH_SIZE) : TOUCH_CLOSE_GLYPH_SIZE)).halfLeading(true)
+              .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
+              .fontColor(toResourceColor(activeColors().ink))
+              .fontColor(toResourceColor(activeColors().ink))
+              .textAlign(TextAlign.Center)
+          }
+          .justifyContent(FlexAlign.Center)
+          .accessibilityText((this.title === 'Filters' ? 'Close filters' : 'Close')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
+          .padding({ bottom: isTvMetrics() ? 0 : 3.4 }) // web phone: the glyph box sits 1.7 higher than the centred one
+          .width(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
+          .height(isTvMetrics() ? tv(CLOSE_SIZE) : TOUCH_CLOSE_SIZE)
+          .borderRadius(isTvMetrics() ? tv(CLOSE_SIZE / 2) : TOUCH_CLOSE_SIZE / 2)
+          .backgroundColor(toResourceColor(activeColors().surfaceSoft))
+          .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
+          .focusable(true)
+          .defaultFocus(true)
+          .onClick(() => {
+            this.onClose();
+          })
           if (isTvMetrics() && this.closeRing) {
             // web opens the drawer with its close button focused (ring 5 px out, 3 px wide); the Previewer reports no focus
             Column()
@@ -151,7 +156,7 @@ export struct Drawer {
       right: isTvMetrics() ? tv(PADDING_H - RING_ROOM) : atLeast(TOUCH_PADDING_H, this.safeRight),
       bottom: isTvMetrics() ? 0 : 24 + this.safeBottom,
     })
-    .id('px:dialog:')
+    .accessibilityRole(AccessibilityRoleType.DIALOG)
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, isTvMetrics() ? DRAWER_BG_ALPHA : 1))
     .backdropBlur(DRAWER_BACKDROP_BLUR)
     .shadow({ radius: tv(90), offsetX: -tv(32), offsetY: 0, color: SHADOW_COLOR })

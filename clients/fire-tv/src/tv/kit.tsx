@@ -6,10 +6,10 @@
 import React, {useState} from 'react';
 import {StyleSheet, Text, View, type NativeSyntheticEvent, type StyleProp, type TextLayoutEventData, type TextStyle, type ViewStyle} from 'react-native';
 import {Dimensions} from 'react-native';
-import {textRun} from '../theme/fonts';
+import {contentHeight, textRun} from '../theme/fonts';
 import {useTheme} from '../theme/ThemeProvider';
 import {PARITY_CONTROL} from '../debug/parityControl';
-import {registerLines, registerText} from '../debug/layoutExport';
+import {registerLines} from '../debug/layoutExport';
 
 /** One web CSS pixel in device pixels. */
 export function u(value: number): number {
@@ -74,10 +74,8 @@ export interface TProps {
   lines?: number;
   /** Parity layout export only: the web element is a heading (h1 to h3). */
   heading?: boolean;
-  /** Parity layout export only: the web role of the element this text is (a button whose only content is text). */
-  wrole?: string;
-  /** Parity layout export only: the web element's own corner radius. */
-  wradius?: number;
+  /** Parity layout export only: the web element is a generic box with its own text (a div), not a span. */
+  generic?: boolean;
   /** Parity layout export only: Text views with the same group are one web element. */
   group?: string;
   style?: StyleProp<TextStyle>;
@@ -86,26 +84,23 @@ export interface TProps {
 }
 
 /**
- * Where a browser puts the glyphs inside a line box: the extra line height splits evenly above and below the font's
- * content area (Nunito Sans: 1.364 em). Vega places the first line at the top of the box, so text is moved down by that
- * half-leading. When the line height is smaller than the content area (the big titles) the correction is smaller.
- * Calibrated on the device against the web's text positions (the big titles: 0.274, measured 2026-10-24 on the 69.12 px hero).
+ * Where a browser puts the glyphs inside a line box: the extra line height splits evenly above and below the font's content area.
+ * Vega draws the first line's glyphs from the top of the view, so a run taller than its content area is moved down by that
+ * half-leading. A single line is instead given a view exactly as tall as its content area, with the half-leading as margins
+ * above and below: the view box is then the glyph run. A run with a line height under its content area (squashed) always
+ * takes that form, because Vega does not centre such a run in its box.
  */
-export function halfLeading(size: number, lh: number | undefined): number {
-  if (lh === undefined) return 0;
-  const content = 1.364 * size;
-  return lh >= content ? (lh - content) / 2 : (content - lh) * 0.274;
-}
-
-export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, wrole, wradius, group, style, onTextLayout, children}: TProps): React.ReactElement {
-  const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(lh), mono});
+export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, generic, group, style, onTextLayout, children}: TProps): React.ReactElement {
+  const content = contentHeight(size, mono);
+  const single = lh !== undefined && (lines === 1 || lh < content);
+  const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(single ? content : lh), mono});
+  const lead = lh === undefined ? 0 : (lh - content) / 2;
   // Parity builds record the CSS size, weight and laid-out lines of every run for the layout exporter.
   const node = React.useRef<object | null>(null);
   const parity = PARITY_CONTROL
     ? {
         ref: (instance: object | null) => {
           node.current = instance;
-          registerText(instance, {size, weight, lh, group, radius: wradius, dy: 0, ...(wrole ? {role: wrole} : heading ? {role: 'heading'} : null)});
         },
         onTextLayout: (event: NativeSyntheticEvent<TextLayoutEventData>) => {
           registerLines(node.current, event.nativeEvent.lines);
@@ -116,9 +111,11 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
   return (
     <Text
       numberOfLines={lines}
+      {...(heading ? {accessibilityRole: 'header' as const} : null)}
+      {...(generic ? {accessibilityRole: 'none' as const} : null)}
       {...parity}
       allowFontScaling={false}
-      style={[run, {color, includeFontPadding: false, position: 'relative', top: u(halfLeading(size, lh) + dy), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}
+      style={[run, {color, includeFontPadding: false, position: 'relative', top: u((single ? 0 : Math.max(lead, 0)) + dy), ...(single ? {marginTop: uf(lead), marginBottom: uf(lead)} : null), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}
     >
       {children}
     </Text>
@@ -191,7 +188,7 @@ export function balanceLines(tokens: readonly string[], widths: readonly number[
   return ends;
 }
 
-export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout'> & {width: number}): React.ReactElement {
+export function BalancedT({width, children, heading = true, ...text}: Omit<TProps, 'onTextLayout'> & {width: number}): React.ReactElement {
   const group = React.useRef(`bt${Math.random().toString(36).slice(2)}`).current;
   const source = typeof children === 'string' ? children : '';
   const tokens = React.useMemo(() => titleTokens(source), [source]);
@@ -213,7 +210,7 @@ export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout
           const line = tokens.slice(from, to).join('').trim();
           from = to;
           return (
-            <T key={from} heading {...text} group={group} lines={1} style={[text.style, {width: u(width * 2)}]}>
+            <T key={from} heading={heading} {...text} group={group} lines={1} style={[text.style, {width: u(width * 2)}]}>
               {line}
             </T>
           );
@@ -223,7 +220,7 @@ export function BalancedT({width, children, ...text}: Omit<TProps, 'onTextLayout
   }
   return (
     <View style={{width: u(width)}}>
-      <T heading {...text} group={group}>{children}</T>
+      <T heading={heading} {...text} group={group}>{children}</T>
       {tokens.length > 1 && !ready ? (
         <View pointerEvents="none" style={{position: 'absolute', opacity: 0, width: u(width * 4)}}>
           {probes.map((probe, index) => (

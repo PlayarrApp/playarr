@@ -3,7 +3,7 @@
 # cap.sh <outdir> <Dark|Light> <screen...>
 HERE=$(cd "$(dirname "$0")" && pwd)
 export PATH=$HOME/Android/Sdk/platform-tools:$PATH ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5562}
-O=$1; T=$2; shift 2; pkg=io.playarr.mobile; mkdir -p "$O"
+O=$1; T=$2; shift 2; adb shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1; adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1200 >/dev/null 2>&1; pkg=io.playarr.mobile; mkdir -p "$O"
 CLOCK=${PARITY_CLOCK:-$(sed -n 's/.*"clock": *"\([^"]*\)".*/\1/p' "$HERE/../../screens.json" | head -1)}
 # Calendar posters are loopback art URLs on the static server (art port 18495): let the emulator reach the host's.
 adb reverse tcp:18495 tcp:18495 >/dev/null 2>&1
@@ -18,7 +18,7 @@ x=sys.stdin.read()
 for m in re.finditer(r'content-desc=\"([^\"]*)\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"',x):
     if re.search(sys.argv[1],m.group(1)): print((int(m.group(2))+int(m.group(4)))//2,(int(m.group(3))+int(m.group(5)))//2); break
 " "$1"); [ -n "$xy" ] && adb shell input tap $xy && sleep "${2:-1.5}"; }
-shot() { sleep "${2:-2}"; for i in 1 2 3; do adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { echo "not foreground"; sleep 4; continue; }
+shot() { sleep "${2:-5}"; adb shell dumpsys input_method | grep -q "mInputShown=true" && { adb shell input keyevent 4; sleep 1.5; }; for i in 1 2 3; do adb shell dumpsys activity activities | grep -m1 topResumed | grep -q $pkg || { echo "not foreground"; sleep 4; continue; }
   adb exec-out screencap -p > "$O/$1.png"; if [ "$(stat -c%s "$O/$1.png")" -gt 20000 ]; then
     if adb shell "rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml >/dev/null; cat /sdcard/ui.xml" | grep -qiE "try again|reach the playarr|couldn.t|could not be loaded|sign in to playarr|isn.t responding|keeps stopping|has stopped|not responding"; then sleep 4; continue; fi
     python3 -I "$HERE/../layout.py" "$1" "$(echo "$T" | tr A-Z a-z)" phone "$O/layout/$1.json" >/dev/null 2>&1 || echo "layout export failed $1"; echo "ok $1"; return 0; fi; sleep 2; done; rm -f "$O/$1.png"; echo "FAIL $1"; return 1; }

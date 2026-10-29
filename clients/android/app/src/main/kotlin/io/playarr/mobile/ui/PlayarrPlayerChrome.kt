@@ -1,5 +1,7 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBackground
+import io.playarr.shared.designsystem.page.parityShape
 import androidx.compose.ui.graphics.graphicsLayer
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.component.PlayarrButton
@@ -13,7 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.focusable
@@ -59,7 +61,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind
@@ -92,6 +94,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -127,7 +131,7 @@ internal fun BoxScope.PlayarrPlayerScrim(visible: Boolean, fraction: Float = 0.4
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(fraction)
-                .parityBox("container", background = Color.Black)
+                .parityBox("container")
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)))),
         )
     }
@@ -751,7 +755,7 @@ private fun PlayarrPlayerTopButton(
         contentColor = Color.White,
         shape = CircleShape,
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
-        modifier = modifier.parityBox("button", accessibilityLabel, 999f, background = if (iconOnly) Color(0xFF070606) else Color(0xFF0A0809)).then(if (isTelevision) Modifier.shadow(14.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f)).playerFocusRing(source, CircleShape) else Modifier).then(
+        modifier = modifier.parityShape(999f).then(if (isTelevision) Modifier.shadow(14.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f)).playerFocusRing(source, CircleShape) else Modifier).then(
             if (isTelevision) {
                 if (iconOnly) Modifier.size(48.dp) else Modifier.height(48.dp)
             } else {
@@ -764,7 +768,7 @@ private fun PlayarrPlayerTopButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (isTelevision && iconOnly) Arrangement.Center else Arrangement.spacedBy(if (isTelevision) 8.8.dp else 8.dp),
         ) {
-            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image", background = if (iconOnly) Color(0xFF070606) else Color(0xFF0A0809)))
+            Icon(icon, contentDescription = accessibilityLabel, modifier = Modifier.size(if (isTelevision && iconOnly) 13.dp else if (isTelevision) 20.dp else 22.dp).parityBox("image"))
             if (isTelevision && !iconOnly) {
                 Text(label, fontSize = 11.2.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif)
             }
@@ -797,13 +801,13 @@ private fun PlayerRoundButton(
         modifier = modifier
             .then(if (focusKey != null) Modifier.playerTracked(focusKey) else Modifier)
             .size(webVw(44f, 3.8f, 64f))
-            .parityBox("button", exportLabel, 50f, if (enabled) 1f else 0.28f, background = if (disc) Color(0xFF242424) else Color.Black)
+            .parityShape(999f, alpha = if (enabled) 1f else 0.28f)
             .then(if (enabled) Modifier else Modifier.graphicsLayer { alpha = 0.28f })
             .playerFocusRing(source, CircleShape)
             .semantics { this.contentDescription = contentDescription },
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (enabled) 1f else 0.28f, background = if (disc) Color(0xFF242424) else Color.Black))
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp).parityBox("image", opacity = if (enabled) 1f else 0.28f))
         }
     }
 }
@@ -844,6 +848,7 @@ private fun PlayarrPlayerControlBar(
     } else {
         0f
     }
+    val seekLabel = playarrString(PlayarrString.PlayerSeek)
     val seekDescription = playarrString(
         PlayarrString.PlayerSeekValueText,
         "position" to formatPlayarrPlayerTime(displayedPositionMs),
@@ -935,7 +940,7 @@ private fun PlayarrPlayerControlBar(
                     }
                 }
                 .fillMaxWidth()
-                .semantics { contentDescription = seekDescription },
+                .semantics { contentDescription = seekLabel; stateDescription = seekDescription },
         )
         if (!isTelevision) {
             Text(
@@ -1072,6 +1077,7 @@ internal fun PlayarrTelevisionControlBar(
     durationMs: Long,
     bufferedProgress: Float,
     seekDescription: String,
+    seekLabel: String = playarrString(PlayarrString.PlayerSeek),
     seekFocusRequester: FocusRequester,
     playlistFocusRequester: FocusRequester = FocusRequester(),
     qualityFocusRequester: FocusRequester = FocusRequester(),
@@ -1106,7 +1112,7 @@ internal fun PlayarrTelevisionControlBar(
     ) {
         val scrubSource = remember { MutableInteractionSource() }
         val scrubFocused by scrubSource.collectIsFocusedAsState()
-        Box(Modifier.fillMaxWidth().height(15.dp), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.fillMaxWidth().height(if (tabletPlayer) 15.dp else 44.dp), contentAlignment = Alignment.CenterStart) {
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -1130,8 +1136,8 @@ internal fun PlayarrTelevisionControlBar(
                     )
                     .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
             )
-            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).parityBox("container", background = Color(0xFF575757)).background(Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp)))
-            Box(Modifier.fillMaxWidth(progress).height(6.dp).parityBox("container", background = WebKicker).background(WebKicker, RoundedCornerShape(3.dp)))
+            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).parityBackground("container", Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp), radius = 3f))
+            Box(Modifier.fillMaxWidth(progress).height(6.dp).parityBackground("container", WebKicker, RoundedCornerShape(3.dp), radius = 3f))
             if (scrubFocused) {
                 // Enlarged, highlighted thumb (web: 24 px white disc with an accent ring) while the scrubber has focus.
                 Box(Modifier.fillMaxWidth(progress).height(24.dp), contentAlignment = Alignment.CenterEnd) {
@@ -1197,13 +1203,13 @@ internal fun PlayarrTelevisionControlBar(
                             }
                         }
                         .fillMaxWidth()
-                        .height(15.dp)
-                        .parityBox("slider", "Seek", background = Color.Black)
+                        .height(if (tabletPlayer) 15.dp else 44.dp)
+                        
                         .semantics { contentDescription = seekDescription },
                 )
             }
         }
-        Spacer(Modifier.height(if (tabletPlayer) 9.5.dp else 14.5.dp))
+        Spacer(Modifier.height(if (tabletPlayer) 9.5.dp else 0.dp))
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = io.playarr.shared.designsystem.page.FractionalSpacedArrangement(13.6.dp, flushEnd = true),
@@ -1236,7 +1242,7 @@ internal fun PlayarrTelevisionControlBar(
                 focusKey = "next",
             )
             // Web `.player-time`: three spans, 0.35rem apart, tabular digits, a fainter slash.
-            Row(Modifier.parityBox("container", "${formatPlayarrPlayerTime(displayedPositionMs)} / ${formatPlayarrPlayerTime(durationMs)}", background = Color.Black), horizontalArrangement = Arrangement.spacedBy(5.6.dp)) {
+            Row(Modifier, horizontalArrangement = Arrangement.spacedBy(5.6.dp)) {
                 Text(formatPlayarrPlayerTime(displayedPositionMs), color = Color.White, fontSize = 10.88.sp, lineHeight = 16.32.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
                 Text("/", color = Color(0xFFA5969E), fontSize = 10.88.sp, lineHeight = 16.32.sp)
                 Text(formatPlayarrPlayerTime(durationMs), color = Color.White, fontSize = 10.88.sp, lineHeight = 16.32.sp, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
@@ -1280,7 +1286,7 @@ internal fun PlayarrTelevisionControlBar(
                         .height(56.dp)
                         .playerTracked("quality", qualityFocusRequester)
                         .playerFocusRing(source, CircleShape)
-                        .parityBox("button", qualityDescription, 999f, background = Color.Black)
+                        .parityShape(999f)
                         .semantics { contentDescription = qualityDescription },
                 ) {
                     Row(

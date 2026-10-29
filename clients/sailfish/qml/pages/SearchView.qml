@@ -41,16 +41,15 @@ Item {
             glowRadius: 26 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius
             color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, Tokens.dark ? 0.3 : 0.16)
         }
-        Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: Tokens.lineStrong; property string parityRole: "search" }
+        Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.surfaceStrong; border.width: 1 * Tokens.u; border.color: Tokens.lineStrong; Accessible.role: Accessible.Form }
         Image { x: 17 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; width: 17.5 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("search", Tokens.ink) }
         TextInput {
             id: input
             property bool navigationFocusable: true
             property bool navigationInitialFocus: true
             property bool navigationNavUp: true
-            property string parityLabel: input.text || qsTr("Search")
-            property string a11yName: qsTr("Search your libraries and playlists")
-            property string parityRole: "textbox"
+            Accessible.name: qsTr("Search your libraries and playlists")
+            Accessible.role: Accessible.EditableText
             height: 44 * Tokens.u; verticalAlignment: TextInput.AlignVCenter
             anchors { left: parent.left; leftMargin: 43 * Tokens.u; right: parent.right; rightMargin: 17 * Tokens.u; verticalCenter: parent.verticalCenter }
             color: Tokens.ink; selectionColor: Tokens.brandPink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(16.6)
@@ -67,15 +66,14 @@ Item {
             EnterKey.iconSource: "image://theme/icon-m-enter-close"
             EnterKey.onClicked: focus = false
             onTextChanged: debounce.restart()
-            Label { renderType: Text.NativeRendering; visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
+            FitText { visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
         }
     }
     MouseArea {   // web: the Filters button at the end of the header row, as on the library pages
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; top: parent.top; topMargin: 14 * Tokens.u }
         width: 44 * Tokens.u; height: width
-        property string a11yName: qsTr("Filters")
-        property real focusRadius: 14 * Tokens.u
+        Accessible.role: Accessible.Button; Accessible.name: qsTr("Filters")
         onClicked: pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
         Rectangle { anchors.fill: parent; radius: 14 * Tokens.u; color: Tokens.dark ? "transparent" : Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line; opacity: filterBtn.pressed ? 0.5 : 1 }
         Image { anchors.centerIn: parent; width: 18 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("filter", Qt.rgba(Tokens.ink.r * 0.8 + Tokens.bg.r * 0.2, Tokens.ink.g * 0.8 + Tokens.bg.g * 0.2, Tokens.ink.b * 0.8 + Tokens.bg.b * 0.2, 1)) }
@@ -105,10 +103,10 @@ Item {
                 }
             }
         }
-        Label { renderType: Text.NativeRendering
-            anchors { left: plate.right; leftMargin: 22.3 * Tokens.u; verticalCenter: plate.verticalCenter }
+        PLabel { renderType: Text.NativeRendering
+            anchors { left: plate.right; leftMargin: 22.3 * Tokens.u; verticalCenter: plate.verticalCenter; verticalCenterOffset: -1.15 * Tokens.u }
             text: qsTr("Start typing to search."); color: Tokens.ink
-            font.family: Tokens.family610; font.pixelSize: Tokens.fs(11.52); font.letterSpacing: -0.23 * Tokens.u
+            font.family: Tokens.family610; font.pixelSize: Tokens.fsFit(11.52); font.letterSpacing: -0.07 * Tokens.u
         }
     }
     WorkGrid {

@@ -25,7 +25,7 @@ internal sealed class CalendarScreen : IPage
     private readonly FocusSet _focus = new();
     private readonly DateTime _today;
     private DateTime _anchor;
-    private TextLabel? _period;
+    private TextLabel? _period; private View? _periodBox;
     private FiltersDrawer? _drawer;
     private CalendarLinkDrawer? _linkDrawer;
     private int _first;                // first focusable index of the entries
@@ -53,14 +53,15 @@ internal sealed class CalendarScreen : IPage
         _anchor = view == CalendarView.Month ? new DateTime(_today.Year, _today.Month, 1) : view == CalendarView.Week ? CalendarRules.StartOfWeek(_today) : _today;
         _root.Size = new Size(TizenClient.DesignWidth, TizenClient.DesignHeight);
         _root.BackgroundColor = Ui.C(_t.Surface);
-        Sem.Tag(_root, "container", "Calendar");
-        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); _root.Add(Sem.Tag(new View { PositionX = 729.6f, Size = new Size(1190.4f, 1080) }, "container", "Calendar")); } // web: the focused entry's backdrop under the agenda panel's frost
+        if (view == CalendarView.Agenda) _root.Add(Ui.Box(0, 0, TizenClient.DesignWidth, TizenClient.DesignHeight, _t.Surface)); // web: the agenda page has a section and a stage layer
+        
+        if (view == CalendarView.Agenda) { _root.Add(_keyArt.Root); _root.Add(Ui.PanelWash(_t, 1248)); } // web: the focused entry's backdrop under the agenda panel's frost
         var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
         back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "link", "Back to home", radius: 50);
+        Sem.Tag(back, "link", "Back to home");
         _root.Add(back);
-        _root.Add(Ui.Text("Calendar", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
+        _root.Add(Ui.Heading("Calendar", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         _root.Add(_panel);
         _root.Add(_body);
         BuildNav();
@@ -74,23 +75,23 @@ internal sealed class CalendarScreen : IPage
     {
         var wide = _view == CalendarView.Agenda ? 133f : _view == CalendarView.Week ? 110.7f : 104.1f; // the label's width plus 40.5 px, right edge fixed
         var x = 1613.1f - wide;
-        _period = Sem.Tag(Ui.Text("", x, 70.2f, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center), "button", radius: 999);
-        Pill(x, wide, "", () => { }, "period");
-        _root.Add(_period);
+        _period = Ui.Text("", 0, 14, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center);
+        _periodBox = Pill(x, wide, "", () => { }, "period"); _periodBox.Add(_period);
         Pill(1628.5f, 50, "←", () => Step(-1), "previous");
         Pill(1693.8f, 84, "Today", () => { _anchor = _view == CalendarView.Month ? new DateTime(_today.Year, _today.Month, 1) : _view == CalendarView.Week ? CalendarRules.StartOfWeek(_today) : _today; _ = LoadAsync(); }, "today");
         Pill(1793.2f, 50, "→", () => Step(1), "next");
     }
 
-    private void Pill(float x, float w, string text, Action select, string label)
+    private View Pill(float x, float w, string text, Action select, string label)
     {
         var box = Ui.Box(x, 56.2f, w, 50, _t.Surface, 25);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.153f);
-        if (text.Length > 0) box.Add(text == "Today" ? Sem.Tag(Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center), "button", radius: 999) : Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center));
-        if (label == "previous") Sem.Tag(box, "button", "Previous", radius: 50); else if (label == "next") Sem.Tag(box, "button", "Next", radius: 50);
+        if (text.Length > 0) box.Add(Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center));
+        if (label == "previous") Sem.Tag(box, "button", "Previous"); else if (label == "next") Sem.Tag(box, "button", "Next"); else if (label == "today") Sem.Tag(box, "button", "Today");
         var ring = Ring.Make(w, 50, 25, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
         _root.Add(box);
         _focus.Items.Add(new Focusable { Rect = () => new Box(x, 56.2f, w, 50), Label = label, Select = select, Style = f => ring.Show(f) });
+        return box;
     }
 
     private void BuildTiles()
@@ -107,7 +108,7 @@ internal sealed class CalendarScreen : IPage
     {
         var tile = Ui.Box(1845.5f, y, w, h, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 14);
         tile.BorderlineWidth = 1; tile.BorderlineColor = Ui.LineA(_t, 0.075f);
-        Sem.Tag(tile, "button", text, radius: 14, backdrop: _t.Bg);
+        Sem.Tag(tile, "button", text);
         tile.Add(Ui.Icon(icon, 19, 15, 24, _t.InkMuted));
         tile.Add(Ui.Text(text, 0, 44.6f, 8.256f, 700, _t.InkMuted, w, 12.384f, HorizontalAlignment.Center, spacing: 0.165f));
         var ring = Ring.Make(w, h, 14, new Rgba(1, 1, 1)); ring.Show(false); tile.Add(ring);
@@ -172,8 +173,9 @@ internal sealed class CalendarScreen : IPage
         if (_period is not null)
             _period.Text = _view == CalendarView.Month ? _anchor.ToString("MMM yyyy", gb)
                 : _view == CalendarView.Week ? $"{start.Day} – {end.ToString("d MMM", gb)}" : $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM", gb)}";
+        if (_period is not null && _periodBox is not null) Sem.Tag(_periodBox, "button", _period.Text); // the pill is the button; its name is the period it shows
         var statusText = _view == CalendarView.Month ? _anchor.ToString("MMMM yyyy", gb) : _view == CalendarView.Week ? $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM yyyy", gb)}" : $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM yyyy", gb)}";
-        _body.Add(Sem.Tag(new View { PositionX = _view == CalendarView.Agenda ? 0 : 153.6f, PositionY = _view == CalendarView.Agenda ? 1 : 163 }, "status", statusText, style: (19.2f, 400, _t.Ink))); // web: visually hidden period text
+        _body.Add(Sem.Tag(new View { PositionX = _view == CalendarView.Agenda ? 0 : 153.6f, PositionY = _view == CalendarView.Agenda ? 1 : 163 }, "status", statusText)); // web: visually hidden period text
         switch (_view)
         {
             case CalendarView.Month: RenderMonth(start, end); break;
@@ -198,9 +200,9 @@ internal sealed class CalendarScreen : IPage
             {
                 var day = start.AddDays(r * 7 + c); var x = GridX + c * CellW; var y = RowsY + r * CellH;
                 var outside = day.Month != _anchor.Month;
-                var cell = Ui.Box(x, y, CellW, CellH, new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, outside ? 0.35f : 0.7f), 0);
+                var cell = Ui.Box(x, y, CellW, CellH, new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, outside ? 0.35f : 0f), 0);
                 cell.BorderlineWidth = 1; cell.BorderlineColor = Ui.C(_t.Line);
-                Sem.Tag(cell, "container", ignoreOwnBg: !outside); // web: only the days outside the month carry a visible fill
+                Sem.Tag(cell, "container"); // web: only the days outside the month carry a fill; every day has the hairline border
                 _body.Add(cell);
                 var list = byDay.TryGetValue(day, out var l) ? l : new List<CalendarEntry>();
                 var shown = Math.Min(4, list.Count);
@@ -209,11 +211,11 @@ internal sealed class CalendarScreen : IPage
                     var e = list[k];
                     var dot = ToneColor(CalendarRules.Tone(e, _today));
                     var ly = 15.3f + k * 25.4f;
-                    cell.Add(Ui.Box(11.4f, ly + 4.1f, 8.8f, 8.8f, dot, 4.4f));
-                    var toneName = CalendarRules.Tone(e, _today) switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
-                    cell.Add(Sem.Tag(new View { PositionX = 5.8f, PositionY = 1.8f + k * 25.4f, Size = new Size(226, 44) }, "button", $"{e.Title}, {toneName}, {day.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"))}", radius: 4));
+                    var row = new View { PositionX = 5.8f, PositionY = 1.8f + k * 25.4f, Size = new Size(226, 44) }; // the event row (dot and title); the day cell is the focus target
+                    row.Add(Ui.Box(5.6f, ly + 4.1f - row.PositionY, 8.8f, 8.8f, dot, 4.4f));
                     var multi = e.Members is { Count: > 1 } m ? $" · {m.Count}×" : "";
-                    cell.Add(Ui.Text(e.Title + multi, 27.4f, ly, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
+                    row.Add(Ui.Text(e.Title + multi, 21.6f, ly - row.PositionY, 12.48f, multi.Length > 0 ? 700 : 400, _t.Ink, CellW - 36, 14.976f));
+                    cell.Add(row);
                 }
                 cell.Add(Ui.Text(day.Day.ToString(), 8.8f, CellH - 33, 12.8f, 640, day == _today ? _t.Ink : outside ? _t.InkMuted : _t.Ink, 30, 19.2f));
                 if (list.Count > shown) cell.Add(Ui.Text($"+{list.Count - shown} more", 43, CellH - 33, 12.48f, 400, _t.InkSoft, 90, 18.72f));
@@ -320,7 +322,7 @@ internal sealed class CalendarScreen : IPage
         var tag = Ui.Box(x, y, 60.5f, 22, new Rgba(0, 0, 0, 0), 11);
         tag.BorderlineWidth = 1; tag.BorderlineColor = Ui.C(_t.Accent);
         Sem.Tag(tag, "none");
-        tag.Add(Sem.Tag(Ui.Text("Today", 0, 2.6f, 11.2f, 640, _t.Accent, 60.5f, 16.8f, HorizontalAlignment.Center, upper: true, spacing: 0.9f), "text", radius: 999));
+        tag.Add(Sem.Tag(Ui.Text("Today", 0, 2.6f, 11.2f, 640, _t.Accent, 60.5f, 16.8f, HorizontalAlignment.Center, upper: true, spacing: 0.9f), "text"));
         parent.Add(tag);
     }
 
@@ -333,7 +335,7 @@ internal sealed class CalendarScreen : IPage
         foreach (var g in byDay)
         {
             var band = Ui.Box(0, y, 1033.4f, 44, _t.Name == "dark" ? _t.Bg : _t.Surface, 0); // web --agenda-heading-base: --bg dark, --surface light
-            Sem.Tag(band, "heading", ignoreOwnBg: false);
+            Sem.Tag(band, "heading");
             var head = g.Key.ToString("dddd d MMMM", CultureInfo.GetCultureInfo("en-GB"));
             band.Add(Ui.Text(head, 0, 8.2f, 18.4f, 640, g.Key == _today ? _t.Accent : _t.Ink, 400, 27.6f));
             if (g.Key == _today) TodayTag(band, Ui.TextWidth(head, 18.4f, 640, 0) + 9.42f, 11);
@@ -354,13 +356,13 @@ internal sealed class CalendarScreen : IPage
         var textW = w - 70.4f - 16f;
         var h = 106.9f + (sub.Length * 9.6f > textW ? 28.8f : 0) - (sub.Length == 0 ? 29f : 0); // web: an entry without a subtitle line is 29 px shorter
         // web .calendar-entry: --surface-strong with a 4 px left border (--success when available, else --ink-muted); the border colour is the card, the surface sits 4 px in
-        var card = Ui.Box(x, y, w, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 12);
-        card.CornerRadius = 12;
-        var surface = Ui.Box(4, 0, w - 4, h, _t.SurfaceStrong, 12); surface.BorderlineWidth = 1; surface.BorderlineColor = Ui.C(_t.LineStrong); // web --line-strong
-        card.Add(surface);
+        var card = Ui.Box(x, y, w, h, _t.SurfaceStrong, 12);
+        card.BorderlineWidth = 1; card.BorderlineColor = Ui.C(_t.LineStrong); // web --line-strong
+        card.ClippingMode = ClippingModeType.ClipChildren;
+        card.Add(Ui.Box(0, 0, 4, h, CalendarRules.Tone(e, _today) == CalendarTone.Available ? ToneColor(CalendarTone.Available) : _t.InkMuted, 0)); // the 4 px left border
         var poster = Ui.Box(16, 23.5f + (h - 106.9f) / 2, 40, 60, _t.SurfaceSoft, 6);
         poster.ClippingMode = ClippingModeType.ClipChildren;
-        Sem.Tag(poster, "none", childImageRadius: 6);
+        Sem.Tag(poster, "none");
         // A poster URL on the server's own loopback (the seeded static server) is unreachable from the TV: ask the server's artwork route instead.
         if (e.PosterUrl is { Length: > 0 } pu) LoadPoster(poster, e.WorkId is { } posterWork && Uri.TryCreate(pu, UriKind.Absolute, out var posterUri) && posterUri.IsLoopback ? $"/api/v1/artwork/work/{posterWork:D}/poster?w=185" : pu);
         card.Add(poster);
@@ -377,11 +379,11 @@ internal sealed class CalendarScreen : IPage
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(mx, sub.Length == 0 ? my - 0.46f : my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f); // web color-mix(tone 14 %, --surface)
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text", radius: 999));
+        pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text"));
         Sem.Tag(pill, "none");
         card.Add(pill);
         // web: the whole entry is one button named by its text parts; its children sit on the surface
-        Sem.Tag(card, "button", string.Join(" ", new[] { e.Title, sub }.Concat(parts).Append(label).Where(t => t.Length > 0)), radius: 12, backdrop: _t.SurfaceStrong, ignoreOwnBg: true);
+        Sem.Tag(card, "button", string.Join(" ", new[] { e.Title, sub }.Concat(parts).Append(label).Where(t => t.Length > 0)));
         var ring = Ring.Make(w, h, 12, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
         parent.Add(card);
         var ty = y;
@@ -413,18 +415,17 @@ internal sealed class CalendarScreen : IPage
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text", radius: 999));
+        pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text"));
         _panel.Add(pill);
         var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, DetailsPanel.Soft(_t), 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
         var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);
-        open.Add(Sem.Tag(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center), "button", radius: 999, backdrop: _t.Accent));
+        open.Add(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center));
         _panel.Add(open);
         var wl = Ui.Box(287.2f, by, 177.6f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
         wl.BorderlineWidth = 1; wl.BorderlineColor = Ui.LineA(_t, 0.153f);
         wl.Add(Ui.Text("+", 21, 18, 14.72f, 720, _t.InkSoft, 14, 22.08f));
         wl.Add(Ui.Text("Add to watchlist", 38.52f, 17, 14.72f, 900, _t.InkSoft, 130, 22.08f));
-        Sem.Tag(wl, "button", "+ Add to watchlist", radius: 999, ignoreOwnBg: true);
         _panel.Add(wl);
     }
 
@@ -435,7 +436,7 @@ internal sealed class CalendarScreen : IPage
 
     private void LoadPoster(View poster, string url)
     {
-        if (url.StartsWith('/')) { _env.Images.Apply(poster, url, 40, 60); return; }
+        if (url.StartsWith('/')) { _env.Images.Apply(poster, url, 40, 60, 6, roundImage: true); return; }
         var sized = SizedPosterUrl(url);
         _env.Images.Track(async () =>
         {

@@ -106,10 +106,10 @@ function PlayarrTypeFor(scope as String, id as String) as Dynamic
     g = GetGlobalAA()
     if g.typeTable = invalid
         g.typeTable = {
-            clockTime: { size: 17.28, weight: 760, tracking: -0.526, boxH: 25.92 }
-            clockDate: { size: 11.14, weight: 640, tracking: 0.435, boxH: 12.25 }
+            clockTime: { size: 17.28, weight: 760, tracking: -0.526 }
+            clockDate: { size: 11.14, weight: 640, tracking: 0.435 }
             profileLabel: { size: 8.83, weight: 680, tracking: 0.31, role: "inkMuted" }
-            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink", boxH: 8 }
+            userVersion: { size: 8, weight: 700, tracking: 1.358, role: "ink" }
             "TvStage.stageMetaLabel": { size: 12.86, weight: 600, tracking: 0, role: "heroSoft" }
             "ProfileAvatar.name": { size: 17.28, weight: 680, tracking: 0 }
             "ProfileAvatar.status": { size: 9.41, weight: 690, tracking: 0.413, role: "inkMuted" }
@@ -156,7 +156,6 @@ function PlayarrFontifyLabel(label as Object, scope = "" as String, weight = -1 
         size = typed.size
         weight = typed.weight
         tracking = typed.tracking
-        if typed.boxH <> invalid then web.rectH = typed.boxH
         if typed.lineHeight <> invalid then web.lineHeight = typed.lineHeight
     end if
     web.setFields({ size: size, weight: weight, tracking: tracking, width: newW, height: label.height * sx, horizAlign: label.horizAlign, vertAlign: label.vertAlign, wrap: label.wrap, maxLines: label.maxLines, visible: label.visible, opacity: label.opacity })
@@ -205,4 +204,43 @@ end function
 function EpisodeCodeTracking(text as String, tracking as Float) as Float
     if Left(text, 2) = "S " and Instr(1, text, "·") > 0 then return tracking
     return 0
+end function
+
+' Symbol glyphs the web draws from its fallback fonts (Nunito Sans has none of them): arrows, play, check, the sort chevron and a
+' fullwidth plus. fonts/Symbols.ttf is a subset of DejaVu Sans (Bitstream Vera licence) and fonts/SymbolsCjk.otf one glyph of
+' Noto Sans CJK (SIL OFL). fonts/SymbolsBold.ttf is the same glyphs from DejaVu Sans Bold, used for weights of 600 and up.
+function PlayarrSymbolFont(ch as String, size as Float, weight = 400 as Integer) as Object
+    path = "pkg:/fonts/Symbols.ttf"
+    if weight >= 600 then path = "pkg:/fonts/SymbolsBold.ttf"
+    if ch = "＋" then path = "pkg:/fonts/SymbolsCjk.otf"
+    key = "playarrSymbol_" + path + "_" + Str(size)
+    g = GetGlobalAA()
+    if g[key] <> invalid then return g[key]
+    font = CreateObject("roSGNode", "Font")
+    font.uri = path
+    font.size = Int(size + 0.5)
+    g[key] = font
+    return font
+end function
+
+' Bottom edge (in the label's parent) of the glyph Labels a WebLabel laid out, as Roku reports their boxes.
+function PlayarrTextBottom(web as Object) as Float
+    runNode = web.findNode("run")
+    if runNode = invalid then return web.translation[1] + web.boundingRect().height
+    bottom = 0.0
+    for i = 0 to runNode.getChildCount() - 1
+        g = runNode.getChild(i)
+        if g.visible and g.text <> ""
+            gb = g.translation[1] + g.boundingRect().height
+            if gb > bottom then bottom = gb
+        end if
+    end for
+    return web.translation[1] + runNode.translation[1] + bottom
+end function
+
+' The weight a symbol Label really draws: the regular or the bold symbol face (the CJK plus has one weight).
+function PlayarrSymbolWeight(ch as String, weight as Integer) as Integer
+    if ch = "＋" then return 400
+    if weight >= 600 then return 700
+    return 400
 end function

@@ -72,7 +72,8 @@ sub renderSettings()
             arrowRole = "ink"
             arrowX = 576.2
         end if
-        pgIcon(m.pageBody, arrowX, y + 35.3, 20, "arrow-right.png", arrowRole)
+        pgGlyph(m.pageBody, "→", arrowX, y + 31.3, 20.8, 400, arrowRole)
+        pgMark(m.pageBody, "link", numText + " " + sections[i].title + " →", 153.6, y, 470.4, 91.9, 0)
         pgFocusable(153.6, y, 480.4, 91.9, 12, "section", sections[i].id, true)
     end for
     id = m.settingsPanel
@@ -178,15 +179,13 @@ sub pgSegmentedWide(x as Float, y as Float, h as Float, labels as Object, active
             pgRound(m.pageBody, cx, y, w, h, 14, "line", -1, true)
         end if
         role = "inkMuted"
-        bgRole = "c:292428:e9e7e7"
         if i = activeIdx
             role = "bg"
-            bgRole = "ink"
         end if
         shown = labels[i]
-        if action = "theme" or action = "artSize" then shown = LCase(shown)
         fit = segmentedFit(LCase(labels[i]))
         pgLabel(m.pageBody, bx + (bw - fit) / 2, by + 20.2 * bh / h, fit + 4, 15, shown, 10.56, 900, role, { fitWidth: fit })
+        pgMark(m.pageBody, "button", labels[i], bx, by, bw, bh, 12)
         pgFocusable(cx, y, w, h, 14, action, i, true)
     end for
 end sub

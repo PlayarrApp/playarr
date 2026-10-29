@@ -1,0 +1,1 @@
+- Android layout export reads only the laid-out app: per-line text from the text layout, controls from accessibility semantics, clamped radii, no offscreen or covered elements, colours taken from the screenshot of the same frame; the parity driver rejects an export in the wrong theme and no longer keeps stale layout files.

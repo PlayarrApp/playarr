@@ -4,7 +4,7 @@
  * rest of this client today.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -51,15 +51,15 @@ export struct Clock {
       Text(clockTime(this.now)).fontFamily(nunitoAt(TIME_FONT_WEIGHT, tv(TIME_FONT_SIZE)))
         .fontSize(tv(TIME_FONT_SIZE))
         .fontWeight(TIME_FONT_WEIGHT)
-        .letterSpacing(tv(TIME_LETTER_SPACING))
-        .lineHeight(tv(TIME_FONT_SIZE * 1.5)) // web: a block with line-height 1.5, so its layout rect is the line box
+        .letterSpacing((tv(TIME_LETTER_SPACING)) + 0.166)
+        .lineHeight(webLineHeight(tv(TIME_FONT_SIZE))).halfLeading(true) // web: a block with line-height 1.5, so its layout rect is the line box
         .fontColor(toResourceColor(activeColors().ink))
       Text(clockDate(this.now, currentLanguage())).fontFamily(nunitoAt(DATE_FONT_WEIGHT, tv(DATE_FONT_SIZE)))
         .fontSize(tv(DATE_FONT_SIZE))
         .fontWeight(DATE_FONT_WEIGHT)
         .letterSpacing(tv(DATE_LETTER_SPACING))
         .textCase(TextCase.UpperCase)
-        .lineHeight(tv(DATE_FONT_SIZE * 1.1)) // web: line-height 1.1
+        .lineHeight(webLineHeight(tv(DATE_FONT_SIZE))).halfLeading(true) // web: line-height 1.1
         .fontColor(toResourceColor(activeColors().ink))
     }
     // Web centres the date on the time (measured: time 1 vp and date 4 vp lower than web with bottom alignment).

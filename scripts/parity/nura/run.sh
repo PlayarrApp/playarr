@@ -40,7 +40,7 @@ for t in $THEMES; do
     PLAYARR_KEEP_CONTROLS=1 PLAYARR_PARITY_PAUSE_MS=2000 "$H/pmrun.sh" </dev/null; sleep 15; "$H/pmfocus.sh"
     PLAYARR_CAPTURE_GREEN_CHECK=true "$H/pmcap3.sh" "$O/$t" "theme:$t" player </dev/null || continue
     layout "$t" player-controls
-    grep -q '"text":"0:02 / 1:00"' "$O/$t/layout/player-controls.json" && break
+    grep -q '"text":"0:02"' "$O/$t/layout/player-controls.json" && break
     [ "$try" = 3 ] && { echo "player never reached 0:02 / 1:00" >&2; exit 1; }
   done
   for f in "$O/$t"/film_*.png; do mv -- "$f" "$O/$t/film.png"; done
@@ -65,5 +65,5 @@ for t in themes.split():
         n = os.path.basename(f)[:-4]
         Image.open(f).convert("RGB").crop((0, 64, 720, 1410)).save(f"{out}/{ren.get(n, n)}.png")
 PY
-  printf '{"branch":"%s","sha":"%s","pr":"%s","captured_at":"%s","server":"static server"}\n' "${BRANCH:-}" "${SHA:-}" "${PR:-}" "$(date -u +%FT%TZ)" > "$D/build.json"
+  printf '{"branch":"%s","sha":"%s","pr":"%s","captured_at":"%s","server":"static server"}\n' "${BRANCH:-}" "${SHA:-}" "${PR:-}" "$(date -u +%FT%TZ)" | tee "$D/build.json" > "$D/light/build.json"
 fi

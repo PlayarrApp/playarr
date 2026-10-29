@@ -32,18 +32,19 @@ struct TVSettingsView: View {
     }
 
     /// Web lists Request latency (08) for admins only; the device profile is not one. tvOS keeps the row.
-    private var visibleSections: [Int] { sections.indices.filter { mac($0 != 7, $0 != 10) } }
+    private var visibleSections: [Int] { sections.indices.filter { $0 != 7 } } // web: Request latency is admin-only
 
     var body: some View {
         @Bindable var environment = environment
 
         ZStack(alignment: .topLeading) {
             DesignTokens.Color.backgroundElevated.ignoresSafeArea()
+                .parityBox("container", fill: DesignTokens.Stage.surface, bleed: true)
             // Web `.tv-library-grid-panel`: 65% frosted panel on the right.
             TVRailPanelGradient(width: 1248)
 
             // Web: the selected section is the page subtitle (shared small style), nothing else under the title.
-            TVPageHeader(title: "Preferences", detail: sections[selectedSection].title, backFocused: true)
+            TVPageHeader(title: "Preferences", detail: sections[selectedSection].title, backFocused: true, backName: "Settings", backRole: "button")
 
             // `.settings-option` rows: x 153.6, y 162, 470 (tvOS 480.4) x 91.9, pitch 91.9.
             ForEach(Array(visibleSections.enumerated()), id: \.element) { row, index in
@@ -56,26 +57,27 @@ struct TVSettingsView: View {
                     ZStack(alignment: .topLeading) {
                         Rectangle()
                             .fill(selected ? DesignTokens.Color.backgroundRaised : Color.clear)
-                            .frame(width: mac(470, 480.4), height: 91.9)
+                            .frame(width: 470.41, height: 91.9)
                         Text(section.number)
-                            .font(TVTheme.font(size: 9.92, weight: .bold))
-                            .foregroundStyle(DesignTokens.Color.textDisabled)
-                            .parityLayout(text: section.number, size: 9.92, weight: Int(TVTheme.cssWeight(.bold)), color: DesignTokens.Color.textDisabled)
-                            .placed(x: 32, y: 23.8, w: 32, h: 18.4)
+                            .font(TVTheme.font(size: 9.92, css: 760))
+                            .foregroundStyle(DesignTokens.Color.textPrimary)
+                            .parityLayout(text: section.number, size: 9.92, weight: 760, color: DesignTokens.Color.textPrimary)
+                            .placed(x: 32, y: 25.1, w: 32, h: 18.4)
                         Text(section.title)
-                            .font(TVTheme.font(size: 29.6, weight: .regular))
+                            .font(TVTheme.font(size: 29.6, css: 480))
                             .tracking(-1.04)
                             .foregroundStyle(DesignTokens.Color.textPrimary)
                             .lineLimit(1)
-                            .parityLayout(text: section.title, size: 29.6, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textPrimary, tracking: -1.04)
+                            .parityLayout(text: section.title, size: 29.6, weight: 480, color: DesignTokens.Color.textPrimary, tracking: -1.04)
                             .placed(x: 92, y: 23.8, w: 307.6, h: 44.4)
                         Text("\u{2192}")
                             .font(TVTheme.font(size: 20.8, weight: .regular))
                             .foregroundStyle(selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
-                            .parityLayout(text: "\u{2192}", size: 20.8, weight: Int(TVTheme.cssWeight(.regular)))
-                            .placed(x: selected ? mac(422.6, 432.6) : mac(417.6, 427.6), y: 30.3, w: 20.8, h: 31.2)
+                            .parityLayout(text: "\u{2192}", size: 20.8, weight: 400, color: selected ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled)
+                            .placed(x: selected ? 422.6 : 417.6, y: 30.3, w: 20.8, h: 31.2)
                     }
-                    .frame(width: mac(470, 480.4), height: 91.9, alignment: .topLeading)
+                    .frame(width: 470.41, height: 91.9, alignment: .topLeading)
+                    .parityBox("link", text: "\(section.number) \(section.title) \u{2192}", fill: selected ? DesignTokens.Color.backgroundRaised : DesignTokens.Stage.surface)
                     .modifier(TVNavItemFocusFill(fill: DesignTokens.Color.backgroundRaised, cornerRadius: 0))
                 }
                 // Web settings menu: the focused row gets the selected fill and opens its panel; no system platter.
@@ -83,7 +85,7 @@ struct TVSettingsView: View {
                 .focused($focusedSection, equals: index)
                 .disabled(TVParityLaunch.frozen) // not .focusable: on a Button it adds a second, inert focus target
                 .focusEffectDisabled()
-                .pinned(x: 153.6, y: top, w: mac(470, 480.4), h: 91.9)
+                .pinned(x: 153.59, y: top, w: 470.41, h: 91.9)
             }
 
             Color.clear.frame(width: 0, height: 0)
@@ -123,39 +125,43 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Colour theme", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Colour theme", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 210, w: 995, h: 39.6)
-                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [343.3, 343.3, 343.3], y: 265.8) { index in
+                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [342.08, 342.08, 342.08], y: 265.8) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
                 }
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
                     .frame(width: 1046, height: 1)
                     .offset(y: 352.5)
+                Color.clear.parityBox("container", fill: DesignTokens.Stage.surface)
+                    .placed(x: 0, y: 352.03, w: 1042.25, h: 168.97)
                 Text("Home screen artwork")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Home screen artwork", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Home screen artwork", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 383.8, w: 995, h: 39.6)
                 Text("Show portrait covers instead of wide media thumbnails on the home screen.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
                     .parityLayout(text: "Show portrait covers instead of wide media thumbnails on the home screen.", size: 13.12, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                     .placed(x: 0, y: 429, w: 995, h: 20.3)
-                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [519, 519], y: 465.5) { index in
+                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [517.13, 517.13], y: 465.5) { index in
                     displayPreferences.homeCovers = index == 1
                 }
                 Rectangle()
                     .fill(DesignTokens.Color.borderDefault.opacity(0.35))
                     .frame(width: 1046, height: 1)
                     .offset(y: 552.5)
+                Color.clear.parityBox("container", fill: DesignTokens.Stage.surface)
+                    .placed(x: 0, y: 551.03, w: 1042.25, h: 168.97)
                 // Web Appearance > Artwork size: one size for all artwork (Home, Library, Search and more).
                 Text("Artwork size")
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Artwork size", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Artwork size", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 583.8, w: 995, h: 39.6)
                 Text("Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
@@ -164,7 +170,7 @@ struct TVSettingsView: View {
                     .placed(x: 0, y: 629, w: 995, h: 20.3)
                 choice(["Small", "Medium", "Large"],
                        selected: TVDisplayPreferences.ArtworkSize.allCases.firstIndex(of: displayPreferences.artworkSize) ?? 1,
-                       widths: [343.3, 343.3, 343.3], y: 665.5) { index in
+                       widths: [342.08, 342.08, 342.08], y: 665.5) { index in
                     displayPreferences.artworkSize = TVDisplayPreferences.ArtworkSize.allCases[index]
                 }
             }
@@ -214,13 +220,16 @@ struct TVSettingsView: View {
             ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
                 Button { onSelect?(index) } label: {
                     Text(label)
-                        .font(TVTheme.font(size: 11.52, weight: .bold))
+                        .font(TVTheme.font(size: 10.56, css: 900))
                         .foregroundStyle(index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
-                        .parityLayout(text: label, size: 11.52, weight: Int(TVTheme.cssWeight(.bold)))
+                        .parityLayout(text: label, size: 10.56, weight: 900, color: index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                         .frame(width: widths[index], height: 56.5)
-                        .background(index == selected ? DesignTokens.Color.textPrimary : Color.clear)
+                        .parityBox("button", text: label, radius: 12, fill: index == selected ? DesignTokens.Stage.ink : DesignTokens.Stage.surfaceSoft, alpha: index == selected ? 1 : 0.64)
+                        .parityBackdrop(DesignTokens.Stage.surface)
+                        .background(index == selected ? DesignTokens.Color.textPrimary : DesignTokens.Stage.surfaceSoft.opacity(0.64))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
+                        .scaleEffect(index == selected ? 1.025 : 1) // web: the chosen option grows
                 }
                 .buttonStyle(TVRingButtonStyle(cornerRadius: 12))
                 .focusEffectDisabled()

@@ -65,7 +65,7 @@
  * on the topmost rail's own item content to target it explicitly.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha, tintFilter } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -100,7 +100,7 @@ const NAV_TILE_SELECTED_BG_ALPHA: number = 0.09;
 // Web `.app-nav-group` shadow: 0 14px 42px rgba(56, 38, 33, 0.10), the same warm ink in both themes.
 const NAV_GROUP_SHADOW_COLOR: string = 'rgba(56, 38, 33, 0.1)';
 // Web `.app-nav-label` letter spacing (0.035em of 8.832px).
-const NAV_TILE_LABEL_LETTER_SPACING: number = 0.31;
+const NAV_TILE_LABEL_LETTER_SPACING: number = 0.40; // fitted to the web run widths of the rail labels
 
 
 /** Vertical gap between a tile's icon and its label. Not in the brief at
@@ -182,15 +182,19 @@ struct NavTile {
         .focusable(false)
 
       Text(this.item.label).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
-        .fontSize(tv(TvGeometry.navTileLabelSize))
+        .fontSize(tv(TvGeometry.navTileLabelSize)).lineHeight(webLineHeight(tv(TvGeometry.navTileLabelSize))).halfLeading(true)
         .fontWeight(TvGeometry.navTileLabelWeight)
         .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
         .fontColor(toResourceColor(this.contentColor()))
         .textAlign(TextAlign.Center)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .margin({ top: -1.4 }) // web's label run sits 1.4 higher than ArkUI's half-leading line puts it
     }
     .id(`${this.item.id}-nav-tile`)
+    .accessibilityText(this.item.label)
+    .accessibilityRole(AccessibilityRoleType.HYPERLINK)
+    .accessibilityGroup(true)
     .padding({ top: tv(15.2) }) // web: the icon sits 15.2 below the tile top, the label 2.75 under it
     .width(tv(TvGeometry.navTileSize))
     .height(tv(TvGeometry.navTileSize))
@@ -303,16 +307,16 @@ export struct NavRail {
         ProfileAvatar({ presetId: this.avatarOverride !== '' ? this.avatarOverride : resolveAvatarPreset(this.profileId), diameter: tv(PROFILE_AVATAR_SIZE), illustrationRatio: 1 })
           .focusable(false)
         Text(this.firstName()).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
-          .fontSize(tv(TvGeometry.navTileLabelSize))
+          .fontSize(tv(TvGeometry.navTileLabelSize)).lineHeight(webLineHeight(tv(TvGeometry.navTileLabelSize))).halfLeading(true)
           .fontWeight(TvGeometry.navTileLabelWeight)
-          .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
+          .letterSpacing((NAV_TILE_LABEL_LETTER_SPACING) + -0.062)
           .fontColor(toResourceColor(activeColors().inkMuted))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width(tv(TvGeometry.navTileSize - 8))
           .textAlign(TextAlign.Center)
       }
-      .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
+      .accessibilityText('Signed in as ' + this.profileName + '. Open profiles.').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
       .width(tv(TvGeometry.navTileSize))
       .height(tv(TvGeometry.navTileSize))
       .justifyContent(FlexAlign.Center)
@@ -338,8 +342,8 @@ export struct NavRail {
   @Builder
   private versionText(): void {
     Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
-      .fontSize(tv(8))
-      .letterSpacing(1.36) // web's run is 30.73 wide
+      .fontSize(tv(8)).translate({ y: -1.55 }).lineHeight(webLineHeight(tv(8))).halfLeading(true)
+      .letterSpacing((1.36) + 0.178) // web's run is 30.73 wide
       .fontColor(toResourceColor(activeColors().ink))
       .width(NAV_GROUP_WIDTH)
       .position({ x: 0, y: 1038.45 })

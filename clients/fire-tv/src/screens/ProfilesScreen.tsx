@@ -187,20 +187,22 @@ function ProfileChoice({
         style={{
           width: u(244),
           height: u(244),
-          borderRadius: 999,
+          borderRadius: u(244),
           transform: selected ? [{scale: 1.035}] : [],
           borderWidth: selected ? u(4) : 0,
           borderColor: selectedRing(colour.accent),
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <ProfileAvatar profileId={profile.id} size={selected ? u(236) : u(244)} style={selected ? undefined : undefined} />
+        <ProfileAvatar profileId={profile.id} size={selected ? u(208) : u(244)} style={selected ? undefined : undefined} />
       </View>
-      <View style={{marginTop: u(8.8)}}>
+      <View style={{marginTop: u(8.8), transform: selected ? [{translateY: u(10.2)}] : []}}>
         <T size={17.28} weight={680} color={selected ? colour.ink : colour.inkSoft} lh={27.1} lines={1}>
           {profile.display_name || profile.username}
         </T>
       </View>
-      <View style={{marginTop: u(8.8), minHeight: u(14.7)}}>
+      <View style={{marginTop: u(8.8), minHeight: u(14.7), transform: selected ? [{translateY: u(11.4)}] : []}}>
         <T size={9.408} weight={690} ls={0.423} color={colour.inkMuted} upper lh={14.7}>
           {profile.is_current ? t('pages.profiles.statusCurrent') : profile.pin_locked ? 'PIN required' : ''}
         </T>
@@ -226,7 +228,7 @@ function AddProfileTile({selected, onFocus, onPress}: {selected: boolean; onFocu
         style={{
           width: u(244),
           height: u(244),
-          borderRadius: 999,
+          borderRadius: u(244),
           borderWidth: selected ? u(4) : 1,
           borderStyle: selected ? 'solid' : 'dashed',
           borderColor: selected ? selectedRing(colour.accent) : mix(colour.lineStrong, 0.66),

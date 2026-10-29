@@ -1,0 +1,1 @@
+- HarmonyOS: the pairing screen retries the device-code request three times on a network failure before it shows an error.

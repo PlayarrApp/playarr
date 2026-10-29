@@ -14,6 +14,7 @@ PlayarrPage {
         return false
     }
     // The web profiles page sits on the darker shell colour with a faint brand glow behind the profiles.
+    pageLayers: false
     background: Component { Rectangle { color: Tokens.dark ? "#151315" : "#f5f3f2" } }
     RadialGradient {
         x: parent.width / 2 - width / 2; y: 0.48 * parent.height - height / 2
@@ -46,8 +47,7 @@ PlayarrPage {
             MouseArea {
                 id: sel
                 property bool navigationFocusable: true
-                property string parityLabel: index === 0 ? qsTr("Theme: ") + (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Language: Auto")
-                property string a11yName: index === 0 ? parityLabel : qsTr("Auto")
+                Accessible.role: Accessible.Button; Accessible.name: index === 0 ? qsTr("Theme: ") + (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
                 property int parityRail: 1
                 property int parityIndex: index
                 function navigationActivate() { if (index === 0) Api.themeMode = Api.themeMode === "system" ? "dark" : Api.themeMode === "dark" ? "light" : "system" }
@@ -58,8 +58,8 @@ PlayarrPage {
                     id: selRow
                     anchors.centerIn: parent
                     spacing: 9.59 * Tokens.u
-                    Image { property string parityRole: "image"; anchors.verticalCenter: parent.verticalCenter; width: 16 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url(index === 0 ? "sun" : "globe", Tokens.inkSoft) }
-                    Label { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
+                    Image { anchors.verticalCenter: parent.verticalCenter; width: 16 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url(index === 0 ? "sun" : "globe", Tokens.inkSoft) }
+                    PLabel { renderType: Text.NativeRendering; anchors.verticalCenter: parent.verticalCenter; text: index === 0 ? (Api.themeMode === "system" ? qsTr("Auto") : Api.themeMode === "dark" ? qsTr("Dark") : qsTr("Light")) : qsTr("Auto")
                             color: Tokens.ink; font.family: Tokens.fam(720); font.letterSpacing: -0.15; font.pixelSize: Tokens.fs(11.52);}
                     Image { anchors.verticalCenter: parent.verticalCenter; width: 12 * Tokens.u; height: width; sourceSize: Qt.size(64, 64); source: NavIcons.url("chevron", Tokens.inkSoft) }
                 }
@@ -75,11 +75,11 @@ PlayarrPage {
         font.family: Tokens.fam(820); font.letterSpacing: 2.19; font.pixelSize: Tokens.fs(7.36)
     }
     Label { renderType: Text.QtRendering;
-        x: -16 * Tokens.u; width: parent.width; y: 82 * Tokens.u
+        x: -16 * Tokens.u; width: parent.width; y: 81.2 * Tokens.u
         horizontalAlignment: Text.AlignHCenter
         text: qsTr("Who’s watching?")
         color: Tokens.ink
-        property string parityRole: "heading"
+        Accessible.role: Accessible.Heading
        
         font.family: Tokens.fam(480); font.letterSpacing: -5.78; font.pixelSize: Tokens.fs(42.9)
     }
@@ -90,8 +90,7 @@ PlayarrPage {
             MouseArea {
                 id: card
                 property bool navigationFocusable: true
-                property string parityLabel: modelData.name
-                property string a11yName: modelData.name + (modelData.active ? qsTr(", current profile") : "")
+                Accessible.role: Accessible.Button; Accessible.name: modelData.name + (modelData.active ? qsTr(", current profile") : "")
                 // Prefer the signed-in profile, falling back when the saved active id is stale.
                 property bool navigationInitialFocus: modelData.active || (!page.hasActiveProfile && index === 0)
                 property int parityRail: 0
@@ -119,22 +118,28 @@ PlayarrPage {
                     x: -2.85 * Tokens.u; y: -2.85 * Tokens.u
                     width: 168.73 * Tokens.u
                     source: modelData.avatar
+                    // A bundled preset (".../avatars/<id>.png") is drawn natively from its artwork and plate colours.
+                    readonly property string presetId: /\/avatars\/[a-z]+\.png$/.test(String(modelData.avatar)) ? String(modelData.avatar).replace(/^.*\/avatars\/([a-z]+)\.png$/, "$1") : ""
+                    readonly property var presetColours: ({ astronaut: ["#5267ad", "#222d5f"], cat: ["#e37c68", "#9c3f66"], dinosaur: ["#55a46e", "#237265"],
+                                                           robot: ["#5d9caf", "#365383"], pirate: ["#d39a48", "#91464c"], alien: ["#8b71c5", "#4a477f"] })   // clients/shared/profile-avatars/presets.json
+                    artSource: presetId !== "" && presetColours[presetId] ? String(modelData.avatar).replace("/avatars/", "/avatar-art/") : ""
+                    plateStart: presetId !== "" && presetColours[presetId] ? presetColours[presetId][0] : "#000000"
+                    plateEnd: presetId !== "" && presetColours[presetId] ? presetColours[presetId][1] : "#000000"
                     // The plate PNG carries the figure inset by 7.55 %: the web's plate container and its inner picture.
                     // The active ring sits outside the plate, as on web.
                     Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: ringColor }   // alpha in the colour: item opacity drew a pink square behind the plate
                 }
-                Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 5.4 * Tokens.u; left: parent.left; right: parent.right }
+                FitText { anchors { top: av.bottom; topMargin: 5.8 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink;
                         font.family: Tokens.fam(680); font.letterSpacing: 0.38; font.pixelSize: Tokens.fs(13.12) }
-                Label { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 35.9 * Tokens.u; left: parent.left; right: parent.right }
+                PLabel { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 35.9 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.active ? qsTr("WATCHING NOW") : ""; color: Tokens.dark ? "#c2b5bb" : "#4d4248";
                         font.family: Tokens.fam(680); font.letterSpacing: 1.13; font.pixelSize: Tokens.fs(6.72) }
             }
         }
         MouseArea {
             property bool navigationFocusable: true
-            property string parityLabel: qsTr("Add another profile")
-            property string a11yName: "+ " + qsTr("Sign in") + " " + qsTr("ADD ANOTHER PROFILE")
+            Accessible.role: Accessible.Button; Accessible.name: "+ " + qsTr("Sign in") + " " + qsTr("ADD ANOTHER PROFILE")
             property bool navigationInitialFocus: Api.profiles.length === 0
             property int parityRail: 0
             property int parityIndex: Api.profiles.length
@@ -175,12 +180,12 @@ PlayarrPage {
                         GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0) }
                     }
                 }
-                Label { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "+"; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(300); font.pixelSize: Tokens.fs(38.4) }
+                PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: "+"; color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(300); font.pixelSize: Tokens.fs(38.4) }
             }
-            Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 8.8 * Tokens.u; left: parent.left; right: parent.right }
+            PLabel { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 8.8 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("Sign in"); color: Tokens.dark ? "#cdc1c6" : "#443a40";
                     font.family: Tokens.fam(680); font.pixelSize: Tokens.fs(13.12) }
-            Label { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
+            PLabel { renderType: Text.NativeRendering; anchors { top: plus.bottom; topMargin: 37.1 * Tokens.u; left: parent.left; right: parent.right }
                     horizontalAlignment: Text.AlignHCenter; text: qsTr("ADD ANOTHER PROFILE"); color: Tokens.dark ? "#c2b5bb" : "#4d4248";
                     font.family: Tokens.fam(680); font.letterSpacing: 0.76; font.pixelSize: Tokens.fs(6.72) }
         }
@@ -190,9 +195,7 @@ PlayarrPage {
         spacing: 8.8 * Tokens.u
         MouseArea {
             property bool navigationFocusable: true
-            property string parityLabel: qsTr("Settings")
-            property string a11yName: qsTr("%1 settings").arg(Api.profileName)
-            property real focusRadius: width / 2
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("%1 settings").arg(Api.profileName)
             property int parityRail: 1
             property int parityIndex: 0
             width: 44 * Tokens.u; height: width
@@ -204,7 +207,7 @@ PlayarrPage {
         PillButton {
             parityRail: 1
             parityIndex: 1
-            a11yName: qsTr("Sign out %1").arg(Api.profileName)
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("Sign out %1").arg(Api.profileName)
             navigationActivate: function() { remorse.execute(qsTr("Signing out"), function () { Api.signOut() }) }
             iconImage: NavIcons.url("logout", Tokens.ink); iconSize: 18 * Tokens.u; labelFamily: Tokens.fam(720)
             text: qsTr("Sign out"); labelSpacing: 0.1; contentGap: 7.2; padCss: 17; textInk: Tokens.dark ? "#cdc1c6" : "#443a40"
@@ -216,17 +219,18 @@ PlayarrPage {
     // The web profiles page pins a Clients link 22 px from the bottom right corner.
     MouseArea {
         id: clients
+        Accessible.name: qsTr("Clients")
+        Accessible.role: Accessible.Link
         anchors { right: parent.right; rightMargin: 22 * Tokens.u; bottom: parent.bottom; bottomMargin: 22 * Tokens.u }
         width: 75.5 * Tokens.u; height: 43.7 * Tokens.u
         onClicked: Qt.openUrlExternally("https://playarr.app/clients")
         RectangularGlow { y: 14 * Tokens.u; width: parent.width; height: parent.height; glowRadius: 19 * Tokens.u; spread: 0.05; cornerRadius: height / 2 + glowRadius; color: Qt.rgba(56 / 255, 38 / 255, 33 / 255, 0.12) }
-        Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.dark ? "#1e1a1e" : "#fcfcfb"; border.width: 1; border.color: Tokens.line }
-        Label { id: clientsLbl; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
-                property string parityRole: "link";
+        Rectangle { id: clientsBg; anchors.fill: parent; radius: height / 2; color: Tokens.dark ? "#1e1a1e" : "#fcfcfb"; border.width: 1; border.color: Tokens.line }
+        PLabel { id: clientsLbl; renderType: Text.NativeRendering; x: 16.95 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: qsTr("Clients")
                 color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fs(7.68) }
-        Label { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"
+        PLabel { renderType: Text.NativeRendering; x: 50.83 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0; text: "\u2192"
                
-                color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: "Liberation Sans"; font.weight: Font.Bold; font.pixelSize: Tokens.fs(7.68) }
+                color: Tokens.dark ? "#cdc1c6" : "#443a40"; font.family: Tokens.fam(720) + ",Liberation Sans"; font.pixelSize: Tokens.fs(7.68) }
     }
     RemorsePopup { id: remorse }
 }

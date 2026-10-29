@@ -107,6 +107,7 @@ struct SettingsView: View {
                 else { wideLayout(proxy: proxy) }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            .modifier(SettingsPagePaint(subpage: phone && selected != nil))
         }
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
@@ -138,7 +139,7 @@ struct SettingsView: View {
         ZStack(alignment: .topLeading) {
             PlayarrBackButton(action: goHome)
                 .offset(x: 16, y: WM.topInset + 2)
-            WMText("Preferences", 21.6, 580, lh: 32.4, ls: -0.972)
+            WMText("Preferences", 21.6, 580, lh: 32.4, ls: -0.972, role: "heading")
                 .offset(x: 70, y: WM.topInset + 7.8)
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
@@ -152,14 +153,14 @@ struct SettingsView: View {
                                     .frame(width: 257, alignment: .leading)
                                     .offset(x: 56, y: 24.4)
                                 Text(section.description)
-                                    .wm(10.88, color: WM.inkSoft)
+                                    .wm(10.88, color: WM.inkSoft, text: section.description)
                                     .foregroundStyle(WM.inkSoft)
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                     .frame(width: 275, height: 15.776, alignment: .leading)
                                     .offset(x: 56, y: 46.4)
                                 Text("→")
-                                    .wm(18, color: WM.ink)
+                                    .wm(18, color: WM.ink, text: "→")
                                     .foregroundStyle(WM.ink)
                                     .offset(x: rowFocused ? 332 : 329, y: 32)
                             }
@@ -828,7 +829,7 @@ extension SettingsView {
                 WMQualityCell(width: 318, selected: qualityID == "original") {
                     WMText("Original", 9.28, 700, lh: 14).offset(x: 11, y: 11)
                     WMText("Best available source", 7.04, 400, color: WM.muted, lh: 11).offset(x: 11, y: 27)
-                    Text("\u{2713}").wm(11.84, 400, color: WM.pink).foregroundStyle(WM.pink).offset(x: 291, y: 15)
+                    Text("\u{2713}").wm(11.84, 400, color: WM.pink, text: "\u{2713}").foregroundStyle(WM.pink).offset(x: 291, y: 15)
                 }
             }
             .buttonStyle(.plain)
@@ -1045,5 +1046,20 @@ private struct WMQualityCell<Content: View>: View {
         .frame(width: width, height: height, alignment: .topLeading)
         .overlay(shape.stroke(selected && !bar ? WM.pink : WM.line.opacity(scheme == .dark ? 0.2 : 0.14), lineWidth: 1))
         .contentShape(Rectangle())
+    }
+}
+
+/// What the settings page paints: the flat page colour, or on phone sub-pages a surface-to-shell wash with a pink glow (see `settingsBackground`).
+private struct SettingsPagePaint: ViewModifier {
+    let subpage: Bool
+
+    func body(content: Content) -> some View {
+        if subpage {
+            content
+                .parityRadial([PlayarrStyle.pink.opacity(0.12), .clear], center: UnitPoint(x: 0.2, y: 0.4), endRadius: 420)
+                .parityGradient([.init(color: PlayarrStyle.surface, location: 0), .init(color: PlayarrStyle.background, location: 1)], from: .topLeading, to: .bottomTrailing)
+        } else {
+            content.parityFill(WM.page)
+        }
     }
 }

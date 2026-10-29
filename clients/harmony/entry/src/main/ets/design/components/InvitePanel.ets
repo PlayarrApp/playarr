@@ -4,7 +4,7 @@
  * on this platform here). The link carries this device's own server address, web's fallback for a non-admin.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import { tv } from '../Metrics';
 import type { UserInviteRequest } from '../../core/Types/Profiles';
@@ -108,20 +108,20 @@ export struct InvitePanel {
     Column({ space: tv(16) }) {
       if (this.status === 'loading') {
         Text('Checking invite status…').fontFamily(nunitoAt(400, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
       } else {
         Text(this.statusText()).fontFamily(nunitoAt(400, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontColor(toResourceColor(activeColors().inkSoft))
         if (this.status === 'error') {
           Text(this.errorText).fontFamily(nunitoAt(400, tv(13.824)))
-            .fontSize(tv(13.824))
+            .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().danger))
         }
         if (this.request === null || this.request.status === 'denied' || this.request.status === 'generated') {
           Text('Who is this for, and what should they have access to? (optional)').fontFamily(nunitoAt(700, tv(13.824)))
-            .fontSize(tv(13.824))
+            .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().ink))
           TextArea({ text: this.message, placeholder: t('settings.invite.messagePlaceholder', 'For example: For Sam — films and television series, please.') })
@@ -137,7 +137,7 @@ export struct InvitePanel {
             })
         }
         Text(this.buttonLabel()).fontFamily(nunitoAt(700, tv(13.824)))
-          .fontSize(tv(13.824))
+          .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().bg))
           .backgroundColor(toResourceColorWithAlpha(activeColors().ink, this.request !== null && this.request.status === 'pending' ? 0.4 : 1))
@@ -149,11 +149,11 @@ export struct InvitePanel {
           })
         if (this.link.length > 0) {
           Text('Invite a friend to Playarr').fontFamily(nunitoAt(500, tv(26.4)))
-            .fontSize(tv(26.4))
+            .fontSize(tv(26.4)).lineHeight(webLineHeight(tv(26.4))).halfLeading(true)
             .fontWeight(FontWeight.Medium)
             .fontColor(toResourceColor(activeColors().ink))
           Text('This one-use code opens Playarr with your Playarr Server already locked in.').fontFamily(nunitoAt(400, tv(13.824)))
-            .fontSize(tv(13.824))
+            .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkSoft))
           QRCode(this.link)
             .width(tv(260))
@@ -161,11 +161,11 @@ export struct InvitePanel {
             .color('#000000')
             .backgroundColor('#FFFFFF')
           Text(this.link).fontFamily(nunitoAt(400, tv(12)))
-            .fontSize(tv(12))
+            .fontSize(tv(12)).lineHeight(webLineHeight(tv(12))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .width(tv(this.panelWidth))
           Text('Expires ' + this.expiresAt + '. The invite can be used once.').fontFamily(nunitoAt(400, tv(13.824)))
-            .fontSize(tv(13.824))
+            .fontSize(tv(13.824)).lineHeight(webLineHeight(tv(13.824))).halfLeading(true)
             .fontColor(toResourceColor(activeColors().inkMuted))
         }
       }

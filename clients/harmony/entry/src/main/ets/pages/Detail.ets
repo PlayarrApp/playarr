@@ -101,7 +101,8 @@
  */
 
 import { t, tf } from '../core/Language';
-import { nunito, nunitoAt, arrowFont } from '../design/Typography';
+import { balanceTitle } from '../core/TitleBalance';
+import { nunito, nunitoAt, arrowFont, webLineHeight, webLineSpacing } from '../design/Typography';
 import { image } from '@kit.ImageKit';
 import { LengthMetrics } from '@kit.ArkUI';
 
@@ -247,7 +248,7 @@ const PILL_SECONDARY_GAP: number = 8.8;
 const PILL_PRIMARY_MIN_WIDTH: number = 156;
 const PILL_SECONDARY_MIN_WIDTH: number = 142;
 const PILL_GAP: number = 16;
-const PILL_ROW_GAP: number = 14;
+const PILL_ROW_GAP: number = 12.8;
 const PILL_FILL_ALPHA: number = 0.09;
 const COPY_GAP: number = 36;
 const RIGHT_COLUMN_X: number = 882;
@@ -1725,8 +1726,8 @@ struct Detail {
   /** Phone play glyph: a drawn triangle, because the Previewer renders the text glyph as an emoji box. */
   @Builder
   private playTriangle(): void {
-    Text('\u25B6').fontFamily(nunito(400)) // web draws the glyph (7.3 x 13 at 9.5 vp)
-      .fontSize(9.5)
+    Text('\u25B6').fontFamily(nunito(400) + ',PlayarrGlyphs') // web draws the glyph (7.3 x 13 at 9.5 vp)
+      .fontSize(9.5).lineHeight(webLineHeight(9.5)).halfLeading(true)
       .fontColor(this.playInk())
   }
 
@@ -1743,8 +1744,8 @@ struct Detail {
 
     Row({ space: Spacing.sm }) {
       if (isTvMetrics()) {
-        Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE))
-          .fontSize(PLAY_BUTTON_ICON_SIZE)
+        Text('\u25B6').fontFamily(nunitoAt(400, PLAY_BUTTON_ICON_SIZE) + ',PlayarrGlyphs')
+          .fontSize(PLAY_BUTTON_ICON_SIZE).lineHeight(webLineHeight(PLAY_BUTTON_ICON_SIZE)).halfLeading(true)
           .fontColor(this.playInk())
       } else {
         this.playTriangle()
@@ -1752,11 +1753,11 @@ struct Detail {
       Text(this.primaryLabel()).fontFamily(nunitoAt(700, isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)
+        .fontSize(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11).letterSpacing((!isTvMetrics() ? 0.127 : 0)).lineHeight(webLineHeight(isTvMetrics() ? PLAY_BUTTON_LABEL_SIZE : 11)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.playInk())
     }
-    .id(this.pillId(this.primaryLabel(), '', true))
+    .accessibilityText(this.pillName(this.primaryLabel(), '', true)).accessibilityRole(this.pillRole(true)).accessibilityGroup(true)
     .layoutWeight(1)
     .height(height)
     .padding({ left: Spacing.lg, right: Spacing.lg })
@@ -1864,18 +1865,18 @@ struct Detail {
   @Builder
   private actionPill(label: string, glyph: string, primary: boolean, enabled: boolean, onPress: () => void): void {
     Row({ space: tv(primary ? PILL_PRIMARY_GAP : PILL_SECONDARY_GAP) }) {
-      Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)))
-        .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))
+      Text(glyph).fontFamily(nunitoAt(400, tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)) + ',PlayarrGlyphs')
+        .fontSize(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT * 0.85 : PILL_SECONDARY_FONT * 1.15))).halfLeading(true)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : (resolvedThemeMode() === 'dark' ? PILL_GLYPH_DARK : PLAY_FOCUS_FILL))  // web: the secondary pills' glyph is pink
         .translate({ y: primary ? 1.6 : (glyph === '+' || glyph === '\u2713' ? -1.15 : 1.35) })
       Text(label).fontFamily(nunitoAt(700, tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)))
-        .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))
+        .fontSize(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT)).letterSpacing((isTvMetrics() ? -0.053 : 0)).lineHeight(webLineHeight(tv(primary ? PILL_PRIMARY_FONT : PILL_SECONDARY_FONT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(primary ? (this.filmPlayFocused(primary) ? '#ffffff' : toResourceColor(activeColors().bg)) : toResourceColor(activeColors().ink))
         .translate({ y: primary ? 1.5 : (glyph === '+' || glyph === '\u2713' ? -1.25 : 0) })
         .maxLines(1)
     }
-    .id(this.pillId(label, primary ? '' : glyph, primary))
+    .accessibilityText(this.pillName(label, primary ? '' : glyph, primary)).accessibilityRole(this.pillRole(primary)).accessibilityGroup(true)
     .height(tv(PILL_HEIGHT))
     .constraintSize({ minWidth: tv(primary ? PILL_PRIMARY_MIN_WIDTH : PILL_SECONDARY_MIN_WIDTH) })
     .padding({ left: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X), right: tv(primary ? PILL_PRIMARY_PADDING_X : PILL_PADDING_X) })
@@ -1973,6 +1974,7 @@ struct Detail {
       }
     }
     .alignItems(HorizontalAlign.Start)
+    .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 0.6 : 1.8 }) // web's pills start lower once the synopsis lines are web-height runs
   }
 
   /** The series' resume plan (web's Resume / Start button): the kicker and the label follow it, and it plays the plan's target. */
@@ -2019,7 +2021,7 @@ struct Detail {
     Column({ space: tv(8) }) {
       Stack() {
         Text(initialsOf((item as CastRow).name)).fontFamily(nunitoAt(500, tv(CAST_INITIALS_SIZE)))
-          .fontSize(tv(CAST_INITIALS_SIZE))
+          .fontSize(tv(CAST_INITIALS_SIZE)).lineHeight(webLineHeight(tv(CAST_INITIALS_SIZE))).halfLeading(true)
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColorWithAlpha(activeColors().ink, 0.6))
         if ((item as CastRow).headshot.length > 0) {
@@ -2038,7 +2040,7 @@ struct Detail {
       .focusable(true)
       .onFocus(this.otherDetailFocusReporter(this.workId, this.seriesFocusGeneration))
       Text((item as CastRow).name).fontFamily(nunitoAt(400, tv(12)))
-        .fontSize(tv(12))
+        .fontSize(tv(12)).lineHeight(webLineHeight(tv(12))).halfLeading(true)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -2062,18 +2064,19 @@ struct Detail {
   /** A rail's heading with the count line web shows under it (`16 chapters`, `30 people`). */
   @Builder
   private railHeading(heading: string, count: string, phoneSeasonHeading: boolean = false): void {
-    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 8.3 : tv(phoneSeasonHeading ? 7 : 6.5) }) {
+    Column({ space: phoneSeasonHeading && !isTvMetrics() ? 6.3 : tv(phoneSeasonHeading ? 7 : 6.5) - (isTvMetrics() ? 3.2 : 3.3) }) {
       Text(heading).fontFamily(nunitoAt(610, phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)))
-        .id('px:heading:' + heading)
-        .letterSpacing((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) // web's rail heading tracking
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))
+        
+        .letterSpacing((((phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)) * -0.03) + (isTvMetrics() ? 0.237 : 0)) + (!isTvMetrics() ? 0.077 : 0)) // web's rail heading tracking
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize)).lineHeight(webLineHeight(phoneSeasonHeading && !isTvMetrics() ? 16 : tv(TvGeometry.railHeadingSize))).halfLeading(true)
         .fontColor(toResourceColor(activeColors().ink))
         .translate({ y: isTvMetrics() ? -1.4 : 0 }) // web's heading box sits 1.4 higher
       Text(count).fontFamily(nunitoAt(400, phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)))
-        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)) // web: 9.98 on the TV
+        .fontSize(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10)).translate({ y: (!isTvMetrics() ? -1.68 : 0) }).lineHeight(webLineHeight(phoneSeasonHeading && !isTvMetrics() ? 10.4 : tv(10))).halfLeading(true) // web: 9.98 on the TV
         .fontColor(toResourceColor(activeColors().inkMuted))
     }
     .alignItems(HorizontalAlign.Start)
+    .margin({ bottom: isTvMetrics() ? -2.4 : 0 }) // web's cards start 2.4 higher under the heading block than its web-height lines leave them
   }
 
   /** The right-hand column on web: the Chapters rail, then the Cast rail, straight on the page (no glass panel). */
@@ -2168,7 +2171,7 @@ struct Detail {
       ForEach(
         this.rails,
         (rail: DetailRail) => {
-          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 2) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
+          Column({ space: isTvMetrics() ? tv(SERIES_SEASON_HEADER_CARD_GAP - 1.9) : PHONE_SEASON_HEADER_CARD_GAP }) { // -2: web's cards start 2 px higher
             this.railHeading(rail.heading, rail.items.length.toString() + ' episodes', true)
             MediaRail({
               railId: rail.id,
@@ -2205,7 +2208,7 @@ struct Detail {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: isTvMetrics() ? 0 : 36.8 })
+    .margin({ top: isTvMetrics() ? 0 : 35.2 })
   }
 
   @Builder
@@ -2338,19 +2341,34 @@ struct Detail {
     return this.synopsisText();
   }
 
-  /** The web accessible name and role of an action pill: Play is a link, Download and Playback carry the title, the rest read glyph and label. */
-  private pillId(label: string, glyph: string, primary: boolean): string {
+  /** The phone title broken into lines as web wraps it (a series title wraps at about 235 vp, balanced like the TV hero). */
+  private phoneTitleLines(): string[] {
+    const title: string = this.detail !== null ? this.detail.work.title : '';
+    const ui = this.getUIContext();
+    const box: number = ui.vp2px(this.detail !== null && this.detail.work.kind === 'series' ? 235 : 328);
+    return balanceTitle(title, (text: string): number => {
+      return ui.getMeasureUtils().measureText({ textContent: text, fontSize: 36, fontFamily: nunitoAt(560, 36), letterSpacing: -2.59 });
+    }, box).split('\n');
+  }
+
+  /** The accessible name of an action pill: Play carries the title, Download and Playback carry the title, the rest read glyph and label. */
+  private pillName(label: string, glyph: string, primary: boolean): string {
     const title = this.detail !== null ? this.detail.work.title : '';
     if (primary) {
-      return (this.detail !== null && this.detail.work.kind === 'series' ? 'px:button:' : 'px:link:') + (this.detail !== null && this.detail.work.kind === 'series' ? label : label) + ' ' + title;
+      return label + ' ' + title;
     }
     if (label === t('components.mediaContextMenu.download', 'Download')) {
-      return 'px:button:' + label + ' ' + title;
+      return label + ' ' + title;
     }
     if (label === t('pages.workDetail.playbackButtonLabel', 'Playback')) {
-      return 'px:button:Playback settings for ' + title;
+      return 'Playback settings for ' + title;
     }
-    return 'px:button:' + (glyph.length > 0 ? glyph + ' ' : '') + label;
+    return (glyph.length > 0 ? glyph + ' ' : '') + label;
+  }
+
+  /** A movie's Play opens the player (a link); every other pill acts in place (a button). */
+  private pillRole(primary: boolean): AccessibilityRoleType {
+    return primary && !(this.detail !== null && this.detail.work.kind === 'series') ? AccessibilityRoleType.HYPERLINK : AccessibilityRoleType.BUTTON;
   }
 
   private phoneKindTitle(): string {
@@ -2446,7 +2464,7 @@ struct Detail {
     Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 9 : 10), cross: LengthMetrics.vp(this.detail !== null && this.detail.work.kind === 'series' ? 7.3 : 8) } }) {
       ForEach(this.detail !== null ? metaChips(this.detail, this.resumePlan) : [], (chip: string, index: number) => {
         Text(chip).fontFamily(nunitoAt(index === 0 ? 700 : 400, 10.24))
-          .fontSize(10.24)
+          .fontSize(10.24).lineHeight(webLineHeight(10.24)).halfLeading(true)
           .fontWeight(index === 0 ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(toResourceColor(index === 0 ? activeColors().inkSoft : activeColors().inkMuted))
       }, (chip: string, index: number): string => index.toString() + chip)
@@ -2462,18 +2480,18 @@ struct Detail {
       if (glyph.length > 0) {
         // web: the pill glyphs are the brand pink (accent in light)
         Text(glyph).fontFamily(nunito(400))
-          .fontSize(size <= 8 ? 9.2 : 12.88) // web's glyph sizes
+          .fontSize(size <= 8 ? 9.2 : 12.88).lineHeight(webLineHeight(size <= 8 ? 9.2 : 12.88)).halfLeading(true) // web's glyph sizes
           .fontWeight(FontWeight.Normal)
           .fontColor(brandInk())
       }
       // web: the 8 vp pills (Download, Add to ...) are bold in the ink colour, the larger Playback pill medium
       Text(label).fontFamily(nunitoAt(700, size))
-        .fontSize(size)
+        .fontSize(size).lineHeight(webLineHeight(size)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
-      .id(this.pillId(label, glyph, false))
+      .accessibilityText(this.pillName(label, glyph, false)).accessibilityRole(this.pillRole(false)).accessibilityGroup(true)
       .height(44)
       .justifyContent(FlexAlign.Center)
       .padding({ left: 16, right: 16 })
@@ -2493,15 +2511,15 @@ struct Detail {
   private touchSeriesAction(label: string, onTap: () => void): void {
     Row({ space: 8.79 }) {
       Text('+').fontFamily(nunito(400))
-        .fontSize(9.2)
+        .fontSize(9.2).lineHeight(webLineHeight(9.2)).halfLeading(true)
         .fontColor(brandInk())
       Text(label).fontFamily(nunitoAt(700, 8))
-        .fontSize(8)
+        .fontSize(8).letterSpacing((!isTvMetrics() ? -0.049 : 0)).lineHeight(webLineHeight(8)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().ink))
         .maxLines(1)
     }
-    .id(this.pillId(label, '+', false))
+    .accessibilityText(this.pillName(label, '+', false)).accessibilityRole(this.pillRole(false)).accessibilityGroup(true)
     .padding({ left: 16, right: 16 })
     .height(44)
     .justifyContent(FlexAlign.Center)
@@ -2521,12 +2539,12 @@ struct Detail {
       Row({ space: 6 }) {
         this.playTriangle()
         Text(this.primaryLabel()).fontFamily(nunitoAt(700, 11))
-          .fontSize(11)
+          .fontSize(11).lineHeight(webLineHeight(11)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .maxLines(1)
           .fontColor(toResourceColor(activeColors().bg))
       }
-      .id(this.pillId(this.primaryLabel(), '', true))
+      .accessibilityText(this.pillName(this.primaryLabel(), '', true)).accessibilityRole(this.pillRole(true)).accessibilityGroup(true)
       .width(100)
       .height(44)
       .justifyContent(FlexAlign.Center)
@@ -2626,41 +2644,47 @@ struct Detail {
         Column({ space: TouchGeometry.detailListSpacing }) {
           Column() {
             Text(this.resumePlan !== null && resumeKicker(this.resumePlan).length > 0 ? resumeKicker(this.resumePlan) : (this.detail !== null ? (this.detail.work.genres.length > 0 ? this.detail.work.genres[0] : kindLabel(this.detail.work.kind)) : '')).fontFamily(nunitoAt(820, 10.56))
-              .fontSize(10.56)
+              .fontSize(10.56).lineHeight(webLineHeight(10.56)).halfLeading(true)
               .height(16)
               .fontWeight(FontWeight.Bolder)
-              .letterSpacing(0.8)
+              .letterSpacing((0.8) + (!isTvMetrics() ? -0.153 : 0))
               .textCase(TextCase.UpperCase)
               .fontColor(brandInk())
               .translate({ y: -1.1 }) // web's kicker box sits 1.1 higher
               .margin({ bottom: this.detail !== null && this.detail.work.kind === 'series' ? 12.7 : 11.3 })
-            Text(this.detail !== null ? this.detail.work.title : '').fontFamily(nunitoAt(560, 36))
-              .id('px:heading:' + (this.detail !== null ? this.detail.work.title : ''))
-              .fontSize(36) // measured against the static refs
-              .fontWeight(FontWeight.Medium)
-              .letterSpacing(-2.59) // web -0.072em (fitted to the refs' run width)
-              .lineHeight(34)
-              .fontColor(toResourceColor(activeColors().ink))
-              // web phone: a series title wraps at about 235 vp (the Previewer fits "Golden Cathedral" in 250, web balances the lines) (measured on the static fixture: "Golden / Cathedral 1")
-              .constraintSize({ maxWidth: this.detail !== null && this.detail.work.kind === 'series' ? 235 : '100%' })
-              .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -4.9 : -3.2 }) // web's title box sits higher than ArkUI lays it out
+            // web: each wrapped line of the title is a run as tall as the font's content area (49), the lines only 34 apart; one Text per
+            // line (the breaks balanced like the TV hero) with the pitch from a negative margin, as ArkUI's line spacing cannot be negative
+            Column() {
+              ForEach(this.phoneTitleLines(), (line: string, index: number) => {
+                Text(line).fontFamily(nunitoAt(560, 36))
+                .fontSize(36) // measured against the static refs
+                .fontWeight(FontWeight.Medium)
+                .letterSpacing((-2.59) + (!isTvMetrics() ? -0.089 : 0)) // web -0.072em (fitted to the refs' run width)
+                .lineHeight(webLineHeight(36)).lineSpacing(webLineSpacing(34, 36)).halfLeading(true)
+                .fontColor(toResourceColor(activeColors().ink))
+                  .margin({ top: index > 0 ? 34 - webLineHeight(36) : 0 })
+              }, (line: string, index: number) => `${index}-${line}`)
+            }
+            .alignItems(HorizontalAlign.Start)
+            .translate({ y: this.detail !== null && this.detail.work.kind === 'series' ? -3.2 : -1.5 }) // web's title box sits higher than ArkUI lays it out
+            .margin({ top: (34 - webLineHeight(36)) / 2, bottom: (34 - webLineHeight(36)) / 2 }) // web: the run is 49 tall in a 34 line box
             if (this.detail !== null && planEpisodeTitle(this.detail, this.resumePlan).length > 0) {
               Text(planEpisodeTitle(this.detail, this.resumePlan)).fontFamily(nunitoAt(500, 14.4))
-                .fontSize(14.4)
+                .fontSize(14.4).letterSpacing((!isTvMetrics() ? -0.628 : 0)).lineHeight(webLineHeight(14.4)).halfLeading(true)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(toResourceColor(activeColors().inkSoft))
-                .id('px:heading:' + planEpisodeTitle(this.detail, this.resumePlan))
+                
                 .maxLines(1)
                 .translate({ y: -1.85 })
-                .margin({ top: 5.7 })
+                .margin({ top: 2 })
             }
             this.touchMetaChips()
             Column() {
               Text(this.detail !== null ? planSynopsis(this.detail, this.resumePlan) : '').fontFamily(nunitoAt(400, 11.52))
-                .fontSize(11.52)
+                .fontSize(11.52).letterSpacing((!isTvMetrics() ? -0.073 : 0))
                 .fontColor(toResourceColor(activeColors().inkMuted))
-                .lineHeight(16.7)
-                .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 12 })
+                .lineHeight(webLineHeight(11.52)).lineSpacing(webLineSpacing(16.7, 11.52)).halfLeading(true)
+                .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? (planEpisodeTitle(this.detail, this.resumePlan).length > 0 ? 12.3 : 10) : 10.6 })
                 .maxLines(3)
                 // web phone: a series synopsis reserves its three lines, so the actions sit at the same y for any text
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -2674,7 +2698,7 @@ struct Detail {
             }
             .width('100%')
             .alignItems(HorizontalAlign.Start)
-            .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 12.5 : 12 })
+            .margin({ top: this.detail !== null && this.detail.work.kind === 'series' ? 11.2 : 12 })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
@@ -2741,7 +2765,7 @@ struct Detail {
         .hitTestBehavior(HitTestMode.None)
       Row({ space: 10 }) {
         Text('←').fontFamily(arrowFont(720))
-          .fontSize(12.8)
+          .fontSize(12.8).lineHeight(webLineHeight(12.8)).halfLeading(true)
           .fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
           .textAlign(TextAlign.Center)
@@ -2751,17 +2775,17 @@ struct Detail {
           .borderRadius(PHONE_BACK_SIZE / 2)
           .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.7))
           .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.08) })
-          .id('px:button:Back to ' + this.phoneKindTitle())
+          .accessibilityText('Back to ' + this.phoneKindTitle()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .onClick(() => {
             popRoute(getNavStack());
           })
         Text(this.phoneKindTitle()).fontFamily(nunitoAt(580, 21.6))
-          .id('px:heading:' + this.phoneKindTitle())
-          .fontSize(21.6)
-          .letterSpacing(-0.972)
+          
+          .fontSize(21.6).lineHeight(webLineHeight(21.6)).halfLeading(true)
+          .letterSpacing((-0.972) + (!isTvMetrics() ? -0.096 : 0))
           .fontWeight(FontWeight.Medium)
           .fontColor(toResourceColor(activeColors().ink))
-          .translate({ y: -1.2 }) // web's title box sits 1.2 higher
+          .translate({ y: (-1.2) + (!isTvMetrics() ? 1.2 : 0) }) // web's title box sits 1.2 higher
       }
       .padding({ left: atLeast(16, this.safeLeft), top: atLeast(PHONE_HEADER_TOP, this.safeTop) })
       .alignItems(VerticalAlign.Center)

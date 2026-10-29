@@ -3,7 +3,7 @@
  * buttons on the right edge; the current letter is filled with ink. Geometry from the live web TV DOM.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -68,7 +68,7 @@ export struct AlphabetRail {
               .width(TOUCH_DISC)
               .height(TOUCH_DISC)
               .textAlign(TextAlign.Center)
-              .fontSize(TOUCH_LETTER_SIZE)
+              .fontSize(TOUCH_LETTER_SIZE).lineHeight(webLineHeight(TOUCH_LETTER_SIZE)).halfLeading(true)
               .fontWeight(FontWeight.Medium)
               .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
               .translate({ y: -1.2 }) // web's letter sits 1.2 higher
@@ -76,7 +76,7 @@ export struct AlphabetRail {
           .width(TOUCH_DISC)
           .height(TOUCH_DISC)
         }
-        .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
+        .accessibilityText((letter === '#' ? 'Numbers and symbols' : letter)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .width(TOUCH_LETTER_WIDTH)
         .layoutWeight(1)
         .borderRadius(11.3) // web: half the short side of the letter's box
@@ -118,7 +118,7 @@ export struct AlphabetRail {
           .width(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
           .height(tv(letter === this.activeLetter ? TV_DISC : BUTTON_SIZE))
           .textAlign(TextAlign.Center)
-          .fontSize(tv(LETTER_SIZE))
+          .fontSize(tv(LETTER_SIZE)).lineHeight(webLineHeight(tv(LETTER_SIZE))).halfLeading(true)
           .fontColor(toResourceColor(letter === this.activeLetter ? activeColors().bg : activeColors().inkMuted))
       }
       .translate({ y: -tv(1.5) })
@@ -139,7 +139,7 @@ export struct AlphabetRail {
             // Web's current letter is a 24 px disc in ink-soft (not the 44 px hit area), the letters sit ~1.5 px high.
             this.tvLetter(letter)
           }
-          .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
+          .accessibilityText((letter === '#' ? 'Numbers and symbols' : letter)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .width(tv(BUTTON_SIZE))
           .height(tv(BUTTON_SIZE))
           .borderRadius(tv(BUTTON_SIZE / 2))

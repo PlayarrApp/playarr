@@ -78,11 +78,27 @@ sub onSpecChange()
                 x = advanceOf(Left(line, j)) - advanceOf(piece) + tracking * (i - 1)
                 glyph = nextGlyph()
                 glyph.font = font
-                ' The font actually set on this Label, readable through ECP query/app-ui (node names are printed; fonts are not).
-                glyph.id = "f" + Str(weight).Trim() + "s" + Str(size).Trim()
+                glyph.width = 0
+                glyph.height = 0
+                if spec.symbol = true
+                    glyph.font = PlayarrSymbolFont(piece, size, weight)
+                end if
+                ' The font actually drawn (the bundled instance's weight, the integer pixel size the Font node takes), readable through ECP query/app-ui (node names are printed; fonts are not).
+                drawnWeight = PlayarrInstanceWeight(weight)
+                if spec.symbol = true then drawnWeight = PlayarrSymbolWeight(piece, weight)
+                glyph.id = "f" + Str(drawnWeight).Trim() + "s" + Str(Int(size + 0.5)).Trim()
+                ' Untracked text is set a word per Label, tracked text a character per Label: the export joins words with a space and characters directly.
+                if tracking = 0 then glyph.id = glyph.id + "~w" else glyph.id = glyph.id + "~c"
+                role = "text"
+                if spec.aria <> invalid and spec.aria <> "" then role = spec.aria
+                if role <> "text" then glyph.id = glyph.id + "|" + role
                 glyph.text = piece
+                ' The Label keeps the box Roku lays out for its glyph run (width and height of the font as the firmware reports them).
                 if spec.color <> invalid
                     glyph.color = spec.color
+                    ' An explicit colour belongs to the owner (a WebLabel re-themes itself): keep the scene's theme pass off this glyph.
+                    if not glyph.hasField("themeRole") then glyph.addFields({ themeRole: "" })
+                    glyph.themeRole = "-"
                 else
                     glyph.color = ThemeColor(spec.role)
                     ThemeSetRole(glyph, spec.role)

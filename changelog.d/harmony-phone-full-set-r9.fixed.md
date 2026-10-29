@@ -1,0 +1,1 @@
+- HarmonyOS parity capture: the full phone set taps the Appearance panel's artwork buttons at their current positions, so the cover-size screens differ from each other again.

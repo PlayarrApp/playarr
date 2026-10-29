@@ -107,9 +107,9 @@ internal sealed class PlaylistsScreen : IPage
         back.BorderlineWidth = 1;
         back.BorderlineColor = Ui.LineA(_theme, 0.153f);
         back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _theme.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "link", "Back to Home", radius: 50);
+        Sem.Tag(back, "link", "Back to Home");
         _root.Add(back);
-        _title = Ui.Text("Playlists", 226.6f, 56.2f, 33.6f, 600, _theme.Ink, 600, 50, spacing: -1.51f);
+        _title = Ui.Heading("Playlists", 226.6f, 56.2f, 33.6f, 600, _theme.Ink, 600, 50, spacing: -1.51f);
         _root.Add(_title);
         _count = new PageSubtitle(env, _root, "Playlists");
         _eyebrow = Ui.Text("YOUR COLLECTION", 153.6f, 259.2f, 12.288f, 800, _theme.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f);
@@ -535,7 +535,7 @@ internal sealed class PlaylistsScreen : IPage
         {
             var entry = entries[index];
             var title = entry.Playlist.Name;
-            var heading = Ui.Text(title, DetailFirstCardX, DetailHeadingY + index * DetailTrackPitch, 17.664f, 610,
+            var heading = Ui.Heading(title, DetailFirstCardX, DetailHeadingY + index * DetailTrackPitch, 17.664f, 610,
                 _theme.InkMuted, 700, 24.7296f, spacing: -0.53f);
             var meta = Ui.Text(MediaTypeWord(entry.Playlist.MediaType), DetailFirstCardX, DetailHeadingY + 25f + index * DetailTrackPitch,
                 9.984f, 500, _theme.InkMuted, 700, 13.9776f);

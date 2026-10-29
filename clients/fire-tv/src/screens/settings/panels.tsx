@@ -16,7 +16,7 @@ import {saveAvatarPreset} from '../../lib/profileAvatarPref';
 import {mix} from '../../theme/color';
 import {useTheme, type ThemePreference} from '../../theme/ThemeProvider';
 import {Dropdown} from '../../tv/Dropdown';
-import {Button, Divider, Field, FormLabel, Hint, Muted, SectionTitle, Segmented} from '../../tv/forms';
+import {Button, Divider, Field, FormLabel, Hint, Muted, Section, SectionTitle, Segmented} from '../../tv/forms';
 import {Box, T, u} from '../../tv/kit';
 
 import {readArtworkSize, writeArtworkSize, type ArtworkSize} from '../../lib/libraryView';
@@ -57,50 +57,50 @@ export function AppearancePanel(): React.ReactElement {
         onChange={setPreference}
       />
       <Gap h={30.2} />
-      <Divider w={1042.3} />
+      <Section>
+        <SectionTitle>{t('settings.appearance.homeViewTitle')}</SectionTitle>
+        <Gap h={5.6} />
+        <T size={13.12} weight={400} lh={20.3} color={colour.inkMuted}>
+          {t('settings.appearance.homeViewDescription')}
+        </T>
+        <Gap h={16.2} />
+        <Segmented
+          accessibilityLabel={t('settings.appearance.homeViewAriaLabel')}
+          value={homeView}
+          options={[
+            {id: 'thumbnail', label: t('settings.appearance.homeViewThumbnail')},
+            {id: 'cover', label: t('settings.appearance.homeViewCover')},
+          ]}
+          onChange={(next) => {
+            setHomeView(next);
+            if (typeof localStorage === 'undefined') return;
+            if (next === 'thumbnail') localStorage.removeItem(HOME_VIEW_KEY);
+            else localStorage.setItem(HOME_VIEW_KEY, next);
+          }}
+        />
+      </Section>
       <Gap h={30.2} />
-      <SectionTitle>{t('settings.appearance.homeViewTitle')}</SectionTitle>
-      <Gap h={5.6} />
-      <T size={13.12} weight={400} lh={20.3} color={colour.inkMuted}>
-        {t('settings.appearance.homeViewDescription')}
-      </T>
-      <Gap h={16.2} />
-      <Segmented
-        accessibilityLabel={t('settings.appearance.homeViewAriaLabel')}
-        value={homeView}
-        options={[
-          {id: 'thumbnail', label: t('settings.appearance.homeViewThumbnail')},
-          {id: 'cover', label: t('settings.appearance.homeViewCover')},
-        ]}
-        onChange={(next) => {
-          setHomeView(next);
-          if (typeof localStorage === 'undefined') return;
-          if (next === 'thumbnail') localStorage.removeItem(HOME_VIEW_KEY);
-          else localStorage.setItem(HOME_VIEW_KEY, next);
-        }}
-      />
-      <Gap h={30.2} />
-      <Divider w={1042.3} />
-      <Gap h={30.2} />
-      <SectionTitle>{t('settings.appearance.artworkSizeTitle')}</SectionTitle>
-      <Gap h={5.6} />
-      <T size={13.12} weight={400} lh={20.3} color={colour.inkMuted}>
-        {t('settings.appearance.artworkSizeDescription')}
-      </T>
-      <Gap h={16.2} />
-      <Segmented
-        accessibilityLabel={t('settings.appearance.artworkSizeAriaLabel')}
-        value={artworkSize}
-        options={[
-          {id: 'small', label: t('pages.library.sizeSmall')},
-          {id: 'medium', label: t('pages.library.sizeMedium')},
-          {id: 'large', label: t('pages.library.sizeLarge')},
-        ]}
-        onChange={(next) => {
-          setArtworkSize(next as ArtworkSize);
-          writeArtworkSize(next as ArtworkSize);
-        }}
-      />
+      <Section>
+        <SectionTitle>{t('settings.appearance.artworkSizeTitle')}</SectionTitle>
+        <Gap h={5.6} />
+        <T size={13.12} weight={400} lh={20.3} color={colour.inkMuted}>
+          {t('settings.appearance.artworkSizeDescription')}
+        </T>
+        <Gap h={16.2} />
+        <Segmented
+          accessibilityLabel={t('settings.appearance.artworkSizeAriaLabel')}
+          value={artworkSize}
+          options={[
+            {id: 'small', label: t('pages.library.sizeSmall')},
+            {id: 'medium', label: t('pages.library.sizeMedium')},
+            {id: 'large', label: t('pages.library.sizeLarge')},
+          ]}
+          onChange={(next) => {
+            setArtworkSize(next as ArtworkSize);
+            writeArtworkSize(next as ArtworkSize);
+          }}
+        />
+      </Section>
     </PanelBox>
   );
 }

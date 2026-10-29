@@ -5,18 +5,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
-import android.view.PixelCopy
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -25,19 +21,25 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.compositeOver
 import io.playarr.shared.designsystem.theme.PlayarrWebTheme
 import io.playarr.shared.designsystem.page.parityBoxes
-import io.playarr.shared.designsystem.page.ParityBox
 import io.playarr.shared.designsystem.page.parityLayoutEnabled
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
 /**
- * Debug builds only (docs/parity/LAYOUT.md): `am broadcast -a io.playarr.mobile.PARITY_LAYOUT` makes the app write its own
- * layout to `files/parity-layout.json`: the Compose semantics tree with the text style the app really used (font size, weight,
- * colour, glyph-run bounds from the laid-out text), controls and images. Backgrounds are read from a window copy at the
- * element's corners. shortcut: containers with only a painted background are not in the semantics tree, so they are not exported yet.
+ * Debug builds only (docs/parity/LAYOUT.md): `am broadcast -a io.playarr.mobile.PARITY_LAYOUT` makes the app write what it laid out to
+ * `files/parity-layout.json`. It reads nothing but the running app:
+ *  - one `text` (or `heading`, when the node is a Compose heading) element per laid-out line, from the app's own TextLayoutResult
+ *    (line left and right, line top and bottom) through the node's real window transform, with the resolved text style;
+ *  - one control element per merged semantics node that is clickable, has a Role, is a slider or is an editable field, named by its
+ *    real contentDescription or text, with the role Android reports (a clickable without a Role is a `button`) and the corner radius
+ *    the control's shape declares, resolved against its measured size;
+ *  - the `parityBox` records: painted containers, images and dots, by measured bounds.
+ * Elements wholly outside the viewport, clipped away, hidden from accessibility or covered by a higher opaque window are not exported.
+ * No colours are written here: the driver reads them from the screenshot of the same frame. Units are converted by the display density only.
  */
 internal object PlayarrLayoutExport {
     const val ACTION = "io.playarr.mobile.PARITY_LAYOUT"
@@ -51,8 +53,7 @@ internal object PlayarrLayoutExport {
                 runCatching { export(activity, screen, theme, file) }.onFailure { parityLog("layout_export failed ${it.javaClass.simpleName} ${it.message?.take(120)}") }
             }
         }
-        val filter = IntentFilter(ACTION)
-        androidx.core.content.ContextCompat.registerReceiver(activity, receiver, filter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
+        androidx.core.content.ContextCompat.registerReceiver(activity, receiver, IntentFilter(ACTION), androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
     }
 
     private fun composeViews(root: View, out: MutableList<View>) {
@@ -60,7 +61,7 @@ internal object PlayarrLayoutExport {
         if (root is ViewGroup) for (i in 0 until root.childCount) composeViews(root.getChildAt(i), out)
     }
 
-    /** Every window of the app (the main one and dialogs such as the drawers) through the hidden window manager root list. */
+    /** Every window of the app, bottom to top, through the hidden window manager root list (the main one and dialogs such as the drawers). */
     private fun rootViews(activity: Activity): List<View> {
         val roots = mutableListOf<View>()
         runCatching {
@@ -73,145 +74,207 @@ internal object PlayarrLayoutExport {
         return roots
     }
 
+    private class Item(val window: Int, val json: JSONObject, val x: Float, val y: Float, val w: Float, val h: Float, val occludes: Boolean, val hook: Boolean = false)
+
     private fun export(activity: Activity, screen: String, theme: String, file: File) {
-        val roots = rootViews(activity)
         val mainView = activity.window.decorView
-        mainRoot = mainView.rootView
-        mainOrigin = IntArray(2).also { mainView.getLocationOnScreen(it) }
-        val bitmap = Bitmap.createBitmap(mainView.width, mainView.height, Bitmap.Config.ARGB_8888)
-        PixelCopy.request(activity.window, bitmap, { result ->
-            runCatching {
-                val elements = JSONArray()
-                val shown = roots.filter { it.isShown || it === mainView }
-                for (root in shown) {
-                    val views = mutableListOf<View>().also { composeViews(root, it) }
-                    for (view in views) {
-                        val owner = view.javaClass.getMethod("getSemanticsOwner").invoke(view) as SemanticsOwner
-                        // The window's own bounds in the screen (a dialog sits at an offset), so rects are app-viewport px.
-                        val loc = IntArray(2).also { view.getLocationOnScreen(it) }
-                        val main = IntArray(2).also { mainView.getLocationOnScreen(it) }
-                        walk(owner.unmergedRootSemanticsNode, loc[0] - main[0], loc[1] - main[1], bitmap.takeIf { result == PixelCopy.SUCCESS }, elements)
-                    }
-                }
-                val bmp = bitmap.takeIf { result == PixelCopy.SUCCESS }
-                val mainLoc = IntArray(2).also { mainView.getLocationOnScreen(it) }
+        val width = mainView.width.toFloat(); val height = mainView.height.toFloat()
+        val unit = 1f / activity.resources.displayMetrics.density
+        val main = IntArray(2).also { mainView.getLocationOnScreen(it) }
+        val items = mutableListOf<Item>()
+        val pending = mutableListOf<Triple<JSONObject, Int, Boolean>>()
+        val shown = rootViews(activity).filter { it.isShown || it === mainView }
+        shown.forEachIndexed { windowIndex, root ->
+            for (view in mutableListOf<View>().also { composeViews(root, it) }) {
+                val owner = view.javaClass.getMethod("getSemanticsOwner").invoke(view) as SemanticsOwner
+                val loc = IntArray(2).also { view.getLocationOnScreen(it) }
+                val tree = Tree()
+                chains(owner.unmergedRootSemanticsNode, emptyList(), false, tree)
+                val ctx = Ctx(windowIndex, (loc[0] - main[0]).toFloat(), (loc[1] - main[1]).toFloat(), unit, width, height, items, tree)
                 synchronized(parityBoxes) {
                     for (box in parityBoxes.toList()) {
-                        box.refresh()
-                        if (!box.view.isShown || box.bounds.width < 1f || box.bounds.height < 1f) continue
-                        val loc = IntArray(2).also { box.view.getLocationOnScreen(it) }
-                        val fitted = box.fit?.invoke(box.bounds) ?: box.bounds
-                        val x = fitted.left + loc[0] - mainLoc[0]; val y = fitted.top + loc[1] - mainLoc[1]
-                        val w = fitted.width; val h = fitted.height
-                        val e = JSONObject().put("text", box.label).put("role", box.role)
-                            .put("rect", JSONObject().put("x", r2(x)).put("y", r2(y)).put("w", r2(w)).put("h", r2(h)))
-                            .put("color", box.style?.let { hex(it.third.toArgb(), true) } ?: JSONObject.NULL)
-                            .put("background", if (box.background != androidx.compose.ui.graphics.Color.Unspecified) hex(box.background.toArgb()) else insideColour(bmp, x.toInt(), y.toInt(), w.toInt(), h.toInt()) ?: JSONObject.NULL)
-                            .put("fontSize", box.style?.first?.toDouble() ?: JSONObject.NULL).put("fontWeight", box.style?.second ?: JSONObject.NULL)
-                        // Radii are written as the web's CSS px (the dp value the composable was tagged with); the driver does not scale them.
-                        // Tagged radius (CSS px; 50 and above mean a fully rounded shape) and the same radius as drawn, in device px.
-                        if (box.radius > 0f) { e.put("radius", box.radius.toDouble()); e.put("radiusPx", (box.radius * box.density).toDouble()) }
+                        if (box.view.rootView !== root) continue
+                        val b = box.bounds() ?: continue
+                        box.visible() ?: continue
+                        // A box inside a subtree the app hides from accessibility (a drawer covers the page) is not shown.
+                        if (box.id in tree.hiddenBoxes) continue
+                        ctx.boxes[box.id] = box
+                        val x = b.left + ctx.dx; val y = b.top + ctx.dy
+                        val e = JSONObject().put("text", "").put("role", if (box.kind == "image") "image" else box.kind)
+                            .put("rect", rect(x, y, b.width, b.height, unit)).put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
+                        val drawn = box.drawnRadiusPx
+                        if (drawn != null && drawn > 0f) e.put("radius", radius(drawn * box.scale(), b.width, b.height, unit))
+                        else if (box.radius > 0f) e.put("radius", radius(box.radius * box.density * box.scale(), b.width, b.height, unit))
                         if (box.opacity < 1f) e.put("opacity", box.opacity.toDouble())
-                        elements.put(e)
+                        val painted = box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha > 0f
+                        if (painted) ctx.fills[box.id] = box.fill
+                        // kind "fill": a surface drawn behind a text or control that web models as that element's own background (a pill): it
+                        // backs its descendants but is not an element of its own.
+                        if (box.kind == "fill") continue
+                        pending += Triple(e, box.id, painted)
+                        ctx.add(e, x, y, b.width, b.height, occludes = box.kind == "container" && painted && box.fill.alpha >= 0.5f, hook = true)
                     }
                 }
-                // Stable order: the semantics tree and the box set are walked in composition order, which varies between runs.
-                val sorted = (0 until elements.length()).map { elements.getJSONObject(it) }.sortedWith(compareBy({ it.getJSONObject("rect").getDouble("y") }, { it.getJSONObject("rect").getDouble("x") }, { it.getString("role") }, { it.getString("text") }, { it.getJSONObject("rect").getDouble("w") }))
-                val ordered = JSONArray().also { arr -> sorted.forEach { arr.put(it) } }
-                val doc = JSONObject()
-                    .put("screen", screen).put("theme", theme)
-                    .put("viewport", JSONObject().put("w", mainView.width).put("h", mainView.height).put("dpr", 1))
-                    .put("clockPinned", parityClock != null)
-                    .put("elements", ordered)
-                file.writeText(doc.toString())
-                parityLog("layout_export ok count=${elements.length()}")
-            }.onFailure { parityLog("layout_export failed ${it.javaClass.simpleName} ${it.message?.take(120)}") }
-        }, Handler(Looper.getMainLooper()))
+                // Like the browser's backdrop: the fills of the box's own tree ancestors (and its own), outer to inner. A box that paints nothing
+                // itself (an image, a status dot) shows what its ancestors paint. A fill that is not an ancestor (a sibling backdrop layer) does not count.
+                for ((e, id, _) in pending) ctx.behind(ctx.boxChain(id))?.let { e.put("background", it) }
+                pending.clear()
+                walkText(owner.unmergedRootSemanticsNode, ctx, hidden = false)
+                walkControls(owner.rootSemanticsNode, ctx)
+            }
+        }
+        // A higher window's opaque container covers everything of a lower window that lies wholly inside it (docs/parity/LAYOUT.md occlusion rule).
+        val unique: List<Item> = items
+        val kept = unique.filter { item ->
+            unique.none { top -> top.window > item.window && top.occludes && item.x >= top.x && item.y >= top.y && item.x + item.w <= top.x + top.w && item.y + item.h <= top.y + top.h }
+        }
+        val ordered = kept.sortedWith(compareBy({ it.y }, { it.x }, { it.json.getString("role") }, { it.json.getString("text") }, { it.w })).map { it.json }
+        val doc = JSONObject()
+            .put("screen", screen).put("theme", theme).put("paletteDark", PlayarrWebTheme.palette.dark)
+            .put("viewport", JSONObject().put("w", r2(width * unit)).put("h", r2(height * unit)).put("dpr", 1))
+            .put("clockPinned", parityClock != null).put("occluded", unique.size - kept.size)
+            .put("elements", JSONArray().also { arr -> ordered.forEach { arr.put(it) } })
+        file.writeText(doc.toString())
+        parityLog("layout_export ok count=${ordered.size}")
+    }
+
+    /** The unmerged semantics tree of one window: per node the box ids painted by it (own) and by its ancestors (chain), and the boxes the app hides. */
+    private class Tree {
+        val own = mutableMapOf<Int, List<Int>>()
+        val chain = mutableMapOf<Int, List<Int>>()
+        val hiddenBoxes = mutableSetOf<Int>()
+    }
+
+    private fun chains(node: SemanticsNode, above: List<Int>, hidden: Boolean, out: Tree) {
+        val own = node.config.filter { it.key.name == io.playarr.shared.designsystem.page.PARITY_BOX_KEY_NAME }.map { it.value as Int }.sorted()
+        val chain = above + own
+        val hide = hidden || node.config.contains(SemanticsProperties.InvisibleToUser)
+        out.own[node.id] = own; out.chain[node.id] = chain
+        if (hide) out.hiddenBoxes += own
+        node.children.forEach { chains(it, chain, hide, out) }
+    }
+
+    private class Ctx(val window: Int, val dx: Float, val dy: Float, val unit: Float, val width: Float, val height: Float, val items: MutableList<Item>, val tree: Tree, val fills: MutableMap<Int, androidx.compose.ui.graphics.Color> = mutableMapOf(), val boxes: MutableMap<Int, io.playarr.shared.designsystem.page.ParityBox> = mutableMapOf()) {
+        fun boxChain(boxId: Int): List<Int> = tree.own.entries.firstOrNull { boxId in it.value }?.let { tree.chain[it.key] } ?: emptyList()
+        fun chainOf(node: SemanticsNode): List<Int> = tree.chain[node.id].orEmpty()
+        fun ownBoxes(node: SemanticsNode) = tree.own[node.id].orEmpty().mapNotNull { boxes[it] }
+        /** The colour behind an element, as the browser's backdrop: its own and its ancestors' fills composited from the outermost in, over white. */
+        fun behind(chain: List<Int>): String? {
+            val under = chain.mapNotNull { fills[it] }
+            if (under.isEmpty()) return null
+            var c = androidx.compose.ui.graphics.Color.White
+            for (f in under) c = f.compositeOver(c)
+            return hex(c.toArgb())
+        }
+        /** Adds an element unless it lies wholly outside the viewport. Rectangles are in window px. */
+        fun add(json: JSONObject, x: Float, y: Float, w: Float, h: Float, occludes: Boolean = false, hook: Boolean = false) {
+            if (w <= 0f || h <= 0f || x >= width || y >= height || x + w <= 0f || y + h <= 0f) return
+            items += Item(window, json, x, y, w, h, occludes, hook)
+        }
     }
 
     private fun r2(v: Float) = Math.round(v * 100) / 100.0
+    private fun rect(x: Float, y: Float, w: Float, h: Float, unit: Float) = JSONObject().put("x", r2(x * unit)).put("y", r2(y * unit)).put("w", r2(w * unit)).put("h", r2(h * unit))
+    /** A declared corner radius (px) clamped to half the short side, as the drawn shape resolves it. */
+    private fun radius(px: Float, w: Float, h: Float, unit: Float) = r2(minOf(px, minOf(w, h) / 2f) * unit)
 
-    private fun hex(argb: Int, withAlpha: Boolean = false): String =
-        "#%02x%02x%02x".format((argb shr 16) and 255, (argb shr 8) and 255, argb and 255) + if (withAlpha && (argb ushr 24) < 255) "%02x".format(argb ushr 24) else ""
+    private fun hex(argb: Int): String =
+        "#%02x%02x%02x".format((argb shr 16) and 255, (argb shr 8) and 255, argb and 255) + if ((argb ushr 24) < 255) "%02x".format(argb ushr 24) else ""
 
-    private fun backgroundAround(bitmap: Bitmap?, x: Int, y: Int, w: Int, h: Int): String? {
-        bitmap ?: return null
-        fun px(px: Int, py: Int) = bitmap.getPixel(px.coerceIn(0, bitmap.width - 1), py.coerceIn(0, bitmap.height - 1))
-        val samples = listOf(px(x - 2, y - 2), px(x - 2, y + h + 2), px(x + w + 2, y - 2), px(x + w + 2, y + h + 2), px(x - 2, y + h / 2), px(x + w + 2, y + h / 2))
-        return hex(samples.groupingBy { it }.eachCount().maxByOrNull { it.value }!!.key)
-    }
-
-    /** The colour of the element itself: a pixel just inside its left edge, mid height (the fill, or what shows through). */
-    private fun insideColour(bitmap: Bitmap?, x: Int, y: Int, w: Int, h: Int): String? {
-        bitmap ?: return null
-        return hex(bitmap.getPixel((x + minOf(3, w / 2)).coerceIn(0, bitmap.width - 1), (y + h / 2).coerceIn(0, bitmap.height - 1)))
-    }
-
-    /** The colour behind a text run: the innermost recorded container that holds it with a declared fill, else the page background. */
-    private fun textBackground(x: Float, y: Float, w: Float, h: Float): String? {
-        val cx = x + w / 2; val cy = y + h / 2
-        val inner = synchronized(parityBoxes) { parityBoxes.toList() }.onEach { it.refresh() }.filter { it.background != androidx.compose.ui.graphics.Color.Unspecified && it.role != "image" && it.role != "img" }
-            .filter { b -> val loc = IntArray(2).also { b.view.getLocationOnScreen(it) }; val bx = b.bounds.left + loc[0] - mainOrigin[0]; val by = b.bounds.top + loc[1] - mainOrigin[1]; cx in bx..(bx + b.bounds.width) && cy in by..(by + b.bounds.height) }
-            .let { c -> val top = c.filter { it.view.rootView !== mainRoot }; (if (top.isNotEmpty()) top else c).reversed().minByOrNull { it.bounds.width * it.bounds.height } }
-        return hex((inner?.background ?: PlayarrWebTheme.palette.surface).toArgb())
-    }
-
-    private var mainRoot: View? = null
-    private var mainOrigin = IntArray(2)
-
-    /**
-     * One element per laid-out text line, read from the app's own [TextLayoutResult]: the line's text, its glyph-run left and right, and
-     * the font's ascent and descent as the app's own font resolves them (a probe measurement, not a constant). The transform to the window
-     * is the node's real [androidx.compose.ui.layout.LayoutCoordinates] (graphicsLayer scale and offsets included).
-     * shortcut: one element per line, not per style run (a line mixing sizes or weights exports at its first style), upgrade when such a Text appears.
-     */
-    private fun walk(node: SemanticsNode, dx: Int, dy: Int, bitmap: Bitmap?, out: JSONArray) {
+    private fun walkText(node: SemanticsNode, ctx: Ctx, hidden: Boolean) {
         val config = node.config
+        val hide = hidden || config.contains(SemanticsProperties.InvisibleToUser)
         val text = config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()
-        if (text.isNotEmpty() && node.layoutInfo.isPlaced) {
+        val coords = node.layoutInfo.coordinates
+        if (!hide && text.isNotEmpty() && node.layoutInfo.isPlaced && coords.isAttached && !node.boundsInWindow.isEmpty) {
             val results = mutableListOf<TextLayoutResult>()
             config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
             val layout = results.firstOrNull()
-            val coords = node.layoutInfo.coordinates
-            if (layout != null && coords.isAttached) {
+            if (layout != null) {
                 val input = layout.layoutInput
-                val density = input.density
                 val style = input.style
-                val size = style.fontSize.value * density.fontScale * density.density
-                val colour = style.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified }
-                val heading = config.contains(SemanticsProperties.Heading)
-                val probe = androidx.compose.ui.text.TextMeasurer(input.fontFamilyResolver, density, input.layoutDirection)
-                    .measure("Hg", style.copy(lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified, letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified, textAlign = androidx.compose.ui.text.style.TextAlign.Unspecified), maxLines = 1)
-                val ascent = probe.getLineBaseline(0) - probe.getLineTop(0)
-                val descent = probe.getLineBottom(0) - probe.getLineBaseline(0)
-                // The browser's run box includes the letter spacing after the last glyph; Compose's line right edge does not.
-                val trailing = (style.letterSpacing.takeIf { it.isSp }?.value ?: 0f) * density.fontScale * density.density
-                val lineBox = config.contains(io.playarr.shared.designsystem.page.ParityLineBoxKey)
-                val declared = style.lineHeight.takeIf { it.isSp }?.value?.times(density.fontScale * density.density)
-                val half = if (lineBox && declared != null) (declared - (ascent + descent)) / 2f else 0f
-                val rawText = input.text.text
-                val bgOverride = config.getOrNull(io.playarr.shared.designsystem.page.ParityBgKey)?.let { androidx.compose.ui.graphics.Color(it.toULong()) }
+                val role = if (config.contains(SemanticsProperties.Heading)) "heading" else "text"
+                val raw = input.text.text
+                val measurer = androidx.compose.ui.text.TextMeasurer(input.fontFamilyResolver, input.density, input.layoutDirection)
+                val spans = input.text.spanStyles
                 for (i in 0 until layout.lineCount) {
-                    val lineText = rawText.substring(layout.getLineStart(i), layout.getLineEnd(i, true)).trim()
-                    if (lineText.isEmpty()) continue
-                    val l = layout.getLineLeft(i); val r = layout.getLineRight(i) + trailing
-                    val baseline = layout.getLineBaseline(i)
-                    val top = baseline - ascent - half
-                    val bottom = if (lineBox && declared != null) top + declared else baseline + descent
-                    val a = coords.localToRoot(androidx.compose.ui.geometry.Offset(l, top)); val b = coords.localToRoot(androidx.compose.ui.geometry.Offset(r, bottom))
-                    val rx = minOf(a.x, b.x) + dx; val ry = minOf(a.y, b.y) + dy; val rw = Math.abs(b.x - a.x); val rh = Math.abs(b.y - a.y)
-                    out.put(
-                        JSONObject().apply { config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { put("radius", it.toDouble()); put("radiusPx", (it * density.density).toDouble()) } }
-                            .put("text", lineText)
-                            .put("role", config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey) ?: if (heading) "heading" else "text")
-                            .put("rect", JSONObject().put("x", r2(rx)).put("y", r2(ry)).put("w", r2(rw)).put("h", r2(rh)))
-                            .put("color", colour?.let { hex(it.toArgb(), true) } ?: JSONObject.NULL)
-                            .put("background", bgOverride?.let { hex(it.toArgb()) } ?: textBackground(rx, ry, rw, rh) ?: JSONObject.NULL)
-                            .put("fontSize", Math.round(size * 100) / 100.0).put("fontWeight", style.fontWeight?.weight ?: 400),
-                    )
+                    val ls = layout.getLineStart(i); val le = layout.getLineEnd(i, true)
+                    // One element per style run: the line is cut where a span style starts or ends.
+                    val cuts = (listOf(ls, le) + spans.flatMap { listOf(it.start, it.end) }).filter { it in ls..le }.distinct().sorted()
+                    for (k in 0 until cuts.size - 1) {
+                        var rs = cuts[k]; var re = cuts[k + 1]
+                        while (rs < re && raw[rs].isWhitespace()) rs++
+                        while (re > rs && raw[re - 1].isWhitespace()) re--
+                        if (rs >= re) continue
+                        val runStyle = spans.filter { it.start <= rs && it.end > rs }.fold(style) { acc, sp -> acc.merge(sp.item) }
+                        val colour = runStyle.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified } ?: continue
+                        val size = runStyle.fontSize.value * input.density.fontScale * input.density.density
+                        val runText = raw.substring(rs, re)
+                        // The run's content area, as the browser's Range rect gives it: baseline minus and plus the ascent and descent of the font
+                        // that drew the run, read from the same text and style measured without a line height (the typeface's own metrics, in px).
+                        val metrics = measurer.measure(runText, runStyle.copy(lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified, lineHeightStyle = null, textAlign = androidx.compose.ui.text.style.TextAlign.Unspecified), softWrap = false, maxLines = 1)
+                        val ascent = metrics.getLineBaseline(0) - metrics.getLineTop(0); val descent = metrics.getLineBottom(0) - metrics.getLineBaseline(0)
+                        val baseline = layout.getLineBaseline(i)
+                        val a = coords.localToRoot(androidx.compose.ui.geometry.Offset(layout.getBoundingBox(rs).left, baseline - ascent))
+                        val b = coords.localToRoot(androidx.compose.ui.geometry.Offset(layout.getBoundingBox(re - 1).right, baseline + descent))
+                        val x = minOf(a.x, b.x) + ctx.dx; val y = minOf(a.y, b.y) + ctx.dy; val w = Math.abs(b.x - a.x); val h = Math.abs(b.y - a.y)
+                        val e = JSONObject().put("text", runText).put("role", role).put("rect", rect(x, y, w, h, ctx.unit))
+                            .put("color", hex(colour.toArgb()))
+                            .put("fontSize", r2(size * ctx.unit)).put("fontWeight", runStyle.fontWeight?.weight ?: 400)
+                        config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { e.put("radius", radius(it * node.layoutInfo.density.density, w, h, ctx.unit)) }
+                        ctx.behind(ctx.chainOf(node))?.let { e.put("background", it) }
+                        ctx.add(e, x, y, w, h)
+                    }
                 }
             }
         }
-        node.children.forEach { walk(it, dx, dy, bitmap, out) }
+        node.children.forEach { walkText(it, ctx, hide) }
+    }
+
+    /** Controls: merged semantics nodes the user can act on, with the name and role the platform reports. */
+    private fun walkControls(node: SemanticsNode, ctx: Ctx, insideSlider: Boolean = false) {
+        val config = node.config
+        if (config.contains(SemanticsProperties.InvisibleToUser)) return
+        val role = config.getOrNull(SemanticsProperties.Role)
+        val editable = config.contains(SemanticsProperties.EditableText) || config.contains(SemanticsActions.SetText)
+        val slider = config.contains(SemanticsProperties.ProgressBarRangeInfo) && config.contains(SemanticsActions.SetProgress)
+        val clickable = config.contains(SemanticsActions.OnClick)
+        if ((clickable || role != null || editable || slider || config.contains(SemanticsProperties.PaneTitle) || config.contains(io.playarr.shared.designsystem.page.ParityRoleKey)) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
+            val kind = when {
+                config.contains(SemanticsProperties.PaneTitle) -> "dialog"
+                config.contains(io.playarr.shared.designsystem.page.ParityRoleKey) && !editable && !clickable -> config.getOrNull(io.playarr.shared.designsystem.page.ParityRoleKey)!!
+                editable -> "textbox"
+                slider -> "slider"
+                role == Role.Checkbox -> "checkbox"
+                role == Role.Switch -> "switch"
+                role == Role.RadioButton -> "radio"
+                role == Role.Tab -> "tab"
+                role == Role.DropdownList -> "combobox"
+                role == Role.Image -> "image"
+                else -> "button"
+            }
+            // An image the app tagged for the export and also exposes through semantics on the same node is one element: the tagged record carries the alpha.
+            if (kind == "image" && ctx.ownBoxes(node).any { it.kind == "image" }) { node.children.forEach { walkControls(it, ctx, insideSlider || slider) }; return }
+            val name = config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ")?.takeIf { it.isNotBlank() }
+                ?: (if (editable) config.getOrNull(SemanticsProperties.EditableText)?.text else null)
+                ?: config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()
+            val b = node.boundsInRoot
+            val x = b.left + ctx.dx; val y = b.top + ctx.dy
+            val e = JSONObject().put("text", name).put("role", kind).put("rect", rect(x, y, b.width, b.height, ctx.unit))
+                .put("color", JSONObject.NULL).put("fontSize", JSONObject.NULL).put("fontWeight", JSONObject.NULL)
+            val nodeCoords = node.layoutInfo.coordinates
+            val nodeScale = if (nodeCoords.isAttached && nodeCoords.size.width > 0) nodeCoords.localToRoot(androidx.compose.ui.geometry.Offset(nodeCoords.size.width.toFloat(), 0f)).x.minus(nodeCoords.localToRoot(androidx.compose.ui.geometry.Offset.Zero).x) / nodeCoords.size.width else 1f
+            val ownDensity = node.layoutInfo.density.density
+            // The radius is the outline the control's own surface resolved to at paint time; the clamp uses the unclipped size (a clipped strip keeps its corners).
+            val fullW = if (nodeCoords.isAttached && nodeCoords.size.width > 0) nodeCoords.size.width * nodeScale else b.width
+            val fullH = if (nodeCoords.isAttached && nodeCoords.size.height > 0) nodeCoords.size.height * nodeScale else b.height
+            val drawn = ctx.ownBoxes(node).lastOrNull { it.drawnRadiusPx != null }?.drawnRadiusPx
+            if (drawn != null && drawn > 0f) e.put("radius", radius(drawn * nodeScale, fullW, fullH, ctx.unit))
+            else config.getOrNull(io.playarr.shared.designsystem.page.ParityRadiusKey)?.let { e.put("radius", radius(it * ownDensity * nodeScale, fullW, fullH, ctx.unit)) }
+            config.getOrNull(io.playarr.shared.designsystem.page.ParityAlphaKey)?.let { e.put("opacity", it.toDouble()) }
+            ctx.behind(ctx.chainOf(node))?.let { e.put("background", it) }
+            ctx.add(e, x, y, b.width, b.height)
+        }
+        node.children.forEach { walkControls(it, ctx, insideSlider || slider) }
     }
 }

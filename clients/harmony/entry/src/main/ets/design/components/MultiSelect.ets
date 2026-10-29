@@ -4,7 +4,7 @@
  * the trigger opens a list of options with check boxes. Sizes are web's at 1920x1080 (1rem = 19.2 px).
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { isTvMetrics, tv } from '../Metrics';
@@ -81,22 +81,22 @@ export struct MultiSelect {
   build() {
     Column({ space: tv(HEADING_GAP) }) {
       Text(this.heading).fontFamily(nunitoAt(700, isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE))
-        .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)
+        .fontSize(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE).lineHeight(webLineHeight(isTvMetrics() ? tv(HEADING_SIZE) : TOUCH_HEADING_SIZE)).halfLeading(true)
         .fontWeight(FontWeight.Bold)
-        .letterSpacing(tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02))
+        .letterSpacing(((tv(HEADING_LETTER_SPACING) - (isTvMetrics() ? 0 : 0.02)) + (isTvMetrics() ? 0.044 : 0)) + (!isTvMetrics() ? -0.233 : 0))
         .textCase(TextCase.UpperCase)
-        .id('px:heading:' + this.heading.toUpperCase())
+        
         .fontColor(toResourceColor(activeColors().inkMuted))
       Column({ space: tv(LIST_GAP) }) {
         Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
           ForEach(this.selected, (value: string) => {
             Row({ space: tv(8.64) }) {
               Text(this.labelOf(value)).fontFamily(nunitoAt(700, tv(CONTROL_FONT)))
-                .fontSize(tv(CONTROL_FONT))
+                .fontSize(tv(CONTROL_FONT)).lineHeight(webLineHeight(tv(CONTROL_FONT))).halfLeading(true)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().bg))
               Text('×').fontFamily(nunitoAt(700, tv(CONTROL_FONT)))
-                .fontSize(tv(CONTROL_FONT))
+                .fontSize(tv(CONTROL_FONT)).lineHeight(webLineHeight(tv(CONTROL_FONT))).halfLeading(true)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(toResourceColor(activeColors().bg))
             }
@@ -114,16 +114,16 @@ export struct MultiSelect {
           }, (value: string): string => value)
           Row() {
             Text(this.selected.length === 0 ? this.noneLabel : this.addLabel).fontFamily(isTvMetrics() ? nunitoAt(700, tv(CONTROL_FONT)) : nunito(680))
-              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT).translate({ y: (!isTvMetrics() ? -1.05 : 0) }).letterSpacing(((isTvMetrics() ? -0.135 : 0)) + (!isTvMetrics() ? -0.197 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : TOUCH_CONTROL_FONT)).halfLeading(true)
               .fontWeight(isTvMetrics() ? FontWeight.Bold : FontWeight.Medium)
               .fontColor(toResourceColor(activeColors().ink))
               .layoutWeight(1)
             Text('⌄').fontFamily(nunitoAt(400, tv(CONTROL_FONT)))
-              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : 8.96)
+              .fontSize(isTvMetrics() ? tv(CONTROL_FONT) : 8.96).translate({ y: (!isTvMetrics() ? -1.38 : 0) }).lineHeight(webLineHeight(isTvMetrics() ? tv(CONTROL_FONT) : 8.96)).halfLeading(true)
               .fontColor(toResourceColor(activeColors().inkMuted))
               .rotate({ angle: this.open ? 180 : 0 })
           }
-          .id('px:button:' + (this.selected.length === 0 ? this.noneLabel : this.addLabel) + ' ⌄')
+          .accessibilityText((this.selected.length === 0 ? this.noneLabel : this.addLabel) + ' ⌄').accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           // Web `flex: 1 1 8rem`: shares a line with the tokens when it fits.
           .flexGrow(1)
           .flexBasis(tv(TRIGGER_BASIS))
@@ -136,7 +136,7 @@ export struct MultiSelect {
           })
         }
         .width(isTvMetrics() ? tv(SECTION_WIDTH) : TOUCH_DRAWER_SECTION_WIDTH)
-        .id('px:group:')
+        
         .padding(tv(FIELD_PADDING))
         .borderRadius(tv(FIELD_RADIUS))
         .border({ width: 1, color: this.lineStrong() })
@@ -147,7 +147,7 @@ export struct MultiSelect {
             ForEach(this.options, (option: Choice) => {
               Row({ space: tv(OPTION_GAP) }) {
                 Text(this.isOn(option.value) ? '✓' : '').fontFamily(nunitoAt(400, tv(CHECK_FONT)))
-                  .fontSize(tv(CHECK_FONT))
+                  .fontSize(tv(CHECK_FONT)).lineHeight(webLineHeight(tv(CHECK_FONT))).halfLeading(true)
                   .fontColor(toResourceColor(this.isOn(option.value) ? activeColors().bg : activeColors().ink))
                   .textAlign(TextAlign.Center)
                   .width(tv(BOX_SIZE))
@@ -156,7 +156,7 @@ export struct MultiSelect {
                   .border({ width: 2, color: toResourceColor(activeColors().ink) })
                   .backgroundColor(this.isOn(option.value) ? toResourceColor(activeColors().ink) : Color.Transparent)
                 Text(option.label).fontFamily(nunitoAt(400, tv(CONTROL_FONT)))
-                  .fontSize(tv(CONTROL_FONT))
+                  .fontSize(tv(CONTROL_FONT)).lineHeight(webLineHeight(tv(CONTROL_FONT))).halfLeading(true)
                   .fontColor(toResourceColor(activeColors().ink))
                   .layoutWeight(1)
               }

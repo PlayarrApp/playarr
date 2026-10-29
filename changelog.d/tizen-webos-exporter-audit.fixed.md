@@ -1,0 +1,1 @@
+- Parity layout export: volatile elements export each descendant with its own style (player time, quality badge and label, audio icon); occlusion tests every layer and pointer-transparent subjects; per-line clipping; ellipsis width read from a laid-out probe run. Web layout refs need regenerating with this exporter.

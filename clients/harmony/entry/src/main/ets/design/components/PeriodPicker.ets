@@ -5,7 +5,7 @@
  * is filled with ink, as the other choice tiles.
  */
 
-import { nunito, nunitoAt } from '../Typography';
+import { nunito, nunitoAt, webLineHeight } from '../Typography';
 import { activeColors, toResourceColor, toResourceColorWithAlpha } from '../Theme';
 import type { ThemeModeSetting } from '../Theme';
 import { tv } from '../Metrics';
@@ -44,7 +44,7 @@ export struct PeriodPicker {
       .width('100%')
       .height(tv(OPTION_HEIGHT))
       .textAlign(TextAlign.Center)
-      .fontSize(tv(OPTION_SIZE))
+      .fontSize(tv(OPTION_SIZE)).lineHeight(webLineHeight(tv(OPTION_SIZE))).halfLeading(true)
       .fontWeight(FontWeight.Bold)
       .fontColor(toResourceColor(selected ? activeColors().bg : activeColors().ink))
       .backgroundColor(selected ? toResourceColor(activeColors().ink) :

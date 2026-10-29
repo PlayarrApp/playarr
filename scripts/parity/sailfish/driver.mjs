@@ -241,9 +241,18 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
 
   function writeLayout(file) {
     const log = readOwnedRouteLog(ssh, ownedProcess);
-    const lines = log.split(/\r?\n/).filter((l) => l.includes("LAYOUTEL|"));
-    const elements = lines.flatMap((l) => JSON.parse(l.slice(l.indexOf("LAYOUTEL|") + 9)));
-    const end = log.match(/LAYOUTEND\|([\d.]+)\|([\d.]+)/);
+    // Exactly one complete dump: the rows between the second-last LAYOUTEND and the last one.
+    const all = log.split(/\r?\n/);
+    const ends = all.map((l, i) => (l.includes("LAYOUTEND|") ? i : -1)).filter((i) => i >= 0);
+    if (!ends.length) throw new Error("layout export produced no complete dump");
+    const segment = all.slice(ends.length > 1 ? ends[ends.length - 2] + 1 : 0, ends.at(-1) + 1);
+    const failures = segment.filter((l) => l.includes("LAYOUTERR|")).map((l) => l.slice(l.indexOf("LAYOUTERR|") + 10));
+    if (failures.length) throw new Error(`layout export could not read the app's text: ${failures.slice(0, 5).join("; ")}`);
+    const elements = segment.filter((l) => l.includes("LAYOUTEL|")).flatMap((l) => JSON.parse(l.slice(l.indexOf("LAYOUTEL|") + 9)));
+    // LAYOUTWARN lines are kept beside the layout for review; the QML type of each element only when asked for.
+    const warnings = segment.filter((l) => l.includes("LAYOUTWARN|")).map((l) => l.slice(l.indexOf("LAYOUTWARN|") + 11));
+    if (!env.PLAYARR_SF_LAYOUT_DEBUG) for (const e of elements) { delete e._src; delete e._dbg; }
+    const end = segment.at(-1).match(/LAYOUTEND\|([\d.]+)\|([\d.]+)/);
     if (!elements.length || !end) throw new Error("layout export produced no elements");
     const dir = join(dirname(dirname(file)), "layout", theme);
     mkdirSync(dir, { recursive: true });
@@ -251,6 +260,7 @@ ${call("org.mpris.MediaPlayer2.Player.Play")} >/dev/null`);
     const expectedClockDate = screens.determinism.clock.slice(0, 10);
     const doc = { screen: basename(file, ".png"), theme, viewport: { w: Math.round(Number(end[1])), h: Math.round(Number(end[2])), dpr: 768 / 390 }, clockPinned: clockDate === expectedClockDate, elements };
     writeFileSync(join(dir, `${doc.screen}.json`), `${JSON.stringify(doc)}\n`);
+    if (warnings.length) writeFileSync(join(dir, `${doc.screen}.warnings.txt`), `${warnings.join("\n")}\n`);
   }
 
   return {

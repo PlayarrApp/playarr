@@ -53,6 +53,8 @@ sub buildTiles()
             ThemeSetRole(fill, "surfaceStrong", 199)
         end if
         m.tilesGroup.AppendChild(fill)
+        fill.id = tileSemantics(t)
+        A11yStamp(fill, true)
         ic = invalid
         plus = invalid
         ' Web: a glyph, 8.8 px, then the label, centred as a group in the pill. Widths are the web's own glyph and text advances.
@@ -83,21 +85,28 @@ sub buildTiles()
             labelRole = "bg"
         end if
         if t.icon <> ""
-            ic = CreateObject("roSGNode", "Poster")
-            ic.uri = "pkg:/images/" + t.icon
-            ic.width = 16
-            ic.height = 16
-            ic.translation = [startX + gw / 2 - 8, centreY - 0.65 - 8]
-            ic.blendColor = ThemeColor(glyphRole)
+            ' The web draws these glyphs as text: play from the symbol font, the sliders mark for Playback.
+            ch = "☷"
+            rectH = 18.0
+            if t.icon = "player-play.png"
+                ch = "▶"
+                rectH = 14.84
+                if m.top.layoutKind = "series" then rectH = 14.0
+            end if
+            ic = CreateObject("roSGNode", "WebLabel")
+            ic.setFields({ size: glyphSize, weight: 400, symbol: true })
+            ic.text = ch
+            ic.color = ThemeColor(glyphRole)
             ThemeSetRole(ic, glyphRole)
+            ic.translation = [startX, centreY - 0.65 - rectH / 2]
             m.tilesGroup.AppendChild(ic)
         else
-            plus = CreateObject("roSGNode", "Label")
+            plus = CreateObject("roSGNode", "WebLabel")
+            plus.setFields({ size: glyphSize, weight: 400 })
             plus.text = "+"
-            plus.font = PlayarrMakeFont(400, 13)
             plus.color = ThemeColor("brandInk")
             ThemeSetRole(plus, "brandInk")
-            plus.translation = [startX, centreY - 0.65 - 11]
+            plus.translation = [startX, centreY - 0.65 - 9]
             m.tilesGroup.AppendChild(plus)
         end if
         label = CreateObject("roSGNode", "WebLabel")
@@ -158,10 +167,11 @@ sub applyFocus()
             part = m.parts[key]
             part.fill.blendColor = ThemeColor(fillRole)
             ThemeSetRole(part.fill, fillRole)
+            A11yStamp(part.fill, true)
             part.label.color = ThemeColor(textRole)
             ThemeSetRole(part.label, textRole)
             if part.icon <> invalid
-                part.icon.blendColor = ThemeColor(textRole)
+                part.icon.color = ThemeColor(textRole)
                 ThemeSetRole(part.icon, textRole)
             end if
         end if
@@ -224,3 +234,25 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     return false
 end function
 
+
+' What the tile is for assistive tech, as `a11y|role|radius|name` on the drawn pill (ECP prints ids).
+function tileSemantics(t as Object) as String
+    title = m.top.workTitle
+    if t.icon = "nav-playlists.png" then return "a11y|button|999|Playback settings for " + title
+    if t.primary or t.ink = true
+        if m.top.layoutKind = "series" then return "a11y|button|999|" + t.text + " " + title
+        return "a11y|link|999|Play " + title
+    end if
+    return "a11y|button|999|+ " + t.text
+end function
+
+sub onWorkTitle()
+    if m.parts = invalid then return
+    for each key in m.parts
+        t = specFor(key.toInt())
+        if t <> invalid
+            m.parts[key].fill.id = tileSemantics(t)
+            A11yStamp(m.parts[key].fill, true)
+        end if
+    end for
+end sub

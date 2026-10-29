@@ -198,11 +198,11 @@ struct HomeView: View {
 
     private func phoneRail(_ rail: HomeViewModel.Rail, first: Bool, index railIndex: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            WMText(rail.title, 16, 610, lh: 24, ls: -0.48).padding(.horizontal, 16)
+            WMText(rail.title, 16, 610, lh: 24, ls: -0.48, role: "heading").padding(.horizontal, 16)
             WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), count: rail.works.count, itemWidth: WMArtwork.railCardWidth, scrollAnchor: keyFocus != nil ? .center : parityRailAtEnd(railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
-                        workLink(work) {
+                        workLink(work, name: "\(work.title) \(work.singularKindYearLabel)") {
                             WMRailCard(
                                 work: work,
                                 apiClient: apiClient,
@@ -310,7 +310,7 @@ struct HomeView: View {
 
                 if let overview = work.overview {
                     Text(overview)
-                        .wm(11.5, 500)
+                        .wm(11.5, 500, color: PlayarrStyle.inkSoft, text: overview)
                         .foregroundStyle(PlayarrStyle.inkSoft)
                         .lineSpacing(2.5)
                         .lineLimit(4)
@@ -415,7 +415,7 @@ struct HomeView: View {
         .frame(width: railWidth, alignment: .leading)
     }
 
-    private func workLink<Content: View>(_ work: Work, @ViewBuilder content: () -> Content) -> some View {
+    private func workLink<Content: View>(_ work: Work, name: String? = nil, @ViewBuilder content: () -> Content) -> some View {
         NavigationLink {
             WorkDetailView(
                 viewModel: WorkDetailViewModel(apiClient: apiClient, workID: work.id),
@@ -430,7 +430,8 @@ struct HomeView: View {
         .focused($focusedWork, equals: work.id)
         .focusEffectDisabled()
         .accessibilityIdentifier(homeWorkAccessibilityID(work))
-        .accessibilityLabel(work.title)
+        .accessibilityLabel(name ?? work.title)
+        .accessibilityAddTraits(.isLink)
         .contextMenu {
             Button("Download", systemImage: "arrow.down.circle") { downloadTarget = work }
         }
@@ -507,6 +508,7 @@ struct WMFadingRail<Content: View>: View {
                 // The mask must not clip the focused card's shadow above and below the track.
                 .padding(.vertical, -60)
             )
+            .parityFade(.horizontal) { _ in maskStops }
             .onChange(of: scrollTo) { _, new in
                 if let new { withAnimation(.easeInOut(duration: 0.6)) { proxy.scrollTo(new, anchor: scrollAnchor) } }
             }
