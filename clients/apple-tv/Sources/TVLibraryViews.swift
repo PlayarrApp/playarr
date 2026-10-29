@@ -488,7 +488,7 @@ struct TVHomeView: View {
         // Production HStack shell already owns the nav column; only pad the
         // residual gap past that width toward SPA rail origin.
         let navColumn = DesignTokens.Shell.navItemSize
-            + DesignTokens.Shell.navGroupPadding * 2
+            + DesignTokens.Shell.navGroupPaddingH * 2
             + DesignTokens.Shell.navEdge * 2
         let leadingPad = max(24, x0 - navColumn)
 
@@ -2026,10 +2026,10 @@ struct TVLibraryKindView: View {
         let padL: CGFloat = 48 // the 48 px focused-card shadow blur also stays inside the scroll view, so no hard edge shows at x 759
         // Row pitch: the web's rows are 240.4 apart (tops 162, 402, 643, 883); a 2026-10-18 hosted run with a 27.4 gap gave
         // tops 401, 640, 879, so the Mac's caption is about 1 pt shorter than the web's and the gap makes up the rest.
-        let rowGap: CGFloat = 28.5
+        let rowGap: CGFloat = 27.0 // the caption frame is fixed (17.9), so both platforms share the web pitch (213.4 + 27 = 240.4)
         #else
         let padL: CGFloat = 0
-        let rowGap: CGFloat = 27.9 // web row pitch 240.4
+        let rowGap: CGFloat = 27.0 // web row pitch 240.4 (213.4 card plus 27)
         #endif
         let gridWidth = size.width - 783.4 + padL
         let padR: CGFloat = 0
@@ -2192,7 +2192,7 @@ struct TVLibraryKindView: View {
                         .parityLayout(text: work.title, size: 11.9, weight: 610, color: isSelected ? Color.white : DesignTokens.Color.textPrimary, tracking: -0.18) // web: the focused card's text is white
                         .lineLimit(1)
                         .padding(.leading, 1.91) // web: the title sits 1.91 pt inside the card
-                        .frame(width: width, alignment: .leading)
+                        .frame(width: width, height: 17.9, alignment: .topLeading) // web: a 17.9 pt caption line, so the card is 213.4 tall
                 }
             }
             .frame(width: width, alignment: .leading)

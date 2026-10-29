@@ -894,20 +894,20 @@ struct TVFloatingNavLayout {
               index < groupCounts.reduce(0, +) else { return nil }
         let metrics = metrics(height: height)
         var remaining = index
-        var groupTop = metrics.topInset + DesignTokens.Shell.navGroupPadding
+        var groupTop = metrics.topInset + DesignTokens.Shell.navRailScrollInset
         for (groupIndex, count) in groupCounts.enumerated() {
             if remaining < count {
-                return groupTop + DesignTokens.Shell.navGroupPadding
+                return groupTop + DesignTokens.Shell.navGroupPaddingV
                     + DesignTokens.Shell.navItemSize / 2
                     + CGFloat(remaining) * (DesignTokens.Shell.navItemSize + DesignTokens.Shell.navGroupGap)
             }
             remaining -= count
             let groupHeight = CGFloat(count) * DesignTokens.Shell.navItemSize
                 + CGFloat(max(0, count - 1)) * DesignTokens.Shell.navGroupGap
-                + DesignTokens.Shell.navGroupPadding * 2
+                + DesignTokens.Shell.navGroupPaddingV * 2
             groupTop += groupHeight
             if groupIndex < groupCounts.count - 1 {
-                groupTop += 14
+                groupTop += DesignTokens.Shell.navGroupSeparation
             }
         }
         return nil
@@ -955,7 +955,7 @@ struct TVFloatingNav: View {
             let metrics = TVFloatingNavLayout.metrics(height: geometry.size.height)
             VStack(spacing: 0) {
                 ScrollView(.vertical) {
-                    VStack(spacing: 14) {
+                    VStack(spacing: DesignTokens.Shell.navGroupSeparation) {
                         ForEach(navGroups, id: \.self) { navGroup(tabs: $0) }
                         if showSettings {
                             navGroup(tabs: [.settings])
@@ -963,7 +963,7 @@ struct TVFloatingNav: View {
                     }
                     // Web rail keeps the first group clear of the header/page controls and
                     // preserves room for focused group shadows at both scroll edges.
-                    .padding(.vertical, DesignTokens.Shell.navGroupPadding)
+                    .padding(.vertical, DesignTokens.Shell.navRailScrollInset)
                 }
                 .scrollIndicators(.hidden)
 
@@ -975,7 +975,7 @@ struct TVFloatingNav: View {
             .padding(.bottom, metrics.bottomInset)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: DesignTokens.Shell.navItemSize + DesignTokens.Shell.navGroupPadding * 2)
+        .frame(width: DesignTokens.Shell.navItemSize + DesignTokens.Shell.navGroupPaddingH * 2)
         .onPreferenceChange(TVNavFramesPreferenceKey.self, perform: onNavFramesChange)
     }
 
@@ -985,8 +985,8 @@ struct TVFloatingNav: View {
                 navButton(tab)
             }
         }
-        .padding(.vertical, DesignTokens.Shell.navGroupPadding)
-        .padding(.horizontal, DesignTokens.Shell.navGroupPadding)
+        .padding(.vertical, DesignTokens.Shell.navGroupPaddingV)
+        .padding(.horizontal, DesignTokens.Shell.navGroupPaddingH)
         .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface, alpha: 0.56)
         .modifier(TVNavPanelShadow())
         .background(
@@ -1020,7 +1020,8 @@ struct TVFloatingNav: View {
             .buttonStyle(TVFocusableCardButtonStyle())
             .focused(externalFocus, equals: .navProfile)
             .accessibilityLabel("Profile \(profile.name)")
-            .padding(DesignTokens.Shell.navGroupPadding)
+            .padding(.vertical, DesignTokens.Shell.navGroupPaddingV)
+            .padding(.horizontal, DesignTokens.Shell.navGroupPaddingH)
             .parityBox("container", radius: DesignTokens.Shell.navGroupRadius, fill: DesignTokens.Stage.surface, alpha: 0.56)
             .modifier(TVNavPanelShadow())
             .background(
@@ -1077,6 +1078,8 @@ struct TVFloatingNav: View {
                     .lineLimit(1)
                     .parityLayout(text: tab.title, size: 8.832, weight: 680, color: isActive || isFocused ? DesignTokens.Color.textPrimary : DesignTokens.Color.textDisabled, tracking: 0.31)
             }
+            // Web: the icon sits 15.2 pt below the link's top, 1 pt lower than the centred pair.
+            .padding(.top, 2)
             .foregroundStyle(
                 isActive || isFocused
                     ? DesignTokens.Color.textPrimary
