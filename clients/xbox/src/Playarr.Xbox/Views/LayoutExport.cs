@@ -70,14 +70,6 @@ namespace Playarr.Xbox.Views
             return string.IsNullOrEmpty(name) ? PeerOf(element)?.GetName() ?? string.Empty : name;
         }
 
-        /// <summary>A button the web draws as one element carrying its label: its content is a text block that reads as the accessible name. A button whose name differs from its glyph (an arrow named Previous) is a box with a separate text run.</summary>
-        private static bool IsLabelButton(FrameworkElement element, out TextBlock label)
-        {
-            label = (element as Button)?.Content as TextBlock ?? new TextBlock();
-            var name = element is Button ? NameOf(element) : string.Empty;
-            return element is Button { Content: TextBlock } && !string.IsNullOrWhiteSpace(label.Text) && (string.IsNullOrEmpty(name) || name.Trim() == label.Text.Trim());
-        }
-
         public static async Task<string> BuildAsync(string screen, string theme)
         {
             var root = (FrameworkElement)Window.Current.Content;
@@ -162,7 +154,7 @@ namespace Playarr.Xbox.Views
                         chars.Add(rect.IsEmpty ? new double[0] : new[] { Math.Round(rect.X, 1), Math.Round(rect.Y, 1), Math.Round(rect.Width, 1), Math.Round(rect.Height, 1) });
                     }
 
-                    found.Add(new { block.Text, block.ActualWidth, block.ActualHeight, advance = Advance(block, block.Text.Trim()), chars });
+                    found.Add(new { block.Text, block.ActualWidth, block.ActualHeight, chars });
                 }
 
                 for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
@@ -176,25 +168,6 @@ namespace Playarr.Xbox.Views
         }
 
         private static bool _rootCovered;
-
-        /// <summary>The content root of a list item that carries its own accessible name: the item itself is exported with that name.</summary>
-        private static bool IsItemContent(FrameworkElement element)
-        {
-            if (string.IsNullOrEmpty(Windows.UI.Xaml.Automation.AutomationProperties.GetName(element)))
-            {
-                return false;
-            }
-
-            for (var n = VisualTreeHelper.GetParent(element); n != null; n = VisualTreeHelper.GetParent(n))
-            {
-                if (n is SelectorItem item)
-                {
-                    return ReferenceEquals(item.ContentTemplateRoot, element);
-                }
-            }
-
-            return false;
-        }
 
         /// <summary>The visible part of a box: its bounds cut by every scrolling ancestor's viewport; empty when scrolled away.</summary>
         private static Rect Clipped(FrameworkElement element, Rect rect, FrameworkElement root, double scale)
@@ -352,13 +325,9 @@ namespace Playarr.Xbox.Views
 
             if (node is FrameworkElement element && element.ActualWidth >= 1 && element.ActualHeight >= 1 && (!(element is Page) || element is Page { Background: not null }))
             {
-                if (!(_rootCovered && ReferenceEquals(element, root)) && !IsItemContent(element))
+                if (!(_rootCovered && ReferenceEquals(element, root)))
                 {
                     Add(element, root, scale, output);
-                }
-                if (IsLabelButton(element, out _))
-                {
-                    return; // the web's label button is one element carrying the text run and its style
                 }
             }
 
@@ -377,12 +346,11 @@ namespace Playarr.Xbox.Views
             double? fontSize = null;
             int? fontWeight = null;
             var rect = Bounds(element, root, scale);
-            FrameworkElement owner = element; // what is hidden to test visibility: the label's glyph run for a label button
+            FrameworkElement owner = element;
             var name = NameOf(element);
             if (element is SelectorItem { ContentTemplateRoot: FrameworkElement tagged } && !string.IsNullOrEmpty(Windows.UI.Xaml.Automation.AutomationProperties.GetName(tagged)))
             {
                 name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(tagged);
-                rect = Bounds(tagged, root, scale); // the item is the card the app laid out, not the (taller) list slot around it
             }
 
             if (element is TextBlock block)
@@ -394,16 +362,6 @@ namespace Playarr.Xbox.Views
 
                 AddLines(block, 0, block.Text.Length, role ?? "text", root, scale, output);
                 return;
-            }
-            else if (IsLabelButton(element, out var label))
-            {
-                role = "button";
-                text = string.IsNullOrEmpty(name) ? label.Text : name;
-                color = Hex(label.Foreground);
-                fontSize = Math.Round(label.FontSize, 2);
-                fontWeight = WebFont.WeightOf(label);
-                rect = TextRun(label, root, scale) ?? rect;
-                owner = label;
             }
             else if (role != null)
             {
@@ -490,6 +448,7 @@ namespace Playarr.Xbox.Views
             {
                 var transform = block.TransformToVisual(root);
                 var lines = new List<(Rect Box, int From, int To)>();
+                var rights = new List<double>();
                 // Text pointer offsets count the structure tokens before the first character: offsets 0 and 1 resolve to the start
                 // of the run and of the first character, so character 0 is the first later offset whose rectangle starts where
                 // offset 0's does.
@@ -514,16 +473,21 @@ namespace Playarr.Xbox.Views
                         continue;
                     }
 
+                    // The glyph's right edge is where the displayed layout starts the next character on the same line.
+                    var next = block.ContentStart.GetPositionAtOffset(i + shift + 1, LogicalDirection.Forward)?.GetCharacterRect(LogicalDirection.Forward) ?? Rect.Empty;
+                    var edge = !next.IsEmpty && Math.Abs(next.Y - rect.Y) < 1 && next.X >= rect.X ? next.X : rect.Right;
                     var at = lines.FindIndex(l => Math.Abs(l.Box.Y - rect.Y) < 1);
                     if (at < 0)
                     {
                         lines.Add((rect, i, i + 1));
+                        rights.Add(block.Text[i] == ' ' ? rect.X : edge);
                     }
                     else
                     {
                         var l = lines[at];
                         var union = new Rect(Math.Min(l.Box.X, rect.X), l.Box.Y, Math.Max(l.Box.Right, rect.Right) - Math.Min(l.Box.X, rect.X), Math.Max(l.Box.Height, rect.Height));
                         lines[at] = (union, l.From, i + 1);
+                        if (block.Text[i] != ' ') { rights[at] = Math.Max(rights[at], edge); }
                     }
                 }
 
@@ -538,10 +502,9 @@ namespace Playarr.Xbox.Views
                         continue;
                     }
 
-                    // Left edge and line box height are the platform's character rectangles; the width is the platform's own advance
-                    // width of that line's text in the same face (the character rectangles do not report the full run).
+                    // Left edge, line box height and right edge are all read from the displayed block's own character rectangles.
                     var first = lines[k].Box;
-                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Advance(block, text), first.Height));
+                    var r = transform.TransformBounds(new Rect(first.X, first.Y, Math.Max(0, rights[k] - first.X), first.Height));
                     if (r.Right * scale <= 0 || r.Bottom * scale <= 0 || r.X * scale >= 1920 || r.Y * scale >= 1080)
                     {
                         continue;
@@ -559,51 +522,15 @@ namespace Playarr.Xbox.Views
                         rect = new { x = Math.Round(r.X * scale, 1), y = Math.Round(r.Y * scale, 1), w = Math.Round(r.Width * scale, 1), h = Math.Round(r.Height * scale, 1) },
                         color = Hex(block.Foreground),
                         background = BackgroundBehind(block, includeSelf: false),
-                        fontSize = Math.Round(block.FontSize * (block.ActualWidth > 0 ? r.Width / Math.Max(1e-6, Advance(block, text)) : 1), 2),
+                        fontSize = Math.Round(block.FontSize * Math.Abs(transform.TransformBounds(new Rect(0, 0, 1, 1)).Height) * scale, 2),
                         fontWeight = WebFont.WeightOf(block),
                         opacity = EffectiveOpacity(block) is var seen && seen < 0.995 ? (double?)Math.Round(seen, 2) : null,
-                        // A chip's label is the web element that draws the chip: it carries the chip's corner radius.
-                        radius = VisualTreeHelper.GetParent(block) is Border { CornerRadius: { TopLeft: > 0 } } chip && ReferenceEquals(chip.Child, block) ? (double?)Math.Round(chip.CornerRadius.TopLeft, 2) : null,
                     });
                 }
             }
             catch (Exception)
             {
                 // A block whose character rectangles cannot be read is left out rather than guessed.
-            }
-        }
-
-        /// <summary>The platform's advance width of <paramref name="text"/> set in the block's face, size and spacing on one line.</summary>
-        private static double Advance(TextBlock block, string text)
-        {
-            var probe = new TextBlock
-            {
-                Text = text,
-                FontFamily = block.FontFamily,
-                FontSize = block.FontSize,
-                FontWeight = block.FontWeight,
-                FontStyle = block.FontStyle,
-                FontStretch = block.FontStretch,
-                CharacterSpacing = block.CharacterSpacing,
-                TextWrapping = TextWrapping.NoWrap,
-            };
-            probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            return probe.DesiredSize.Width;
-        }
-
-        /// <summary>The glyph run of a single-line label inside a button: first character left edge, the platform's advance width of the label, native line box height, transformed.</summary>
-        private static Rect? TextRun(TextBlock block, FrameworkElement root, double scale)
-        {
-            try
-            {
-                var first = block.ContentStart.GetCharacterRect(LogicalDirection.Forward);
-                var last = block.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
-                var r = block.TransformToVisual(root).TransformBounds(new Rect(first.X, first.Y, Advance(block, block.Text.Trim()), Math.Max(first.Height, last.Height)));
-                return new Rect(r.X * scale, r.Y * scale, r.Width * scale, r.Height * scale);
-            }
-            catch (Exception)
-            {
-                return null;
             }
         }
 
