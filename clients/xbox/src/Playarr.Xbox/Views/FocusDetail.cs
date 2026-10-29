@@ -17,27 +17,28 @@ namespace Playarr.Xbox.Views
     /// </summary>
     internal sealed class FocusDetail : Grid
     {
+        // The web's key-art box: the backdrop is laid out 899.97 x 1190.59 from (133.03, -22.9) and covers it.
         private readonly Grid _backdropLayer = new Grid
         {
-            Width = 998.4,
-            Height = 1144.8,
+            Width = 899.97,
+            Height = 1190.59,
+            Margin = new Thickness(133.03, -22.9, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
-            RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
-            RenderTransform = new ScaleTransform { ScaleX = 1.04, ScaleY = 1.04 },
         };
-        private readonly Image _backdrop = new Image { Stretch = Stretch.UniformToFill };
+        private readonly Image _backdrop = new Image { Stretch = Stretch.UniformToFill, Width = 899.97, Height = 1190.59 }; // sized to the key-art box so the picture crops itself
         private readonly Rectangle _imageMaskWash = new Rectangle
         {
-            Width = 998.4,
-            Height = 1144.8,
+            Width = 899.97,
+            Height = 1190.59,
+            Margin = new Thickness(133.03, -22.9, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             IsHitTestVisible = false,
-            RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
-            RenderTransform = new ScaleTransform { ScaleX = 1.04, ScaleY = 1.04 },
         };
-        private readonly Rectangle _horizontalWash = new Rectangle { Width = 960, HorizontalAlignment = HorizontalAlignment.Left };
+        // The web's right-hand ground wash: the last 1190 px of the stage.
+        private readonly Rectangle _rightWash = new Rectangle { Width = 1190.39, Margin = new Thickness(729.61, 0, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false };
+        private readonly Rectangle _horizontalWash = new Rectangle { HorizontalAlignment = HorizontalAlignment.Stretch };
         private readonly Rectangle _verticalWash = new Rectangle
         {
             Width = 998.4, // the key-art box only: the web's right half is the plain tinted ground
@@ -47,16 +48,18 @@ namespace Playarr.Xbox.Views
         };
         private readonly Rectangle _stageWashLeft = new Rectangle { IsHitTestVisible = false };
         private readonly TextBlock _eyebrow = new TextBlock { FontSize = 12.29, FontFamily = WebFont.Face(860), FontWeight = WebFont.Weight(860), CharacterSpacing = 100, LineHeight = 16, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69.12, FontFamily = WebFont.Face(560), FontWeight = WebFont.Weight(560), CharacterSpacing = -72, LineHeight = 62, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextWrapping = TextWrapping.NoWrap, MaxLines = 3, Margin = new Thickness(0, 36.4, 0, 0) };
-        private readonly StackPanel _metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12.9, Margin = new Thickness(0, 16.6, 0, 0) };
+        private readonly TextBlock _title = new TextBlock { HorizontalAlignment = HorizontalAlignment.Left, FontSize = 69.12, FontFamily = WebFont.Face(560), FontWeight = WebFont.Weight(560), CharacterSpacing = -72, TextWrapping = TextWrapping.NoWrap };
+        // One block per title line at the font's own line height, stacked 62.2 px apart: the glyph rectangle is the platform's, the pitch the web's.
+        private readonly StackPanel _titleLines = new StackPanel { Margin = new Thickness(0, 11.33, 0, 0) };
+        private readonly StackPanel _metaRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12.8, Margin = new Thickness(0, 11.2, 0, 0) };
         private readonly TextBlock _meta = new TextBlock { FontSize = 13.06, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 18, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        private readonly TextBlock _overview = new TextBlock { Width = 346, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 20, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 26.2, 0, 0) };
+        private readonly TextBlock _overview = new TextBlock { Width = 328, HorizontalAlignment = HorizontalAlignment.Left, FontSize = 13.82, FontFamily = WebFont.Face(600), FontWeight = WebFont.Weight(600), LineHeight = 20, LineStackingStrategy = LineStackingStrategy.BaselineToBaseline, TextWrapping = TextWrapping.WrapWholeWords, MaxLines = 5, TextTrimming = TextTrimming.WordEllipsis, Margin = new Thickness(0, 26.2, 0, 0) };
         private readonly StackPanel _panel;
 
         public FocusDetail()
         {
             IsHitTestVisible = false;
-            var soft = (Brush)Application.Current.Resources["PlayarrInkSoft"];
+            var soft = (Brush)Application.Current.Resources["PlayarrInkHero"];
             _eyebrow.Foreground = (Brush)Application.Current.Resources["PlayarrBrandInk"];
             _meta.Foreground = soft;
             _overview.Foreground = soft;
@@ -65,8 +68,10 @@ namespace Playarr.Xbox.Views
             Children.Add(_backdropLayer);
             _imageMaskWash.Fill = Theme.KeyArtImageMaskWash();
             Children.Add(_imageMaskWash);
-            _horizontalWash.Fill = Theme.KeyArtStageHorizontalWash();
+            _horizontalWash.Fill = Theme.KeyArtStageHorizontalWash(0.22);
             Children.Add(_horizontalWash);
+            _rightWash.Fill = Theme.KeyArtStageWashRight();
+            Children.Add(_rightWash);
             _verticalWash.Fill = Theme.KeyArtVerticalWash();
             Children.Add(_verticalWash);
             _stageWashLeft.Fill = Theme.KeyArtStageWashLeft();
@@ -78,97 +83,12 @@ namespace Playarr.Xbox.Views
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
             };
-            LayoutExport.SetRole(_title, "heading");
             _panel.Children.Add(_eyebrow);
-            _panel.Children.Add(_title);
+            _panel.Children.Add(_titleLines);
             _metaRow.Children.Add(_meta);
             _panel.Children.Add(_metaRow);
             _panel.Children.Add(_overview);
             Children.Add(_panel);
-        }
-
-        /// <summary>
-        /// The web balances the title (<c>text-wrap: balance</c>); the shared rule measured against Chrome (android/balance/NOTES.md):
-        /// keep the greedy line count at the 9ch box, then among the break sets with that many lines (each fitting the box)
-        /// take the smallest sum of squared line widths, plus 5000 when the last line is one word. Breaks are after spaces only.
-        /// </summary>
-        private void WrapTitle(string title)
-        {
-            // The web caps the title at max-width: 9ch (nine "0" advances) at its 3.6vw font size.
-            var zero = new TextBlock { Text = "0", FontSize = _title.FontSize, FontWeight = _title.FontWeight, TextWrapping = TextWrapping.NoWrap };
-            zero.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
-            var max = zero.DesiredSize.Width * 9;
-            var words = title.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            var lineCount = 1;
-            var current = string.Empty;
-            var greedy = new List<string>();
-            foreach (var word in words)
-            {
-                var next = current.Length == 0 ? word : current + " " + word;
-                if (current.Length > 0 && Width(next) > max)
-                {
-                    lineCount++;
-                    greedy.Add(current);
-                    current = word;
-                }
-                else
-                {
-                    current = next;
-                }
-            }
-
-            greedy.Add(current);
-
-            // Best break set with exactly lineCount lines: recursion over where each line ends (titles have few words).
-            var best = double.MaxValue;
-            var bestLines = greedy; // kept when a single word is wider than the box and no break set fits
-            void Search(int start, List<string> lines, double cost)
-            {
-                if (lines.Count == lineCount - 1)
-                {
-                    var last = string.Join(" ", words.Skip(start));
-                    var w = Width(last);
-                    if (words.Length - start == 0 || w > max)
-                    {
-                        return;
-                    }
-
-                    var total = cost + w * w + (lineCount > 1 && words.Length - start == 1 ? 5000 : 0);
-                    if (total < best)
-                    {
-                        best = total;
-                        bestLines = lines.Concat(new[] { last }).ToList();
-                    }
-
-                    return;
-                }
-
-                for (var end = start + 1; end < words.Length; end++)
-                {
-                    var text = string.Join(" ", words.Skip(start).Take(end - start));
-                    var w = Width(text);
-                    if (w > max)
-                    {
-                        break;
-                    }
-
-                    Search(end, lines.Concat(new[] { text }).ToList(), cost + w * w);
-                }
-            }
-
-            if (lineCount > 1)
-            {
-                Search(0, new List<string>(), 0);
-            }
-
-            _title.Text = string.Join("\n", bestLines);
-        }
-
-        private double Width(string text)
-        {
-            var probe = new TextBlock { Text = text, FontSize = _title.FontSize, FontWeight = _title.FontWeight, CharacterSpacing = _title.CharacterSpacing, TextWrapping = TextWrapping.NoWrap };
-            probe.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
-            return probe.DesiredSize.Width;
         }
 
         public void SetMeta(string text) => SetMetaParts(new[] { text });
@@ -201,6 +121,12 @@ namespace Playarr.Xbox.Views
                 return;
             }
 
+            // Home's hero sets its meta and synopsis a little smaller and tighter than the library's.
+            _meta.FontSize = withKind ? 12.86 : 13.06;
+            _overview.FontSize = withKind ? 12.86 : 13.82;
+            _overview.LineHeight = withKind ? 20.31 : 21.84;
+            _metaRow.Margin = new Thickness(0, withKind ? 6.8 : 11.2, 0, 0);
+            _overview.Margin = new Thickness(0, withKind ? 23.9 : 24.19, 0, 0);
             _backdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             Artwork.Load(_backdrop, work, 999, new[] { ImageKind.Backdrop }, requestWidth: withKind ? 1920 : 780, applyKeyArtFilter: true);
             var eyebrow = new List<string>();
@@ -215,7 +141,7 @@ namespace Playarr.Xbox.Views
             }
 
             _eyebrow.Text = string.Join(" · ", eyebrow);
-            WrapTitle(work.Title);
+            TitleLayout.Build(_titleLines, work.Title, _title);
             var meta = new List<string>();
             if (WorkLabels.YearRange(work) is { } years)
             {

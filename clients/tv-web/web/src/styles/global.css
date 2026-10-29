@@ -7260,8 +7260,20 @@ html body[data-input-mode] .tv-playlist-directory-card.tv-title-card:is(:focus-v
   }
 }
 
-.tv-search-form input::placeholder {
+/* The hint is real text (a placeholder is drawn by the engine and cannot be measured): it sits in the input's grid cell, below the caret. */
+.tv-search-form input,
+.tv-search-placeholder {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.tv-search-placeholder {
+  min-width: 0;
+  overflow: hidden;
   color: var(--ink-muted);
+  font-size: clamp(0.78rem, calc(0.92 * var(--vw)), 1.12rem);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .tv-search-form input::-webkit-search-cancel-button {

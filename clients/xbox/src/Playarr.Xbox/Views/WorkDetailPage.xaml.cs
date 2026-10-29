@@ -48,17 +48,20 @@ namespace Playarr.Xbox.Views
         public WorkDetailPage()
         {
             InitializeComponent();
-            Background = Theme.PageStage();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             EdgeFade.AttachVertical(Root, RailsScroll, 833, true);
             _header = Ui.PageHeader(Root, string.Empty, null, () => App.Navigation.GoBack());
             BackdropLayer.Opacity = Theme.KeyArtGroupOpacity;
             BackdropImageMaskWash.Fill = Theme.KeyArtImageMaskWash();
-            BackdropFade.Fill = Theme.KeyArtStageHorizontalWash();
+            BackdropFade.Fill = Theme.KeyArtStageHorizontalWash(0.22);
+            BackdropRightWash.Fill = Theme.KeyArtStageWashRight();
             BackdropVerticalFade.Fill = Theme.KeyArtVerticalWash();
             BackdropStageWashLeft.Fill = Theme.KeyArtStageWashLeft();
             PlaybackButton = Ui.WithIcon(Ui.Filled(Ui.Pill("Playback", OpenPlaybackDrawer, 142)), "\u2637");
             LayoutExport.SetSplit(PlaybackButton, true);
             PlaybackButton.Height = 64;
+            WebFont.Apply(EpisodeTitleText, 570);
+            LayoutExport.SetRole(EpisodeTitleText, "heading");
             // Web: the focused primary action turns brand pink with white ink (the resting one is the ink pill).
             PlayButton.GotFocus += (s, e) => PaintPlay(true);
             PlayButton.LostFocus += (s, e) => PaintPlay(false);
@@ -67,8 +70,10 @@ namespace Playarr.Xbox.Views
         private void PaintPlay(bool focused)
         {
             var resources = Application.Current.Resources;
-            PlayButton.Background = (Windows.UI.Xaml.Media.Brush)resources[focused ? "PlayarrBrand" : "PlayarrInk"];
-            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrSurfaceStrong"];
+            // The focused primary action turns brand red (#a52745, both themes) with white ink and grows 6 %.
+            PlayButton.Background = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xA5, 0x27, 0x45)) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrInk"];
+            PlayScale.ScaleX = PlayScale.ScaleY = focused ? 1.06 : 1;
+            var ink = focused ? new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White) : (Windows.UI.Xaml.Media.Brush)resources["PlayarrBg"];
             PlayLabel.Foreground = ink;
             PlayIcon.Foreground = ink;
         }
@@ -107,7 +112,7 @@ namespace Playarr.Xbox.Views
 
             var work = _viewModel.Work;
             // A short number stays with the next word, so "2 Fast 2 Furious" wraps as the web draws it: "2 Fast" / "2 Furious".
-            TitleText.Text = System.Text.RegularExpressions.Regex.Replace(_viewModel.Title, @"(?<=^|\s)(\d{1,2}) (?=\S)", "$1\u00a0");
+            TitleLayout.Build(TitleLines, System.Text.RegularExpressions.Regex.Replace(_viewModel.Title, @"(?<=^|\s)(\d{1,2}) (?=\S)", "$1\u00a0"), _titleTemplate);
             _header.Title.Text = work?.Kind switch
             {
                 WorkKind.Movie => "Movies",
@@ -116,9 +121,13 @@ namespace Playarr.Xbox.Views
                 _ => string.Empty,
             };
             _header.Subtitle.Text = _viewModel.Title;
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(_header.Back, "Back to " + _header.Title.Text);
+            LayoutExport.SetRole(_header.Back, "button");
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(PlaybackButton, "Playback settings for " + _viewModel.Title);
             // The web header: the title beside the subtitle after a divider (not pink), as every other page.
             Ui.LayoutHeader(_header.Titles, _header.Title, _header.Subtitle);
             EyebrowText.Text = work != null && work.Genres.Count > 0 ? work.Genres[0].ToUpperInvariant() : string.Empty;
+            WebFont.Apply(EyebrowText, 820);
             // Web meta row: kind, year, then genres, spaced (runtime and release date need fields this client lacks).
             var meta = new System.Collections.Generic.List<string>();
             if (work != null)
@@ -143,9 +152,9 @@ namespace Playarr.Xbox.Views
                 meta.AddRange(work.Genres);
             }
 
-            MetaText.Text = string.Join("      ", meta);
-            LayoutExport.SetSplitOn(MetaText, "      ");
+            SetMeta(meta);
             OverviewText.Text = _viewModel.Overview;
+            OverviewText.Height = _viewModel.IsSeries ? 17.5 : 60.93; // the web reserves the synopsis lines before the actions
 
             if (work != null && !ReferenceEquals(_backdropWork, work))
             {
@@ -172,7 +181,7 @@ namespace Playarr.Xbox.Views
                 }
             }
 
-            PrimaryRow.Margin = new Thickness(0, _viewModel.IsSeries ? 9 : 32, 0, 0);
+            PrimaryRow.Margin = new Thickness(0, _viewModel.IsSeries ? 13.81 : 16.49, 0, 0);
             if (_viewModel.IsSeries && !ReferenceEquals(ActionRow.Parent, PrimaryRow))
             {
                 // The web's series page keeps Start, Add to watchlist and Add to Playlist on one row.
@@ -183,6 +192,7 @@ namespace Playarr.Xbox.Views
             PlayLabel.Text = _viewModel.ResumePositionMs is { } resumeMs
                 ? "Resume from " + TimeSpan.FromMilliseconds(resumeMs).ToString(resumeMs >= 3600000 ? @"h\:mm\:ss" : @"m\:ss")
                 : _viewModel.IsSeries ? PlanLabel() : "Play";
+            NamePlay();
 
             var isMovie = work?.Kind == WorkKind.Movie && _viewModel.PlayableMediaFileId.HasValue;
             SeriesPanel.Visibility = _viewModel.IsSeries || isMovie ? Visibility.Visible : Visibility.Collapsed;
@@ -216,6 +226,13 @@ namespace Playarr.Xbox.Views
             }
         }
 
+        /// <summary>The primary action's accessible name and role as the web names them: a film's "Play <title>" is a link, a series' "Start <title>" a button.</summary>
+        private void NamePlay()
+        {
+            Windows.UI.Xaml.Automation.AutomationProperties.SetName(PlayButton, PlayLabel.Text + " " + _viewModel.Title);
+            LayoutExport.SetRole(PlayButton, _viewModel.IsSeries ? "button" : "link");
+        }
+
         private bool _focusPrimary = true;
         private ResumePlan? _plan;
         private Guid? _planFor;
@@ -242,6 +259,7 @@ namespace Playarr.Xbox.Views
             {
                 _plan = await App.Environment.ApiClient.GetResumePlanAsync(work.Id);
                 PlayLabel.Text = PlanLabel();
+                NamePlay();
                 _actionsInWatchlist = null;
                 RenderActions();
             }
@@ -395,10 +413,10 @@ namespace Playarr.Xbox.Views
                 section.Children.Add(new TextBlock
                 {
                     Text = credits.Cast.Count == 1 ? "1 person" : $"{credits.Cast.Count} people",
-                    FontSize = 10,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 6, 0, 36),
+                    FontSize = 9.98,
+                    FontWeight = FontWeights.Normal,
+                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkMuted"],
+                    Margin = new Thickness(0, 4.6, 0, 37.4),
                 });
                 section.Children.Add(list);
                 _castSection = section;
@@ -502,7 +520,7 @@ namespace Playarr.Xbox.Views
                     "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
                 foreach (var similar in works)
                 {
-                    list.Items.Add(CatalogTileFactory.CreateLandscapeCard(similar));
+                    list.Items.Add(CatalogTileFactory.CreateLandscapeCard(similar, caption: false));
                 }
 
                 list.ItemClick += (s, e) =>
@@ -518,10 +536,10 @@ namespace Playarr.Xbox.Views
                 section.Children.Add(new TextBlock
                 {
                     Text = works.Count == 1 ? "1 title" : $"{works.Count} titles",
-                    FontSize = 10,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 6, 0, 36),
+                    FontSize = 9.98,
+                    FontWeight = FontWeights.Normal,
+                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkMuted"],
+                    Margin = new Thickness(0, 4.6, 0, 37.4),
                 });
                 section.Children.Add(list);
                 _similarSection = section;
@@ -631,7 +649,7 @@ namespace Playarr.Xbox.Views
                 "<ItemsStackPanel Orientation='Horizontal' /></ItemsPanelTemplate>");
             foreach (var chapter in chapters)
             {
-                list.Items.Add(ChapterCard(file, chapter));
+                list.Items.Add(ChapterCard(file, chapter, _viewModel.Title));
             }
 
             list.ItemClick += (s, e) =>
@@ -642,28 +660,28 @@ namespace Playarr.Xbox.Views
                 }
             };
             CardFocus.Attach(list);
-            var section = new StackPanel { Margin = new Thickness(0, 195, 0, 0) };
+            var section = new StackPanel { Margin = new Thickness(0, 196.1, 0, 0) };
             section.Children.Add(DetailRailTitle("Chapters"));
             section.Children.Add(new TextBlock
             {
                 Text = real ? $"{chapters.Count} chapters" : $"{chapters.Count} scene markers",
-                FontSize = 10,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                Margin = new Thickness(0, 6, 0, 36),
+                FontSize = 9.98,
+                FontWeight = FontWeights.Normal,
+                Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkMuted"],
+                Margin = new Thickness(0, 3.4, 0, 36),
             });
             section.Children.Add(list);
             SeriesPanel.Children.Add(section);
             AppendCast();
         }
 
-        private static FrameworkElement ChapterCard(Guid file, MediaChapter chapter)
+        private static FrameworkElement ChapterCard(Guid file, MediaChapter chapter, string title)
         {
             var art = new Grid
             {
                 Width = 268,
-                Height = 150,
-                CornerRadius = new CornerRadius(12),
+                Height = 150.75,
+                CornerRadius = new CornerRadius(13.44),
                 Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
             var frame = new Image { Stretch = Windows.UI.Xaml.Media.Stretch.UniformToFill };
@@ -688,20 +706,23 @@ namespace Playarr.Xbox.Views
             art.Children.Add(new TextBlock
             {
                 Text = (chapter.Index + 1).ToString("00", System.Globalization.CultureInfo.InvariantCulture),
-                FontSize = 22,
-                FontWeight = FontWeights.SemiBold,
+                FontSize = 19.2,
+                FontFamily = WebFont.Face(560), 
+                FontWeight = WebFont.Weight(560),
                 Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White), // over the still, in both themes, as the web
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(0, 0, 12, 8),
             });
             var clock = TimeSpan.FromMilliseconds(chapter.StartMs);
-            var caption = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(2, 10, 0, 0) };
-            caption.Children.Add(new TextBlock { Text = clock.TotalHours >= 1 ? $"{(int)clock.TotalHours}:{clock.Minutes:00}:{clock.Seconds:00}" : $"{clock.Minutes}:{clock.Seconds:00}", FontSize = 9, FontWeight = FontWeights.SemiBold, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"], VerticalAlignment = VerticalAlignment.Center });
-            caption.Children.Add(new TextBlock { Text = chapter.Title ?? $"Chapter {chapter.Index + 1}", FontSize = 12, FontWeight = FontWeights.SemiBold, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis });
+            var caption = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8.8, Margin = new Thickness(0, 12.9, 0, 0) };
+            var clockText = clock.TotalHours >= 1 ? $"{(int)clock.TotalHours}:{clock.Minutes:00}:{clock.Seconds:00}" : $"{clock.Minutes}:{clock.Seconds:00}";
+            caption.Children.Add(new TextBlock { Text = clockText, FontSize = 8.83, FontWeight = FontWeights.Bold, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkMuted"], VerticalAlignment = VerticalAlignment.Center });
+            caption.Children.Add(new TextBlock { Text = chapter.Title ?? $"Chapter {chapter.Index + 1}", FontSize = 11.52, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis });
             var root = new StackPanel { Width = 268, Tag = chapter };
             root.Children.Add(art);
             root.Children.Add(caption);
+            LayoutExport.Tag(root, "link", $"Play {title} from {chapter.Title ?? $"Chapter {chapter.Index + 1}"}");
             return root;
         }
 
@@ -729,6 +750,7 @@ namespace Playarr.Xbox.Views
                 // A card without its frame still plays from its chapter.
             }
         }
+        private static readonly TextBlock _titleTemplate = new TextBlock { FontSize = 69.12, FontFamily = WebFont.Face(560), FontWeight = WebFont.Weight(560), CharacterSpacing = -72, TextWrapping = TextWrapping.NoWrap };
         private bool? _actionsInWatchlist;
         private Button? _downloadPill;
         private Button PlaybackButton { get; }
@@ -805,7 +827,7 @@ namespace Playarr.Xbox.Views
                 ActionRow.Children.Add(ask);
             }
 
-            var download = Ui.WithIcon(Ui.Filled(Ui.Pill("Download", null)), "\u21e9");
+            var download = Ui.WithIcon(Ui.Filled(Ui.Pill("Download", null)), "\u21e9", "PlayarrBrandInk", "Download " + _viewModel.Title);
             download.Click += async (s, e) =>
             {
                 var template = _viewModel.DownloadTemplate();
@@ -846,7 +868,7 @@ namespace Playarr.Xbox.Views
                 _downloadPill = download;
                 PrimaryRow.Children.Insert(0, download);
             }
-            var watch = Ui.WithIcon(Ui.Filled(Ui.Pill(inWatchlist ? "Remove from watchlist" : "Add to watchlist", null)), inWatchlist ? "\u2713" : "+", "PlayarrInkSoft");
+            var watch = Ui.WithIcon(Ui.Filled(Ui.Pill(inWatchlist ? "Remove from watchlist" : "Add to watchlist", null)), inWatchlist ? "\u2713" : "+", "PlayarrBrandInk", (inWatchlist ? "\u2713 Remove from watchlist" : "+ Add to watchlist"));
             watch.Click += async (s, e) =>
             {
                 try
@@ -863,7 +885,7 @@ namespace Playarr.Xbox.Views
             watch.Height = 64;
             watch.MinWidth = 142;
             ActionRow.Children.Add(watch);
-            var playlist = Ui.WithIcon(Ui.Filled(Ui.Pill("Add to Playlist", OpenPlaylistDrawer)), "+", "PlayarrInkSoft");
+            var playlist = Ui.WithIcon(Ui.Filled(Ui.Pill("Add to Playlist", OpenPlaylistDrawer)), "+", "PlayarrBrandInk", "+ Add to Playlist");
             playlist.Height = 64;
             playlist.MinWidth = 142;
             ActionRow.Children.Add(playlist);
@@ -959,7 +981,7 @@ namespace Playarr.Xbox.Views
                     }
                 };
                 // The web's episode ring sits 2.5 px outside the art (measured 280 x 160 on a 268 x 151 card).
-                CardFocus.Attach(list, true, 2.5);
+                CardFocus.Attach(list, true, 2.5, CardFocus.Lift, 1.0);
                 list.GotFocus += (s, e) =>
                 {
                     if (e.OriginalSource is ListViewItem { Content: FrameworkElement { Tag: EpisodeDetail episode } })
@@ -974,10 +996,10 @@ namespace Playarr.Xbox.Views
                 section.Children.Add(new TextBlock
                 {
                     Text = $"{season.Episodes.Count} episodes",
-                    FontSize = 10,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"],
-                    Margin = new Thickness(0, 3.5, 0, 37.5),
+                    FontSize = 9.98,
+                    FontWeight = FontWeights.Normal,
+                    Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkMuted"],
+                    Margin = new Thickness(0, 3, 0, 37.5),
                 });
                 section.Children.Add(list);
                 SeriesPanel.Children.Add(section);
@@ -993,7 +1015,8 @@ namespace Playarr.Xbox.Views
             Style = (Style)Application.Current.Resources["PlayarrRailTitle"],
             FontSize = 17.66,
             FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610),
-            Margin = new Thickness(0, 0, 0, 2),
+            Margin = new Thickness(0, 1.1, 0, 0.9),
+            CharacterSpacing = -31,
             LineHeight = 24,
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
         }, "heading");
@@ -1004,8 +1027,8 @@ namespace Playarr.Xbox.Views
             var art = new Grid
             {
                 Width = 268,
-                Height = 151,
-                CornerRadius = new CornerRadius(12),
+                Height = 150.75,
+                CornerRadius = new CornerRadius(13.44),
                 Background = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrSurfaceSoft"],
             };
             if (series != null)
@@ -1085,7 +1108,7 @@ namespace Playarr.Xbox.Views
             else if (watch.Unwatched)
             {
                 // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
-                art.Children.Add(new Ellipse
+                art.Children.Add(LayoutExport.Tag(new Ellipse
                 {
                     Width = 13,
                     Height = 13,
@@ -1096,27 +1119,29 @@ namespace Playarr.Xbox.Views
                     Stroke = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
                     StrokeThickness = 2,
                     IsHitTestVisible = false,
-                });
+                }, "img"));
             }
 
             art.Children.Add(new TextBlock
             {
                 Text = episode.EpisodeNumber.ToString("00", System.Globalization.CultureInfo.InvariantCulture),
-                FontSize = 22,
-                FontWeight = FontWeights.SemiBold,
+                FontSize = 19.2,
+                FontFamily = WebFont.Face(560),
+                FontWeight = WebFont.Weight(560),
                 Foreground = new Windows.UI.Xaml.Media.SolidColorBrush(Windows.UI.Colors.White), // over the still, in both themes, as the web
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(0, 0, 12, 8),
             });
 
-            var caption = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(2, 10, 0, 0) };
-            caption.Children.Add(new TextBlock { Text = EpisodeCode(seasonNumber, episode.EpisodeNumber), FontSize = 9, FontWeight = FontWeights.SemiBold, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkSoft"], VerticalAlignment = VerticalAlignment.Center });
-            caption.Children.Add(new TextBlock { Text = episode.Title ?? string.Empty, FontSize = 12, FontWeight = FontWeights.SemiBold, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis });
+            var caption = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8.8, Margin = new Thickness(0, 12.6, 0, 0) };
+            caption.Children.Add(new TextBlock { Text = EpisodeCode(seasonNumber, episode.EpisodeNumber), FontSize = 8.83, FontWeight = FontWeights.Bold, Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInkMuted"], VerticalAlignment = VerticalAlignment.Center });
+            caption.Children.Add(new TextBlock { Text = episode.Title ?? string.Empty, FontSize = 11.52, FontFamily = WebFont.Face(610), FontWeight = WebFont.Weight(610), MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis });
 
             var root = new StackPanel { Width = 268, Tag = detail };
             root.Children.Add(art);
             root.Children.Add(caption);
+            LayoutExport.Tag(root, "link", $"{episode.EpisodeNumber:00} {EpisodeCode(seasonNumber, episode.EpisodeNumber)} {episode.Title}");
             return root;
         }
 
@@ -1142,6 +1167,7 @@ namespace Playarr.Xbox.Views
             EyebrowText.Text = EpisodeCode(seasonNumber, episode.EpisodeNumber);
             EpisodeTitleText.Text = episode.Title ?? string.Empty;
             EpisodeTitleText.Visibility = string.IsNullOrEmpty(episode.Title) ? Visibility.Collapsed : Visibility.Visible;
+            MetaRow.Margin = new Thickness(0, string.IsNullOrEmpty(episode.Title) ? 11.2 : 24.1, 0, 0);
             var meta = new System.Collections.Generic.List<string> { $"Season {seasonNumber}", EpisodeCode(seasonNumber, episode.EpisodeNumber) };
             if (episode.RuntimeMinutes is { } minutes)
             {
@@ -1159,11 +1185,21 @@ namespace Playarr.Xbox.Views
             }
 
             meta.AddRange(work.Genres);
-            MetaText.Text = string.Join("      ", meta);
-            LayoutExport.SetSplitOn(MetaText, "      ");
+            SetMeta(meta);
             if (!string.IsNullOrEmpty(episode.Overview))
             {
                 OverviewText.Text = episode.Overview;
+            }
+        }
+
+        /// <summary>The web's meta row: one run per part 13.6 px apart; the lead part (kind or season) is bolder and lighter ink, the rest muted.</summary>
+        private void SetMeta(System.Collections.Generic.IList<string> parts)
+        {
+            MetaRow.Children.Clear();
+            for (var i = 0; i < parts.Count; i++)
+            {
+                var block = Ui.Text(parts[i], 10.56, new FontWeight { Weight = (ushort)(i == 0 ? 680 : 400) }, i == 0 ? "PlayarrInkSoft" : "PlayarrInkMuted");
+                MetaRow.Children.Add(block);
             }
         }
 

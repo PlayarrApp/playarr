@@ -1,0 +1,1 @@
+- Parity layout dump computes control names from rendered, non-aria-hidden content, and refuses volatile ellipsis, line-clamp and input values instead of dropping or reconstructing them.

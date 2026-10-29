@@ -15,7 +15,9 @@ for theme in ("dark", "light"):
     for raw in sorted(glob.glob(os.path.join(pulled, "layout-raw", theme, "*.json"))):
         name = os.path.basename(raw)[:-5]
         try:
-            doc = layout_export.export(json.load(open(raw)), name, theme, viewport, True, with_src=bool(os.environ.get("WITH_SRC")), origin=origin)
+            pf = os.path.join(pulled, "layout-probe", theme, name + ".json")  # what the capture measured on the rendered screen
+            probe = json.load(open(pf)) if os.path.exists(pf) else None
+            doc = layout_export.export(json.load(open(raw)), name, theme, viewport, True, with_src=bool(os.environ.get("WITH_SRC")), origin=origin, probe=probe)
         except layout_export.ExportError as error:
             print(f"{theme}/{name}: {error}")
             continue

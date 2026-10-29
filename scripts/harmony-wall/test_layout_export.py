@@ -1,5 +1,13 @@
 import unittest
-from layout_export import ExportError, export
+from layout_export import ExportError
+from layout_export import export as _export
+
+
+def export(tree, screen, theme, viewport, **kw):
+    """The geometry rules pick what may be covered; a drop needs the measurement. These tests stand for the measurement saying nothing of the flagged
+    element is drawn (every index False). The probe tests pass their own."""
+    kw.setdefault("probe", {"results": {str(i): False for i in range(2000)}})
+    return _export(tree, screen, theme, viewport, **kw)
 
 
 def column(children, rect="[0.00, 0.00],[1080.00, 2340.00]", fill="#FF151315", **attrs):
@@ -212,6 +220,32 @@ class LayoutExportTest(unittest.TestCase):
         self.assertIn("button", self._roles([self._button(), grad]))
         low = {"$type": "Button", "$rect": "[100.00, 2100.00],[300.00, 120.00]", "$attrs": {"accessibilityText": "Low"}}
         self.assertNotIn("button", self._roles([low, grad]))
+
+    def test_a_rounded_disc_in_vp_does_not_cover_the_ring_corner_it_misses(self):
+        # AlphabetRail: 90 px ring r15vp, 66 px disc r11vp, DPR 3: the ring's 20%/20% sample (1155,451) lies outside the disc's circle
+        ring = {"$type": "Column", "$rect": "[1137.00, 433.00],[90.00, 90.00]", "$attrs": {"accessibilityText": "Ring", "accessibilityTextHint": "pvrole:5", "borderRadius": "15.00vp", "borderWidth": "2.00vp", "borderColor": "#FFFFFFFF"}, "$children": []}
+        disc = {"$type": "Column", "$rect": "[1149.00, 445.00],[66.00, 66.00]", "$attrs": {"backgroundColor": "#FFF4F0F1", "borderRadius": "11.00vp"}, "$children": []}
+        doc = export(column([ring, disc], rect="[0.00, 0.00],[1440.00, 2340.00]"), "x", "dark", (480, 780, 3))
+        self.assertIn("button", [e["role"] for e in doc["elements"]])
+
+    def test_a_covered_element_is_dropped_only_if_hiding_it_changed_no_pixel(self):
+        btn = {"$type": "Row", "$rect": "[1846.00, 151.00],[62.00, 72.00]", "$attrs": {"id": "pvh7", "accessibilityText": "Filters", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#33FFFFFF"}, "$children": []}
+        drawer = {"$type": "Column", "$rect": "[1560.00, 0.00],[360.00, 1080.00]", "$attrs": {"id": "pvh8", "accessibilityTextHint": "pvrole:24", "backgroundColor": "#F0211D21"}, "$children": []}
+        tree = column([btn, drawer], rect="[0.00, 0.00],[1920.00, 1080.00]")
+        cands = []
+        none = export(tree, "x", "dark", (1920, 1080, 1), candidates=cands, probe={"results": {}})
+        self.assertIn("button", [e["role"] for e in none["elements"]])  # no measurement, no drop
+        self.assertEqual(none["unmeasured"], 1)
+        flagged = [c for c in cands if c["id"] == "pvh7"]
+        self.assertEqual([c["box"] for c in flagged], [[1846, 151, 1908, 223]])
+        i = str(flagged[0]["index"])
+        drawn = export(tree, "x", "dark", (1920, 1080, 1), probe={"results": {i: True}})
+        self.assertIn("button", [e["role"] for e in drawn["elements"]])
+        hidden = export(tree, "x", "dark", (1920, 1080, 1), probe={"results": {i: False}})
+        self.assertNotIn("button", [e["role"] for e in hidden["elements"]])
+        self.assertTrue(any("hiding it in the running app" in l for l in hidden["limits"]))
+        other = export(tree, "x", "dark", (1920, 1080, 1), probe={"results": {"999": False}})  # a partial map decides only what it measured
+        self.assertIn("button", [e["role"] for e in other["elements"]])
 
     def test_a_spinner_and_a_surface_are_exported_and_limits_are_stated(self):
         spin = {"$type": "LoadingProgress", "$rect": "[500.00, 1000.00],[90.00, 90.00]", "$attrs": {}}

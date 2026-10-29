@@ -30,10 +30,12 @@
             Background="{StaticResource PlayarrSurfaceStrong}"
             BorderBrush="{StaticResource PlayarrLineStrong}"
             BorderThickness="1">
-            <FontIcon x:Name="SearchGlyph" Glyph="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="18" Margin="25,0,0,0" HorizontalAlignment="Left" Foreground="{StaticResource PlayarrInkSoft}" />
+            <Grid x:Name="SearchGlyph" Width="24" Height="24" Margin="24,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <FontIcon Glyph="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource PlayarrInkSoft}" />
+            </Grid>
             <TextBox
                 x:Name="QueryBox"
-                Margin="62,0,22,0"
+                Margin="61,0,21,0"
                 Height="60"
                 VerticalAlignment="Center"
                 FontSize="18"
@@ -47,13 +49,13 @@
         <TextBlock
             Text="Find any available movie, series, artist or playlist."
             Width="270"
-            Margin="153,302,0,0"
+            Margin="153.59,303.2,0,0"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
-            FontSize="13.5"
-            LineHeight="21"
+            FontSize="13.82"
+            LineHeight="21.42"
             TextWrapping="WrapWholeWords"
-            Foreground="{StaticResource PlayarrInkSoft}" />
+            Foreground="{StaticResource PlayarrInkMuted}" />
         <ProgressRing x:Name="SearchingRing" IsActive="False" Width="32" Height="32" Margin="783,162,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
         <TextBlock
             x:Name="ErrorText"
@@ -67,13 +69,15 @@
             x:Name="EmptyStatePanel"
             Orientation="Horizontal"
             Spacing="42"
-            Margin="1125.6,311.8,0,0"
+            Margin="1124.59,311.78,0,0"
             HorizontalAlignment="Left"
             VerticalAlignment="Top">
-            <Border Width="132" Height="132" CornerRadius="66" BorderBrush="{StaticResource PlayarrLineStrong}" BorderThickness="1" Background="{StaticResource PlayarrSurface}">
-                <FontIcon Glyph="&#xE71F;" FontFamily="Segoe MDL2 Assets" FontSize="30" Foreground="{StaticResource PlayarrBrand}" />
+            <Border Width="132" Height="132" CornerRadius="66" Background="{StaticResource PlayarrSurfaceStrong}">
+                <Grid x:Name="EmptyGlyph" Width="54" Height="36">
+                    <FontIcon Glyph="&#xE71F;" FontFamily="Segoe MDL2 Assets" FontSize="30" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource PlayarrBrand}" />
+                </Grid>
             </Border>
-            <TextBlock x:Name="EmptyStateText" Text="Start typing to search." FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock x:Name="EmptyStateText" Text="Start typing to search." FontSize="16.9" VerticalAlignment="Center" />
         </StackPanel>
 
         <GridView

@@ -28,6 +28,7 @@ namespace Playarr.Xbox.Views
             TextWrapping = TextWrapping.WrapWholeWords,
             Foreground = Ui.Res("PlayarrInkSoft"),
         };
+        private readonly StackPanel _secret = new StackPanel { Spacing = 9.6 };
         private readonly TextBlock _error = new TextBlock
         {
             Visibility = Visibility.Collapsed,
@@ -39,6 +40,9 @@ namespace Playarr.Xbox.Views
         {
             Visibility = Visibility.Collapsed,
             IsReadOnly = true,
+            Width = 268,
+            Height = 44,
+            CornerRadius = new CornerRadius(8),
             FontSize = 12,
             TextWrapping = TextWrapping.NoWrap,
             Background = Ui.Res("PlayarrSurface"),
@@ -51,8 +55,8 @@ namespace Playarr.Xbox.Views
             Visibility = Visibility.Collapsed,
             Width = 240,
             Height = 240,
-            Padding = new Thickness(10),
-            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(12),
+            CornerRadius = new CornerRadius(18),
             Background = new SolidColorBrush(Colors.White),
             HorizontalAlignment = HorizontalAlignment.Left,
         };
@@ -68,11 +72,14 @@ namespace Playarr.Xbox.Views
         {
             Visibility = Visibility.Collapsed,
             Content = "Copy link",
-            MinWidth = 110,
-            Height = 42,
-            CornerRadius = new CornerRadius(21),
-            Background = Ui.Res("PlayarrInk"),
-            Foreground = Ui.Res("PlayarrSurfaceStrong"),
+            Height = 58,
+            Padding = new Thickness(21, 0, 21, 0),
+            CornerRadius = new CornerRadius(29),
+            Background = Ui.Res("PlayarrPillFill"),
+            Foreground = Ui.Res("PlayarrPillInk"),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            FontSize = 14.72,
+            FontWeight = new FontWeight { Weight = 720 },
         };
         private readonly Button _retry = new Button
         {
@@ -98,9 +105,12 @@ namespace Playarr.Xbox.Views
         {
             Visibility = Visibility.Collapsed,
             Content = "Reset link",
-            MinWidth = 110,
-            Height = 42,
-            CornerRadius = new CornerRadius(21),
+            Height = 58,
+            Padding = new Thickness(21, 0, 21, 0),
+            CornerRadius = new CornerRadius(29),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            FontSize = 14.72,
+            FontWeight = new FontWeight { Weight = 720 },
             Background = Ui.Res("PlayarrSurface"),
             Foreground = Ui.Res("PlayarrInk"),
             BorderBrush = Ui.Res("PlayarrLineStrong"),
@@ -141,21 +151,33 @@ namespace Playarr.Xbox.Views
         private CalendarLinkPanel()
         {
             ScrollViewer.SetHorizontalScrollBarVisibility(_url, ScrollBarVisibility.Auto);
-            AddText("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", 12.8, "PlayarrInkSoft");
+            SetLabel(_copy, "Copy link", "PlayarrPillInk");
+            SetLabel(_reset, "Reset link", "PlayarrInk");
+            LayoutExport.SetRole(_url, "textbox");
+            LayoutExport.SetRole(_qr, "img");
+            _state.Visibility = Visibility.Collapsed;
+            AddText("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.", 13.82, "PlayarrInkMuted").LineHeight = 20.74;
             _body.Children.Add(_error);
             _body.Children.Add(_state);
-            _body.Children.Add(_url);
             _copy.Click += (s, e) => CopyLink();
-            _body.Children.Add(_copy);
-                        _body.Children.Add(_qr);
+            _secret.Children.Add(_url);
+            _secret.Children.Add(_copy);
+            _secret.Children.Add(_qr);
+            _body.Children.Add(_secret);
             _body.Children.Add(_otherDevice);
 
-            var heading = AddText("ADD IT TO YOUR CALENDAR APP", 9.6, "PlayarrInkSoft");
-            heading.FontWeight = FontWeights.Bold;
+            var heading = AddText("ADD IT TO YOUR CALENDAR APP", 9.6, "PlayarrInkMuted");
+            heading.FontWeight = new FontWeight { Weight = 720 };
             heading.CharacterSpacing = 120;
-            AddText("\u2022  Google Calendar: Other calendars (+) > From URL, then paste the link.", 12, "PlayarrInkSoft");
-            AddText("\u2022  Apple Calendar: File > New Calendar Subscription, then paste the link.", 12, "PlayarrInkSoft");
-            AddText("\u2022  Outlook: Add calendar > Subscribe from web, then paste the link.", 12, "PlayarrInkSoft");
+            LayoutExport.SetRole(heading, "heading");
+            var steps = new StackPanel { Spacing = 8 };
+            foreach (var step in new[] { "Google Calendar: Other calendars (+) > From URL, then paste the link.", "Apple Calendar: File > New Calendar Subscription, then paste the link.", "Outlook: Add calendar > Subscribe from web, then paste the link." })
+            {
+                var item = new TextBlock { Text = step, FontSize = 13.82, LineHeight = 20.73, TextWrapping = TextWrapping.WrapWholeWords, Foreground = Ui.Res("PlayarrInk"), Margin = new Thickness(17.59, 0, 0, 0) };
+                steps.Children.Add(item);
+            }
+
+            _body.Children.Add(steps);
 
             _reset.Click += (s, e) => ShowConfirmation(true);
             _body.Children.Add(_reset);
@@ -179,6 +201,17 @@ namespace Playarr.Xbox.Views
             _ = panel.LoadAsync();
         }
 
+        private static void SetLabel(Button button, string text, string brushKey)
+        {
+            if (button.Content is TextBlock label)
+            {
+                label.Text = text;
+                return;
+            }
+
+            button.Content = Ui.Text(text, 14.72, new FontWeight { Weight = 720 }, brushKey);
+        }
+
         private TextBlock AddText(string text, double size, string brushKey)
         {
             var block = new TextBlock
@@ -188,6 +221,7 @@ namespace Playarr.Xbox.Views
                 TextWrapping = TextWrapping.WrapWholeWords,
                 Foreground = Ui.Res(brushKey),
                 LineHeight = size * 1.5,
+                LineStackingStrategy = LineStackingStrategy.MaxHeight,
             };
             _body.Children.Add(block);
             return block;
@@ -274,8 +308,9 @@ namespace Playarr.Xbox.Views
         {
             var hasLink = !string.IsNullOrEmpty(_link);
             _url.Text = _link ?? string.Empty;
-            _copy.Content = "Copy link";
+            SetLabel(_copy, "Copy link", "PlayarrPillInk");
             _url.Visibility = hasLink ? Visibility.Visible : Visibility.Collapsed;
+            _state.Visibility = string.IsNullOrEmpty(_state.Text) ? Visibility.Collapsed : Visibility.Visible;
             _copy.Visibility = hasLink ? Visibility.Visible : Visibility.Collapsed;
             _qrLabel.Visibility = hasLink ? Visibility.Visible : Visibility.Collapsed;
             _qr.Child = hasLink ? DrawQr(_link!) : null;
@@ -287,6 +322,7 @@ namespace Playarr.Xbox.Views
         private void SetBusy(bool busy)
         {
             _state.Text = busy && string.IsNullOrEmpty(_link) ? "Getting your link\u2026" : _state.Text;
+            _state.Visibility = string.IsNullOrEmpty(_state.Text) ? Visibility.Collapsed : Visibility.Visible;
             _copy.IsEnabled = !busy;
             _reset.IsEnabled = !busy;
             _retry.IsEnabled = !busy;
@@ -308,7 +344,7 @@ namespace Playarr.Xbox.Views
                 var package = new DataPackage();
                 package.SetText(_link);
                 Clipboard.SetContent(package);
-                _copy.Content = "Copied";
+                SetLabel(_copy, "Copied", "PlayarrPillInk");
             }
             catch (Exception)
             {

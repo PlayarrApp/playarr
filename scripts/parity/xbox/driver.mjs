@@ -12,7 +12,7 @@
 // paths assume the web's filters panel; the D-pad checks themselves press real keys.
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -263,6 +263,13 @@ export async function createDriver() {
       await sleep(name === "select" && !long ? 9000 : 1200);
     },
     async clickAt(x, y, wait = 4) { await click(x, y, wait); },
+    // The web's D-pad checks start with the video playing, controls up and focus on play/pause.
+    async playerReady() {
+      await requireTestAccount();
+      run("write", "parity.resume", "1");
+      await until((t) => t.screen === "playback" && t.play === "playing" && /play|pause/.test(t.focus ?? ""), 30, "the player playing with focus on play/pause");
+    },
+    async playhead() { return trace().pos ?? 0; },
     async panelOpen() { return trace().playerPanel === true; },
     async location() { return location(); },
     async focused() { const t = trace(); return t.focus && t.position ? { label: t.focus, position: t.position } : (t.focus ?? null); },
@@ -278,19 +285,22 @@ export async function createDriver() {
       run("shot", file, ...(theme && t.screen !== "playback" ? [theme] : []));
       writeFileSync(file.replace(/\.png$/i, ".trace.json"), `${JSON.stringify(focusCaptureSidecar(t), null, 2)}\n`);
       // Layout export (docs/parity/LAYOUT.md): the app walks its visual tree for this exact state; <id>.layout.json sits beside the PNG.
-      if (theme && t.screen !== "playback") try {
+      if (theme) try {
         const nonce = randomUUID().replaceAll("-", "");
         await requireTestAccount();
+        try { unlinkSync(file.replace(/\.png$/i, ".layout.json")); } catch { /* none yet */ }
         run("write", "parity.layout", `${theme},${file.replace(/^.*[\\/]/, "").replace(/\.png$/i, "")},${nonce}`); // a comma: a pipe would reach cmd.exe
         const deadline = Date.now() + 15000;
+        let done = false;
         while (Date.now() < deadline) {
           await sleep(500);
           try {
             const layout = JSON.parse(run("read", "layout.json"));
-            if (layout.layoutNonce === nonce) { delete layout.layoutNonce; writeFileSync(file.replace(/\.png$/i, ".layout.json"), `${JSON.stringify(layout, null, 1)}\n`); break; }
+            if (layout.layoutNonce === nonce) { delete layout.layoutNonce; writeFileSync(file.replace(/\.png$/i, ".layout.json"), `${JSON.stringify(layout, null, 1)}\n`); done = true; break; }
           } catch { /* not written yet */ }
         }
-      } catch (e) { console.log(`layout export skipped: ${String(e.message).split("\n")[0]}`); }
+        if (!done) throw new Error("the app did not answer the layout request");
+      } catch (e) { throw new Error(`layout export failed: ${String(e.message).split("\n")[0]}`); }
     },
     // Plays media file `c.file` through the app's parity.play request; judged from the player's own position.
     async play(c, expect) {

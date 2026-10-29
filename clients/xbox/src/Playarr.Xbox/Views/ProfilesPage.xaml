@@ -48,9 +48,9 @@
                 FontSize="80.64"
                 LineHeight="110"
                 LineStackingStrategy="BlockLineHeight"
-                CharacterSpacing="-75"
+                CharacterSpacing="-78"
                 HorizontalAlignment="Center"
-                Margin="0,-8.2,0,90" />
+                Margin="0,-8.2,0,104.59" />
 
             <ProgressRing
                 x:Name="LoadingRing"
@@ -85,7 +85,7 @@
                     x:Name="ProfilesPanel"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
-                    Spacing="26" />
+                    Spacing="42.23" />
             </ScrollViewer>
         </StackPanel>
     </Grid>

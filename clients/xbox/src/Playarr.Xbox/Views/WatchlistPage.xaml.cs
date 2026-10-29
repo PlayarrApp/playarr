@@ -22,6 +22,7 @@ namespace Playarr.Xbox.Views
         public WatchlistPage()
         {
             InitializeComponent();
+            Theme.ApplyStage(this); // flat surface ground; the page wash is a separate layer, as on the web
             Ui.PageHeader(RootGrid, "Watchlist", null, () => App.Navigation.GoBack());
             _list.Children.Add(new ScrollViewer { Content = _rows, VerticalScrollBarVisibility = ScrollBarVisibility.Hidden, Height = 960, VerticalAlignment = VerticalAlignment.Top });
             RootGrid.Children.Add(_list);

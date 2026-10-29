@@ -110,6 +110,13 @@ methods = """
       }
       return;
     }
+    if (name.indexOf('hide:') === 0 || name === 'show:all') {
+      // parity occlusion probe: patch_hide.py keyed every component and bound its visibility to this AppStorage string, so the declarative tree
+      // itself hides the named nodes (Visibility.Hidden keeps their layout) and re-renders; show:all puts them back.
+      AppStorage.setOrCreate<string>('pvHid', name === 'show:all' ? '' : '|' + name.substring(5).split(',').join('|') + '|');
+      previewReport('dbg=' + encodeURIComponent('probe:' + name.substring(0, 4)));
+      return;
+    }
     if (name.indexOf('focus:') === 0) {
       this.getUIContext().getFocusController().activate(true, false);
       let result: string = 'ok';

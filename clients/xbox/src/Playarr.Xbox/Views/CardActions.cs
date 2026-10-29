@@ -52,7 +52,7 @@ namespace Playarr.Xbox.Views
         {
             var body = new StackPanel();
             Drawer? drawer = null;
-            body.Children.Add(Drawer.Action("\uF5B0", "Play", async () =>
+            body.Children.Add(Drawer.Action("\u25B6", "Play", async () =>
             {
                 drawer?.Close();
                 var detail = await App.Environment.ApiClient.GetWorkAsync(work.Id);
@@ -69,12 +69,12 @@ namespace Playarr.Xbox.Views
             }));
             if (work.Kind == WorkKind.Movie)
             {
-                body.Children.Add(Drawer.Action("\uE896", "Download", () => Download(work, drawer)));
+                body.Children.Add(Drawer.Action("\u21E9", "Download", () => Download(work, drawer)));
             }
 
-            body.Children.Add(Drawer.Action("\uE710", "Add to Playlist", () => OpenPlaylists(host, work)));
-            body.Children.Add(Drawer.Action("", "Mark as Watched", () => SetWatched(work, true, drawer)));
-            body.Children.Add(Drawer.Action("", "Mark as Unwatched", () => SetWatched(work, false, drawer)));
+            body.Children.Add(Drawer.Action("\uFF0B", "Add to Playlist", () => OpenPlaylists(host, work)));
+            body.Children.Add(Drawer.Action("\u2713", "Mark as Watched", () => SetWatched(work, true, drawer)));
+            body.Children.Add(Drawer.Action("\u25CB", "Mark as Unwatched", () => SetWatched(work, false, drawer)));
             drawer = Drawer.Open(host, "Title actions", work.Title, body);
         }
 
