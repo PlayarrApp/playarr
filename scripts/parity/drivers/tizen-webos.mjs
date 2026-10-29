@@ -188,10 +188,10 @@ export async function createDriver() {
     const pin = (t) => ev(`(async () => {
       const v = document.querySelector("video");
       v.pause();
-      if (Math.abs(v.currentTime - ${t}) > 0.01) await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = ${t}; setTimeout(res, 8000); });
+      if (Math.abs(v.currentTime - ${t}) > 0.0005) await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = ${t}; setTimeout(res, 8000); });
       v.pause();
       if (v.requestVideoFrameCallback) await new Promise((res) => { v.requestVideoFrameCallback(() => res()); setTimeout(res, 3000); });
-      return v.paused && Math.abs(v.currentTime - ${t}) < 0.05;
+      return v.paused && Math.abs(v.currentTime - ${t}) < 0.001;
     })()`);
     if (device === "tizen") {
       // Tizen plays through AVPlay, a native plane. Method of docs/parity/DEVICES.md: hold the clip paused at exactly 2000 ms (seek while
@@ -226,6 +226,13 @@ export async function createDriver() {
     let held = device === "tizen" ? 2 : 0;
     for (let i = 0; i < 12 && held < 2; i += 1) { held = (await pin(2.03)) ? held + 1 : 0; await sleep(700); }
     if (held < 2) throw new Error("player did not hold a paused frame at 2 s");
+    if (device !== "tizen") {
+      // The seek bar fill follows the last position tick the app received, which can lag the paused position by a few frames. Hand the app the position the
+      // video really holds (a timeupdate, as the Tizen path does with the AVPlay position) and refuse the capture until the fill shows that position.
+      const synced = `(() => { const v = document.querySelector("video"), f = document.querySelector(".player-seek-progress"); return !!v && !!f && Math.abs(parseFloat(f.style.width) - 100 * v.currentTime / v.duration) < 0.15; })()`;
+      for (let i = 0; i < 10 && !(await ev(synced)); i += 1) { await ev(`(document.querySelector("video").dispatchEvent(new Event("timeupdate")), true)`); await sleep(400); }
+      if (!(await ev(synced))) throw new Error("the seek bar fill does not show the paused position");
+    }
     await sleep(600); // the player moves focus to play/pause on a timer: let it, then drop it
     await ev(`(document.activeElement instanceof HTMLElement && document.activeElement.blur(), true)`);
   }
