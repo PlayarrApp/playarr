@@ -615,7 +615,6 @@ struct WMRailCard: View {
         }
         .frame(height: art + 24.7, alignment: .top)
         .frame(width: width, height: WMRailCard.height(cover: cover), alignment: .topLeading)
-        .parityBox("link", name: "\(work.title) \(work.singularKindYearLabel)", radius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(work.title) \(work.singularKindYearLabel)")
     }
@@ -698,7 +697,6 @@ struct WMLibraryCard: View {
         }
         .frame(height: art + 24.7, alignment: .top)
         .frame(width: width, height: WMLibraryCard.rowHeight(cover: cover), alignment: .topLeading)
-        .parityBox("link", name: "Open \(work.title)", radius: 12)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Open \(work.title)")
     }

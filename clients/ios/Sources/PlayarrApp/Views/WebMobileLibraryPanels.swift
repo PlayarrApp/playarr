@@ -39,10 +39,7 @@ private struct WMPanelFrame<Content: View>: View {
     @ViewBuilder
     private var panelBackground: some View {
         if isPad {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(WM.chip.opacity(0.94))
-                .ignoresSafeArea()
+            WM.chip.ignoresSafeArea() // web tablet drawer: one opaque surface, so the export reads the colour it draws
         } else {
             WM.page.ignoresSafeArea() // web phone panels are opaque: the library behind does not show through
         }
@@ -88,8 +85,8 @@ private struct WMPanelFrame<Content: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
-        // What the panel really paints: opaque page colour on the phone, chip at 94% over a thin material on iPad.
-        .parityFill(isPad ? WM.chip.opacity(0.94) : WM.page)
+        // What the panel really paints: opaque page colour on the phone, opaque chip on iPad.
+        .parityFill(isPad ? WM.chip : WM.page)
     }
 }
 
@@ -107,7 +104,7 @@ private struct WMChoice: View {
         Button(action: action) {
             VStack(spacing: 5) {
                 if let symbol { Image(systemName: symbol).font(.system(size: 13, weight: .semibold)) }
-                Text(label).wm(wmIsPad ? 11.5 : 11.52, wmIsPad ? (selected ? 700 : 600) : 680, text: label)
+                Text(label).wm(wmIsPad ? 11.5 : 11.52, wmIsPad ? (selected ? 700 : 600) : 680, color: selected ? WM.page : WM.inkSoft, text: label)
             }
             .foregroundStyle(selected ? WM.page : WM.inkSoft)
             .frame(maxWidth: .infinity).frame(height: height)
@@ -184,13 +181,13 @@ private struct WMLanguageSelector: View {
                                 HStack(spacing: 10) {
                                     Image(systemName: selectedCodes.contains(facet.code) ? "checkmark.square.fill" : "square")
                                         .foregroundStyle(selectedCodes.contains(facet.code) ? WM.pink : WM.muted)
-                                    Text(facet.displayName).foregroundStyle(WM.ink)
+                                    Text(facet.displayName).wm(11, 500, color: WM.ink, text: facet.displayName).foregroundStyle(WM.ink)
                                     Spacer()
                                     if let count = facet.count {
-                                        Text(count.formatted()).foregroundStyle(WM.muted)
+                                        Text(count.formatted()).wm(11, 500, color: WM.muted, text: count.formatted()).foregroundStyle(WM.muted)
                                     }
                                 }
-                                .wm(11, 500)
+                                .font(WM.font(11, 500))
                                 .padding(.horizontal, 13).frame(minHeight: 42)
                                 .contentShape(Rectangle())
                             }

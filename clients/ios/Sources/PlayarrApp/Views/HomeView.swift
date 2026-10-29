@@ -202,7 +202,7 @@ struct HomeView: View {
             WMFadingRail(scrollTo: scrollTarget(rail, first: first, index: railIndex), count: rail.works.count, itemWidth: WMArtwork.railCardWidth, scrollAnchor: keyFocus != nil ? .center : parityRailAtEnd(railIndex) ? UnitPoint(x: 1 - 16 / UIScreen.main.bounds.width, y: 0.5) : .leading) {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(Array(rail.works.enumerated()), id: \.element.id) { index, work in
-                        workLink(work) {
+                        workLink(work, name: "\(work.title) \(work.singularKindYearLabel)") {
                             WMRailCard(
                                 work: work,
                                 apiClient: apiClient,
@@ -415,7 +415,7 @@ struct HomeView: View {
         .frame(width: railWidth, alignment: .leading)
     }
 
-    private func workLink<Content: View>(_ work: Work, @ViewBuilder content: () -> Content) -> some View {
+    private func workLink<Content: View>(_ work: Work, name: String? = nil, @ViewBuilder content: () -> Content) -> some View {
         NavigationLink {
             WorkDetailView(
                 viewModel: WorkDetailViewModel(apiClient: apiClient, workID: work.id),
@@ -430,7 +430,8 @@ struct HomeView: View {
         .focused($focusedWork, equals: work.id)
         .focusEffectDisabled()
         .accessibilityIdentifier(homeWorkAccessibilityID(work))
-        .accessibilityLabel(work.title)
+        .accessibilityLabel(name ?? work.title)
+        .accessibilityAddTraits(.isLink)
         .contextMenu {
             Button("Download", systemImage: "arrow.down.circle") { downloadTarget = work }
         }
