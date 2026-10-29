@@ -179,3 +179,18 @@ test("a role alias lets a device button match a web link; off by default", () =>
   assert.equal(scoreLayout(doc(el("link")), doc(el("button")), { roleAliases: { link: ["button"] } }).score, 100);
   assert.equal(scoreLayout(doc(el("button")), doc(el("link")), { roleAliases: { link: ["button"] } }).score, 0);
 });
+
+test("textCentreLine scores text on left, right and vertical centre only; other elements stay strict", () => {
+  const el = (rect, extra = {}) => ({ text: "Hi", role: "text", rect, color: null, background: null, fontSize: 16, fontWeight: 400, ...extra });
+  const ref = { screen: "s", theme: "dark", viewport: { w: 100, h: 100, dpr: 1 }, elements: [el({ x: 10, y: 10, w: 20, h: 24 }), { text: "", role: "container", rect: { x: 0, y: 0, w: 50, h: 50 }, color: null, background: null, fontSize: null, fontWeight: null }] };
+  // text 20.7 tall centred on the same line as the 24 tall web one (top +1.65, bottom -1.65); container 3 px short
+  const dev = { elements: [el({ x: 10, y: 11.65, w: 20, h: 20.7 }), { ...ref.elements[1], rect: { x: 0, y: 0, w: 50, h: 47 } }] };
+  const strict = scoreLayout(ref, dev);
+  assert.equal(strict.equal, 0);
+  const lax = scoreLayout(ref, dev, { textCentreLine: true });
+  assert.equal(lax.equal, 1); // the text passes
+  assert.equal(lax.failures.length, 1);
+  assert.equal(lax.failures[0].ref.role, "container"); // the container still fails on its bottom edge
+  dev.elements[0].rect.y += 3; // centre off by 3: fails even with the exception
+  assert.equal(scoreLayout(ref, dev, { textCentreLine: true }).equal, 0);
+});
