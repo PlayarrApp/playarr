@@ -1,1 +1,2 @@
 - fix(harmony-wall): the occlusion probe names nodes whose own id replaced the hide key (non-Text nodes repeat it in accessibilityDescription), so every flagged element is measured, and the screen must return to its base frame after every probe.
+- fix(harmony-wall): probe keys are per struct instance and survive a later id, the diff is strict RGB, player-controls is probed.

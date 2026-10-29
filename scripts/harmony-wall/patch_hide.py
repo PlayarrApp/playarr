@@ -1,6 +1,6 @@
 # Preview-only, run after patch_role.py (never committed): an app-side hide hook the declarative tree honours. FrameNode.commonAttribute on a
 # node fetched by unique id does not re-render a declarative node (run 40891856565 and the three before it), so the hook lives in the tree:
-# every component call gets a stable key (`.id('pvhN')` plus, off Text, `.accessibilityDescription('pvhN')`; N counts in sorted file order, so a build always gives the same keys) and
+# every component call gets a stable key (`.id(pvKey(inst, 'pvhN'))` plus, off Text, `.accessibilityDescription('pvhN')`; N counts in sorted file order, so a build always gives the same keys) and
 # `.visibility(pvVis(this.pvHid, 'pvhN'))`; every struct holding such a call gets `@StorageLink('pvHid') pvHid`, which the route poll sets
 # (hide:<keys> / show:all). Visibility.Hidden keeps the layout, so only the pixels change. Calls outside a struct (global builders) have no
 # `this` and cannot be hidden: the probe reports them as unmeasured. An `.id()` the app sets itself later in the chain wins over the key.
@@ -41,12 +41,14 @@ def patch(s, counter):
         owner = next((k for k, (a, b) in enumerate(spans) if a <= m.start() < b), None)
         # a later `.id()` (the app's own, or a modifier's) replaces the key: a non-Text node repeats it in accessibilityDescription, which the app never sets
         # (a Text's carries its glyph-run id), so the export can still name the node to hide
-        also = "" if m.group(1) == "Text" else ".accessibilityDescription('%s')" % key
-        inserts.append((after, ".id('%s')%s.visibility(pvVis(%s, '%s'))" % (key, also, "this.pvHid" if owner is not None else "''", key)))
+        # the key carries the struct instance (`pvhN.I`, I from pvNextInst at construction), so two cards built from one source call are two keys
+        full = "pvKey(%s, '%s')" % ("this.pvInst" if owner is not None else "0", key)
+        also = "" if m.group(1) == "Text" else ".accessibilityDescription(%s)" % full
+        inserts.append((after, ".id(%s)%s.visibility(pvVis(%s, %s))" % (full, also, "this.pvHid" if owner is not None else "''", full)))
         if owner is not None:
             used.add(owner)
     n = len(inserts)
-    inserts += [(spans[k][0], "\n  @StorageLink('pvHid') pvHid: string = '';") for k in used]  # one member per struct that holds a keyed call
+    inserts += [(spans[k][0], "\n  @StorageLink('pvHid') pvHid: string = '';\n  pvInst: number = pvNextInst();") for k in used]  # one member per struct that holds a keyed call
     for pos, text in sorted(inserts, key=lambda t: t[0], reverse=True):
         s = s[:pos] + text + s[pos:]
     return s, n
@@ -64,7 +66,7 @@ for base, _, names in sorted(os.walk(ROOT)):
             continue
         rel = os.path.relpath(os.path.join(ROOT, "util", "PreviewText"), base).replace(os.sep, "/")
         rel = rel if rel.startswith(".") else "./" + rel
-        imp = "import { pvVis } from '%s';\n" % rel
+        imp = "import { pvVis, pvKey, pvNextInst } from '%s';\n" % rel
         last = [x.end() for x in re.finditer(r"(?m)^import .*?;[ \t]*\n", t, re.S)]
         t = imp + t if not last else t[:last[-1]] + imp + t[last[-1]:]
         open(path, "w", encoding="utf-8").write(t)
