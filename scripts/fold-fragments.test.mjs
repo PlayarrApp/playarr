@@ -54,10 +54,10 @@ test('a canonical fragment replaces its row in place and a new row creates an ep
   assert.match(tasks, new RegExp(`## 2\\. Fresh epic\\n\\n${H.replace(/[|]/g, '\\$&')}\\n\\|---\\|---\\|---\\|---\\|---\\|---\\|---\\|---\\|\\n\\| 3 \\| Three \\| todo \\| \\| \\| 1\\.1 \\| \\| c \\|`));
 });
 
-test('a five-column fragment is converted, keeping the old status in Notes', () => {
+test('a five-column fragment is converted', () => {
   const { r, tasks } = run({ '1.md': '| 1 | One | on hold (native) | - | a |\n' });
   assert.equal(r.status, 0, r.stderr);
-  assert.match(tasks, /^\| 1 \| One \| blocked \| - \| \| \| \| a Previous status: on hold \(native\)\. \|$/m);
+  assert.match(tasks, /^\| 1 \| One \| blocked \| - \| \| \| \| a on hold \(native\)\. \|$/m);
 });
 
 test('--check validates the board itself', () => {
@@ -73,20 +73,25 @@ test('--check validates the board itself', () => {
   assert.notEqual(bad(`${board}| 2 | Dup | todo | | | | | x |\n`).status, 0);
 });
 
-test('fold does not write epic ETA lines under headings', () => {
-  const { r, tasks } = run({ '1.md': '| 1 | One | in_progress | agent | | | 2026-10-10 14:00 ICT | a |\n' });
-  assert.equal(r.status, 0, r.stderr);
-  assert.ok(!/^ETA: /m.test(tasks));
-  assert.match(tasks, /## 1\. Active\n\n\| ID/);
-});
-
-test('fold drops legacy epic ETA lines left under headings', () => {
+test('fold keeps epic ETA lines under headings', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fold-'));
   fs.mkdirSync(path.join(root, 'tasks.d'));
-  fs.writeFileSync(path.join(root, 'TASKS.md'), board.replace('## 1. Active\n', '## 1. Active\nETA: 2026-10-10 05:00 ICT (2026-10-09 23:00 BST) (2 open)\n'));
+  fs.writeFileSync(path.join(root, 'TASKS.md'), board.replace('## 1. Active\n', '## 1. Active\nETA: 2026-10-10 05:00 ICT\n'));
   fs.writeFileSync(path.join(root, 'tasks.d', '1.md'), '| 1 | One | todo | | | | | a |\n');
   assert.equal(spawnSync('node', [script, root], { encoding: 'utf8' }).status, 0);
-  assert.ok(!/^ETA: /m.test(fs.readFileSync(path.join(root, 'TASKS.md'), 'utf8')));
+  assert.match(fs.readFileSync(path.join(root, 'TASKS.md'), 'utf8'), /^ETA: 2026-10-10 05:00 ICT$/m);
+});
+
+test('--check: dropped and superseded rows need their Notes prefix; open rows obey the length limits', () => {
+  const bad = (text) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fold-'));
+    fs.writeFileSync(path.join(root, 'TASKS.md'), text);
+    return spawnSync('node', [script, '--check', root], { encoding: 'utf8' });
+  };
+  assert.notEqual(bad(board.replace('| One | todo |', '| One | dropped |')).status, 0);
+  assert.notEqual(bad(board.replace('| One | todo |', '| One | superseded |')).status, 0);
+  assert.notEqual(bad(board.replace('| One | todo |', `| ${'x'.repeat(101)} | todo |`)).status, 0);
+  assert.equal(bad(board.replace('| One | todo | | | | | a |', '| One | dropped | | | | | Dropped: no longer needed. |')).status, 0);
 });
 
 test('--check: open rows need a valid ETA; a past ETA only warns', () => {

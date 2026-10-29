@@ -1,7 +1,7 @@
 // Shared helpers for the TASKS.md board ("epic tables"): one `## ` heading per epic and one table per
 // epic with exactly the header below. Used by fold-fragments.mjs and board-sync.mjs.
 export const HEADER = ['ID', 'Task', 'Status', 'Owner', 'Branch', 'Depends', 'ETA', 'Notes'];
-export const STATUSES = ['todo', 'in_progress', 'in_review', 'blocked', 'blocked_on_owner', 'parked', 'done'];
+export const STATUSES = ['todo', 'in_progress', 'in_review', 'blocked', 'blocked_on_owner', 'parked', 'done', 'dropped', 'superseded'];
 export const HEADER_LINE = `| ${HEADER.join(' | ')} |`;
 export const SEPARATOR_LINE = `|${HEADER.map(() => '---').join('|')}|`;
 export const ETA_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2} (?:[A-Z]{2,5}|[+-]\d{2}:\d{2})$/;
@@ -34,7 +34,8 @@ export const legacyStatus = (status) => {
   const l = status.trim().toLowerCase();
   if (/^(done except|client side done|partly done)/.test(l)) return 'in_progress';
   if (/^root cause fixed.*blocked/.test(l)) return 'blocked';
-  if (/^(done|implemented|configured|root cause fixed|dropped|won't fix|won't do|not applicable)\b/.test(l)) return 'done';
+  if (/^(dropped|cancelled|canceled|rejected|declined|wontfix|won't fix|won't do|abandoned|obsolete)\b/.test(l)) return 'dropped';
+  if (/^(done|implemented|configured|root cause fixed|not applicable)\b/.test(l)) return 'done';
   if (/^(paused|parked)\b/.test(l)) return 'parked';
   if (/^blocked on owner/.test(l)) return 'blocked_on_owner';
   if (/^(blocked|on hold)/.test(l)) return 'blocked';
@@ -43,7 +44,6 @@ export const legacyStatus = (status) => {
   if (/^(pending|open)\b/.test(l)) return 'todo';
   throw new Error(`unknown legacy status: ${status}`);
 };
-const PLAIN = new Set(['done', 'pending', 'open', 'blocked', 'blocked on owner', 'in review', 'in progress']);
 
 // A branch is only taken from text that names it explicitly: a backticked branch-like token next to
 // the word "branch", or after "done on".
@@ -53,13 +53,14 @@ export const findBranch = (...texts) => {
   return found.size === 1 ? [...found][0] : '';
 };
 
-// Five-column legacy cells -> eight canonical cells. The old status text is kept in Notes unless it was
-// a plain word that maps one to one.
+const PLAIN = new Set(['done', 'pending', 'open', 'blocked', 'blocked on owner', 'in review', 'in progress']);
+// Five-column legacy cells -> eight canonical cells. A dropped row gets the "Dropped: <reason>." Notes prefix.
 export const fromLegacy = (cells) => {
   const [id, task, status, owner, notes] = cells.map(escapePipes);
   const canon = legacyStatus(status);
   let n = notes;
-  if (!PLAIN.has(status.trim().toLowerCase())) n = `${n}${n ? ' ' : ''}Previous status: ${status.trim()}.`;
+  if (canon === 'dropped' && !/^Dropped: /.test(n)) n = `Dropped: ${status.trim()}.${n ? ' ' : ''}${n}`;
+  else if (canon !== 'dropped' && !PLAIN.has(status.trim().toLowerCase())) n = `${n}${n ? ' ' : ''}${status.trim()}.`;
   return [id, task, canon, owner, findBranch(owner, notes, status), '', '', n];
 };
 
@@ -71,11 +72,20 @@ export const canonicalCells = (line) => {
   return c && c.length === 8 ? c : null;
 };
 
+const CLOSED = ['done', 'dropped', 'superseded'];
+export const TASK_MAX = 100;
+export const NOTES_MAX = 400;
 // Problems with one canonical row, as strings.
 export const rowProblems = (c) => {
   const p = [];
-  if (!/^\d+$/.test(c[0]) && !/^[A-Z]+-\d+$/.test(c[0])) p.push(`ID "${c[0]}" is not a number or PREFIX-n`);
+  if (!/^[1-9]\d*$/.test(c[0])) p.push(`ID "${c[0]}" is not a positive integer`);
   if (!STATUSES.includes(c[2])) p.push(`Status "${c[2]}" is not one of ${STATUSES.join(', ')}`);
+  if (c[2] === 'dropped' && !/^Dropped: \S/.test(c[7])) p.push('dropped row needs Notes starting "Dropped: <reason>."');
+  if (c[2] === 'superseded' && !/^Superseded by [1-9]\d*\.[1-9]\d*\./.test(c[7])) p.push('superseded row needs Notes starting "Superseded by <epic>.<task>."');
+  if (!CLOSED.includes(c[2])) {
+    if (c[1].length > TASK_MAX) p.push(`Task is ${c[1].length} characters (max ${TASK_MAX} on open rows): keep a short title`);
+    if (c[7].length > NOTES_MAX) p.push(`Notes is ${c[7].length} characters (max ${NOTES_MAX} on open rows): a few short facts separated by <br>`);
+  }
   if (c[6] && !ETA_RE.test(c[6])) p.push(`ETA "${c[6]}" is not YYYY-MM-DD HH:MM <timezone>`);
   return p;
 };
@@ -129,13 +139,13 @@ export const epicByRow = (lines) => {
   let epic = null;
   for (const l of lines) {
     if (l.startsWith('## ')) { epic = parseEpicHeading(l.slice(3))?.num ?? null; continue; }
-    const m = /^\|\s*(\d+|[A-Z]+-\d+)\s*\|/.exec(l);
+    const m = /^\|\s*(\d+)\s*\|/.exec(l);
     if (m && epic !== null && !map.has(m[1])) map.set(m[1], epic);
   }
   return map;
 };
-const BARE_ID_RE = /^(?:\d+|[A-Z]+-\d+)$/;
-const REF_RE = /^(\d+)\.(\d+|[A-Z]+-\d+)$/;
+const BARE_ID_RE = /^\d+$/;
+const REF_RE = /^(\d+)\.(\d+)$/;
 // Rewrites bare row IDs in a Depends cell to `<epic>.<task>` references where the row is on the board.
 export const normaliseDepends = (cell, epics) => cell.split(',').map((t) => t.trim()).filter(Boolean).map((t) => (BARE_ID_RE.test(t) && epics.has(t) ? `${epics.get(t)}.${t}` : t)).join(', ');
 // Problems with a Depends cell: every entry must be a `<epic>.<task>` reference that resolves to a row.
@@ -154,22 +164,23 @@ export const dependsProblems = (cell, epics) => {
 // Fragments written before the epic headings were renamed (#465, #467, #469) still carry the old
 // `section:` text. Resolving it against the live headings (instead of creating a heading for anything
 // unknown) keeps stale epics from coming back.
-// A leading epic number ("3. ") is dropped too, so the bare name and `N. Name` both match.
-export const normaliseSection = (s) => stripEpicNumber(s.replace(/^\s*(?:active|planned):\s*/i, '')).replace(/\s+/g, ' ').trim().toLowerCase();
+// A trailing date "(YYYY-MM-DD)" is dropped too (epic names no longer carry one). A leading epic number ("3. ") is dropped too, so the bare name and `N. Name` both match.
+export const normaliseSection = (s) => stripEpicNumber(s.replace(/^\s*(?:active|planned):\s*/i, '').replace(/\s*\(\d{4}-\d{2}-\d{2}\)\s*$/, '')).replace(/\s+/g, ' ').trim().toLowerCase();
 
 // Old heading (normalised: no "Active: "/"Planned: " prefix, lower case) -> current heading text.
 // A value of null rejects the section with the message in REJECTED_SECTIONS.
 const SECTION_ALIASES = {
-  'server performance, security and relay cut-over (2026-10-03)': 'Server performance and security (2026-10-03)',
+  'web follow-ups': 'Web client fixes and polish',
+  'server performance, security and relay cut-over': 'Server performance and security',
   'owner actions (blocked on the owner)': null,
   'games, tv/pvr, playarros and clients hub (2026-09-05): games library': 'Games library',
   'games, tv/pvr, playarros and clients hub (2026-09-05): live tv and pvr': 'Live TV and recording',
   'games, tv/pvr, playarros and clients hub (2026-09-05): playarros': 'PlayarrOS',
   'games, tv/pvr, playarros and clients hub (2026-09-05): clients hub listings (no epic; each epic owns its listing sub-item)': 'Client listings on the clients hub',
-  'player audit fixes': 'Player progress and resume (2026-10-07)',
-  'player progress data-loss fixes (2026-10-08)': 'Player progress and resume (2026-10-07)',
-  'player progress and resume fixes (2026-10-07)': 'Player progress and resume (2026-10-07)',
-  'pixel parity campaign': 'Pixel parity campaign (2026-10-07)',
+  'player audit fixes': 'Player progress and resume',
+  'player progress data-loss fixes': 'Player progress and resume',
+  'player progress and resume fixes': 'Player progress and resume',
+  'pixel parity campaign': 'Pixel parity campaign',
 };
 const REJECTED_SECTIONS = {
   'owner actions (blocked on the owner)': 'the "Owner actions" epic no longer exists; put the row in the epic it belongs to (for example "Public repository readiness (2026-10-05)" or "Release automation (2026-10-07)")',
