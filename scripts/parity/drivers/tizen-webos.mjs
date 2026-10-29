@@ -433,9 +433,10 @@ export async function createDriver() {
     // The layout schema document (docs/parity/LAYOUT.md): the same DOM dump as the web refs, run in the app page through the inspector or netlog channel.
     async layoutDump({ screen, theme }) {
       await guard();
-      const doc = await ev(layoutExpression(screen));
+      // The emulator composites the AVPlay plane above the browser (DEVICES.md): the app syncs the object's rect to the player shell, so what lies inside it is not visible.
+      const doc = await ev(layoutExpression(screen, device === "tizen" && !TIZEN_REAL ? { opaquePlanes: ['object[type="application/avplayer"]'] } : {}));
       if (!doc?.elements) throw new Error("layout dump returned no elements");
-      return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements };
+      return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements, occluded: doc.occluded };
     },
     // The deployed package carries parity-build.json (written by the deploy scripts: repository HEAD, build time, SHA-256 of the entry bundle). The loaded
     // bundle is hashed again here, so the identity is only returned when the running page really is that build.
@@ -648,6 +649,7 @@ export async function createDriver() {
       if (device === "tizen" && Number(await ev("innerHeight")) < 1070 && (await ev(`location.hash === "#/search"`))) {
         xkey("back");
         for (let i = 0; i < 20 && Number(await ev("innerHeight")) < 1070; i += 1) await sleep(500);
+        if (Number(await ev("innerHeight")) < 1070) throw new Error("the Samsung keyboard did not close before capture");
         await sleep(1500);
       }
       if (await ev(`/^#\\/player\\//.test(location.hash)`)) await pinPlayerFrame();
