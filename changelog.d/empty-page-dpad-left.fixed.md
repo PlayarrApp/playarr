@@ -1,0 +1,1 @@
+- TV web: pressing Left on the right-hand action panel (Filters, Create) of an empty page, such as Playlists with no playlists, now moves focus to the nav rail instead of trapping it.

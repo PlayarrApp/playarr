@@ -6,6 +6,7 @@ import {
   isRoughlyForward,
   pickBestDirectionalTarget,
   pickNearestByEdgeDistance,
+  pickShellColumnLeftTarget,
   scoreDirectionalCandidate,
   libraryExpandMountedEnd,
   libraryGridWindow,
@@ -177,5 +178,25 @@ describe("pickNearestByEdgeDistance", () => {
 
   it("returns null without candidates", () => {
     expect(pickNearestByEdgeDistance(rect(0, 0, 10, 10), [])).toBeNull();
+  });
+});
+
+describe("pickShellColumnLeftTarget", () => {
+  const column = rect(900, 100, 100, 40);
+  const railItems = [
+    { item: "home", rect: rect(0, 100, 100, 40) },
+    { item: "playlists", rect: rect(0, 160, 100, 40) },
+  ];
+
+  it("falls through to the nav rail when the content has nothing focusable (empty Playlists)", () => {
+    expect(pickShellColumnLeftTarget(column, [], railItems)).toBe("home");
+  });
+
+  it("prefers the nearest content item over the rail", () => {
+    expect(pickShellColumnLeftTarget(column, [{ item: "card", rect: rect(400, 100, 100, 40) }], railItems)).toBe("card");
+  });
+
+  it("returns null when there is nothing to the left at all", () => {
+    expect(pickShellColumnLeftTarget(column, [], [])).toBeNull();
   });
 });
