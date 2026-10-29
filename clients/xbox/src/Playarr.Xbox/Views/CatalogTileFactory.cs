@@ -267,13 +267,12 @@ namespace Playarr.Xbox.Views
                 // .tv-watch-progress: a 3 px line along the bottom edge in the brand colour on a 20 % white track.
                 var track = new Grid { Height = 3, VerticalAlignment = VerticalAlignment.Bottom, Background = new SolidColorBrush(Windows.UI.Color.FromArgb(51, 255, 255, 255)), IsHitTestVisible = false };
                 track.Children.Add(new Border { Width = System.Math.Max(3, width * percent / 100), HorizontalAlignment = HorizontalAlignment.Left, Background = (Brush)Application.Current.Resources["PlayarrBrand"] });
-                LayoutExport.SetRole(track, "img");
                 art.Children.Add(track);
             }
             else if (work.ShowUnwatched)
             {
                 // .tv-watch-unseen: a brand dot with a white ring in the top right corner.
-                art.Children.Add(LayoutExport.Tag(new Border
+                art.Children.Add(new Border
                 {
                     Width = 13,
                     Height = 13,
@@ -285,14 +284,14 @@ namespace Playarr.Xbox.Views
                     BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(240, 255, 255, 255)),
                     BorderThickness = new Thickness(2),
                     IsHitTestVisible = false,
-                }, "img"));
+                });
             }
 
             var root = new StackPanel { Width = width, Spacing = 0, Tag = work.Id };
             if (!caption)
             {
                 // The web's library card is one link ("Open <title>"): the art plus its caption, 213 px tall.
-                LayoutExport.Tag(root, "link", "Open " + work.Title);
+                LayoutExport.Named(root, "Open " + work.Title);
                 root.Height = height + 29.41;
             }
             else
@@ -323,7 +322,7 @@ namespace Playarr.Xbox.Views
                 return root;
             }
 
-            LayoutExport.Tag(root, "link", work.Title + " " + (episode != null ? WorkLabels.OnDeckCaption(work) : WorkLabels.KindWithYear(work)));
+            LayoutExport.Named(root, work.Title + " " + (episode != null ? WorkLabels.OnDeckCaption(work) : WorkLabels.KindWithYear(work)));
 
             root.Children.Add(new TextBlock
             {

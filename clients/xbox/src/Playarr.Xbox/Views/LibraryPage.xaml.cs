@@ -384,8 +384,7 @@ namespace Playarr.Xbox.Views
                         Tag = letter,
                     };
                     button.Click += LetterButton_Click;
-                    LayoutExport.Tag(button, "button", letter == '#' ? "Numbers and symbols" : letter.ToString());
-                    LayoutExport.SetSplit(button, true);
+                    LayoutExport.Named(button, letter == '#' ? "Numbers and symbols" : letter.ToString());
                     LetterRail.Children.Add(button);
                 }
                 _renderedActiveLetter = _activeLetter;

@@ -1,0 +1,1 @@
+- Xbox parity layout export: roles come from the native automation peer, the Split annotations are gone, visibility is decided by hiding each element and diffing the rendered screen, and the layout is tied to the captured frame by a render hash.

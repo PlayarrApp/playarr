@@ -98,7 +98,7 @@ namespace Playarr.Xbox.Views
                     TextWrapping = TextWrapping.NoWrap,
                     Foreground = (Windows.UI.Xaml.Media.Brush)Application.Current.Resources["PlayarrInk"],
                 };
-                LayoutExport.SetRole(block, role);
+                if (role == "heading") { LayoutExport.Heading(block); }
                 block.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
                 block.Margin = new Thickness(0, host.Children.Count == 0 ? 0 : TitlePitch - block.DesiredSize.Height, 0, 0);
                 host.Children.Add(block);

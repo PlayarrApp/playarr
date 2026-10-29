@@ -50,7 +50,7 @@ namespace Playarr.Xbox.Views
                 canvas.Children.Add(fill);
             }
 
-            return LayoutExport.Tag(new Viewbox { Width = 20, Height = 20, Child = canvas }, "image");
+            return new Viewbox { Width = 20, Height = 20, Child = canvas };
         }
 
         /// <summary>A path shape from SVG-style path data; a geometry cannot be moved between shapes, so each shape parses its own.</summary>

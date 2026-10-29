@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # pull-captures.sh <run-id> <legend-dir>: download one Xbox wall run's artifacts as ONE complete set into <legend-dir>/dev
 # (dev/<id>.png, dev/light/<id>.png, dev/layout/<theme>/<id>.json, dev/dpad.json, dev/build.json). Fails when any artifact is
-# missing; the old dev folder is replaced only after every part arrived. Needs an authenticated gh.
+# missing (every screenshot must have its layout file); the old dev folder is replaced only after every part arrived. Needs an authenticated gh.
 set -euo pipefail
 RUN=${1:?run id}; DEST=${2:?legend dir}
 TMP="$DEST/.dev-new-$RUN"
@@ -20,6 +20,13 @@ for T in dark light; do
   rm -rf "$TMP/.debug-$T"
 done
 [ -e "$TMP/dpad.json" ] && [ -e "$TMP/home.png" ] && [ -e "$TMP/light/home.png" ] || { echo "incomplete download" >&2; exit 1; }
+# Every screenshot needs its layout export (same frame, see the driver): a missing one fails the pull.
+for T in dark light; do
+  if [ "$T" = dark ]; then SHOTS="$TMP"; else SHOTS="$TMP/light"; fi
+  for png in "$SHOTS"/*.png; do
+    [ -e "$TMP/layout/$T/$(basename "${png%.png}").json" ] || { echo "missing layout: $T/$(basename "${png%.png}")" >&2; exit 1; }
+  done
+done
 mkdir -p "$DEST/dev"
 find "$DEST/dev" -mindepth 1 -maxdepth 1 \( -name '*.png' -o -name layout -o -name light \) -exec rm -rf {} +
 cp -R "$TMP/." "$DEST/dev/"

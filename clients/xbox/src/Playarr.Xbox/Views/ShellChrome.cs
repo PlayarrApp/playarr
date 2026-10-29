@@ -171,7 +171,7 @@ namespace Playarr.Xbox.Views
             profileContent.Children.Add(_profileName);
             var profile = RailButton(profileContent, typeof(SettingsPage), null);
             _profileLink = profile;
-            LayoutExport.Tag(profile, "link", "Signed in as " + (string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName) + ". Open profiles.");
+            LayoutExport.Named(profile, "Signed in as " + (string.IsNullOrEmpty(ProfileName) ? "Profile" : ProfileName) + ". Open profiles.");
             var profileGroup = Group(profile);
             profileGroup.VerticalAlignment = VerticalAlignment.Top;
             profileGroup.HorizontalAlignment = HorizontalAlignment.Left;
@@ -237,7 +237,7 @@ namespace Playarr.Xbox.Views
             _labels.Add((text, label));
             content.Children.Add(text);
             var button = RailButton(content, page, kind);
-            LayoutExport.Tag(button, "link", Lang.T("shell.nav." + label.ToLowerInvariant()));
+            LayoutExport.Named(button, Lang.T("shell.nav." + label.ToLowerInvariant()));
             return button;
         }
 
