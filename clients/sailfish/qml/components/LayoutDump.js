@@ -265,6 +265,8 @@ function dump(root, u, weights, metrics, log) {
                     // a real (read-only) text input: its own box is the control, its text is drawn inside
                     var inCentre = polygonCenter(polygon)
                     var inp = { text: String(item.a11yName), role: item.parityRole || "textbox", rect: rect(x, y, box.w, box.h), color: null, background: bgAt(inCentre.x, inCentre.y), fontSize: null, fontWeight: null, _at: [inCentre.x, inCentre.y], _box: mappedRect(item, root, 0, 0, w, h) }
+                    var inShape = paintedShape(item)
+                    if (inShape) { var inScale = uniformRadiusScale(inShape, root), inRadius = radiusOf(inShape, inScale); if (inRadius) inp.radius = inRadius }
                     inp._item = item; inp._seq = ++seq; inp._r = { x: box.x, y: box.y, w: box.w, h: box.h }
                     out.push(inp)
                 }
