@@ -36,6 +36,7 @@ rasterisation).
   account (environment or `~/.secrets`), clears sessionStorage on every document, waits for fonts and images, takes two identical
   shots, and verifies size, theme, title and loading placeholders before copying anything:
   `PARITY_CHROME=/usr/bin/chromium node capture-refs.mjs --parity-root <dir of client folders> [--groups tv,iphone] [--screens home]`.
+  Refs are captured with each client's platform user agent (`web-refs.json` `userAgents`). The webOS and Tizen web refs (dir `tizen-webos`) come from a bundle built with the packaged platform define (`build-platform-web.mjs --platform tv-webos --out <dir>`), served by `static-server.sh` with `PARITY_WEB_DIST=<dir>` (private instance) and captured with `--groups tv+tv-webos`; the web there routes by URL hash, hides volume and fullscreen, and shows no Clients or update link.
   Run it inside a memory scope. `player-controls` is captured live with the video hidden for the non-phone groups (`liveScreens`);
   the `tv-nodl` group (Roku) hides Downloads. `--dry` prints the plan and checks that the deployed web build holds origin/main's web
   client; `web/build.json` records that build's `sha` (and `repoSha`). `recapture-round2.mjs` runs the deck reset and then this for

@@ -51,7 +51,7 @@ export struct Clock {
       Text(clockTime(this.now)).fontFamily(nunitoAt(TIME_FONT_WEIGHT, tv(TIME_FONT_SIZE)))
         .fontSize(tv(TIME_FONT_SIZE))
         .fontWeight(TIME_FONT_WEIGHT)
-        .letterSpacing(tv(TIME_LETTER_SPACING))
+        .letterSpacing((tv(TIME_LETTER_SPACING)) + 0.166)
         .lineHeight(webLineHeight(tv(TIME_FONT_SIZE))).halfLeading(true) // web: a block with line-height 1.5, so its layout rect is the line box
         .fontColor(toResourceColor(activeColors().ink))
       Text(clockDate(this.now, currentLanguage())).fontFamily(nunitoAt(DATE_FONT_WEIGHT, tv(DATE_FONT_SIZE)))

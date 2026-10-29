@@ -233,7 +233,7 @@ describe('AppShellNavigator player wiring', () => {
     const tree = await renderShellOn(ROUTES.workDetail, {workId: 'w1'}, playerHandleRef);
 
     await act(async () => {
-      tree.root.findByProps({accessibilityLabel: 'Play'}).props.onPress();
+      tree.root.findByProps({accessibilityLabel: 'Play The First Film'}).props.onPress();
     });
 
     expect(show).toHaveBeenCalledWith('mf-1', {title: 'The First Film'});

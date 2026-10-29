@@ -25,7 +25,7 @@ internal sealed class CalendarScreen : IPage
     private readonly FocusSet _focus = new();
     private readonly DateTime _today;
     private DateTime _anchor;
-    private TextLabel? _period;
+    private TextLabel? _period; private View? _periodBox;
     private FiltersDrawer? _drawer;
     private CalendarLinkDrawer? _linkDrawer;
     private int _first;                // first focusable index of the entries
@@ -75,23 +75,23 @@ internal sealed class CalendarScreen : IPage
     {
         var wide = _view == CalendarView.Agenda ? 133f : _view == CalendarView.Week ? 110.7f : 104.1f; // the label's width plus 40.5 px, right edge fixed
         var x = 1613.1f - wide;
-        _period = Sem.Tag(Ui.Text("", x, 70.2f, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center), "button");
-        Pill(x, wide, "", () => { }, "period");
-        _root.Add(_period);
+        _period = Ui.Text("", 0, 14, 14.72f, 700, _t.InkSoft, wide, 22.08f, HorizontalAlignment.Center);
+        _periodBox = Pill(x, wide, "", () => { }, "period"); _periodBox.Add(_period);
         Pill(1628.5f, 50, "←", () => Step(-1), "previous");
         Pill(1693.8f, 84, "Today", () => { _anchor = _view == CalendarView.Month ? new DateTime(_today.Year, _today.Month, 1) : _view == CalendarView.Week ? CalendarRules.StartOfWeek(_today) : _today; _ = LoadAsync(); }, "today");
         Pill(1793.2f, 50, "→", () => Step(1), "next");
     }
 
-    private void Pill(float x, float w, string text, Action select, string label)
+    private View Pill(float x, float w, string text, Action select, string label)
     {
         var box = Ui.Box(x, 56.2f, w, 50, _t.Surface, 25);
         box.BorderlineWidth = 1; box.BorderlineColor = Ui.LineA(_t, 0.153f);
-        if (text.Length > 0) box.Add(text == "Today" ? Sem.Tag(Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center), "button") : Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center));
-        if (label == "previous") Sem.Tag(box, "button", "Previous"); else if (label == "next") Sem.Tag(box, "button", "Next");
+        if (text.Length > 0) box.Add(Ui.Text(text, 0, 14, 14.72f, 700, _t.InkSoft, w, 22.08f, HorizontalAlignment.Center));
+        if (label == "previous") Sem.Tag(box, "button", "Previous"); else if (label == "next") Sem.Tag(box, "button", "Next"); else if (label == "today") Sem.Tag(box, "button", "Today");
         var ring = Ring.Make(w, 50, 25, new Rgba(1, 1, 1)); ring.Show(false); box.Add(ring);
         _root.Add(box);
         _focus.Items.Add(new Focusable { Rect = () => new Box(x, 56.2f, w, 50), Label = label, Select = select, Style = f => ring.Show(f) });
+        return box;
     }
 
     private void BuildTiles()
@@ -173,6 +173,7 @@ internal sealed class CalendarScreen : IPage
         if (_period is not null)
             _period.Text = _view == CalendarView.Month ? _anchor.ToString("MMM yyyy", gb)
                 : _view == CalendarView.Week ? $"{start.Day} – {end.ToString("d MMM", gb)}" : $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM", gb)}";
+        if (_period is not null && _periodBox is not null) Sem.Tag(_periodBox, "button", _period.Text); // the pill is the button; its name is the period it shows
         var statusText = _view == CalendarView.Month ? _anchor.ToString("MMMM yyyy", gb) : _view == CalendarView.Week ? $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM yyyy", gb)}" : $"{start.ToString("d MMM", gb)} – {end.ToString("d MMM yyyy", gb)}";
         _body.Add(Sem.Tag(new View { PositionX = _view == CalendarView.Agenda ? 0 : 153.6f, PositionY = _view == CalendarView.Agenda ? 1 : 163 }, "status", statusText)); // web: visually hidden period text
         switch (_view)
@@ -419,7 +420,7 @@ internal sealed class CalendarScreen : IPage
         var overviewLines = Ui.Paragraph(_panel, e.Overview ?? "", 153.6f, my + 86f, 13.824f, 600, DetailsPanel.Soft(_t), 336, 21.842f, 0, 5);
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
         var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);
-        open.Add(Sem.Tag(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center), "button"));
+        open.Add(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center)); Sem.Tag(open, "button", "Open series");
         _panel.Add(open);
         var wl = Ui.Box(287.2f, by, 177.6f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
         wl.BorderlineWidth = 1; wl.BorderlineColor = Ui.LineA(_t, 0.153f);

@@ -1,0 +1,1 @@
+- Parity web layout dump: text cut by an ellipsis is exported as drawn, and colours in other spaces resolve to sRGB.

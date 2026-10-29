@@ -76,7 +76,7 @@ export struct AlphabetRail {
           .width(TOUCH_DISC)
           .height(TOUCH_DISC)
         }
-        .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
+        .accessibilityText((letter === '#' ? 'Numbers and symbols' : letter)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .width(TOUCH_LETTER_WIDTH)
         .layoutWeight(1)
         .borderRadius(11.3) // web: half the short side of the letter's box
@@ -139,7 +139,7 @@ export struct AlphabetRail {
             // Web's current letter is a 24 px disc in ink-soft (not the 44 px hit area), the letters sit ~1.5 px high.
             this.tvLetter(letter)
           }
-          .id('px:button:' + (letter === '#' ? 'Numbers and symbols' : letter))
+          .accessibilityText((letter === '#' ? 'Numbers and symbols' : letter)).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .width(tv(BUTTON_SIZE))
           .height(tv(BUTTON_SIZE))
           .borderRadius(tv(BUTTON_SIZE / 2))

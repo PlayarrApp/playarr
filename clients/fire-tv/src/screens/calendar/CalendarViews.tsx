@@ -59,7 +59,7 @@ function DayHeading({day, today, locale, height = HEADING_H, background}: {day: 
         {dayHeading(day, locale)}
       </T>
       {day === today ? (
-        <View style={{marginLeft: u(9.6), height: u(22), paddingHorizontal: u(8), borderRadius: 999, borderWidth: 1, borderColor: colour.accent, justifyContent: 'center'}}>
+        <View style={{marginLeft: u(9.6), height: u(22), paddingHorizontal: u(8), borderRadius: u(11), borderWidth: 1, borderColor: colour.accent, justifyContent: 'center'}}>
           <T size={11.2} weight={640} ls={0.896} lh={14} color={colour.accent} upper>
             {t('pages.calendar.today')}
           </T>
@@ -154,7 +154,7 @@ function DayColumn({group, x, height, shared, onColumnFocus, onOpen}: {group: Da
       <Box x={x - 6} y={-6} w={COLUMN_W + 12} h={height + 12} style={{overflow: 'hidden'}} pointerEvents="box-none">
         <Animated.View style={{position: 'absolute', left: u(6), top: Animated.add(new Animated.Value(u(6)), scroll.offset), width: u(COLUMN_W)}} pointerEvents="box-none" onLayout={(event) => setContentH(event.nativeEvent.layout.height)}>
           <View style={{marginBottom: u(HEADING_GAP)}}>
-            <DayHeading day={group.day} today={shared.today} locale={shared.locale} />
+            <DayHeading day={group.day} today={shared.today} locale={shared.locale} background="transparent" />
           </View>
           {items.length === 0 ? (
             <T size={19.2} weight={400} lh={28.8} color={colour.inkMuted}>
@@ -287,7 +287,7 @@ const MonthCellView = React.memo(function MonthCellView({cell, x, y, h, shared, 
   const innerW = CELL_W - 2 * (CELL_BORDER + CELL_PAD_X);
   const footY = y + h - CELL_BORDER - CELL_PAD_Y - MONTH_FOOT;
   const day = (
-    <T size={12.8} weight={640} lh={19.2} dy={-1.4} color={cell.inMonth ? colour.ink : colour.inkMuted}>
+    <T size={12.8} weight={640} lh={19.2} dy={-0.7} color={cell.inMonth ? colour.ink : colour.inkMuted}>
       {String(parseDay(cell.day).getUTCDate())}
     </T>
   );
@@ -356,7 +356,7 @@ const Line = React.memo(function Line({day, item, x, y, w, h, today, onSelect}: 
     >
       <View {...lx('container', '', 50)} style={{width: u(8.8), height: u(8.8), borderRadius: u(4.4), backgroundColor: dot}} />
       <View style={{marginLeft: u(7.2), flex: 1}}>
-        <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} dy={-1.3} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
+        <T size={12.48} weight={item.kind === 'series' ? 700 : 400} lh={18} color={colour.ink} lines={1} style={focused ? {textDecorationLine: 'underline'} : undefined}>
           {label}
         </T>
       </View>

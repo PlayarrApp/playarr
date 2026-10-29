@@ -119,7 +119,7 @@ export function StatusPill({tone, label, size = 13.44}: {tone: EntryPillTone | '
       style={{
         height: u(26.6),
         paddingHorizontal: u(10.4),
-        borderRadius: 999,
+        borderRadius: u(13.3),
         borderWidth: 1,
         borderColor: mix(tint, 0.6),
         backgroundColor: blend(tint, colour.surface, 0.14),
@@ -127,7 +127,7 @@ export function StatusPill({tone, label, size = 13.44}: {tone: EntryPillTone | '
         alignSelf: 'flex-start',
       }}
     >
-      <T wradius={999} size={size} weight={750} lh={18.8} color={colour.ink} lines={1}>
+      <T size={size} weight={750} lh={18.8} color={colour.ink} lines={1}>
         {label}
       </T>
     </View>
@@ -211,18 +211,18 @@ export function EntryCard({item, width, wrap, selected, today, onFocus, onPress,
         ) : null}
         <View style={{flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', marginTop: u(2.4)}}>
           <View style={{marginRight: u(12)}}>
-            <T size={12.8} weight={400} lh={19.2} dy={-1} color={colour.inkMuted}>
+            <T size={12.8} weight={400} lh={19.2} color={colour.inkMuted}>
               {time ? new Intl.DateTimeFormat(locale, {timeStyle: 'short'}).format(time) : t('pages.calendar.allDay')}
             </T>
           </View>
           <View style={{marginRight: u(12)}}>
-            <T size={12.8} weight={400} lh={19.2} dy={-1} color={colour.inkMuted}>
+            <T size={12.8} weight={400} lh={19.2} color={colour.inkMuted}>
               {t(RELEASE_KEYS[first.release_type])}
             </T>
           </View>
           {item.kind === 'series' ? null : (
             <View style={{marginRight: u(12)}}>
-              <T size={12.8} weight={400} lh={19.2} dy={-1} color={colour.inkMuted}>
+              <T size={12.8} weight={400} lh={19.2} color={colour.inkMuted}>
                 {t(KIND_KEYS[first.media_kind])}
               </T>
             </View>
@@ -267,7 +267,7 @@ export function AgendaDetails({item, locale, today, onOpen}: {item: CalendarItem
         {`${t(KIND_KEYS[first.media_kind])} · ${t(RELEASE_KEYS[first.release_type])}`}
       </T>
       <View style={{marginTop: u(25.9)}}>
-        <BalancedT key={itemTitle(item)} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
+        <BalancedT heading={false} key={itemTitle(item)} width={373.2} size={69.12} weight={560} ls={-4.9766} lh={62.2} color={colour.ink}>
           {itemTitle(item)}
         </BalancedT>
       </View>
@@ -352,7 +352,7 @@ export function ItemDetails({item, locale, onOpen, width = 571.2}: {item: Calend
       ) : null}
       <View style={{marginTop: u(14.4)}}>
         <Label>{t('pages.calendar.sheetWhen')}</Label>
-        <T size={19.2} weight={400} lh={26.2} dy={4} color={colour.ink}>
+        <T size={19.2} weight={400} lh={26.2} color={colour.ink}>
           {when}
         </T>
       </View>
@@ -391,7 +391,7 @@ function WatchlistPill({listed, onPress}: {listed: boolean | null; onPress: () =
       style={{
         height: u(58),
         paddingHorizontal: u(21),
-        borderRadius: 999,
+        borderRadius: u(29),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

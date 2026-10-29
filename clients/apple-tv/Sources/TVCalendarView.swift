@@ -58,9 +58,9 @@ struct TVCalendarView: View {
 
         // Web header controls, top right: the date range button, previous, Today, next (one group).
         rangeButton(model)
-        roundControl("\u{2190}", x: 1628.5) { Task { await model.step(-1) } }
+        roundControl("\u{2190}", name: "Previous", x: 1628.5) { Task { await model.step(-1) } }
         pillControl("Today", x: 1693.8, width: 84) { Task { await model.goToToday() } }
-        roundControl("\u{2192}", x: 1793.2) { Task { await model.step(1) } }
+        roundControl("\u{2192}", name: "Next", x: 1793.2) { Task { await model.step(1) } }
 
         // Side-panel buttons stack in the shell action column, in registration order.
         pill("Calendar link", symbol: "bell", slot: 0) {
@@ -150,13 +150,15 @@ struct TVCalendarView: View {
         }
     }
 
-    private func roundControl(_ glyph: String, x: CGFloat, action: @escaping () -> Void) -> some View {
+    private func roundControl(_ glyph: String, name: String, x: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(glyph)
                 .font(TVTheme.font(size: 14.72, css: 720))
                 .foregroundStyle(DesignTokens.Color.textSecondary)
                 .parityLayout(text: glyph, size: 14.72, weight: Int(720), color: DesignTokens.Color.textSecondary)
                 .frame(width: 50, height: 50)
+                .parityBox("button", text: name, radius: 25, fill: DesignTokens.Color.backgroundElevated)
+                .accessibilityLabel(name)
                 .background(Circle().fill(DesignTokens.Color.backgroundElevated))
                 .overlay(Circle().stroke(DesignTokens.Stage.line.opacity(0.35), lineWidth: 1))
         }
@@ -318,7 +320,7 @@ struct TVCalendarView: View {
         .padding(.leading, 16)
         .padding(.trailing, 12)
         .frame(width: width, height: 106.9)
-        .parityBox("button", text: [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " "), radius: 12, fill: DesignTokens.Stage.entryCard)
+        .parityBox("button", text: [Self.title(of: item), subtitle, entry?.releaseAt.map { Self.format($0, "HH:mm") } ?? "All day", entry.map { Self.releaseLabel($0) } ?? "", entry.map { Self.kindLabel($0) } ?? "", TVStatusPill.label(Self.tone(of: item, today: today))].filter { !$0.isEmpty }.joined(separator: " "), radius: 12, fill: DesignTokens.Stage.surfaceStrong)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DesignTokens.Stage.surfaceStrong))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Stage.line.opacity(0.3), lineWidth: 1))
         // The left border shows availability: we have it (playable) or not (owner rule).
@@ -423,14 +425,13 @@ struct TVCalendarView: View {
             ZStack(alignment: .topLeading) {
                 Rectangle()
                     .fill(outside ? DesignTokens.Stage.surfaceSoft.opacity(0.4) : Color.clear)
-                    .parityBox("container", fill: outside ? DesignTokens.Stage.calendarOutside : DesignTokens.Stage.surface)
                     .overlay(Rectangle().stroke(DesignTokens.Stage.line.opacity(0.25), lineWidth: 0.5))
                 VStack(alignment: .leading, spacing: 10.4) {
                     ForEach(shown, id: \.id) { item in
                         HStack(spacing: 7.2) {
-                            Color.clear.frame(width: 5.6, height: 0)
                             Circle().fill(Self.toneColour(Self.tone(of: item, today: model.today))).frame(width: 8.8, height: 8.8)
                                 .parityBox("container", radius: 50, fill: Self.toneColour(Self.tone(of: item, today: model.today)))
+                                .padding(.leading, 5.6)
                             Text(item.entries.count > 1 ? "\(Self.title(of: item)) \u{00B7} \(item.entries.count)\u{00D7}" : Self.title(of: item))
                                 .font(TVTheme.font(size: 12.48, css: item.entries.count > 1 ? 680 : 400))
                                 .foregroundStyle(DesignTokens.Color.textPrimary)
@@ -443,7 +444,7 @@ struct TVCalendarView: View {
                     }
                 }
                 .padding(.leading, 11.4)
-                .padding(.top, 7)
+                .padding(.top, 1.8)
                 .padding(.trailing, 8)
                 HStack(spacing: 6) {
                     Text(String(Int(day.suffix(2)) ?? 0))
@@ -457,11 +458,13 @@ struct TVCalendarView: View {
                             .parityLayout(text: "+\(items.count - shown.count) more", size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)
                     }
                 }
-                .padding(.leading, 11.8)
+                .padding(.leading, 8.8)
                 .frame(maxHeight: .infinity, alignment: .bottomLeading)
-                .padding(.bottom, 9.4)
+                .padding(.bottom, 15.4)
             }
-            .frame(width: 237.6, height: height)
+            .frame(width: 237.6, height: height, alignment: .topLeading) // the negative-padded entries must not re-centre the cell
+            .parityBox("container", fill: outside ? DesignTokens.Stage.surfaceSoft : DesignTokens.Stage.surface, alpha: outside ? 0.4 : 1)
+            .parityBackdrop(DesignTokens.Stage.surface)
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 0))
         .focusEffectDisabled()

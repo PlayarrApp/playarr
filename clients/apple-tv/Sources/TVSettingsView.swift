@@ -62,7 +62,7 @@ struct TVSettingsView: View {
                             .font(TVTheme.font(size: 9.92, css: 760))
                             .foregroundStyle(DesignTokens.Color.textPrimary)
                             .parityLayout(text: section.number, size: 9.92, weight: 760, color: DesignTokens.Color.textPrimary)
-                            .placed(x: 32, y: 23.8, w: 32, h: 18.4)
+                            .placed(x: 32, y: 25.1, w: 32, h: 18.4)
                         Text(section.title)
                             .font(TVTheme.font(size: 29.6, css: 480))
                             .tracking(-1.04)
@@ -125,9 +125,9 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Colour theme", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Colour theme", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 210, w: 995, h: 39.6)
-                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [343.3, 343.3, 343.3], y: 265.8) { index in
+                choice(["System", "Light", "Dark"], selected: displayPreferences.themePreference == .system ? 0 : (displayPreferences.themePreference == .light ? 1 : 2), widths: [342.08, 342.08, 342.08], y: 265.8) { index in
                     displayPreferences.themePreference = [.system, .light, .dark][index]
                 }
                 Rectangle()
@@ -140,14 +140,14 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Home screen artwork", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Home screen artwork", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 383.8, w: 995, h: 39.6)
                 Text("Show portrait covers instead of wide media thumbnails on the home screen.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
                     .foregroundStyle(DesignTokens.Color.textDisabled)
                     .parityLayout(text: "Show portrait covers instead of wide media thumbnails on the home screen.", size: 13.12, weight: Int(TVTheme.cssWeight(.regular)), color: DesignTokens.Color.textDisabled)
                     .placed(x: 0, y: 429, w: 995, h: 20.3)
-                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [519, 519], y: 465.5) { index in
+                choice(["Thumbnails", "Covers"], selected: displayPreferences.homeCovers ? 1 : 0, widths: [517.13, 517.13], y: 465.5) { index in
                     displayPreferences.homeCovers = index == 1
                 }
                 Rectangle()
@@ -161,7 +161,7 @@ struct TVSettingsView: View {
                     .font(TVTheme.font(size: 26.4, weight: .medium))
                     .tracking(-0.92)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
-                    .parityLayout(text: "Artwork size", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
+                    .parityLayout(text: "Artwork size", role: "heading", size: 26.4, weight: Int(TVTheme.cssWeight(.medium)), color: DesignTokens.Color.textPrimary, tracking: -0.92)
                     .placed(x: 0, y: 583.8, w: 995, h: 39.6)
                 Text("Sets the size of posters and thumbnails everywhere: Home, Library, Search and more.")
                     .font(TVTheme.font(size: 13.12, weight: .regular))
@@ -170,7 +170,7 @@ struct TVSettingsView: View {
                     .placed(x: 0, y: 629, w: 995, h: 20.3)
                 choice(["Small", "Medium", "Large"],
                        selected: TVDisplayPreferences.ArtworkSize.allCases.firstIndex(of: displayPreferences.artworkSize) ?? 1,
-                       widths: [343.3, 343.3, 343.3], y: 665.5) { index in
+                       widths: [342.08, 342.08, 342.08], y: 665.5) { index in
                     displayPreferences.artworkSize = TVDisplayPreferences.ArtworkSize.allCases[index]
                 }
             }
@@ -224,8 +224,9 @@ struct TVSettingsView: View {
                         .foregroundStyle(index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                         .parityLayout(text: label, size: 10.56, weight: 900, color: index == selected ? DesignTokens.Color.backgroundBase : DesignTokens.Color.textDisabled)
                         .frame(width: widths[index], height: 56.5)
-                        .parityBox("button", text: label, radius: 12, fill: index == selected ? DesignTokens.Stage.ink : DesignTokens.Stage.settingsChoice)
-                        .background(index == selected ? DesignTokens.Color.textPrimary : Color.clear)
+                        .parityBox("button", text: label, radius: 12, fill: index == selected ? DesignTokens.Stage.ink : DesignTokens.Stage.surfaceSoft, alpha: index == selected ? 1 : 0.64)
+                        .parityBackdrop(DesignTokens.Stage.surface)
+                        .background(index == selected ? DesignTokens.Color.textPrimary : DesignTokens.Stage.surfaceSoft.opacity(0.64))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(DesignTokens.Color.borderDefault.opacity(0.35), lineWidth: 1))
                         .scaleEffect(index == selected ? 1.025 : 1) // web: the chosen option grows

@@ -1,0 +1,1 @@
+- Parity: webOS and Tizen web refs are captured from a bundle built with the packaged platform define (hash routing, no volume or fullscreen, no Clients link); legend scorer wires per-client role aliases.

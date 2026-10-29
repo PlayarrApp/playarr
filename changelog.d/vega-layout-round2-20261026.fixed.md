@@ -1,0 +1,1 @@
+- Fire TV parity: text under scaled cards, profile tiles, settings rows and calendar controls export and sit at the web positions.

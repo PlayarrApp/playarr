@@ -919,6 +919,7 @@ struct TVProfilesView: View {
                         .font(TVTheme.font(size: 10.37 * s, css: 820))
                         .tracking(1.35 * s)
                         .foregroundStyle(palette.brandInk)
+                        .offset(x: -2.5 * s) // the web centres the letter-spaced word with its trailing space
                         .parityLayout(text: "PROFILES", size: 10.37 * s, weight: 820, color: palette.brandInk, tracking: 1.35 * s)
                         .frame(height: 15.6 * s)
 
@@ -935,7 +936,7 @@ struct TVProfilesView: View {
                     // Never gate the empty household on isLoading — a spinner
                     // over the plate looked like a broken focus ornament.
                     profileRow(scale: s, avatarSize: size)
-                        .padding(.top, 120 * s)
+                        .padding(.top, 121.33 * s)
                         .opacity(isLoading && profiles.isEmpty ? 0.92 : 1)
 
                     if let loadError {
@@ -963,6 +964,7 @@ struct TVProfilesView: View {
                 )
             }
         }
+        .parityBackdrop(palette.bg)
         .ignoresSafeArea()
         .preferredColorScheme(displayPreferences.colorScheme)
         .task { await reload() }
@@ -1067,7 +1069,7 @@ struct TVProfilesView: View {
                             )
                         TVProfileAvatar(
                             userID: profile.id.uuidString.lowercased(),
-                            size: size,
+                            size: size - 36 * s, // web: the avatar art sits 18 pt inside the plate
                             presetName: profile.isCurrent ? environment.currentAvatarPreset : nil,
                             customImage: profile.isCurrent ? environment.currentAvatarImage : nil
                         )
@@ -1085,9 +1087,10 @@ struct TVProfilesView: View {
                         }
                     }
                     .frame(width: size, height: size)
+                    // Reported inside the scale, so the box is the one drawn.
+                    .parityBox("container", radius: 999, fill: palette.bg)
                     // Web: the button scales 1.045 and lifts 8 (the button style), the avatar adds 1.035 (263.9 wide).
                     .scaleEffect(active ? 1.035 : 1)
-                    .parityBox("container", radius: 999, fill: palette.bg)
                     .overlay(
                         Circle().stroke(
                             palette.lineStrong.opacity(0.66),

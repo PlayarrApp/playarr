@@ -192,6 +192,9 @@ struct NavTile {
         .margin({ top: -1.4 }) // web's label run sits 1.4 higher than ArkUI's half-leading line puts it
     }
     .id(`${this.item.id}-nav-tile`)
+    .accessibilityText(this.item.label)
+    .accessibilityRole(AccessibilityRoleType.HYPERLINK)
+    .accessibilityGroup(true)
     .padding({ top: tv(15.2) }) // web: the icon sits 15.2 below the tile top, the label 2.75 under it
     .width(tv(TvGeometry.navTileSize))
     .height(tv(TvGeometry.navTileSize))
@@ -306,14 +309,14 @@ export struct NavRail {
         Text(this.firstName()).fontFamily(nunitoAt(TvGeometry.navTileLabelWeight, tv(TvGeometry.navTileLabelSize)))
           .fontSize(tv(TvGeometry.navTileLabelSize)).lineHeight(webLineHeight(tv(TvGeometry.navTileLabelSize))).halfLeading(true)
           .fontWeight(TvGeometry.navTileLabelWeight)
-          .letterSpacing(NAV_TILE_LABEL_LETTER_SPACING)
+          .letterSpacing((NAV_TILE_LABEL_LETTER_SPACING) + -0.062)
           .fontColor(toResourceColor(activeColors().inkMuted))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width(tv(TvGeometry.navTileSize - 8))
           .textAlign(TextAlign.Center)
       }
-      .id('px:link:Signed in as ' + this.profileName + '. Open profiles.')
+      .accessibilityText('Signed in as ' + this.profileName + '. Open profiles.').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
       .width(tv(TvGeometry.navTileSize))
       .height(tv(TvGeometry.navTileSize))
       .justifyContent(FlexAlign.Center)
@@ -340,7 +343,7 @@ export struct NavRail {
   private versionText(): void {
     Text('v' + clientVersion).fontFamily(nunitoAt(700, tv(8)))
       .fontSize(tv(8)).lineHeight(webLineHeight(tv(8))).halfLeading(true)
-      .letterSpacing(1.36) // web's run is 30.73 wide
+      .letterSpacing((1.36) + 0.178) // web's run is 30.73 wide
       .fontColor(toResourceColor(activeColors().ink))
       .width(NAV_GROUP_WIDTH)
       .position({ x: 0, y: 1038.45 })

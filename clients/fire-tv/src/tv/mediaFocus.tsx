@@ -170,7 +170,7 @@ export function MediaFocus({focused, width, height, radius, variant = 'default',
           <GlowRing radius={radius} colour={glow} backgroundColor={palette.surfaceSoft} />
         </Animated.View>
       ) : null}
-      <View style={{width: u(width), height: u(height), borderRadius: u(radius), overflow: 'hidden'}}>{children}</View>
+      <View style={{width: u(width), height: u(height), borderRadius: u(radius), overflow: 'hidden', backgroundColor: palette.surfaceSoft}}>{children}</View>
     </Animated.View>
   );
 }

@@ -202,7 +202,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           top: u(172.8),
           width: u(590),
           height: u(76),
-          borderRadius: 999,
+          borderRadius: u(38),
           // Focused: the web's control focus ring (ink, no fill change).
           borderWidth: inputFocused ? 2 : 1,
           borderColor: inputFocused ? colour.ink : mix(colour.lineStrong, 0.76),
@@ -227,7 +227,6 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           {...lx('textbox', t('pages.search.searchPlaceholder'))}
           returnKeyType="search"
           hasTVPreferredFocus
-          accessibilityLabel={t('pages.search.ariaSearchPlayarr')}
           style={{flex: 1, marginLeft: u(13), padding: 0, height: u(60), color: colour.ink, fontSize: u(17.28), textAlignVertical: 'center', ...sans(400)}}
         />
         {query.length > 0 ? (
@@ -235,7 +234,7 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
             accessibilityRole="button"
             accessibilityLabel={t('pages.search.clear')}
             onPress={() => setQuery('')}
-            style={{width: u(68.3), height: u(54.8), marginRight: u(8), borderRadius: 999, alignItems: 'center', justifyContent: 'center'}}
+            style={{width: u(68.3), height: u(54.8), marginRight: u(8), borderRadius: u(27.4), alignItems: 'center', justifyContent: 'center'}}
           >
             <T size={10.944} weight={740} color={colour.inkMuted}>
               {t('pages.search.clear')}

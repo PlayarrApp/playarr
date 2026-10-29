@@ -173,7 +173,7 @@ export function LinkPanel({onClose, onFocused}: {onClose: () => void; onFocused?
   const left = 1606 - 1560;
   return (
     <>
-      <View style={{position: 'absolute', left: u(1560), top: 0, width: u(DRAWER_W), height: u(1080), backgroundColor: colour.surfaceStrong}}>
+      <View {...lx('dialog', '')} style={{position: 'absolute', left: u(1560), top: 0, width: u(DRAWER_W), height: u(1080), backgroundColor: colour.surfaceStrong}}>
         <TvFocusScope autoFocus trap={['up', 'down', 'left', 'right']} style={{width: u(DRAWER_W), height: u(1080)}}>
           <View style={{position: 'absolute', left: u(left), top: u(54)}}>
             <T size={9.6} weight={720} ls={0.672} lh={14.4} color={colour.inkMuted} upper>
@@ -210,7 +210,7 @@ export function LinkPanel({onClose, onFocused}: {onClose: () => void; onFocused?
           ) : null}
           {url ? (
             <>
-              <View style={{position: 'absolute', left: u(left), top: u(254.4), width: u(268), height: u(44), borderRadius: u(8), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: colour.surface, justifyContent: 'center', paddingHorizontal: u(12), overflow: 'hidden'}}>
+              <View {...lx('textbox', t('pages.calendar.subscription.urlLabel'))} style={{position: 'absolute', left: u(left), top: u(254.4), width: u(268), height: u(44), borderRadius: u(8), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: colour.surface, justifyContent: 'center', paddingHorizontal: u(12), overflow: 'hidden'}}>
                 <T size={12.8} weight={400} mono lh={19} color={colour.ink} lines={1} style={{width: u(900)}}>
                   {url}
                 </T>
@@ -284,7 +284,7 @@ function GhostButton({label, onPress, disabled}: {label: string; onPress: () => 
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      style={{height: u(58), paddingHorizontal: u(21), borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? colour.surfaceSoft : 'transparent', opacity: disabled ? 0.55 : 1}}
+      style={{height: u(58), paddingHorizontal: u(21), borderRadius: u(29), alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? colour.surfaceSoft : 'transparent', opacity: disabled ? 0.55 : 1}}
     >
       <T size={14.72} weight={720} color={colour.ink}>
         {label}
@@ -318,9 +318,9 @@ export function PeriodPicker({label, anchor, locale, onChange}: {label: string; 
           setOpen(true);
         }}
         // The web's range button: a secondary pill in the header group, left of Previous / Today / Next (right edge 1613.9).
-        style={{position: 'absolute', right: u(1920 - 1613.9), top: u(56.2), height: u(50), paddingHorizontal: u(21), borderRadius: 999, borderWidth: 1, borderColor: colour.line, flexDirection: 'row', alignItems: 'center', backgroundColor: colour.surface}}
+        style={{position: 'absolute', right: u(1920 - 1613.9), top: u(56.2), height: u(50), paddingHorizontal: u(21), borderRadius: u(25), borderWidth: 1, borderColor: colour.line, flexDirection: 'row', alignItems: 'center', backgroundColor: colour.surface}}
       >
-        <T wrole="button" wradius={999} size={14.72} weight={720} color={colour.inkSoft}>
+        <T size={14.72} weight={720} color={colour.inkSoft}>
           {label}
         </T>
         {focused ? <FocusRing /> : null}

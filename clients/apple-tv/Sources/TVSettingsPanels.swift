@@ -55,6 +55,7 @@ struct TVSettingsPanel: View {
             .tracking(tracking)
             .lineSpacing(max(0, (lineHeight ?? natural) - natural))
             .foregroundStyle(color)
+            .parityLayout(text: string, size: size, weight: Int(css), color: color, tracking: tracking)
             .lineLimit(lines)
             .multilineTextAlignment(alignment == .center ? .center : .leading)
             .padding(.top, lines > 1 ? max(0, ((lineHeight ?? natural) - natural) / 2) : 0)

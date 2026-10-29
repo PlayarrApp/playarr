@@ -23,7 +23,7 @@ import {mix} from '../theme/color';
 import {useTheme} from '../theme/ThemeProvider';
 import {yearRangeLabel} from '../lib/workYear';
 import {BalancedT, Box, T, u} from '../tv/kit';
-import {lt, lx} from '../debug/layoutMarks';
+import {lx} from '../debug/layoutMarks';
 import {FocusRing} from '../tv/FocusRing';
 import {PageHeader} from '../tv/PageHeader';
 import {PlaylistSheet} from '../tv/PlaylistSheet';
@@ -391,7 +391,9 @@ export function WorkDetailScreen({route, navigation, onPlay}: WorkDetailScreenPr
           overview={overview ?? (episodic ? t('pages.workDetail.noEpisodeSynopsis') : t('pages.workDetail.noSynopsis'))}
           movieActions={
             work.kind === 'movie' ? (
-              <PillRow top={39.6}>
+              <PillRow top={38.4}>
+                {/* The web's Download pill sits first in this row. This app has no downloads, so its slot stays empty and the other pills keep the web's positions. */}
+                <View style={{width: u(142 + 16)}} />
                 {playMediaFileId ? <Pill glyph={'\u2637'} label={t('pages.workDetail.playbackButtonLabel')} web={{role: 'button', label: `Playback settings for ${work.title}`}} onPress={() => setSettingsOpen(true)} focusable={!settingsFocused} /> : null}
                 {playMediaFileId ? (
                   <Pill primary glyph="play" label={moviePlayLabel} web={{role: 'link', label: `Play ${work.title}`}} onPress={() => play(playMediaFileId, {title: work.title, ...launchQuality(effectiveOptions)})} hasTVPreferredFocus focusable={!settingsFocused} />
@@ -485,7 +487,7 @@ function CopyColumn(props: {
       </View>
       {props.subtitle ? (
         <View style={{marginTop: u(19.5), width: u(304)}}>
-          <T size={21.12} weight={570} ls={-0.7392} lh={24.3} color={colour.inkSoft} lines={1}>
+          <T heading size={21.12} weight={570} ls={-0.7392} lh={24.3} color={colour.inkSoft} lines={1}>
             {props.subtitle}
           </T>
         </View>
@@ -542,11 +544,11 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
       onBlur={() => setFocused(false)}
       onPress={onPress}
       style={{
-        minWidth: u(primary ? 156 : 142),
+        minWidth: u(primary ? (web?.role === 'link' ? 165.36 : 156) : 142),
         height: u(64),
         marginRight: u(16),
         paddingHorizontal: u(primary ? 21.6 : 16),
-        borderRadius: 999,
+        borderRadius: u(32),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -559,11 +561,11 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
       {glyph ? (
         <View style={{marginRight: u(primary ? 10.4 : 8.8)}}>
           {glyph === 'play' ? (
-            <View {...lt('▶', 10.12, 400, glyphColour)}>
+            <View>
               <Icon name="play" size={u(10.1184)} color={glyphColour} />
             </View>
           ) : (
-            <T size={12.8064} weight={400} color={glyphColour}>
+            <T size={12.8064} weight={400} dy={-2} color={glyphColour}>
               {glyph}
             </T>
           )}

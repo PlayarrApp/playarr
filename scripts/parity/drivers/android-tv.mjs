@@ -9,7 +9,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { checkLayout, fillBackgrounds } from "../layout-sample.mjs";
+import { checkLayout } from "../layout-check.mjs";
 import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { guardAndroidDeviceAccount } from "../capture-state.mjs";
@@ -168,25 +168,20 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
   // Each adb call gets the full command timeout: clamping it to the time left before a readiness deadline gave calls a few
   // milliseconds near the end, which a real process cannot meet (a flaky "timed out after 26ms").
   // docs/parity/LAYOUT.md: the debug app writes its own layout (semantics tree: text style, glyph-run bounds, controls) in the same state as the screenshot.
-  const exportLayout = async (pngFile) => {
-    const theme = basename(dirname(pngFile)), screen = basename(pngFile, ".png");
+  // Asks the app for its layout and returns the document text, or null when none arrived.
+  const requestLayout = async (theme, screen) => {
     await shell("run-as", pkg, "rm", "-f", "files/parity-layout.json").catch(() => {});
     await shell("am", "broadcast", "-a", "io.playarr.mobile.PARITY_LAYOUT", "-p", pkg, "--es", "screen", screen, "--es", "theme", theme);
     for (let i = 0; i < 20; i++) {
       await sleep(500);
       const json = await adb("exec-out", "run-as", pkg, "cat", "files/parity-layout.json").catch(() => "");
-      if (json.startsWith("{")) {
-        const dir = join(dirname(dirname(pngFile)), "layout", theme);
-        mkdirSync(dir, { recursive: true });
-        const layout = fillBackgrounds(checkLayout(JSON.parse(json), theme), readFileSync(pngFile));
-        writeFileSync(join(dir, `${screen}.json`), JSON.stringify(layout));
-        return;
-      }
+      if (json.startsWith("{")) return json;
     }
-    // No export for this capture: remove any file an earlier run left, and fail loudly.
-    rmSync(join(dirname(dirname(pngFile)), "layout", theme, `${screen}.json`), { force: true });
-    throw new Error(`layout export failed for ${theme}/${screen}`);
+    return null;
   };
+  const grab = async () => env.PARITY_XDISPLAY
+    ? (await execBounded("import", ["-window", "root", "png:-"], { encoding: "buffer", maxBuffer: 64 << 20, env: { ...env, DISPLAY: env.PARITY_XDISPLAY }, label: "screen capture import" })).stdout
+    : (await execBounded(adbBin, ["exec-out", "screencap", "-p"], { encoding: "buffer", maxBuffer: 64 << 20, label: "adb exec-out screencap" })).stdout;
   const tree = async () => {
     try {
       await adbWithTimeout(commandTimeoutMs, "shell", "uiautomator", "dump", "/sdcard/parity-ui.xml");
@@ -431,11 +426,24 @@ export function createDriver({ adbBin: adbOverride, commandTimeoutMs = 20_000, r
       if (parityClock) await this.waitReady({ screen: captureSurface ?? captureScreen, phase: "capture" });
       const xml = await tree();
       if (/Try again|Sign in to Playarr|Scan the QR code/i.test(xml.replace(/<node [^>]*package="(?!io\.playarr)[^>]*>/g, ""))) throw new Error("signed out or error screen");
-      const png = env.PARITY_XDISPLAY
-        ? (await execBounded("import", ["-window", "root", "png:-"], { encoding: "buffer", maxBuffer: 64 << 20, env: { ...env, DISPLAY: env.PARITY_XDISPLAY }, label: "screen capture import" })).stdout
-        : (await execBounded(adbBin, ["exec-out", "screencap", "-p"], { encoding: "buffer", maxBuffer: 64 << 20, label: "adb exec-out screencap" })).stdout;
-      writeFileSync(file, png);
-      if (env.PARITY_LAYOUT !== "0") await exportLayout(file);
+      // One frame: a screenshot before and after the layout request must be byte-identical, so the layout describes exactly the pixels kept.
+      const theme = basename(dirname(file)), screen = basename(file, ".png");
+      const layoutFile = join(dirname(dirname(file)), "layout", theme, `${screen}.json`);
+      rmSync(layoutFile, { force: true });
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const before = await grab();
+        const json = env.PARITY_LAYOUT !== "0" ? await requestLayout(theme, screen) : "";
+        if (json === null) continue;
+        const after = await grab();
+        if (!before.equals(after)) { await sleep(500); continue; }
+        writeFileSync(file, before);
+        if (json) {
+          mkdirSync(dirname(layoutFile), { recursive: true });
+          writeFileSync(layoutFile, JSON.stringify(checkLayout(JSON.parse(json), theme)));
+        }
+        return;
+      }
+      throw new Error(`no stable frame with a layout export for ${theme}/${screen}`);
     },
     // Plays media file `c.file` through the player route and watches the position the debug log reports.
     async play(c, expect) {

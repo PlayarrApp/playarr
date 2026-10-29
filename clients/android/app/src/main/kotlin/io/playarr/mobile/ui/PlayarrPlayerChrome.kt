@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import androidx.compose.ui.graphics.graphicsLayer
 import io.playarr.shared.designsystem.page.parityBox
@@ -93,6 +94,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -798,7 +801,7 @@ private fun PlayerRoundButton(
         modifier = modifier
             .then(if (focusKey != null) Modifier.playerTracked(focusKey) else Modifier)
             .size(webVw(44f, 3.8f, 64f))
-            .parityShape(999f)
+            .parityShape(999f, alpha = if (enabled) 1f else 0.28f)
             .then(if (enabled) Modifier else Modifier.graphicsLayer { alpha = 0.28f })
             .playerFocusRing(source, CircleShape)
             .semantics { this.contentDescription = contentDescription },
@@ -845,6 +848,7 @@ private fun PlayarrPlayerControlBar(
     } else {
         0f
     }
+    val seekLabel = playarrString(PlayarrString.PlayerSeek)
     val seekDescription = playarrString(
         PlayarrString.PlayerSeekValueText,
         "position" to formatPlayarrPlayerTime(displayedPositionMs),
@@ -936,7 +940,7 @@ private fun PlayarrPlayerControlBar(
                     }
                 }
                 .fillMaxWidth()
-                .semantics { contentDescription = seekDescription },
+                .semantics { contentDescription = seekLabel; stateDescription = seekDescription },
         )
         if (!isTelevision) {
             Text(
@@ -1073,6 +1077,7 @@ internal fun PlayarrTelevisionControlBar(
     durationMs: Long,
     bufferedProgress: Float,
     seekDescription: String,
+    seekLabel: String = playarrString(PlayarrString.PlayerSeek),
     seekFocusRequester: FocusRequester,
     playlistFocusRequester: FocusRequester = FocusRequester(),
     qualityFocusRequester: FocusRequester = FocusRequester(),
@@ -1131,8 +1136,8 @@ internal fun PlayarrTelevisionControlBar(
                     )
                     .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
             )
-            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).parityBox("container").background(Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp)))
-            Box(Modifier.fillMaxWidth(progress).height(6.dp).parityBox("container").background(WebKicker, RoundedCornerShape(3.dp)))
+            Box(Modifier.fillMaxWidth(bufferedProgress.coerceIn(0f, 1f)).height(6.dp).parityBackground("container", Color.White.copy(alpha = 0.34f), RoundedCornerShape(3.dp), radius = 3f))
+            Box(Modifier.fillMaxWidth(progress).height(6.dp).parityBackground("container", WebKicker, RoundedCornerShape(3.dp), radius = 3f))
             if (scrubFocused) {
                 // Enlarged, highlighted thumb (web: 24 px white disc with an accent ring) while the scrubber has focus.
                 Box(Modifier.fillMaxWidth(progress).height(24.dp), contentAlignment = Alignment.CenterEnd) {

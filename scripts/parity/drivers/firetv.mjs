@@ -69,6 +69,17 @@ async function settled(maxMs = 8000) {
 export async function createDriver({ out } = {}) {
   let seq = 0;
   let pinnedClock = null;
+  let wantedTheme = null;
+  // Precondition of every capture: the app reports the theme the run asked for (a relaunch or a player route must not drop it).
+  async function checkTheme() {
+    if (!wantedTheme) return;
+    for (let i = 0; i < 3; i++) {
+      const reported = (await state(20000).catch(() => ({}))).theme;
+      if (reported === wantedTheme) return;
+      await command({ cmd: "theme", name: wantedTheme }, 6000);
+    }
+    throw new Error(`the app does not report the ${wantedTheme} theme`);
+  }
   const answers = new Map();
   const chunks = new Map();
 
@@ -114,7 +125,7 @@ export async function createDriver({ out } = {}) {
   }
   // The layout document (cmd=layout): the app logs it in numbered chunks; wait until every chunk of this request has been read.
   async function layoutDocument() {
-    const n = await send({ cmd: "layout", debug: process.env.PARITY_LAYOUT_DEBUG ? "1" : "0" });
+    const n = await send({ cmd: "layout", debug: process.env.PARITY_LAYOUT_DEBUG || "0" });
     const t0 = Date.now();
     let lastAsk = 0;
     while (Date.now() - t0 < 90000) {
@@ -196,6 +207,8 @@ export async function createDriver({ out } = {}) {
       // Always sent: the state's theme is the resolved one, so a system preference that happens to resolve to the wanted theme would
       // otherwise stay "System" and the Appearance panel would not show the chosen theme as web's does.
       await command({ cmd: "theme", name: theme }, 6000);
+      wantedTheme = theme;
+      await checkTheme();
     },
     async home() {
       // A relaunch: Home is only drawn with its first card focused when it is the first page after the profile is chosen
@@ -243,7 +256,7 @@ export async function createDriver({ out } = {}) {
     async playerControls() {
       const film = JSON.parse(readFileSync(new URL("../suite.json", import.meta.url), "utf8")).screens.find((x) => x.id === "film-detail")?.open;
       if (!film) throw new Error("suite has no pinned film for player-controls");
-      await command({ cmd: "armPause", ms: "2000" }, 500);
+      await command({ cmd: "armPause", ms: "1900" }, 500);
       // Play on the pinned film's page; if the clip has not started within 50 s (a dropped Select), open the page again and retry once.
       let paused = false;
       for (let attempt = 0; attempt < 2 && !paused; attempt++) {
@@ -253,12 +266,13 @@ export async function createDriver({ out } = {}) {
         const t0 = Date.now();
         while (Date.now() - t0 < 50000) {
           const player = (await state(20000).catch(() => ({}))).player ?? {};
-          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.05) { paused = true; break; }
+          if (player.state === "paused" && Math.abs(player.positionSeconds - 2) <= 0.2) { paused = true; break; }
           await sleep(1500);
         }
       }
       if (!paused) throw new Error("the Vega player did not pause at 2 s");
-      await press("Right"); // the first input only raises the controls
+      await sleep(7000); // the controls hide after 5 s without input
+      await press("Right"); // the first input with the controls hidden only raises them
       await sleep(2500);
     },
     async route(path, { screenId } = {}) {
@@ -290,12 +304,18 @@ export async function createDriver({ out } = {}) {
       return (await state()).route;
     },
     async focused() {
-      const f = (await state()).focus;
-      return f ?? null;
+      // A state answer can arrive without the focus while the app is busy (a loaded host answers late): ask again before reporting none.
+      for (let i = 0; i < 6; i++) {
+        const f = (await state().catch(() => ({}))).focus;
+        if (f) return f;
+        await sleep(1500);
+      }
+      return null;
     },
     async screenshot(file) {
       const s = await state();
       if (!s.route || s.route === "/profiles" && !file.includes("profiles")) throw new Error(`not a content screen: ${s.route}`);
+      await checkTheme();
       await sleep(1500);
       // The layout document of the same screen state goes next to the capture: <out>/layout/<theme>/<screen>.json.
       const theme = basename(dirname(file));

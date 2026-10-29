@@ -83,8 +83,7 @@ fun PlayarrPageLayout(
     Box(
         Modifier
             .fillMaxSize()
-            .parityBox("container")
-            .background(PlayarrWebTheme.palette.surface)
+            .parityBackground("container", PlayarrWebTheme.palette.surface)
             .then(if (tv || !panel) Modifier else Modifier.windowInsetsPadding(phoneInsets))
             .semantics { pageIdTag = pageId },
     ) {
@@ -185,7 +184,7 @@ private fun PlayarrNavButton(item: PlayarrNavItem, exitRight: Boolean = false) {
                 .then(if (item.primary && !tv) Modifier.graphicsLayer { scaleX = 1.055f; scaleY = 1.055f } else Modifier)
                 // The ring is the focus state (white in dark, ink in light), never alongside another ring and never a fill.
                 .then(if (focused) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
-                .then(if (glyph != null) Modifier.parityShape(999f) else Modifier)
+                .parityShape(999f)
                 .semantics { contentDescription = item.label },
         ) {
             Box(contentAlignment = Alignment.Center) {

@@ -21,6 +21,13 @@ export function layoutPageFn(volatile) {
       return [q[0] * 255, q[1] * 255, q[2] * 255, q.length > 3 ? q[3] : 1];
     }
     var m = /rgba?\(([^)]+)\)/.exec(c);
+    if (!m && /^(oklab|oklch|lab|lch|hwb|hsl|hsla|color)\(/.test(c)) {
+      /* a computed colour in another space (color-mix in oklab, ...): let the browser convert it to sRGB */
+      var cv = document.createElement("canvas"); cv.width = cv.height = 1;
+      var cx = cv.getContext("2d"); cx.clearRect(0, 0, 1, 1); cx.fillStyle = c; cx.fillRect(0, 0, 1, 1);
+      var px = cx.getImageData(0, 0, 1, 1).data;
+      return [px[0], px[1], px[2], px[3] / 255];
+    }
     if (!m) return [0, 0, 0, 0];
     var p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);
     return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
@@ -48,6 +55,10 @@ export function layoutPageFn(volatile) {
     for (var n = el; n && n.nodeType === 1; n = n.parentElement) z *= Number(getComputedStyle(n).zoom) || 1;
     return z;
   };
+  /* Direct text nodes join with no separator only when they are adjacent siblings; an element between them (flex gap, icon) draws a gap. */
+  var joinTexts = function (nodes) {
+    return nodes.map(function (n, i) { return (i > 0 && n.previousSibling !== nodes[i - 1] ? " " : "") + n.textContent; }).join("");
+  };
   var norm = function (s) { return String(s || "").replace(/\s+/g, " ").trim(); };
   /* Chromium has no text-transform: full-width (computed value is none). capitalize upper-cases the first letter of each word. */
   var isLetter = function (c) { return c.toLowerCase() !== c.toUpperCase(); };
@@ -69,6 +80,7 @@ export function layoutPageFn(volatile) {
     var lines = [], cur = null, range = document.createRange();
     for (var a = 0; a < nodes.length; a++) {
       var data = nodes[a].data;
+      if (a > 0 && cur && nodes[a].previousSibling !== nodes[a - 1]) cur.text += " ";
       for (var i = 0; i < data.length; i++) {
         range.setStart(nodes[a], i);
         range.setEnd(nodes[a], i + 1);
@@ -84,6 +96,26 @@ export function layoutPageFn(volatile) {
     return lines.filter(function (x) { return x.l && norm(x.text); }).map(function (x) {
       return { text: shown(norm(x.text), cs), left: x.l.left, top: x.l.top, w: x.l.right - x.l.left, h: x.l.bottom - x.l.top };
     });
+  };
+  /* A single line cut by text-overflow: ellipsis shows the characters that fit before the ellipsis, then "…". Returns null when nothing is cut. */
+  var ellipsise = function (el, nodes, cs) {
+    var box = el.getBoundingClientRect();
+    var limit = box.right - (parseFloat(cs.paddingRight) || 0) - (parseFloat(cs.borderRightWidth) || 0);
+    var cv = document.createElement("canvas").getContext("2d");
+    cv.font = cs.font;
+    var ellW = cv.measureText("\u2026").width;
+    var range = document.createRange(), text = "", l = null;
+    for (var a = 0; a < nodes.length; a++) {
+      for (var i = 0; i < nodes[a].data.length; i++) {
+        range.setStart(nodes[a], i); range.setEnd(nodes[a], i + 1);
+        var cr = range.getBoundingClientRect();
+        if (cr.width <= 0) continue;
+        if (cr.right > limit - ellW + 0.01) return text.replace(/\s+$/, "") && l ? { text: shown(norm(text), cs) + "\u2026", left: l.left, top: l.top, right: Math.min(limit, l.right + ellW), bottom: l.bottom } : null;
+        text += nodes[a].data.charAt(i);
+        if (/\S/.test(nodes[a].data.charAt(i))) l = l ? { left: Math.min(l.left, cr.left), top: Math.min(l.top, cr.top), right: Math.max(l.right, cr.right), bottom: Math.max(l.bottom, cr.bottom) } : { left: cr.left, top: cr.top, right: cr.right, bottom: cr.bottom };
+      }
+    }
+    return null;
   };
   var clipped = function (el, r) {
     var left = r.left, top = r.top, right = r.right, bottom = r.bottom;
@@ -172,7 +204,7 @@ export function layoutPageFn(volatile) {
     if (srOnly(el)) continue;
     var texts = [];
     for (var k = 0; k < el.childNodes.length; k++) if (el.childNodes[k].nodeType === 3 && norm(el.childNodes[k].textContent)) texts.push(el.childNodes[k]);
-    var own = shown(norm(texts.map(function (n) { return n.textContent; }).join("")), cs);
+    var own = shown(norm(joinTexts(texts)), cs);
     var fill = parse(cs.webkitTextFillColor || cs.color);
     var gradient = null;
     if (own && fill[3] === 0) {
@@ -196,6 +228,11 @@ export function layoutPageFn(volatile) {
       rg.setEndAfter(texts[texts.length - 1]);
       var tr = rg.getBoundingClientRect();
       if (tr.width >= 1 && tr.height >= 1) r = tr;
+    }
+    var cut = own && !vol && cs.textOverflow === "ellipsis" && cs.overflowX !== "visible" && el.scrollWidth > el.clientWidth + 1 ? ellipsise(el, texts, cs) : null;
+    if (cut) {
+      own = cut.text;
+      r = { left: cut.left, top: cut.top, right: cut.right, bottom: cut.bottom, width: cut.right - cut.left, height: cut.bottom - cut.top };
     }
     if (r.width < 1 || r.height < 1 || r.right <= 0 || r.bottom <= 0 || r.left >= innerWidth || r.top >= innerHeight) continue;
     if (clipped(el, r)) continue;

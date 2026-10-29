@@ -785,7 +785,7 @@ function Alphabet({active, onJump}: {active: string | null; onJump: (letter: str
               accessibilityLabel={letter}
               {...lx('button', letter === '#' ? 'Numbers and symbols' : letter, 50)}
               onPress={() => onJump(letter)}
-              style={{position: 'absolute', left: u(6), top: u(8 + index * RAIL_ROW), width: u(RAIL_ROW), height: u(RAIL_ROW), alignItems: 'center', justifyContent: 'center'}}
+              style={{position: 'absolute', left: u(6), top: u(8 + index * RAIL_ROW), width: u(RAIL_ROW), height: u(RAIL_ROW), alignItems: 'center', justifyContent: 'center', borderRadius: u(22)}}
             >
               {on ? <View style={{position: 'absolute', width: u(24), height: u(24), borderRadius: 999, backgroundColor: mix(colour.ink, 0.78)}} /> : null}
               <T size={9.216} weight={400} color={on ? colour.bg : colour.inkMuted} lh={11}>

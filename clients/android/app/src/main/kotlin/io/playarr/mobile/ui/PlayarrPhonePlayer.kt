@@ -1,5 +1,6 @@
 package io.playarr.mobile.ui
 
+import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
 import io.playarr.shared.designsystem.icons.PlayarrWebIcons
 import android.app.Activity
@@ -59,6 +60,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -210,6 +213,7 @@ internal fun BoxScope.PhonePlayerOverlay(
         ) {
             val bufferedFraction = if (durationMs > 0L) (timeline.bufferedPositionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
             val playedFraction = if (durationMs > 0L) (displayedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+            val seekLabel = playarrString(PlayarrString.PlayerSeek)
             val seekDescription = playarrString(
                 PlayarrString.PlayerSeekValueText,
                 "position" to formatPlayarrPlayerTime(displayedMs),
@@ -219,7 +223,7 @@ internal fun BoxScope.PhonePlayerOverlay(
             // centred on it (as the web slider), which overflows the 6 dp track without changing the layout.
             Box(Modifier.fillMaxWidth().height(6.dp).background(Color.White.copy(alpha = 0.2f))) {
                 Box(Modifier.fillMaxHeight().fillMaxWidth(bufferedFraction).background(Color.White.copy(alpha = 0.34f)))
-                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBox("container").background(PlayerAccent))
+                Box(Modifier.fillMaxHeight().fillMaxWidth(playedFraction).parityBackground("container", PlayerAccent))
                 Box(
                     Modifier
                         .align(Alignment.Center)
@@ -248,6 +252,7 @@ internal fun BoxScope.PhonePlayerOverlay(
                 verticalArrangement = Arrangement.spacedBy(if (LocalStageScale.current == 1f) 3.4.dp else 2.dp),
             ) {
                 // `.player-time` leads the first line (order -1, full width) with 2 px of padding below.
+                Row(Modifier.fillMaxWidth().padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp), horizontalArrangement = Arrangement.Center) {
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = if (LocalStageScale.current == 1f) 6.9.dp else 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.6.dp, Alignment.CenterHorizontally),
@@ -257,6 +262,7 @@ internal fun BoxScope.PhonePlayerOverlay(
                     Text(formatPlayarrPlayerTime(displayedMs), color = Color.White, style = WebTextStyle.merge(time))
                     Text("/", color = PlayerSeparator, style = WebTextStyle.merge(time))
                     Text(formatPlayarrPlayerTime(durationMs), color = Color.White, style = WebTextStyle.merge(time))
+                }
                 }
                 PhonePlayerButton(PlayarrWebIcons.PlayerPrevious, playarrString(PlayarrString.PlayerPreviousEpisode), enabled = canPrevious && !controls.switching, dimWhenDisabled = true) { onPrevious() }
                 PhonePlayerButton(

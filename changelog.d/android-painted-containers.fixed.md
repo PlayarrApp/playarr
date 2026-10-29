@@ -1,0 +1,1 @@
+- Android phone and tablet: painted containers (nav glass, detail pills, episode art, settings rows and segments) report the fill the app paints; tablet Home capture no longer opens a detail page.

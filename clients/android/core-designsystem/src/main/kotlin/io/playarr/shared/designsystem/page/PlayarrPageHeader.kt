@@ -147,10 +147,11 @@ internal fun PlayarrPageHeaderRow(
             Text(
                 title,
                 color = palette.ink,
-                fontSize = if (tv) 33.6.sp else if (large) 21.6.sp else 17.6.sp,
+                // Web `.tv-library-heading h1`: clamp(19.2, 1.75 vw, 37.6) css px, -0.045em, line height the control height.
+                fontSize = if (tv) (1.75f * metrics.vw).coerceIn(19.2f, 37.6f).div(metrics.stage).sp else if (large) 21.6.sp else 17.6.sp,
                 fontWeight = FontWeight(580),
-                letterSpacing = if (tv) (-1.512).sp else if (large) (-0.972).sp else (-0.792).sp,
-                lineHeight = if (tv) 50.sp else if (large) 32.4.sp else 26.4.sp,
+                letterSpacing = if (tv) (-0.045f * (1.75f * metrics.vw).coerceIn(19.2f, 37.6f) / metrics.stage).sp else if (large) (-0.972).sp else (-0.792).sp,
+                lineHeight = if (tv) metrics.control.value.sp else if (large) 32.4.sp else 26.4.sp,
                 style = if (tv) androidx.compose.material3.LocalTextStyle.current else webText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -212,10 +213,12 @@ internal fun PlayarrPageHeaderRow(
             // Web phone, measured against the live page at 719 x 1558: the 17.6 px title's glyphs sit 2 px (1.1 dp) and the
             // 21.6 px title's 7 px (3.8 dp) lower than a centred line box puts them; the count line follows 2 px (1.1 dp) further down.
             // Pages with a Filters or other action beside the title (library, search, calendar) sit 2 px low; the rest (detail, settings) 7 px.
-            val titleDrop = if (tv) 0 else (if (spec.actions.isEmpty() && large) 3.8.dp else 1.1.dp).roundToPx()
+            val subtitleDrop = if (tv) 0 else (if (spec.actions.isEmpty() && large) 3.8.dp else 1.1.dp).roundToPx()
+            // The title's glyph run (web `Range` box) sits 1.1 dp low on every page; the exported run measured 3 px low with the 3.8 dp drop.
+            val titleDrop = if (tv) 0 else 1.1.dp.roundToPx()
             titleP.placeRelative(backWidth + backGap, (rowHeight - titleP.height) / 2 + titleDrop)
             inline?.placeRelative(titleEnd, (rowHeight - inline.height) / 2)
-            wrapped?.placeRelative(backWidth + backGap, rowHeight + subtitleGap + (if (tv) 0 else titleDrop + 1.1.dp.roundToPx()))
+            wrapped?.placeRelative(backWidth + backGap, rowHeight + subtitleGap + (if (tv) (if (metrics.stage != 1f) metrics.css(4.1f).dp.roundToPx() else 0) else subtitleDrop + 1.1.dp.roundToPx()))
         }
     }
 }
@@ -223,13 +226,14 @@ internal fun PlayarrPageHeaderRow(
 /** Web television header subtitle beside the title: small, uppercase, the page ink (not the brand pink). */
 @Composable
 private fun PlayarrTvInlineSubtitle(text: String) {
+    val size = LocalPlayarrTvMetrics.current.subtitleSize
     Text(
         text.uppercase(),
         color = PlayarrWebTheme.palette.ink,
-        fontSize = 11.136.sp,
-        lineHeight = 16.sp,
+        fontSize = size.sp,
+        lineHeight = (size * 16f / 11.136f).sp,
         fontWeight = FontWeight(680),
-        letterSpacing = 0.501.sp,
+        letterSpacing = (0.045f * size).sp,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )
@@ -306,7 +310,7 @@ val LocalPlayarrBackFocus = androidx.compose.runtime.staticCompositionLocalOf<an
 @Composable
 private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
     val palette = PlayarrWebTheme.palette
-    val metrics = PlayarrPageTokens.Tv
+    val metrics = LocalPlayarrTvMetrics.current
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     // Settings opens with the back button focused: the static web ref keeps the 0.7 surface fill and draws only the
@@ -327,10 +331,11 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (focused || active) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
                 
+                .parityShape(999f)
                 .semantics { contentDescription = back.label; role = Role.Button },
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text("\u2190", fontSize = 17.28.sp, fontWeight = FontWeight(720))
+                Text("\u2190", fontSize = (0.9f * metrics.vw).coerceIn(12.8f, 17.6f).div(metrics.stage).sp, fontWeight = FontWeight(720))
             }
         }
     }

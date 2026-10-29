@@ -117,6 +117,7 @@ import {WorkDetailScreen} from '../screens/WorkDetailScreen';
 import {useTvBackNavigation} from './backPolicy';
 import {ROUTES, type RouteName} from './routes';
 import {colour} from '../theme/tokens';
+import {useTheme} from '../theme/ThemeProvider';
 
 /**
  * This nested navigator's own screen name within `RootNavigator`'s stack.
@@ -375,6 +376,7 @@ export function AppShellNavigator(): React.ReactElement {
     };
   }, [client, apiBaseUrl]);
 
+  const theme = useTheme();
   const [detailTarget, setDetailTarget] = useState<RailTarget | null>(null);
   const household = useHouseholdStatus(client, activeRoute);
   const householdBlock = householdBlockFromStatus(household.status);
@@ -397,10 +399,10 @@ export function AppShellNavigator(): React.ReactElement {
     (activeRoute === ROUTES.workDetail ? detailTarget : activeRoute === ROUTES.musicDetail ? 'music' : null);
 
   return (
-    <View {...lx('container', '')} style={{flex: 1, backgroundColor: colour.bg}}>
+    <View {...lx('container', '')} style={{flex: 1, backgroundColor: theme.colour.bg}}>
       <DetailRailContext.Provider value={setDetailTarget}>
       <CatalogKindsContext.Provider value={availableWorkKinds}>
-      <ContentStack.Navigator screenOptions={{headerShown: false, animationEnabled: false}}>
+      <ContentStack.Navigator screenOptions={{headerShown: false, animationEnabled: false, cardStyle: {backgroundColor: 'transparent'}}}>
         <ContentStack.Screen name={ROUTES.home} component={HomeScreen} />
         <ContentStack.Screen name={ROUTES.search} component={SearchScreenScreen} />
         <ContentStack.Screen name={ROUTES.series} component={SeriesScreen} />

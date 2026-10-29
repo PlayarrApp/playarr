@@ -299,7 +299,7 @@ export struct SettingsScreen {
       Text(section.title).fontFamily(nunitoAt(480, tv(TITLE_SIZE)))
         .fontSize(tv(TITLE_SIZE)).lineHeight(webLineHeight(tv(TITLE_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
-        .letterSpacing(tv(TITLE_LETTER_SPACING))
+        .letterSpacing((tv(TITLE_LETTER_SPACING)) + (isTvMetrics() ? -0.185 : 0))
         .fontColor(toResourceColor(activeColors().ink))
         .height(tv(ROW_HEIGHT))
         .position({ x: tv(TITLE_LEFT), y: -1.5 }) // web's title box sits 1.5 higher
@@ -311,7 +311,7 @@ export struct SettingsScreen {
     }
     .width(tv(ROW_WIDTH))
     .height(this.rowHeightOf(section))
-    .id('px:link:' + section.number + ' ' + section.title + ' →')
+    .accessibilityText(section.number + ' ' + section.title + ' →').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
     .backgroundColor(section.id === this.openSection ? toResourceColor(activeColors().surfaceSoft) : Color.Transparent)
     .focusable(true)
     .onFocus(() => {
@@ -664,7 +664,7 @@ export struct SettingsScreen {
               .height(88)
               .position({ x: section.id === this.openSection ? 300.2 : 295.2, y: -0.6 }) // web: the unselected rows' arrow sits 5 vp further left
           }
-          .id('px:link:' + section.number + ' ' + section.title + ' ' + sectionCopyOf(section.id) + ' →')
+          .accessibilityText(section.number + ' ' + section.title + ' ' + sectionCopyOf(section.id) + ' →').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
           .width(328)
           .height(88)
           .margin({ left: 16, right: 16 })

@@ -357,7 +357,7 @@ struct Profiles {
       // web: a pill whose link text and arrow are two elements ("Clients", "→")
       Row({ space: 8.8 }) {
         Text('Clients').fontFamily(nunitoAt(720, 7.68)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Bold)
-          .fontColor(toResourceColor(activeColors().inkSoft)).id('px:link:Clients')
+          .fontColor(toResourceColor(activeColors().inkSoft)).accessibilityText('Clients').accessibilityRole(AccessibilityRoleType.HYPERLINK).accessibilityGroup(true)
         Text('→').fontFamily(arrowFont(720)).fontSize(7.68).lineHeight(webLineHeight(7.68)).halfLeading(true).fontWeight(FontWeight.Normal)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -372,12 +372,12 @@ struct Profiles {
       .onClick(onTap)
     } else {
       Text(label).fontFamily(nunitoAt(700, tv(TV_ACTION_TEXT)))
-        .fontSize(tv(TV_ACTION_TEXT)).lineHeight(webLineHeight(tv(TV_ACTION_TEXT))).halfLeading(true)
+        .fontSize(tv(TV_ACTION_TEXT)).letterSpacing((isTvMetrics() ? -0.161 : 0)).lineHeight(webLineHeight(tv(TV_ACTION_TEXT))).halfLeading(true)
         .fontWeight(FontWeight.Bold)
         .fontColor(toResourceColor(activeColors().inkSoft))
         .height(tv(TV_ACTION_HEIGHT))
         .padding({ left: tv(17), right: tv(17) })
-        .id('px:button:' + label)
+        .accessibilityText(label).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .borderRadius(tv(TV_ACTION_HEIGHT / 2))
         .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
         .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -397,7 +397,7 @@ struct Profiles {
         .colorFilter(tintFilter(tint))
       if (label.length > 0) {
         Text(label).fontFamily(nunitoAt(isTvMetrics() ? 700 : 720, isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68))
-          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68).lineHeight(webLineHeight(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)).halfLeading(true)
+          .fontSize(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68).letterSpacing((isTvMetrics() ? -0.107 : 0)).lineHeight(webLineHeight(isTvMetrics() ? tv(TV_ACTION_TEXT) : 7.68)).halfLeading(true)
           .fontWeight(FontWeight.Bold)
           .fontColor(toResourceColor(activeColors().inkSoft))
       }
@@ -406,7 +406,7 @@ struct Profiles {
     .constraintSize({ minWidth: tv(TV_ACTION_HEIGHT) })
     .justifyContent(FlexAlign.Center)
     .padding({ left: label.length > 0 ? tv(isTvMetrics() ? 15 : 17) : 0, right: label.length > 0 ? tv(isTvMetrics() ? 15 : 17) : 0 })
-    .id('px:button:' + (label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings'))
+    .accessibilityText((label.length > 0 ? label + ' ' + this.currentName() : this.currentName() + ' settings')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
     .borderRadius(tv(TV_ACTION_HEIGHT / 2))
     .backgroundColor(toResourceColorWithAlpha(activeColors().surfaceStrong, 0.64))
     .border({ width: 1, color: toResourceColorWithAlpha(activeColors().ink, 0.16) })
@@ -485,17 +485,17 @@ struct Profiles {
       Text(t('pages.profiles.title', 'Profiles')).fontFamily(nunitoAt(isTvMetrics() ? 900 : 820, isTvMetrics() ? tv(10.368) : 7.36))
         .fontSize(isTvMetrics() ? tv(10.368) : 7.36).lineHeight(webLineHeight(isTvMetrics() ? tv(10.368) : 7.36)).halfLeading(true)
         .fontWeight(FontWeight.Bolder)
-        .letterSpacing(isTvMetrics() ? tv(1.72) : tv(1.348) * 0.705)
+        .letterSpacing((isTvMetrics() ? tv(1.72) : tv(1.348) * 0.705) + (isTvMetrics() ? -0.42 : 0))
         .textCase(TextCase.UpperCase)
         .fontColor(toResourceColor(resolvedThemeMode() === 'dark' ? BRAND_PINK_SOFT : BRAND_INK_LIGHT))
         .height(tv(16))
         .margin({ top: this.pick(160.6, PHONE_KICKER_TOP), left: isTvMetrics() ? 3 : 142.3 })
         .alignSelf(isTvMetrics() ? ItemAlign.Auto : ItemAlign.Start)
       Text(t('pages.profiles.heading', 'Who’s watching?')).fontFamily(nunitoAt(500, this.pick(80.64, PHONE_HEADING_SIZE)))
-        .id('px:heading:' + t('pages.profiles.heading', 'Who’s watching?'))
+        
         .fontSize(this.pick(80.64, PHONE_HEADING_SIZE)).lineHeight(webLineHeight(this.pick(80.64, PHONE_HEADING_SIZE))).halfLeading(true)
         .fontWeight(FontWeight.Medium)
-        .letterSpacing(this.pick(-5.15, -2.77))
+        .letterSpacing((this.pick(-5.15, -2.77)) + (isTvMetrics() ? -0.633 : 0))
         .fontColor(toResourceColor(activeColors().ink))
         .height(this.pick(77, 37))
         .margin({ top: this.pick(-8, -0.75), bottom: this.pick(4.2, 0), left: isTvMetrics() ? 9.1 : PHONE_HEADING_LEFT }) // TV: the 110 vp line overflows its 77 vp frame; web's run starts 4.2 higher
@@ -522,13 +522,13 @@ struct Profiles {
             Text(profile.display_name).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
               .fontSize(this.pick(17.28, 13.12)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
               .fontWeight(FontWeight.Bold)
-              .letterSpacing(this.pick(0.35, 0.28))
+              .letterSpacing((this.pick(0.35, 0.28)) + (isTvMetrics() ? -0.125 : 0))
               .fontColor(toResourceColor(activeColors().ink))
               .margin({ top: this.pick(16.78, profile.is_current ? 13.28 : 10.8) })  // web phone: the lifted current avatar pulls its name up
             Text(this.statusLabel(profile)).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
               .fontSize(this.pick(9.408, 6.72)).lineHeight(webLineHeight(this.pick(9.408, 6.72))).halfLeading(true)
               .fontWeight(FontWeight.Bold)
-              .letterSpacing(this.pick(1.12, 0.67))
+              .letterSpacing((this.pick(1.12, 0.67)) + (isTvMetrics() ? -0.228 : 0))
               .textCase(TextCase.UpperCase)
               .fontColor(toResourceColor(activeColors().inkMuted))
               .margin({ top: this.pick(15.8, profile.is_current ? 14 : 12) })
@@ -546,7 +546,7 @@ struct Profiles {
           }
           .width(this.pick(254.98, 150.48))
           .padding({ top: this.pick(5.49, 3.25), bottom: this.pick(8.8, 6.5) })
-          .id('px:button:' + profile.display_name + (profile.is_current ? ', current profile' : ''))
+          .accessibilityText(profile.display_name + (profile.is_current ? ', current profile' : '')).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
           .clip(false)
         }, (profile: AvailableProfileResponse): string => profile.id)
         // Web on TV: the tile opens the QR sign-in (/login/qr); a successful link returns to the picker.
@@ -578,14 +578,14 @@ struct Profiles {
           .clip(true)
           .border({ width: 1, style: BorderStyle.Dashed, color: toResourceColorWithAlpha(activeColors().ink, 0.15) })
           Text(t('pages.profiles.signIn', 'Sign in')).fontFamily(nunitoAt(this.pick(700, 680), this.pick(17.28, 13.12)))
-            .fontSize(this.pick(17.28, 13.12)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
+            .fontSize(this.pick(17.28, 13.12)).letterSpacing((isTvMetrics() ? -0.136 : 0)).lineHeight(webLineHeight(this.pick(17.28, 13.12))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
             .fontColor(toResourceColor(activeColors().inkSoft))
             .margin({ top: this.pick(10.85, 9.35) })
           Text(t('pages.profiles.addAnotherProfile', 'Add another profile')).fontFamily(nunitoAt(this.pick(700, 690), this.pick(9.408, 6.72)))
             .fontSize(this.pick(9.408, 6.72)).lineHeight(webLineHeight(this.pick(9.408, 6.72))).halfLeading(true)
             .fontWeight(FontWeight.Bold)
-            .letterSpacing(this.pick(0.66, 0.33))
+            .letterSpacing((this.pick(0.66, 0.33)) + (isTvMetrics() ? -0.223 : 0))
             .textCase(TextCase.UpperCase)
             .textAlign(TextAlign.Center)
             .fontColor(toResourceColor(activeColors().inkMuted))
@@ -593,7 +593,7 @@ struct Profiles {
         }
         .width(this.pick(TV_CHOICE_WIDTH, PHONE_CHOICE_WIDTH))
         .margin({ top: this.pick(14.79, 12.33), right: this.pick(5.49, 0) })
-        .id('px:button:+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase())
+        .accessibilityText('+ ' + t('pages.profiles.signIn', 'Sign in') + ' ' + t('pages.profiles.addAnotherProfile', 'Add another profile').toUpperCase()).accessibilityRole(AccessibilityRoleType.BUTTON).accessibilityGroup(true)
         .focusable(true)
         .onClick(() => {
           pushRoute(getNavStack(), ROUTES.Pairing);

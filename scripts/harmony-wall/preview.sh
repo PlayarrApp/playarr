@@ -34,6 +34,7 @@ build() {
   python3 "$HERE/patch_route.py" entry/src/main/ets/pages/Index.ets "$CTL"
   python3 "$HERE/patch_state.py" entry/src/main/ets
   python3 "$HERE/patch_player_hold.py" entry/src/main/ets/pages/Player.ets # the player is held paused at 2.000 s on both devices
+  python3 "$HERE/patch_caret.py" entry/src/main/ets/pages/Search.ets entry/src/main/ets/pages/Player.ets # no blinking caret, no spinner in the pinned frame
   if [ "$DEVICE" = tv ]; then # web's ref shows the paused static clip frame behind the controls; the Previewer's video is a black mock
     cp "$HERE/../parity/fixtures/static-clip-2s.png" entry/src/main/resources/rawfile/parity-player-still.png
     python3 "$HERE/patch_player_still.py" entry/src/main/ets/pages/Player.ets
@@ -42,6 +43,7 @@ build() {
   python3 "$HERE/patch_artwork.py" entry/src/main/ets/data/ArtworkRepository.ets "$CTL"
   python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets
   python3 "$HERE/patch_text.py" entry/src/main/ets # last: the other patches match the Text calls as written
+  python3 "$HERE/patch_role.py" entry/src/main/ets # mirror each declared accessibilityRole into the hint the inspector reports
   sed -i "s/PREVIEW_PORT: number = 40017/PREVIEW_PORT: number = $CTL/" entry/src/main/ets/util/PreviewState.ets
   python3 -c "import json;p='entry/src/main/resources/base/profile/main_pages.json';d=json.load(open(p));d['src'].append('pages/PreviewBoot');json.dump(d,open(p,'w'),indent=2)"
   ohpm install --all

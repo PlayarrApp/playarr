@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mapRaw, sampleBackgrounds } from "./layout-map.mjs";
+import { mapRaw } from "./layout-map.mjs";
 
 const root = process.env.LEGEND_ROOT;
 const [device, ...only] = process.argv.slice(2);
@@ -22,8 +22,6 @@ for (const theme of ["dark", "light"]) {
     if (only.length && !only.includes(id)) continue;
     const out = join(root, dev[1], "layout", theme, file);
     const mapped = mapRaw(JSON.parse(readFileSync(join(rawDir, file), "utf8")), id, theme);
-    const png = join(root, dev[1], theme === "light" ? "light" : "", `${id}.png`);
-    if (existsSync(png)) sampleBackgrounds(mapped, png);
     writeFileSync(out, JSON.stringify(mapped));
     const ref = join(root, dev[0], "web", "layout", theme, file);
     const line = execFileSync("node", [score, "--ref", ref, "--device", out], { encoding: "utf8" }).split("\n")[0];
