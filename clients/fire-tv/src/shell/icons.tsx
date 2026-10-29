@@ -37,7 +37,8 @@ export type IconName =
   | 'queue'
   | 'info'
   | 'cast'
-  | 'minimise';
+  | 'minimise'
+  | 'fullscreen';
 
 export interface IconProps {
   name: IconName;
@@ -276,6 +277,9 @@ export function Icon({name, size, color, strokeWidth = 1.8}: IconProps): React.R
       break;
     case 'minimise':
       body = <Path {...line} d="M14 10V4M14 10h6M10 14v6M10 14H4M20.5 3.5 14 10M3.5 20.5 10 14" />;
+      break;
+    case 'fullscreen':
+      body = <Path {...line} d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />;
       break;
     case 'check':
       body = <Path {...line} d="m5 12.5 4.5 4.5L19 7.5" />;

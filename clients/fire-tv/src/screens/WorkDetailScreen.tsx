@@ -544,7 +544,7 @@ function Pill({label, glyph, primary, disabled, onPress, hasTVPreferredFocus, fo
       onBlur={() => setFocused(false)}
       onPress={onPress}
       style={{
-        minWidth: u(primary ? (web?.role === 'link' ? 165.36 : 156) : 142),
+        minWidth: u(primary ? 156 : 142),
         height: u(64),
         marginRight: u(16),
         paddingHorizontal: u(primary ? 21.6 : 16),
