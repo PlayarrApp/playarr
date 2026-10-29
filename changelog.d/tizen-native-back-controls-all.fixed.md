@@ -1,0 +1,1 @@
+- Tizen native: the back arrow on Downloads, Playlists and the unavailable pages is a real focusable control; calendar agenda Open series and Add to watchlist, and the calendar link textbox, are real focusable controls; calendar link drawer QR, Reset link and avatar boxes follow web; a native D-pad check covers the back arrows.

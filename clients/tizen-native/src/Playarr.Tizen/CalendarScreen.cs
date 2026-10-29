@@ -34,6 +34,7 @@ internal sealed class CalendarScreen : IPage
     private IList<CalendarEntry> _entries = new List<CalendarEntry>();
     private float _scrollY;
     private readonly View _panel = new();
+    private readonly List<Focusable> _panelItems = new(); // the agenda panel's two buttons belong to the focused entry and follow it
     private readonly KeyArt _keyArt;
     private View? _weekTrack;
     private readonly View?[] _weekContents = new View?[7];
@@ -96,7 +97,7 @@ internal sealed class CalendarScreen : IPage
         // web: Down from the period navigation lands on Filters, not on Calendar link
         _focus.Overrides[(2, RemoteKey.Down)] = 5;
         _focus.Overrides[(5, RemoteKey.Up)] = 2;
-        _focus.Items.Add(new BackControl(_env, _t, _root, "link", "Back to home").Item); // last, so the pill and tile indices above stay fixed
+        _focus.Items.Add(new BackControl(_env, _t, _root, "link", "Back to home").Item); // after the tiles, so the pill and tile indices above stay fixed
         _first = _focus.Items.Count;
     }
 
@@ -396,6 +397,8 @@ internal sealed class CalendarScreen : IPage
     private void ShowEntry(CalendarEntry e)
     {
         foreach (var c in _panel.Children.ToArray()) { _panel.Remove(c); c.Dispose(); }
+        foreach (var old in _panelItems) _focus.Items.Remove(old);
+        _panelItems.Clear();
         _keyArt.Set(e.WorkId is { } work ? $"/api/v1/artwork/work/{work:D}/backdrop?w=780" : null);
         var tone = CalendarRules.Tone(e, _today);
         _panel.Add(Ui.Text($"{(e.MediaKind == "movie" ? "Movies" : "Episodes")} \u00b7 {(e.ReleaseType is "digital" ? "Digital release" : "Airs")}", 153.6f, 263.2f, 12.288f, 800, _t.BrandInk, 455, 18.432f, upper: true, spacing: 0.98f));
@@ -417,11 +420,18 @@ internal sealed class CalendarScreen : IPage
         var by = my + 111f + 21.842f * overviewLines; // web: the buttons follow the synopsis
         var open = Ui.Box(153.6f, by, 124, 58, _t.Accent, 29);
         open.Add(Ui.Text("Open series", 0, 18, 14.72f, 720, _t.OnAccent, 124, 22.08f, HorizontalAlignment.Center));
+        Sem.Tag(open, "button", "Open series");
+        var openRing = Ring.Make(124, 58, 29, new Rgba(1, 1, 1)); openRing.Show(false); open.Add(openRing);
+        _panelItems.Add(new Focusable { Rect = () => new Box(153.6f, by, 124, 58), Label = "open series", Style = f => openRing.Show(f), Select = () => { if (e.WorkId is { } wid) _env.Navigate(HomeScreen.DetailRoute(new WorkCard(wid, e.MediaKind == "movie" ? WorkKind.Movie : WorkKind.Series, e.Title, "", "", "", null, null, null, 0, false))); } });
         _panel.Add(open);
         var wl = Ui.Box(287.2f, by, 177.6f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
         wl.BorderlineWidth = 1; wl.BorderlineColor = Ui.LineA(_t, 0.153f);
         wl.Add(Ui.Text("+", 21, 18, 14.72f, 720, _t.InkSoft, 14, 22.08f));
         wl.Add(Ui.Text("Add to watchlist", 38.52f, 17, 14.72f, 900, _t.InkSoft, 130, 22.08f));
+        Sem.Tag(wl, "button", "Add to watchlist");
+        var wlRing = Ring.Make(177.6f, 58, 29, new Rgba(1, 1, 1)); wlRing.Show(false); wl.Add(wlRing);
+        _panelItems.Add(new Focusable { Rect = () => new Box(287.2f, by, 177.6f, 58), Label = "add to watchlist", Style = f => wlRing.Show(f), Select = () => Toast("The watchlist is not available in this app yet.") });
+        _focus.Items.AddRange(_panelItems);
         _panel.Add(wl);
     }
 

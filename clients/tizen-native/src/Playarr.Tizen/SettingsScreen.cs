@@ -123,7 +123,7 @@ internal sealed class SettingsScreen : IPage
             card.Add(Ui.Text(Numbers[i], 32, 26.8f, 9.92f, 800, _t.Ink, 40, 14.88f));
             card.Add(Ui.Text(Options[i], 92, 23.8f, 29.6f, 500, _t.Ink, 307.6f, 44.4f, spacing: -1.08f));
             card.Add(Ui.Text("→", i == 0 ? 422.6f : 417.6f, 31f, 20.8f, 400, i == 0 ? _t.Ink : _t.InkMuted, 30, 31.2f)); // web: the open row nudges its arrow 5 px
-            Sem.Tag(card, "link", $"{Numbers[i]} {Options[i]} →");
+            Sem.Tag(card, "link", $"{Numbers[i]} {Options[i]}");
             var ring = Ring.Make(470.4f, 91.9f, 0, new Rgba(1, 1, 1)); ring.Show(false); card.Add(ring);
             _list.Add(card);
             _focus.Items.Add(new Focusable
@@ -146,7 +146,7 @@ internal sealed class SettingsScreen : IPage
             var b = Ui.Box(x, 265.8f, 342.1f, 56, active ? _t.Ink : new Rgba(_t.SurfaceSoft.R, _t.SurfaceSoft.G, _t.SurfaceSoft.B, 0.64f), 12);
             b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(_t, 0.153f);
             b.Add(Sem.Tag(Ui.Text(char.ToUpper(name[0]) + name[1..], 0, 22.2f, 10.56f, 900, active ? _t.Bg : _t.InkMuted, 342.1f, 11.6f, HorizontalAlignment.Center), "text", name));
-            Sem.Tag(b, "button", char.ToUpper(name[0]) + name[1..]); if (active) b.Scale = new Vector3(1.025f, 1.025f, 1);
+            Sem.Tag(b, "button", name); if (active) b.Scale = new Vector3(1.025f, 1.025f, 1);
             var ring = Ring.Make(342.1f, 56, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
             _panel.Add(b);
             _focus.Items.Add(new Focusable
@@ -189,7 +189,7 @@ internal sealed class SettingsScreen : IPage
             b.BorderlineWidth = 1; b.BorderlineColor = Ui.LineA(_t, 0.153f);
             var tl = Sem.Tag(Ui.Text(labels[i], 0, 22.2f, 10.56f, 900, active ? _t.Bg : _t.InkMuted, w, 11.6f, HorizontalAlignment.Center), "text", title == "Home screen artwork" ? labels[i] : labels[i].ToLowerInvariant());
             b.Add(tl);
-            Sem.Tag(b, "button", labels[i]); if (active) b.Scale = new Vector3(1.025f, 1.025f, 1);
+            Sem.Tag(b, "button", title == "Home screen artwork" ? labels[i] : labels[i].ToLowerInvariant()); if (active) b.Scale = new Vector3(1.025f, 1.025f, 1);
             var ring = Ring.Make(w, 56, 12, new Rgba(1, 1, 1)); ring.Show(false); b.Add(ring);
             _panel.Add(b); boxes.Add((b, tl));
             _focus.Items.Add(new Focusable
