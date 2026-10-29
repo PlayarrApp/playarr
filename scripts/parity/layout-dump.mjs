@@ -124,7 +124,7 @@ export function layoutPageFn(volatile, opts) {
     var id = el.tagName.toLowerCase() + (el.className && el.className.baseVal === undefined ? "." + String(el.className).trim().split(/\s+/).join(".") : "");
     throw new Error("text cut by text-overflow: ellipsis or -webkit-line-clamp is not measurable (" + id + "): render the truncated string as real text");
   };
-  /* An input or textarea value is drawn by the engine, not in the DOM: its glyph bounds cannot be measured, so a visible one is refused (the app draws a hint as real text). */
+  /* An input or textarea value is drawn by the engine, not in the DOM: its glyph bounds cannot be measured, so a visible one is refused (a volatile one, such as the calendar subscription URL, exports its control box and name; its text is not scored) (the app draws a hint as real text). */
   var refuseValue = function (el) {
     throw new Error("the value of an input or textarea is not measurable (" + el.tagName.toLowerCase() + "): render it as real text");
   };
@@ -293,7 +293,7 @@ export function layoutPageFn(volatile, opts) {
     if (occluded(el, r)) { dropped++; continue; }
     if (own && cs.textOverflow === "ellipsis" && cs.overflowX !== "visible" && el.scrollWidth > el.clientWidth + 1) refuseCut(el);
     if (own && cs.webkitLineClamp && cs.webkitLineClamp !== "none" && cs.overflowY !== "visible" && el.scrollHeight > el.clientHeight + 1) refuseCut(el);
-    if ((tag === "textarea" || tag === "input" && !/^(checkbox|radio|button|submit|reset|hidden|range|file|image|color)$/.test(el.type)) && el.value) refuseValue(el);
+    if ((tag === "textarea" || tag === "input" && !/^(checkbox|radio|button|submit|reset|hidden|range|file|image|color)$/.test(el.type)) && el.value && !vol) refuseValue(el);
     var label = nameOf(el);
     var text = own || (control || media ? norm(label) : "") || (control ? norm(contentName(el) || (isToggle(el) ? "" : el.value)) : "");
     var zoom = zoomOf(el);
