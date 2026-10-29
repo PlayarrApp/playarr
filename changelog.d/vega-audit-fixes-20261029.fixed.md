@@ -1,0 +1,1 @@
+- Fire TV (Vega): the layout export rebuilds boxes under focus-scaled ancestors, drops hidden and clipped content, no longer exports decorative player views as controls, no longer rewrites status pills or invents text lines; the profile name is no longer nudged.

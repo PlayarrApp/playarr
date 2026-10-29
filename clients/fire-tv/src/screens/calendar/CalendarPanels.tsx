@@ -210,8 +210,8 @@ export function LinkPanel({onClose, onFocused}: {onClose: () => void; onFocused?
           ) : null}
           {url ? (
             <>
-              <View {...lx('textbox', t('pages.calendar.subscription.urlLabel'))} style={{position: 'absolute', left: u(left), top: u(258.4), width: u(268), height: u(44), borderRadius: u(8), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: colour.surface, justifyContent: 'center', paddingHorizontal: u(12), overflow: 'hidden'}}>
-                <T size={12.8} weight={400} mono lh={19} color={colour.ink} lines={1} style={{width: u(900)}}>
+              <View style={{position: 'absolute', left: u(left), top: u(258.4), width: u(268), height: u(44), borderRadius: u(8), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: colour.surface, justifyContent: 'center', paddingHorizontal: u(12), overflow: 'hidden'}}>
+                <T size={12.8} weight={400} mono lh={19} color={colour.ink} lines={1} style={{width: u(242)}}>
                   {url}
                 </T>
               </View>

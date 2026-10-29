@@ -149,7 +149,7 @@ type Box = [number, number, number, number];
  * This rebuilds each box the screen draws: the layout offsets come from the measured origins with each view's own transform taken
  * out (its style's scale and translate), then the transforms of the view and every ancestor are applied, each about its box centre.
  */
-function drawnRects(hosts: Array<{fiber: Fiber; parent: number}>, measured: Array<Box | null>): Array<Box | null> {
+function drawnRects(hosts: Array<{fiber: Fiber; parent: number}>, measured: Array<Box | null>): {boxes: Array<Box | null>; scale: number[]} {
   const own = hosts.map((h) => {
     const style = StyleSheet.flatten(h.fiber.memoizedProps?.style) ?? {};
     let s = 1;
@@ -193,9 +193,8 @@ function drawnRects(hosts: Array<{fiber: Fiber; parent: number}>, measured: Arra
     }
     out[i] = [x0, y0, x1 - x0, y1 - y0];
   });
-  return out;
+  return {boxes: out, scale};
 }
-
 /** Walks the fiber tree from the root and returns the document's elements in tree order. */
 export async function exportLayout(probe: LayoutProbe, bg: string, level: string): Promise<LayoutElement[]> {
   const debug = level !== '0';
@@ -225,7 +224,34 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
   visit(root, bg, 1, -1);
   const scale = Dimensions.get('window').width / 1920;
   const out: LayoutElement[] = [];
-  const rects = drawnRects(hosts, await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber)))));
+  const {boxes: rects, scale: drawnScale} = drawnRects(hosts, await Promise.all(hosts.map((h) => measure(publicInstance(h.fiber)))));
+  const isAncestor = (a: number, b: number): boolean => {
+    for (let k = hosts[b]!.parent; k >= 0; k = hosts[k]!.parent) if (k === a) return true;
+    return false;
+  };
+  const styleOf = (i: number): Record<string, any> => StyleSheet.flatten(hosts[i]!.fiber.memoizedProps?.style) ?? {};
+  // A view is hidden when a later, unrelated view paints an opaque background over its whole box (a drawer over the page).
+  const covered = hosts.map((_, i) => {
+    const r = rects[i];
+    if (!r) return false;
+    for (let j = i + 1; j < hosts.length; j++) {
+      const c = rects[j];
+      const bg = hex(styleOf(j).backgroundColor);
+      if (!c || !bg || bg.length > 7 || hosts[j]!.opacity < 0.999 || isAncestor(i, j) || isAncestor(j, i)) continue;
+      if (r[0] >= c[0] - 0.5 && r[1] >= c[1] - 0.5 && r[0] + r[2] <= c[0] + c[2] + 0.5 && r[1] + r[3] <= c[1] + c[3] + 0.5) return true;
+    }
+    return false;
+  });
+  // A view is clipped away when it lies wholly outside the box of an ancestor that clips its children.
+  const clippedAway = hosts.map((_, i) => {
+    const r = rects[i];
+    if (!r) return false;
+    for (let k = hosts[i]!.parent; k >= 0; k = hosts[k]!.parent) {
+      const c = rects[k];
+      if (c && styleOf(k).overflow === 'hidden' && (r[0] >= c[0] + c[2] || r[0] + r[2] <= c[0] || r[1] >= c[1] + c[3] || r[1] + r[3] <= c[1])) return true;
+    }
+    return false;
+  });
   const extents = new Map<string, FontExtent | null>();
   const wanted = new Map<string, [string, number]>();
   for (const h of hosts) {
@@ -234,21 +260,19 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
     if (st.fontFamily && st.fontSize) wanted.set(`${st.fontFamily}|${st.fontSize}`, [String(st.fontFamily), st.fontSize]);
   }
   await Promise.all([...wanted].map(async ([key, [family, size]]) => extents.set(key, await probe.extent(family, size))));
-  const first: number[] = [];
   hosts.forEach((h, i) => {
-    first[i] = out.length;
     const r = rects[i];
     if (!r || r[2] < 0.5 || r[3] < 0.5) return;
     if (r[0] > 1920 * scale || r[1] > 1080 * scale || r[0] + r[2] < 0 || r[1] + r[3] < 0) return;
     // Nothing is drawn at zero opacity (the web export drops it too).
-    if (h.opacity <= 0.001) return;
+    if (h.opacity <= 0.001 || covered[i] || clippedAway[i]) return;
     const f = h.fiber;
     const type = String(f.type);
     const props = f.memoizedProps ?? {};
     const style = StyleSheet.flatten(props.style) ?? {};
     const rect = {x: round2(r[0] / scale), y: round2(r[1] / scale), w: round2(r[2] / scale), h: round2(r[3] / scale)};
     // A radius larger than half the box is drawn as half the box.
-    const radius = typeof style.borderRadius === 'number' ? round2(Math.min(style.borderRadius / scale, rect.w / 2, rect.h / 2)) : 0;
+    const radius = typeof style.borderRadius === 'number' ? round2(Math.min((style.borderRadius * drawnScale[i]!) / scale, rect.w / 2, rect.h / 2)) : 0;
     const base: Partial<LayoutElement> = {
       background: h.bg,
       ...(radius ? {radius} : {}),
@@ -261,6 +285,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
     if (type === 'RCTText') {
       const inst = publicInstance(f);
       const lines = textLines.get(inst);
+      // No laid-out lines were reported (an unregistered Text): nothing is exported rather than a line made from the box.
+      if (!lines || !lines.length) return;
       const text = textOf(f);
       if (!text) return;
       // One export entry per laid-out line, everything read from the renderer: the font file (family name) gives the weight, a probe
@@ -273,7 +299,8 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       const size = round2((style.fontSize ?? 0) / scale);
       const m = /-w(\d+)$/.exec(family);
       // Glyph runs sit on whole device pixels: the ascent and descent each count in whole pixels.
-      const runH = extent ? Math.round(extent.ascender / scale) + Math.round(extent.descender / scale) : round2((style.lineHeight ?? style.fontSize ?? 0) / scale);
+      if (!extent) return; // the renderer gave no font extent: no glyph-run height is invented
+      const runH = Math.round(extent.ascender / scale) + Math.round(extent.descender / scale);
       // The renderer draws the transformed text; onTextLayout reports the source text.
       const transform = (value: string): string =>
         style.textTransform === 'uppercase'
@@ -283,7 +310,7 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
             : style.textTransform === 'capitalize'
               ? value.replace(/(^|\s)(\S)/g, (_m, space: string, letter: string) => `${space}${letter.toUpperCase()}`)
               : value;
-      const native = lines && lines.length ? lines : [{x: 0, y: 0, width: r[2], height: r[3], text}];
+      const native = lines;
       // The view box is measured with the transforms of its ancestors, the line geometry of onTextLayout is not: the ratio of the
       // measured height to the laid-out line heights is the scale the text is drawn at (a card scaled on focus).
       let laidOut = 0;
@@ -293,22 +320,12 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       native.forEach((line, index) => {
         const lineTop = above;
         above += (line.height * k) / scale;
-        // Vega reports some lines' text running on into the next line (as far as the rest of the paragraph, or part of the next line's
-        // words): a tail that is a prefix of the next line's own text, starting at a word, belongs to that line.
-        const said = (l: unknown): string => ((l as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
-        let lineText = said(line);
-        const following = native[index + 1] ? said(native[index + 1]) : '';
-        for (let k = Math.min(following.length, lineText.length - 1); following && k >= 3; k--) {
-          if (lineText.endsWith(following.slice(0, k)) && lineText[lineText.length - k - 1] === ' ') {
-            lineText = lineText.slice(0, lineText.length - k).trim();
-            break;
-          }
-        }
+        const lineText = ((line as {text?: string}).text ?? '').replace(/\s+/g, ' ').trim();
         if (!lineText) return;
         out.push({
           ...(base as LayoutElement),
           text: transform(lineText),
-          role: webRole === 'none' ? 'container' : webRole && webRole !== 'text' ? webRole : 'text',
+          role: webRole && webRole !== 'text' && webRole !== 'none' ? webRole : 'text',
           rect: {x: round2(rect.x + (line.x * k) / scale), y: round2(rect.y + lineTop), w: round2((line.width * k) / scale), h: round2(runH * k)},
           color: hex(style.color),
           fontSize: size,
@@ -340,25 +357,5 @@ export async function exportLayout(probe: LayoutProbe, bg: string, level: string
       src,
     });
   });
-  // A filled, rounded box with one line of text and nothing else (a status pill) is one element in a browser's tree, an inline
-  // element with its own text: the glyph run takes the box's fill and radius. Boxes with a role, an image or more text stay boxes.
-  const end = (i: number): number => first[i + 1] ?? out.length;
-  const dropped = new Set<number>();
-  hosts.forEach((h, i) => {
-    const props = h.fiber.memoizedProps ?? {};
-    const own = StyleSheet.flatten(props.style) ?? {};
-    if (props.accessibilityRole || String(h.fiber.type) === 'RCTText' || !(hex(own.backgroundColor) !== null || hasBorder(own)) || !own.borderRadius) return;
-    const inside = hosts.map((_, j) => j).filter((j) => {
-      for (let k = hosts[j]!.parent; k >= 0; k = hosts[k]!.parent) if (k === i) return end(j) > first[j]!;
-      return false;
-    });
-    if (inside.length !== 1 || String(hosts[inside[0]!]!.fiber.type) !== 'RCTText' || end(inside[0]!) - first[inside[0]!]! !== 1) return;
-    const box = out[first[i]!];
-    const run = out[first[inside[0]!]!]!;
-    if (!box || end(i) - first[i]! < 1) return;
-    run.background = box.background;
-    if (box.radius) run.radius = box.radius;
-    dropped.add(first[i]!);
-  });
-  return out.filter((_, index) => !dropped.has(index));
+  return out;
 }
