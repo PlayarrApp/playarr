@@ -139,7 +139,7 @@ PlayarrPage {
         }
         MouseArea {
             property bool navigationFocusable: true
-            Accessible.role: Accessible.Button; Accessible.name: "+ " + qsTr("Sign in") + " " + qsTr("ADD ANOTHER PROFILE")
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("Sign in") + " " + qsTr("Add another profile")
             property bool navigationInitialFocus: Api.profiles.length === 0
             property int parityRail: 0
             property int parityIndex: Api.profiles.length

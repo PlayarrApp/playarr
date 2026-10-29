@@ -40,7 +40,7 @@ Item {
                 id: row
                 x: Tokens.pad; width: parent.width - 2 * Tokens.pad; height: parent.height
                 property bool navigationFocusable: true
-                Accessible.name: numLbl.text + " " + titleLbl.text + " " + modelData.hint + " " + arrowLbl.text
+                Accessible.name: numLbl.text + " " + titleLbl.lines.join(" ") + " " + hintLbl.lines.join(" ")
                 Accessible.role: Accessible.Link
                 property bool navigationInitialFocus: index === 0
                 property int parityRail: 0

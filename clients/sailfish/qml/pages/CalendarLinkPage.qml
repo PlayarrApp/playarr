@@ -122,7 +122,7 @@ PlayarrPage {
                 y: -3; width: 240 * Tokens.u; height: width; radius: 18 * Tokens.u; color: "#ffffff"; Accessible.role: Accessible.Graphic
                 Canvas {
                     id: qrCanvas
-                    anchors { fill: parent; margins: 20 * Tokens.u }
+                    anchors { fill: parent; margins: 12 * Tokens.u }
                     renderTarget: Canvas.Image
                     onPaint: {
                         var m = page.qr, ctx = getContext("2d")

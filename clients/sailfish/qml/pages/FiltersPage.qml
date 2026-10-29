@@ -66,7 +66,7 @@ PlayarrPage {
                                      : [ { id: "list", label: qsTr("List") }, { id: "screen", label: qsTr("Screen") }, { id: "cover", label: qsTr("Cover") } ]
                 MouseArea {
                     property bool navigationFocusable: true
-                    Accessible.role: Accessible.Button; Accessible.name: modelData.label
+                    Accessible.role: Accessible.Button; Accessible.name: modelData.id
                     property int parityRail: 0
                     property int parityIndex: index
                     function navigationActivate() {
@@ -157,7 +157,7 @@ PlayarrPage {
                     property int parityIndex: 7 + index
                     function navigationActivate() { page.openSelect = parent.opened ? "" : modelData.key }
                     x: 7.39 * Tokens.u; y: 7.39 * Tokens.u; width: parent.width - 14.78 * Tokens.u; height: 44 * Tokens.u
-                    Accessible.role: Accessible.Button; Accessible.name: curLbl.text + " " + chevLbl.text
+                    Accessible.role: Accessible.Button; Accessible.name: curLbl.text
                     onClicked: navigationActivate()
                     PLabel { renderType: Text.NativeRendering; id: curLbl
                         x: 12 * Tokens.u; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -2
