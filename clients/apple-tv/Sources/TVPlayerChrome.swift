@@ -199,14 +199,20 @@ struct TVPlayerChrome: View {
             .frame(width: 58.39, height: 16.31, alignment: .leading)
             .parityBox("container", text: "\(Self.clock(state.position)) / \(Self.clock(state.duration))", fill: Color.black, textStyle: (10.88, 400, Color.white))
             .placed(x: 302.78, y: 981.84, w: 58.39, h: 16.31)
+            icon("speaker.wave.2.fill", x: 396.77, opacity: 0.4, name: "Mute")
+            // the volume control: a 130 x 44 hit area, drawn without a track as on the web reference
+            Color.clear.frame(width: 130, height: 44)
+                .accessibilityLabel("Volume")
+                .parityBox("textbox", text: "Volume", fill: Color.black)
+                .placed(x: 448.77, y: 968, w: 130, h: 44)
         }
     }
 
     private var rightGroup: some View {
         ZStack(alignment: .topLeading) {
-            icon("speaker.wave.2.fill", x: 1323.5, name: "", disabled: true)
-            icon("text.rectangle", x: 1401.1, name: "Subtitles: Off")
-            icon("text.line.last.and.arrowtriangle.forward", x: 1478.7, name: "Playlist: 1 item")
+            icon("speaker.wave.2.fill", x: 1245.9, opacity: 0.4, name: "Audio: Unavailable")
+            icon("text.rectangle", x: 1323.5, name: "Subtitles: Off")
+            icon("text.line.last.and.arrowtriangle.forward", x: 1401.1, name: "Playlist: 1 item")
             Button(action: onToggleQualityMenu) {
                 HStack(spacing: 11.8) {
                     Text("HD")
@@ -232,9 +238,10 @@ struct TVPlayerChrome: View {
             .disabled(!interactive) // not .focusable: on a Button it adds a second, inert focus target
             .modifier(TVFocusTag(binding: focus, control: .quality))
             .accessibilityLabel("Quality: \(state.qualityLabel)")
-            .placed(x: 1527.8, y: 959.8, w: 173.4, h: 60.5)
-            icon("info.circle", x: 1730.4, name: "Info and playback health")
-            icon("macbook.and.iphone", x: 1808, name: "Play on another device")
+            .placed(x: 1456.6, y: 959.8, w: 173.4, h: 60.5)
+            icon("info.circle", x: 1652.8, name: "Info and playback health")
+            icon("macbook.and.iphone", x: 1730.4, name: "Play on another device")
+            icon("arrow.up.left.and.arrow.down.right", x: 1808, name: "Enter fullscreen")
         }
     }
 
