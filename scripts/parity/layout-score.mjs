@@ -69,7 +69,7 @@ function compare(w, d, { scoreText, edge = TOL.edge, sameRole = (a, b) => a === 
   if (!sameRole(w.role, d.role)) diff("role", w.role, d.role, 0);
   // Owner exception 2026-10-29 (clients.json textCentreLine, Harmony only): a text element is scored on its left and right edges and its
   // vertical centre, never on top, bottom or height (ArkUI's measured text range is 1.17 em tall, web's 1.36 em). Other elements stay strict.
-  const centreLine = textCentreLine && w.fontSize != null && normText(w.text) !== "";
+  const centreLine = textCentreLine && (w.role === "text" || w.role === "heading") && w.fontSize != null && normText(w.text) !== ""; // controls and containers that carry text stay strict
   const edges = centreLine
     ? [["left", w.rect.x, d.rect.x], ["right", w.rect.x + w.rect.w, d.rect.x + d.rect.w], ["centre", w.rect.y + w.rect.h / 2, d.rect.y + d.rect.h / 2]]
     : [["left", w.rect.x, d.rect.x], ["top", w.rect.y, d.rect.y], ["right", w.rect.x + w.rect.w, d.rect.x + d.rect.w], ["bottom", w.rect.y + w.rect.h, d.rect.y + d.rect.h]];

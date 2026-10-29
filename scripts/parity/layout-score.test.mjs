@@ -195,6 +195,13 @@ test("textCentreLine scores text on left, right and vertical centre only; other 
   assert.equal(scoreLayout(ref, dev, { textCentreLine: true }).equal, 0);
 });
 
+test("textCentreLine never relaxes a button that carries text: a shrunk height still fails", () => {
+  const el = (h) => ({ text: "Quality", role: "button", rect: { x: 10, y: 10, w: 60, h }, color: "#000000", background: "#ffffff", fontSize: 12, fontWeight: 400 });
+  const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });
+  assert.equal(scoreLayout(doc(el(44)), doc(el(40)), { textCentreLine: true }).equal, 0);
+  assert.equal(scoreLayout(doc(el(44)), doc(el(44)), { textCentreLine: true }).equal, 1);
+});
+
 test("heading-to-text alias: a device text matches a web heading only when passed, box and style still scored", () => {
   const el = (role, size) => ({ text: "Movies", role, rect: { x: 0, y: 0, w: 40, h: 20 }, color: "#000000", background: "#ffffff", fontSize: size, fontWeight: 400 });
   const doc = (e) => ({ viewport: { w: 100, h: 100, dpr: 1 }, elements: [e] });

@@ -29,11 +29,10 @@ class PreviewPatchContractTests(unittest.TestCase):
         self.assertIn("unseen: this.episodeUnseen(item as DetailRow),", self.patch_state)
         self.assertIn("ringOn: !isTvMetrics() && this.nextUpEpisodeId() === (item as DetailRow).id,", self.detail_source)
 
-    def test_player_surface_placeholder_is_replaced(self):
-        source = (HERE.parents[1] / "clients/harmony/entry/src/main/ets/pages/Player.ets").read_text(encoding="utf-8")
-        patched = patch_state.player(source)
-        self.assertNotIn("playarr-player-surface", patched)
-        self.assertIn("Column().width('100%').height('100%')", patched)
+    def test_preview_never_touches_the_player(self):
+        # the player must negotiate for real: no surface swap, no injected position, pause state or quality label
+        self.assertNotIn("pages/Player.ets", self.patch_state)
+        self.assertFalse((HERE / "patch_player_hold.py").exists())
 
     def test_watchlist_resolve_is_counted_as_pending(self):
         patched = patch_state.detail(self.detail_source)
