@@ -1,0 +1,1 @@
+- fix(harmony-wall): the occlusion probe hides nodes through an app-side hook the declarative tree honours (per-node key and visibility bound to AppStorage, preview build only); unmeasured elements are exported, a screenshot is kept only when the layout dump matches it.

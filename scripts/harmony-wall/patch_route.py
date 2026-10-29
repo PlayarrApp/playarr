@@ -11,7 +11,6 @@ if 'previewPollOnce' in s:
     sys.exit(0)
 methods = """
   private previewTimer: number = -1;
-  private previewHidden: FrameNode[] = [];
 
   private startPreviewRoutePoll(): void {
     this.previewTimer = setInterval((): void => {
@@ -112,32 +111,10 @@ methods = """
       return;
     }
     if (name.indexOf('hide:') === 0 || name === 'show:all') {
-      // parity occlusion probe: the capture hides the nodes it names (Visibility.Hidden keeps their layout), takes a second screenshot and diffs
-      // the boxes; show:all puts them back. A node the framework refuses is reported, never skipped silently.
-      let failed: string = '';
-      if (name === 'show:all') {
-        for (const f of this.previewHidden) {
-          f.commonAttribute.visibility(Visibility.Visible);
-          f.commonAttribute.opacity(1);
-        }
-        this.previewHidden = [];
-      } else {
-        for (const id of name.substring(5).split(',')) {
-          try {
-            const f: FrameNode | null = this.getUIContext().getFrameNodeByUniqueId(parseInt(id));
-            if (f === null) {
-              failed += id + ' ';
-            } else {
-              f.commonAttribute.visibility(Visibility.Hidden);
-              f.commonAttribute.opacity(0);
-              this.previewHidden.push(f);
-            }
-          } catch (err) {
-            failed += id + ':' + String(err) + ' ';
-          }
-        }
-      }
-      previewReport('dbg=' + encodeURIComponent('probe:' + name.substring(0, 4) + ':failed=' + failed));
+      // parity occlusion probe: patch_hide.py keyed every component and bound its visibility to this AppStorage string, so the declarative tree
+      // itself hides the named nodes (Visibility.Hidden keeps their layout) and re-renders; show:all puts them back.
+      AppStorage.setOrCreate<string>('pvHid', name === 'show:all' ? '' : '|' + name.substring(5).split(',').join('|') + '|');
+      previewReport('dbg=' + encodeURIComponent('probe:' + name.substring(0, 4)));
       return;
     }
     if (name.indexOf('focus:') === 0) {

@@ -1,5 +1,13 @@
 import unittest
-from layout_export import ExportError, export
+from layout_export import ExportError
+from layout_export import export as _export
+
+
+def export(tree, screen, theme, viewport, **kw):
+    """The geometry rules pick what may be covered; a drop needs the measurement. These tests stand for the measurement saying nothing of the flagged
+    element is drawn (every index False). The probe tests pass their own."""
+    kw.setdefault("probe", {"results": {str(i): False for i in range(2000)}})
+    return _export(tree, screen, theme, viewport, **kw)
 
 
 def column(children, rect="[0.00, 0.00],[1080.00, 2340.00]", fill="#FF151315", **attrs):
@@ -221,20 +229,23 @@ class LayoutExportTest(unittest.TestCase):
         self.assertIn("button", [e["role"] for e in doc["elements"]])
 
     def test_a_covered_element_is_dropped_only_if_hiding_it_changed_no_pixel(self):
-        btn = {"$type": "Row", "$ID": 7, "$rect": "[1846.00, 151.00],[62.00, 72.00]", "$attrs": {"accessibilityText": "Filters", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#33FFFFFF"}, "$children": []}
-        drawer = {"$type": "Column", "$ID": 8, "$rect": "[1560.00, 0.00],[360.00, 1080.00]", "$attrs": {"accessibilityTextHint": "pvrole:24", "backgroundColor": "#F0211D21"}, "$children": []}
+        btn = {"$type": "Row", "$rect": "[1846.00, 151.00],[62.00, 72.00]", "$attrs": {"id": "pvh7", "accessibilityText": "Filters", "accessibilityTextHint": "pvrole:5", "backgroundColor": "#33FFFFFF"}, "$children": []}
+        drawer = {"$type": "Column", "$rect": "[1560.00, 0.00],[360.00, 1080.00]", "$attrs": {"id": "pvh8", "accessibilityTextHint": "pvrole:24", "backgroundColor": "#F0211D21"}, "$children": []}
         tree = column([btn, drawer], rect="[0.00, 0.00],[1920.00, 1080.00]")
         cands = []
-        geometry = export(tree, "x", "dark", (1920, 1080, 1), candidates=cands)
-        self.assertNotIn("button", [e["role"] for e in geometry["elements"]])
-        flagged = [c for c in cands if c["id"] == 7]
+        none = export(tree, "x", "dark", (1920, 1080, 1), candidates=cands, probe={"results": {}})
+        self.assertIn("button", [e["role"] for e in none["elements"]])  # no measurement, no drop
+        self.assertEqual(none["unmeasured"], 1)
+        flagged = [c for c in cands if c["id"] == "pvh7"]
         self.assertEqual([c["box"] for c in flagged], [[1846, 151, 1908, 223]])
         i = str(flagged[0]["index"])
         drawn = export(tree, "x", "dark", (1920, 1080, 1), probe={"results": {i: True}})
         self.assertIn("button", [e["role"] for e in drawn["elements"]])
         hidden = export(tree, "x", "dark", (1920, 1080, 1), probe={"results": {i: False}})
         self.assertNotIn("button", [e["role"] for e in hidden["elements"]])
-        self.assertTrue(any("hiding it at run time" in l for l in hidden["limits"]))
+        self.assertTrue(any("hiding it in the running app" in l for l in hidden["limits"]))
+        other = export(tree, "x", "dark", (1920, 1080, 1), probe={"results": {"999": False}})  # a partial map decides only what it measured
+        self.assertIn("button", [e["role"] for e in other["elements"]])
 
     def test_a_spinner_and_a_surface_are_exported_and_limits_are_stated(self):
         spin = {"$type": "LoadingProgress", "$rect": "[500.00, 1000.00],[90.00, 90.00]", "$attrs": {}}

@@ -84,6 +84,10 @@ class Skip(Exception):
     pass
 
 
+class FrameMismatch(Exception):
+    """The screenshot and the tree dumped right after it describe different renderings."""
+
+
 class PostersStalled(Exception):
     """Not caught by snap's retries: waiting does not unstick the Previewer; the workflow restarts it (two retries, then the job fails)."""
 
@@ -187,14 +191,14 @@ SEEN = {}
 
 
 def snap(name, folder, floor=60000, frame_observer=None, before_frame=None):
-    for attempt in range(3 if device == "tv" else 1):
+    for attempt in range(3 if device == "tv" else 2):
         try:
             snap_checked(name, folder, floor, frame_observer=frame_observer, before_frame=before_frame)
             return
         except SystemExit:
-            if device == "phone":
+            if device == "phone" and attempt == 1:
                 raise Skip(name)
-            if attempt == 2 or device != "tv":
+            if attempt == (2 if device == "tv" else 1):
                 raise
             print(f"{name}: retrying in 25 s (the list may still be loading)", flush=True)
             time.sleep(25)
@@ -235,7 +239,7 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
     if frame_observer is not None:
         frame_observer(img)
     digest = hashlib.md5(img.tobytes()).hexdigest()
-    if device == "phone" and digest in SEEN and not os.environ.get("CALIBRATE"):
+    if device == "phone" and SEEN.get(digest, name) != name and not os.environ.get("CALIBRATE"):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
         abort(f"{name} is identical to {SEEN[digest]}: the navigation did not change the screen")
     SEEN[digest] = name
@@ -249,7 +253,11 @@ def snap_checked(name, folder, floor, frame_observer=None, before_frame=None):
         img.save(os.path.join(out, "_rejected-" + name + ".png"))
         abort(f"{name} is too plain: an error or signed-out screen")
     img.save(os.path.join(folder, name + ".png"))
-    export_layout(name, img, os.path.basename(folder))
+    try:
+        export_layout(name, img, os.path.basename(folder))
+    except SystemExit:  # the frame and its layout disagree: publish neither
+        os.remove(os.path.join(folder, name + ".png"))
+        raise
     try:
         get("/state", resetdbg="1")  # the next frame's dump counts only what happens after this one
     except (OSError, SystemExit):
@@ -269,17 +277,56 @@ def player_held_at_2s(folder):
           "| play button" if re.search(r'"accessibilityText":\s*"Play"', tree) else "| pause button", flush=True)
 
 
-def probe_occlusion(name, theme, raw, viewport, layout_export):
-    """Measure occlusion on the rendered screen. The geometry only picks the elements that may be covered; each is then hidden in the running app
-    (patch_route.py: hide:<ids>), a second screenshot is taken, and the element's box is diffed exactly against the first. Pixels unchanged = nothing
-    of it was drawn on the screen. Noise (two unchanged shots) is subtracted, a control text must change when hidden, and any failure leaves the
-    geometry in charge (the export then states that in its limits). Saved as layout-probe/<theme>/<screen>.json for offline replay."""
+def fetch_tree(name, theme):
+    """The app dumps its component tree (patch_route.py dumplayout); the request carries a fresh id, so a late answer to an earlier request can never be taken for this tree."""
+    request = f"{name}.{theme}.{time.time_ns()}"
+    get("/setroute", name="dumplayout:" + request)
+    for _ in range(10):
+        time.sleep(1.5)
+        try:
+            return get("/layoutget", id=request)
+        except urllib.error.HTTPError:
+            continue
+    return None
+
+
+def keys_hidden(raw):
+    """The keys (patch_hide.py) of the nodes the app now reports as Visibility.Hidden: proof that the hide reached the declarative tree."""
+    found = set()
+
+    def walk(node):
+        a = node.get("$attrs") or node
+        if str(a.get("visibility", "")).lower().endswith("hidden") and str(a.get("id", "")).startswith("pvh"):
+            found.add(a["id"])
+        for kid in node.get("$children") or []:
+            walk(kid)
+    walk(json.loads(raw))
+    return found
+
+
+def stable():
+    prev = png()
+    for _ in range(4):
+        time.sleep(1.0)
+        cur = png()
+        if prev.tobytes() == cur.tobytes():
+            return cur
+        prev = cur
+    return None
+
+
+def probe_occlusion(name, theme, raw, viewport, layout_export, base):
+    """Measure occlusion on the rendered screen. The geometry only picks the elements that may be covered; the app hides each flagged node itself
+    (patch_hide.py: hide:<keys> sets the AppStorage string every keyed node binds its visibility to, so the declarative tree re-renders), the app
+    reports back that the node is Hidden, a second screenshot is taken and the element's box is diffed exactly against `base`. Pixels unchanged =
+    nothing of it was drawn. Noise (two unchanged shots) is subtracted and a control text must change when hidden. Anything not measured stays
+    exported (the export counts it as unmeasured). Saved as layout-probe/<theme>/<screen>.json for offline replay."""
     from PIL import ImageChops  # noqa: PLC0415
     cands = []
     layout_export.export(json.loads(raw), name, theme, viewport, True, origin=STAGE_ORIGIN, candidates=cands)
     todo = [c for c in cands if not c.get("control")]
     ctrl = next((c for c in cands if c.get("control")), None)
-    result = {"method": "hide the node, second screenshot, exact box diff", "results": {}}
+    result = {"method": "hide the keyed node in the app, second screenshot, exact box diff", "results": {}}
 
     def changed(a, b, noise, box):
         box = (max(box[0], 0), max(box[1], 0), min(box[2], a.size[0]), min(box[3], a.size[1]))
@@ -289,35 +336,26 @@ def probe_occlusion(name, theme, raw, viewport, layout_export):
         d = ImageChops.subtract(d, noise.crop(box))
         return d.getbbox() is not None
 
-    def stable():
-        prev = png()
-        for _ in range(4):
-            time.sleep(1.0)
-            cur = png()
-            if ImageChops.difference(prev, cur).getbbox() is None:
-                return cur
-            prev = cur
-        return None
+    def hidden_shot(keys):
+        """Hide the keys, return (screenshot, the keys the app reports hidden), show everything again."""
+        get("/setroute", name="hide:" + ",".join(sorted(keys)))
+        time.sleep(4)
+        shot, tree = stable(), fetch_tree(name, theme)
+        get("/setroute", name="show:all")
+        time.sleep(4)
+        return shot, (keys_hidden(tree) if tree else set())
 
     try:
         if todo and ctrl is not None:
-            base = stable()
-            if base is None:
-                raise RuntimeError("the screen never settled for the probe")
             time.sleep(1.0)
-            again = png()
-            noise = ImageChops.difference(base, again).convert("L").point(lambda v: 255 if v else 0)
-            get("/setroute", name="hide:" + str(ctrl["id"]))
-            time.sleep(4)
-            shot = png()
-            get("/setroute", name="show:all")
-            time.sleep(4)
-            if changed(base, shot, noise, ctrl["box"]):
+            noise = ImageChops.difference(base, png()).convert("L").point(lambda v: 255 if v else 0)
+            shot, hid = hidden_shot({ctrl["id"]})
+            if shot is not None and ctrl["id"] in hid and changed(base, shot, noise, ctrl["box"]):
                 groups = {}
                 for c in todo:
                     groups.setdefault(c["id"], []).append(c)
                 batches = []  # nodes whose boxes do not touch share one hide: a hidden neighbour cannot change another's box
-                for nid_, items in groups.items():
+                for key_, items in groups.items():
                     for b in batches:
                         if all(i["box"][2] <= j["box"][0] or j["box"][2] <= i["box"][0] or i["box"][3] <= j["box"][1] or j["box"][3] <= i["box"][1]
                                for i in items for other in b for j in other):
@@ -326,16 +364,12 @@ def probe_occlusion(name, theme, raw, viewport, layout_export):
                     else:
                         batches.append([items])
                 for b in batches:
-                    get("/state", resetdbg="1")
-                    get("/setroute", name="hide:" + ",".join(str(items[0]["id"]) for items in b))
-                    time.sleep(4)
-                    refused = [k for k in (json.loads(get("/state")).get("dbgcount") or {}) if k.startswith("probe:hide:failed=") and len(k) > 18]
-                    shot = None if refused else stable()  # a node the framework would not hide proves nothing: its box stays with the geometry
-                    get("/setroute", name="show:all")
-                    time.sleep(4)
+                    shot, hid = hidden_shot({items[0]["id"] for items in b})
                     if shot is None:
-                        continue
+                        continue  # an unsettled screen proves nothing
                     for items in b:
+                        if items[0]["id"] not in hid:
+                            continue  # the app did not report it hidden: nothing was measured
                         for c in items:
                             seen = changed(base, shot, noise, c["box"])
                             if seen is not None:
@@ -345,37 +379,29 @@ def probe_occlusion(name, theme, raw, viewport, layout_export):
                     result["results"] = {}  # the screen did not return to what it was: nothing measured can be trusted
                     result["note"] = "screen not restored after probing"
             else:
-                result["note"] = "the control text did not change when hidden: the hide hook is ineffective here (" + str({k: v for k, v in (json.loads(get("/state")).get("dbgcount") or {}).items() if k.startswith("probe")}) + ")"
-    except Exception as error:  # noqa: BLE001  (a failed probe leaves the geometry in charge; the export lists that in its limits)
+                result["note"] = f"the control text did not change when hidden (reported hidden: {ctrl['id'] in hid}, shot: {shot is not None}): the hide hook is ineffective here"
+    except Exception as error:  # noqa: BLE001  (a failed probe leaves every flagged element exported; the export lists that in its limits)
         result["results"] = {}
         result["note"] = repr(error)
     pdir = os.path.join(out, "layout-probe", theme)
     os.makedirs(pdir, exist_ok=True)
     json.dump(result, open(os.path.join(pdir, name + ".json"), "w"))
-    print(f"layout {name}: probed {len(result['results'])} of {len(todo)} covered; {result.get('note', 'ok')}", flush=True)
+    print(f"layout {name}: probed {len(result['results'])} of {len(todo)} flagged; {result.get('note', 'ok')}", flush=True)
     return result
 
 
 def export_layout(name, image=None, theme=None):
     """Layout document next to the screenshot (same screen state): the app dumps its component tree, layout_export maps it to the schema.
     A failed dump is logged and listed as missing, never fatal: the pixel capture stays valid. The theme is the folder the screenshot went
-    into, and the request carries a fresh id, so a late answer to an earlier request can never be taken for this frame's tree."""
+    into. The frame must still be the frame after the dump (a settled screenshot taken after the tree equals the saved one): a screenshot and a
+    tree that describe different renderings abort the capture (SystemExit) instead of being published together."""
     theme = theme or ("light" if THEME == "light" else "dark")
     stale = os.path.join(out, "layout", theme, name + ".json")
     if os.path.exists(stale):
         os.remove(stale)  # a surviving file must be a fresh measurement
     try:
         import layout_export  # noqa: PLC0415
-        request = f"{name}.{theme}.{time.time_ns()}"
-        get("/setroute", name="dumplayout:" + request)
-        raw = None
-        for _ in range(10):
-            time.sleep(1.5)
-            try:
-                raw = get("/layoutget", id=request)
-                break
-            except urllib.error.HTTPError:
-                continue
+        raw = fetch_tree(name, theme)
         if raw is None:
             print(f"layout {name}: the app sent no tree", flush=True)
             MISSING.append("layout:" + name)
@@ -384,10 +410,16 @@ def export_layout(name, image=None, theme=None):
         os.makedirs(rawdir, exist_ok=True)
         open(os.path.join(rawdir, name + ".json"), "wb").write(raw)
         viewport = (1920, 1080, 1) if device == "tv" else (360, 780, 3)
-        probe = probe_occlusion(name, theme, raw, viewport, layout_export)
+        base = stable()
+        if image is not None and (base is None or base.tobytes() != image.tobytes()):
+            raise FrameMismatch(f"{name}: the frame after the layout dump differs from the saved screenshot (or never settled)")
+        probe = probe_occlusion(name, theme, raw, viewport, layout_export, base)
         count = layout_export.write(raw, name, theme, viewport, os.path.join(out, "layout"),
                                     clock_pinned=True, origin=STAGE_ORIGIN, probe=probe)  # patch_clock.py pins the preview clock to the fixture instant
         print(f"layout {name}: {count} elements", flush=True)
+    except FrameMismatch as error:
+        debug("mismatch-" + name, image)
+        abort(str(error))
     except Exception as error:  # noqa: BLE001  (the pixel capture stays valid; the missing layout is listed in build.json, never papered over)
         print(f"layout {name}: export failed: {error!r}", flush=True)
         MISSING.append("layout:" + name)
