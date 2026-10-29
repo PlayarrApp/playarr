@@ -111,6 +111,8 @@ const imageDir = fileURLToPath(new URL("../../../clients/roku/images/", import.m
 const pictureCache = new Map();
 /** A bundled picture that paints every pixel of its box: opaque PNG whose aspect matches the box (read from the app's own asset). */
 function opaquePicture(it) {
+  // Loaded server artwork (loadStatus 3 = ready, as the ECP tree reports it) is a JPEG the app zooms to fill its box.
+  if (/^https?:\/\//.test(it.node.attrs.uri ?? "")) return it.node.attrs.loadStatus === "3";
   const m = /^pkg:\/images\/([\w.-]+\.png)$/.exec(it.node.attrs.uri ?? "");
   if (!m || m[1].endsWith(".9.png")) return false;
   if (!pictureCache.has(m[1])) {
