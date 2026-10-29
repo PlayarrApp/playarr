@@ -557,9 +557,9 @@ jobs:
         run: |
           sudo rm -rf /tmp/NuGetScratchroot /tmp/.dotnet
           dotnet --version || true
-          dotnet new list >/dev/null 2>&1; echo "exit $?"
-          ls -laR /tmp/.dotnet 2>&1 | head -20; ls -la /tmp | grep -iE "dotnet|nuget"; ls -ld /usr/share/dotnet ~ ~/.nuget ~/.dotnet 2>&1; env | grep -iE "^(HOME|TMPDIR|DOTNET)" 
-          ulimit -a | grep -E "open files|processes"
+          dotnet new list 2>&1 | head -5 || true
+          ls -laR /tmp/.dotnet 2>&1 | head -20 || true; ls -la /tmp | grep -iE "dotnet|nuget" || true; ls -ld /usr/share/dotnet ~ ~/.nuget ~/.dotnet 2>&1 || true; env | grep -iE "^(HOME|TMPDIR|DOTNET)" || true
+          ulimit -a | grep -E "open files|processes" || true
 
       - name: dotnet test (Playarr.Tizen.Logic.Tests)
         run: dotnet test tests/Playarr.Tizen.Logic.Tests/Playarr.Tizen.Logic.Tests.csproj
