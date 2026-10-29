@@ -285,7 +285,10 @@ struct PlayarrMediaCard: View {
             PlayarrArtwork(work: work, kind: .backdrop, apiClient: apiClient)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .frame(width: width)
-                .clipShape(RoundedRectangle(cornerRadius: min(13, max(8, width * 0.058)), style: .continuous))
+                .background(WM.artFill)
+                .clipShape(RoundedRectangle(cornerRadius: matchesWebScreenGrid ? 8.88 : min(13, max(8, width * 0.058)), style: .continuous))
+                .parityBox("image", background: WM.artFill)
+                .parityBox("container", background: WM.artFill, radius: matchesWebScreenGrid ? 8.88 : min(13, max(8, width * 0.058)))
                 .scaleEffect(focused ? LibraryFocusMetrics.tabletArtworkScale : 1)
                 .shadow(color: PlayarrStyle.ink.opacity(0.1), radius: 17, y: 6)
                 .shadow(color: Color(red: 56 / 255, green: 38 / 255, blue: 33 / 255).opacity(focused ? 0.3 : 0), radius: focused ? 24 : 0, y: focused ? 12 : 0)
@@ -335,6 +338,7 @@ struct PlayarrMediaCard: View {
             }
         }
         .frame(width: width, alignment: .leading)
+        .parityBox("link", name: matchesWebScreenGrid ? "Open \(work.title)" : nil, radius: 12)
     }
 }
 

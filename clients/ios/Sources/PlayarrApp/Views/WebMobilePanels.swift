@@ -42,7 +42,7 @@ struct WMPanelButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .wm(11.52, 720)
+                .wm(11.52, 720, color: primary ? PlayarrStyle.onAccent : WM.inkSoft, text: label)
                 .foregroundStyle(primary ? PlayarrStyle.onAccent : WM.inkSoft)
                 .frame(width: width, height: height)
                 .background {
@@ -148,7 +148,7 @@ struct WMPanelPage<Content: View>: View {
             }
             Button(action: onBack) {
                 Text("\u{2190}")
-                    .wm(12.8, 720, color: WM.shell)
+                    .wm(12.8, 720, color: WM.shell, text: "\u{2190}")
                     .foregroundStyle(WM.shell)
                     .frame(width: 44, height: 40)
                     .background(WM.ink, in: Ellipse())

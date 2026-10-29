@@ -56,6 +56,7 @@ struct CalendarView: View {
             }
         }
         .background(PlayarrStyle.background.ignoresSafeArea())
+        .parityFill(PlayarrStyle.background)
         .foregroundStyle(PlayarrStyle.ink)
         .navigationBarHidden(true)
         .parityScreenLoad(parityLoadState)
@@ -141,7 +142,7 @@ struct CalendarView: View {
             .padding(.bottom, 136 * proxy.size.height / 1024)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
 
-            PlayarrBackButton(action: goHome).offset(x: 122 * scale, y: 55 * scale)
+            PlayarrBackButton(label: "Back to home", action: goHome).offset(x: 122 * scale, y: 55 * scale)
             WMText("Calendar", max(19.2, 24 * scale), 520, lh: 36, ls: -1)
                 .offset(x: 182 * scale, y: 57 * scale)
             HStack(spacing: 8) {
@@ -159,16 +160,14 @@ struct CalendarView: View {
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
-                        .background(WM.page, in: Capsule())
-                        .parityBox("container", background: WM.page, radius: 22)
+                        .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
                 roundButton("\u{2190}", label: "Previous") { Task { await viewModel.step(-1) } }
                 Button { Task { await viewModel.goToToday() } } label: {
                     WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
                         .frame(width: 74, height: 44)
-                        .background(WM.page, in: Capsule())
-                        .parityBox("container", background: WM.page, radius: 22)
+                        .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
@@ -236,8 +235,7 @@ struct CalendarView: View {
             WMText(glyph, 7.7, 400, color: WM.inkSoft, lh: 17.28) // web arrow glyph: 0.67 times the fallback size
                 .offset(y: 1.8)
                 .frame(width: 44, height: 44)
-                .parityBox("button", name: label, background: WM.page, radius: 22)
-                .background(Circle().fill(WM.page))
+                .parityShape("button", name: label, color: WM.page, in: Capsule(), radius: 22)
                 .overlay(Circle().stroke(WM.line.opacity(0.14), lineWidth: 1))
         }
         .buttonStyle(.plain)
@@ -282,7 +280,7 @@ struct CalendarView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
 
-            PlayarrBackButton(action: goHome)
+            PlayarrBackButton(label: "Back to home", action: goHome)
                 .offset(x: 16, y: top)
             WMText("Calendar", 22, 520, lh: 33, ls: -1)
                 .offset(x: 70, y: top + 5)
@@ -308,16 +306,14 @@ struct CalendarView: View {
                         .fixedSize()
                         .padding(.horizontal, 20.5)
                         .frame(height: 44)
-                        .background(WM.page, in: Capsule())
-                        .parityBox("container", background: WM.page, radius: 22)
+                        .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
                 roundButton("\u{2190}", label: "Previous") { Task { await viewModel.step(-1) } }
                 Button { Task { await viewModel.goToToday() } } label: {
                     WMText("Today", 11.52, 720, color: WM.inkSoft, lh: 17.28)
                         .frame(width: 74, height: 44)
-                        .background(WM.page, in: Capsule())
-                        .parityBox("container", background: WM.page, radius: 22)
+                        .parityShape("container", color: WM.page, in: Capsule(), radius: 22)
                         .overlay(Capsule().stroke(WM.line.opacity(0.14), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
@@ -638,12 +634,12 @@ struct CalendarView: View {
                 16, 700, lh: 24
             )
             Text("No releases from your connected sources fall in this period.")
-                .wm(16, color: WM.muted)
+                .wm(16, color: WM.muted, text: "No releases from your connected sources fall in this period.")
                 .foregroundStyle(WM.muted)
                 .frame(width: 358, alignment: .topLeading)
                 .padding(.top, 10)
             Text("Select a release to see its details.")
-                .wm(16, color: WM.muted)
+                .wm(16, color: WM.muted, text: "Select a release to see its details.")
                 .foregroundStyle(WM.muted)
                 .frame(width: 358, alignment: .topLeading)
                 .padding(.top, 36)
