@@ -1,1 +1,1 @@
-Roku: text Labels now match the web line box height (font descent bands per size), the last character of each word sits at its web position, and the layout export hides what loaded server artwork covers.
+- Roku: text Labels now match the web line box height (font descent bands per size), the last character of each word sits at its web position, and the layout export hides what loaded server artwork covers.
