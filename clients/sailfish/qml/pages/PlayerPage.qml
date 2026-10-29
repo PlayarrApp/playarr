@@ -327,7 +327,7 @@ Page {
         size: BusyIndicatorSize.Large
         running: page.playerBusyShouldRun()
     }
-    PLabel { renderType: Text.NativeRendering;
+    FitText { 
         anchors { centerIn: parent; margins: Theme.paddingLarge }
         width: parent.width - 2 * Theme.paddingLarge
         horizontalAlignment: Text.AlignHCenter
@@ -343,7 +343,7 @@ Page {
         text: page.notice
         color: "white"
     }
-    PLabel { renderType: Text.NativeRendering;
+    FitText { 
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: (page.controls ? 130 * Tokens.u : 48 * Tokens.u) + Tokens.safeBottom; leftMargin: Tokens.pad; rightMargin: Tokens.pad }
         visible: text !== ""
         text: page.cueText
@@ -404,11 +404,14 @@ Page {
                 onReleased: page.seekTo(sliderValue)
             }
         }
-        // The time code: the web's player-time element, a container hugging its one text run.
-        Item {
-            width: timeLbl.implicitWidth; height: 14.88 * Tokens.u
+        // The time code: the web's player-time element, one element with the text style (an item that is both the box and its text).
+        PText {
             x: 195 * Tokens.u - width / 2; y: 556.13 * Tokens.u
-            PLabel { renderType: Text.NativeRendering; id: timeLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: -0.43; font.letterSpacing: 0.27; text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.56) }
+            width: 54.19 * Tokens.u; height: 14.88 * Tokens.u
+            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+            Accessible.role: Accessible.Pane; Accessible.name: text
+            font.letterSpacing: 0.9
+            text: page.mmss(page.positionMs) + " / " + page.mmss(page.durationMs); color: "#ffffff"; font.family: Tokens.family400; font.pixelSize: Tokens.fs(9.92)
         }
         PlayerButton { x: 12 * Tokens.u; y: 577 * Tokens.u; icon: "pPrev"; label: qsTr("Previous episode"); dimmed: true; parityIndex: 3 }
         PlayerButton {
@@ -435,13 +438,18 @@ Page {
             x: 288 * Tokens.u; y: 577 * Tokens.u; icon: "pList"; label: qsTr("Playlist: 1 item"); parityIndex: 8
         }
         PlayerButton {
-            x: 334 * Tokens.u; y: 577 * Tokens.u; label: qsTr("Quality: Original · 0.3 Mbps"); parityIndex: 9
+            x: 334 * Tokens.u; y: 577 * Tokens.u; label: ""; parityIndex: 9
             navigationActivate: function() { page.menuOpen = !page.menuOpen }
             onClicked: page.menuOpen = !page.menuOpen
         }
         // The quality control's own labels: a small HD badge and the current quality, which the web lets run over the right edge.
-        PLabel { renderType: Text.NativeRendering; x: 325.25 * Tokens.u; y: 593.23 * Tokens.u; text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68) }
-        PLabel { renderType: Text.NativeRendering; x: 351.25 * Tokens.u; y: 575.23 * Tokens.u; width: 40.31 * Tokens.u; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; lineHeightMode: Text.FixedHeight; lineHeight: 15.85 * Tokens.u
+        PText {   // the quality control with its text style: the 44 px button box, whose own text is the HD badge (it runs over the box's left edge)
+            x: 334 * Tokens.u; y: 577 * Tokens.u; width: 44 * Tokens.u; height: 44 * Tokens.u
+            leftPadding: -8.75 * Tokens.u; topPadding: 16.23 * Tokens.u
+            Accessible.role: Accessible.Button; Accessible.name: qsTr("Quality: Original · 0.3 Mbps")
+            text: "HD"; color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(7.68)
+        }
+        FitText { x: 351.25 * Tokens.u; y: 575.23 * Tokens.u; width: 40.31 * Tokens.u; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; lineHeightMode: Text.FixedHeight; lineHeight: 15.85 * Tokens.u
                 text: qsTr("Original · 0.3 Mbps"); color: "#ffffff"; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(10.56) }
         PlayerButton { x: 127 * Tokens.u; y: 625 * Tokens.u; icon: "pHealth"; label: qsTr("Info and playback health"); parityIndex: 10 }
         PlayerButton { x: 173 * Tokens.u; y: 625 * Tokens.u; icon: "pCast"; label: qsTr("Play on another device"); parityIndex: 11 }

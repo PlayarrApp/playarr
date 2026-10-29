@@ -37,7 +37,7 @@ Item {
             Rectangle { anchors.fill: parent; radius: 12 * Tokens.u; color: Tokens.surfaceStrong; border.width: 1; border.color: Tokens.line }
             Column {
                 anchors { left: parent.left; leftMargin: 16 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
-                PLabel { renderType: Text.NativeRendering; width: parent.width; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
+                FitText { width: parent.width; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
                 PLabel { renderType: Text.NativeRendering; text: modelData.is_system ? qsTr("Shared playlist") : qsTr("Your playlist"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(12) }
             }
         }

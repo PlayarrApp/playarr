@@ -26,7 +26,7 @@ PlayarrPage {
             font.family: Tokens.family
             font.pixelSize: Tokens.fs(34)
         }
-        PLabel { renderType: Text.NativeRendering;
+        FitText { 
             width: parent.width - 2 * Tokens.pad
             anchors.horizontalCenter: parent.horizontalCenter
             horizontalAlignment: Text.AlignHCenter

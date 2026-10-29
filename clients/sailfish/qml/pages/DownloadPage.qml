@@ -60,7 +60,7 @@ PlayarrPage {
             id: col
             width: parent.width
             spacing: 12 * Tokens.u
-            PLabel { renderType: Text.NativeRendering; x: Tokens.pad; width: parent.width - 2 * Tokens.pad; text: page.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
+            FitText { x: Tokens.pad; width: parent.width - 2 * Tokens.pad; text: page.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family; font.pixelSize: Tokens.fs(16) }
             PLabel { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("QUALITY"); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(10); font.letterSpacing: 1.5 * Tokens.u }
             Repeater {
                 model: page.options

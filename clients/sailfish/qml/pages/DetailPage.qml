@@ -198,19 +198,21 @@ PlayarrPage {
                 font.letterSpacing: (epMode ? 0.9 : 0.66) * Tokens.u
                 font.pixelSize: Tokens.fsFit(10.56)
             }
-            PLabel { renderType: Text.NativeRendering;
+            FitText { 
                 x: Tokens.pad
                 width: Math.min(parent.width - 2 * Tokens.pad, 262 * Tokens.u)   // web: the title wraps before the full width
                 text: work.title
                 wrapMode: Text.Wrap
                 color: Tokens.ink
-                Accessible.role: Accessible.Heading
+                lineRole: Accessible.Heading
                 font.family: Tokens.fam(560)   // web .tv-detail-title: weight 560, letter-spacing -0.072em
                 font.letterSpacing: -2.82 * Tokens.u
                 font.pixelSize: Tokens.fs(39)   // web: clamp(2rem, 10vw, 3.5rem) at 384 px
-                lineHeight: lineCount > 1 ? 0.681 : 0.92   // web: 0.95 of the font size between wrapped lines
-                topPadding: -3 * Tokens.u + 7.25 + (lineCount > 1 ? 24.2 : 0)   // the taller web title sits 6 px higher in its box
-                height: implicitHeight - 4.7 * Tokens.u - 7 - (lineCount > 1 ? 20.2 : 0)
+                naturalLines: true
+                lineHeight: 0.95 * font.pixelSize / naturalHeight   // web: 0.95 of the font size between wrapped lines
+                topPadding: -3 * Tokens.u + 7.25 - 8.58   // the title sits where the web's does (measured on the drawn lines); the box below keeps its place
+                // the box below keeps the place it had when the lines were squeezed (0.92 of the font height, or 0.681 each when wrapped)
+                height: topPadding + (lineCount > 1 ? lineCount * 0.681 : 0.92) * naturalHeight - (lineCount > 1 ? 8.8 * Tokens.u : 0) - 4.7 * Tokens.u - 7 - (lineCount > 1 ? 20.2 : 0) + (lineCount > 1 ? 32.7 : 8.58)
             }
             Row {
                 x: Tokens.pad
@@ -226,7 +228,7 @@ PlayarrPage {
                     PLabel { renderType: Text.NativeRendering; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.24) }
                 }
             }
-            PLabel { renderType: Text.NativeRendering;
+            FitText { 
                 x: Tokens.pad
                 width: parent.width - 2 * Tokens.pad
                 visible: !!work.overview && !epMode
@@ -319,11 +321,11 @@ PlayarrPage {
                 width: parent.width
                 spacing: 11.5 * Tokens.u
                 visible: seasons.length > 0 && !!page.target && !!page.target.episode
-                PLabel { renderType: Text.NativeRendering;
+                FitText { 
                     x: Tokens.pad; width: parent.width - 2 * Tokens.pad
                     text: page.target && page.target.episode ? (page.target.episode.episode.title || qsTr("Episode")) : ""
                     elide: Text.ElideRight
-                    color: Tokens.dark ? "#cdc1c6" : "#443a40"; Accessible.role: Accessible.Heading; font.family: Tokens.fam(580); font.letterSpacing: -0.85; font.pixelSize: Tokens.fs(14.4)
+                    color: Tokens.dark ? "#cdc1c6" : "#443a40"; lineRole: Accessible.Heading; font.family: Tokens.fam(580); font.letterSpacing: -0.85; font.pixelSize: Tokens.fs(14.4)
                     height: implicitHeight - 1.0 * Tokens.u
                 }
                 Row {
@@ -338,7 +340,7 @@ PlayarrPage {
                         PLabel { renderType: Text.NativeRendering; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family400; font.pixelSize: Tokens.fs(10.24) }
                     }
                 }
-                PLabel { renderType: Text.NativeRendering;
+                FitText { 
                     x: Tokens.pad; width: parent.width - 2 * Tokens.pad
                     visible: !!page.target && !!page.target.episode && !!page.target.episode.episode.overview
                     text: page.target && page.target.episode ? (page.target.episode.episode.overview || "") : ""
@@ -478,9 +480,14 @@ PlayarrPage {
                                     id: thumb
                                     width: parent.width; height: parent.width * 9 / 16
                                     radius: 8 * Tokens.u; color: Tokens.surfaceSoft
-                                    Item {
+                                    layer.enabled: true
+                                    layer.effect: OpacityMask { maskSource: thumbMask }
+                                    Rectangle { id: thumbMask; anchors.fill: parent; radius: thumb.radius; visible: false }
+                                    Item {   // the picture and its shading, greyed (a masked layer) and clipped to the card's rounded corners (the card's own)
                                         id: thumbArt
-                                        anchors.fill: parent; visible: false
+                                        anchors.fill: parent
+                                        layer.enabled: true
+                                        layer.effect: Desaturate { desaturation: 0.25 }
                                         Image {
                                             // The web prefers the episode's own still, then the media-file frame.
                                             readonly property bool hasStill: (modelData.episode.images || []).some(function (i) { return i.kind === "thumb" })
@@ -497,9 +504,6 @@ PlayarrPage {
                                             }
                                         }
                                     }
-                                    Rectangle { id: thumbMask; anchors.fill: parent; radius: thumb.radius; visible: false }
-                                    Desaturate { id: thumbGrey; anchors.fill: parent; source: thumbArt; desaturation: 0.25; visible: false }
-                                    OpacityMask { anchors.fill: parent; source: thumbGrey; maskSource: thumbMask }
                                     PLabel { renderType: Text.NativeRendering; anchors { right: parent.right; bottom: parent.bottom; rightMargin: 11.5 * Tokens.u; bottomMargin: 8.8 * Tokens.u }
                                             text: ("0" + modelData.episode.episode_number).slice(-2); color: "#ffffff"; font.family: Tokens.family580; font.pixelSize: Tokens.fs(12.8) }
                                     UnseenDot {
@@ -545,7 +549,7 @@ PlayarrPage {
                                     spacing: 9.5 * Tokens.u
                                     readonly property bool current: !!page.target && page.target.id === modelData.media_file_id
                                     PLabel { renderType: Text.NativeRendering; id: codeLbl; text: "S" + ("0" + seasonCol.sdata.season.season_number).slice(-2) + " \u00B7 E" + ("0" + modelData.episode.episode_number).slice(-2); color: parent.current ? Tokens.ink : Tokens.inkSoft; font.family: parent.current ? Tokens.family820 : Tokens.family580; font.pixelSize: Tokens.fs(9.5) }
-                                    PLabel { renderType: Text.NativeRendering;
+                                    FitText { 
                                         id: titleLbl
                                         width: epCard.width - codeLbl.width - 14 * Tokens.u
                                         text: modelData.episode.title || ""; elide: Text.ElideRight
@@ -642,7 +646,7 @@ PlayarrPage {
                             enabled: !!modelData.media_file_id
                             opacity: enabled ? 1 : 0.4
                             onClicked: navigationActivate()
-                            PLabel { renderType: Text.NativeRendering;
+                            FitText { 
                                 x: Tokens.pad
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width - 2 * Tokens.pad

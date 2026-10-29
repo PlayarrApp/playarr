@@ -129,7 +129,7 @@ PlayarrPage {
                     // The active ring sits outside the plate, as on web.
                     Rectangle { anchors.fill: parent; anchors.margins: -4 * Tokens.u; radius: width / 2; color: "transparent"; border.width: modelData.active ? 4 * Tokens.u : 0; border.color: ringColor }   // alpha in the colour: item opacity drew a pink square behind the plate
                 }
-                PLabel { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 5.8 * Tokens.u; left: parent.left; right: parent.right }
+                FitText { anchors { top: av.bottom; topMargin: 5.8 * Tokens.u; left: parent.left; right: parent.right }
                         horizontalAlignment: Text.AlignHCenter; text: modelData.name; elide: Text.ElideRight; color: Tokens.ink;
                         font.family: Tokens.fam(680); font.letterSpacing: 0.38; font.pixelSize: Tokens.fs(13.12) }
                 PLabel { renderType: Text.NativeRendering; anchors { top: av.bottom; topMargin: 35.9 * Tokens.u; left: parent.left; right: parent.right }

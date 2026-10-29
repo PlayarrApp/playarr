@@ -239,7 +239,7 @@ Item {
         Row {
             Repeater {
                 model: [qsTr("MON"), qsTr("TUE"), qsTr("WED"), qsTr("THU"), qsTr("FRI"), qsTr("SAT"), qsTr("SUN")]
-                PLabel { renderType: Text.NativeRendering; topPadding: 20.8; width: month.cellW; height: 34 * Tokens.u; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 1.25 * Tokens.u; font.pixelSize: Tokens.fsFit(12) }
+                PLabel { renderType: Text.NativeRendering; topPadding: 20.8; width: month.cellW; height: 34 * Tokens.u; horizontalAlignment: Text.AlignHCenter; text: modelData; color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 1.25 * Tokens.u; font.pixelSize: Tokens.fsFit(12) }
             }
         }
         Column {
@@ -280,7 +280,7 @@ Item {
                                          : cell.es[0].has_file ? (Tokens.dark ? "#8ac5a5" : "#224c3a")
                                          : root.tone(cell.es[0]) === "missing" ? (Tokens.dark ? "#f1a4a8" : "#722f34") : String(Tokens.brandPink)
                                 }
-                                CutLabel { renderType: Text.NativeRendering; x: 21.58 * Tokens.u; y: 6.4 * Tokens.u + 2.2; width: month.cellW - 37.8 * Tokens.u; webCut: cell.es.length ? cell.es[0].title : ""; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
+                                FitText { x: 21.58 * Tokens.u; y: 6.4 * Tokens.u + 2.2; width: month.cellW - 37.8 * Tokens.u; elide: Text.ElideRight; text: cell.es.length ? cell.es[0].title : ""; color: Tokens.ink; font.family: Tokens.family400; font.pixelSize: Tokens.fs(12.48); font.letterSpacing: -0.15 }
                             }
                             PLabel { renderType: Text.NativeRendering; x: 8.8 * Tokens.u; y: 49.1 * Tokens.u + 2.5; text: modelData.day; color: modelData.month === root.range.month ? Tokens.ink : Tokens.inkSoft; font.family: Tokens.fam(640); font.pixelSize: Tokens.fs(12.8) }
                             PLabel { renderType: Text.NativeRendering; visible: cell.es.length > 1; x: 43 * Tokens.u; y: 49.5 * Tokens.u; text: qsTr("+%1 more").arg(cell.es.length - 1); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(12.5) }
@@ -351,8 +351,8 @@ Item {
                                 id: info
                                 anchors { left: poster.right; leftMargin: 14.7 * Tokens.u; right: parent.right; rightMargin: 12 * Tokens.u; verticalCenter: parent.verticalCenter }
                                 spacing: 4.4 * Tokens.u
-                                PLabel { renderType: Text.NativeRendering; bottomPadding: subLbl.visible ? 0 : 2.2; width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.fam(640); font.letterSpacing: -0.2; font.pixelSize: Tokens.fs(16) }
-                                PLabel { renderType: Text.NativeRendering;
+                                FitText { bottomPadding: subLbl.visible ? 0 : 2.2; width: parent.width; text: modelData.title; elide: dayCol.wk ? Text.ElideNone : Text.ElideRight; wrapMode: dayCol.wk ? Text.WordWrap : Text.NoWrap; color: Tokens.ink; font.family: Tokens.fam(640); font.letterSpacing: -0.2; font.pixelSize: Tokens.fs(16) }
+                                FitText { 
                                     width: parent.width
                                     id: subLbl; visible: text !== ""; topPadding: dayCol.wk ? -0.4 : -3; bottomPadding: dayCol.wk ? 0.4 : 3
                                     text: modelData.group_count ? qsTr("%1 episodes").arg(modelData.group_count) + " · " + modelData.group_codes : [Calendar.episodeCode(modelData), modelData.subtitle].filter(function (x) { return !!x }).join(" · ")
@@ -409,14 +409,6 @@ Item {
         }
     }
     EdgeFade { visible: root.mode === "week"; target: weekFlick; horizontal: true }
-    // Web agenda: the first release's key art, grey and dimmed, behind the list (a 405.6 px wide picture, 7.5 px up).
-    HeroArt {
-        z: -1
-        visible: root.mode === "agenda" && root.groups.length > 0 && root.groups[0].entries.length > 0
-        work: root.groups.length > 0 && root.groups[0].entries.length > 0 && root.groups[0].entries[0].work_id ? { id: root.groups[0].entries[0].work_id, images: [] } : null
-        overrideSrc: root.groups.length > 0 && root.groups[0].entries.length > 0 && root.groups[0].entries[0].work_id ? Api.artworkOf(root.groups[0].entries[0].work_id, "backdrop") : ""
-        boxH: 124 * Tokens.u; imgH: 375 * Tokens.u; fadeFrom: 0.3; fadeTo: 1; lightLift: 0.93
-    }
     // Web dark agenda: a faint ghost-art wash. Measured on the refs: a flat tint (39,34,39) over the first ~600 px that fades out by ~720,
     // plus a brighter left edge (about +15 at x=0) easing out over ~70 px down to ~340 px.
     Rectangle {
@@ -428,6 +420,14 @@ Item {
             GradientStop { position: 0.527; color: Tokens.bg }
             GradientStop { position: 1; color: Tokens.bg }
         }
+    }
+    // Web agenda: the first release's key art, grey and dimmed, behind the list (a 405.6 px wide picture, 7.5 px up).
+    HeroArt {
+        z: -1
+        visible: root.mode === "agenda" && root.groups.length > 0 && root.groups[0].entries.length > 0
+        work: root.groups.length > 0 && root.groups[0].entries.length > 0 && root.groups[0].entries[0].work_id ? { id: root.groups[0].entries[0].work_id, images: [] } : null
+        overrideSrc: root.groups.length > 0 && root.groups[0].entries.length > 0 && root.groups[0].entries[0].work_id ? Api.artworkOf(root.groups[0].entries[0].work_id, "backdrop") : ""
+        boxH: 124 * Tokens.u; imgH: 375 * Tokens.u; fadeFrom: 0.3; fadeTo: 1; lightLift: 0.93
     }
     LinearGradient {
         z: -1; visible: Tokens.dark && root.mode === "agenda"

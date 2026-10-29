@@ -22,7 +22,7 @@ PlayarrPage {
             spacing: 10 * Tokens.u
             Item { width: 1; height: 24 * Tokens.u }
             PLabel { renderType: Text.NativeRendering; x: Tokens.pad; text: qsTr("CHOOSE WHERE TO PICK UP."); color: Tokens.dark ? Tokens.brandPinkSoft : "#8c2344"; font.family: Tokens.family820; font.letterSpacing: 1.2 * Tokens.u; font.pixelSize: Tokens.fs(8) }
-            PLabel { renderType: Text.NativeRendering; x: Tokens.pad; width: parent.width - 2 * Tokens.pad; text: qsTr("Resume %1").arg(page.seriesTitle); wrapMode: Text.Wrap; color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22) }
+            FitText { x: Tokens.pad; width: parent.width - 2 * Tokens.pad; text: qsTr("Resume %1").arg(page.seriesTitle); wrapMode: Text.Wrap; color: Tokens.ink; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22) }
             Repeater {
                 model: page.plan ? page.plan.options : []
                 MouseArea {
@@ -34,7 +34,7 @@ PlayarrPage {
                         x: 14 * Tokens.u; y: 12 * Tokens.u; width: parent.width - 28 * Tokens.u
                         spacing: 3 * Tokens.u
                         PLabel { renderType: Text.NativeRendering; text: page.caption(modelData.kind); color: Tokens.inkMuted; font.family: Tokens.family; font.pixelSize: Tokens.fs(8.5) }
-                        PLabel { renderType: Text.NativeRendering; width: parent.width; text: modelData.label + (modelData.title ? " · " + modelData.title : ""); wrapMode: Text.Wrap; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(11.5) }
+                        FitText { width: parent.width; text: modelData.label + (modelData.title ? " · " + modelData.title : ""); wrapMode: Text.Wrap; color: Tokens.ink; font.family: Tokens.family610; font.pixelSize: Tokens.fs(11.5) }
                         PLabel { renderType: Text.NativeRendering; visible: !!modelData.last_watched_at; text: qsTr("Last watched %1").arg(modelData.last_watched_at ? Qt.formatDate(new Date(modelData.last_watched_at), "d MMM yyyy") : ""); color: Tokens.inkSoft; font.family: Tokens.family; font.pixelSize: Tokens.fs(8.5) }
                         Rectangle {
                             visible: modelData.kind === "unfinished"

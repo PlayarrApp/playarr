@@ -121,7 +121,7 @@ TestCase {
 
     function test_dumpWalksRealQtItems() {
         var lines = []
-        LayoutDump.dump(viewport, 1, ({}), function() { return { ascent: 8, descent: 2 } }, function(line) { lines.push(line) })
+        LayoutDump.dump(viewport, 1, ({}), function(line) { lines.push(line) })
         var elements = []
         for (var i = 0; i < lines.length; ++i) {
             if (lines[i].indexOf("LAYOUTEL|") === 0) elements = elements.concat(JSON.parse(lines[i].slice(9)))

@@ -66,7 +66,7 @@ Item {
             EnterKey.iconSource: "image://theme/icon-m-enter-close"
             EnterKey.onClicked: focus = false
             onTextChanged: debounce.restart()
-            PLabel { renderType: Text.NativeRendering; visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
+            FitText { visible: input.text === ""; text: qsTr("Search your libraries and playlists"); color: Tokens.inkSoft; font: input.font; width: parent.width; elide: Text.ElideRight }
         }
     }
     MouseArea {   // web: the Filters button at the end of the header row, as on the library pages

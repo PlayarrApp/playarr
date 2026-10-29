@@ -73,23 +73,25 @@ Item {
     }
     // Dark library pages: the ghost of the first card's art along the left edge, +5 at x=0 and gone by ~180 px (static web
     // refs, movies/series/music), full down to y=420 and gone by ~540.
-    LinearGradient {
+    LinearGradient {   // a full-window layer, as the web's is; the ghost itself fills its first 150 px by 320 px
         id: ghost
         visible: Tokens.dark
-        width: 150 * Tokens.u; height: 320 * Tokens.u
+        anchors.fill: parent
+        readonly property real kx: Math.min(1, 150 * Tokens.u / width)
+        readonly property real ky: Math.min(1, 320 * Tokens.u / height)
         start: Qt.point(0, 0); end: Qt.point(width, 0)
         gradient: Gradient {
             GradientStop { position: 0; color: "#06ffffff" }
-            GradientStop { position: 0.15; color: "#05ffffff" }
-            GradientStop { position: 0.3; color: "#02ffffff" }
-            GradientStop { position: 0.6; color: "#00ffffff" }
+            GradientStop { position: 0.15 * ghost.kx; color: "#05ffffff" }
+            GradientStop { position: 0.3 * ghost.kx; color: "#02ffffff" }
+            GradientStop { position: 0.6 * ghost.kx; color: "#00ffffff" }
             GradientStop { position: 1; color: "#00ffffff" }
         }
         layer.enabled: visible
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: ghost.width; height: ghost.height
-                gradient: Gradient { GradientStop { position: 0; color: "white" } GradientStop { position: 0.66; color: "white" } GradientStop { position: 0.86; color: "transparent" } GradientStop { position: 1; color: "transparent" } }
+                gradient: Gradient { GradientStop { position: 0; color: "white" } GradientStop { position: 0.66 * ghost.ky; color: "white" } GradientStop { position: 0.86 * ghost.ky; color: "transparent" } GradientStop { position: 1; color: "transparent" } }
             }
         }
     }
