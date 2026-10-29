@@ -682,6 +682,17 @@ extension View {
         #endif
     }
 
+    /// Marks a radial gradient painted over this view's frame (the same colours, centre and end radius as the drawn `RadialGradient`).
+    func parityRadial(_ colors: [Color], center: UnitPoint, endRadius: CGFloat, in local: CGRect? = nil) -> some View {
+        #if DEBUG
+        let count = colors.count
+        let stops = colors.enumerated().map { Gradient.Stop(color: $1, location: count > 1 ? CGFloat($0) / CGFloat(count - 1) : 0) }
+        return modifier(ParityGradientModifier(gradient: Gradient(stops: stops), start: center, end: center, radius: endRadius, local: local))
+        #else
+        return self
+        #endif
+    }
+
     /// Marks the place where a view really paints `color`: text and controls inside report the composited colour behind them.
     func parityFill(_ color: Color, when condition: Bool = true) -> some View {
         #if DEBUG
