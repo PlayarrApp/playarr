@@ -23,6 +23,19 @@ pub fn name(w: &impl IsA<gtk4::Widget>, text: &str) {
     unsafe { w.set_data("pa-a11y-name", text.to_string()) };
 }
 
+/// Marks a glyph label as decoration: screen readers skip it and the control's name leaves it out.
+pub fn decorative(w: &impl IsA<gtk4::Widget>) {
+    w.upcast_ref::<gtk4::Widget>()
+        .update_state(&[gtk4::accessible::State::Hidden(true)]);
+    // SAFETY: the key is private to this module and always holds a `bool`.
+    unsafe { w.set_data("pa-a11y-deco", true) };
+}
+
+fn is_decorative(w: &gtk4::Widget) -> bool {
+    // SAFETY: see `decorative`.
+    unsafe { w.data::<bool>("pa-a11y-deco").is_some() }
+}
+
 fn a11y_name(w: &gtk4::Widget) -> Option<String> {
     // SAFETY: see `name`.
     unsafe { w.data::<String>("pa-a11y-name").map(|p| p.as_ref().clone()) }
@@ -268,17 +281,6 @@ fn font_px(w: &impl IsA<gtk4::Widget>) -> (f64, i32) {
     (px, fd.weight().into_glib())
 }
 
-/// Marks a control the app gave the `group` role itself (`accessible_role(Group)`), as opposed to a toolkit default.
-pub fn mark_group(w: &impl IsA<gtk4::Widget>) {
-    // SAFETY: the key is private to this module and always holds a `bool`.
-    unsafe { w.set_data("pa-group", true) };
-}
-
-fn marked_group(w: &gtk4::Widget) -> bool {
-    // SAFETY: see `mark_group`.
-    unsafe { w.data::<bool>("pa-group").is_some() }
-}
-
 fn role_of(w: &gtk4::Widget) -> &'static str {
     use gtk4::AccessibleRole as R;
     match w.accessible_role() {
@@ -296,8 +298,8 @@ fn role_of(w: &gtk4::Widget) -> &'static str {
         R::ProgressBar => "progressbar",
         R::List => "list",
         R::Search => "search",
-        // Toolkit containers (libadwaita) default to Group; only a control the app marks `group` is a group.
-        R::Group if marked_group(w) => "group",
+        // The measured native role, unchanged. A widget that should read as a plain container gets the Generic role in the app.
+        R::Group => "group",
         _ => "container",
     }
 }
@@ -486,6 +488,11 @@ impl Walk<'_> {
             // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
             // colour are one record. Text is each run's own, the ellipsis run reading as the ellipsis.
             let mut recs: Vec<(Rect, String, [f32; 4], f32)> = Vec::new();
+            let primary = {
+                let ctx = layout.context();
+                let fd = layout.font_description().or_else(|| ctx.font_description());
+                fd.map(|fd| ctx.metrics(Some(&fd), None))
+            };
             let mut it = layout.iter();
             loop {
                 if let Some(run) = it.run_readonly() {
@@ -514,11 +521,17 @@ impl Walk<'_> {
                         }
                     }
                     // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run box.
+                    // The run box spans the label font's own ascent and descent (Pango font metrics of the primary face), so
+                    // a glyph drawn from a fallback face keeps the line box of the text around it.
+                    let (top, height) = match &primary {
+                        Some(m) => (it.baseline() - m.ascent(), m.ascent() + m.descent()),
+                        None => (lg.y(), lg.height()),
+                    };
                     let local = graphene::Rect::new(
                         ox as f32 + x0 as f32 / s,
-                        oy as f32 + lg.y() as f32 / s,
+                        oy as f32 + top as f32 / s,
                         (x1 - x0) as f32 / s,
-                        lg.height() as f32 / s,
+                        height as f32 / s,
                     );
                     let r = match w.compute_transform(self.root) {
                         Some(t) => to_root(&t, &local),
@@ -668,7 +681,7 @@ fn child_text(w: &gtk4::Widget) -> String {
             continue;
         }
         if let Some(l) = n.downcast_ref::<gtk4::Label>() {
-            if !l.text().is_empty() {
+            if !l.text().is_empty() && !is_decorative(&n) {
                 parts.push(l.text().to_string());
             }
             continue;
@@ -736,4 +749,23 @@ pub fn export(root: &gtk4::Widget, screen: &str, theme: &str, path: &str) -> Res
         "elements": elements,
     });
     std::fs::write(path, serde_json::to_vec(&doc).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gtk4::AccessibleRole as R;
+
+    #[test]
+    fn same_native_role_exports_same_role() {
+        if gtk4::init().is_err() {
+            return;
+        }
+        let a = gtk4::Box::builder().accessible_role(R::Group).build();
+        let b = gtk4::Frame::builder().accessible_role(R::Group).build();
+        let c = gtk4::Box::builder().accessible_role(R::Generic).build();
+        assert_eq!(role_of(a.upcast_ref()), "group");
+        assert_eq!(role_of(a.upcast_ref()), role_of(b.upcast_ref()));
+        assert_eq!(role_of(c.upcast_ref()), "container");
+    }
 }

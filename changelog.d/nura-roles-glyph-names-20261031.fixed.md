@@ -1,0 +1,1 @@
+Nura layout export now reports the measured native accessible role (Group stays group; the exporter-only group marker is gone, with a test), decorative glyphs (arrows, play, download, plus, check) no longer appear in control names, the search entry exports its placeholder text, and text run boxes use the label font's own Pango ascent and descent.

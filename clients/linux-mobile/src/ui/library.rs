@@ -492,7 +492,6 @@ impl Lib {
                 .model(&gtk4::StringList::new(&["Any language"]))
                 .accessible_role(gtk4::AccessibleRole::Group)
                 .build();
-            crate::layout::mark_group(&dd);
             dd.add_css_class("pa-dropdown");
             dd.add_css_class("pa-filter");
             // The web's select is a bordered group holding a button with the value and a caret glyph.

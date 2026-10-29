@@ -218,7 +218,9 @@ pub fn build(app: Rc<App>, client: Client, from_shell: bool) -> gtk4::Widget {
     let clients_row = gtk4::Box::builder().spacing(9).build();
     let clients_label = gtk4::Label::new(Some("Clients"));
     clients_row.append(&clients_label);
-    clients_row.append(&gtk4::Label::builder().label("→").css_classes(["pa-pill-arrow"]).build());
+    let clients_arrow = gtk4::Label::builder().label("→").css_classes(["pa-pill-arrow"]).build();
+    crate::layout::decorative(&clients_arrow);
+    clients_row.append(&clients_arrow);
     clients.set_child(Some(&clients_row));
     clients.connect_clicked(|_| {
         let _ = gtk4::gio::AppInfo::launch_default_for_uri(
@@ -441,6 +443,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
     // No vexpand: it would stretch the whole row and push Sign out to the page bottom.
     plus.set_hexpand(true);
     plus.set_valign(gtk4::Align::Center);
+    crate::layout::decorative(&plus);
     circle.append(&plus);
     col.append(&circle);
     col.append(
@@ -462,7 +465,7 @@ fn add_tile(app: &Rc<App>) -> gtk4::Button {
         .css_classes(["pa-plain", "pa-profile"])
         .valign(gtk4::Align::Start)
         .build();
-    crate::layout::name(&b, "+ Sign in ADD ANOTHER PROFILE");
+    crate::layout::name(&b, "Sign in ADD ANOTHER PROFILE");
     // Bottom-aligned with the 162 px current avatar, as on the web.
     b.set_margin_top(15);
     let app = app.clone();

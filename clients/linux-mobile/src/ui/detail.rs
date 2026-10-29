@@ -220,6 +220,10 @@ fn action_pill(icon: &str, label: &str, width: i32, primary: bool, small: bool) 
         ),
         _ => row.append(&icons::image(icon, if small { 9 } else { 12 }, tone)),
     }
+    // The glyph is decoration: the control's name is its label.
+    if let Some(g) = row.first_child().and_then(|c| c.downcast::<gtk4::Label>().ok()) {
+        crate::layout::decorative(&g);
+    }
     let class = if small { "pa-action-label-s" } else { "pa-action-label" };
     // The large pills wrap ("Resume / from 0:23") as the web's do; the small ones fit on one line.
     row.append(
@@ -540,7 +544,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
     }
     let row2 = gtk4::Box::builder().spacing(8).margin_top(12).build();
     let watch = action_pill("add", "Add to watchlist", 108, false, true);
-    crate::layout::name(&watch, "+ Add to watchlist");
+    crate::layout::name(&watch, "Add to watchlist");
     {
         let (app, work) = (app.clone(), w.clone());
         watch.connect_clicked(move |b| {
@@ -562,7 +566,7 @@ fn fill(app: &Rc<App>, imgs: &Images, page: &gtk4::Box, l: Loaded, scroll: &gtk4
         });
     }
     let playlist = action_pill("add", "Add to Playlist", 104, false, true);
-    crate::layout::name(&playlist, "+ Add to Playlist");
+    crate::layout::name(&playlist, "Add to Playlist");
     {
         let (app, work) = (app.clone(), w.clone());
         playlist.connect_clicked(move |_| super::actions::show(&app, &work));

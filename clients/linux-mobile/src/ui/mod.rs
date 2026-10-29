@@ -157,7 +157,7 @@ impl App {
                 me.watch
                     .replace(progress.into_iter().map(|p| (p.work_id, p.state)).collect());
                 let (pages, nav_bar) = shell::build(me.clone(), client, imgs, preset);
-                let root = adw::NavigationPage::builder().title("Playarr").child(&pages).build();
+                let root = adw::NavigationPage::builder().accessible_role(gtk4::AccessibleRole::Generic).title("Playarr").child(&pages).build();
                 me.nav.replace(&[root]);
                 me.show("shell", &me.nav);
                 me.layer.add_overlay(&nav_bar);
@@ -203,17 +203,17 @@ impl App {
         view.add_top_bar(&bar);
         view.set_content(Some(child));
         self.nav
-            .push(&adw::NavigationPage::builder().title(title).child(&view).build());
+            .push(&adw::NavigationPage::builder().accessible_role(gtk4::AccessibleRole::Generic).title(title).child(&view).build());
     }
 
     /// Pushes a page that draws its own chrome (the player).
     pub fn push_bare(&self, title: &str, child: &impl IsA<gtk4::Widget>) {
         self.nav
-            .push(&adw::NavigationPage::builder().title(title).child(child).build());
+            .push(&adw::NavigationPage::builder().accessible_role(gtk4::AccessibleRole::Generic).title(title).child(child).build());
     }
 
     pub fn push_profiles(self: &Rc<Self>, client: Client) {
-        let page = adw::NavigationPage::builder()
+        let page = adw::NavigationPage::builder().accessible_role(gtk4::AccessibleRole::Generic)
             .title("Profiles")
             .tag("profiles")
             .child(&profiles::build(self.clone(), client, true))
@@ -252,7 +252,7 @@ impl App {
         if self.proxy.borrow().is_none() {
             self.proxy.replace(crate::proxy::Proxy::start(client.clone()).ok());
         }
-        let page = adw::NavigationPage::builder()
+        let page = adw::NavigationPage::builder().accessible_role(gtk4::AccessibleRole::Generic)
             .title(&req.title)
             .tag("player")
             .child(&player::build(self.clone(), client, req))
@@ -576,7 +576,7 @@ pub fn clock_pinned() -> bool {
 
 pub fn build_window(app: &adw::Application) {
     // The web draws the page body, the app container and the page as three nested fills; so do these widgets.
-    let stack = gtk4::Stack::builder().css_classes(["pa-app"]).build();
+    let stack = gtk4::Stack::builder().accessible_role(gtk4::AccessibleRole::Generic).css_classes(["pa-app"]).build();
     let layer = gtk4::Overlay::builder().child(&stack).css_classes(["pa-body"]).build();
     let window = adw::ApplicationWindow::builder()
         .application(app)
@@ -588,7 +588,7 @@ pub fn build_window(app: &adw::Application) {
     let state = Rc::new(App {
         window: window.clone(),
         stack,
-        nav: adw::NavigationView::new(),
+        nav: adw::NavigationView::builder().accessible_role(gtk4::AccessibleRole::Generic).build(),
         client: RefCell::new(None),
         flow_generation: Arc::new(AtomicU64::new(0)),
         signout_pending: AtomicBool::new(false),

@@ -109,6 +109,7 @@ scrolledwindow.pa-transparent, scrolledwindow.pa-transparent viewport { backgrou
 .pa-search { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; min-height: 58px; padding: 0; box-shadow: none; color: @pa_ink; }
 .pa-search text { color: @pa_ink; }
 entry.pa-search-input { background: none; border: none; box-shadow: none; outline: none; min-height: 0; padding: 0; color: @pa_ink; }
+entry.pa-search-input text placeholder, entry.pa-search-input placeholder { color: @pa_muted; font-size: 12.48px; opacity: 1; }
 
 /* Calendar (web mobile) */
 button.pa-pill, .pa-pill { background: alpha(@pa_surface_strong, 0.7); border: 1px solid @pa_line; border-radius: 999px; box-shadow: none; min-height: 44px; padding: 0 18px; color: @pa_ink_soft; font-weight: 610; font-size: 12px; }
@@ -240,7 +241,7 @@ button.pa-letter { background: transparent; border: none; box-shadow: none; padd
 .pa-letter-label.active { background: @pa_ink; color: @pa_body; box-shadow: 0 0 0 6px #cf3157, 0 0 0 4px @pa_on_accent, 0 0 0 2px @pa_ink; }
 .pa-back-arrow { font-size: 13.2px; font-weight: 720; color: @pa_ink_soft; }
 .pa-hbtn.ring { outline: 2px solid @pa_ring; outline-offset: 3px; }
-.pa-row-glyph { color: #cf3157; font-size: 19.52px; font-weight: 400; }
+.pa-row-glyph { color: #cf3157; font-size: 19.52px; font-weight: 400; line-height: 1.4; }
 .pa-meta-flow flowboxchild { padding: 0; }
 .pa-search text { caret-color: transparent; }
 
@@ -340,7 +341,7 @@ button.pa-pill.small.pa-clients-link { padding: 0 16px; }
 .pa-cal-arrow { margin-left: 2px; }
 .pa-seg-tile { font-kerning: none; }
 .pa-seg-tile.wide { letter-spacing: 0.15px; }
-.pa-pref-arrow { margin-bottom: 1px; margin-top: 1px; line-height: 1.04; }
+.pa-pref-arrow { margin-bottom: 1px; margin-top: 1px; }
 button.pa-entry:not(.week).nosub { padding-bottom: 3.5px; }
 button.pa-entry:not(.week).nosub .pa-entry-metarow { margin-top: 2px; }
 button.pa-entry:not(.week).nosub .pa-entry-title { margin-top: 1px; }
