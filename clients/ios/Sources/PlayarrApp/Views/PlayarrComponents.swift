@@ -313,10 +313,12 @@ struct PlayarrMediaCard: View {
                 Text(work.title)
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 12.5 : 11).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.ink)
+                    .parityRenderedText(work.title, role: "text", size: width <= 210 ? 12.5 : 11, weight: 600, color: PlayarrStyle.ink)
                     .lineLimit(1)
                 Text(work.singularKindYearLabel)
                     .font(.custom("Avenir Next", fixedSize: width <= 210 ? 10 : 8.5).weight(.semibold))
                     .foregroundStyle(PlayarrStyle.muted)
+                    .parityRenderedText(work.singularKindYearLabel, role: "text", size: width <= 210 ? 10 : 8.5, weight: 600, color: PlayarrStyle.muted)
             } else {
                 WMText(
                     work.title,
@@ -338,7 +340,6 @@ struct PlayarrMediaCard: View {
             }
         }
         .frame(width: width, alignment: .leading)
-        .parityBox("link", name: matchesWebScreenGrid ? "Open \(work.title)" : nil, radius: 12)
     }
 }
 

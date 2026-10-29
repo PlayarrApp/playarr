@@ -420,6 +420,7 @@ struct WMDetailPage: View {
             .foregroundStyle(WM.ink)
             .lineLimit(1)
             .parityRenderedText(text, role: "heading", size: 39.3, weight: 560, color: WM.ink)
+            .accessibilityAddTraits(.isHeader)
             .frame(height: 36.66, alignment: .leading)
     }
 
