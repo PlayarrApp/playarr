@@ -32,14 +32,20 @@ function attach(parent, child) {
   return child;
 }
 
-// The rendered window: every flagged element is visible unless `coveredNames` names it (hiding it then changes no pixel).
-function fakeScreen(coveredNames = []) {
-  let hidden = null;
+// The rendered window. An element named in `coveredNames` has no visible pixel while the "plate" is shown; one named in `plainNames` has none
+// ever (it is the colour of its backdrop); every other element changes the screen when hidden.
+function fakeScreen(coveredNames = [], plainNames = []) {
+  const hidden = new Set();
   return {
-    hidden: [], snapshot() {},
-    hide(item) { hidden = item; this.hidden.push(item.objectName); return 1; },
-    restore() { hidden = null; },
-    changed() { return !coveredNames.includes(hidden.objectName); },
+    hiddenEver: [], snapshots: 0, snapshot() { this.snapshots += 1; },
+    hide(item) { hidden.add(item.objectName); this.hiddenEver.push(item.objectName); return item.objectName; },
+    restore(item, token) { hidden.delete(token); },
+    changed() {
+      const names = [...hidden];
+      const subject = names.find((name) => coveredNames.includes(name) || plainNames.includes(name));
+      if (!subject) return true;
+      return coveredNames.includes(subject) && hidden.has("plate");
+    },
   };
 }
 
@@ -171,12 +177,15 @@ const buttons = (rows) => rows.filter((row) => row.role === "button").map((row) 
 test("the geometry only flags an element that a later opaque plate may cover; the rendered screen decides", () => {
   const screen = fakeScreen(["covered"]);
   assert.deepEqual(buttons(dump(coveredScene(), 1, screen)), ["under-glass", "free"]);
-  assert.deepEqual(screen.hidden, ["covered"]);   // the translucent glass and the uncovered button are never hidden
+  assert.ok(screen.hiddenEver.includes("covered") && !screen.hiddenEver.includes("under-glass") && !screen.hiddenEver.includes("free"));   // glass and the uncovered button are never hidden
 });
 
 test("a flagged element whose hiding changes a pixel stays, even when the plate looks opaque", () => {
-  const screen = fakeScreen([]);
-  assert.deepEqual(buttons(dump(coveredScene(), 1, screen)), ["covered", "under-glass", "free"]);
+  assert.deepEqual(buttons(dump(coveredScene(), 1, fakeScreen([]))), ["covered", "under-glass", "free"]);
+});
+
+test("a flagged element that is only the colour of its backdrop is not covered: it stays", () => {
+  assert.deepEqual(buttons(dump(coveredScene(), 1, fakeScreen([], ["covered"]))), ["covered", "under-glass", "free"]);
 });
 
 test("the document counts the elements the screen showed covered", () => {
@@ -186,11 +195,11 @@ test("the document counts the elements the screen showed covered", () => {
   assert.equal(dumpLines(coveredScene(), 1, fakeScreen([])).find((line) => line.startsWith("LAYOUTEND|")), "LAYOUTEND|100|100|0");
 });
 
-test("the hidden element is restored and its box is handed over in scene pixels", () => {
+test("the hidden items are restored in reverse and their box is handed over in scene pixels", () => {
   const seen = [];
-  const screen = { snapshot() {}, hide: () => "token", restore: (item, token) => seen.push(["restore", item.objectName, token]), changed: (...box) => { seen.push(box); return true; } };
+  const screen = { snapshot() { seen.push("snapshot"); }, hide: (item) => item.objectName, restore: (item, token) => seen.push(["restore", item.objectName, token]), changed: (...box) => { seen.push(box); return false; } };
   dump(coveredScene(), 1, screen);
-  assert.deepEqual(seen, [[10, 10, 10, 10], ["restore", "covered", "token"]]);
+  assert.deepEqual(seen, ["snapshot", [10, 10, 10, 10], ["restore", "covered", "covered"], "snapshot", [10, 10, 10, 10], ["restore", "covered", "covered"], ["restore", "plate", "plate"]]);
 });
 
 test("an export that needs the rendered screen and has none stops", () => {
