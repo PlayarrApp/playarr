@@ -784,6 +784,8 @@ if device == "tv":
         decoded_art = None
     folder = os.path.join(out, "light" if THEME == "light" else "dark")
     if TV_SELECTION is None:
+        # the app's own theme select (Settings, Appearance): choose the theme explicitly as web's reference does, so Profiles shows the stored choice
+        route("settings", 8); click(394, 207); time.sleep(3); click(1645 if folder.endswith("dark") else 1295, 285); time.sleep(4)
         route("profiles", 6); snap("profiles", folder)
         route("home", 20)
         walk(folder, "")

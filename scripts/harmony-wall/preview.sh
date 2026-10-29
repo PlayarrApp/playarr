@@ -26,7 +26,6 @@ build() {
   if [ "$DEVICE" = phone ]; then sed -i "s/'deviceType': 'tv'/'deviceType': 'phone'/; s/Previewer TV/Previewer Phone/" entry/src/mock/deviceinfo.mock.ets; fi
   python3 "$HERE/patch_index.py" entry/src/main/ets/pages/Index.ets
   python3 "$HERE/patch_prefs.py" entry/src/main/ets/auth/SettingsStore.ets
-  python3 "$HERE/patch_theme.py" entry/src/main/ets/pages/Profiles.ets
   python3 "$HERE/patch_language.py" entry/src/main/ets/AppContainer.ets "${PREVIEW_LANGUAGE:-en}"
   if [ "$DEVICE" = phone ]; then python3 "$HERE/patch_drawer.py" entry/src/main/ets/design/components/Drawer.ets; fi
   python3 "$HERE/patch_clock.py" entry/src/main/ets/design/components/Clock.ets entry/src/main/ets/pages/Calendar.ets

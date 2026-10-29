@@ -9,6 +9,7 @@
  * panel's actions and the Calendar link tile.
  */
 
+import { FitLine } from '../design/components/FitLine';
 import { LengthMetrics } from '@kit.ArkUI';
 import { image } from '@kit.ImageKit';
 import { fetchWorkArtwork } from '../data/ArtworkRepository';
@@ -655,14 +656,7 @@ export struct ReleaseCalendar {
               .height(tv(MONTH_DOT_SIZE))
               .borderRadius(tv(MONTH_DOT_SIZE / 2))
               .backgroundColor(toResourceColor(toneColor(itemPillTone(item, this.today))))
-            Text(itemLineText(item)).fontFamily(nunitoAt(item.grouped ? 700 : 400, tv(MONTH_LINE_SIZE)))
-              .fontSize(tv(MONTH_LINE_SIZE)).translate({ y: (isTvMetrics() ? 1.38 : 0) }).lineHeight(webLineHeight(tv(MONTH_LINE_SIZE))).halfLeading(true)
-              .fontWeight(item.grouped ? FontWeight.Bold : FontWeight.Normal)
-              .fontColor(toResourceColor(activeColors().ink))
-              .maxLines(1)
-              .margin({ bottom: isTvMetrics() ? 3 : 2 }) // web: the line sits a little above the button's centre
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .layoutWeight(1)
+            FitLine({ content: itemLineText(item), size: tv(MONTH_LINE_SIZE), weight: item.grouped ? 700 : 400, shiftY: isTvMetrics() ? 1.38 : 0, gapBottom: isTvMetrics() ? 3 : 2 })
           }
           .height(MONTH_LINE_HEIGHT)
           .width(isTvMetrics() ? 'calc(100% - 0.4vp)' : 'calc(100% - 9.8vp)')
