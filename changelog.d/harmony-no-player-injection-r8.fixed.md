@@ -1,1 +1,1 @@
-Parity tooling: the Harmony preview build no longer injects the player's position, pause state, quality label or surface swap, and the layout scorer's text centre-line exception applies to text and heading records only.
+- Parity tooling: the Harmony preview build no longer injects the player's position, pause state, quality label or surface swap, and the layout scorer's text centre-line exception applies to text and heading records only.
