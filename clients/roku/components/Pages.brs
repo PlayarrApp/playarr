@@ -157,7 +157,7 @@ function pgMark(parent as Object, role as String, name as String, x as Float, y 
     for i = n - 1 to n - 3 step -1
         if i < 0 then exit for
         c = parent.getChild(i)
-        if c.subtype() = "Poster" and c.hasField("themeRole") and (c.id = "" or Left(c.id, 11) = "a11y|fill|") and c.uri <> "" and Instr(1, c.uri, "outline") = 0 and c.uri <> invalid
+        if c.subtype() = "Poster" and c.hasField("themeRole") and (c.id = "" or Left(c.id, 10) = "a11y|fill|") and c.uri <> "" and Instr(1, c.uri, "outline") = 0 and c.uri <> invalid
             t = c.translation
             if Abs(t[0] - x) < 0.6 and Abs(t[1] - y) < 0.6 and Abs(c.width - w) < 0.6 and Abs(c.height - h) < 0.6
                 c.id = id
@@ -1945,7 +1945,7 @@ function calendarCard(parent as Object, x as Float, y as Float, w as Float, entr
     artY = y + (ch - 60) / 2
     pgRound(parent, x + 16, artY, 40, 60, 6, "surfaceSoft")
     artPoster = pgArtwork(parent, x + 16, artY, 40, 60, calendarArtworkUrl(entry))
-    artPoster.id = "a11y|image|6|"
+    artPoster.id = "a11y|image|0|"
     status = calendarStatusText(entry)
     full = entry.title
     if hasSub then full = full + " " + calendarEntrySubtitle(entry)

@@ -35,7 +35,12 @@ def width(text: str) -> int:
 
 
 for weight in WEIGHTS:
-    instancer.instantiateVariableFont(TTFont(src), {"wght": weight}).save(out / f"NunitoSans-{weight}.ttf")
+    instance = instancer.instantiateVariableFont(TTFont(src), {"wght": weight})
+    # Roku sizes a Label by the Windows metrics; a browser uses the typographic ones (USE_TYPO_METRICS). Make them agree so a Label's
+    # line box is the one the web font sets.
+    instance["OS/2"].usWinAscent = instance["OS/2"].sTypoAscender
+    instance["OS/2"].usWinDescent = -instance["OS/2"].sTypoDescender
+    instance.save(out / f"NunitoSans-{weight}.ttf")
 
 # Advance tables at every 10 of 300 to 900: glyphs come from the nearest instance, positions from the exact weight.
 for weight in range(300, 901, 10):

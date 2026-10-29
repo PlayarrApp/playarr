@@ -208,9 +208,10 @@ end function
 
 ' Symbol glyphs the web draws from its fallback fonts (Nunito Sans has none of them): arrows, play, check, the sort chevron and a
 ' fullwidth plus. fonts/Symbols.ttf is a subset of DejaVu Sans (Bitstream Vera licence) and fonts/SymbolsCjk.otf one glyph of
-' Noto Sans CJK (SIL OFL).
-function PlayarrSymbolFont(ch as String, size as Float) as Object
+' Noto Sans CJK (SIL OFL). fonts/SymbolsBold.ttf is the same glyphs from DejaVu Sans Bold, used for weights of 600 and up.
+function PlayarrSymbolFont(ch as String, size as Float, weight = 400 as Integer) as Object
     path = "pkg:/fonts/Symbols.ttf"
+    if weight >= 600 then path = "pkg:/fonts/SymbolsBold.ttf"
     if ch = "＋" then path = "pkg:/fonts/SymbolsCjk.otf"
     key = "playarrSymbol_" + path + "_" + Str(size)
     g = GetGlobalAA()
@@ -235,4 +236,11 @@ function PlayarrTextBottom(web as Object) as Float
         end if
     end for
     return web.translation[1] + runNode.translation[1] + bottom
+end function
+
+' The weight a symbol Label really draws: the regular or the bold symbol face (the CJK plus has one weight).
+function PlayarrSymbolWeight(ch as String, weight as Integer) as Integer
+    if ch = "＋" then return 400
+    if weight >= 600 then return 700
+    return 400
 end function
