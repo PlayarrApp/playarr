@@ -11,12 +11,12 @@ import type { ThemeModeSetting } from '../Theme';
 @Component
 export struct FitLine {
   @Prop content: string = '';
-  @Prop size: number = 12;
+  @Prop fontPx: number = 12;
   @Prop weight: number = 400;
   @Prop shiftY: number = 0;
   @Prop gapBottom: number = 0;
   @State private shown: string = '';
-  private width: number = -1;
+  private lineWidth: number = -1;
 
   @StorageProp('colorMode') private sysColorMode: ColorMode = ColorMode.LIGHT;
   @StorageProp('themeModeSetting') private themeSetting: ThemeModeSetting = 'system';
@@ -25,22 +25,22 @@ export struct FitLine {
     const ui = this.getUIContext();
     return ui.px2vp(ui.getMeasureUtils().measureText({
       textContent: text,
-      fontSize: this.size,
-      fontFamily: nunitoAt(this.weight, this.size),
+      fontSize: this.fontPx,
+      fontFamily: nunitoAt(this.weight, this.fontPx),
       fontWeight: this.weight,
     }));
   }
 
   /** The longest start of the text that, with an ellipsis, fits the width. */
   private fit(): string {
-    if (this.width < 0 || this.measure(this.content) <= this.width) {
+    if (this.lineWidth < 0 || this.measure(this.content) <= this.lineWidth) {
       return this.content;
     }
     let lo: number = 0;
     let hi: number = this.content.length;
     while (lo < hi) {
       const mid: number = Math.ceil((lo + hi) / 2);
-      if (this.measure(this.content.substring(0, mid).trimEnd() + '…') <= this.width) {
+      if (this.measure(this.content.substring(0, mid).trimEnd() + '…') <= this.lineWidth) {
         lo = mid;
       } else {
         hi = mid - 1;
@@ -54,8 +54,8 @@ export struct FitLine {
   }
 
   build() {
-    Text(this.shown.length > 0 ? this.shown : this.content).fontFamily(nunitoAt(this.weight, this.size))
-      .fontSize(this.size).translate({ y: this.shiftY }).lineHeight(webLineHeight(this.size)).halfLeading(true)
+    Text(this.shown.length > 0 ? this.shown : this.content).fontFamily(nunitoAt(this.weight, this.fontPx))
+      .fontSize(this.fontPx).translate({ y: this.shiftY }).lineHeight(webLineHeight(this.fontPx)).halfLeading(true)
       .fontWeight(this.weight >= 600 ? FontWeight.Bold : FontWeight.Normal)
       .fontColor(toResourceColor(activeColors().ink))
       .maxLines(1)
@@ -63,8 +63,8 @@ export struct FitLine {
       .layoutWeight(1)
       .onAreaChange((_old: Area, area: Area): void => {
         const w: number = Number(area.width);
-        if (w !== this.width) {
-          this.width = w;
+        if (w !== this.lineWidth) {
+          this.lineWidth = w;
           this.shown = this.fit();
         }
       })

@@ -656,7 +656,7 @@ export struct ReleaseCalendar {
               .height(tv(MONTH_DOT_SIZE))
               .borderRadius(tv(MONTH_DOT_SIZE / 2))
               .backgroundColor(toResourceColor(toneColor(itemPillTone(item, this.today))))
-            FitLine({ content: itemLineText(item), size: tv(MONTH_LINE_SIZE), weight: item.grouped ? 700 : 400, shiftY: isTvMetrics() ? 1.38 : 0, gapBottom: isTvMetrics() ? 3 : 2 })
+            FitLine({ content: itemLineText(item), fontPx: tv(MONTH_LINE_SIZE), weight: item.grouped ? 700 : 400, shiftY: isTvMetrics() ? 1.38 : 0, gapBottom: isTvMetrics() ? 3 : 2 })
           }
           .height(MONTH_LINE_HEIGHT)
           .width(isTvMetrics() ? 'calc(100% - 0.4vp)' : 'calc(100% - 9.8vp)')
