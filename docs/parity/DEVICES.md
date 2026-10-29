@@ -64,6 +64,8 @@ so they stay out of this run. Fire OS runs the same app and APK.
 
 Playing to about 2 s and pressing pause lands anywhere in a window, so the progress fill, the time label and the video frame differ between runs. The deterministic method: load the clip, seek to exactly 2000 ms, hold it paused (no play-then-pause), read the reported position back, and capture only once the device reports `paused` and a position of exactly 2000 ms. Tizen native does it in the app (`/player/<id>?t=2000&hold=2000`) and the driver refuses the capture when the position is not exactly 2.000 s.
 
+Harmony limit: the Windows Previewer mocks AVPlayer, so the app never reaches a real paused 2.000 s. The preview build injects no position, pause state, quality label or surface swap; `player-controls` shows what the app itself lays out (position 0:00, no negotiated quality, the Previewer's own surface placeholder), and the capture log prints that state. Player-controls therefore stays below 100% on Harmony until a device or real player is available.
+
 ### Tizen native: the one-command run
 
 `scripts/parity/tizen-native/run.sh <out dir>` runs the 15 screens in both themes and the 12 D-pad checks against the static

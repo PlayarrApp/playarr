@@ -32,8 +32,7 @@ build() {
   python3 "$HERE/patch_pairing.py" entry/src/main/ets/pages/Pairing.ets
   python3 "$HERE/patch_route.py" entry/src/main/ets/pages/Index.ets "$CTL"
   python3 "$HERE/patch_state.py" entry/src/main/ets
-  python3 "$HERE/patch_player_hold.py" entry/src/main/ets/pages/Player.ets # the player is held paused at 2.000 s on both devices
-  python3 "$HERE/patch_caret.py" entry/src/main/ets/pages/Search.ets entry/src/main/ets/pages/Player.ets # no blinking caret, no spinner in the pinned frame
+  python3 "$HERE/patch_caret.py" entry/src/main/ets/pages/Search.ets # no blinking caret in the pinned frame
   [ "${RAIL_PATCH:-yes}" = no ] || python3 "$HERE/patch_rail.py" entry/src/main/ets/design/components/MediaRail.ets
   python3 "$HERE/patch_artwork.py" entry/src/main/ets/data/ArtworkRepository.ets "$CTL"
   python3 "$HERE/patch_http.py" entry/src/main/ets/net/HttpTransport.ets entry/src/main/ets/data/ArtworkRepository.ets entry/src/main/ets/util/PreviewState.ets
