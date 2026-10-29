@@ -15,7 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.focusable
@@ -61,7 +61,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind

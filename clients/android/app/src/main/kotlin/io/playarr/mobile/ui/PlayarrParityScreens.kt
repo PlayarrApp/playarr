@@ -27,7 +27,7 @@ import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -93,7 +93,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -4433,7 +4433,7 @@ private fun TvFieldLabel(text: String) {
 internal fun TvPrimaryPill(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, height: Int = 50) {
     val fill = if (webIsDark) Color(0xFFDFDCDD) else Color(0xFF675961)
     val ink = if (webIsDark) Color(0xFF151315) else Color.White
-    androidx.compose.material3.Surface(
+    io.playarr.shared.designsystem.page.Surface(
         onClick = onClick, enabled = enabled, shape = CircleShape,
         color = if (enabled) fill else fill.copy(alpha = 0.4f), contentColor = ink,
         modifier = modifier.height(height.dp),
@@ -4464,7 +4464,7 @@ internal fun TvNativeCheckbox(checked: Boolean, onToggle: () -> Unit, modifier: 
 /** Web `.btn-secondary` at the 58 px size: a surface pill with a line border and 14.72 px text. */
 @Composable
 internal fun TvSecondaryPill(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, height: Int = 58) {
-    androidx.compose.material3.Surface(
+    io.playarr.shared.designsystem.page.Surface(
         onClick = onClick, enabled = enabled, shape = CircleShape, color = TvSettingsPalette.listBackground,
         contentColor = if (enabled) WebInkSoft else WebInkMuted.copy(alpha = 0.6f),
         border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) WebPillBorder else TvSettingsPalette.cellBorder), modifier = modifier.height(height.dp),
@@ -4495,7 +4495,7 @@ internal fun <T> TvSelectField(choices: List<Pair<T, String>>, selected: T, onSe
 
 @Composable
 private fun TvOutlinedPill(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, height: Int = 38) {
-    androidx.compose.material3.Surface(
+    io.playarr.shared.designsystem.page.Surface(
         onClick = onClick, shape = CircleShape, color = WebSurface, contentColor = WebInkSoft,
         border = androidx.compose.foundation.BorderStroke(1.dp, WebPillBorder), modifier = modifier.height(height.dp),
     ) { Box(Modifier.padding(horizontal = 14.4.dp), contentAlignment = Alignment.Center) { Text(label, fontSize = 11.52.sp, fontWeight = FontWeight(720), maxLines = 1) } }
@@ -4506,7 +4506,7 @@ private fun TvOutlinedPill(label: String, onClick: () -> Unit, modifier: Modifie
 private fun <T> TvSelect(choices: List<Pair<T, String>>, selected: T, onSelected: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        androidx.compose.material3.Surface(
+        io.playarr.shared.designsystem.page.Surface(
             onClick = { open = true }, color = TvSettingsPalette.segment, contentColor = WebInkSoft,
             border = androidx.compose.foundation.BorderStroke(1.dp, TvSettingsPalette.segmentBorder),
             modifier = Modifier.width(168.dp).height(48.dp),
@@ -4542,7 +4542,7 @@ private fun TvChoiceCell(
 ) {
     var focused by remember { mutableStateOf(false) }
     val accent = WebKicker
-    androidx.compose.material3.Surface(
+    io.playarr.shared.designsystem.page.Surface(
         onClick = onClick,
         shape = shape,
         color = if (selected) TvSettingsPalette.cellSelectedFill else TvSettingsPalette.listBackground,

@@ -13,6 +13,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Android layout export: backgrounds are composited from the element's own tree ancestors, every Surface and background fill and its resolved outline are read at paint time, unwatched dots keep their own colour, search forms export a search role, and content under a hidden subtree is dropped.
 - Android phone calendar agenda: a movie or album entry with no episode line is a 76.5 dp card, as on the web phone, so the following day headings sit where the web puts them.
 - Android phone Home rails use 173 dp cards (no A to Z strip pad), and a long film or series title on the detail page wraps to a second line at 12 characters wide, as on the web phone.
 - Android phone player controls: buttons are 44 dp, Previous and Next dim when the queue has one item, and the time and button rows are spaced as on the web.
