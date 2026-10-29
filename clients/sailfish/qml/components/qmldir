@@ -18,4 +18,5 @@ singleton Progress 1.0 Progress.qml
 DownloadNotices 1.0 DownloadNotices.qml
 HeroArt 1.0 HeroArt.qml
 PLabel 1.0 PLabel.qml
+CutLabel 1.0 CutLabel.qml
 PText 1.0 PText.qml

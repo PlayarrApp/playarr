@@ -40,9 +40,8 @@ Item {
                 id: row
                 x: Tokens.pad; width: parent.width - 2 * Tokens.pad; height: parent.height
                 property bool navigationFocusable: true
-                property string parityLabel: modelData.title
-                property string a11yName: numLbl.text + " " + titleLbl.text + " " + hintLbl.text + " " + arrowLbl.text
-                property string parityRole: "link"
+                Accessible.name: numLbl.text + " " + titleLbl.text + " " + modelData.hint + " " + arrowLbl.text
+                Accessible.role: Accessible.Link
                 property bool navigationInitialFocus: index === 0
                 property int parityRail: 0
                 property int parityIndex: index
@@ -51,10 +50,11 @@ Item {
                 Rectangle { anchors.fill: parent; color: Tokens.dark ? (index === 0 ? "#312a30" : Tokens.surfaceStrong) : Tokens.surfaceSoft; opacity: index === 0 ? 1 : (row.pressed ? 0.5 : 0) }
                 PLabel { id: numLbl; x: 12 * Tokens.u; y: 16 * Tokens.u; text: (index + 1 < 10 ? "0" : "") + (index + 1); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(8.8); renderType: Text.NativeRendering }
                 Column {
-                    x: 56 * Tokens.u; y: 22.92 * Tokens.u; width: arrowLbl.x - x - 12 * Tokens.u
+                    x: 56 * Tokens.u; y: 22.92 * Tokens.u; width: 325.2 * Tokens.u - x - 12 * Tokens.u   // the web lays the text out against the resting arrow position
                     spacing: 2.39 * Tokens.u
                     PLabel { id: titleLbl; width: parent.width; height: 22 * Tokens.u; text: modelData.title; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.fam(480); font.letterSpacing: -1.35; font.pixelSize: Tokens.fs(16); renderType: Text.NativeRendering }
-                    PLabel { id: hintLbl; width: parent.width; height: 15 * Tokens.u; text: modelData.hint; elide: Text.ElideRight; color: Tokens.ink; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(10.88); renderType: Text.NativeRendering }
+                    // the web cuts at the width and puts the ellipsis straight after the last letter, no space before it
+                    CutLabel { id: hintLbl; width: parent.width; height: 15 * Tokens.u; webCut: modelData.hint; color: Tokens.ink; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(10.88); renderType: Text.NativeRendering }
                 }
                 // The web's arrow is a system-font glyph; the active row's is ink and 5 px further right.
                 PLabel { id: arrowLbl; renderType: Text.NativeRendering

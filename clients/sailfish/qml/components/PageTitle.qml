@@ -20,8 +20,8 @@ Item {
         property bool navigationFocusable: true
         function navigationActivate() { parent.backClicked() }
         visible: parent.back
-        property string a11yName: parent.backLabel
-        property string parityRole: parent.backRole
+        Accessible.name: parent.backLabel
+        Accessible.role: parent.backRole === "button" ? Accessible.Button : Accessible.Link
         x: Tokens.pad
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: 1 * Tokens.u
@@ -46,7 +46,7 @@ Item {
         anchors { left: parent.back ? btn.right : parent.left; leftMargin: parent.back ? 10 * Tokens.u : Tokens.pad; right: parent.right; verticalCenter: parent.verticalCenter }
         elide: Text.ElideRight
         color: Tokens.ink
-        property string parityRole: "heading"
+        Accessible.role: Accessible.Heading
         font.family: Tokens.family580
         font.pixelSize: Tokens.fs(21.6)
         font.letterSpacing: -1.05 * Tokens.u

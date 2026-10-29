@@ -15,7 +15,7 @@ MouseArea {
     property int parityIndex: -1
     property bool navigationInitialFocus: false
     property var navigationActivate: null
-    property string a11yName: label
+    Accessible.name: label
     width: 44 * Tokens.u; height: width
     opacity: dimmed ? 0.28 : 1
     Rectangle { anchors.fill: parent; radius: width / 2; color: root.plate; border.width: 0 }

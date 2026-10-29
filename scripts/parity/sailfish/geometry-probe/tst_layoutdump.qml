@@ -72,7 +72,7 @@ TestCase {
             width: 6
             height: 8
             property bool navigationFocusable: true
-            property string a11yName: "dump-target"
+            Accessible.name: "dump-target"
         }
     }
 

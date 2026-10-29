@@ -43,7 +43,7 @@ PlayarrPage {
                     model: page.presets
                     MouseArea {
                         property bool navigationFocusable: true
-                        property string parityLabel: qsTr("Avatar %1").arg(index + 1)
+                        Accessible.name: qsTr("Avatar %1").arg(index + 1)
                         property int parityRail: 0
                         property int parityIndex: index
                         width: 84 * Tokens.u; height: width

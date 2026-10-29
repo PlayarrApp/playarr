@@ -9,9 +9,9 @@ import "../components/Qr.js" as Qr
 PlayarrPage {
     id: page
     objectName: "calendar-link"
-    readonly property real gut: 20.3 * Tokens.u
-    // The web drawer: a full-screen dialog surface over the page.
-    Rectangle { parent: page; z: -1; anchors.fill: parent; color: Tokens.dark ? "#211d21" : "#ffffff"; property string parityRole: "dialog" }
+    readonly property real gut: 20 * Tokens.u
+    // The web drawer: a full-screen dialog surface inside the page layers.
+    dialogColor: Tokens.dark ? "#211d21" : "#ffffff"
     readonly property string storeKey: "cal.link." + Api.serverUrl + "|" + Api.profileId
     property string url: Api.setting(storeKey, "")
     property bool busy: true
@@ -56,10 +56,10 @@ PlayarrPage {
         contentHeight: body.y + body.height + 24 * Tokens.u
         clip: true
         PLabel { renderType: Text.NativeRendering; x: page.gut; y: 19 * Tokens.u; text: qsTr("CALENDAR"); color: Tokens.inkSoft; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.5 }
-        PLabel { renderType: Text.NativeRendering; x: page.gut; y: 34 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; property string parityRole: "heading"; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22.4); font.letterSpacing: -1.25 * Tokens.u }
+        PLabel { renderType: Text.NativeRendering; x: page.gut; y: 34.5 * Tokens.u; text: qsTr("Calendar link"); color: Tokens.ink; Accessible.role: Accessible.Heading; font.family: Tokens.family580; font.pixelSize: Tokens.fs(22.4); font.letterSpacing: -1.25 * Tokens.u }
         MouseArea {
             property bool navigationFocusable: true
-            property string a11yName: qsTr("Close")
+            Accessible.name: qsTr("Close filters")   // the web names this drawer button the same as the filters one
             property bool navigationInitialFocus: true
             property int parityRail: 0
             property int parityIndex: 0
@@ -78,7 +78,7 @@ PlayarrPage {
             PLabel { renderType: Text.NativeRendering;
                 width: parent.width; wrapMode: Text.Wrap; lineHeight: 1.0
                 text: qsTr("Add your releases to Google, Apple or Outlook Calendar with this private link. Anyone with the link can see your releases, so keep it secret.")
-                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10); bottomPadding: 2.5 * Tokens.u - 3
+                color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.125; font.pixelSize: Tokens.fs(10); bottomPadding: 2.5 * Tokens.u - 3
             }
             PLabel { renderType: Text.NativeRendering;
                 visible: page.failure !== ""; width: parent.width; wrapMode: Text.Wrap
@@ -98,8 +98,8 @@ PlayarrPage {
                 TextInput {
                     id: urlField
                     width: parent.width; height: 44 * Tokens.u
-                    property string a11yName: ""
-                    property string parityRole: "textbox"
+                    Accessible.name: qsTr("Subscription link")
+                    Accessible.role: Accessible.EditableText
                     readOnly: true; clip: true; selectByMouse: true
                     leftPadding: 13 * Tokens.u; rightPadding: 5 * Tokens.u
                     verticalAlignment: TextInput.AlignVCenter
@@ -119,7 +119,7 @@ PlayarrPage {
             Item {   // web: the code sits 3 px closer to Copy link and 1 px further from the steps heading
                 visible: page.url !== ""; width: 240 * Tokens.u; height: width - 2
               Rectangle {
-                y: -3; width: 240 * Tokens.u; height: width; radius: 18 * Tokens.u; color: "#ffffff"; property string parityRole: "img"
+                y: -3; width: 240 * Tokens.u; height: width; radius: 18 * Tokens.u; color: "#ffffff"; Accessible.role: Accessible.Graphic
                 Canvas {
                     id: qrCanvas
                     anchors { fill: parent; margins: 20 * Tokens.u }
@@ -140,7 +140,7 @@ PlayarrPage {
             PLabel { renderType: Text.NativeRendering; visible: page.needsReset && page.url === ""; width: parent.width; wrapMode: Text.Wrap
                 text: qsTr("Your link was created on another device and is not stored here. Reset it to get a new link to copy.")
                 color: Tokens.inkSoft; font.family: Tokens.family; font.letterSpacing: 0.10; font.pixelSize: Tokens.fs(10) }
-            PLabel { renderType: Text.NativeRendering; text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; property string parityRole: "heading"; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.47; topPadding: 0; bottomPadding: 2 * Tokens.u }
+            PLabel { renderType: Text.NativeRendering; text: qsTr("ADD IT TO YOUR CALENDAR APP"); color: Tokens.inkSoft; Accessible.role: Accessible.Heading; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.47; topPadding: 0; bottomPadding: 2 * Tokens.u }
             Column {
               spacing: 8.25 * Tokens.u
               Repeater {

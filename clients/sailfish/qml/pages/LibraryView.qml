@@ -97,7 +97,7 @@ Item {
         id: filterBtn
         anchors { right: parent.right; rightMargin: Tokens.pad; verticalCenter: heading.verticalCenter; verticalCenterOffset: -1.25 * Tokens.u }
         width: 44 * Tokens.u; height: width
-        property string a11yName: qsTr("Filters")
+        Accessible.name: qsTr("Filters")
         onClicked: {
             var p = pageStack.push(Qt.resolvedUrl("FiltersPage.qml"))
             p.applied.connect(function () { root.viewMode = Api.setting("lib.view", "screen"); root.reload() })
@@ -168,8 +168,8 @@ Item {
             model: root.alphabet
             MouseArea {
                 width: 44 * Tokens.u; height: 19 * Tokens.u
-                property string a11yName: modelData === "#" ? qsTr("Numbers and symbols") : modelData
-                property string parityRole: "button"
+                Accessible.name: modelData === "#" ? qsTr("Numbers and symbols") : modelData
+                Accessible.role: Accessible.Button
                 onClicked: root.jumpTo(modelData)
                 Rectangle { anchors.fill: parent; radius: height / 2; color: Tokens.bg }   // the letter's own plate, the page colour at rest
                 Item {   // web focus ring on the first letter: crimson ring, page-coloured gap, clipped 1u above the rail
@@ -180,7 +180,7 @@ Item {
                 }
                 Rectangle {
                             anchors.centerIn: parent; width: 22 * Tokens.u; height: width; radius: width / 2; visible: root.activeLetter === modelData
-                            color: Tokens.primary }   // web: the ink plate of the active letter
+                            color: "transparent"; border.width: Math.ceil(width / 2); border.color: Tokens.primary }   // web: the ink plate of the active letter is a spread shadow ring, not a background fill
                 PLabel { renderType: Text.NativeRendering; anchors.centerIn: parent; text: root.jumping === modelData ? "\u00B7" : modelData; font.family: Tokens.fam(700); font.pixelSize: Tokens.fs(8.8);
                         color: root.activeLetter === modelData ? (Tokens.dark ? "#151315" : "#f5f3f2") : Tokens.inkSoft }
             }

@@ -16,8 +16,8 @@ PlayarrPage {
     readonly property bool playlistActionVisible: !!work && (work.kind === "movie" || work.kind === "series" || work.kind === "site" || work.kind === "artist")
     property bool showPlaylists: false
     property string note: ""
-    // The web drawer: a full-screen dialog surface over the page.
-    Rectangle { parent: page; z: -1; anchors.fill: parent; color: Tokens.dark ? "#201c20" : "#fefefe"; property string parityRole: "dialog" }
+    // The web drawer: a full-screen dialog surface inside the page layers.
+    dialogColor: Tokens.dark ? "#201c20" : "#fefefe"
 
     // Every playable file under the title with its length.
     function leaves() {
@@ -86,7 +86,7 @@ PlayarrPage {
                     PLabel { renderType: Text.NativeRendering; text: qsTr("TITLE ACTIONS"); color: Tokens.inkMuted; font.family: Tokens.fam(720); font.pixelSize: Tokens.fsDown(7.04); font.letterSpacing: 1.4 }
                     PLabel { renderType: Text.NativeRendering;
                         id: titleLbl
-                        property string parityRole: "heading"
+                        Accessible.role: Accessible.Heading
                         width: parent.width; text: page.work.title; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
                         lineHeightMode: Text.FixedHeight; lineHeight: 33 * Tokens.u
                         color: Tokens.ink; font.family: Tokens.family580; font.letterSpacing: -1.25 * Tokens.u; font.pixelSize: Tokens.fs(22.4)
@@ -96,7 +96,7 @@ PlayarrPage {
                     id: closeBtn
                     objectName: "parity-actions-close"
                     property bool navigationFocusable: true
-                    property string a11yName: qsTr("Close")
+                    Accessible.name: qsTr("Close")
                     function navigationActivate() { pageStack.pop() }
                     anchors { right: parent.right; rightMargin: 20 * Tokens.u; top: parent.top; topMargin: 20 * Tokens.u }
                     width: 44 * Tokens.u; height: width
