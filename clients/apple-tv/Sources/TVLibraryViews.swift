@@ -1700,6 +1700,8 @@ struct TVLibraryKindView: View {
         if let selectedID, let match = items.first(where: { $0.id == selectedID }) {
             return match
         }
+        // focus is on the header or the drawer: the preview keeps the title last focused (web)
+        if let lastFocusedID, let match = items.first(where: { $0.id == lastFocusedID }) { return match }
         return items.first
     }
 
