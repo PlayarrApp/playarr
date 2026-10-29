@@ -211,7 +211,7 @@ end sub
 sub filtersSelect(g as Object, y as Float, text as String, row as Integer)
     pgRound(g, 1606, y, 268, 58.8, 12, "surfaceSoft", 170)
     pgRound(g, 1606, y, 268, 58.8, 12, "line", -1, true)
-    pgMark(g, "group", "", 1606, y, 268, 58.8, 12)
+    pgMark(g, "button", text, 1606, y, 268, 58.8, 12)
     tw = PlayarrTextWidth(text, 11.84, 680, 0)
     l = pgLabel(g, 1625.4, y + 20.5, 215, 16, text, 11.84, 680, "ink", { maxLines: 1 })
     pgGlyph(g, "⌄", 1844.7, y + 20.5, 11.84, 680, "inkMuted")

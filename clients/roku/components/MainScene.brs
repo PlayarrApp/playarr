@@ -145,9 +145,6 @@ sub init()
     m.browseTitle = m.top.findNode("browseTitle")
     m.browseCountLabel = m.top.findNode("browseCountLabel")
     m.browseKeyArt = m.top.findNode("browseKeyArt")
-    for each wash in ["washBrowse", "washSearch", "washPage"]
-        m.top.findNode(wash).id = "a11y|container|0|"
-    end for
     m.browseKeyArtVeil = m.top.findNode("browseKeyArtVeil")
     m.browseKeyArtVeil.id = "a11y|fill|0|"
     if m.browseKeyArt <> invalid then m.browseKeyArt.ObserveField("loadStatus", "onBrowseKeyArtLoadStatus")
@@ -238,7 +235,6 @@ sub init()
     m.userPillBg = m.top.findNode("userPillBg")
     m.userPillBg.id = "a11y|container|22|"
     m.userLinkMark = pgMark(ident, "link", "", 6.8, 7.7, 64, 64, 16)
-    pgMark(ident, "container", "", 29, 22.94, 20, 20, 50)
     m.userFocusRing = m.top.findNode("userFocusRing")
     m.persistentHeader = m.top.findNode("persistentHeader")
     m.video = m.top.findNode("video")

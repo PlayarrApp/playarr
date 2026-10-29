@@ -62,6 +62,7 @@ sub playerChromeBuild()
     end if
 
     m.pcThumb = pgRound(g, 121.8, 928.5, 15, 15, 7, "brand")
+    pgTag(m.pcThumb, "container", 7)
     m.pcPrev = pgIcon(g, 92, 980, 20, "player-prev.png", "playerInk")
     m.pcPlayBg = pgRound(g, 147.6, 958, 64, 64, 32, "playerButton")
     m.pcPlay = pgIcon(g, 169.6, 980, 20, "player-pause.png", "playerInk")
@@ -174,6 +175,13 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
         end for
     end if
     pgRename(m.pcSubsMark, "Subtitles: " + subName)
+    audioName = ""
+    if m.pcPlaybackInfo <> invalid and m.pcPlaybackInfo.audio_tracks <> invalid
+        for each track in m.pcPlaybackInfo.audio_tracks
+            if track.id = m.pcAudioSel then audioName = playerAudioLabel(track)
+        end for
+    end if
+    pgRename(m.pcAudioMark, "Audio: " + audioName)
     items = 1
     if n > 1 then items = n
     plural = " items"

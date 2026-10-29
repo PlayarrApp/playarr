@@ -81,10 +81,12 @@ sub onSpecChange()
                 glyph.width = 0
                 glyph.height = 0
                 if spec.symbol = true
-                    glyph.font = PlayarrSymbolFont(piece, size)
+                    glyph.font = PlayarrSymbolFont(piece, size, weight)
                 end if
                 ' The font actually drawn (the bundled instance's weight, the integer pixel size the Font node takes), readable through ECP query/app-ui (node names are printed; fonts are not).
-                glyph.id = "f" + Str(PlayarrInstanceWeight(weight)).Trim() + "s" + Str(Int(size + 0.5)).Trim()
+                drawnWeight = PlayarrInstanceWeight(weight)
+                if spec.symbol = true then drawnWeight = PlayarrSymbolWeight(piece, weight)
+                glyph.id = "f" + Str(drawnWeight).Trim() + "s" + Str(Int(size + 0.5)).Trim()
                 ' Untracked text is set a word per Label, tracked text a character per Label: the export joins words with a space and characters directly.
                 if tracking = 0 then glyph.id = glyph.id + "~w" else glyph.id = glyph.id + "~c"
                 role = "text"
