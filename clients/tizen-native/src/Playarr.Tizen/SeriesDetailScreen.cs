@@ -74,11 +74,6 @@ internal sealed class SeriesDetailScreen : IPage
         _keyArt.Set(ArtworkPaths.Path(w, ImageKind.Backdrop));
         
 
-        var back = Ui.Box(153.6f, 56.2f, 50, 50, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.7f), 25);
-        back.BorderlineWidth = 1; back.BorderlineColor = Ui.LineA(_t, 0.153f);
-        back.Add(Ui.Text("←", 0, 12, 17.28f, 700, _t.InkSoft, 50, 25.92f, HorizontalAlignment.Center));
-        Sem.Tag(back, "button", "Back to Series");
-        _content.Add(back);
         _content.Add(Ui.Heading("Series", 226.6f, 56.2f, 33.6f, 600, _t.Ink, 400, 50, spacing: -1.51f));
         new PageSubtitle(_env, _content, "Series").Set(w.Title, wrapIfClockBlocks: true);
         _content.Add(_copy);
@@ -96,6 +91,7 @@ internal sealed class SeriesDetailScreen : IPage
         var seasons = detail.Children.Seasons.Where(s => s.Episodes.Count > 0).OrderBy(s => s.Season.SeasonNumber).ToList();
         for (var si = 0; si < seasons.Count; si++) BuildRail(si, seasons[si], file: (f) => { });
         _seasonCount = seasons.Count;
+        _focus.Items.Add(new BackControl(_env, _t, _content, "button", "Back to Series").Item); // after the episodes, whose focus indices are their list positions
         LoadCastAsync(detail);
         if (lead is { } l) SetLead(l.Item1, l.Item2);
         if (_focus.Items.Count > 0)
