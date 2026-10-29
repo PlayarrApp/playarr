@@ -525,23 +525,16 @@ jobs:
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
       DOTNET_NOLOGO: '1'
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      # job-private homes: the sudo workload install can leave root-owned dirs under /tmp/.dotnet, which breaks .NET's named NuGet-Migrations mutex
     defaults:
       run:
         working-directory: clients/tizen-native
     steps:
       - uses: actions/checkout@v4
 
-      - name: Job-private dotnet dirs
-        run: |
-          mkdir -p "$RUNNER_TEMP/dotnet-home" "$RUNNER_TEMP/dotnet-tmp"
-          echo "DOTNET_CLI_HOME=$RUNNER_TEMP/dotnet-home" >> "$GITHUB_ENV"
-          echo "TMPDIR=$RUNNER_TEMP/dotnet-tmp" >> "$GITHUB_ENV"
-
       - uses: actions/setup-dotnet@v4
         with:
-          # 8.0.426 (released 14 Oct) fails to create .NET's named NuGet-Migrations mutex on the runners (IOException before any test runs); 8.0.425 is fine
-          dotnet-version: '8.0.425'
+          # the runner image ships 8.0.427; pinning 8.0.425 (a second SDK alongside) now fails the named NuGet-Migrations mutex (IOException before any test runs)
+          dotnet-version: '8.0.427'
 
       - uses: actions/cache@v4
         with:
