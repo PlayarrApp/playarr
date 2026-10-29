@@ -301,7 +301,10 @@ namespace Playarr.Xbox.Views
                 for (var y = y0; y < y1 && !changed; y++)
                 {
                     var from = (y * width + x0) * 4;
-                    changed = !new ReadOnlySpan<byte>(before, from, (x1 - x0) * 4).SequenceEqual(new ReadOnlySpan<byte>(after, from, (x1 - x0) * 4));
+                    for (var i = from; i < from + (x1 - x0) * 4 && !changed; i++)
+                    {
+                        changed = before[i] != after[i];
+                    }
                 }
 
                 if (!changed)
