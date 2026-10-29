@@ -21,7 +21,7 @@ shot() { sleep "${2:-5}"; adb shell dumpsys input_method | grep -q "mInputShown=
     python3 -I "$HERE/../layout.py" "$1" "$(echo "$T" | tr A-Z a-z)" tablet "$O/layout/$1.json" >/dev/null 2>&1 || echo "layout export failed $1"; echo "ok $1"; return 0; fi; sleep 2; done; rm -f "$O/$1.png"; echo "FAIL $1"; return 1; }
 kseq() { local k n; for k in "$@"; do n=1; case $k in *"*"*) n=${k#*\*}; k=${k%\**};; esac; for i in $(seq $n); do case $k in left) c=21;; right) c=22;; up) c=19;; down) c=20;; select) c=23;; back) c=4;; select:long) adb shell input keyevent --longpress 23; sleep 1.2; continue;; esac; adb shell input keyevent $c; sleep 0.5; done; done; sleep 1.5; }
 run() { case $1 in
-  home) open home; adb shell input tap 2300 1500; sleep 1.5; shot $1 ;;
+  home) open home; adb shell input tap 1700 60; sleep 1.5; shot $1 ;;
   movies) open home 20; adb shell input keyevent 59; kseq left down*12 up*6 select; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen movies"; return 1; }; shot $1 ;;
   series) open home 20; adb shell input keyevent 59; kseq left down*12 up*7 select; python3 -I $HERE/uiexpect.py '[0-9,]+ titles' || { echo "wrong screen series"; return 1; }; shot $1 ;;
   music) open home 20; adb shell input keyevent 59; kseq left down*12 up*5 select; python3 -I $HERE/uiexpect.py '[0-9,]+ (titles|artists)' || { echo "wrong screen music"; return 1; }; shot $1 ;;

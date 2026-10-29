@@ -34,7 +34,7 @@ node "$here/score.mjs" "$legend/web" "$out" --json "$out/scores.json"
 # Layout score (docs/parity/LAYOUT.md) per screen and theme, from the layout JSON captured with each screenshot.
 for t in dark light; do for f in "$out/$t/layout/"*.json; do
   [ -f "$f" ] || continue; id=$(basename "$f" .json)
-  node "$here/../layout-score.mjs" --ref "$legend/web/layout/$t/$id.json" --device "$f" --json | python3 -I -c "import json,sys; d=json.load(sys.stdin); print('$t', '$id', d['score'], d['equal'], '/', d['total'])" || true
+  node "$here/../layout-score.mjs" --ref "$legend/web/layout/$t/$id.json" --device "$f" --role-alias link=button --json | python3 -I -c "import json,sys; d=json.load(sys.stdin); print('$t', '$id', d['score'], d['equal'], '/', d['total'])" || true
 done; done | tee "$out/layout-scores.txt"
 [ "${PARITY_PUBLISH:-1}" = 1 ] || exit 0
 sha=$(git -C "$here" rev-parse HEAD); branch=$(git -C "$here" rev-parse --abbrev-ref HEAD)
