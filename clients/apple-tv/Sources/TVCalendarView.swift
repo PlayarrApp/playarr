@@ -425,7 +425,6 @@ struct TVCalendarView: View {
             ZStack(alignment: .topLeading) {
                 Rectangle()
                     .fill(outside ? DesignTokens.Stage.surfaceSoft.opacity(0.4) : Color.clear)
-                    .parityBox("container", fill: outside ? DesignTokens.Stage.surfaceSoft : nil, alpha: 0.4)
                     .overlay(Rectangle().stroke(DesignTokens.Stage.line.opacity(0.25), lineWidth: 0.5))
                 VStack(alignment: .leading, spacing: 10.4) {
                     ForEach(shown, id: \.id) { item in
@@ -459,11 +458,13 @@ struct TVCalendarView: View {
                             .parityLayout(text: "+\(items.count - shown.count) more", size: 12.48, weight: Int(400), color: DesignTokens.Color.textSecondary)
                     }
                 }
-                .padding(.leading, 11.8)
+                .padding(.leading, 8.8)
                 .frame(maxHeight: .infinity, alignment: .bottomLeading)
-                .padding(.bottom, 9.4)
+                .padding(.bottom, 15.4)
             }
-            .frame(width: 237.6, height: height)
+            .frame(width: 237.6, height: height, alignment: .topLeading) // the negative-padded entries must not re-centre the cell
+            .parityBox("container", fill: outside ? DesignTokens.Stage.surfaceSoft : DesignTokens.Stage.surface, alpha: outside ? 0.4 : 1)
+            .parityBackdrop(DesignTokens.Stage.surface)
         }
         .buttonStyle(TVRingButtonStyle(cornerRadius: 0))
         .focusEffectDisabled()
