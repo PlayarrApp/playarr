@@ -122,7 +122,11 @@ export function layoutPageFn(volatile, opts) {
      as real text with a "…" glyph (FitLine style); an element still cut by CSS is refused, never reconstructed. */
   var refuseCut = function (el) {
     var id = el.tagName.toLowerCase() + (el.className && el.className.baseVal === undefined ? "." + String(el.className).trim().split(/\s+/).join(".") : "");
-    throw new Error("text cut by text-overflow: ellipsis is not measurable (" + id + "): render the truncated string as real text");
+    throw new Error("text cut by text-overflow: ellipsis or -webkit-line-clamp is not measurable (" + id + "): render the truncated string as real text");
+  };
+  /* An input or textarea value is drawn by the engine, not in the DOM: its glyph bounds cannot be measured, so a visible one is refused (the app draws a hint as real text). */
+  var refuseValue = function (el) {
+    throw new Error("the value of an input or textarea is not measurable (" + el.tagName.toLowerCase() + "): render it as real text");
   };
   var clipped = function (el, r) {
     var left = r.left, top = r.top, right = r.right, bottom = r.bottom;
@@ -149,14 +153,27 @@ export function layoutPageFn(volatile, opts) {
     return leaf ? "text" : "container";
   };
   var isToggle = function (el) { return el.tagName.toLowerCase() === "input" && (el.type === "checkbox" || el.type === "radio"); };
+  /* Name from content (accname 2F): the text of the rendered, non-aria-hidden descendants; an img contributes its alt. */
+  var contentName = function (el) {
+    var out = "";
+    for (var n = el.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 3) { out += n.data; continue; }
+      if (n.nodeType !== 1) continue;
+      var s = getComputedStyle(n);
+      if (n.getAttribute("aria-hidden") === "true" || s.display === "none" || s.visibility === "hidden") continue;
+      var inner = n.tagName.toLowerCase() === "img" ? (n.getAttribute("alt") || "") : contentName(n);
+      out += s.display.indexOf("inline") === 0 ? inner : " " + inner + " ";
+    }
+    return out;
+  };
   /* Accessible name, in the order of the accname spec: aria-labelledby, aria-label, an associated or wrapping label, alt. */
   var nameOf = function (el) {
     var ids = (el.getAttribute("aria-labelledby") || "").split(/\s+/).filter(Boolean);
-    var by = ids.map(function (id) { var t = document.getElementById(id); return t ? norm(t.textContent) : ""; }).filter(Boolean).join(" ");
+    var by = ids.map(function (id) { var t = document.getElementById(id); return t ? norm(contentName(t)) : ""; }).filter(Boolean).join(" ");
     if (by) return by;
     var own = norm(el.getAttribute("aria-label"));
     if (own) return own;
-    var labels = el.labels ? Array.prototype.map.call(el.labels, function (l) { return norm(l.textContent); }).filter(Boolean).join(" ") : "";
+    var labels = el.labels ? Array.prototype.map.call(el.labels, function (l) { return norm(contentName(l)); }).filter(Boolean).join(" ") : "";
     return labels || norm(el.getAttribute("alt"));
   };
   var matchVolatile = function (el, ownText) {
@@ -274,9 +291,11 @@ export function layoutPageFn(volatile, opts) {
     var painted = visibleFill(cs, el);
     if (!own && !control && !media && !painted) continue;
     if (occluded(el, r)) { dropped++; continue; }
-    if (own && !vol && cs.textOverflow === "ellipsis" && cs.overflowX !== "visible" && el.scrollWidth > el.clientWidth + 1) refuseCut(el);
+    if (own && cs.textOverflow === "ellipsis" && cs.overflowX !== "visible" && el.scrollWidth > el.clientWidth + 1) refuseCut(el);
+    if (own && cs.webkitLineClamp && cs.webkitLineClamp !== "none" && cs.overflowY !== "visible" && el.scrollHeight > el.clientHeight + 1) refuseCut(el);
+    if ((tag === "textarea" || tag === "input" && !/^(checkbox|radio|button|submit|reset|hidden|range|file|image|color)$/.test(el.type)) && el.value) refuseValue(el);
     var label = nameOf(el);
-    var text = own || (control || media ? norm(label) : "") || (control ? norm(el.innerText || (isToggle(el) ? "" : el.value)) : "");
+    var text = own || (control || media ? norm(label) : "") || (control ? norm(contentName(el) || (isToggle(el) ? "" : el.value)) : "");
     var zoom = zoomOf(el);
     var rawRadius = cs.borderTopLeftRadius;
     var box = el.getBoundingClientRect();

@@ -257,3 +257,28 @@ test("a computed colour in another space (color-mix in oklab) resolves to sRGB",
   assert.match(d.elements[0].background, /^#[0-9a-f]{6}$/);
   assert.notEqual(d.elements[0].background, "#ffffff");
 });
+
+test("a control's name skips aria-hidden, display:none and visibility:hidden descendants; the glyphs stay their own text rows", { skip }, async () => {
+  const d = await dump(`<button class="abs" style="top:0;width:200px;height:30px"><span aria-hidden="true">▶</span><span>Play</span></button>
+    <button class="abs" style="top:40px;width:200px;height:30px"><span>Any language</span><span aria-hidden="true">⌄</span></button>
+    <a href="#" class="abs" style="top:80px;width:200px;height:30px;display:flex;gap:8px"><b>01</b><b>Appearance</b><span aria-hidden="true">→</span><i style="display:none">x</i><i style="visibility:hidden">y</i></a>
+    <button class="abs" style="top:120px;width:200px;height:30px"><span aria-hidden="true">＋</span><span>Add to Playlist</span></button>
+    <button class="abs" style="top:160px;width:200px;height:30px"><span aria-hidden="true">✓</span><span>Done</span></button>
+    <button class="abs" style="top:200px;width:300px;height:30px;display:flex;gap:8px"><span aria-hidden="true">+</span><span>Sign in</span><span>ADD ANOTHER PROFILE</span></button>`);
+  const names = d.elements.filter((e) => e.role === "button" || e.role === "link").map((e) => e.text);
+  assert.deepEqual(names, ["Play", "Any language", "01 Appearance", "Add to Playlist", "Done", "Sign in ADD ANOTHER PROFILE"]);
+  for (const g of ["▶", "⌄", "→", "＋", "✓", "+"]) assert.ok(d.elements.some((e) => e.role === "text" && e.text === g), `glyph ${g} is a text row`);
+});
+
+test("labels and aria-labelledby skip aria-hidden glyphs too", { skip }, async () => {
+  const d = await dump(`<label for="c">Opt <span aria-hidden="true">*</span></label><input id="c" type="checkbox" class="abs" style="top:50px;width:20px;height:20px">
+    <span id="n" class="abs" style="top:90px">Named <i aria-hidden="true">!</i></span><button class="abs" style="top:120px;width:60px;height:20px" aria-labelledby="n"></button>`);
+  assert.deepEqual(d.elements.filter((e) => e.role === "checkbox" || e.role === "button").map((e) => e.text), ["Opt", "Named"]);
+});
+
+test("a volatile element cut by ellipsis, a vertical line clamp and an input value are refused, not dropped", { skip }, async () => {
+  await assert.rejects(dump(`<div class="app-clock-time" style="width:30px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">12:00:00 PM extra</div>`, volatileFor("home")), /not measurable/);
+  await assert.rejects(dump(`<p style="width:60px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden">one two three four five six seven eight nine ten</p>`), /not measurable/);
+  await assert.rejects(dump(`<input class="abs" value="typed" style="width:100px">`), /value of an input/);
+  assert.ok((await dump(`<input class="abs" value="" style="width:100px" aria-label="Empty">`)).elements.length === 1);
+});
