@@ -27,3 +27,9 @@ test("loaded server artwork hides a surface and a label painted before it", () =
   assert.equal(body("3").some((e) => e.text === "01" || e.role === "container"), false);
   assert.equal(body("1").some((e) => e.text === "01"), true);
 });
+
+test("a tail Label continues its word without a space", () => {
+  const els = doc(`<Label name="f400s10~w" text="hel" bounds="{0, 0, 20, 12}" /><Label name="f400s10~t" text="lo" bounds="{25, 0, 8, 12}" /><Label name="f400s10~w" text="you" bounds="{40, 0, 20, 12}" />`);
+  assert.equal(els[0].text, "hello you");
+  assert.equal(els[0].rect.w, 60);
+});

@@ -81,8 +81,8 @@ export function measureTree(root) {
 }
 
 const fontOf = (name = "") => {
-  const m = /^f(\d+)s([\d.]+)~([wc])(?:\|(\w+))?$/.exec(name);
-  return m ? { weight: Number(m[1]), size: Number(m[2]), words: m[3] === "w", role: m[4] ?? "text" } : null;
+  const m = /^f(\d+)s([\d.]+)~([wct])(?:\|(\w+))?$/.exec(name);
+  return m ? { weight: Number(m[1]), size: Number(m[2]), words: m[3] === "w", tail: m[3] === "t", role: m[4] ?? "text" } : null;
 };
 
 export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned }) {
@@ -217,7 +217,7 @@ function finish(groups, items, { screen, theme, clockPinned }) {
         for (const l of line) {
           if (prev) {
             const gap = l.rect.x - (prev.rect.x + prev.rect.w);
-            if (font.words || gap - usual > font.size * 0.12) text += " ";
+            if (!fontOf(l.node.attrs.name).tail && (font.words || gap - usual > font.size * 0.12)) text += " ";
           }
           text += l.node.attrs.text;
           prev = l;
