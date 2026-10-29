@@ -9,7 +9,7 @@ import android.media.AudioManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -126,9 +126,9 @@ private fun PhonePlayerButton(
             .size(if (LocalStageScale.current == 1f) 44.dp else 42.dp)
             // Web `.player-btn:disabled { opacity: 0.28 }`: a single-item queue dims Previous and Next (the other buttons are never disabled on web).
             .alpha(if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
-            .parityShape(999f)
+            .parityShape(999f, alpha = if (dimWhenDisabled && !enabled && LocalStageScale.current == 1f) 0.28f else 1f)
             .clip(CircleShape)
-            .then(if (primary) Modifier.background(Color.White.copy(alpha = 0.14f)) else Modifier)
+            .then(if (primary) Modifier.background(Color.White.copy(alpha = 0.14f), CircleShape) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,

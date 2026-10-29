@@ -5,7 +5,7 @@ import io.playarr.shared.designsystem.page.parityBox
 import androidx.compose.ui.layout.layout
 import io.playarr.shared.designsystem.page.PlayarrCardShadows
 import io.playarr.shared.designsystem.page.PlayarrCardShadowLayer
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box

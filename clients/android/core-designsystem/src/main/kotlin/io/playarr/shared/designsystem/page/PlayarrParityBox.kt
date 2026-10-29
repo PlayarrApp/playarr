@@ -4,7 +4,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.foundation.background
+import androidx.compose.foundation.background as foundationBackground
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -19,9 +19,13 @@ var parityLayoutEnabled = false
  * and the alpha and corner radius the composable itself draws with. [fill] is set at paint time by [parityBackground], from the colour handed to the draw call.
  */
 class ParityBox(val view: View, var kind: String, var radius: Float, var opacity: Float, var fillAlpha: Float = 1f) {
+    val id: Int = nextParityBoxId.incrementAndGet()
+    val semanticsKey = newParityBoxKey()
     var coordinates: androidx.compose.ui.layout.LayoutCoordinates? = null
     var density: Float = 1f
     var fill: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified
+    /** The corner radius (local px) of the outline the shape really resolved to at paint time, or null when it was not a rectangle or rounded rectangle. */
+    var drawnRadiusPx: Float? = null
 
     /** The box's four corners through the layers right now (a graphicsLayer animation does not call onGloballyPositioned), or null once detached. */
     fun bounds(): androidx.compose.ui.geometry.Rect? {
@@ -45,6 +49,14 @@ class ParityBox(val view: View, var kind: String, var radius: Float, var opacity
     }
 }
 
+private val nextParityBoxId = java.util.concurrent.atomic.AtomicInteger()
+
+/** The id of the box this semantics node paints, so the export can follow the real tree (a box's ancestors) and not only the geometry. */
+const val PARITY_BOX_KEY_NAME = "ParityBox"
+
+/** One key object per box, because peers on one node keep only the first value of a shared key; the export lists the entries named [PARITY_BOX_KEY_NAME]. */
+internal fun newParityBoxKey() = androidx.compose.ui.semantics.SemanticsPropertyKey<Int>(PARITY_BOX_KEY_NAME) { parent, _ -> parent }
+
 val parityBoxes = java.util.Collections.synchronizedSet(java.util.LinkedHashSet<ParityBox>())
 
 /**
@@ -59,7 +71,7 @@ fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fi
         val box = remember { ParityBox(view, kind, radius, opacity, fillAlpha) }
         box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = fillAlpha
         DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
-        onGloballyPositioned { box.coordinates = it }
+        onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }
     }
 
 /**
@@ -67,13 +79,31 @@ fun Modifier.parityBox(kind: String, radius: Float = 0f, opacity: Float = 1f, fi
  * so the export reads the app's own paint and not a copy of it.
  */
 fun Modifier.parityBackground(kind: String, color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape, radius: Float = 0f, opacity: Float = 1f): Modifier =
-    if (!parityLayoutEnabled) this.background(color, shape) else composed {
+    parityPaint(kind, color, shape, radius, opacity).foundationBackground(color, shape)
+
+/**
+ * Records, without painting, the fill and the resolved outline a surface draws with (kind `fill` is a backdrop for its descendants and not an
+ * element of its own). Placed on the same node as the paint, so the export follows the real tree and reads the shape the app really drew.
+ */
+fun Modifier.parityPaint(kind: String, color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape, radius: Float = 0f, opacity: Float = 1f): Modifier =
+    if (!parityLayoutEnabled) this else composed {
         val view = androidx.compose.ui.platform.LocalView.current
         val box = remember { ParityBox(view, kind, radius, opacity, color.alpha) }
         box.density = androidx.compose.ui.platform.LocalDensity.current.density; box.kind = kind; box.radius = radius; box.opacity = opacity; box.fillAlpha = color.alpha
         DisposableEffect(box) { parityBoxes.add(box); onDispose { box.coordinates = null; parityBoxes.remove(box) } }
-        this.onGloballyPositioned { box.coordinates = it }.background(color, shape).drawBehind { box.fill = color }
+        this.onGloballyPositioned { box.coordinates = it }.semantics { this[box.semanticsKey] = box.id }.drawBehind {
+            box.fill = color
+            box.drawnRadiusPx = when (val o = shape.createOutline(size, layoutDirection, this)) {
+                is androidx.compose.ui.graphics.Outline.Rounded -> o.roundRect.topLeftCornerRadius.x
+                is androidx.compose.ui.graphics.Outline.Rectangle -> 0f
+                else -> null
+            }
+        }
     }
+
+/** Foundation's background, recorded: drop-in for `androidx.compose.foundation.background(color, shape)` so every solid fill the app paints is read at paint time. */
+fun Modifier.background(color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape): Modifier =
+    parityPaint("fill", color, shape).foundationBackground(color, shape)
 
 /** The corner radius (dp) of the shape a control draws (999 for a CircleShape). Never merged into a parent: a descendant's shape is not the parent's. */
 val ParityRadiusKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("ParityRadius") { parent, _ -> parent }
@@ -121,3 +151,13 @@ class FractionalSpacedVertical(private val gap: androidx.compose.ui.unit.Dp) : a
         }
     }
 }
+
+/** Gradients are not a flat colour: painted as foundation does and not recorded (the export has no single background for them). */
+fun Modifier.background(brush: androidx.compose.ui.graphics.Brush, shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape, alpha: Float = 1f): Modifier =
+    foundationBackground(brush, shape, alpha)
+
+/** A landmark the app declares on a container that has no accessibility role of its own (a search form, a group of related controls); read by the layout export. */
+val ParityRoleKey = androidx.compose.ui.semantics.SemanticsPropertyKey<String>("ParityRole") { parent, _ -> parent }
+private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRoleProp by ParityRoleKey
+
+fun Modifier.parityRole(role: String): Modifier = if (!parityLayoutEnabled) this else semantics { parityRoleProp = role }
