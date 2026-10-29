@@ -128,7 +128,7 @@ internal static class LayoutExport
                 {
                     if (!r.Overlaps(clip)) continue;
                     var c = label.TextColor; if (c.A * cop <= 0.01f) continue; // fully transparent text is not text
-                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * label.Scale.X, m.Weight, (role is "button" || role is "text" && parent is View { BorderlineWidth: > 0 } sole && sole.Children.Count == 1) && parent is View pv ? Math.Min(pv.CornerRadius.X, Math.Min(pv.Size.Width, pv.Size.Height) / 2f) * sx : 0, cop, ctx.Order++, id, myChain, 0));
+                    ctx.Nodes.Add(new Node(runText, role ?? "text", r.X, r.Y, r.W, r.H, Hex(c.R, c.G, c.B, c.A), Hex(bg.R, bg.G, bg.B, 1), label.PixelSize * label.Scale.X, m.Weight, 0, cop, ctx.Order++, id, myChain, 0));
                 }
                 continue;
             }
@@ -173,10 +173,8 @@ internal static class LayoutExport
             if (li < 0) lines.Add((y, y + h, x, x + w, i, i));
             else { var l = lines[li]; lines[li] = (Math.Min(l.Top, y), Math.Max(l.Bottom, y + h), Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }
         }
-        // the web's text box is the font's content area: baseline minus ascent to baseline plus descent of the font this label draws with, as FontClient reports it (label units)
-        var (asc, desc) = Ui.FontAscentDescent(meta.Size, meta.Weight, meta.Family, label.PixelSize);
         foreach (var l in lines.OrderBy(l => l.Top))
-            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L + label.CharacterSpacing, asc - desc); // horizontally the advance span: each glyph advances by its box plus the label's own letter spacing
+            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L, l.Bottom - l.Top); // exactly the glyph union TextGeometry reports
     }
 
     private static string Hex(float r, float g, float b, float a)
