@@ -689,11 +689,11 @@ private struct AuthenticatedPlayarrShell: View {
                 #endif
                 HStack(alignment: .firstTextBaseline, spacing: 11) {
                     Text(clockDate.formatted(headerTimeStyle))
-                        .wm(12.5, 800, text: clockDate.formatted(headerTimeStyle))
+                        .wm(13.12, 760, text: clockDate.formatted(headerTimeStyle))
                     Text(clockDate.formatted(headerDateStyle).uppercased())
-                        .font(WM.font(8, 700)).tracking(0.6)
-                        .foregroundStyle(PlayarrStyle.inkSoft)
-                        .parityRenderedText(clockDate.formatted(headerDateStyle).uppercased(), role: "text", size: 8, weight: 700, color: PlayarrStyle.inkSoft)
+                        .font(WM.font(8.32, 640)).tracking(0.6)
+                        .foregroundStyle(PlayarrStyle.ink)
+                        .parityRenderedText(clockDate.formatted(headerDateStyle).uppercased(), role: "text", size: 8.32, weight: 640, color: PlayarrStyle.ink)
                 }
                 .foregroundStyle(PlayarrStyle.ink)
                 .offset(x: proxy.size.width * 0.24, y: chromeTop + 14)
