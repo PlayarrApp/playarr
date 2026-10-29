@@ -9,7 +9,6 @@ import {Dimensions} from 'react-native';
 import {contentHeight, textRun} from '../theme/fonts';
 import {useTheme} from '../theme/ThemeProvider';
 import {PARITY_CONTROL} from '../debug/parityControl';
-import {lx} from '../debug/layoutMarks';
 import {registerLines} from '../debug/layoutExport';
 
 /** One web CSS pixel in device pixels. */
@@ -75,8 +74,6 @@ export interface TProps {
   lines?: number;
   /** Parity layout export only: the web element is a heading (h1 to h3). */
   heading?: boolean;
-  /** A control whose text is its own web element (a button with a direct text child): the run carries the control's role and name. */
-  control?: {role: string; label: string};
   /** Parity layout export only: Text views with the same group are one web element. */
   group?: string;
   style?: StyleProp<TextStyle>;
@@ -91,7 +88,7 @@ export interface TProps {
  * above and below: the view box is then the glyph run. A run with a line height under its content area (squashed) always
  * takes that form, because Vega does not centre such a run in its box.
  */
-export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, control, group, style, onTextLayout, children}: TProps): React.ReactElement {
+export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines, heading, group, style, onTextLayout, children}: TProps): React.ReactElement {
   const content = contentHeight(size, mono);
   const single = lh !== undefined && (lines === 1 || lh < content);
   const run = textRun(uf(size), weight, {letterSpacing: ls === undefined ? undefined : uf(ls), lineHeight: lh === undefined ? undefined : uf(single ? content : lh), mono});
@@ -113,7 +110,6 @@ export function T({size, weight = 400, ls, lh, dy = 0, color, upper, mono, lines
     <Text
       numberOfLines={lines}
       {...(heading ? {accessibilityRole: 'header' as const} : null)}
-      {...(control ? lx(control.role, control.label) : null)}
       {...parity}
       allowFontScaling={false}
       style={[run, {color, includeFontPadding: false, position: 'relative', top: u((single ? 0 : Math.max(lead, 0)) + dy), ...(single ? {marginTop: uf(lead), marginBottom: uf(lead)} : null), left: ls && ls < 0 && size >= 30 ? uf(-ls / 2) : 0}, upper ? {textTransform: 'uppercase'} : null, style]}

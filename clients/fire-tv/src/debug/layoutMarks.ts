@@ -6,7 +6,7 @@
 import {PARITY_CONTROL} from './parityControl';
 import {registerLines} from './layoutExport';
 
-const NO_CLAIM = new Set(['container', 'image', 'skip', 'none', 'text']);
+const NO_CLAIM = new Set(['container', 'skip', 'none', 'text']);
 /** `img` is the ARIA role of a drawn graphic (the watch-progress track); React Native passes the string through. */
 
 export function lx(role: string, label?: string, _radius?: number): object {
