@@ -15,7 +15,7 @@ import io.playarr.shared.designsystem.page.PlayarrActionIcon
 import io.playarr.shared.designsystem.page.PlayarrPageAction
 import io.playarr.shared.designsystem.icons.PlayarrWebIcons
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
@@ -80,7 +80,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -2077,12 +2077,12 @@ private fun CalendarTonePill(tone: CalendarPillTone, phone: Boolean = false) {
         },
     )
     Box(
-        Modifier.background(androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f), CircleShape)
+        Modifier.parityBackground("fill", androidx.compose.ui.graphics.lerp(WebSurface, toneColour, 0.14f), CircleShape, radius = 999f)
             .border(1.dp, toneColour.copy(alpha = 0.6f), CircleShape)
             .padding(horizontal = 10.4.dp, vertical = 2.88.dp),
     ) {
         Text(label, color = WebInk, fontSize = if (phone) 10.24.sp else 13.44.sp, lineHeight = if (phone) 14.336.sp else 18.8.sp, fontWeight = FontWeight(750), style = WebTextStyle, maxLines = 1,
-            modifier = Modifier)
+            modifier = Modifier.parityShape(999f))
     }
 }
 

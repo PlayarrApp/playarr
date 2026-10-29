@@ -6,7 +6,7 @@ import io.playarr.shared.designsystem.page.PlayarrPageId
 import io.playarr.shared.designsystem.page.PlayarrEmptyState
 import io.playarr.shared.designsystem.page.PlayarrErrorState
 import io.playarr.shared.designsystem.page.PlayarrLoadingState
-import androidx.compose.foundation.background
+import io.playarr.shared.designsystem.page.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
+import io.playarr.shared.designsystem.page.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

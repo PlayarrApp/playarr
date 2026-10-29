@@ -1179,12 +1179,13 @@ export function createDriver({ out, args = [] } = {}) {
       }
       // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).
       let { jpeg, generation } = captureFrame();
-      for (let i = 0; i < 8; i += 1) {
+      // Three identical frames over 2.1 s: a focus glide or caption animation that is still moving shows up as a difference.
+      let steady = 0;
+      for (let i = 0; i < 14 && steady < 3; i += 1) {
         await sleep(700);
         const next = captureFrame();
-        const same = next.jpeg.equals(jpeg);
+        steady = next.jpeg.equals(jpeg) ? steady + 1 : 0;
         jpeg = next.jpeg; generation = next.generation;
-        if (same) break;
       }
       mkdirSync(dirname(resolve(file)), { recursive: true });
       const png = pngFromJpeg(jpeg);

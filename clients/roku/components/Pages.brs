@@ -82,7 +82,6 @@ function pgLabel(parent as Object, x as Float, y as Float, w as Float, h as Floa
         if opts.tracking <> invalid then label.tracking = opts.tracking
         if opts.aria <> invalid then label.aria = opts.aria
         if opts.radius <> invalid then label.radius = opts.radius
-        if opts.rectH <> invalid then label.rectH = opts.rectH
         if opts.fitWidth <> invalid then label.fitWidth = opts.fitWidth
     end if
     label.text = text
@@ -183,9 +182,9 @@ function pgBare(parent as Object, role as String, name as String, x as Float, y 
 end function
 
 ' A text glyph from the symbol fonts (arrows, play, check, chevron): a WebLabel at the web's text box. symbol = false draws Nunito Sans.
-function pgGlyph(parent as Object, ch as String, x as Float, y as Float, size as Float, weight as Integer, role as String, symbol = true as Boolean, rectH = 0 as Float) as Object
+function pgGlyph(parent as Object, ch as String, x as Float, y as Float, size as Float, weight as Integer, role as String, symbol = true as Boolean) as Object
     g = CreateObject("roSGNode", "WebLabel")
-    g.setFields({ size: size, weight: weight, symbol: symbol, rectH: rectH })
+    g.setFields({ size: size, weight: weight, symbol: symbol })
     g.text = ch
     g.color = ThemeColor(role)
     ThemeSetRole(g, role)
@@ -2084,9 +2083,9 @@ end sub
 
 sub pgCalendarPill(x as Float, text as String, action as String)
     w = PlayarrTextWidth(text, 14.72, 720, 0) + 41.2
-    pgTag(pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "surface"), "fill", 0)
+    pgTag(pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "surface"), "button", 0, text)
     pgRound(m.pageHead, x, 54.8, w, 52.8, 26.4, "line", -1, true)
-    pgLabel(m.pageHead, x + 20.6, 71.1, w - 41.2, 20, text, 14.72, 720, "inkSoft", { horizAlign: "center", aria: "button", radius: 25 })
+    pgLabel(m.pageHead, x + 20.6, 71.1, w - 41.2, 20, text, 14.72, 720, "inkSoft", { horizAlign: "center" })
     pgFocusable(x, 54.8, w, 52.8, 26.4, action)
 end sub
 
@@ -2184,16 +2183,15 @@ sub renderCalendarAgenda(entries as Object)
             hg = CreateObject("roSGNode", "Group")
             m.pageHead.AppendChild(hg)
             ' The pinned heading is the web's bg-coloured box; the panel's lighter wash is laid over it as a bitmap.
-            pgRect(hg, 775, ay, 1060, 58, "bg")
+            pgRect(hg, 775, ay, 1060, 58, "agendaHead")
             pgTint(hg, 775, ay, 1060, 58, "panel")
-            pgMark(hg, "heading", "", 783.4, ay, 1033.4, 44, 0)
             headRole = "ink"
             if day = today then headRole = "accent"
             headLabel = pgLabel(hg, 783.4, ay + 9.2, 0, 25, calendarDayHeading(edt, false), 18.4, 640, headRole)
             if day = today
                 hx = 783.4 + headLabel.textWidth + 18.5
                 pgRound(hg, hx - 9.35, ay + 10.1, 61, 22, 11, "lineStrong", -1, true)
-                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3, radius: 10.99 })
+                tl = pgLabel(hg, hx, ay + 13.6, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
             end if
             m.agendaDays.Push({ group: hg, y: ay, endY: ay + 44 })
             ay = ay + 76
@@ -2220,10 +2218,10 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
         if i > 0 then w = w + gap
     end for
     if style = "primary"
-        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "accent"), "fill", 0)
+        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "accent"), "button", 0, text)
         textRole = "onAccent"
     else
-        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "surface"), "fill", 0)
+        pgTag(pgRound(m.pageHead, x, y, w, 58, 29, "surface"), "button", 0, text)
         pgRound(m.pageHead, x, y, w, 58, 29, "line", -1, true)
     end if
     tx = x + 21
@@ -2231,12 +2229,9 @@ function calendarButton(x as Float, y as Float, text as String, style as String,
         wt = 720
         if i = 1 then wt = 900
         pw = PlayarrTextWidth(parts[i], size, wt, 0)
-        opts = invalid
-        if parts.Count() = 1 then opts = { aria: "button", radius: 29 }
-        pgLabel(m.pageHead, tx, y + 19, pw + 4, 20, parts[i], size, wt, textRole, opts)
+        pgLabel(m.pageHead, tx, y + 19, pw + 4, 20, parts[i], size, wt, textRole)
         tx = tx + pw + gap
     end for
-    if parts.Count() > 1 then pgMark(m.pageHead, "button", text, x, y, w, 58, 999)
     pgFocusable(x, y, w, 58, 29, action, data)
     return w
 end function
@@ -2288,8 +2283,7 @@ sub renderCalendarMonth(entries as Object)
         day = calAddDays(r.start, i)
         x = gx + (i mod 7) * cw
         y = gy + Int(i / 7) * ch
-        if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12)
-        pgMark(m.pageBody, "container", "", x, y, cw, ch, 0)
+        if Mid(day, 6, 2) <> monthOf then pgRect(m.pageBody, x, y, cw, ch, "ink", 12).id = "a11y|container|0|"
     end for
     for rr = 0 to rows
         pgRect(m.pageBody, gx, gy + rr * ch, cw * 7, 1, "line")
@@ -2324,7 +2318,6 @@ sub renderCalendarMonth(entries as Object)
             text = chips[k].title
             if chips[k].count > 1 then text = text + " · " + chips[k].count.ToStr() + "×"
             cy = y + 1.8 + k * 25.4
-            pgMark(m.pageBody, "button", chips[k].title + ", " + chips[k].status + ", " + calendarDayHeading(dt, false), x + 5.8, cy, 226, 44, 4)
             dotRole = "brand"
             if chips[k].status = "Available" then dotRole = "success"
             if chips[k].status = "Missing" then dotRole = "danger"
@@ -2403,7 +2396,7 @@ sub renderCalendarWeek(entries as Object)
             ' Web's TODAY chip beside the day heading.
             hx = x + headLabel.textWidth + 18.5
             pgRound(m.pageBody, hx - 9.35, 175.5, 61, 22, 11, "lineStrong", -1, true)
-            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3, radius: 10.99 })
+            tl = pgLabel(m.pageBody, hx, 179.4, 0, 15, "TODAY", 11.2, 640, "accent", { fitWidth: 42.3 })
         end if
         list = byDay[day]
         y = 208.0
@@ -2424,19 +2417,23 @@ end sub
 function calendarBadge(parent as Object, x as Float, y as Float, text as String, padX as Float) as Float
     ' Web .status-pill: the tone tints the fill and the border; the text is the theme ink. (x, y) is the text run's corner.
     tone = "inkSoft"
+    fillRole = "badgeDefault"
     if text = "Available"
         tone = "success"
+        fillRole = "badgeAvailable"
     end if
     if text = "Upcoming"
         tone = "brand"
+        fillRole = "badgeUpcoming"
     end if
     if text = "Missing"
         tone = "danger"
+        fillRole = "badgeMissing"
     end if
     w = PlayarrTextWidth(text, 13.44, 750, 0)
-    pgTag(pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 29), "fill", 13)
+    pgTag(pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, fillRole), "fill", 13)
     pgRound(parent, x - padX, y - 3.9, w + 2 * padX, 26.9, 13, tone, 153, true)
-    l = pgLabel(parent, x, y, w + 4, 19, text, 13.44, 750, "ink", { radius: 13.28 })
+    l = pgLabel(parent, x, y, w + 4, 19, text, 13.44, 750, "ink")
     return w + 2 * padX
 end function
 

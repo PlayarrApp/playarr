@@ -1,10 +1,13 @@
 import { PNG } from "pngjs";
 import { readFileSync } from "node:fs";
 // Roku layout exporter (docs/parity/LAYOUT.md). It measures what the device holds: the ECP `query/app-ui` tree (every node the
-// firmware renders, with its bounds, colour, text and visibility), composed through each ancestor's translation, scale and opacity.
-// The channel carries no annotations and no web geometry. What the tree cannot say is read from the frame (backgrounds) or taken from
-// the font the channel set on each glyph Label (its node name, `f<weight>s<size>`). Roles are limited to what a node proves:
-// a Label is text, a Poster is an image, a Rectangle with alpha is a container.
+// firmware renders, with its bounds, colour, text, visibility), composed through each ancestor's translation, scale (per axis) and
+// opacity. Boxes are the laid-out node boxes Roku reports; a Label's box is its own, never a size the exporter or the app chose to
+// match the web. Beyond node type the tree carries what the app declares on its own nodes in the node name: the font a glyph Label is
+// drawn with (the bundled instance's weight and the integer pixel size of its Font node), and for a control its role, accessible
+// name and the tint of its bitmap (`a11y|role|radius[@tint]|name`). A radius is the corner radius of the 9-patch mask actually used.
+// Unpainted markers exist only where they sit on a real control (a hit box the app also uses for focus or action).
+// Content fully covered by a later opaque fill is not exported.
 
 const unescapeXml = (s) => s.replace(/&(lt|gt|amp|quot|apos|#\d+);/g, (_, e) => ({ lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" }[e] ?? String.fromCharCode(Number(e.slice(1)))));
 
@@ -49,7 +52,7 @@ const nums = (s) => (s ? s.replace(/[{}]/g, "").split(",").map(Number) : null);
 const hex = (c) => (c ? c.slice(0, 7) : null);
 const alphaOf = (c) => (c && c.length === 9 ? parseInt(c.slice(7), 16) / 255 : 1);
 
-const compose = (M, a, b) => ({ sx: M.sx * a, sy: M.sy * a, tx: M.sx * b[0] + M.tx, ty: M.sy * b[1] + M.ty });
+const compose = (M, ax, ay, b) => ({ sx: M.sx * ax, sy: M.sy * ay, tx: M.sx * b[0] + M.tx, ty: M.sy * b[1] + M.ty });
 const mapRect = (M, [x, y, w, h]) => ({ x: M.sx * x + M.tx, y: M.sy * y + M.ty, w: M.sx * w, h: M.sy * h });
 
 /** Walks the tree and returns raw measured items in tree order (paint order). */
@@ -63,9 +66,9 @@ export function measureTree(root) {
     if (op <= 0.001) return;
     const bounds = nums(a.bounds);
     const rect = bounds && bounds[2] > 0 && bounds[3] > 0 ? mapRect(M, bounds) : null;
-    const base = { chain, parent };
-    const sem = /^a11y\|(\w+)\|([\d.]+)(?:@([0-9a-f]{8})(?:~\d+)?)?\|(.*)$/s.exec(a.name ?? "");
-    if (sem && rect) items.push({ ...base, kind: "a11y", node, rect, op, role: sem[1], radius: Number(sem[2]), declared: sem[3], text: sem[4] });
+    const base = { chain, parent, scaleY: M.sy * (nums(a.scale)?.[1] ?? 1) };
+    const sem = /^a11y\|(\w+)\|([\d.]+)(?:@([0-9a-f]{8})(~\d+)?)?\|(.*)$/s.exec(a.name ?? "");
+    if (sem && rect) items.push({ ...base, kind: "a11y", node, rect, op, role: sem[1], radius: Number(sem[2]), declared: sem[3], baked: sem[4], text: sem[5] });
     else if (node.tag === "Label" && a.text && rect) items.push({ ...base, kind: "label", node, rect, op, parent });
     else if (node.tag === "Poster" && a.uri && rect) items.push({ ...base, kind: "poster", node, rect, op });
     else if (node.tag === "VideoBackground" && rect) items.push({ ...base, kind: "rect", node, rect, op });
@@ -73,11 +76,11 @@ export function measureTree(root) {
     else if (node.tag === "Rectangle" && rect && alphaOf(a.color) * op > 0.01) items.push({ ...base, kind: "rect", node, rect, op });
     // Children live in this node's own frame: its translation, then scale about scaleRotateCenter. A list item sits where its bounds
     // start (the list does not report a translation for its items).
-    let s = nums(a.scale)?.[0] ?? 1;
+    const sc = nums(a.scale) ?? [1, 1];
     const c = nums(a.scaleRotateCenter) ?? [0, 0];
     let tr = nums(a.translation) ?? [0, 0];
     if ((parentTag === "MarkupGrid" || parent?.attrs.extends === "MarkupGrid") && bounds) tr = [bounds[0], bounds[1]];
-    const child = compose(M, s, [tr[0] + c[0] - s * c[0], tr[1] + c[1] - s * c[1]]);
+    const child = compose(M, sc[0], sc[1], [tr[0] + c[0] - sc[0] * c[0], tr[1] + c[1] - sc[1] * c[1]]);
     const below = [...chain, node];
     for (const k of node.children) walk(k, child, op, node, below);
   };
@@ -86,8 +89,8 @@ export function measureTree(root) {
 }
 
 const fontOf = (name = "") => {
-  const m = /^f(\d+)s([\d.]+)(?:\|(\w+))?(?:\|([\d.]+))?$/.exec(name);
-  return m ? { weight: Number(m[1]), size: Number(m[2]), role: m[3] ?? "text", radius: m[4] ? Number(m[4]) : 0 } : null;
+  const m = /^f(\d+)s([\d.]+)~([wc])(?:\|(\w+))?$/.exec(name);
+  return m ? { weight: Number(m[1]), size: Number(m[2]), words: m[3] === "w", role: m[4] ?? "text" } : null;
 };
 
 export function buildLayoutDocument(appUiXml, { screen, theme, clockPinned, pngFile }) {
@@ -151,12 +154,16 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
       } else {
         it.fill = drawn(it.rect);
       }
+      it.opaque = !it.baked && (!it.declared || parseInt(it.declared.slice(6, 8), 16) >= 250);
       fills.push(it);
     } else if ((it.kind === "rect" || (it.kind === "a11y" && it.node.tag === "Rectangle")) && alphaOf(it.node.attrs.color) > 0) {
+      it.opaque = alphaOf(it.node.attrs.color) * it.op >= 0.99;
       fills.push(it);
     }
   }
+  let curOrder = 0;
   const push = (e) => {
+    e._order = curOrder;
     for (const k of ["x", "y", "w", "h"]) e.rect[k] = r2(e.rect[k]);
     if (e.rect.x < 1920 && e.rect.y < 1080 && e.rect.x + e.rect.w > 0 && e.rect.y + e.rect.h > 0) elements.push(e);
   };
@@ -167,10 +174,11 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
     const rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     push({
       text: text.replace(/\s+/g, " ").trim(), role: font.role ?? "text", rect, color: hex(labels[0].node.attrs.color), background: background(rect, order, false, labels[0].chain),
-      fontSize: font.size, fontWeight: font.weight, ...(font.radius ? { radius: font.radius } : {}), ...opacityOf(labels[0].op),
+      fontSize: font.size == null ? null : r2(font.size * labels[0].scaleY), fontWeight: font.weight, ...opacityOf(labels[0].op),
     });
   };
   for (const g of groups) {
+    curOrder = g.order;
     if (g.labels) {
       const font = fontOf(g.labels[0].node.attrs.name);
       // The web reports one text element per line of a wrapped run. Labels on one line sit at the same top; words are set one Label
@@ -181,10 +189,17 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
         if (last && Math.abs(l.rect.y - last[0].rect.y) < font.size * 0.5) last.push(l); else lines.push([l]);
       }
       for (const line of lines) {
+        // Words are one Label each (a space between them); characters are one Label each, and a space is where the real gap between two
+        // neighbours is wider than the run's usual gap by a space's width.
+        const gaps = line.slice(1).map((l, i) => l.rect.x - (line[i].rect.x + line[i].rect.w)).sort((a, b) => a - b);
+        const usual = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
         let text = "";
         let prev = null;
         for (const l of line) {
-          if (prev && l.rect.x - (prev.rect.x + prev.rect.w) > font.size * 0.06) text += " ";
+          if (prev) {
+            const gap = l.rect.x - (prev.rect.x + prev.rect.w);
+            if (font.words || gap - usual > font.size * 0.12) text += " ";
+          }
           text += l.node.attrs.text;
           prev = l;
         }
@@ -194,13 +209,14 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
     }
     const it = g.single;
     if (it.kind === "label") {
-      // A Label the channel set without a tracked-text font: size is the line box over the font's line height (an estimate).
-      textElement([it], { size: r2(it.rect.h / 1.364), weight: 400 }, it.node.attrs.text, it.order);
+      // A Label the app did not set through TrackedText: the tree does not say which font it draws, so size and weight stay unknown.
+      textElement([it], { size: null, weight: null }, it.node.attrs.text, it.order);
     } else if (it.kind === "a11y" && it.role === "fill") {
       continue; // a drawn background only: it paints under what follows, it is no element of its own
     } else if (it.kind === "a11y") {
-      // The app declares a fully rounded shape (pill or circle) as 50 or 999: its radius in px is half the shorter side of the drawn box.
-      const radius = it.radius === 50 || it.radius === 999 ? Math.min(it.rect.w, it.rect.h) / 2 : it.radius;
+      // A radius is the corner of the mask the app drew; an unpainted hit box has no painted corner.
+      const painted = it.node.tag === "Poster" || alphaOf(it.node.attrs.color) > 0;
+      const radius = painted ? it.radius : 0;
       push({ text: it.text, role: it.role, rect: it.rect, color: null, background: background(it.rect, it.order, true, it.chain), fontSize: null, fontWeight: null, ...(radius ? { radius: r2(radius) } : {}), ...opacityOf(it.op) });
     } else if (it.kind === "video") {
       push({ text: "", role: "video", rect: it.rect, color: null, background: background(it.rect, it.order, false, it.chain), fontSize: null, fontWeight: null });
@@ -210,5 +226,9 @@ function finish(groups, items, { screen, theme, clockPinned, drawn }) {
       push({ text: "", role: "container", rect: it.rect, color: null, background: background(it.rect, it.order, true, it.chain), fontSize: null, fontWeight: null, ...opacityOf(it.op) });
     }
   }
-  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements };
+  // Content fully covered by a later opaque fill is not on screen (a drawer over the page): it is not exported.
+  const covers = fills.filter((f) => f.opaque);
+  const visible = elements.filter((e) => !covers.some((f) => f.order > e._order && f.rect.x <= e.rect.x + 0.01 && f.rect.y <= e.rect.y + 0.01 && f.rect.x + f.rect.w >= e.rect.x + e.rect.w - 0.01 && f.rect.y + f.rect.h >= e.rect.y + e.rect.h - 0.01));
+  for (const e of visible) delete e._order;
+  return { screen, theme, viewport: { w: 1920, h: 1080, dpr: 1 }, clockPinned: !!clockPinned, elements: visible };
 }

@@ -57,7 +57,7 @@ sub playerChromeBuild()
         frame.uri = "pkg:/images/parity-clip-2s.png"
         frame.width = 1920
         frame.height = 1080
-        frame.id = "a11y|video|0|"
+        frame.id = "a11y|image|0|"
         g.insertChild(frame, 0)
     end if
 
@@ -98,16 +98,15 @@ sub playerChromeBuild()
     pgIcon(g, 1829, 52.8, 18, "player-close.png", "playerInk")
 
     ' Control semantics (web order); a control without a drawn box gets a transparent Rectangle at its box.
-    pgBare(g, "container", "", 0, 561.6, 1920, 518.4, 0)
-    pgMark(g, "slider", "Seek", 70, 914, 1780, 44, 0)
+    ' The seek bar is its track, as drawn (the slider role names the real 6 px track node).
+    m.playerProgressTrack.id = "a11y|slider|0|Seek"
     m.pcPlayBg.id = "a11y|button|50|Play"
     A11yStamp(m.pcPlayBg, true)
-    m.pcTimeMark = pgMark(g, "container", "0:00 / 0:00", 302.8, 981.8, 58.4, 16.3, 0)
     m.pcPrevMark = pgMark(g, "button", "Previous episode", 70, 958, 64, 64, 50)
     m.pcNextMark = pgMark(g, "button", "Next episode", 225.2, 958, 64, 64, 50)
     m.pcAudioMark = pgMark(g, "button", "", 1301.6, 958, 64, 64, 50)
-    pgMark(g, "button", "Subtitles: Off", 1379.2, 958, 64, 64, 50)
-    pgMark(g, "button", "Playlist: 1 item", 1456.8, 958, 64, 64, 50)
+    m.pcSubsMark = pgMark(g, "button", "Subtitles: Off", 1379.2, 958, 64, 64, 50)
+    m.pcQueueMark = pgMark(g, "button", "Playlist: 1 item", 1456.8, 958, 64, 64, 50)
     m.pcQualityMark = pgMark(g, "button", "Quality: Original", 1534.4, 962, 160.5, 56, 999)
     pgMark(g, "button", "Info and playback health", 1708.4, 958, 64, 64, 50)
 
@@ -148,8 +147,6 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     sepX = 302.8 + m.pcTimeNow.boundingRect().width + 5
     m.pcTimeSep.translation = [sepX, 981.8]
     m.pcTimeEnd.translation = [sepX + 8.7, 981.8]
-    m.pcTimeMark.id = "a11y|container|0|" + m.pcTimeNow.text + " / " + m.pcTimeEnd.text
-    m.pcTimeMark.width = sepX + 8.7 + m.pcTimeEnd.boundingRect().width - 302.8
     m.pcPlay.uri = "pkg:/images/player-pause.png"
     m.pcPlayBg.id = "a11y|button|50|Pause"
     ' A held pause shows Play even while the pipeline re-buffers on the held frame.
@@ -169,6 +166,19 @@ sub playerChromeUpdate(position as Dynamic, duration as Dynamic, fraction as Flo
     if n > 0 and m.playbackEpisodeIndex > 0 then m.pcPrev.opacity = 1
     if n > 0 and m.playbackEpisodeIndex < n - 1 then m.pcNext.opacity = 1
     m.pcPrevMark.opacity = m.pcPrev.opacity
+    subName = "Off"
+    if m.pcSubSel <> invalid and m.pcSubSel <> ""
+        subName = m.pcSubSel
+        for each track in m.pcSubtitleTracks
+            if track.id = m.pcSubSel then subName = track.label
+        end for
+    end if
+    pgRename(m.pcSubsMark, "Subtitles: " + subName)
+    items = 1
+    if n > 1 then items = n
+    plural = " items"
+    if items = 1 then plural = " item"
+    pgRename(m.pcQueueMark, "Playlist: " + items.ToStr() + plural)
     m.pcNextMark.opacity = m.pcNext.opacity
     playerChromeFocusDraw(fraction)
 end sub

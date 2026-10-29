@@ -18,7 +18,7 @@ sub refresh()
     tracking = t.tracking
     ' fitWidth is the web's own measured width of this text: the letter-spacing that gives it follows from the font advances.
     if t.fitWidth > 0 and Len(text) > 0 then tracking = (t.fitWidth - PlayarrTextWidth(text, t.size, t.weight, 0)) / Len(text)
-    spec = { text: text, size: t.size, weight: t.weight, tracking: tracking, role: "ink", maxLines: 1, aria: t.aria, rectH: t.rectH, symbol: t.symbol, radius: t.radius }
+    spec = { text: text, size: t.size, weight: t.weight, tracking: tracking, role: "ink", maxLines: 1, aria: t.aria, symbol: t.symbol }
     ' 0 (fully transparent black) means "not set": -1 is opaque white and must stay a colour the owner can choose.
     if t.color <> 0 then spec.color = t.color
     lineHeight = t.lineHeight

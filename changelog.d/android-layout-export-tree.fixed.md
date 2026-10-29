@@ -1,0 +1,1 @@
+- Android layout export: backgrounds are composited from the element's own tree ancestors, every Surface and background fill and its resolved outline are read at paint time, unwatched dots keep their own colour, search forms export a search role, and content under a hidden subtree is dropped.
