@@ -170,14 +170,14 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
         weight, size = weight_of(a), num(a.get("fontSize"), 16.0)
         col = argb(a.get("fontColor")) or (0, 0, 0, 1.0)
         colour = hex_of(over(col, under))
-        leading = (num(a.get("lineSpacing"), 0.0) or 0.0) * dpr  # lineSpacing is inspector vp: the extra space ArkUI adds to every line
         for line in runs:  # one element per laid-out line: its text, the glyph runs' horizontal extent and the line's own box
             boxes = line["tight"]
             line_text = " ".join(shown(content[line["start"]:line["end"]]).split())
             if not boxes or not line_text:
                 continue
             l, r = min(b["l"] for b in boxes), max(b["r"] for b in boxes)
-            rect = (ox + l * k, oy + line["top"] * k, (r - l) * k, (line["ascent"] + line["descent"] - leading) * k)  # the line box: ascent above the baseline, descent below, less the leading the app added between lines
+            t, bt = min(b["t"] for b in boxes), max(b["b"] for b in boxes)
+            rect = (ox + l * k, oy + t * k, (r - l) * k, (bt - t) * k)  # exactly the layout manager's range rectangles for this line
             if visible(rect, clip):
                 emit(role, line_text, rect, under, clip, radius, colour, round(size * k, 2), weight, opacity)
 
@@ -220,11 +220,10 @@ def export(tree, screen, theme, viewport, clock_pinned=False, with_src=False, or
             if kind == "Text":
                 # a Text the app declares a role for is that control: with its own fill or border it is a box (the control) holding glyph runs
                 # (the text); without one the runs are the control's only drawn part and carry the role
-                bordered = (num(a.get("borderWidth"), 0.0) or 0.0) >= 1.0 and (argb(a.get("borderColor")) or (0, 0, 0, 0))[3] > 0.01
                 control = role not in (None, "text")
-                if control and (fills or bordered):
-                    emit(role, name, box, here, clip, radius, opacity=opacity)
-                text_lines(node, a, raw, here, opacity, mychain, clip, "text" if control and (fills or bordered) else (role or "text"), 0.0 if control and (fills or bordered) else (radius if fills else 0.0))
+                if control:  # the control's own border box and accessible name, then its glyph runs as a separate text record
+                    emit(role, name or str(a.get("content") or a.get("text") or "").strip(), box, here, clip, radius, opacity=opacity)
+                text_lines(node, a, raw, here, opacity, mychain, clip, "text", 0.0)
             elif role not in (None, "text"):
                 emit("image" if kind == "Image" and role == "img" else role, name, box, here, clip, radius, opacity=opacity)
             elif kind in ("Image", "Button", "Toggle", "TextInput"):

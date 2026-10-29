@@ -9,8 +9,8 @@ WORK=${WORK:-$RUNNER_TEMP/harmony-wall}
 CACHE=${OHOS_SDK_CACHE:-$HOME/.cache/ohos-sdk}
 DEVICE=${2:-tv}
 case $DEVICE in
-  tv) CTL=40017; WS=40007; DBG=40027; DEV_ARGS=(-device tv -sd 160 -or 1920 1080 -cr 1920 1080 -o landscape) ;;
-  phone) CTL=40117; WS=40107; DBG=40127; DEV_ARGS=(-device phone -sd 480 -or 1080 2340 -cr 1080 2340 -o portrait) ;;
+  tv) CTL=40017; WS=40007; DBG=40027; DEV_ARGS=(-device tv -sd 160 -or 3000 1740 -cr 3000 1740 -o landscape) ;;
+  phone) CTL=40117; WS=40107; DBG=40127; DEV_ARGS=(-device phone -sd 480 -or 1800 4200 -cr 1800 4200 -o portrait) ;;
   *) echo "device must be tv or phone" >&2; exit 2 ;;
 esac
 if [ "$1" = build ]; then
