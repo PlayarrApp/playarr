@@ -146,15 +146,15 @@ struct TVPageHeader: View {
                         lineWidth: backFocused ? 2 : 1
                     )
                 )
-                .overlay(
-                    Text("\u{2190}")
-                        .font(TVTheme.font(size: 17.3, weight: .semibold))
-                        .foregroundStyle(DesignTokens.Color.textSecondary)
-                        .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
-                )
                 .overlay {
                     // the control is 50 wide; a focused one draws its 2 pt ring outside it
                     Color.clear.frame(width: 50, height: 50)
+                        .overlay(
+                            Text("\u{2190}")
+                                .font(TVTheme.font(size: 17.3, weight: .semibold))
+                                .foregroundStyle(DesignTokens.Color.textSecondary)
+                                .parityLayout(text: "\u{2190}", size: 17.3, weight: 720, color: DesignTokens.Color.textSecondary)
+                        )
                         .parityBox(backRole, text: backName, radius: 25, fill: DesignTokens.Stage.surfaceStrong, alpha: 0.7)
                         .parityBackdrop(DesignTokens.Stage.surface)
                 }
