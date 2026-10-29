@@ -1,0 +1,1 @@
+- Sailfish: agenda and week badges (TODAY, Missing, Upcoming) draw their own plate as a child of the label, so the exporter reads one text element with the drawn plate radius; the detail title lines use the web's line pitch; the host-Qt geometry probe passes the accessibility and border arguments the exporter now takes.

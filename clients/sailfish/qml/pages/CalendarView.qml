@@ -310,13 +310,17 @@ Item {
                         font.family: Tokens.fam(640); font.letterSpacing: 0.1
                         font.pixelSize: Tokens.fs(14.4)
                     }
-                    Rectangle {
+                    Item {
                         id: todayChip
                                                 visible: day.date === Calendar.todayIso()
                         anchors.verticalCenter: parent.verticalCenter
-                        width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u; radius: height / 2
-                        color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
-                        PLabel { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: dayCol.wk ? 0 : -1.2; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fsFit(11.2) }
+                        width: todayLbl.width + 20 * Tokens.u; height: 22 * Tokens.u
+                        PLabel { renderType: Text.NativeRendering; id: todayLbl; anchors.centerIn: parent; anchors.verticalCenterOffset: dayCol.wk ? 0 : -1.2; text: qsTr("TODAY"); color: Tokens.dark ? "#dfdcdd" : Tokens.inkSoft; font.family: Tokens.fam(640); font.letterSpacing: 1.6; font.pixelSize: Tokens.fsFit(11.2)
+                            Rectangle {   // the badge draws its own plate: the label and its plate are one item
+                                z: -1; x: -todayLbl.x; y: -todayLbl.y; width: todayChip.width; height: todayChip.height; radius: height / 2
+                                color: "transparent"; border.width: 1; border.color: Tokens.dark ? "#dfdcdd" : "#4d4248"
+                            }
+                        }
                     }
                     }
                     Repeater {
@@ -367,11 +371,15 @@ Item {
                                     PLabel { renderType: Text.NativeRendering; id: timeLbl; text: root.timeOf(modelData) !== "" ? root.timeOf(modelData) : qsTr("All day"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
                                     PLabel { renderType: Text.NativeRendering; id: relLbl; text: modelData.release_type === "air" ? qsTr("Airs") : modelData.release_type === "cinema" ? qsTr("In cinemas") : modelData.release_type === "digital" ? qsTr("Digital release") : modelData.release_type === "physical" ? qsTr("Physical release") : qsTr("Release"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: 0.2; font.pixelSize: Tokens.fs(12.8) }
                                     PLabel { renderType: Text.NativeRendering; id: kindLbl; text: modelData.media_kind === "episode" ? qsTr("Episodes") : modelData.media_kind === "movie" ? qsTr("Movies") : modelData.media_kind === "album" ? qsTr("Albums") : qsTr("Books"); color: Tokens.inkSoft; font.family: Tokens.family400; font.letterSpacing: modelData.media_kind === "episode" ? 0 : -0.25; font.pixelSize: Tokens.fs(12.8) }
-                                    Rectangle {
+                                    Item {
                                         id: badgeChip
-                                                                                width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u; radius: height / 2
-                                        color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#392c2f" : "#e8dedd") : (Tokens.dark ? "#341c23" : "#f5dee2"); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#996a6e" : "#aa8285") : Tokens.brandPink
-                                        PLabel { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24) }
+                                        width: badge.width + 22 * Tokens.u; height: 21.8 * Tokens.u
+                                        PLabel { renderType: Text.NativeRendering; id: badge; anchors.centerIn: parent; anchors.horizontalCenterOffset: 1.2 * Tokens.u; text: root.pill(modelData); color: Tokens.ink; font.family: Tokens.fam(760); font.pixelSize: Tokens.fs(10.24)
+                                            Rectangle {   // the badge draws its own plate: the label and its plate are one item
+                                                z: -1; x: -badge.x; y: -badge.y; width: badgeChip.width; height: badgeChip.height; radius: height / 2
+                                                color: modelData.has_file ? (Tokens.dark ? "#2b302e" : "#dde2de") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.14) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#392c2f" : "#e8dedd") : (Tokens.dark ? "#341c23" : "#f5dee2"); border.width: 1; border.color: modelData.has_file ? (Tokens.dark ? "#648975" : "#6c887c") : root.tone(modelData) === "neutral" ? Qt.rgba(Tokens.inkSoft.r, Tokens.inkSoft.g, Tokens.inkSoft.b, 0.6) : root.tone(modelData) === "missing" ? (Tokens.dark ? "#996a6e" : "#aa8285") : Tokens.brandPink
+                                            }
+                                        }
                                     }
                                 }
                                 }

@@ -252,6 +252,17 @@ test("a Text that exposes a role is one element: its box, accessible name and te
   assert.deepEqual(rows.map((row) => [row.role, row.text, row.rect, row.fontSize]), [["button", "Quality: High", { x: 0, y: 0, w: 44, h: 44 }, 10]]);
 });
 
+test("a text item that draws its own plate exports the plate's radius; a parent's radius is not copied", () => {
+  const root = makeItem("root", 100, 100);
+  const parent = attach(root, makeItem("parent", 60, 30, { border: { width: 0, color: { r: 0, g: 0, b: 0, a: 0 } }, radius: 11, color: { r: 1, g: 0, b: 0, a: 1 } }));
+  const own = attach(parent, makeItem("own", 40, 14, textItem({ text: "ab", contentWidth: 20, contentHeight: 11 })));
+  attach(own, makeItem("plate", 60, 30, { x: -10, y: -8, z: -1, border: { width: 0, color: { r: 0, g: 0, b: 0, a: 0 } }, radius: 11, color: { r: 0, g: 1, b: 0, a: 1 } }));
+  attach(parent, makeItem("bare", 40, 14, textItem({ text: "cd", contentWidth: 20, contentHeight: 11 })));
+  const text = dump(root).filter((row) => row.role === "text");
+  assert.equal(text[0].radius, 11);
+  assert.equal(text[1].radius, undefined);
+});
+
 test("does not export a Canvas that is not available or a transparent text", () => {
   const root = makeItem("root", 100, 100);
   attach(root, makeItem("canvas", 20, 20, { available: false, renderTarget: 1 }));

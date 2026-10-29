@@ -272,6 +272,8 @@ function dump(root, u, weights, log, access, defaultBorder) {
                     var textSample = polygonCenter(textPoly)
                     var el = { text: run.text, role: item.readOnly !== undefined ? "text" : roleOf(item, "text"), rect: rect(textBox.x, textBox.y, textBox.w, textBox.h),
                         color: hex(item.color), background: bgAt(textSample.x, textSample.y), fontSize: r2(item.font.pixelSize * textScale / u), fontWeight: weightOf(item, weights) }
+                    var ownPlate = paintedShape(item)   // a plate the text item itself draws (a child of it under its glyphs): its drawn radius
+                    if (ownPlate) { var plateRadius = radiusOf(ownPlate, uniformRadiusScale(ownPlate, root)); if (plateRadius) el.radius = plateRadius }
                     if (op < 0.999) el.opacity = r2(op)
                     el._item = item; el._seq = ++seq; el._r = polygonBounds(textPoly)
                     out.push(el)
