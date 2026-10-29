@@ -2,7 +2,6 @@ package io.playarr.mobile.ui
 
 import io.playarr.shared.designsystem.page.parityBackground
 import io.playarr.shared.designsystem.page.parityShape
-import io.playarr.shared.designsystem.page.parityRole
 import io.playarr.shared.designsystem.page.parityBox
 import io.playarr.shared.designsystem.page.parityPainted
 import io.playarr.shared.designsystem.page.playarrEdgeFades
@@ -491,7 +490,7 @@ private fun Modifier.tvHeroBackdrop(): Modifier =
             layout(start + placeable.width, constraints.maxHeight) { placeable.place(start, 0) }
         }
             .graphicsLayer { scaleX = 1.04f; scaleY = 1.04f; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f) }
-            .parityBox("image", opacity = if (webIsDark) 0.72f else 0.42f)
+            .parityBox("image", opacity = heroArtOpacity(webIsDark))
             .heroBackdropFade(true)
     }
 
@@ -2147,7 +2146,7 @@ private fun ExperienceNavigation(
         modifier = Modifier
             .then(if (isTelevision) Modifier else Modifier.fillMaxWidth())
             .glass(phoneNavShape, if (isTelevision) WebGlass.NavGroup else WebGlass.PhoneNav)
-            .parityPainted("container", WebSurfaceStrong.copy(alpha = if (isTelevision) WebGlass.NavGroup.tintAlpha else WebGlass.PhoneNav.tintAlpha), radius = if (isTelevision) 0f else 20f),
+            .parityBox("container", radius = if (isTelevision) 0f else 20f),
         color = Color.Transparent,
         shape = phoneNavShape,
         tonalElevation = 0.dp,
@@ -2358,7 +2357,7 @@ internal fun tvProfileTileLabel(displayName: String): String =
 private fun TvNavGroup(padding: PaddingValues, content: @Composable ColumnScope.() -> Unit) {
     val groupShape = RoundedCornerShape(22.dp)
     Surface(
-        modifier = Modifier.glass(groupShape, WebGlass.NavGroup).parityPainted("container", WebSurfaceStrong.copy(alpha = WebGlass.NavGroup.tintAlpha), radius = 22f),
+        modifier = Modifier.glass(groupShape, WebGlass.NavGroup).parityBox("container", radius = 22f),
         color = Color.Transparent,
         shape = groupShape,
     ) {
@@ -4776,10 +4775,10 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                         (listOf("#") + ('A'..'Z').map(Char::toString)).forEach { letter ->
                             val active = shownLetter == letter
                             Box(
-                                Modifier.height(25.dp).fillMaxWidth().parityShape(999f).clickable { activeLetter = letter },
+                                Modifier.height(25.dp).fillMaxWidth().clickable { activeLetter = letter },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (active) Box(Modifier.size(22.dp).then(if (savedSelectedId == null) Modifier.drawBehind {
+                                if (active) Box(Modifier.size(22.dp).parityShape(999f).then(if (savedSelectedId == null) Modifier.drawBehind {
                                     // Web's letter ring is crimson, 2 css px, 1.5 px off the disc, and is drawn in touch mode too (programmatic focus).
                                     val grow = 1.5.dp.toPx() + 1.dp.toPx()
                                     drawCircle(UnwatchedDotColour, radius = size.minDimension / 2f + grow, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
@@ -4807,10 +4806,11 @@ if (filteredWorks.isEmpty() && matchingIds != null) {
                             val shownLetter = if (activeLetter == "#") (filteredWorks.getOrNull(gridState.firstVisibleItemIndex) ?: selected).sortTitle.firstOrNull()?.uppercaseChar()?.takeIf { it in 'A'..'Z' }?.toString() ?: "#" else activeLetter
                             val active = shownLetter == letter
                             var letterFocused by remember { mutableStateOf(false) }
-                            Box(Modifier.size(44.dp * alphaCss).parityShape(999f), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(44.dp * alphaCss), contentAlignment = Alignment.Center) {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp * alphaCss)
+                                    .parityShape(999f)
                                     .then(if (active) Modifier.focusRequester(letterFocus) else Modifier)
                                     .webFocusRing(letterFocused, offset = 1.dp)
                                     .onFocusChanged { letterFocused = it.isFocused }
@@ -5123,7 +5123,7 @@ private fun PhoneSearchContent(
                 Row(
                     // Web's 50px min-height grows to 60px from the 44px input plus 14px padding and 2px border.
                     Modifier.fillMaxWidth().height(60.dp)
-                        .parityShape(999f).parityRole("search")
+                        .parityShape(999f)
                         .background(WebSurfaceStrong.copy(alpha = 0.88f), pillShape)
                         .border(1.dp, WebSearchBorder, pillShape)
                         .padding(horizontal = 17.dp), // the web box adds its 1 px border to the padding
@@ -5334,7 +5334,7 @@ private fun TelevisionSearchBody(
             Modifier
                 .offset(x = 153.6.dp, y = 172.8.dp)
                 .size(590.dp, 76.dp)
-                .parityShape(999f).parityRole("search")
+                .parityShape(999f)
                 .webFocusRing(focused, radius = 38.dp, offset = 2.dp)
                 .clip(CircleShape)
                 .background(WebSurfaceStrong.copy(alpha = 0.88f), CircleShape)
@@ -6801,7 +6801,7 @@ private fun PhoneVideoDetailBody(
         }
         run {
             Column(
-                Modifier.padding(top = 30.33.dp).fillMaxWidth().parityBox("container").then(if (webIsDark) Modifier.background(webRailSurfaceBrush()) else Modifier),
+                Modifier.padding(top = 30.33.dp).fillMaxWidth().then(if (webIsDark) Modifier.parityBox("container").background(webRailSurfaceBrush()) else Modifier),
             ) {
                 if (series != null) {
                     seasons.forEach { season ->

@@ -168,9 +168,3 @@ class FractionalSpacedVertical(private val gap: androidx.compose.ui.unit.Dp) : a
 /** Gradients are not a flat colour: painted as foundation does and not recorded (the export has no single background for them). */
 fun Modifier.background(brush: androidx.compose.ui.graphics.Brush, shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape, alpha: Float = 1f): Modifier =
     foundationBackground(brush, shape, alpha)
-
-/** A landmark the app declares on a container that has no accessibility role of its own (a search form, a group of related controls); read by the layout export. */
-val ParityRoleKey = androidx.compose.ui.semantics.SemanticsPropertyKey<String>("ParityRole") { parent, _ -> parent }
-private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.parityRoleProp by ParityRoleKey
-
-fun Modifier.parityRole(role: String): Modifier = if (!parityLayoutEnabled) this else semantics { parityRoleProp = role }
