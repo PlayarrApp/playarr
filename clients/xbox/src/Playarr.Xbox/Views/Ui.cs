@@ -134,7 +134,7 @@ namespace Playarr.Xbox.Views
             button.HorizontalAlignment = HorizontalAlignment.Left;
             button.VerticalAlignment = VerticalAlignment.Top;
             // The web draws Back as the text arrow, small and lightweight, not an icon-font arrow.
-            button.Content = new TextBlock { Text = "\u2190", FontSize = 17.28, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(-2, 2.2, 0, 0), CharacterSpacing = 133 };
+            button.Content = new TextBlock { Text = "\u2190", FontSize = 17.28, FontFamily = WebFont.Face(720), FontWeight = WebFont.Weight(720), LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Foreground = Res("PlayarrInkSoft"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(-2, 0.6, 0, 0), CharacterSpacing = 133 };
             return button;
         }
 

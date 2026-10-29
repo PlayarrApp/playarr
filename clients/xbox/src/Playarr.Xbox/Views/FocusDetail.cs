@@ -26,7 +26,7 @@ namespace Playarr.Xbox.Views
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
         };
-        private readonly Image _backdrop = new Image { Stretch = Stretch.UniformToFill };
+        private readonly Image _backdrop = new Image { Stretch = Stretch.UniformToFill, Width = 899.97, Height = 1190.59 }; // sized to the key-art box so the picture crops itself
         private readonly Rectangle _imageMaskWash = new Rectangle
         {
             Width = 899.97,

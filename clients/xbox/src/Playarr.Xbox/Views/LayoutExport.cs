@@ -186,6 +186,15 @@ namespace Playarr.Xbox.Views
         {
             try
             {
+                // Like the web's check, an element that takes no pointer input (a decorative dot or glow) is never counted as covered.
+                for (DependencyObject n = element; n != null; n = VisualTreeHelper.GetParent(n))
+                {
+                    if (n is UIElement { IsHitTestVisible: false })
+                    {
+                        return false;
+                    }
+                }
+
                 var host = element.TransformToVisual(null).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
                 var covered = 0;
                 foreach (var fx in new[] { 0.2, 0.5, 0.8 })
@@ -291,6 +300,7 @@ namespace Playarr.Xbox.Views
             {
                 role = itemRole;
                 name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(tagged);
+                rect = Bounds(tagged, root, scale); // the link is the card, not the (taller) list slot around it
             }
 
             if (element is TextBlock split && split.GetValue(SplitOnProperty) is string separator && split.Text.Contains(separator))

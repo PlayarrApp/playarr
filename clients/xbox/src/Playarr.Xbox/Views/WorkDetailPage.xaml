@@ -27,6 +27,8 @@
         <Grid x:Name="BackdropLayer" Width="899.97" Height="1190.59" Margin="133.03,-22.9,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Image
                 x:Name="BackdropImage"
+                Width="899.97"
+                Height="1190.59"
                 Stretch="UniformToFill"
                 IsHitTestVisible="False" />
         </Grid>
