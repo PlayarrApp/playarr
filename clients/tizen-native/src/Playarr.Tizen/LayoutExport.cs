@@ -123,7 +123,7 @@ internal static class LayoutExport
 
             if (child is TextLabel label && Ui.TextMeta.TryGetValue(label, out var m) && !string.IsNullOrEmpty(label.Text))
             {
-                var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + run.X * csx, cy + run.Y * csy, run.W * csx, run.H * csy).Intersect(clip))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
+                var runs = TextRuns(label, m).Select(run => (run.Text, R: new RectF(cx + run.X * csx, cy + run.Y * csy, run.W * csx, run.H * csy))).Where(r => r.R.W > 0 && r.R.H > 0).ToList();
                 foreach (var (runText, r) in runs)
                 {
                     if (!r.Overlaps(clip)) continue;
@@ -173,8 +173,10 @@ internal static class LayoutExport
             if (li < 0) lines.Add((y, y + h, x, x + w, i, i));
             else { var l = lines[li]; lines[li] = (Math.Min(l.Top, y), Math.Max(l.Bottom, y + h), Math.Min(l.L, x), Math.Max(l.R, x + w), l.First, i); }
         }
+        // the web's text box is the font's content area: baseline minus ascent to baseline plus descent of the font this label draws with, as FontClient reports it (label units)
+        var (asc, desc) = Ui.FontAscentDescent(meta.Size, meta.Weight, meta.Family, label.PixelSize);
         foreach (var l in lines.OrderBy(l => l.Top))
-            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L, l.Bottom - l.Top);
+            yield return (System.Text.RegularExpressions.Regex.Replace(text[l.First..(l.Last + 1)], @"\s+", " ").Trim(), l.L, l.Top, l.R - l.L + label.CharacterSpacing, asc - desc); // horizontally the advance span: each glyph advances by its box plus the label's own letter spacing
     }
 
     private static string Hex(float r, float g, float b, float a)

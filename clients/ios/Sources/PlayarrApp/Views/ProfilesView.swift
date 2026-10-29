@@ -115,6 +115,7 @@ struct ProfilesView: View {
                 stageContent(proxy: proxy)
             }
         }
+        .parityFill(WM.shell) // the shell colour the picker (and its gradients) sit on
         .ignoresSafeArea(edges: .vertical)
         .webGutter()
     }
@@ -210,7 +211,7 @@ struct ProfilesView: View {
 
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
-                    .wm(11, 650, color: PlayarrStyle.danger).foregroundStyle(PlayarrStyle.danger)
+                    .wm(11, 650, color: PlayarrStyle.danger, text: errorMessage).foregroundStyle(PlayarrStyle.danger)
                     .offset(x: 24, y: 470)
             }
 
@@ -292,6 +293,7 @@ struct ProfilesView: View {
                             WMText("Sign out", 7.68, 720, color: WM.inkSoft, lh: 11.52).fixedSize()
                         }
                         .frame(width: 92, height: 44)
+                        .parityFill(WM.chip)
                         .background(WM.chip, in: Capsule())
                         .overlay(Capsule().stroke(WM.line.opacity(0.08), lineWidth: 1))
                         .wmChipShadow()
@@ -374,7 +376,7 @@ struct ProfilesView: View {
 
             if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
-                    .wm(11, 650, color: PlayarrStyle.danger).foregroundStyle(PlayarrStyle.danger)
+                    .wm(11, 650, color: PlayarrStyle.danger, text: errorMessage).foregroundStyle(PlayarrStyle.danger)
                     .offset(x: 41, y: 900)
             }
 

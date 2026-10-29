@@ -70,7 +70,7 @@ struct PlayerView: View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 Color.black
-                content(size: proxy.size)
+                content(size: proxy.size).parityFill(.black)
                 if let viewModel, viewModel.endOfPlayback.phase != .playing {
                     EndOfPlaybackView(
                         controller: viewModel.endOfPlayback,
@@ -265,11 +265,11 @@ struct PlayerView: View {
                     }
                 scrim(size: size)
                 controls(viewModel, size: size)
-                    .opacity(controlsVisible ? 1 : 0)
+                    .parityOpacity(controlsVisible ? 1 : 0)
                     .offset(y: controlsVisible ? 0 : 12)
                     .allowsHitTesting(controlsVisible)
                 topButtons(size: size)
-                    .opacity(controlsVisible ? 1 : 0)
+                    .parityOpacity(controlsVisible ? 1 : 0)
                     .offset(y: controlsVisible ? 0 : -10)
                     .allowsHitTesting(controlsVisible)
                 if let menu = activeMenu, controlsVisible {
@@ -508,7 +508,7 @@ struct PlayerView: View {
                     }
                 }
                 .scaleEffect(active ? 1.1 : 1)
-                .opacity(disabled ? 0.28 : 1)
+                .parityOpacity(disabled ? 0.28 : 1)
         }
         .buttonStyle(.plain)
         .disabled(disabled)

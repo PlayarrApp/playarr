@@ -1,0 +1,1 @@
+- iOS layout export: backgrounds come from fills the app really paints, covered content is not exported, no stale or duplicate text runs.

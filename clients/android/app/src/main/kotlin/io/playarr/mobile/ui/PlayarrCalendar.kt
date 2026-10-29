@@ -354,7 +354,7 @@ internal val PhoneCalendarMetrics = CalendarMetrics(
 /** Web TV `.calendar` agenda at 1920 x 1080, read off the committed references. */
 internal val TvCalendarMetrics = CalendarMetrics(
     11.7f, 18f, 2.1f, 17f, 38.7f, 46f, 14f, 19.4f, 28f, 15f, 11.6f, 17f, 1.16f, 10.5f,
-    19.4f, 23f, 8f, 15f, 58f, 14.72f, 22f, 21f, 9.6f, 107f, 20f, 28f, 13f, 19f, 40f to 60f, 14f, 18.4f, 28f,
+    19.4f, 23f, 8f, 15f, 58f, 14.72f, 22f, 21f, 9.6f, 107f, 20f, 28f, 13f, 19f, 40f to 60f, 12f, 18.4f, 28f,
 )
 
 internal val LocalCalendarMetrics = androidx.compose.runtime.compositionLocalOf { PhoneCalendarMetrics }
@@ -560,7 +560,7 @@ private fun PhoneCalendarPill(label: String, glyph: String? = null, enabled: Boo
         contentColor = if (primary) (if (webIsDark) Color(0xFF151315) else Color.White) else WebInkSoft,
         border = if (primary) null else BorderStroke(1.dp, WebPillBorder),
         // Web: the primary action is a button only as its text run; a secondary one is a button box around a glyph and a label.
-        modifier = Modifier.height(m.pillHeight.dp).then(if (primary) Modifier else Modifier.parityShape(999f)),
+        modifier = Modifier.height(m.pillHeight.dp).parityShape(999f),
     ) {
         Row(Modifier.padding(horizontal = m.pillPad.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (m === TvCalendarMetrics) 9.6.dp else 8.dp)) {
             if (glyph != null) Text(glyph, color = WebInkSoft, fontSize = m.pill.sp, lineHeight = m.pillLine.sp, fontWeight = FontWeight(720), style = WebTextStyle, modifier = Modifier)

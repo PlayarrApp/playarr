@@ -133,7 +133,7 @@ internal object PlayarrLayoutExport {
     private class Ctx(val window: Int, val dx: Float, val dy: Float, val unit: Float, val width: Float, val height: Float, val items: MutableList<Item>, val fills: MutableList<Fill> = mutableListOf()) {
         /** The colour behind a point in window px: every painted box of this window that holds it, largest first, composited as the app painted them. */
         fun behind(px: Float, py: Float): String? {
-            val under = fills.filter { px >= it.l && px <= it.r && py >= it.t && py <= it.b }.sortedByDescending { (it.r - it.l) * (it.b - it.t) }
+            val under = fills.filter { px >= it.l && px <= it.r && py >= it.t && py <= it.b }
             if (under.isEmpty()) return null
             var c = under.first().color.copy(alpha = 1f)
             for (f in under.drop(1)) c = f.color.compositeOver(c)
@@ -171,32 +171,37 @@ internal object PlayarrLayoutExport {
             if (layout != null) {
                 val input = layout.layoutInput
                 val style = input.style
-                val o = coords.localToRoot(androidx.compose.ui.geometry.Offset.Zero); val ux = coords.localToRoot(androidx.compose.ui.geometry.Offset(1f, 0f))
-                val scale = Math.hypot((ux.x - o.x).toDouble(), (ux.y - o.y).toDouble()).toFloat()
-                val size = style.fontSize.value * input.density.fontScale * input.density.density * scale
-                val colour = style.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified }
-                if (colour == null) { node.children.forEach { walkText(it, ctx, hide) }; return }
                 val role = if (config.contains(SemanticsProperties.Heading)) "heading" else "text"
                 val raw = input.text.text
+                val measurer = androidx.compose.ui.text.TextMeasurer(input.fontFamilyResolver, input.density, input.layoutDirection)
+                val spans = input.text.spanStyles
                 for (i in 0 until layout.lineCount) {
-                    val lineText = raw.substring(layout.getLineStart(i), layout.getLineEnd(i, true)).trim()
-                    if (lineText.isEmpty()) continue
-                    // The line's content area, as the browser's Range rect gives it: baseline minus and plus the ascent and descent of the font that
-                    // drew the run, read from the same text and style measured without a line height (the typeface's own metrics, in px).
-                    val metrics = androidx.compose.ui.text.TextMeasurer(input.fontFamilyResolver, input.density, input.layoutDirection)
-                        .measure(lineText, style.copy(lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified, lineHeightStyle = null, textAlign = androidx.compose.ui.text.style.TextAlign.Unspecified), softWrap = false, maxLines = 1)
-                    val ascent = metrics.getLineBaseline(0) - metrics.getLineTop(0); val descent = metrics.getLineBottom(0) - metrics.getLineBaseline(0)
-                    val baseline = layout.getLineBaseline(i)
-                    val a = coords.localToRoot(androidx.compose.ui.geometry.Offset(layout.getLineLeft(i), baseline - ascent))
-                    // The run ends at the last glyph's own box (its advance and letter spacing), not at the line's trimmed right edge.
-                    val lastBox = layout.getBoundingBox(maxOf(layout.getLineStart(i), layout.getLineEnd(i, true) - 1 - (raw.substring(layout.getLineStart(i), layout.getLineEnd(i, true)).length - raw.substring(layout.getLineStart(i), layout.getLineEnd(i, true)).trimEnd().length)))
-                    val b = coords.localToRoot(androidx.compose.ui.geometry.Offset(lastBox.right, baseline + descent))
-                    val x = minOf(a.x, b.x) + ctx.dx; val y = minOf(a.y, b.y) + ctx.dy; val w = Math.abs(b.x - a.x); val h = Math.abs(b.y - a.y)
-                    val e = JSONObject().put("text", lineText).put("role", role).put("rect", rect(x, y, w, h, ctx.unit))
-                        .put("color", colour?.let { hex(it.toArgb()) } ?: JSONObject.NULL)
-                        .put("fontSize", r2(size * ctx.unit)).put("fontWeight", style.fontWeight?.weight ?: 400)
-                    ctx.behind(x + w / 2f, y + h / 2f)?.let { e.put("background", it) }
-                    ctx.add(e, x, y, w, h)
+                    val ls = layout.getLineStart(i); val le = layout.getLineEnd(i, true)
+                    // One element per style run: the line is cut where a span style starts or ends.
+                    val cuts = (listOf(ls, le) + spans.flatMap { listOf(it.start, it.end) }).filter { it in ls..le }.distinct().sorted()
+                    for (k in 0 until cuts.size - 1) {
+                        var rs = cuts[k]; var re = cuts[k + 1]
+                        while (rs < re && raw[rs].isWhitespace()) rs++
+                        while (re > rs && raw[re - 1].isWhitespace()) re--
+                        if (rs >= re) continue
+                        val runStyle = spans.filter { it.start <= rs && it.end > rs }.fold(style) { acc, sp -> acc.merge(sp.item) }
+                        val colour = runStyle.color.takeIf { it.alpha > 0f && it != androidx.compose.ui.graphics.Color.Unspecified } ?: continue
+                        val size = runStyle.fontSize.value * input.density.fontScale * input.density.density
+                        val runText = raw.substring(rs, re)
+                        // The run's content area, as the browser's Range rect gives it: baseline minus and plus the ascent and descent of the font
+                        // that drew the run, read from the same text and style measured without a line height (the typeface's own metrics, in px).
+                        val metrics = measurer.measure(runText, runStyle.copy(lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified, lineHeightStyle = null, textAlign = androidx.compose.ui.text.style.TextAlign.Unspecified), softWrap = false, maxLines = 1)
+                        val ascent = metrics.getLineBaseline(0) - metrics.getLineTop(0); val descent = metrics.getLineBottom(0) - metrics.getLineBaseline(0)
+                        val baseline = layout.getLineBaseline(i)
+                        val a = coords.localToRoot(androidx.compose.ui.geometry.Offset(layout.getBoundingBox(rs).left, baseline - ascent))
+                        val b = coords.localToRoot(androidx.compose.ui.geometry.Offset(layout.getBoundingBox(re - 1).right, baseline + descent))
+                        val x = minOf(a.x, b.x) + ctx.dx; val y = minOf(a.y, b.y) + ctx.dy; val w = Math.abs(b.x - a.x); val h = Math.abs(b.y - a.y)
+                        val e = JSONObject().put("text", runText).put("role", role).put("rect", rect(x, y, w, h, ctx.unit))
+                            .put("color", hex(colour.toArgb()))
+                            .put("fontSize", r2(size * ctx.unit)).put("fontWeight", runStyle.fontWeight?.weight ?: 400)
+                        ctx.behind(x + w / 2f, y + h / 2f)?.let { e.put("background", it) }
+                        ctx.add(e, x, y, w, h)
+                    }
                 }
             }
         }
@@ -211,8 +216,9 @@ internal object PlayarrLayoutExport {
         val editable = config.contains(SemanticsProperties.EditableText) || config.contains(SemanticsActions.SetText)
         val slider = config.contains(SemanticsProperties.ProgressBarRangeInfo) && config.contains(SemanticsActions.SetProgress)
         val clickable = config.contains(SemanticsActions.OnClick)
-        if ((clickable || role != null || editable || slider) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
+        if ((clickable || role != null || editable || slider || config.contains(SemanticsProperties.PaneTitle)) && !(slider && insideSlider) && node.layoutInfo.isPlaced && !node.boundsInWindow.isEmpty) {
             val kind = when {
+                config.contains(SemanticsProperties.PaneTitle) -> "dialog"
                 editable -> "textbox"
                 slider -> "slider"
                 role == Role.Checkbox -> "checkbox"

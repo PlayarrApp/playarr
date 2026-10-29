@@ -227,7 +227,6 @@ export function SearchScreen({navigation}: SearchScreenProps): React.ReactElemen
           {...lx('textbox', t('pages.search.searchPlaceholder'))}
           returnKeyType="search"
           hasTVPreferredFocus
-          accessibilityLabel={t('pages.search.ariaSearchPlayarr')}
           style={{flex: 1, marginLeft: u(13), padding: 0, height: u(60), color: colour.ink, fontSize: u(17.28), textAlignVertical: 'center', ...sans(400)}}
         />
         {query.length > 0 ? (

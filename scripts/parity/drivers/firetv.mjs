@@ -304,8 +304,13 @@ export async function createDriver({ out } = {}) {
       return (await state()).route;
     },
     async focused() {
-      const f = (await state()).focus;
-      return f ?? null;
+      // A state answer can arrive without the focus while the app is busy (a loaded host answers late): ask again before reporting none.
+      for (let i = 0; i < 6; i++) {
+        const f = (await state().catch(() => ({}))).focus;
+        if (f) return f;
+        await sleep(1500);
+      }
+      return null;
     },
     async screenshot(file) {
       const s = await state();

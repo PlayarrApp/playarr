@@ -104,7 +104,7 @@ export function PageHeader({title, detail, onBack, backLabel, backFocus, webBack
       </View>
       {detail !== undefined ? (
         <View
-          style={{position: 'absolute', left: u(HEADER_X), top: u(beside ? 72.7 : 117.65), opacity: widths === null || beside ? 0 : 1}}
+          style={{position: 'absolute', left: u(HEADER_X), top: u(beside ? 72.7 : 118.8), opacity: widths === null || beside ? 0 : 1}}
           pointerEvents="none"
         >
           <View onLayout={measure('detail')} style={{position: 'absolute', opacity: 0}}>{subtitle}</View>

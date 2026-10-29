@@ -331,6 +331,7 @@ private fun PlayarrRoundBackButton(back: PlayarrBack, active: Boolean) {
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .then(if (focused || active) Modifier.playarrFocusRing(PlayarrRingShape.Round) else Modifier)
                 
+                .parityShape(999f)
                 .semantics { contentDescription = back.label; role = Role.Button },
         ) {
             Box(contentAlignment = Alignment.Center) {

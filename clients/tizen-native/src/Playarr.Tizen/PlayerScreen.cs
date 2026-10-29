@@ -95,17 +95,23 @@ internal sealed class PlayerScreen : IPage
         _controls.Add(_total);
 
         // tools
-        AddIcon("volume", 1323.6f, 980, "audio", dim: false);
-        AddIcon("captions", 1401.2f, 980, "subtitles", dim: false, select: OpenSubtitles);
-        AddIcon("queue", 1478.8f, 980, "playlist", dim: false);
+        AddIcon("volume", 397, 980, "mute", dim: false); // web: mute, then the volume slider
+        var volume = Sem.Tag(new View { PositionX = 449, PositionY = 968, Size = new Size(130, 44) }, "textbox", "Volume");
+        volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.18f), 2)); volume.Add(Ui.Box(0, 20, 130, 4, new Rgba(1, 1, 1, 0.9f), 2));
+        _controls.Add(volume);
+        _focus.Items.Add(new Focusable { Rect = () => new Box(449, 968, 130, 44), Label = "volume", Select = () => { }, Style = f => volume.Opacity = f ? 1f : 0.8f });
+        AddIcon("volume", 1246, 980, "audio", dim: false);
+        AddIcon("captions", 1323.6f, 980, "subtitles", dim: false, select: OpenSubtitles);
+        AddIcon("queue", 1401.2f, 980, "playlist", dim: false);
         _qualityBadge = Ui.Text("HD", 22.1f, 22.5f, 7.68f, 700, white, 28, 11.52f, spacing: 0.3f);
         _qualityLabel = Ui.Text("Original", 51.1f, 20.1f, 10.56f, 700, white, 138, 15.84f, spacing: 0.1f);
         _qualityHost.Add(_qualityBadge); _qualityHost.Add(_qualityLabel); // web: the quality button holds its badge and label
         _controls.Add(_qualityHost);
         _qualityRing = Ring.Make(180, 56, 28, new Rgba(1, 1, 1), themed: false); _qualityRing.Show(false); _qualityHost.Add(_qualityRing);
         _focus.Items.Add(new Focusable { Rect = () => new Box(_qualityButtonX, 962, _qualityButtonWidth, 56), Label = "quality", Select = () => { }, Style = f => _qualityRing.Show(f) });
-        AddIcon("info", 1730.4f, 980, "info", dim: false);
-        AddIcon("cast", 1808, 980, "play on another device", dim: false);
+        AddIcon("info", 1652.8f, 980, "info", dim: false);
+        AddIcon("cast", 1730.4f, 980, "play on another device", dim: false);
+        AddIcon("fullscreen", 1808, 980, "fullscreen", dim: false);
 
         _tick = new global::Tizen.NUI.Timer(500); _tick.Tick += (_, _) => { OnTick(); return !_stopped; };
         _hide = new global::Tizen.NUI.Timer(5000); _hide.Tick += (_, _) => { if (_panel is null && _player?.State == PlayerState.Playing) SetControls(false); return false; };
@@ -131,9 +137,9 @@ internal sealed class PlayerScreen : IPage
         // web: each tool is a 64 px round button holding its 20 px icon; a disabled one (no previous, no next, no audio track) draws at 28 %
         var host = Ui.Box(x - 22, y - 22, 64, 64, null, 32);
         host.Opacity = disabledLook ? 0.28f : 1f;
-        var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", _ => "Play on another device" };
+        var buttonName = label switch { "previous" => "Previous episode", "next" => "Next episode", "audio" => "Audio: Unavailable", "subtitles" => "Subtitles: Off", "playlist" => "Playlist: 1 item", "info" => "Info and playback health", "mute" => "Mute", "fullscreen" => "Enter fullscreen", _ => "Play on another device" };
         Sem.Tag(host, "button", buttonName);
-        host.Add(Ui.Icon(icon, 22, 22, 20, new Rgba(1, 1, 1, disabledLook ? 1f : 0.8f)));
+        host.Add(Ui.Icon(icon, 22, 22, 20, new Rgba(1, 1, 1)));
         _controls.Add(host);
         if (dim) return; // web: previous and next are disabled (not focusable) when nothing precedes or follows
         var ring = Ring.Make(36, 36, 18, new Rgba(1, 1, 1), themed: false); ring.PositionX = x - 12; ring.PositionY = y - 12; ring.Show(false);
@@ -304,7 +310,7 @@ internal sealed class PlayerScreen : IPage
     private Focusable PlayFocusable(string label) => new() { Rect = () => new Box(147.6f, 958, 64, 64), Label = label, Select = TogglePause, Style = f => _playRing.Show(f) };
 
     private View? _playButton;
-    private readonly View _qualityHost = new() { PositionY = 962 };
+    private readonly View _qualityHost = new() { PositionY = 962, CornerRadius = 28 };
     private bool _pendingToggle;
 
     private void TogglePause()
@@ -399,7 +405,7 @@ internal sealed class PlayerScreen : IPage
         var measuredWidth = Ui.TextWidth(display.Label, 10.56f, 700, 0.1f) + 2;
         var labelW = Ui.TextWidth(display.Label, 10.56f, 700, 0.1f);
         // web: the button is 65.5 px wider than its label and ends at x 1694.8
-        _qualityButtonWidth = 65.5f + labelW; _qualityButtonX = 1694.8f - _qualityButtonWidth;
+        _qualityButtonWidth = 65.5f + labelW; _qualityButtonX = 1616.8f - _qualityButtonWidth;
         var shift = 0f;
         _qualityRing.Size = new Size(_qualityButtonWidth, 56);
         Sem.Tag(_qualityHost, "button", "Quality: " + display.Label); _qualityHost.PositionX = _qualityButtonX; _qualityHost.Size = new Size(_qualityButtonWidth, 56);
