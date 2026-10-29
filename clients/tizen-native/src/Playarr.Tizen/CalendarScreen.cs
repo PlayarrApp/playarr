@@ -319,7 +319,7 @@ internal sealed class CalendarScreen : IPage
         var tag = Ui.Box(x, y, 60.5f, 22, new Rgba(0, 0, 0, 0), 11);
         tag.BorderlineWidth = 1; tag.BorderlineColor = Ui.C(_t.Accent);
         Sem.Tag(tag, "none");
-        tag.Add(Sem.Tag(Ui.Text("Today", 0, 2.6f, 11.2f, 640, _t.Accent, 60.5f, 16.8f, HorizontalAlignment.Center, upper: true, spacing: 0.9f), "text"));
+        tag.Add(Sem.Tag(Ui.Text("Today", 0, 1.7f, 11.2f, 640, _t.Accent, 60.5f, 16.8f, HorizontalAlignment.Center, upper: true, spacing: 0.9f), "text"));
         parent.Add(tag);
     }
 
@@ -376,7 +376,7 @@ internal sealed class CalendarScreen : IPage
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(mx, sub.Length == 0 ? my - 0.46f : my, pw, 26.6f, new Rgba(ToneColor(tone).R * 0.14f + _t.Surface.R * 0.86f, ToneColor(tone).G * 0.14f + _t.Surface.G * 0.86f, ToneColor(tone).B * 0.14f + _t.Surface.B * 0.86f), 13.3f); // web color-mix(tone 14 %, --surface)
         pill.BorderlineWidth = 1; pill.BorderlineColor = new Color(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.6f);
-        pill.Add(Sem.Tag(Ui.Text(label, 0, 4, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text"));
+        pill.Add(Sem.Tag(Ui.Text(label, 0, 2.95f, 13.44f, 750, _t.Ink, pw, 18.8f, HorizontalAlignment.Center), "text"));
         Sem.Tag(pill, "none");
         card.Add(pill);
         // web: the whole entry is one button named by its text parts; its children sit on the surface
@@ -409,7 +409,7 @@ internal sealed class CalendarScreen : IPage
         var day = CalendarRules.ReleaseInstant(e) is { } when // web: Intl dateStyle full + timeStyle short, or the day heading then All day
             ? when.ToLocalTime().ToString("dddd, d MMMM yyyy", gb) + " at " + when.ToLocalTime().ToString("HH:mm")
             : CalendarRules.LocalDay(e).ToString("dddd d MMMM", gb) + " \u00b7 All day";
-        Ui.MetaRow(_panel, string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my, 13.056f, 600, DetailsPanel.Soft(_t), 19.584f);
+        Ui.MetaRow(_panel, string.Join("     ", new[] { code.Length > 0 ? code + (e.Subtitle is { Length: > 0 } ? " \u00b7 " + e.Subtitle : "") : null, day }.Where(x => x is not null)!), 153.6f, my + 1.6f, 13.056f, 600, DetailsPanel.Soft(_t), 19.584f); // glyph-run top calibration
         var label = tone switch { CalendarTone.Available => "Available", CalendarTone.Upcoming => "Upcoming", CalendarTone.Missing => "Missing", _ => "Not tracked" };
         var pw = Ui.TextWidth(label, 13.44f, 750, 0) + 22.8f; // web .status-pill: 0.65rem padding and a 1 px border each side
         var pill = Ui.Box(153.6f, my + 37.9f, pw, 26.6f, new Rgba(ToneColor(tone).R, ToneColor(tone).G, ToneColor(tone).B, 0.14f), 13.3f);
@@ -424,13 +424,13 @@ internal sealed class CalendarScreen : IPage
         var openRing = Ring.Make(124, 58, 29, new Rgba(1, 1, 1)); openRing.Show(false); open.Add(openRing);
         _panelItems.Add(new Focusable { Rect = () => new Box(153.6f, by, 124, 58), Label = "open series", Style = f => openRing.Show(f), Select = () => { if (e.WorkId is { } wid) _env.Navigate(HomeScreen.DetailRoute(new WorkCard(wid, e.MediaKind == "movie" ? WorkKind.Movie : WorkKind.Series, e.Title, "", "", "", null, null, null, 0, false))); } });
         _panel.Add(open);
-        var wl = Ui.Box(287.2f, by, 177.6f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
+        var wl = Ui.Box(286.28f, by, 179.31f, 58, new Rgba(_t.SurfaceStrong.R, _t.SurfaceStrong.G, _t.SurfaceStrong.B, 0.78f), 29);
         wl.BorderlineWidth = 1; wl.BorderlineColor = Ui.LineA(_t, 0.153f);
-        wl.Add(Ui.Text("+", 21, 18, 14.72f, 720, _t.InkSoft, 14, 22.08f));
-        wl.Add(Ui.Text("Add to watchlist", 38.52f, 17, 14.72f, 900, _t.InkSoft, 130, 22.08f));
+        wl.Add(Ui.Text("+", 21.0f, 18, 14.72f, 720, _t.InkSoft, 14, 22.08f));
+        wl.Add(Ui.Text("Add to watchlist", 39.44f, 17, 14.72f, 900, _t.InkSoft, 130, 22.08f));
         Sem.Tag(wl, "button", "Add to watchlist");
-        var wlRing = Ring.Make(177.6f, 58, 29, new Rgba(1, 1, 1)); wlRing.Show(false); wl.Add(wlRing);
-        _panelItems.Add(new Focusable { Rect = () => new Box(287.2f, by, 177.6f, 58), Label = "add to watchlist", Style = f => wlRing.Show(f), Select = () => Toast("The watchlist is not available in this app yet.") });
+        var wlRing = Ring.Make(179.31f, 58, 29, new Rgba(1, 1, 1)); wlRing.Show(false); wl.Add(wlRing);
+        _panelItems.Add(new Focusable { Rect = () => new Box(286.28f, by, 179.31f, 58), Label = "add to watchlist", Style = f => wlRing.Show(f), Select = () => Toast("The watchlist is not available in this app yet.") });
         _focus.Items.AddRange(_panelItems);
         _panel.Add(wl);
     }

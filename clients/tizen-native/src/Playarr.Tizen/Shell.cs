@@ -129,7 +129,7 @@ internal sealed class Shell : View
         chip.Add(pv.Item64);
         _nav.Add(pv);
         _profileLabel = pv.Label;
-        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1035f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
+        _chrome.Add(Sem.Tag(Ui.Text("v0.1.0", RailX - 1.5f, 1036.45f, 8, 700, _theme.Ink, RailW, 8, HorizontalAlignment.Center, spacing: 0.32f, family: Ui.Mono, block: true), "text"));
     }
 
     private View AddGroup(float y, float h)

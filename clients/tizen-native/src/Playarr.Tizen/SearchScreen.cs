@@ -125,7 +125,7 @@ internal sealed class SearchScreen : IPage
         _field = new TextField { PositionX = 62, PositionY = 8, Size = new Size(506, 60), Padding = new Extents(4, 0, 10, 10), PixelSize = 17f, TextColor = Ui.C(_t.Ink), FontFamily = Ui.Font,
             EnableCursorBlink = true };
         // web: the placeholder is its own text row; a real label (not the field's internal placeholder) so it is laid out and measured like every other text
-        var placeholder = Ui.Text("Search your libraries and playlists", 62, 25.7f, 17f, 400, _t.InkMuted, 506, 24);
+        var placeholder = Ui.Text("Search your libraries and playlists", 62, 25.2f, 17.66f, 400, _t.InkMuted, 506, 24);
         _field.TextChanged += (_, e) => { placeholder.Show(string.IsNullOrEmpty(_field.Text)); OnText(_field.Text); };
         Sem.Tag(_field, "textbox", "Search your libraries and playlists");
         form.Add(_field);
