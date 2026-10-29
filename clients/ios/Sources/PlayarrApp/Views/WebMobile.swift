@@ -741,14 +741,29 @@ struct WMHeaderCircleButton: View {
 
     var body: some View {
         Button(action: action) {
-            // The web draws the arrow glyph about 0.65 times the size of the app's fallback glyph, 1.3 pt lower.
-            Text(glyph)
-                .wm(glyph == "\u{2190}" ? 8.3 : 12.8, weight, color: WM.inkSoft, text: glyph)
-                .foregroundStyle(WM.inkSoft)
-                .offset(y: glyph == "\u{2190}" ? 1.3 : 0)
+            if glyph == "\u{2190}" {
+                // The design font has no arrow glyph, so it is drawn as a vector in the web glyph's 12.8 x 18 box.
+                Canvas { context, _ in
+                    var arrow = Path()
+                    arrow.move(to: CGPoint(x: 11.6, y: 9)); arrow.addLine(to: CGPoint(x: 1.4, y: 9))
+                    arrow.move(to: CGPoint(x: 5.6, y: 4.8)); arrow.addLine(to: CGPoint(x: 1.4, y: 9)); arrow.addLine(to: CGPoint(x: 5.6, y: 13.2))
+                    context.stroke(arrow, with: .color(WM.inkSoft), style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
+                }
+                .frame(width: 12.8, height: 18)
+                .offset(y: -0.6)
+                .parityBox("image")
+                .accessibilityHidden(true)
                 .frame(width: width, height: height)
                 .parityShape(role, name: name, color: WM.chip.opacity(0.66), in: Ellipse(), radius: width == height ? width / 2 : 0)
                 .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
+            } else {
+            Text(glyph)
+                .wm(12.8, weight, color: WM.inkSoft, text: glyph)
+                .foregroundStyle(WM.inkSoft)
+                .frame(width: width, height: height)
+                .parityShape(role, name: name, color: WM.chip.opacity(0.66), in: Ellipse(), radius: width == height ? width / 2 : 0)
+                .overlay(Ellipse().stroke(WM.line.opacity(0.14), lineWidth: 1))
+            }
         }
         .buttonStyle(.plain)
     }

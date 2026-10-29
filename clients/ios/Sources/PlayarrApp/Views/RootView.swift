@@ -700,8 +700,11 @@ private struct AuthenticatedPlayarrShell: View {
             }
             }
 
-            PlayarrLogo(size: 30)
-                .offset(x: navEdge + 24.4, y: chromeTop)
+            // The web logo is a decorative 32.09 pt image (no alt text), so it is exported as an image without a name.
+            PlayarrLogo(size: 32.09)
+                .accessibilityHidden(true)
+                .parityBox("image")
+                .offset(x: navEdge + 23.34, y: chromeTop + 5.94)
 
             // Web rail: Downloads and Search, then the four browse tabs, then the four personal tabs, each in its own pill.
             VStack(spacing: 13) {
