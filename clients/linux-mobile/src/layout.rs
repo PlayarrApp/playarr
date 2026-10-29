@@ -268,6 +268,17 @@ fn font_px(w: &impl IsA<gtk4::Widget>) -> (f64, i32) {
     (px, fd.weight().into_glib())
 }
 
+/// Marks a control the app gave the `group` role itself (`accessible_role(Group)`), as opposed to a toolkit default.
+pub fn mark_group(w: &impl IsA<gtk4::Widget>) {
+    // SAFETY: the key is private to this module and always holds a `bool`.
+    unsafe { w.set_data("pa-group", true) };
+}
+
+fn marked_group(w: &gtk4::Widget) -> bool {
+    // SAFETY: see `mark_group`.
+    unsafe { w.data::<bool>("pa-group").is_some() }
+}
+
 fn role_of(w: &gtk4::Widget) -> &'static str {
     use gtk4::AccessibleRole as R;
     match w.accessible_role() {
@@ -285,7 +296,8 @@ fn role_of(w: &gtk4::Widget) -> &'static str {
         R::ProgressBar => "progressbar",
         R::List => "list",
         R::Search => "search",
-        R::Group => "group",
+        // Toolkit containers (libadwaita) default to Group; only a control the app marks `group` is a group.
+        R::Group if marked_group(w) => "group",
         _ => "container",
     }
 }
@@ -424,7 +436,8 @@ impl Walk<'_> {
             .find(|f| !f.border && near(f.b, b, 0.55) && (f.gradient.is_some() || f.rgba[3] * f.opacity > 0.004));
         let bordered = lp.fills.iter().any(|f| f.border && near(f.b, b, 0.55));
         let mut bg = parent_bg;
-        if let Some(f) = own {
+        // `background` is the background colour: a gradient is an image on top of it and leaves it as it is.
+        if let Some(f) = own.filter(|f| f.gradient.is_none()) {
             bg = over(f.at(b[0] + b[2] / 2.0, b[1] + b[3] / 2.0), parent_bg);
         }
         let mut radius = own.map(|f| f.radius).filter(|r| *r > 0.0);
@@ -468,9 +481,6 @@ impl Walk<'_> {
                 return (false, bg);
             }
             let (ox, oy) = l.layout_offsets();
-            #[allow(deprecated)]
-            let pad = l.style_context().padding();
-            let (ox, oy) = (ox + i32::from(pad.left()), oy + i32::from(pad.top()));
             let s = pango::SCALE as f32;
             let (px, weight) = font_px(l);
             // One record per shaped style run (a run holds one font and one colour); neighbours on a line with the same
@@ -487,14 +497,33 @@ impl Walk<'_> {
                         let o = item.offset() as usize;
                         text.get(o..o + item.length() as usize).unwrap_or("").to_string()
                     };
-                    // An ancestor's CSS scale shows as the label's bounds differing from its allocation.
-                    let (sx, sy) = (b[2] / (w.width().max(1) as f32), b[3] / (w.height().max(1) as f32));
-                    let r = [
-                        b[0] + (ox as f32 + lg.x() as f32 / s) * sx,
-                        b[1] + (oy as f32 + lg.y() as f32 / s) * sy,
-                        lg.width() as f32 / s * sx,
-                        lg.height() as f32 / s * sy,
-                    ];
+                    // Glyph extent of the run without its leading and trailing blanks, from the layout's own cluster positions.
+                    let (mut x0, mut x1) = (lg.x(), lg.x() + lg.width());
+                    if !matches!(piece.as_str(), "\u{2026}") {
+                        let o = item.offset() as usize;
+                        let t = piece.trim_start();
+                        let lead = piece.len() - t.len();
+                        let t = t.trim_end();
+                        if !t.is_empty() && t.len() != piece.len() {
+                            if let Some(last) = t.chars().last() {
+                                let first = layout.index_to_pos((o + lead) as i32);
+                                let end = layout.index_to_pos((o + lead + t.len() - last.len_utf8()) as i32);
+                                x0 = first.x();
+                                x1 = end.x() + end.width();
+                            }
+                        }
+                    }
+                    // The label's real transform to the root (an ancestor's CSS scale is part of it), applied to the run box.
+                    let local = graphene::Rect::new(
+                        ox as f32 + x0 as f32 / s,
+                        oy as f32 + lg.y() as f32 / s,
+                        (x1 - x0) as f32 / s,
+                        lg.height() as f32 / s,
+                    );
+                    let r = match w.compute_transform(self.root) {
+                        Some(t) => to_root(&t, &local),
+                        None => [b[0] + local.x(), b[1] + local.y(), local.width(), local.height()],
+                    };
                     let m = lp
                         .runs
                         .iter()

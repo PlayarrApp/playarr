@@ -1,0 +1,1 @@
+- Nura layout export: label run boxes use the label's real transform and the layout's own offsets (no invented padding scale), blanks are trimmed from run boxes, month weekday headings are no longer dropped as occluded, libadwaita default group roles are not exported, and settings and month text ellipsise natively.

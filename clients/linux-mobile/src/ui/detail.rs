@@ -115,6 +115,7 @@ pub fn build(app: Rc<App>, client: Client, imgs: Images, work_id: String) -> gtk
     root.add_overlay(&fade(485, "pa-khero-wash"));
 
     let page = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+    page.add_css_class("pa-page-fill");
     page.set_margin_bottom(32);
     let status = gtk4::Label::builder()
         .label("Loading…")
