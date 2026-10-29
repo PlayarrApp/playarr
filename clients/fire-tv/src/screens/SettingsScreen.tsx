@@ -176,7 +176,7 @@ function Row({section, y, active, onFocus, onPress}: {section: Section; y: numbe
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={t(section.titleKey)}
-      {...lx('link', `${section.number} ${t(section.titleKey)} →`)}
+      {...lx('link', `${section.number} ${t(section.titleKey)}`)}
       onFocus={() => {
         setFocused(true);
         onFocus();

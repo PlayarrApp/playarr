@@ -372,7 +372,7 @@ function SelectField({label, value, onPress, x, y, w, onReveal}: {label: string;
       }}
       onBlur={() => setFocused(false)}
       onPress={onPress}
-      {...lx('button', `${label}: ${value}`, 12)}
+      {...lx('button', value, 12)}
       style={{position: 'absolute', left: u(x), top: u(y), width: u(w), height: u(SELECT_H), borderRadius: u(12), borderWidth: 1, borderColor: colour.lineStrong, backgroundColor: mix(colour.surfaceSoft, 0.64), padding: u(6.39)}}
     >
       <View style={{flex: 1, borderRadius: u(10), flexDirection: 'row', alignItems: 'center', paddingHorizontal: u(12)}}>

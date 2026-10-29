@@ -220,7 +220,7 @@ function AddProfileTile({selected, onFocus, onPress}: {selected: boolean; onFocu
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={t('pages.profiles.signIn')}
-      {...lx('button', `+ ${t('pages.profiles.signIn')} ${t('pages.profiles.addAnotherProfile').toUpperCase()}`)}
+      {...lx('button', `${t('pages.profiles.signIn')} ${t('pages.profiles.addAnotherProfile')}`)}
       style={{width: u(244), alignItems: 'center', transform: selected ? [{translateY: u(-8)}, {scale: 1.045}] : []}}
     >
       <View

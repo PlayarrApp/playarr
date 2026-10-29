@@ -122,7 +122,7 @@ function ActionRow({glyph, label, y, first, onPress, onReveal}: {glyph: string; 
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      {...lx('button', `${glyph} ${label}`, 14)}
+      {...lx('button', label, 14)}
       hasTVPreferredFocus={first}
       onFocus={() => {
         reportFocus(`${glyph}${label}`);
