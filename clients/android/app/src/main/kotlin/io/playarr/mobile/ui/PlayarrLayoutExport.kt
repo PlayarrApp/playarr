@@ -135,7 +135,7 @@ internal object PlayarrLayoutExport {
                         // A box that paints nothing (a layout wrapper, a surface without a fill) is not an element: only painted containers are exported.
                         if ((box.kind == "fill" || box.kind == "container") && !painted) continue
                         pending += Triple(e, box.id, painted)
-                        ctx.add(e, x, y, b.width, b.height, occludes = (box.kind == "container" || box.kind == "search" || box.kind == "group") && painted && box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f, hook = true, boxId = box.id)
+                        ctx.add(e, x, y, b.width, b.height, occludes = box.kind == "container" && painted && box.fill != androidx.compose.ui.graphics.Color.Unspecified && box.fill.alpha >= 0.5f, hook = true, boxId = box.id)
                     }
                 }
                 // Like the browser's backdrop: the fills of the box's own tree ancestors (and its own), outer to inner. A box that paints nothing
@@ -159,8 +159,10 @@ internal object PlayarrLayoutExport {
         }
         // Geometry only nominates candidates. With `covered` requested the candidates stay in the document, flagged, and the capture script decides on the
         // rendered screen (hide the window the element lives in, screenshot, keep it only if the pixels in its rectangle change). Without it they are dropped as before.
+        // What counts is the part of the element that lies on the screen (the library alphabet's last button hangs off the bottom edge, its visible strip is behind the drawer).
         val nominated = unique.filter { item ->
-            unique.any { top -> top.window > item.window && top.occludes && item.x >= top.x && item.y >= top.y && item.x + item.w <= top.x + top.w && item.y + item.h <= top.y + top.h }
+            val x0 = maxOf(item.x, 0f); val y0 = maxOf(item.y, 0f); val x1 = minOf(item.x + item.w, width.toFloat()); val y1 = minOf(item.y + item.h, height.toFloat())
+            x1 > x0 && y1 > y0 && unique.any { top -> top.window > item.window && top.occludes && x0 >= top.x && y0 >= top.y && x1 <= top.x + top.w && y1 <= top.y + top.h }
         }.toSet()
         // Same-window candidates: painted boxes (images, video, opaque containers) drawn after the element (later in paint order, outside its subtree) whose rectangles
         // together reach 90% of its area. Geometry only nominates; the rendered diff decides, with the covers' paint skipped (docs/parity/LAYOUT.md).
@@ -268,6 +270,21 @@ internal object PlayarrLayoutExport {
         paint
     }.onFailure { parityLog("shaped paint failed ${it.javaClass.simpleName} ${it.message?.take(100)}") }.getOrNull()
 
+    /**
+     * The ascent and descent (px) of the fonts the shaper used for characters [from, to) of the compose text, fallback fonts included (a symbol glyph the primary font lacks is drawn
+     * from a fallback font whose box is taller). The platform reports this from API 34; before that the primary font's metrics stand. Null: nothing beyond the primary font known.
+     */
+    private fun shapedRunExtent(result: TextLayoutResult, line: Int, from: Int, to: Int, paint: android.text.TextPaint): Pair<Float, Float>? = runCatching {
+        if (android.os.Build.VERSION.SDK_INT < 34 || to <= from) return@runCatching null
+        val (platform, _, paragraphStart) = platformLine(result, line)!!
+        val text = platform.text
+        val a = (from - paragraphStart).coerceIn(0, text.length); val b = (to - paragraphStart).coerceIn(a, text.length)
+        if (b <= a) return@runCatching null
+        val out = android.graphics.Paint.FontMetricsInt()
+        paint.getFontMetricsInt(text, a, b, a, b, false, out)
+        (-out.ascent).toFloat() to out.descent.toFloat()
+    }.onFailure { parityLog("fallback extent failed ${it.javaClass.simpleName} ${it.message?.take(100)}") }.getOrNull()
+
     /** The ellipsis the platform text engine draws for this overflow (its own string for the truncation the overflow selects; the export fails when the framework hides it). */
     private fun platformEllipsis(overflow: androidx.compose.ui.text.style.TextOverflow): String = runCatching {
         val at = when (overflow) {
@@ -330,7 +347,8 @@ internal object PlayarrLayoutExport {
                         val probe = kept.firstOrNull() ?: runStart
                         val drawPaint = checkNotNull(shapedRunPaint(layout, i, probe)) { "shaped paint of '${runText.take(20)}' unavailable" }
                         val fm = drawPaint.fontMetrics
-                        val ascent = -fm.ascent; val descent = fm.descent
+                        val extent = shapedRunExtent(layout, i, kept.firstOrNull() ?: runStart, (kept.lastOrNull() ?: (runEnd - 1)) + 1, drawPaint)
+                        val ascent = maxOf(-fm.ascent, extent?.first ?: 0f); val descent = maxOf(fm.descent, extent?.second ?: 0f)
                         val baseline = layout.getLineBaseline(i)
                         // The drawn ellipsis is part of the text and of the width: the platform layout's own line extent covers it, on the side of the shown characters it was drawn at.
                         val rtl = platformLine?.let { (pl, local, _) -> pl.getParagraphDirection(local) == android.text.Layout.DIR_RIGHT_TO_LEFT } ?: false

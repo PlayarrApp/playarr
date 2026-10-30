@@ -4363,8 +4363,8 @@ private fun TvLanguageMultiSelect(title: String, entries: List<LanguageFacetEntr
     Column(verticalArrangement = Arrangement.spacedBy(if (LocalTabletDrawerCssPx.current) 12.dp else 12.dp)) {
         PlayarrTvDrawerHeading(title)
         Column(
-            // Web `.ui-multiselect` is a group (role=group); the container is declared as one.
-            Modifier.fillMaxWidth().parityShape(12f).parityBackground("group", WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp), radius = 12f)
+            // The app has no group semantics for this container: it is exported as the painted container it is, not as web's role=group.
+            Modifier.fillMaxWidth().parityShape(12f).parityBackground("container", WebSurfaceSoft.copy(alpha = 0.64f), RoundedCornerShape(12.dp), radius = 12f)
                 .border(1.dp, io.playarr.shared.designsystem.theme.PlayarrWebTheme.palette.pillBorder, RoundedCornerShape(12.dp)).padding(7.4.dp),
         ) {
             Row(
@@ -5388,8 +5388,8 @@ private fun TelevisionSearchBody(
                 .parityShape(999f)
                 .webFocusRing(focused, radius = 38.dp, offset = 2.dp)
                 .clip(CircleShape)
-                // Web `.tv-search` is a search landmark (role=search); the pill is declared as one.
-                .parityBackground("search", WebSurfaceStrong.copy(alpha = 0.88f), CircleShape, radius = 999f)
+                // Android has no search landmark: the pill is exported as the painted container it is, not as web's role=search.
+                .parityBackground("container", WebSurfaceStrong.copy(alpha = 0.88f), CircleShape, radius = 999f)
                 .border(1.dp, WebInkMuted.copy(alpha = 0.3f), CircleShape)
                 .padding(start = 25.dp, end = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
