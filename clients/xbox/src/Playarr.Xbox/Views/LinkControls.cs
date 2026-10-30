@@ -31,6 +31,22 @@ namespace Playarr.Xbox.Views
         protected override string GetClassNameCore() => "Hyperlink";
     }
 
+    internal static class LinkNames
+    {
+        /// <summary>The item container carries the accessible name the app gave its content, so the container's own peer reports it.</summary>
+        public static void Carry(DependencyObject container, object item)
+        {
+            if (item is FrameworkElement content)
+            {
+                var name = Windows.UI.Xaml.Automation.AutomationProperties.GetName(content);
+                if (!string.IsNullOrEmpty(name))
+                {
+                    Windows.UI.Xaml.Automation.AutomationProperties.SetName(container, name);
+                }
+            }
+        }
+    }
+
     /// <summary>A card in a list: the web opens it with an anchor, so the item container reports a Hyperlink.</summary>
     public class LinkListViewItem : ListViewItem
     {
@@ -50,6 +66,12 @@ namespace Playarr.Xbox.Views
     public class LinkListView : ListView
     {
         protected override DependencyObject GetContainerForItemOverride() => new LinkListViewItem();
+
+        protected override void PrepareContainerForItemOverride(DependencyObject element, object item)
+        {
+            base.PrepareContainerForItemOverride(element, item);
+            LinkNames.Carry(element, item);
+        }
 
         protected override bool IsItemItsOwnContainerOverride(object item) => item is LinkListViewItem;
     }
@@ -73,6 +95,12 @@ namespace Playarr.Xbox.Views
     public class LinkGridView : GridView
     {
         protected override DependencyObject GetContainerForItemOverride() => new LinkGridViewItem();
+
+        protected override void PrepareContainerForItemOverride(DependencyObject element, object item)
+        {
+            base.PrepareContainerForItemOverride(element, item);
+            LinkNames.Carry(element, item);
+        }
 
         protected override bool IsItemItsOwnContainerOverride(object item) => item is LinkGridViewItem;
     }

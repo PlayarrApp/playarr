@@ -231,6 +231,7 @@
     <Compile Include="Views\CatalogTileFactory.cs" />
     <Compile Include="Views\ShellChrome.cs" />
     <Compile Include="Views\Ui.cs" />
+    <Compile Include="Views\LinkControls.cs" />
     <Compile Include="Views\NavIcons.cs" />
     <Compile Include="Views\Appearance.cs" />
     <Compile Include="Views\LanguageSetting.cs" />
