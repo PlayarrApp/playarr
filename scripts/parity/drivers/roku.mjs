@@ -878,8 +878,12 @@ export function createDriver({ out, args = [] } = {}) {
       hits = paused && seekAt === 2000 && ms === lastMs ? hits + 1 : 0;
       lastMs = ms;
     }
-    await sendEcp("keypress/Down");
-    await sleep(1500);
+    // The controls may already be up after the seek; a key on up controls moves focus to Play and draws its ring (web's frame has none).
+    // So Down is sent only when the seek slider is not in the tree (it then just raises the controls).
+    if (!/name="a11y\|slider\|0\|Seek"/.test(await fetchAppUi())) {
+      await sendEcp("keypress/Down");
+      await sleep(1500);
+    }
     playerShot = true;
   };
 
@@ -1163,18 +1167,25 @@ export function createDriver({ out, args = [] } = {}) {
       // The player frame is taken only with the controls up and the progress fill at 2 s of 60 (59.33 px): the controls hide on their own
       // and a seek that did not land leaves another fill, so the measured tree is checked first and the state restored until it holds.
       const playerHeld = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml) && /name="playerProgressFill"[^>]*bounds="\{70, 933, 59\.\d+, 6\}"|bounds="\{70, 933, 59\.\d+, 6\}"[^>]*name="playerProgressFill"/.test(xml);
+      // A key press moves focus from the seek stop to Play and draws its ring (web's frame has no ring), so Down is sent only while the
+      // controls are down (no seek slider in the tree); a wrong fill is fixed with the seek input alone.
+      const sliderUp = (xml) => /name="a11y\|slider\|0\|Seek"/.test(xml);
+      const focusRingUp = (xml) => /<Poster\b(?![^>]*visible="false")[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"[^>]*bounds="\{[\d.]+, 9\d\d/.test(xml) || /<Poster\b(?![^>]*visible="false")[^>]*bounds="\{[\d.]+, 9\d\d[^>]*uri="pkg:\/images\/round-outline-r25\.9\.png"/.test(xml);
       if (playerShot) {
         let held = false;
         for (let i = 0; i < 8 && !held; i += 1) {
-          held = playerHeld(await fetchAppUi());
-          if (held) break;
-          await sendEcp("keypress/Down");
-          await sleep(1500);
-          if (playerHeld(await fetchAppUi())) { held = true; break; }
+          const xml = await fetchAppUi();
+          if (playerHeld(xml)) { held = true; break; }
+          if (!sliderUp(xml)) {
+            await sendEcp("keypress/Down");
+            await sleep(1500);
+            if (playerHeld(await fetchAppUi())) { held = true; break; }
+          }
           seekAt = -1;
           await sendEcp("input?paritySeek=2000");
           await sleep(3000);
         }
+        if (held && focusRingUp(await fetchAppUi())) throw new Error("Roku player shows a focus ring; the web frame has none");
         if (!held) throw new Error("Roku player controls were not up at 2.000 s");
       }
       // Settle: take the frame only when two consecutive frames are identical (animations, focus glide and art loads finished).
