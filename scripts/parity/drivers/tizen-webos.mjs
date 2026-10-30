@@ -257,8 +257,11 @@ export async function createDriver() {
       // The engine stops buffering at a different point each run (47 s and 49 s of a 60 s clip seen), which moves the end of the buffered bar. Seek to the
       // clip end so the whole clip is in the buffer, then the pin below seeks back to 2 s: the bar then ends at the clip end every run.
       await ev(`(async () => { const v = document.querySelector("video"); v.pause(); await new Promise((res) => { v.addEventListener("seeked", res, { once: true }); v.currentTime = Math.max(0, v.duration - 0.5); setTimeout(res, 8000); }); return true; })()`);
-      const end = `(() => { const v = document.querySelector("video"); return v && v.buffered.length ? v.buffered.end(v.buffered.length - 1) >= v.duration - 0.05 : false; })()`;
-      await until(end, 30000);
+      const end = `(() => { const v = document.querySelector("video"); return v && v.buffered.length ? v.buffered.length === 1 && v.buffered.start(0) <= 0.05 && v.buffered.end(0) >= v.duration - 0.05 : false; })()`;
+      /* The seek to the end leaves two buffered ranges (each its own bar element, the overlap drawn twice as light): play from the start until they merge into one. */
+      await ev(`(async () => { const v = document.querySelector("video"); v.currentTime = 0; await v.play().catch(() => {}); return true; })()`);
+      if (!(await until(end, 90000))) throw new Error("the player video buffer did not merge into one range");
+      await ev(`(document.querySelector("video").pause(), true)`);
     }
     // A late play() or a timer can resume playback: hold the frame until it stays paused for two checks 0.7 s apart.
     let held = avplay ? 2 : 0;
