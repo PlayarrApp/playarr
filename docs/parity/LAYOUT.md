@@ -41,7 +41,7 @@ One JSON file per screen and theme (`scripts/parity/layout-schema.json`):
   subtree that paints (an image/video/canvas/svg, or a background of alpha 0.5 or more, a background image, or a backdrop filter,
   looking up to the common ancestor). Transparent click layers and `pointer-events: none` elements never occlude. A partly covered
   element stays. The document counts what it dropped as `occluded`; `layout-score.mjs` prints it, so a drawer screen shows a
-  non-zero count and a screen without an overlay shows 0. A native video plane that the platform composites above the browser (the Samsung emulator's AVPlay `<object>`, whose rect the app syncs to the player shell) is passed to the dumper as `opaquePlanes`: points inside its rect count as covered. Device documents carry `occluded` too.
+  non-zero count and a screen without an overlay shows 0. A native video plane that the platform composites above the browser (the Samsung emulator's AVPlay layer) cannot be seen by a hit test, so the driver measures it on the rendered screen: it grabs the screen with the plane shown and with the AVPlay `<object>` hidden, and passes the 48 x 27 grid cells where any channel differs as `coveredCells`; a sample point inside such a cell counts as covered. There is no assumed plane rect. Device documents carry `occluded` too.
 - Text colour: the exporter reads `-webkit-text-fill-color` (which defaults to `color`). Fully transparent text (loading skeleton
   lines use `color: transparent` over a painted bar) is not text: the element exports as a container with its background and no
   text, font or colour. Text clipped to a gradient (`background-clip: text`) reports the gradient's first stop colour and

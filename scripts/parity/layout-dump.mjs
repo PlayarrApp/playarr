@@ -12,7 +12,7 @@ const VOLATILE = JSON.parse(readFileSync(join(here, "layout-volatile.json"), "ut
 export const volatileFor = (screen) => [...(VOLATILE["*"] ?? []), ...(VOLATILE[screen] ?? [])];
 
 export function layoutPageFn(volatile, opts) {
-  var planes = (opts && opts.opaquePlanes) || [];
+  var cells = (opts && opts.coveredCells) || null;
   var round = function (n) { return Math.round(n * 100) / 100; };
   var hex2 = function (n) { var s = Math.round(n).toString(16); return s.length < 2 ? "0" + s : s; };
   var parse = function (c) {
@@ -215,18 +215,13 @@ export function layoutPageFn(volatile, opts) {
     }
     return false;
   };
-  /* A native video plane (opts.opaquePlanes: selectors such as the AVPlay object, whose rect the app syncs to the player shell) is drawn above the browser by the
-     emulator, so a point inside its rect is covered. Covered when, at every sample point, some layer above the element (any pointer-transparent one is skipped by the hit test) paints over it.
-     A pointer-events:none subject is made hit-testable for the test so its place in the stack is known. */
+  /* A native video plane that the platform composites above the browser (the Samsung emulator's AVPlay layer) cannot be seen by a hit test. The driver measures it on
+     the rendered screen instead: it grabs the screen with the plane shown and hidden and passes the grid cells whose pixels changed (opts.coveredCells: cols, rows, and
+     one 0/1 per cell, row by row). A point inside a changed cell is covered by the plane; a point in an unchanged cell shows the page. */
   var planeAt = function (x, y) {
-    for (var p = 0; p < planes.length; p++) {
-      var nodes = document.querySelectorAll(planes[p]);
-      for (var k = 0; k < nodes.length; k++) {
-        var ps = getComputedStyle(nodes[k]), pb = nodes[k].getBoundingClientRect();
-        if (ps.display !== "none" && ps.visibility !== "hidden" && x >= pb.left && x < pb.right && y >= pb.top && y < pb.bottom) return true;
-      }
-    }
-    return false;
+    if (!cells) return false;
+    var cx = Math.min(cells.cols - 1, Math.max(0, Math.floor(x / innerWidth * cells.cols))), cy = Math.min(cells.rows - 1, Math.max(0, Math.floor(y / innerHeight * cells.rows)));
+    return cells.covered[cy * cells.cols + cx] === 1;
   };
   var occluded = function (el, r) {
     if (!document.elementsFromPoint) return false;
