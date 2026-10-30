@@ -4,7 +4,7 @@
 // webOS: Chrome DevTools Protocol (keys and eval). Tizen: X key events to the emulator window plus the debug build's
 // netlog.js eval channel (a debug build with scripts/parity/tizen-webos/netlog.js; the host side is logserver.py <dir>/log.txt). Both then drive the same page functions.
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -436,6 +436,34 @@ export async function createDriver() {
     if (stable < 3) throw new Error("visible images did not settle before capture");
     await ev(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))`);
   }
+  // Toggle-and-diff of the native video plane on the real screen. Only on a page that has the AVPlay object laid out (the player): grab, hide the object
+  // (visibility, the app's own way of hiding the plane), grab again, show it again, and report the 48 x 27 grid cells where any channel differs.
+  async function measurePlaneCells() {
+    const plane = `(() => { const o = document.querySelector('object[type="application/avplayer"]'); return o && getComputedStyle(o).visibility !== "hidden" && getComputedStyle(o).display !== "none" ? o : null; })()`;
+    if (!(await ev(`!!${plane}`))) return null;
+    const dir = mkdtempSync(join(tmpdir(), "plane-"));
+    const grab = async (name) => {
+      await sleep(1500);
+      const xwd = join(dir, `${name}.xwd`), png = join(dir, `${name}.png`);
+      writeFileSync(xwd, execFileSync("xwd", ["-display", display, "-root", "-silent"], { maxBuffer: 64 << 20 }));
+      execFileSync("magick", [`xwd:${xwd}`, "-crop", `1920x1080+${process.env.TIZEN_CONTENT_OFFSET ?? "6,35"}`.replace(",", "+"), "+repage", `png:${png}`]);
+      return png;
+    };
+    try {
+      const shown = await grab("shown");
+      await ev(`(${plane}.style.visibility = "hidden", true)`);
+      let hidden;
+      try { hidden = await grab("hidden"); } finally { await ev(`(document.querySelector('object[type="application/avplayer"]').style.visibility = "visible", true)`); }
+      const cols = 48, rows = 27;
+      const txt = execFileSync("magick", [shown, hidden, "-compose", "difference", "-composite", "-channel", "RGB", "-separate", "-evaluate-sequence", "max", "-threshold", "0", "-depth", "16", "-filter", "box", "-resize", `${cols}x${rows}!`, "txt:-"], { encoding: "utf8", maxBuffer: 64 << 20 });
+      const covered = new Array(cols * rows).fill(0);
+      for (const line of txt.split("\n")) {
+        const m = /^(\d+),(\d+): \((\d+)/.exec(line);
+        if (m && Number(m[3]) > 0) covered[Number(m[2]) * cols + Number(m[1])] = 1;
+      }
+      return { cols, rows, covered };
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  }
   const xkey = (k, long) => execFileSync("python3", [XCLICK, display, ...(long ? ["hold", XKEY[k], "900"] : ["press", XKEY[k]])], { stdio: "ignore" });
 
   return {
@@ -455,8 +483,10 @@ export async function createDriver() {
     // The layout schema document (docs/parity/LAYOUT.md): the same DOM dump as the web refs, run in the app page through the inspector or netlog channel.
     async layoutDump({ screen, theme }) {
       await guard();
-      // The emulator composites the AVPlay plane above the browser (DEVICES.md): the app syncs the object's rect to the player shell, so what lies inside it is not visible.
-      const doc = await ev(layoutExpression(screen, device === "tizen" && !TIZEN_REAL ? { opaquePlanes: ['object[type="application/avplayer"]'] } : {}));
+      // The emulator composites the AVPlay plane above the browser (DEVICES.md), so a hit test cannot say what is visible there. Measure it on the rendered
+      // screen: grab with the plane shown and hidden, and hand the dumper the cells whose pixels differ (no rect assumption).
+      const coveredCells = device === "tizen" && !TIZEN_REAL ? await measurePlaneCells() : null;
+      const doc = await ev(layoutExpression(screen, coveredCells ? { coveredCells } : {}));
       if (!doc?.elements) throw new Error("layout dump returned no elements");
       return { screen, theme, viewport: doc.viewport, clockPinned: !!(pin || tizenPinScript), elements: doc.elements, occluded: doc.occluded };
     },

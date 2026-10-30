@@ -219,14 +219,15 @@ test("text still cut by text-overflow: ellipsis is refused, never reconstructed;
   assert.deepEqual(texts(d), ["fits", "abcde\u2026"]);
 });
 
-test("a native video plane is an opaque occluder: covered controls are dropped and counted, uncovered ones stay", { skip }, async () => {
-  const body = `<object id="p" type="application/avplayer" style="position:fixed;left:0;top:0;width:200px;height:100px"></object>
-    <button class="abs" style="left:10px;top:10px;width:80px;height:20px">Play</button><button class="abs" style="left:10px;top:150px;width:80px;height:20px">Below</button>`;
+test("cells measured as covered by a native video plane drop the controls inside them and count them, uncovered ones stay", { skip }, async () => {
+  const body = `<button class="abs" style="left:10px;top:10px;width:80px;height:20px">Play</button><button class="abs" style="left:10px;top:150px;width:80px;height:20px">Below</button>`;
   const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
   try {
     const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
     await page.setContent(`<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#fff;font:16px sans-serif}.abs{position:absolute}</style>${body}`);
-    const withPlane = await page.evaluate(`(${layoutPageFn.toString()})([], ${JSON.stringify({ opaquePlanes: ["object[type='application/avplayer']"] })})`);
+    // 4 x 3 cells of 100 px: the plane (measured by the driver from a shown/hidden pair of grabs) changed the pixels of the two top-left cells only
+    const covered = { cols: 4, rows: 3, covered: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+    const withPlane = await page.evaluate(`(${layoutPageFn.toString()})([], ${JSON.stringify({ coveredCells: covered })})`);
     assert.deepEqual(texts(withPlane), ["Below", "Below"]);
     assert.equal(withPlane.occluded, 1);
     assert.deepEqual(texts(await page.evaluate(layoutPageFn, [])).filter((t) => t === "Play").length, 2);
