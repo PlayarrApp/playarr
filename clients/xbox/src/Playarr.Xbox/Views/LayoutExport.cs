@@ -420,7 +420,7 @@ namespace Playarr.Xbox.Views
 
                 var changed = rounds[0] > 0 && rounds[1] > 0;
                 var focusable = !changed && IsFocusableAndOnTop(candidate.Owner, candidate.Box);
-                log.Add($"{candidate.Owner.GetType().Name} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
+                log.Add($"#{log.Count} {Math.Round(candidate.Box.X)},{Math.Round(candidate.Box.Y)} {Math.Round(candidate.Box.Width)}x{Math.Round(candidate.Box.Height)} r1={rounds[0]} r2={rounds[1]} {(changed ? "visible" : focusable ? "focusable" : "covered")}");
                 if (!changed && !focusable)
                 {
                     hidden.Add(candidate.Item);
